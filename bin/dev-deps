@@ -8,13 +8,13 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/utils/all.sh"
 
 # Lock directory to prevent concurrent runs
-LOCK_DIR="$PROJECT_ROOT/logs/dev-bootstrap.lock"
+LOCK_DIR="$PROJECT_ROOT/logs/dev-deps.lock"
 
 acquire_lock() {
     mkdir -p "$(dirname "$LOCK_DIR")"
     # Use mkdir for atomic lock acquisition
     if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-        print_error "Bootstrap is already running"
+        print_error "dev-deps is already running"
         echo "      If this is a mistake, run: rm -rf $LOCK_DIR"
         exit 1
     fi
@@ -31,19 +31,19 @@ check_required_tools() {
 
     # If any of these tools are an incorrect version, the build
     # step will fail later on, so we just check for their presence here.
-    if ! command -v node &> /dev/null; then
+    if ! has_tool node; then
         missing+=("node")
     fi
 
-    if ! command -v yarn &> /dev/null; then
+    if ! has_tool yarn; then
         missing+=("yarn")
     fi
 
-    if ! command -v java &> /dev/null; then
+    if ! has_tool java; then
         missing+=("java")
     fi
 
-    if ! command -v clojure &> /dev/null; then
+    if ! has_tool clojure; then
         missing+=("clojure")
     fi
 
@@ -52,7 +52,7 @@ check_required_tools() {
         echo ""
         echo "Run ./bin/dev-requirements to check your development environment."
         echo ""
-        echo "If you'd like an automated setup, run ./bin/dev-install which uses mise (coming soon)."
+        echo "If you'd like an automated setup, run ./bin/dev-install (uses mise)."
         exit 1
     fi
 }
@@ -93,15 +93,6 @@ build_jar() {
 main() {
     acquire_lock
 
-    print_header "Metabase Development Bootstrap"
-
-    echo "This script will:"
-    echo "  1. Verify required tools are installed"
-    echo "  2. Install frontend dependencies (yarn)"
-    echo "  3. Download backend dependencies (Clojure)"
-    echo "  4. Build the Metabase JAR"
-    echo ""
-
     print_step "Checking required tools"
     check_required_tools
     print_success "All required tools found"
@@ -130,20 +121,9 @@ main() {
         fi
     fi
 
-    print_header "Bootstrap Complete!"
-
-    echo "Your development environment is ready."
     echo ""
-    echo "To start the backend (from source):"
-    echo "  clj -M:dev:drivers:drivers-dev:ee:ee-dev:dev-start --hot"
-    echo ""
-    echo "To start the backend (from JAR):"
-    echo "  java --add-opens java.base/java.nio=ALL-UNNAMED -jar target/uberjar/metabase.jar"
-    echo ""
-    echo "To start the frontend:"
-    echo "  yarn build-hot"
-    echo ""
-    echo "For more information, see docs/developers-guide/devenv.md"
+    print_success "Dependencies downloaded"
+    echo "      For more information, see docs/developers-guide/devenv.md"
     echo ""
 }
 
