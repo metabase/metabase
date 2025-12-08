@@ -416,6 +416,14 @@ export const DocumentPage = ({
 
   usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
 
+  const trackUnsavedChangesWarningEvent = useCallback(() => {
+    trackSimpleEvent({
+      event: "unsaved_changes_warning_displayed",
+      triggered_from: "document",
+      target_id: documentData?.id ?? null,
+    });
+  }, [documentData?.id]);
+
   const isLeaveConfirmModalOpen = useMemo(
     () =>
       hasUnsavedChanges() &&
@@ -426,13 +434,8 @@ export const DocumentPage = ({
 
   useEffect(() => {
     if (isLeaveConfirmModalOpen) {
-      trackSimpleEvent({
-        event: "unsaved_changes_warning_displayed",
-        triggered_from: "document",
-        target_id: documentData?.id ?? null,
-      });
+      trackUnsavedChangesWarningEvent();
     }
-
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only track when the modal is opened
   }, [isLeaveConfirmModalOpen]);
 
@@ -516,6 +519,11 @@ export const DocumentPage = ({
           key={location.key}
           isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
           route={route}
+          onOpenChange={(open) => {
+            if (open) {
+              trackUnsavedChangesWarningEvent();
+            }
+          }}
         />
 
         <LeaveConfirmModal

@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import { useEffect } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 
@@ -12,6 +13,7 @@ interface LeaveRouteConfirmModalProps {
   route: Route;
   router: InjectedRouter;
   onConfirm?: () => void;
+  onOpenChange?: (opened: boolean) => void;
 }
 
 const _LeaveRouteConfirmModal = ({
@@ -20,6 +22,7 @@ const _LeaveRouteConfirmModal = ({
   route,
   router,
   onConfirm,
+  onOpenChange,
 }: LeaveRouteConfirmModalProps) => {
   const { opened, close, confirm } = useConfirmRouteLeaveModal({
     isEnabled,
@@ -27,6 +30,11 @@ const _LeaveRouteConfirmModal = ({
     route,
     router,
   });
+
+  useEffect(() => {
+    onOpenChange?.(opened);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only update upon open state changes
+  }, [opened]);
 
   const handleConfirm = () => {
     confirm();
