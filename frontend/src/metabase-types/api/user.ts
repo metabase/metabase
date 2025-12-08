@@ -42,6 +42,7 @@ export interface BaseUser {
 }
 
 export interface User extends BaseUser {
+  attributes: UserAttributeMap | null;
   login_attributes: UserAttributeMap | null;
   structured_attributes?: StructuredUserAttributes;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];

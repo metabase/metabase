@@ -17,6 +17,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -162,16 +163,24 @@
    :ttl/threshold (u/minutes->ms 1)))
 
 (mu/defn- reconcile-metadata :- [:+ :map]
-  "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed."
+  "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed.
+  For native queries with long column names, we also try matching by truncated name since the native query may return
+  truncated column names that don't match the full field names in table metadata.
+
+  We preserve the source query's column :name since that's what the query actually returns, but merge in the table
+  metadata's other attributes (like :id, :field_ref, etc.) for proper field resolution."
   [source-query-metadata :- [:+ :map] table-metadata]
-  (let [col-name->table-metadata (m/index-by :name table-metadata)]
+  (let [col-name->table-metadata (m/index-by :name table-metadata)
+        truncated-name->table-metadata (m/index-by (comp lib.util/truncate-alias :name) table-metadata)]
     (vec
      (for [col   source-query-metadata
-           :let  [table-col (get col-name->table-metadata (:name col))]
+           :let [col-name (:name col)
+                 table-col (or (get col-name->table-metadata col-name)
+                               (get truncated-name->table-metadata col-name))]
            :when table-col]
        (do
          (gtap/check-column-types-match col table-col)
-         table-col)))))
+         (merge table-col (select-keys col [:name])))))))
 
 (mu/defn- native-query-metadata :- [:+ :map]
   [source-query :- [:map [:source-query :any]]]
@@ -201,6 +210,7 @@
    card-id                                     :- [:maybe ::lib.schema.id/card]]
   (let [table-metadata   (original-table-metadata table-id)
         ;; make sure source query has `:source-metadata`; add it if needed
+        native-source-query? (get-in source-query [:source-query :native])
         [metadata save?] (cond
                            ;; if it already has `:source-metadata`, we're good to go.
                            (seq source-metadata)
@@ -208,14 +218,22 @@
 
                            ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
                            ;; get the expected metadata.
-                           (not (get-in source-query [:source-query :native]))
+                           (not native-source-query?)
                            [(mbql-query-metadata source-query) true]
 
                            ;; otherwise if it's a native query we'll have to run the query really quickly to get the
                            ;; expected metadata.
                            :else
                            [(native-query-metadata source-query) true])
-        metadata (reconcile-metadata metadata table-metadata)]
+        metadata (reconcile-metadata metadata table-metadata)
+        ;; For native source queries, set :field_ref to a name-based reference. This ensures the outer query
+        ;; uses the actual column names returned by the native query, not truncated aliases derived from field IDs.
+        ;; We keep :id for features like FK remapping.
+        metadata (if native-source-query?
+                   (mapv (fn [{:keys [name base_type] :as col}]
+                           (assoc col :field_ref [:field name {:base-type base_type}]))
+                         metadata)
+                   metadata)]
     (assert (seq metadata))
     ;; save the result metadata so we don't have to do it again next time if applicable
     (when (and card-id save?)
