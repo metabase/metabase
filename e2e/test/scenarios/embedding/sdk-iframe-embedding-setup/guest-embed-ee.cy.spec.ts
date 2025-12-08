@@ -146,7 +146,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
         event_detail:
-          "authType=guest-embed,experience=chart,isDefaultExperience=true",
+          "authType=guest-embed,experience=chart,isDefaultExperience=false",
       });
 
       // Entity selection step
