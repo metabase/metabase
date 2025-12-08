@@ -53,7 +53,7 @@ export function ModelingLandingPage() {
 
   const modelCollection =
     libraryCollection &&
-    getWritableCollection(libraryCollection, "library-models");
+    getWritableCollection(libraryCollection, "library-data");
 
   const metricCollection =
     libraryCollection &&
