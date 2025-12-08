@@ -33,7 +33,7 @@ export const DataStudio = {
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
     list: () => cy.findByTestId("transforms-job-list"),
-    editor: () => cy.findByTestId("transforms-jobs-editor"),
+    editor: () => cy.findByTestId("transforms-job-editor"),
   },
   Runs: {
     list: () => cy.findByTestId("transforms-run-list"),
