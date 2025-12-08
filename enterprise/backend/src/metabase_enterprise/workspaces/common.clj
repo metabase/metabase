@@ -126,7 +126,7 @@
                   database_details]} (ws.log/track! ws-id :database-isolation
                                        (-> (ws.isolation/ensure-database-isolation! workspace database)
                                            ;; it actually returns just those, this is more like a doc than behavior
-                                           (select-keys [:schema :database-isolation])
+                                           (select-keys [:schema :database_details])
                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))
           ;; not sure this is necessary but `mirror-entities!` will at least get current state
           workspace                  (assoc workspace :database_details database_details :schema schema)
