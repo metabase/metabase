@@ -3,7 +3,13 @@ import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import dayjs from "dayjs";
 import type { Location } from "history";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
@@ -30,6 +36,7 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -409,6 +416,26 @@ export const DocumentPage = ({
 
   usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
 
+  const isLeaveConfirmModalOpen = useMemo(
+    () =>
+      hasUnsavedChanges() &&
+      isNewDocument &&
+      location.key !== previousLocationKey,
+    [hasUnsavedChanges, isNewDocument, location.key, previousLocationKey],
+  );
+
+  useEffect(() => {
+    if (isLeaveConfirmModalOpen) {
+      trackSimpleEvent({
+        event: "unsaved_changes_warning_displayed",
+        triggered_from: "document",
+        target_id: documentData?.id ?? null,
+      });
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only track when the modal is opened
+  }, [isLeaveConfirmModalOpen]);
+
   return (
     <Box className={styles.documentPage}>
       {documentData?.archived && <DocumentArchivedEntityBanner />}
@@ -493,11 +520,7 @@ export const DocumentPage = ({
 
         <LeaveConfirmModal
           // only applies when going from /new -> /new
-          opened={
-            hasUnsavedChanges() &&
-            isNewDocument &&
-            location.key !== previousLocationKey
-          }
+          opened={isLeaveConfirmModalOpen}
           onConfirm={resetDocument}
           onClose={() => forceUpdate()}
         />
