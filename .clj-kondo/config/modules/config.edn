@@ -923,6 +923,7 @@
            eid-translation
            embedding
            events
+           legacy-mbql
            lib
            lib-be
            models

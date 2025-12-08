@@ -21,7 +21,7 @@ serdes/meta:
 - id: REVIEWS
   model: Table
 archived_at: null
+data_authority: unconfigured
 database_require_filter: null
 deactivated_at: null
 is_writable: null
-data_authority: unconfigured
