@@ -1,4 +1,4 @@
-import type { OmniPickerFolderItem } from "../types";
+import type { OmniPickerFolderItem } from "../../types";
 
 export function DbItemList({ parent }: { parent: OmniPickerFolderItem }) {
 
