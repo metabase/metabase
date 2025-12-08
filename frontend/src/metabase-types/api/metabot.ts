@@ -23,8 +23,10 @@ export type MetabotFeedbackType =
 
 export type MetabotCodeEditorBufferContext = {
   id: string;
-  language: "sql";
-  source: Record<string, unknown>;
+  source: Record<string, unknown> & {
+    language: "sql";
+    databaseId: number | null;
+  };
   cursor: { line: number; column: number };
   selection?: {
     text: string;

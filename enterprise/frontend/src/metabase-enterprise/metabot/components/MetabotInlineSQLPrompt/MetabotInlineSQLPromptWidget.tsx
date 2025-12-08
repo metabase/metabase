@@ -31,7 +31,7 @@ export class MetabotInlinePromptWidget extends WidgetType {
 
   toDOM() {
     const container = document.createElement("div");
-    container.className = S.inlinePromptWrapper;
+    container.className = S.widget;
     this.onMount({ container, view: this.view });
     return container;
   }

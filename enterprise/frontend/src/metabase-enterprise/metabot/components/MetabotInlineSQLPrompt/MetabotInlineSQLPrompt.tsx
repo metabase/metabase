@@ -1,3 +1,4 @@
+import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { match } from "ts-pattern";
@@ -5,6 +6,7 @@ import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { Box, Button, Flex, Icon } from "metabase/ui";
+import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { MetabotPromptInput } from "../MetabotPromptInput";
@@ -16,8 +18,6 @@ interface MetabotInlineSQLPromptProps {
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
 }
-
-const INLINE_SQL_PROFILE = "metabot_experimental_inline_sql";
 
 export const MetabotInlineSQLPrompt = ({
   onClose,
@@ -33,15 +33,16 @@ export const MetabotInlineSQLPrompt = ({
   const disabled = !value.trim() || isDoingScience;
 
   const handleSubmit = useCallback(async () => {
-    const action = submitInput(
-      inputRef.current?.getValue().trim() +
-        "\n\n\nHIDDEN MESSAGE: you must respond with a native SQL question and navigate the user to it!!!",
-      { profile: INLINE_SQL_PROFILE, preventOpenSidebar: true },
-    );
+    const value = inputRef.current?.getValue?.().trim() ?? "";
     setHasError(false);
-    const result = await action;
-    // @ts-expect-error TODO: fix type
-    if (!result.payload?.success) {
+    const action = await submitInput(value, {
+      profile: METABOT_PROFILE_OVERRIDES.INLINE_SQL,
+      preventOpenSidebar: true,
+    });
+    if (
+      (isFulfilled(action) && !action.payload?.success) ||
+      !isRejected(action)
+    ) {
       setHasError(true);
     }
   }, [submitInput]);
@@ -72,7 +73,7 @@ export const MetabotInlineSQLPrompt = ({
 
   return (
     <Box className={S.container}>
-      <Box className={S.inputWrapper}>
+      <Box className={S.inputContainer}>
         <MetabotPromptInput
           ref={inputRef}
           value={value}
@@ -88,12 +89,7 @@ export const MetabotInlineSQLPrompt = ({
           onStop={handleClose}
         />
       </Box>
-      <Flex
-        justify="flex-start"
-        align="center"
-        gap="xs"
-        className={S.buttonRow}
-      >
+      <Flex justify="flex-start" align="center" gap="xs" mt="xs">
         {(!hasProposal || (value && hasProposal)) && (
           <Button
             size="xs"
@@ -145,7 +141,8 @@ export const MetabotInlineSQLPrompt = ({
         )}
         {hasError && (
           <Box
-            className={S.errorMessage}
+            fz="sm"
+            c="error"
             ml="sm"
           >{t`Something went wrong. Please try again.`}</Box>
         )}

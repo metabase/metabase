@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatabaseId, DatasetQuery } from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {
@@ -20,6 +20,7 @@ import { extractMetabotBufferContext } from "./utils";
 
 function useRegisterCodeEditorMetabotContext(
   buffer: EditorView | undefined,
+  databaseId: DatabaseId | null,
 ): void {
   useRegisterMetabotContextProvider(
     async () =>
@@ -28,7 +29,7 @@ function useRegisterCodeEditorMetabotContext(
             user_is_viewing: [
               {
                 type: "code_editor",
-                buffers: [extractMetabotBufferContext(buffer)],
+                buffers: [extractMetabotBufferContext(buffer, databaseId)],
               },
             ],
           }
@@ -48,7 +49,10 @@ export interface UseInlineSqlEditResult {
 export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
 
-  useRegisterCodeEditorMetabotContext(portalTarget?.view);
+  useRegisterCodeEditorMetabotContext(
+    portalTarget?.view,
+    question.databaseId(),
+  );
 
   /* TODO: temp hack - communicate sql via global notifier used in navigate to handler */
   const [generatedSql, setGeneratedSql] = useState<string | undefined>();
@@ -57,10 +61,12 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
   }, []);
   /* TODO: temp hack end */
 
-  // HACK: Close and reopen widget when we receive generated SQL to force
-  // CodeMirror to recalculate gutter positions. The line numbers and diff
-  // UI seem to not respect the height of the prompt input and forcing a
-  // remeasure wasn't working either.
+  // HACK: Closing and reopening the widget when we receive generated SQL
+  // to force CodeMirror to recalculate gutter positions. The line numbers
+  // and diff UI seem to not respect the height of the prompt input and
+  // forcing a remeasure doesn't seem to be sufficient. RAF usage is needed
+  // otherwise the effects happen too quickly and the measureing doesn't
+  // happen correctly
   useEffect(() => {
     if (generatedSql && portalTarget?.view) {
       const { view } = portalTarget;

@@ -84,7 +84,8 @@ export const MetabotChat = ({
       aria-hidden={!metabot.visible}
       style={{
         boxShadow: metabot.profileOverride
-          ? "inset 0px 0px 33px -10px var(--mb-color-brand)"
+          ? // TODO: do not merge to master, just meant to highlight another profile is set for now
+            "inset 0px 0px 33px -10px var(--mb-color-brand)"
           : "unset",
       }}
     >

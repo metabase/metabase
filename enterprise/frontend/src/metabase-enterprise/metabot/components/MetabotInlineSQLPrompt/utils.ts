@@ -4,6 +4,7 @@ import type { MetabotCodeEditorBufferContext } from "metabase-types/api";
 
 export function extractMetabotBufferContext(
   view: EditorView,
+  databaseId: number,
 ): MetabotCodeEditorBufferContext {
   const state = view.state;
   const selection = state.selection.main;
@@ -11,8 +12,10 @@ export function extractMetabotBufferContext(
 
   const buffer: MetabotCodeEditorBufferContext = {
     id: "default",
-    language: "sql",
-    source: {},
+    source: {
+      language: "sql",
+      databaseId,
+    },
     cursor: {
       line: cursorLine.number,
       column: cursorLine.from,

@@ -17,11 +17,8 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotChatEditor } from "./MetabotChatEditor";
 
-const SITE_URL = "http://localhost:3000";
-
 const defaultProps = {
   value: "",
-  siteUrl: SITE_URL,
   onChange: jest.fn(),
   onSubmit: jest.fn(),
   onStop: jest.fn(),
@@ -37,7 +34,7 @@ const defaultProps = {
 const setup = (props = {}) => {
   setupEnterprisePlugins();
   setupCardEndpoints(createMockCard({ id: 123, name: "Test Model" }));
-  const settings = mockSettings({ "site-url": SITE_URL });
+  const settings = mockSettings({ "site-url": "http://localhost:3000" });
 
   return renderWithProviders(
     <MetabotChatEditor {...defaultProps} {...props} />,

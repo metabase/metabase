@@ -13,8 +13,7 @@ export type DeregisterChatContextProviderFn = () => void;
 // internal type so we can support tiptap editor and textarea as inputs
 export type MetabotPromptInputRef = {
   focus: () => void;
-  clear: () => void;
-  getValue: () => string;
+  getValue?: () => string;
   scrollHeight: number;
   scrollTop: number;
 };
