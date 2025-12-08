@@ -1289,6 +1289,27 @@
                                                  :sort-direction :desc
                                                  :official-collections-first? true} :mysql)))))
 
+(deftest ^:parallel children-sort-clause-description-test
+  (testing "Sorting by description"
+    (testing "ascending"
+      (is (= [[:authority_level :asc :nulls-last]
+              [:type :asc :nulls-first]
+              [:%lower.description :asc :nulls-last]
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:sort-column :description
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres))))
+    (testing "descending"
+      (is (= [[:authority_level :asc :nulls-last]
+              [:type :asc :nulls-first]
+              [:%lower.description :desc :nulls-last]
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:sort-column :description
+                                                   :sort-direction :desc
+                                                   :official-collections-first? true} :postgres))))))
+
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
     ;; EE behavior is tested
@@ -3202,24 +3223,3 @@
   (mt/with-temp [:model/Collection {a-id :id} {:archived true}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
-
-(deftest ^:parallel children-sort-clause-description-test
-  (testing "Sorting by description"
-    (testing "ascending"
-      (is (= [[:authority_level :asc :nulls-last]
-              [:type :asc :nulls-first]
-              [:%lower.description :asc :nulls-last]
-              [:%lower.name :asc]
-              [:id :asc]]
-             (api.collection/children-sort-clause {:sort-column :description
-                                                   :sort-direction :asc
-                                                   :official-collections-first? true} :postgres))))
-    (testing "descending"
-      (is (= [[:authority_level :asc :nulls-last]
-              [:type :asc :nulls-first]
-              [:%lower.description :desc :nulls-last]
-              [:%lower.name :asc]
-              [:id :asc]]
-             (api.collection/children-sort-clause {:sort-column :description
-                                                   :sort-direction :desc
-                                                   :official-collections-first? true} :postgres))))))

@@ -44,7 +44,6 @@ export type CollectionBrowserListColumns =
 const COLLECTION_BROWSER_LIST_COLUMNS: CollectionBrowserListColumns[] = [
   "type",
   "name",
-  "description",
   "lastEditedBy",
   "lastEditedAt",
   "archive",

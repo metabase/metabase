@@ -68,7 +68,6 @@ describe("CollectionBrowser", () => {
     });
 
     expect(screen.getByText("Name")).toBeInTheDocument();
-    expect(screen.getByText("Description")).toBeInTheDocument();
     expect(screen.getByText("Last edited by")).toBeInTheDocument();
     expect(screen.getByText("Last edited at")).toBeInTheDocument();
   });
@@ -95,7 +94,7 @@ describe("CollectionBrowser", () => {
     expect(columnNames).toStrictEqual(["Type", "Name"]);
   });
 
-  it("should include description column by default", async () => {
+  it("should NOT include description column by default", async () => {
     await setup();
 
     await waitFor(() => {
@@ -110,7 +109,7 @@ describe("CollectionBrowser", () => {
         columnNames.push(el.textContent);
       });
 
-    expect(columnNames).toContain("Description");
+    expect(columnNames).not.toContain("Description");
   });
 
   it("should allow hiding the description column", async () => {
