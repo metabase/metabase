@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.queries.api.card-test
+(ns ^:mb/driver-tests metabase.queries-rest.api.card-test
   "Tests for /api/card endpoints."
   (:require
    [clojure.data.csv :as csv]
@@ -29,7 +29,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
-   [metabase.queries.api.card :as api.card]
+   [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.query-processor.card :as qp.card]
@@ -703,7 +703,7 @@
 
 (deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [openapi-object         (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries.api.card) "/api/card")
+    (let [openapi-object         (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries-rest.api.card) "/api/card")
           schemas                (get-in openapi-object [:components :schemas])
           body-properties        (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
           _                      (is (some? body-properties))

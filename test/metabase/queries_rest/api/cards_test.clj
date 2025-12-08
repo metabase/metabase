@@ -1,4 +1,4 @@
-(ns metabase.queries.api.cards-test
+(ns metabase.queries-rest.api.cards-test
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.models.permissions :as perms]
