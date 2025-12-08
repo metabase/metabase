@@ -321,11 +321,12 @@
 
 (defsetting slack-configured?
   "Is Slack integration configured?"
-  :type :boolean
+  :type       :boolean
   :visibility :internal
-  :getter (fn []
-            (boolean
-             (or
-              (seq (slack-app-token))
-              (seq (slack-token)))))
-  :setter :none)
+  :getter     (fn []
+                (boolean
+                 (or
+                  (seq (slack-app-token))
+                  (seq (slack-token)))))
+  :export?    false
+  :setter     :none)
