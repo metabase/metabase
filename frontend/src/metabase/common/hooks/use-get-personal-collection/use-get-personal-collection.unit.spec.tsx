@@ -20,13 +20,16 @@ const PERSONAL_COLLECTION = createMockCollection({
 
 const TestComponent = () => {
   const { data, isLoading, error } = useGetPersonalCollection();
-
   if (isLoading) {
     return <div>Loading</div>;
   }
 
   if (error) {
     return <div>{JSON.stringify(error)}</div>;
+  }
+
+  if (!data) {
+    return <div>No Personal Collection</div>;
   }
 
   return <div>{JSON.stringify(data)}</div>;
@@ -37,10 +40,7 @@ interface SetupOpts {
   error?: string;
 }
 
-const setup = ({
-  personalCollectionId = PERSONAL_COLLECTION_ID,
-  error,
-}: SetupOpts = {}) => {
+const setup = ({ personalCollectionId, error }: SetupOpts = {}) => {
   const user = createMockUser({
     id: 1,
     first_name: "John",
@@ -64,12 +64,12 @@ const setup = ({
 
 describe("useGetPersonalCollection", () => {
   it("should be initially loading when user has a personal collection ID", () => {
-    setup();
+    setup({ personalCollectionId: PERSONAL_COLLECTION_ID });
     expect(screen.getByText("Loading")).toBeInTheDocument();
   });
 
   it("should fetch and display the personal collection", async () => {
-    setup();
+    setup({ personalCollectionId: PERSONAL_COLLECTION_ID });
 
     expect(
       await screen.findByText(JSON.stringify(PERSONAL_COLLECTION)),
@@ -84,22 +84,21 @@ describe("useGetPersonalCollection", () => {
 
   it("should handle errors when fetching the collection", async () => {
     const ERROR = "Failed to load collection";
-    setup({ error: ERROR });
+    setup({ personalCollectionId: PERSONAL_COLLECTION_ID, error: ERROR });
 
     expect(await screen.findByText(new RegExp(ERROR))).toBeInTheDocument();
+    const requests = await findRequests("GET");
+    expect(requests).toHaveLength(1);
   });
 
-  it("should not fetch when user has no personal collection ID", () => {
+  it("should not fetch when user has no personal collection ID", async () => {
     setup({ personalCollectionId: undefined });
 
-    // Should not show loading indicator since skipToken prevents the query
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-  });
+    expect(
+      await screen.findByText("No Personal Collection"),
+    ).toBeInTheDocument();
 
-  it("should not fetch when personal collection ID is undefined", () => {
-    setup({ personalCollectionId: undefined });
-
-    // Should not show loading indicator since skipToken prevents the query
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    const requests = await findRequests("GET");
+    expect(requests).toHaveLength(0);
   });
 });
