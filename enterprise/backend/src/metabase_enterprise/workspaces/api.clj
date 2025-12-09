@@ -7,7 +7,6 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.models.workspace-log]
-   [metabase-enterprise.workspaces.promotion :as ws.promotion]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -188,7 +187,7 @@
 (def ^:private CreateWorkspace
   [:map
    [:name [:string {:min 1}]]
-   [:database_id {:optional true} :int]])
+   [:database_id ::ws.t/appdb-id]])
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace
@@ -498,8 +497,9 @@
   (let [ws               (u/prog1 (t2/select-one :model/Workspace :id id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
+        ;; TODO implement individual entity merging
         {:keys [promoted
-                errors]} (ws.promotion/promote-transforms! ws)]
+                errors]} {}]
     (u/prog1
       {:promoted    (vec promoted)
        :errors      errors

@@ -55,7 +55,7 @@
 ;; TODO: Should we move this to model as per the diagram?
 (defn- create-workspace-container!
   "Create the workspace and its related collection, user, and api key."
-  [creator-id database-id workspace-name status]
+  [creator-id db-id workspace-name status]
   ;; TODO (Chris 2025-11-19) Unsure API key name is unique, and remove this (insecure) workaround.
   (let [api-key (let [key-name (format "API key for Workspace %s" workspace-name)]
                   (or (t2/select-one :model/ApiKey :name key-name)
@@ -64,7 +64,7 @@
         ws      (t2/insert-returning-instance! :model/Workspace
                                                {:name           workspace-name
                                                 :creator_id     creator-id
-                                                :database_id    database-id
+                                                :database_id    db-id
                                                 :api_key_id     (:id api-key)
                                                 :execution_user (:user_id api-key)
                                                 :status         status})
@@ -93,7 +93,7 @@
 
 (defn- run-workspace-setup!
   "Background job: runs isolation, mirroring, grants. Updates status to :ready when done."
-  [{ws-id :id :as workspace} database graph]
+  [{ws-id :id :as workspace} database]
   (ws.log/track! ws-id :workspace-setup
     (let [{:keys [database_details]} (ws.log/track! ws-id :database-isolation
                                        (-> (ws.isolation/ensure-database-isolation! workspace database)
@@ -111,12 +111,12 @@
 
 (defn- create-workspace-with-unique-name!
   "Create a workspace with status=updating, then kick off async setup."
-  [creator-id db-id database ws-name graph max-retries]
+  [creator-id database ws-name max-retries]
   (loop [attempt 1]
     (let [unique-name         (generate-unique-workspace-name ws-name)
           {:keys [retry
                   workspace]} (try
-                                {:workspace (create-workspace-container! creator-id db-id unique-name :pending)}
+                                {:workspace (create-workspace-container! creator-id (:id database) unique-name :pending)}
                                 (catch Exception e
                                   (if (and (< attempt max-retries) (unique-constraint-violation? e))
                                     {:retry true}
@@ -124,26 +124,17 @@
       (if retry
         (recur (inc attempt))
         (do
-          (quick-task/submit-task! #(run-workspace-setup! workspace database graph))
+          (quick-task/submit-task! #(run-workspace-setup! workspace database))
           workspace)))))
 
 ;; TODO internal: test!
 (defn create-workspace!
   "Create workspace"
   [creator-id {ws-name-maybe :name
-               maybe-db-id   :database_id
-               upstream      :upstream}]
-  ;; TODO put this in the malli schema for a request
-  (assert (or maybe-db-id (some seq (vals upstream))) "Must provide a database_id unless initial entities are given.")
+               db-id         :database_id}]
   (let [ws-name  (or ws-name-maybe (str (random-uuid)))
-        graph    nil
-        db-id    (or (:db_id graph) maybe-db-id)
-        _        (when (and maybe-db-id (:db_id graph))
-                   (assert (= maybe-db-id (:db_id graph))
-                           "The database_id provided must match that of the upstream entities."))
-        _        (assert db-id "Was not given and could not infer a database_id for the workspace.")
-        database (api/check-500 (t2/select-one :model/Database :id db-id))]
-    (create-workspace-with-unique-name! creator-id db-id database ws-name graph 5)))
+        database (t2/select-one :model/Database :id db-id)]
+    (create-workspace-with-unique-name! creator-id database ws-name 5)))
 
 (defn- rebuild-workspace-graph!
   "Rebuild the workspace graph from scratch based on all upstream transforms.
