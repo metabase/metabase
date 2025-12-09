@@ -1,11 +1,10 @@
 (ns metabase-enterprise.workspaces.driver.snowflake
   "Snowflake-specific implementations for workspace isolation.
 
-  Snowflake differences from other drivers:
-  - DDL statements are not transactional and must be executed with {:transaction? false}
-  - Uses CREATE TABLE ... LIKE for structure-only copies
-  - Uses ROLE-based access control (RBAC) - privileges granted to roles, roles granted to users
-  - Schema names and identifiers use double quotes for quoting"
+  Approach: Creates a dedicated role per workspace, grants privileges to the role, then grants
+  the role to a dedicated user. Uses GRANT OWNERSHIP to transfer output table ownership.
+
+  Required permissions: CREATE SCHEMA, CREATE USER, CREATE ROLE, and GRANT OWNERSHIP privileges."
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
