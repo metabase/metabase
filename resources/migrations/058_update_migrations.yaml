@@ -2403,6 +2403,25 @@ databaseChangeLog:
             tableName: workspace_transform
             indexName: idx_workspace_transform_workspace_global_unique
 
+  - changeSet:
+      id: v58.2025-12-09T10:00:08
+      author: christruter
+      comment: Add unique constraint on workspace.name
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_name_unique
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace
+            columnNames: name
+            constraintName: idx_workspace_name_unique
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace
+            constraintName: idx_workspace_name_unique
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -109,8 +109,6 @@
             (ws.isolation/grant-read-access-to-tables! database user input-tables)))))
     (t2/update! :model/Workspace ws-id {:status :ready})))
 
-;; TODO (Chris 2025-11-20) We have not added a uniqueness constraint to the db, we should either do that, or remove
-;;                         the whole retry song and dance.
 (defn- create-workspace-with-unique-name!
   "Create a workspace with status=updating, then kick off async setup."
   [creator-id db-id database ws-name graph max-retries]
