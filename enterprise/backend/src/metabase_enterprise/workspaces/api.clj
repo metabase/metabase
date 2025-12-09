@@ -30,24 +30,18 @@
 
 ;; Map like {:transforms [1 2 3]}
 (mr/def ::entity-map
-  [:map-of ::entity-grouping [:sequential {:min 1} ms/PositiveInt]])
+  [:map-of ::entity-grouping [:sequential ms/PositiveInt]])
 
 (mr/def ::workspace-entity-id :string)
 
 ;; Entities that live within the Workspace
-(mr/def ::downstream-entity
+(mr/def ::workspace-entity
   [:map
-   [:id ms/PositiveInt]
+   [:ref-id ::workspace-entity-id]
    [:upstream_id [:maybe ms/PositiveInt]]
    [:upstream [:maybe ::ws-transform-target]]
    [:type ::entity-type]
    [:name :string]])
-
-;; Entity reference used in requests
-(mr/def ::entity-reference
-  [:map
-   [:type ::entity-type]
-   [:id ms/PositiveInt]])
 
 ;; Graph node for view-graph endpoint
 (mr/def ::graph-node
@@ -70,28 +64,6 @@
    [:type ::entity-type]
    [:id ms/PositiveInt]
    [:name :string]])
-
-;; Error: entity that cannot be cloned
-(mr/def ::uncloneable-entity
-  [:map
-   [:type ::entity-type]
-   [:id ms/PositiveInt]
-   [:name :string]
-   [:error :string]])
-
-;; Error response for graph-not-closed
-(mr/def ::graph-not-closed-error
-  [:map
-   [:error [:= :graph-not-closed]]
-   [:message :string]
-   [:entities [:sequential ::unchecked-out-entity]]])
-
-;; Error response for uncloneable entities
-(mr/def ::uncloneable-error
-  [:map
-   [:error [:= :contains-uncloneable-entities]]
-   [:message :string]
-   [:entities [:sequential ::uncloneable-entity]]])
 
 (def ^:private CreateWorkspace
   [:map
@@ -118,7 +90,7 @@
 (def ^:private FullWorkspace
   [:and Workspace
    [:map
-    [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]])
+    [:contents [:map-of ::entity-grouping [:sequential ::workspace-entity]]]]])
 
 (def ^:private ExecuteResult
   "Schema for workspace execution result"
@@ -439,7 +411,7 @@
    :edges []})
 
 (api.macros/defendpoint :post "/:id/contents"
-  :- [:map [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]
+  :- [:map [:contents [:map-of ::entity-grouping [:sequential ::workspace-entity]]]]
   "Add upstream entities to workspace by mirroring them into the workspace's isolated environment.
 
   The entities and their dependencies will be mirrored into the workspace.
