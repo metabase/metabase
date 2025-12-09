@@ -87,16 +87,13 @@ Metabot inherits the permissions of the current user, so you don't need to set p
 
 In other words, to restrict what data Metabot can see for each person, simply apply [data](../permissions/data.md) and [collection](../permissions/collections.md) permissions to their groups as you would normally, and those permissions will apply to their use of Metabot as well.
 
-## Viewing Metabot request usage
+## Viewing Metabot usage
 
-You can see how many Metabot requests your Metabase has used this month by going to **Admin settings** > **License**. The **Metabot AI requests used, this month (updated daily)** field shows your current usage.
+You can see how many Metabot requests people have made this month by going to **Admin settings > Settings > License**.
 
-1. Log in to your [Metabase Store account](../cloud/accounts-and-billing.md).
-2. Go to _Admin settings > License_.
+If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md).(, you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
 The **Metabot AI requests used, this month (updated daily)** field shows how many requests your Metabase has used this month. Each message sent to Metabot counts as a request.
-
-To view request usage, you must have a [Metabase Store account](../cloud/accounts-and-billing.md). You'll need to log in to the store, then revisit this license page in your Metabase.
 
 ## Metabot can't be enabled per person
 
