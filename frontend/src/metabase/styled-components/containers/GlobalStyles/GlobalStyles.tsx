@@ -46,7 +46,9 @@ export const GlobalStyles = (): JSX.Element => {
     ${saveDomImageStyles}
     body {
         font-size: 0.875em;
-        ${isStaticEmbedding() ? "" : `color-scheme: ${colorScheme};`}
+        ${isStaticEmbedding() || isPublicEmbedding()
+          ? ""
+          : `color-scheme: ${colorScheme};`}
         ${rootStyle}
       }
 
