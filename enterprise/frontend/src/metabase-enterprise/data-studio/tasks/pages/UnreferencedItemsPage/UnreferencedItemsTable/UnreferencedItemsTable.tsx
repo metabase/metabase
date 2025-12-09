@@ -1,60 +1,53 @@
 import { memo, useCallback, useMemo } from "react";
 
-import type {
-  UnreferencedItem,
-  UnreferencedItemSortColumn,
-  UnreferencedItemSortDirection,
-} from "metabase-types/api";
+import type { UnreferencedItem } from "metabase-types/api";
 
 import { TasksTable } from "../../../components/TasksTable";
+import type {
+  UnreferencedItemsPaginationOptions,
+  UnreferencedItemsSortOptions,
+} from "../types";
 
-import type { UnreferencedItemColumnId } from "./types";
-import { getColumns } from "./utils";
+import type { UnreferencedItemColumn } from "./types";
+import { getColumns, isSortableColumn } from "./utils";
 
 type UnreferencedItemsTableProps = {
   items: UnreferencedItem[];
-  sortColumn?: UnreferencedItemSortColumn;
-  sortDirection?: UnreferencedItemSortDirection;
-  pageIndex?: number;
-  pageSize?: number;
-  pageTotal?: number;
-  isFetching?: boolean;
-  onSortChange?: (columnId: UnreferencedItemSortColumn) => void;
+  sortOptions?: UnreferencedItemsSortOptions;
+  paginationOptions?: UnreferencedItemsPaginationOptions;
+  onSortChange?: (sortOptions: UnreferencedItemsSortOptions) => void;
   onPageChange?: (pageIndex: number) => void;
 };
 
 export const UnreferencedItemsTable = memo(function UnreferencedItemsTable({
   items,
-  sortColumn,
-  sortDirection,
-  pageIndex,
-  pageSize,
-  pageTotal,
-  isFetching,
+  sortOptions,
+  paginationOptions,
   onSortChange,
   onPageChange,
 }: UnreferencedItemsTableProps) {
   const columns = useMemo(() => getColumns(), []);
 
   const handleSortChange = useCallback(
-    (sortColumn: UnreferencedItemColumnId) => {
-      if (sortColumn === "name") {
-        onSortChange?.(sortColumn);
+    (newSortColumn: UnreferencedItemColumn) => {
+      if (isSortableColumn(newSortColumn)) {
+        const newSortDirection =
+          sortOptions?.direction === "asc" ? "desc" : "asc";
+        onSortChange?.({
+          column: newSortColumn,
+          direction: newSortDirection,
+        });
       }
     },
-    [onSortChange],
+    [sortOptions, onSortChange],
   );
 
   return (
     <TasksTable
       data={items}
       columns={columns}
-      sortColumn={sortColumn}
-      sortDirection={sortDirection}
-      pageIndex={pageIndex}
-      pageSize={pageSize}
-      pageTotal={pageTotal}
-      isFetching={isFetching}
+      sortOptions={sortOptions}
+      paginationOptions={paginationOptions}
       onSortChange={handleSortChange}
       onPageChange={onPageChange}
     />

@@ -58,9 +58,13 @@ export type BodyCellBaseProps<TValue> = {
  * @template TRow The type of the row data
  * @template TValue The type of the value in this column
  */
-export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
+export interface ColumnOptions<
+  TRow extends RowData,
+  TValue = unknown,
+  TColumnId = string,
+> {
   /** Unique identifier for the column */
-  id: string;
+  id: TColumnId;
 
   /** Display name for the column header */
   name: string;

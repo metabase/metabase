@@ -10,10 +10,12 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListUnreferencedItemsQuery } from "metabase-enterprise/api";
-import type { UnreferencedItemSortColumn } from "metabase-types/api";
 
 import { UnreferencedItemsTable } from "./UnreferencedItemsTable";
-import type { UnreferencedItemsRawParams } from "./types";
+import type {
+  UnreferencedItemsRawParams,
+  UnreferencedItemsSortOptions,
+} from "./types";
 import { getSearchQuery, parseRawParams } from "./utils";
 
 const PAGE_SIZE = 25;
@@ -30,13 +32,12 @@ export function UnreferencedItemsPage({
     [location.query],
   );
   const { page = 0, sortColumn = "name", sortDirection = "asc" } = params;
-  const dispatch = useDispatch();
-
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery] = useDebouncedValue(
     getSearchQuery(searchValue),
     SEARCH_DEBOUNCE_DURATION,
   );
+  const dispatch = useDispatch();
 
   const { data, isLoading, error } = useListUnreferencedItemsQuery(
     useMemo(
@@ -53,6 +54,23 @@ export function UnreferencedItemsPage({
     ),
   );
 
+  const sortOptions = useMemo(
+    () => ({
+      column: sortColumn,
+      direction: sortDirection,
+    }),
+    [sortColumn, sortDirection],
+  );
+
+  const paginationOptions = useMemo(
+    () => ({
+      pageIndex: page,
+      pageSize: PAGE_SIZE,
+      total: data?.total ?? 0,
+    }),
+    [page, data?.total],
+  );
+
   const handleSearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setSearchValue(event.target.value);
@@ -61,21 +79,18 @@ export function UnreferencedItemsPage({
   );
 
   const handleSortChange = useCallback(
-    (newSortColumn: UnreferencedItemSortColumn) => {
+    (sortOptions: UnreferencedItemsSortOptions) => {
       dispatch(
         push(
           Urls.dataStudioTasksUnreferenced({
             ...params,
-            sortColumn: newSortColumn,
-            sortDirection:
-              sortColumn === newSortColumn && sortDirection === "asc"
-                ? "desc"
-                : "asc",
+            sortColumn: sortOptions.column,
+            sortDirection: sortOptions.direction,
           }),
         ),
       );
     },
-    [params, sortColumn, sortDirection, dispatch],
+    [params, dispatch],
   );
 
   const handlePageChange = useCallback(
@@ -111,11 +126,8 @@ export function UnreferencedItemsPage({
       <Box flex={1} mih={0}>
         <UnreferencedItemsTable
           items={data.data}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          pageIndex={page}
-          pageSize={PAGE_SIZE}
-          pageTotal={data.total}
+          sortOptions={sortOptions}
+          paginationOptions={paginationOptions}
           onSortChange={handleSortChange}
           onPageChange={handlePageChange}
         />

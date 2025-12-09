@@ -1,10 +1,12 @@
-import type { ColumnOptions } from "metabase/data-grid/types";
+export type TableSortDirection = "asc" | "desc";
 
-export type TableColumnOptions<
-  TData,
-  TColumn extends string,
-> = ColumnOptions<TData> & {
-  id: TColumn;
+export type TableSortOptions<TColumn> = {
+  column: TColumn;
+  direction: TableSortDirection;
 };
 
-export type TableSortDirection = "asc" | "desc";
+export type TablePaginationOptions = {
+  pageIndex: number;
+  pageSize: number;
+  total: number;
+};

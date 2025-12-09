@@ -3,23 +3,20 @@ import { type MouseEvent, useCallback, useMemo } from "react";
 
 import { DataGrid } from "metabase/data-grid/components/DataGrid/DataGrid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
-import { Box, Flex, Loader } from "metabase/ui";
+import type { ColumnOptions } from "metabase/data-grid/types";
+import { Box } from "metabase/ui";
 
 import S from "./TasksTable.module.css";
-import type { TableColumnOptions, TableSortDirection } from "./types";
+import type { TablePaginationOptions, TableSortOptions } from "./types";
 
 const ROW_HEIGHT = 48;
 const HEADER_HEIGHT = 58;
 
 export type TasksTableProps<TData, TColumn extends string> = {
   data: TData[];
-  columns: TableColumnOptions<TData, TColumn>[];
-  sortColumn?: TColumn;
-  sortDirection?: TableSortDirection;
-  pageIndex?: number;
-  pageSize?: number;
-  pageTotal?: number;
-  isFetching?: boolean;
+  columns: ColumnOptions<TData, unknown, TColumn>[];
+  sortOptions?: TableSortOptions<TColumn>;
+  paginationOptions?: TablePaginationOptions;
   onSortChange?: (sortColumn: TColumn) => void;
   onPageChange?: (pageIndex: number) => void;
 };
@@ -27,12 +24,8 @@ export type TasksTableProps<TData, TColumn extends string> = {
 export function TasksTable<TData, TColumn extends string>({
   data,
   columns,
-  sortColumn,
-  sortDirection,
-  pageIndex,
-  pageSize,
-  pageTotal,
-  isFetching,
+  sortOptions,
+  paginationOptions,
   onSortChange,
   onPageChange,
 }: TasksTableProps<TData, TColumn>) {
@@ -45,12 +38,12 @@ export function TasksTable<TData, TColumn extends string>({
 
   const columnsWithSort = useMemo(() => {
     return columns.map((col) => {
-      if (col.id === sortColumn) {
-        return { ...col, sortDirection };
+      if (col.id === sortOptions?.column) {
+        return { ...col, sortDirection: sortOptions.direction };
       }
       return col;
     });
-  }, [columns, sortColumn, sortDirection]);
+  }, [columns, sortOptions]);
 
   const tableProps = useDataGridInstance({
     data,
@@ -58,9 +51,9 @@ export function TasksTable<TData, TColumn extends string>({
     defaultRowHeight: ROW_HEIGHT,
     theme,
     minGridWidth: containerWidth || undefined,
-    pageIndex,
-    pageSize,
-    total: pageTotal,
+    pageIndex: paginationOptions?.pageIndex,
+    pageSize: paginationOptions?.pageSize,
+    total: paginationOptions?.total,
     onPageChange,
   });
 
@@ -85,17 +78,6 @@ export function TasksTable<TData, TColumn extends string>({
       {containerWidth > 0 ? (
         <DataGrid {...tableProps} onHeaderCellClick={handleHeaderCellClick} />
       ) : null}
-      {isFetching && (
-        <Flex
-          pos="absolute"
-          inset={0}
-          align="center"
-          justify="center"
-          bg="color-mix(in srgb, var(--mb-color-bg-white) 60%, transparent)"
-        >
-          <Loader size="lg" />
-        </Flex>
-      )}
     </Box>
   );
 }

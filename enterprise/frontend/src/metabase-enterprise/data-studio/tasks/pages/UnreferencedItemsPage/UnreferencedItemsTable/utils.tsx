@@ -7,9 +7,16 @@ import visualizations from "metabase/visualizations";
 import { DateTimeCell } from "metabase-enterprise/data-studio/tasks/components/TasksTable/DateTimeCell";
 import { EntityCell } from "metabase-enterprise/data-studio/tasks/components/TasksTable/EntityCell";
 import { TextCell } from "metabase-enterprise/data-studio/tasks/components/TasksTable/TextCell";
-import type { LastEditInfo, UnreferencedItem } from "metabase-types/api";
+import type {
+  LastEditInfo,
+  UnreferencedItem,
+  UnreferencedItemSortColumn,
+} from "metabase-types/api";
 
-import type { UnreferencedItemColumnOptions } from "./types";
+import type {
+  UnreferencedItemColumn,
+  UnreferencedItemColumnOptions,
+} from "./types";
 
 function getItemName(item: UnreferencedItem): string {
   switch (item.type) {
@@ -120,4 +127,10 @@ export function getColumns(): UnreferencedItemColumnOptions[] {
     getItemLastEditAtColumn(),
     getItemLastEditByColumn(),
   ];
+}
+
+export function isSortableColumn(
+  column: UnreferencedItemColumn,
+): column is UnreferencedItemSortColumn {
+  return column === "name";
 }
