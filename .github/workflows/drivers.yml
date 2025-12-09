@@ -127,6 +127,7 @@ jobs:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
@@ -175,6 +176,7 @@ jobs:
         junit-name: 'be-tests-clickhouse-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
@@ -455,6 +457,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
+          logs-artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
@@ -509,6 +512,7 @@ jobs:
         test-args: >-
           :exclude-tags [:mongo-sharded-cluster-tests]
           :only-tags [:mb/driver-tests]
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
@@ -681,6 +685,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
+        logs-artifact-suffix: ${{ matrix.version.name }}
         test-args: >-
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
@@ -887,6 +892,7 @@ jobs:
         junit-name: 'be-tests-redshift-ee'
         test-args: >-
           ${{ matrix.job.test-args }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: ${{ !matrix.job.skip && !cancelled() && steps.test-driver.outputs.quarantine-skipped != 'true' }}
@@ -933,6 +939,7 @@ jobs:
         junit-name: 'be-tests-snowflake-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
@@ -1050,6 +1057,7 @@ jobs:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: >-
           :only-tags [:mb/driver-tests]
+        logs-artifact-suffix: ${{ matrix.version.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
