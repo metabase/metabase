@@ -49,9 +49,9 @@ export function EmbeddingDataPicker({
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
 
   const entityTypes = useSelector(getEntityTypes);
-  const forceMultiStagedDataPicker = useSelector(
-    (state) => getEmbedOptions(state).data_picker === "staged",
-  );
+  const forceMultiStagedDataPicker =
+    useSelector((state) => getEmbedOptions(state).data_picker === "staged") ||
+    (window as any).forceStagedDataPicker;
 
   // a table or a virtual table (card)
   const sourceTable = useSourceTable(query);
