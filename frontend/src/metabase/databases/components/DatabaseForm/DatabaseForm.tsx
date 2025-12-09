@@ -10,6 +10,7 @@ import { getSubmitValues, getValidationSchema } from "../../utils/schema";
 
 import { DatabaseFormBody } from "./DatabaseFormBody";
 import { DatabaseFormFooter } from "./DatabaseFormFooter";
+import { FormDirtyStateProvider } from "./context";
 import { getEngine, getEngineKey } from "./utils";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
@@ -37,7 +38,7 @@ interface DatabaseFormProps {
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
-  setIsDirty?: (isDirty: boolean) => void;
+  onDirtyStateChange?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
   location: FormLocation;
   /**
@@ -54,7 +55,7 @@ export const DatabaseForm = ({
   onSubmit,
   onCancel,
   onEngineChange,
-  setIsDirty,
+  onDirtyStateChange,
   location,
   showSampleDatabase = false,
   ContinueWithoutDataSlot,
@@ -112,27 +113,28 @@ export const DatabaseForm = ({
         data-testid="database-form"
         pt={location === "full-page" ? undefined : "md"}
       >
-        <DatabaseFormBody
-          engine={engine}
-          // casting won't be needed after migrating all usages of engineKey
-          engineKey={engineKey as EngineKey}
-          engines={engines}
-          engineFieldState={engineFieldState}
-          autofocusFieldName={autofocusFieldName}
-          isAdvanced={isAdvanced}
-          onEngineChange={handleEngineChange}
-          setIsDirty={setIsDirty}
-          config={config}
-          showSampleDatabase={showSampleDatabase}
-          location={location}
-        />
-        <DatabaseFormFooter
-          ContinueWithoutDataSlot={ContinueWithoutDataSlot}
-          isAdvanced={isAdvanced}
-          location={location}
-          onCancel={onCancel}
-          showSampleDatabase={showSampleDatabase}
-        />
+        <FormDirtyStateProvider onDirtyStateChange={onDirtyStateChange}>
+          <DatabaseFormBody
+            engine={engine}
+            // casting won't be needed after migrating all usages of engineKey
+            engineKey={engineKey as EngineKey}
+            engines={engines}
+            engineFieldState={engineFieldState}
+            autofocusFieldName={autofocusFieldName}
+            isAdvanced={isAdvanced}
+            onEngineChange={handleEngineChange}
+            config={config}
+            showSampleDatabase={showSampleDatabase}
+            location={location}
+          />
+          <DatabaseFormFooter
+            ContinueWithoutDataSlot={ContinueWithoutDataSlot}
+            isAdvanced={isAdvanced}
+            location={location}
+            onCancel={onCancel}
+            showSampleDatabase={showSampleDatabase}
+          />
+        </FormDirtyStateProvider>
       </Form>
     </FormProvider>
   );

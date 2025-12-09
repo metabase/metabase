@@ -1,5 +1,4 @@
 import { useFormikContext } from "formik";
-import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -15,7 +14,7 @@ import type { DatabaseData } from "metabase-types/api";
 
 import { DatabaseFormError } from "../DatabaseFormError";
 
-import { checkFormIsDirty, useHasConnectionError } from "./utils";
+import { useHasConnectionError, useIsFormDirty } from "./utils";
 
 interface DatabaseFormFooterProps {
   isAdvanced: boolean;
@@ -32,13 +31,10 @@ export const DatabaseFormFooter = ({
   ContinueWithoutDataSlot,
   location,
 }: DatabaseFormFooterProps) => {
-  const { values, initialValues } = useFormikContext<DatabaseData>();
-  const isDirty = useMemo(
-    () => checkFormIsDirty(initialValues, values),
-    [initialValues, values],
-  );
+  const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
   const hasConnectionError = useHasConnectionError();
+  const isDirty = useIsFormDirty();
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
   const { url: docsUrl } = useDocsUrl("databases/connecting");
