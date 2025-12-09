@@ -71,10 +71,7 @@ export interface WorkspaceContextValue {
   ) => void;
   removeEditedTransform: (transformId: number) => void;
   runTransforms: Set<number>;
-  updateTransformState: (
-    transform: Transform,
-    editedTransform?: EditedTransform | null,
-  ) => void;
+  updateTransformState: (transform: Transform) => void;
   hasUnsavedChanges: () => boolean;
   hasTransformEdits: (originalTransform: Transform) => boolean;
 }
@@ -387,7 +384,7 @@ export const WorkspaceProvider = ({
   );
 
   const updateTransformState = useCallback(
-    (transform: Transform, editedTransform?: EditedTransform | null) => {
+    (transform: Transform) => {
       updateWorkspaceState((state) => {
         const newOpenedTabs = state.openedTabs.map((tab) => {
           if (tab.type === "transform" && tab.transform.id === transform.id) {
@@ -401,10 +398,23 @@ export const WorkspaceProvider = ({
         });
 
         const newEditedTransforms = new Map(state.editedTransforms);
-        if (editedTransform == null) {
-          newEditedTransforms.delete(transform.id);
-        } else {
-          newEditedTransforms.set(transform.id, editedTransform);
+        const currentEdit = state.editedTransforms.get(transform.id);
+
+        if (currentEdit) {
+          const hasNameChanged = currentEdit.name !== transform.name;
+          const hasSourceChanged = !isSameSource(
+            currentEdit.source,
+            transform.source,
+          );
+
+          if (hasNameChanged || hasSourceChanged) {
+            newEditedTransforms.set(transform.id, {
+              ...currentEdit,
+              target: transform.target,
+            });
+          } else {
+            newEditedTransforms.delete(transform.id);
+          }
         }
 
         const newRunTransforms = new Set(state.runTransforms);
