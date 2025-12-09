@@ -20,7 +20,7 @@ export type TasksTableProps<TData, TColumn extends string> = {
   pageSize?: number;
   pageTotal?: number;
   isFetching?: boolean;
-  onSortChange?: (sorTColumn: TColumn) => void;
+  onSortChange?: (sortColumn: TColumn) => void;
   onPageChange?: (pageIndex: number) => void;
 };
 

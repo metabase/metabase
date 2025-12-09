@@ -4,19 +4,12 @@ import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
+import { DateTimeCell } from "metabase-enterprise/data-studio/tasks/components/TasksTable/DateTimeCell";
+import { EntityCell } from "metabase-enterprise/data-studio/tasks/components/TasksTable/EntityCell";
 import { TextCell } from "metabase-enterprise/data-studio/tasks/components/TasksTable/TextCell";
 import type { LastEditInfo, UnreferencedItem } from "metabase-types/api";
 
-import { DateTimeCell } from "../../../components/TasksTable/DateTimeCell";
-import { EntityCell } from "../../../components/TasksTable/EntityCell";
-import type { TableColumnOptions } from "../../../components/TasksTable/types";
-
-type UnreferencedItemColumnId = "name" | "last-edit-at" | "last-edit-by";
-
-type UnreferencedItemColumnOptions = TableColumnOptions<
-  UnreferencedItem,
-  UnreferencedItemColumnId
->;
+import type { UnreferencedItemColumnOptions } from "./types";
 
 function getItemName(item: UnreferencedItem): string {
   switch (item.type) {

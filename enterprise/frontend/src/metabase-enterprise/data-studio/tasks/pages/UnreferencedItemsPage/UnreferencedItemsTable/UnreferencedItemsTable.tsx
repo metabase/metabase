@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 import type {
   UnreferencedItem,
@@ -8,6 +8,7 @@ import type {
 
 import { TasksTable } from "../../../components/TasksTable";
 
+import type { UnreferencedItemColumnId } from "./types";
 import { getColumns } from "./utils";
 
 type UnreferencedItemsTableProps = {
@@ -35,6 +36,15 @@ export const UnreferencedItemsTable = memo(function UnreferencedItemsTable({
 }: UnreferencedItemsTableProps) {
   const columns = useMemo(() => getColumns(), []);
 
+  const handleSortChange = useCallback(
+    (sortColumn: UnreferencedItemColumnId) => {
+      if (sortColumn === "name") {
+        onSortChange?.(sortColumn);
+      }
+    },
+    [onSortChange],
+  );
+
   return (
     <TasksTable
       data={items}
@@ -45,7 +55,7 @@ export const UnreferencedItemsTable = memo(function UnreferencedItemsTable({
       pageSize={pageSize}
       pageTotal={pageTotal}
       isFetching={isFetching}
-      onSortChange={onSortChange}
+      onSortChange={handleSortChange}
       onPageChange={onPageChange}
     />
   );
