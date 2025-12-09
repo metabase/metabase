@@ -7,21 +7,21 @@ import S from "./EntityCell.module.css";
 type EntityCellProps = {
   name: string;
   icon: IconName;
-  url?: string | null;
+  url?: string;
 };
 
 export function EntityCell({ name, icon, url }: EntityCellProps) {
   return (
-    <BaseCell>
+    <BaseCell className={S.cell}>
       {url ? (
-        <Anchor href={url} className={S.cellContent}>
+        <Anchor className={S.cellContent} href={url}>
           <Flex align="center" gap="sm">
             <FixedSizeIcon name={icon} />
             <Ellipsified>{name}</Ellipsified>
           </Flex>
         </Anchor>
       ) : (
-        <Flex align="center" gap="sm" className={S.cellContent}>
+        <Flex className={S.cellContent} align="center" gap="sm">
           <FixedSizeIcon name={icon} c="text-medium" />
           <Ellipsified>{name}</Ellipsified>
         </Flex>

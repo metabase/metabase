@@ -44,7 +44,7 @@ function getItemIcon(item: UnreferencedItem): IconName {
   }
 }
 
-function getItemUrl(item: UnreferencedItem): string | null {
+function getItemUrl(item: UnreferencedItem): string | undefined {
   switch (item.type) {
     case "table":
       return Urls.tableRowsQuery(item.id, item.data.db_id);
@@ -55,7 +55,7 @@ function getItemUrl(item: UnreferencedItem): string | null {
         type: item.data.type,
       });
     case "snippet":
-      return null;
+      return undefined;
   }
 }
 

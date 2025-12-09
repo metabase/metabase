@@ -1,3 +1,7 @@
+.cell {
+  align-items: center;
+}
+
 .cellContent {
   overflow: hidden;
   text-overflow: ellipsis;
