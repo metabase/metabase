@@ -13,22 +13,17 @@ import {
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  PLUGIN_DOCUMENTS,
-  type SdkIframeEmbedSetupModalProps,
-} from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import {
   closeModal,
   setOpenModal,
   setOpenModalWithProps,
 } from "metabase/redux/ui";
+import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
-  getHasDataAccess,
-  getHasDatabaseWithActionsEnabled,
-  getHasNativeWrite,
-} from "metabase/selectors/data";
-import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
   getUserIsAdmin,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
@@ -60,8 +55,8 @@ export const useCommandPaletteBasicActions = ({
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;
@@ -140,17 +135,17 @@ export const useCommandPaletteBasicActions = ({
         openNewModal("dashboard");
       },
     });
-    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
-      actions.push({
-        id: "create-new-document",
-        name: t`New document`,
-        section: "basic",
-        icon: "document",
-        perform: () => {
-          dispatch(push(Urls.newDocument()));
-        },
-      });
-    }
+
+    actions.push({
+      id: "create-new-document",
+      name: t`New document`,
+      section: "basic",
+      icon: "document",
+      perform: () => {
+        dispatch(push(Urls.newDocument()));
+      },
+    });
+
     actions.push({
       id: "create-new-collection",
       name: t`New collection`,

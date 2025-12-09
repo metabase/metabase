@@ -22,10 +22,10 @@ const TEST_COLLECTION = createMockCollection({
   name: "Test Collection",
 });
 
-const TEST_MODEL_ITEM = createMockCollectionItem({
+const TEST_TABLE_ITEM = createMockCollectionItem({
   id: 1,
-  name: "Test Model",
-  model: "dataset",
+  name: "Test Table",
+  model: "table",
   collection_id: TEST_COLLECTION.id,
 });
 
@@ -45,7 +45,7 @@ const TEST_CARD_ITEM = createMockCollectionItem({
 
 interface SetupOpts {
   collection?: typeof TEST_COLLECTION;
-  collectionItems?: (typeof TEST_MODEL_ITEM)[];
+  collectionItems?: (typeof TEST_TABLE_ITEM)[];
   collectionError?: string;
   itemsError?: string;
 }
@@ -70,7 +70,7 @@ const setup = async ({
     setupCollectionItemsEndpoint({
       collection,
       collectionItems,
-      models: ["dataset", "metric"],
+      models: ["table", "metric"],
     });
   }
 
@@ -87,7 +87,7 @@ describe("CollectionPage", () => {
 
   it("should render collection name in header", async () => {
     await setup({
-      collectionItems: [TEST_MODEL_ITEM],
+      collectionItems: [TEST_TABLE_ITEM],
     });
 
     await waitForLoaderToBeRemoved();
@@ -102,19 +102,19 @@ describe("CollectionPage", () => {
 
     await waitForLoaderToBeRemoved();
     expect(
-      await screen.findByText("No models or metrics yet"),
+      await screen.findByText("No tables or metrics yet"),
     ).toBeInTheDocument();
   });
 
-  it("should display items table when collection has models", async () => {
+  it("should display items table when collection has tables", async () => {
     await setup({
-      collectionItems: [TEST_MODEL_ITEM],
+      collectionItems: [TEST_TABLE_ITEM],
     });
 
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByTestId("collection-page")).toBeInTheDocument();
-    expect(screen.getByText(TEST_MODEL_ITEM.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_TABLE_ITEM.name)).toBeInTheDocument();
   });
 
   it("should display items table when collection has metrics", async () => {
@@ -128,27 +128,27 @@ describe("CollectionPage", () => {
     expect(screen.getByText(TEST_METRIC_ITEM.name)).toBeInTheDocument();
   });
 
-  it("should display both models and metrics in items table", async () => {
+  it("should display both tables and metrics in items table", async () => {
     await setup({
-      collectionItems: [TEST_MODEL_ITEM, TEST_METRIC_ITEM, TEST_CARD_ITEM],
+      collectionItems: [TEST_TABLE_ITEM, TEST_METRIC_ITEM, TEST_CARD_ITEM],
     });
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText(TEST_MODEL_ITEM.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_TABLE_ITEM.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_METRIC_ITEM.name)).toBeInTheDocument();
     // should filter out cards
     expect(screen.queryByText(TEST_CARD_ITEM.name)).not.toBeInTheDocument();
   });
 
-  it("should show model icons", async () => {
+  it("should show table icons", async () => {
     await setup({
-      collectionItems: [TEST_MODEL_ITEM],
+      collectionItems: [TEST_TABLE_ITEM],
     });
 
     await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByLabelText("model icon")).toBeInTheDocument();
+    expect(await screen.findByLabelText("table icon")).toBeInTheDocument();
   });
 
   it("should show metric icons", async () => {
@@ -179,9 +179,9 @@ describe("CollectionPage", () => {
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
   });
 
-  it("should request only models and metrics from API", async () => {
+  it("should request only tables and metrics from API", async () => {
     await setup({
-      collectionItems: [TEST_MODEL_ITEM, TEST_METRIC_ITEM],
+      collectionItems: [TEST_TABLE_ITEM, TEST_METRIC_ITEM],
     });
 
     await waitForLoaderToBeRemoved();
@@ -194,12 +194,12 @@ describe("CollectionPage", () => {
 
     const url = new URL(itemsCall.url);
     const models = url.searchParams.getAll("models");
-    expect(models).toEqual(["dataset", "metric"]);
+    expect(models).toEqual(["table", "metric"]);
   });
 
   it("should show collection name in page header", async () => {
     await setup({
-      collectionItems: [TEST_MODEL_ITEM],
+      collectionItems: [TEST_TABLE_ITEM],
     });
 
     await waitForLoaderToBeRemoved();

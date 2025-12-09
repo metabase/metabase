@@ -3,8 +3,9 @@ import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
 import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 
-import { CardOverview } from "../../../common/components/CardOverview";
 import { MetricHeader } from "../../components/MetricHeader";
+
+import { MetricOverview } from "./MetricOverview";
 
 type MetricOverviewPageParams = {
   cardId: string;
@@ -29,7 +30,7 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
   return (
     <Flex direction="column" h="100%" data-testid="metric-overview-page">
       <MetricHeader card={card} />
-      <CardOverview card={card} />
+      <MetricOverview card={card} />
     </Flex>
   );
 }

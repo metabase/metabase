@@ -27,7 +27,7 @@ export const AnalyticsExportStatus = () => {
   const isDone = exportState.status === "complete";
 
   const title = isLoading
-    ? t`Exporting analytics content …`
+    ? t`Exporting analytics content…`
     : isDone
       ? t`Analytics content exported`
       : t`Error exporting analytics`;

@@ -26,14 +26,15 @@
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
-        below          (t2/select-fn-set :type [:model/Card :type] :collection_id [:in descendent-ids])]
+        below-card-types (t2/select-fn-set :type [:model/Card :type] :collection_id [:in descendent-ids])
+        below-tables? (t2/exists? :model/Table :is_published true :collection_id [:in descendent-ids])]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
     (assoc collection :here #{:collection}
-           :below (cond-> below
-                    (contains? below :model)
+           :below (cond-> below-card-types
+                    (contains? below-card-types :model)
                     (-> (disj :model) (conj :dataset))
-
+                    below-tables? (conj :table)
                     true sort))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -59,7 +60,7 @@
   (t2/select :model/Collection
              {:where    [:and
                          [:in :type [collection/library-collection-type
-                                     collection/library-models-collection-type
+                                     collection/library-data-collection-type
                                      collection/library-metrics-collection-type]]
                          (collection/visible-collection-filter-clause
                           :id

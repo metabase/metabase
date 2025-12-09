@@ -23,6 +23,10 @@ import type {
   ColorScheme,
   ResolvedColorScheme,
 } from "metabase/lib/color-scheme";
+import {
+  getUserColorScheme,
+  setUserColorSchemeAfterUpdate,
+} from "metabase/lib/color-scheme";
 import { mutateColors } from "metabase/lib/colors/colors";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
@@ -176,11 +180,13 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
       key: "color-scheme",
       value: value,
     });
+
+    setUserColorSchemeAfterUpdate(value);
   }, []);
 
   return (
     <ColorSchemeProvider
-      defaultColorScheme={props.initialColorScheme}
+      defaultColorScheme={getUserColorScheme()}
       forceColorScheme={forceColorScheme}
       onUpdateColorScheme={handleUpdateColorScheme}
     >

@@ -32,7 +32,7 @@ export type MetabaseCollectionItem = {
     | "trash"
     | "remote-synced"
     | "library"
-    | "library-models"
+    | "library-data"
     | "library-metrics"
     | "model"
     | "question"
