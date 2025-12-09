@@ -620,3 +620,20 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403
                                      (ws-url (:id workspace1) (str "/transform/" (:id transform) "/run")))))))))
+
+(deftest execute-workspace-test
+  (testing "POST /api/ee/workspace/:id/execute"
+    (mt/with-temp [:model/Workspace workspace1 {:name "Workspace 1"}
+                   :model/Workspace workspace2 {:name "Workspace 2"}
+                   :model/Transform transform {:name         "Transform in WS1"
+                                               :workspace_id (:id workspace1)}]
+      (testing "returns "
+        (is (= {:succeeded []
+                :failed    []
+                :not_run   []}
+               (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace2) "/execute")))))
+      (testing "requires superuser"
+        (is (= {:succeeded [(str (:id transform))]
+                :failed    []
+                :not_run   []}
+               (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "/execute"))))))))
