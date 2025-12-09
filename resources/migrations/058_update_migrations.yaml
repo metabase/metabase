@@ -1026,23 +1026,6 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v58.2025-12-05T17:41:51
-      author: ranquild
-      comment: Drop fk_report_card_published_table
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_report_card_published_table
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: published_table_id
-            referencedTableName: metabase_table
-            referencedColumnNames: id
-            constraintName: fk_report_card_published_table
-            onDelete: SET NULL
-
-  - changeSet:
       id: v58.2025-11-25T00:00:00
       author: edpaget
       comment: Add default read permissions for All Users group on shared-tenant-collection root
@@ -1102,6 +1085,23 @@ databaseChangeLog:
                   remarks: The ID of the collection
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:51
+      author: ranquild
+      comment: Drop fk_report_card_published_table
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_published_table
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: published_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_report_card_published_table
+            onDelete: SET NULL
 
   - changeSet:
       id: v58.2025-12-05T17:41:52
