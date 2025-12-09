@@ -5,6 +5,7 @@ import type { User } from "metabase-types/api";
 import type { DocumentsState } from "metabase-types/store/documents";
 
 import type { AdminState } from "./admin";
+import type { AnalyticsExportState } from "./analytics-export";
 import type { AppState } from "./app";
 import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
@@ -26,6 +27,7 @@ type MetabaseApiState = ReturnType<typeof Api.reducer>;
 
 export interface State {
   admin: AdminState;
+  analyticsExport: AnalyticsExportState;
   app: AppState;
   auth: AuthState;
   currentUser: User | null;

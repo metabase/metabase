@@ -1799,6 +1799,8 @@
            query-permissions
            query-processor
            settings
+           setup
+           startup
            sync
            users-rest
            util

@@ -13,6 +13,7 @@ import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 import { staticDashboardSchema } from "./StaticDashboard.schema";
 
 /**
+ * @interface
  * @expand
  * @category Dashboard
  */

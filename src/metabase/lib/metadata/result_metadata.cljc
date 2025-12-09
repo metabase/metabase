@@ -6,7 +6,7 @@
 
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
-  (:refer-clojure :exclude [mapv select-keys some update-keys every? empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -33,7 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)]]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they

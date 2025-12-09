@@ -1,4 +1,5 @@
 (ns metabase.driver.mongo.parameters
+  (:refer-clojure :exclude [get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -15,7 +16,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf :refer [get-in]])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
