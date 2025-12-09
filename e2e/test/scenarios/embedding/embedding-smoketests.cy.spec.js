@@ -54,7 +54,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     it("should not let you use non-guest auth methods", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      ensureEmbeddingIsDisabled();
+      H.openEmbedJsModal();
+      H.embedModalEnableEmbedding();
+
+      H.embedModalContent().within(() => {
+        cy.findByLabelText("Guest").should("be.checked");
+        cy.findByLabelText("Metabase account (SSO)").should("be.disabled");
+      });
     });
   });
 
@@ -293,16 +299,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 function resetEmbedding() {
   H.updateSetting("enable-embedding-static", false);
   H.updateSetting("embedding-secret-key", null);
-}
-
-function ensureEmbeddingIsDisabled() {
-  H.openEmbedJsModal();
-  H.embedModalEnableEmbedding();
-
-  H.embedModalContent().within(() => {
-    cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
-    cy.findByLabelText("Existing Metabase session").should("be.disabled");
-  });
 }
 
 function visitAndEnableSharing(object, unpublishBeforeOpen = true) {

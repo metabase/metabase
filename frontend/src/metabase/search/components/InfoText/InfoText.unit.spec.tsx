@@ -79,12 +79,10 @@ async function setup({
 
   const result = createSearchResult({ model, ...resultProps });
 
-  const getUrl = jest.fn(() => "a/b/c");
   const getCollection = jest.fn(() => result.collection);
 
   const wrappedResult: WrappedResult = {
     ...result,
-    getUrl,
     getCollection,
   };
 
@@ -102,7 +100,6 @@ async function setup({
   await waitForLoadingTextToBeRemoved();
 
   return {
-    getUrl,
     getCollection,
   };
 }

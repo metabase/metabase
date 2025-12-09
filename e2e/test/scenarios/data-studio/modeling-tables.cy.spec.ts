@@ -48,7 +48,7 @@ describe("scenarios > data studio > modeling > tables", () => {
       H.DataStudio.Modeling.emptyPage().should("be.visible");
       H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
       H.DataStudio.Modeling.collectionPage()
-        .findByText("No tables or models yet")
+        .findByText("No published tables yet")
         .should("be.visible");
     });
   });

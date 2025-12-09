@@ -18,5 +18,6 @@ source "$_DEVUTILS_DIR/colors.sh"
 source "$_DEVUTILS_DIR/logging.sh"
 source "$_DEVUTILS_DIR/prompts.sh"
 source "$_DEVUTILS_DIR/files.sh"
+source "$_DEVUTILS_DIR/tools.sh"
 
 unset _DEVUTILS_DIR
