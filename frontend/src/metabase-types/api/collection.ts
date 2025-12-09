@@ -35,7 +35,7 @@ export type CollectionType =
   | "trash"
   | "remote-synced"
   | "library"
-  | "library-models"
+  | "library-data"
   | "library-metrics"
   | null;
 

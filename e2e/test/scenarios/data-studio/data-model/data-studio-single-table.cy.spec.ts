@@ -97,7 +97,7 @@ describe("Table editing", () => {
       H.DataStudio.nav().findByLabelText("Modeling").click();
       H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
       H.DataStudio.Modeling.collectionPage()
-        .findByText("No tables or models yet")
+        .findByText("No published tables yet")
         .should("be.visible");
     },
   );

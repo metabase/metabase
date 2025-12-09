@@ -58,7 +58,7 @@ export type EmbedFrameBaseProps = Partial<{
   className: string;
   name: string | null;
   description: string | null;
-  question: Question;
+  question: Question | null;
   dashboard: Dashboard | null;
   headerButtons: ReactNode;
   actionButtons: ReactNode;
@@ -74,6 +74,7 @@ export type EmbedFrameBaseProps = Partial<{
   dashboardTabs: ReactNode;
   pdfDownloadsEnabled: boolean;
   withFooter: boolean;
+  contentClassName?: string;
 }>;
 
 type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -105,6 +106,7 @@ export const EmbedFrame = ({
   hide_parameters,
   pdfDownloadsEnabled = true,
   withFooter = true,
+  contentClassName,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
   const hasEmbedBranding = useSelector(
@@ -188,7 +190,7 @@ export const EmbedFrame = ({
     >
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-        className={cx({
+        className={cx(contentClassName, {
           [EmbedFrameS.ContentContainer]: true,
           [EmbedFrameS.WithThemeBackground]: true,
 

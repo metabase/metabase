@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { UpsellGem } from "metabase/admin/upsells/components";
 import { UpsellCard } from "metabase/common/components/UpsellCard";
+import { UTM_LOCATION } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
@@ -40,7 +41,7 @@ export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
           title={t`Get more powerful embedding`}
           buttonLink={upgradeUrl}
           campaign={campaign}
-          location="embedded_analytics_js_wizard"
+          location={UTM_LOCATION}
           /* eslint-disable-next-line no-literal-metabase-strings -- Button text */
           buttonText={t`Upgrade to Metabase Pro`}
           maxWidth={UPSELL_CARD_WIDTH}
