@@ -4,7 +4,6 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [crypto.random :as crypto-random]
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
@@ -17,6 +16,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -37,7 +37,7 @@
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri "/")
-(def ^:private default-jwt-secret (crypto-random/hex 32))
+(def ^:private default-jwt-secret (u.random/secure-hex 32))
 
 (defn- call-with-default-jwt-config! [f]
   (let [current-features (token-check/*token-features*)]

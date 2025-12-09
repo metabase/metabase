@@ -3,7 +3,6 @@
   various Toucan CRUD methods for `:model/ApiKey`... see below."
   (:require
    [clojure.core.memoize :as memoize]
-   [crypto.random :as crypto-random]
    [java-time.api :as t]
    [malli.error :as me]
    [metabase.api-keys.core :as-alias api-keys]
@@ -19,6 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
+   [metabase.util.random :as u.random]
    [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -82,7 +82,7 @@
   "Generates a new API key - a random base64 string prefixed with `mb_`"
   []
   (u.secret/secret
-   (str "mb_" (crypto-random/base64 api-keys.schema/generated-bytes-key-length))))
+   (str "mb_" (u.random/secure-base64 api-keys.schema/generated-bytes-key-length))))
 
 (mu/defn mask :- ::api-keys.schema/key.masked
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
