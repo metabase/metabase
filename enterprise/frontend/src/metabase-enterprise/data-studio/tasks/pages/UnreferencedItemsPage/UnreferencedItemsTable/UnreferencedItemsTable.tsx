@@ -32,7 +32,10 @@ export const UnreferencedItemsTable = memo(function UnreferencedItemsTable({
     (newSortColumn: UnreferencedItemColumn) => {
       if (isSortableColumn(newSortColumn)) {
         const newSortDirection =
-          sortOptions?.direction === "asc" ? "desc" : "asc";
+          sortOptions?.column === newSortColumn &&
+          sortOptions?.direction === "asc"
+            ? "desc"
+            : "asc";
         onSortChange?.({
           column: newSortColumn,
           direction: newSortDirection,
