@@ -103,3 +103,14 @@ it("Should handle floating point values", async () => {
     ]),
   );
 });
+
+it("Should not call onChange when blurring without changing value", async () => {
+  const { onChange } = setup();
+
+  const min = await screen.findByDisplayValue("0");
+
+  fireEvent.focus(min);
+  fireEvent.blur(min);
+
+  expect(onChange).not.toHaveBeenCalled();
+});
