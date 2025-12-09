@@ -41,7 +41,7 @@ describe("getIcon", () => {
   });
 
   it("should return the correct icon for a card without a display type", () => {
-    expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+    expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
   });
 
   it("should return the default icon for an invalid model", () => {
