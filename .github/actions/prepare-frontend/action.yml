@@ -41,14 +41,15 @@ runs:
         echo "dir=$PNPM_STORE_DIR" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: Restore node_modules cache
-      uses: actions/cache/restore@v4
-      id: node-modules-cache
-      with:
-        path: |
-          ${{ steps.pnpm-cache.outputs.dir }}
-          node_modules
-        key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
+    # TEMPORARILY DISABLED: Testing if cache causes Next.js host app CI failures
+    # - name: Restore node_modules cache
+    #   uses: actions/cache/restore@v4
+    #   id: node-modules-cache
+    #   with:
+    #     path: |
+    #       ${{ steps.pnpm-cache.outputs.dir }}
+    #       node_modules
+    #     key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
