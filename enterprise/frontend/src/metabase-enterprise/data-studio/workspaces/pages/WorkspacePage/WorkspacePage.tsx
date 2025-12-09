@@ -536,15 +536,15 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                               aria-hidden
                             />
                             {tab.name}
-                            <ActionIcon size="1rem" p="0" ml="xs">
-                              <Icon
-                                name="close"
-                                size={10}
-                                aria-hidden
-                                onClick={(event) =>
-                                  handleTabClose(event, tab, index)
-                                }
-                              />
+                            <ActionIcon
+                              size="1rem"
+                              p="0"
+                              ml="xs"
+                              onClick={(event) =>
+                                handleTabClose(event, tab, index)
+                              }
+                            >
+                              <Icon name="close" size={10} aria-hidden />
                             </ActionIcon>
                           </Group>
                         </Tabs.Tab>
