@@ -356,7 +356,7 @@
 
    :model/Tenant
    (fn [_]
-     {:slug (str/lower-case (u.random/random-name))
+     {:slug (u/lower-case-en (u.random/random-name))
       :name (u.random/random-name)})
 
    :model/User
