@@ -2,9 +2,11 @@
   "`/api/ee/workspace/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.dag :as ws.dag]
+   [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.promotion :as ws.promotion]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -17,6 +19,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(def INNER-LIMIT "Limit for number of nested things we are ready to return w/o thinking about it too much" 20)
 
 ;;; schemas
 
@@ -104,8 +108,9 @@
    [:name :string]
    [:collection_id :int]
    [:database_id :int]
-   [:created_at :any]
-   [:updated_at :any]
+   [:status [:enum :pending :ready]]
+   [:created_at ms/TemporalInstant]
+   [:updated_at ms/TemporalInstant]
    [:archived_at [:maybe :any]]])
 
 (def ^:private FullWorkspace
@@ -149,6 +154,21 @@
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
+(def ^:private Transform
+  "Schema for a transform in a workspace"
+  [:map
+   [:id ms/PositiveInt]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:source_type {:optional true} [:maybe :keyword]]
+   [:source {:optional true} :any]
+   [:target {:optional true} :any]
+   [:workspace_id {:optional true} [:maybe ms/PositiveInt]]
+   [:creator_id {:optional true} [:maybe ms/PositiveInt]]
+   [:run_trigger {:optional true} [:maybe :keyword]]
+   [:created_at {:optional true} :any]
+   [:updated_at {:optional true} :any]])
+
 (defn- check-transforms-enabled!
   [db-id]
   (let [database (api/check-400 (t2/select-one :model/Database db-id)
@@ -166,7 +186,7 @@
 
 (defn- ws->response [ws]
   (select-keys ws
-               [:id :name :collection_id :database_id :created_at :updated_at :archived_at :contents]))
+               [:id :name :collection_id :database_id :status :created_at :updated_at :archived_at :contents]))
 
 ;;; routes
 
@@ -287,6 +307,36 @@
   (-> (api/check-404 (t2/select-one :model/Workspace :id id))
       (t2/hydrate :contents)
       ws->response))
+
+(api.macros/defendpoint :get "/:id/log"
+  :- [:map
+      [:workspace_id ms/PositiveInt]
+      [:status [:enum :pending :ready]]
+      [:updated_at :any]
+      [:last_completed_at [:maybe :any]]
+      [:logs [:sequential [:map
+                           [:id ms/PositiveInt]
+                           [:task :keyword]
+                           [:started_at :any]
+                           [:updated_at :any]
+                           [:completed_at [:maybe :any]]
+                           [:status [:maybe :keyword]]
+                           [:message [:maybe :string]]]]]]
+  "Get workspace creation status and recent log entries for polling during async setup"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+        logs      (t2/select [:model/WorkspaceLog
+                              :id :task :started_at :completed_at :status :message
+                              :updated_at]
+                             :workspace_id id
+                             {:order-by [[:started_at :desc]]
+                              :limit    INNER-LIMIT})]
+    {:workspace_id      id
+     :status            (:status workspace)
+     :logs              logs
+     :updated_at        (->> (map :updated_at logs) sort reverse first)
+     :last_completed_at (->> (seq (keep :completed_at logs)) sort reverse first)}))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace
@@ -466,6 +516,52 @@
                    (deferred-tru "Another transform in this workspace already targets that table."))
 
     (ws.common/create-transform! workspace body api/*current-user-id*)))
+
+(api.macros/defendpoint :get "/:id/transform" :- [:map [:items [:sequential Transform]]]
+  "Get all transforms in a workspace."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  {:items (into []
+                (map #(u/update-some % :last_run transforms.util/localize-run-timestamps))
+                (-> (t2/select :model/Transform :workspace_id id {:order-by [[:id :asc]]})
+                    (t2/hydrate :last_run :transform_tag_ids :creator)))})
+
+(api.macros/defendpoint :get "/:id/transform/:txid" :- Transform
+  "Get a specific transform in a workspace."
+  [{:keys [id txid]} :- [:map [:id ms/PositiveInt] [:txid ms/PositiveInt]]]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (api/check-404 (t2/select-one :model/Transform :id txid :workspace_id id))
+  (transforms.api/get-transform txid))
+
+(api.macros/defendpoint :put "/:id/transform/:txid" :- Transform
+  "Update a transform in a workspace."
+  [{:keys [id txid]} :- [:map [:id ms/PositiveInt] [:txid ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name {:optional true} :string]
+            [:description {:optional true} [:maybe :string]]
+            [:source {:optional true} ::transform-source]
+            [:target {:optional true} ::ws-transform-target]
+            [:run_trigger {:optional true} ::run-trigger]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (api/check-404 (t2/select-one :model/Transform :id txid :workspace_id id))
+  (transforms.api/update-transform! txid body))
+
+(api.macros/defendpoint :delete "/:id/transform/:txid" :- :nil
+  "Delete a transform in a workspace."
+  [{:keys [id txid]} :- [:map [:id ms/PositiveInt] [:txid ms/PositiveInt]]]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (transforms.api/delete-transform!
+   (api/check-404 (t2/select-one :model/Transform :id txid :workspace_id id))))
+
+(api.macros/defendpoint :post "/:id/transform/:txid/run"
+  :- [:map [:message :string] [:run_id {:optional true} [:maybe :int]]]
+  "Run a transform in a workspace."
+  [{:keys [id txid]} :- [:map [:id ms/PositiveInt] [:txid ms/PositiveInt]]]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (let [transform (api/check-404 (t2/select-one :model/Transform :id txid :workspace_id id))]
+    (transforms.api/run-transform! transform)))
 
 (api.macros/defendpoint :get "/mapping/transform/:id/downstream"
   :- [:map

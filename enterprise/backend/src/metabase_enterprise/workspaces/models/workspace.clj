@@ -13,7 +13,8 @@
 
 (t2/deftransforms :model/Workspace
   {:graph            mi/transform-json
-   :database_details mi/transform-encrypted-json})
+   :database_details mi/transform-encrypted-json
+   :status           mi/transform-keyword})
 
 (doto :model/Workspace
   (derive :metabase/model)
@@ -28,7 +29,8 @@
                      [:upstream.target :upstream]]
                     :transform.workspace_id [:in ids]
                     {:left-join [[:workspace_mapping_transform :wmt] [:= :wmt.downstream_id :transform.id]
-                                 [:transform :upstream]              [:= :upstream.id :wmt.upstream_id]]}))
+                                 [:transform :upstream]              [:= :upstream.id :wmt.upstream_id]]
+                     :order-by [:id]}))
        (mapv #(-> %
                   (update :upstream json/decode+kw)
                   (assoc :type entity-type)))))

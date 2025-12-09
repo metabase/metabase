@@ -6,11 +6,14 @@
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
+   [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (defn check-no-card-dependencies!
@@ -79,7 +82,7 @@
 ;; TODO: Should we move this to model as per the diagram?
 (defn- create-workspace-container!
   "Create the workspace and its related collection, user, and api key."
-  [creator-id database-id workspace-name]
+  [creator-id database-id workspace-name status]
   ;; TODO (Chris 2025-11-19) Unsure API key name is unique, and remove this (insecure) workaround.
   (let [api-key (let [key-name (format "API key for Workspace %s" workspace-name)]
                   (or (t2/select-one :model/ApiKey :name key-name)
@@ -90,7 +93,8 @@
                                                 :creator_id     creator-id
                                                 :database_id    database-id
                                                 :api_key_id     (:id api-key)
-                                                :execution_user (:user_id api-key)})
+                                                :execution_user (:user_id api-key)
+                                                :status         status})
         coll    (t2/insert-returning-instance! :model/Collection
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
@@ -114,42 +118,49 @@
         (str/includes? msg "duplicate")
         (str/includes? msg "UNIQUE"))))
 
+(defn- run-workspace-setup!
+  "Background job: runs isolation, mirroring, grants. Updates status to :ready when done."
+  [{ws-id :id :as workspace} database graph]
+  (ws.log/track! ws-id :workspace-setup
+    (let [{:keys [schema
+                  database_details]} (ws.log/track! ws-id :database-isolation
+                                       (-> (ws.isolation/ensure-database-isolation! workspace database)
+                                           ;; it actually returns just those, this is more like a doc than behavior
+                                           (select-keys [:schema :database_details])
+                                           (u/prog1 (t2/update! :model/Workspace ws-id <>))))
+          ;; not sure this is necessary but `mirror-entities!` will at least get current state
+          workspace                  (assoc workspace :database_details database_details :schema schema)
+          {:keys [inputs]}           (if (empty? (:check-outs graph))
+                                       {}
+                                       (ws.log/track! ws-id :mirror-entities
+                                         (u/prog1 (ws.mirroring/mirror-entities! workspace database graph)
+                                           (t2/update! :model/Workspace ws-id {:graph <>}))))]
+      (when-let [table-ids (seq (keep #(when (= :table (:type %)) (:id %)) inputs))]
+        (ws.log/track! ws-id :grant-read-access
+          (let [user         (:user database_details)
+                input-tables (t2/select :model/Table :id [:in table-ids])]
+            (ws.isolation/grant-read-access-to-tables! database user input-tables)))))
+    (t2/update! :model/Workspace ws-id {:status :ready})))
+
 ;; TODO (Chris 2025-11-20) We have not added a uniqueness constraint to the db, we should either do that, or remove
 ;;                         the whole retry song and dance.
 (defn- create-workspace-with-unique-name!
-  "Create a workspace, retrying with a new unique name if there's a constraint violation."
+  "Create a workspace with status=updating, then kick off async setup."
   [creator-id db-id database ws-name graph max-retries]
   (loop [attempt 1]
-    (let [unique-name (generate-unique-workspace-name ws-name)
-          result      (try
-                        {:workspace (create-workspace-container! creator-id db-id unique-name)}
-                        (catch Exception e
-                          (if (and (< attempt max-retries) (unique-constraint-violation? e))
-                            {:retry true}
-                            (throw e))))]
-      (if (:retry result)
+    (let [unique-name         (generate-unique-workspace-name ws-name)
+          {:keys [retry
+                  workspace]} (try
+                                {:workspace (create-workspace-container! creator-id db-id unique-name :pending)}
+                                (catch Exception e
+                                  (if (and (< attempt max-retries) (unique-constraint-violation? e))
+                                    {:retry true}
+                                    (throw e))))]
+      (if retry
         (recur (inc attempt))
-        (let [{:keys [schema
-                      database_details]} (ws.isolation/ensure-database-isolation! (:workspace result) database)
-              workspace                  (assoc (:workspace result)
-                                                :schema schema
-                                                :database_details database_details)
-              ;; temp hack to avoid running mirror and failing if there are no checkouts
-              graph                      (if (not-empty (:check-outs graph))
-                                           (let [graph (ws.mirroring/mirror-entities! workspace database graph)
-                                                 input-tables (when-let [table-ids (->> (:inputs graph)
-                                                                                        (filter #(= :table (:type %)))
-                                                                                        (map :id)
-                                                                                        seq)]
-                                                                (t2/select :model/Table :id [:in table-ids]))]
-                                             (ws.isolation/grant-read-access-to-tables! database (:user database_details) input-tables)
-                                             graph)
-                                           {})]
-          (t2/update! :model/Workspace {:id (:id workspace)}
-                      {:graph graph
-                       :schema schema
-                       :database_details database_details})
-          (assoc workspace :graph graph))))))
+        (do
+          (quick-task/submit-task! #(run-workspace-setup! workspace database graph))
+          workspace)))))
 
 ;; TODO internal: test!
 (defn create-workspace!
