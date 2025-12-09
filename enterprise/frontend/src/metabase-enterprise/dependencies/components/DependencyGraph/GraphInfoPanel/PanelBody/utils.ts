@@ -92,17 +92,24 @@ export function getNodeTableInfo(
     },
     metadata: {
       label: t`View metadata`,
-      url: Urls.dataModelTable(table.db_id, table.schema, table.id),
+      url: Urls.dataModel({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: table.id,
+      }),
     },
     location: table.db
       ? [
           {
             label: table.db.name,
-            url: Urls.dataModelDatabase(table.db.id),
+            url: Urls.dataModel({ databaseId: table.db.id }),
           },
           {
             label: table.schema,
-            url: Urls.dataModelSchema(table.db.id, table.schema),
+            url: Urls.dataModel({
+              databaseId: table.db.id,
+              schemaName: table.schema,
+            }),
           },
         ]
       : null,

@@ -107,7 +107,7 @@
                                                   [:= :d.to_entity_id :metabase_table.id]
                                                   [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
-        hydrations (cond-> [:db :published_as_model]
+        hydrations (cond-> [:db]
                      (premium-features/has-feature? :transforms) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
@@ -137,7 +137,7 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn :model/Table id)
-        (t2/hydrate :db :pk_field)
+        (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon, Menu } from "metabase/ui";
@@ -90,18 +89,16 @@ const NewItemMenuView = ({
       </Menu.Item>,
     );
 
-    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
-      items.push(
-        <Menu.Item
-          key="document"
-          component={ForwardRefLink}
-          to="/document/new"
-          leftSection={<Icon name="document" />}
-        >
-          {t`Document`}
-        </Menu.Item>,
-      );
-    }
+    items.push(
+      <Menu.Item
+        key="document"
+        component={ForwardRefLink}
+        to="/document/new"
+        leftSection={<Icon name="document" />}
+      >
+        {t`Document`}
+      </Menu.Item>,
+    );
 
     return items;
   }, [

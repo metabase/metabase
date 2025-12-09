@@ -19,7 +19,7 @@ export type NavbarLibrarySectionProps = {
   onItemSelect: () => void;
 };
 
-export type LibraryCollectionType = "root" | "models" | "metrics";
+export type LibraryCollectionType = "root" | "data" | "metrics";
 
 export type DataStudioToolbarButtonProps = {
   question: Question;

@@ -2,8 +2,8 @@
   "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks."
   (:require
-   [crypto.random :as crypto-random]
-   [metabase.api.macros :as api.macros]))
+   [metabase.api.macros :as api.macros]
+   [metabase.util.random :as u.random]))
 
 (set! *warn-on-reflection* true)
 
@@ -18,4 +18,4 @@
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
    Intended for use when creating a value for `embedding-secret-key`."
   []
-  {:token (crypto-random/hex 32)})
+  {:token (u.random/secure-hex 32)})
