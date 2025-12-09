@@ -1,8 +1,10 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
+   [metabase.graph.core :as graph]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -247,3 +249,32 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))))
+
+(def ^:private type->model
+  {:card :model/Card
+   :transform :model/Transform})
+
+(derive ::check-card-dependents :metabase/event)
+(derive :event/card-update ::check-card-dependents)
+(derive :event/card-delete ::check-card-dependents)
+
+(methodical/defmethod events/publish-event! ::check-card-dependents
+  [_ {:keys [object]}]
+  (deps.findings/upsert-analysis! object)
+  (when (premium-features/has-feature? :dependencies)
+    (let [graph (models.dependency/filtered-graph-dependents
+                 (fn [type-field _id-field]
+                   [:not= type-field "transform"]))
+          child-cards (-> (models.dependency/transitive-dependents graph {:card [object]})
+                          :card)]
+      (doseq [instances (partition 50 50 nil child-cards)]
+        (deps.findings/analyze-instances! (t2/select :model/Card :id [:in instances]))))))
+
+(derive ::check-transform-dependents :metabase/event)
+(derive :event/update-transform ::check-transform-dependents)
+(derive :event/delete-transform ::check-transform-dependents)
+
+(methodical/defmethod events/publish-event! ::check-transform-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (deps.findings/upsert-analysis! object)))
