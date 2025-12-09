@@ -6,44 +6,34 @@ import type {
   UnreferencedItemSortDirection,
 } from "metabase-types/api";
 
-import type { EntityTypeFilterValue } from "../../../components/TasksFilterButton";
 import { TasksTable } from "../../../components/TasksTable";
 
-import { getColumnIdToSortColumn, getColumnsForEntityType } from "./columns";
+import { getColumns } from "./utils";
 
-interface UnreferencedItemsTableProps {
+type UnreferencedItemsTableProps = {
   items: UnreferencedItem[];
-  entityType: EntityTypeFilterValue;
   sortColumn?: UnreferencedItemSortColumn;
   sortDirection?: UnreferencedItemSortDirection;
-  onSortChange?: (column: UnreferencedItemSortColumn) => void;
-  pagination?: {
-    total: number;
-    pageIndex: number;
-    pageSize: number;
-    onPageChange: (pageIndex: number) => void;
-  };
+  pageIndex?: number;
+  pageSize?: number;
+  pageTotal?: number;
   isFetching?: boolean;
-}
+  onSortChange?: (columnId: UnreferencedItemSortColumn) => void;
+  onPageChange?: (pageIndex: number) => void;
+};
 
 export function UnreferencedItemsTable({
   items,
-  entityType,
   sortColumn,
   sortDirection,
-  onSortChange,
-  pagination,
+  pageIndex,
+  pageSize,
+  pageTotal,
   isFetching,
+  onSortChange,
+  onPageChange,
 }: UnreferencedItemsTableProps) {
-  const columns = useMemo(
-    () => getColumnsForEntityType(entityType),
-    [entityType],
-  );
-
-  const columnIdToSortColumn = useMemo(
-    () => getColumnIdToSortColumn(entityType),
-    [entityType],
-  );
+  const columns = useMemo(() => getColumns(), []);
 
   return (
     <TasksTable
@@ -51,10 +41,12 @@ export function UnreferencedItemsTable({
       columns={columns}
       sortColumn={sortColumn}
       sortDirection={sortDirection}
-      columnIdToSortColumn={columnIdToSortColumn}
-      onSortChange={onSortChange}
-      pagination={pagination}
+      pageIndex={pageIndex}
+      pageSize={pageSize}
+      pageTotal={pageTotal}
       isFetching={isFetching}
+      onSortChange={onSortChange}
+      onPageChange={onPageChange}
     />
   );
 }

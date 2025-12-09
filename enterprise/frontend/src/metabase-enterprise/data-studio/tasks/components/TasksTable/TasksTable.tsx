@@ -1,43 +1,41 @@
 import { useElementSize } from "@mantine/hooks";
-import type React from "react";
-import { useCallback, useMemo } from "react";
+import { type MouseEvent, useCallback, useMemo } from "react";
 
 import { DataGrid } from "metabase/data-grid/components/DataGrid/DataGrid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
-import type { ColumnOptions } from "metabase/data-grid/types";
 import { Box, Flex, Loader } from "metabase/ui";
 
 import S from "./TasksTable.module.css";
+import type { TableColumnOptions, TableSortDirection } from "./types";
 
 const ROW_HEIGHT = 48;
 const HEADER_HEIGHT = 58;
 
-export interface TasksTableProps<TData, TSortColumn extends string> {
+export type TasksTableProps<TData, TColumn extends string> = {
   data: TData[];
-  columns: ColumnOptions<TData, string>[];
-  sortColumn?: TSortColumn;
-  sortDirection?: "asc" | "desc";
-  columnIdToSortColumn?: Partial<Record<string, TSortColumn>>;
-  onSortChange?: (column: TSortColumn) => void;
-  pagination?: {
-    total: number;
-    pageIndex: number;
-    pageSize: number;
-    onPageChange: (pageIndex: number) => void;
-  };
+  columns: TableColumnOptions<TData, TColumn>[];
+  sortColumn?: TColumn;
+  sortDirection?: TableSortDirection;
+  pageIndex?: number;
+  pageSize?: number;
+  pageTotal?: number;
   isFetching?: boolean;
-}
+  onSortChange?: (sorTColumn: TColumn) => void;
+  onPageChange?: (pageIndex: number) => void;
+};
 
-export function TasksTable<TData, TSortColumn extends string>({
+export function TasksTable<TData, TColumn extends string>({
   data,
   columns,
   sortColumn,
   sortDirection,
-  columnIdToSortColumn,
-  onSortChange,
-  pagination,
+  pageIndex,
+  pageSize,
+  pageTotal,
   isFetching,
-}: TasksTableProps<TData, TSortColumn>) {
+  onSortChange,
+  onPageChange,
+}: TasksTableProps<TData, TColumn>) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
 
   const theme = useMemo(
@@ -46,20 +44,13 @@ export function TasksTable<TData, TSortColumn extends string>({
   );
 
   const columnsWithSort = useMemo(() => {
-    if (!columnIdToSortColumn) {
-      return columns;
-    }
     return columns.map((col) => {
-      const apiColumn = columnIdToSortColumn[col.id];
-      if (!apiColumn) {
-        return { ...col, headerClickable: false };
-      }
-      if (apiColumn === sortColumn) {
+      if (col.id === sortColumn) {
         return { ...col, sortDirection };
       }
       return col;
     });
-  }, [columns, columnIdToSortColumn, sortColumn, sortDirection]);
+  }, [columns, sortColumn, sortDirection]);
 
   const tableProps = useDataGridInstance({
     data,
@@ -67,23 +58,20 @@ export function TasksTable<TData, TSortColumn extends string>({
     defaultRowHeight: ROW_HEIGHT,
     theme,
     minGridWidth: containerWidth || undefined,
-    pageSize: pagination?.pageSize,
-    total: pagination?.total,
-    pageIndex: pagination?.pageIndex,
-    onPageChange: pagination?.onPageChange,
+    pageIndex,
+    pageSize,
+    total: pageTotal,
+    onPageChange,
   });
 
   const handleHeaderCellClick = useCallback(
-    (_event: React.MouseEvent<HTMLDivElement>, columnId?: string) => {
-      if (!columnId || !onSortChange || !columnIdToSortColumn) {
-        return;
-      }
-      const apiColumn = columnIdToSortColumn[columnId];
-      if (apiColumn) {
-        onSortChange(apiColumn);
+    (_event: MouseEvent<HTMLDivElement>, columnId?: string) => {
+      const column = columns.find((col) => col.id === columnId);
+      if (column != null) {
+        onSortChange?.(column.id);
       }
     },
-    [onSortChange, columnIdToSortColumn],
+    [columns, onSortChange],
   );
 
   return (

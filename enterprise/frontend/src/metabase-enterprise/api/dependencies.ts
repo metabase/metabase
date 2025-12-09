@@ -73,7 +73,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
-    getUnreferencedItems: builder.query<
+    listUnreferencedItems: builder.query<
       GetUnreferencedItemsResponse,
       GetUnreferencedItemsRequest
     >({
@@ -94,5 +94,5 @@ export const {
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,
-  useGetUnreferencedItemsQuery,
+  useListUnreferencedItemsQuery,
 } = dependencyApi;

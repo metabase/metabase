@@ -7,10 +7,10 @@ import S from "./TasksTable.module.css";
 
 const centeredCellStyles = { alignItems: "center" } as const;
 
-interface TextCellProps {
+type TextCellProps = {
   value: string;
   align?: "left" | "right";
-}
+};
 
 export function TextCell({ value, align = "left" }: TextCellProps) {
   return (
@@ -20,11 +20,11 @@ export function TextCell({ value, align = "left" }: TextCellProps) {
   );
 }
 
-interface EntityCellProps {
+type EntityCellProps = {
   name: string;
   icon: IconName;
   url?: string | null;
-}
+};
 
 export function EntityCell({ name, icon, url }: EntityCellProps) {
   return (
@@ -46,10 +46,10 @@ export function EntityCell({ name, icon, url }: EntityCellProps) {
   );
 }
 
-interface LinkCellProps {
+type LinkCellProps = {
   value: string;
   url?: string | null;
-}
+};
 
 export function LinkCell({ value, url }: LinkCellProps) {
   return (

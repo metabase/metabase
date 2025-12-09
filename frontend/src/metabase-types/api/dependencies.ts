@@ -215,53 +215,48 @@ export type UnreferencedItemCardType = "question" | "model" | "metric";
 export type UnreferencedItemSortColumn = "name" | "location" | "view_count";
 export type UnreferencedItemSortDirection = "asc" | "desc";
 
-type UnreferencedNode<TType extends DependencyType, TData> = {
-  id: DependencyId;
+export type UnreferencedItemId = number;
+
+type BaseUnreferencedItem<TType, TData> = {
+  id: UnreferencedItemId;
   type: TType;
   data: TData;
 };
 
-export type UnreferencedTableItem = UnreferencedNode<
+export type UnreferencedTableItemData = Pick<
+  Table,
+  "name" | "display_name" | "db_id" | "schema"
+>;
+
+export type UnreferencedTableItem = BaseUnreferencedItem<
   "table",
-  TableDependencyNodeData
+  UnreferencedTableItemData
 >;
-export type UnreferencedTransformItem = UnreferencedNode<
-  "transform",
-  TransformDependencyNodeData
->;
-export type UnreferencedCardItem = UnreferencedNode<
+
+export type UnreferencedCardItemData = Pick<Card, "name" | "type" | "display">;
+
+export type UnreferencedCardItem = BaseUnreferencedItem<
   "card",
-  CardDependencyNodeData
+  UnreferencedCardItemData
 >;
-export type UnreferencedSnippetItem = UnreferencedNode<
+
+export type UnreferencedSnippetItemData = Pick<NativeQuerySnippet, "name">;
+
+export type UnreferencedSnippetItem = BaseUnreferencedItem<
   "snippet",
-  SnippetDependencyNodeData
->;
-export type UnreferencedDashboardItem = UnreferencedNode<
-  "dashboard",
-  DashboardDependencyNodeData
->;
-export type UnreferencedDocumentItem = UnreferencedNode<
-  "document",
-  DocumentDependencyNodeData
->;
-export type UnreferencedSandboxItem = UnreferencedNode<
-  "sandbox",
-  SandboxDependencyNodeData
+  UnreferencedSnippetItemData
 >;
 
 export type UnreferencedItem =
   | UnreferencedTableItem
-  | UnreferencedTransformItem
   | UnreferencedCardItem
-  | UnreferencedSnippetItem
-  | UnreferencedDashboardItem
-  | UnreferencedDocumentItem
-  | UnreferencedSandboxItem;
+  | UnreferencedSnippetItem;
+
+export type UnreferencedItemType = UnreferencedItem["type"];
 
 export type GetUnreferencedItemsRequest = {
-  types?: DependencyType | DependencyType[];
-  card_types?: UnreferencedItemCardType | UnreferencedItemCardType[];
+  types?: UnreferencedItemType[];
+  card_types?: CardType[];
   query?: string;
   sort_column?: UnreferencedItemSortColumn;
   sort_direction?: UnreferencedItemSortDirection;
@@ -271,9 +266,9 @@ export type GetUnreferencedItemsRequest = {
 
 export type GetUnreferencedItemsResponse = {
   data: UnreferencedItem[];
+  sort_column: UnreferencedItemSortColumn;
+  sort_direction: UnreferencedItemSortDirection;
   limit: number;
   offset: number;
   total: number;
-  sort_column: UnreferencedItemSortColumn;
-  sort_direction: UnreferencedItemSortDirection;
 };
