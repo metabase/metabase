@@ -34,21 +34,21 @@ const GIZMO_USER = {
   first_name: "gizmo",
   last_name: "user",
   email: "gizmo.user@email.com",
-  tenant: GIZMO_TENANT.slug,
+  "@tenant": GIZMO_TENANT.slug,
 };
 
 const DOOHICKEY_USER = {
   first_name: "doohickey",
   last_name: "user",
   email: "doohickey.user@email.com",
-  tenant: DOOHICKEY_TENANT.slug,
+  "@tenant": DOOHICKEY_TENANT.slug,
 };
 
 const SECOND_DOOHICKEY_USER = {
   first_name: "donthickey",
   last_name: "user",
   email: "donthickey.user@email.com",
-  tenant: DOOHICKEY_TENANT.slug,
+  "@tenant": DOOHICKEY_TENANT.slug,
 };
 
 const TENANTS = [GIZMO_TENANT, DOOHICKEY_TENANT];
