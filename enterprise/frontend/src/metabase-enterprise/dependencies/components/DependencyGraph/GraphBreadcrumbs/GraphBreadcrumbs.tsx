@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import { Box, Group, type GroupProps } from "metabase/ui";
 
-import type { NodeLink } from "../types";
+import type { NodeLink } from "../../../types";
 
 import S from "./GraphBreadcrumbs.module.css";
 

@@ -2,12 +2,12 @@ import type {
   CardId,
   CollectionId,
   DatabaseId,
+  DependencySortColumn,
+  DependencySortDirection,
   NativeQuerySnippetId,
   SchemaName,
   SegmentId,
   TableId,
-  UnreferencedItemSortColumn,
-  UnreferencedItemSortDirection,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -146,8 +146,8 @@ export function dataStudioTasks() {
 
 export type UnreferencedItemsParams = {
   page?: number;
-  sortColumn?: UnreferencedItemSortColumn;
-  sortDirection?: UnreferencedItemSortDirection;
+  sortColumn?: DependencySortColumn;
+  sortDirection?: DependencySortDirection;
 };
 
 export function dataStudioTasksUnreferenced({

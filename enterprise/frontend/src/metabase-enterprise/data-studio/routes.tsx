@@ -56,9 +56,11 @@ export function getDataStudioRoutes(
           {getDataStudioSnippetRoutes()}
           {getDataStudioGlossaryRoutes()}
         </Route>
-        <Route path="tasks" component={TasksSectionLayout}>
-          {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
-        </Route>
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route path="tasks" component={TasksSectionLayout}>
+            {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
+          </Route>
+        )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
