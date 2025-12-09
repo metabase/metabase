@@ -38,7 +38,6 @@ export const TableComponent = <
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
-    debugTable: true,
     getSubRows: (row) => row.children,
     initialState: {
       expanded: true,
@@ -47,7 +46,7 @@ export const TableComponent = <
 
   return (
     <div className={S.ScrollContainer} ref={(e) => setScrollRef(e)}>
-      {/* Even though we're still using sematic table tags, we must use CSS grid and flexbox for dynamic row heights */}
+      {/* Even though we're still using semantic table tags, we must use CSS grid and flexbox for dynamic row heights */}
       <table className={S.Table}>
         <thead className={S.Header}>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -65,27 +64,20 @@ export const TableComponent = <
                       ...getColumWidthStyle(header.column.columnDef),
                     }}
                   >
-                    <div
-                      {...{
-                        className: header.column.getCanSort()
-                          ? "cursor-pointer select-none"
-                          : "",
-                        onClick: header.column.getToggleSortingHandler(),
-                      }}
-                    >
-                      {headerContent && (
-                        <Badge
-                          rightSection={
-                            {
-                              asc: <Icon name="chevrondown" size={10} />,
-                              desc: <Icon name="chevronup" size={10} />,
-                            }[header.column.getIsSorted() as string] ?? null
-                          }
-                        >
-                          {headerContent}
-                        </Badge>
-                      )}
-                    </div>
+                    {headerContent && (
+                      <Badge
+                        onClick={header.column.getToggleSortingHandler()}
+                        className={S.HeaderBadge}
+                        rightSection={
+                          {
+                            asc: <Icon name="chevronup" size={10} />,
+                            desc: <Icon name="chevrondown" size={10} />,
+                          }[header.column.getIsSorted() as string] ?? null
+                        }
+                      >
+                        {headerContent}
+                      </Badge>
+                    )}
                   </th>
                 );
               })}

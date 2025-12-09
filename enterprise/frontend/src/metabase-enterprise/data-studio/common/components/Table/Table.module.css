@@ -35,9 +35,18 @@
   top: 0;
   z-index: 1;
 
-  .Row:hover {
-    background-color: inherit;
+  .Row {
+    cursor: unset;
+
+    &:hover {
+      background-color: inherit;
+    }
   }
+}
+
+.HeaderBadge {
+  cursor: pointer;
+  user-select: none;
 }
 
 .ScrollContainer {
