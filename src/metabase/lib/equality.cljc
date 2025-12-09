@@ -1,6 +1,6 @@
 (ns metabase.lib.equality
   "Logic for determining whether two pMBQL queries are equal."
-  (:refer-clojure :exclude [= every? some mapv empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [= every? some mapv empty? not-empty get-in #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -21,7 +21,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some mapv empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :refer [every? some mapv empty? not-empty get-in #?(:clj for)]]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
