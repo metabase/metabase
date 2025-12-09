@@ -3,22 +3,13 @@ import type { TableId } from "metabase-types/api";
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
-const modelingSidebar = () => cy.findByTestId("modeling-sidebar");
 const modelingPage = () => cy.findByTestId("modeling-page");
-const collectionsSection = () => cy.findByTestId("collections-section");
-const snippetsSection = () => cy.findByTestId("snippets-section");
-const glossarySection = () => cy.findByTestId("glossary-section");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
 const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
-const modelOverviewPage = () => cy.findByTestId("model-overview-page");
-const modelQueryEditor = () => cy.findByTestId("model-query-editor");
-const modelFieldsPage = () => cy.findByTestId("model-fields-page");
-const collectionPage = () => cy.findByTestId("collection-page");
 
 export const DataStudio = {
-  header: () => cy.findByTestId("data-studio-header"),
   nav: () => cy.findByTestId("data-studio-nav"),
   Transforms: {
     header: () => cy.findByTestId("transforms-header"),
@@ -45,26 +36,6 @@ export const DataStudio = {
   PythonLibrary: {
     header: () => cy.findByTestId("python-library-header"),
   },
-  ModelingSidebar: {
-    root: modelingSidebar,
-    collectionsSection,
-    collectionsTree: () => collectionsSection().findByRole("tree"),
-    snippetsSection,
-    snippetsTree: () => snippetsSection().findByRole("tree"),
-    snippetsTreeItem: (name: string) =>
-      snippetsSection()
-        .findByRole("tree")
-        .findByText(name)
-        .closest("[role='menuitem']"),
-    glossarySection,
-    glossaryLink: () => glossarySection().findByText("Glossary"),
-    createCardMenuButton: () =>
-      collectionsSection().findByLabelText("Create metric"),
-    createSnippetButton: () =>
-      snippetsSection().findByLabelText("Create snippet"),
-    snippetCollectionOptionsButton: () =>
-      snippetsSection().findByLabelText("Snippet collection options"),
-  },
   Snippets: {
     newPage: newSnippetPage,
     editPage: editSnippetPage,
@@ -88,22 +59,6 @@ export const DataStudio = {
     definitionTab: () => DataStudio.Metrics.header().findByText("Definition"),
     dependenciesTab: () =>
       DataStudio.Metrics.header().findByText("Dependencies"),
-  },
-  Models: {
-    overviewPage: modelOverviewPage,
-    queryEditor: modelQueryEditor,
-    fieldsPage: modelFieldsPage,
-    nameInput: () => modelQueryEditor().findByPlaceholderText("New model"),
-    saveButton: () => modelQueryEditor().findByRole("button", { name: "Save" }),
-    cancelButton: () =>
-      modelQueryEditor().findByRole("button", { name: "Cancel" }),
-    header: () => cy.findByTestId("model-header"),
-    moreMenu: () => DataStudio.Models.header().icon("ellipsis"),
-    overviewTab: () => DataStudio.Models.header().findByText("Overview"),
-    definitionTab: () => DataStudio.Models.header().findByText("Definition"),
-    fieldsTab: () => DataStudio.Models.header().findByText("Fields"),
-    dependenciesTab: () =>
-      DataStudio.Models.header().findByText("Dependencies"),
   },
   Tables: {
     overviewPage: () => cy.findByTestId("table-overview-page"),
@@ -138,13 +93,9 @@ export const DataStudio = {
   Modeling: {
     emptyPage: () =>
       modelingPage().findByText("No tables, metrics, or snippets yet"),
-    collectionPage: collectionPage,
     modelingPage,
-    collectionTitle: () => collectionPage().findByRole("heading"),
     metricItem: (name: string) =>
       cy.findAllByTestId("metric-name").contains(name),
-    modelItem: (name: string) =>
-      cy.findAllByTestId("dataset-name").contains(name),
     tableItem: (name: string) =>
       modelingPage().findAllByTestId("table-name").contains(name),
     result: (name: string) => modelingPage().findByText(name).closest("tr"),
