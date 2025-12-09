@@ -144,7 +144,7 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
       createPromptInputExtension(setPortalTarget),
       keymap.of([
         {
-          key: "Mod-e",
+          key: "Mod-i",
           run: (view) => {
             resetInputRef.current();
             view.dispatch({ effects: toggleEffect.of({ view }) });
