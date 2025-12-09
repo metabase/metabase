@@ -47,7 +47,7 @@ describe("scenarios > data studio > workspaces", () => {
   // });
 
   describe("workspaces list", () => {
-    it("should be able to create, navigate, and archive workspaces", () => {
+    it("should be able to create, navigate, archive, and rename workspaces", () => {
       Workspaces.visitDataStudio();
 
       Workspaces.getWorkspacesSection()
@@ -109,6 +109,13 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
       Workspaces.getWorkspaceNameInput().should("have.value", "Workspace B");
+
+      Workspaces.getWorkspaceNameInput()
+        .clear()
+        .type("Renamed workspace")
+        .blur();
+      // H.undoToast().should("have.text", "Workspace renamed"); // TODO: uncomment when implemented
+      Workspaces.getWorkspaceItem(/Renamed workspace/).should("be.visible");
 
       // TODO: workspace deletion?
     });
