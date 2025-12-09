@@ -11,8 +11,8 @@ import {
   createMockTransformDependencyNode,
 } from "metabase-types/api/mocks";
 
-import type { NodeLink } from "./types";
-import { getNodeIcon, getNodeLink } from "./utils";
+import type { NodeLink } from "../../types";
+import { getNodeIcon, getNodeLink } from "../../utils";
 
 registerVisualizations();
 

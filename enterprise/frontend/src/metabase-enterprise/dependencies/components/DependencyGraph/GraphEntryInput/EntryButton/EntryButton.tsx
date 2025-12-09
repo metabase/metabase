@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Button, FixedSizeIcon } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
-import { getNodeIcon, getNodeLabel } from "../../utils";
+import { getNodeIcon, getNodeLabel } from "../../../../utils";
 
 type EntryButtonProps = {
   node: DependencyNode | null;

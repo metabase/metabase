@@ -10,7 +10,7 @@ import {
   getNodeLabel,
   getNodeLocationInfo,
   getNodeViewCount,
-} from "../utils";
+} from "../../../utils";
 
 import { FILTER_OPTIONS } from "./constants";
 import type {

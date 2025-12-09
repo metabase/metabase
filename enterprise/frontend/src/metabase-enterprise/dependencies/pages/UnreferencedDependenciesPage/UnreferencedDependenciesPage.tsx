@@ -9,27 +9,27 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
-import { useListUnreferencedItemsQuery } from "metabase-enterprise/api";
+import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
 
-import { UnreferencedItemsTable } from "./UnreferencedItemsTable";
+import { UnreferencedItemsTable } from "./UnreferencedDependenciesTable";
 import type {
-  UnreferencedItemsRawParams,
-  UnreferencedItemsSortOptions,
+  UnreferencedDependenciesRawParams,
+  UnreferencedDependenciesSortOptions,
 } from "./types";
 import { getSearchQuery, parseRawParams } from "./utils";
 
 const PAGE_SIZE = 25;
 
-interface UnreferencedItemsPageProps {
-  location: Location<UnreferencedItemsRawParams>;
+interface UnreferencedDependenciesPageProps {
+  location?: Location<UnreferencedDependenciesRawParams>;
 }
 
-export function UnreferencedItemsPage({
+export function UnreferencedDependenciesPage({
   location,
-}: UnreferencedItemsPageProps) {
+}: UnreferencedDependenciesPageProps) {
   const params = useMemo(
-    () => parseRawParams(location.query),
-    [location.query],
+    () => parseRawParams(location?.query),
+    [location?.query],
   );
   const { page = 0, sortColumn = "name", sortDirection = "asc" } = params;
   const [searchValue, setSearchValue] = useState("");
@@ -39,20 +39,15 @@ export function UnreferencedItemsPage({
   );
   const dispatch = useDispatch();
 
-  const { data, isLoading, error } = useListUnreferencedItemsQuery(
-    useMemo(
-      () => ({
-        types: ["table", "card", "snippet"],
-        card_types: ["question", "model", "metric"],
-        query: searchQuery,
-        offset: page * PAGE_SIZE,
-        limit: PAGE_SIZE,
-        sort_column: sortColumn,
-        sort_direction: sortDirection,
-      }),
-      [searchQuery, page, sortColumn, sortDirection],
-    ),
-  );
+  const { data, isLoading, error } = useListUnreferencedNodesQuery({
+    types: ["table", "card", "snippet"],
+    card_types: ["question", "model", "metric"],
+    query: searchQuery,
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+    sort_column: sortColumn,
+    sort_direction: sortDirection,
+  });
 
   const sortOptions = useMemo(
     () => ({
@@ -79,7 +74,7 @@ export function UnreferencedItemsPage({
   );
 
   const handleSortChange = useCallback(
-    (sortOptions: UnreferencedItemsSortOptions) => {
+    (sortOptions: UnreferencedDependenciesSortOptions) => {
       dispatch(
         push(
           Urls.dataStudioTasksUnreferenced({

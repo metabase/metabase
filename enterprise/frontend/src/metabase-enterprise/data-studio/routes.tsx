@@ -22,7 +22,6 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
-import { getDataStudioTasksRoutes } from "./tasks/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -58,7 +57,7 @@ export function getDataStudioRoutes(
           {getDataStudioGlossaryRoutes()}
         </Route>
         <Route path="tasks" component={TasksSectionLayout}>
-          {getDataStudioTasksRoutes()}
+          {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
         </Route>
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>

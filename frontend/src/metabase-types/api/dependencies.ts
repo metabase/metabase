@@ -211,64 +211,23 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export type UnreferencedItemId = number;
-export type UnreferencedItemSortColumn = "name";
-export type UnreferencedItemSortDirection = "asc" | "desc";
+export type DependencySortColumn = "name";
+export type DependencySortDirection = "asc" | "desc";
 
-type BaseUnreferencedItem<TType, TData> = {
-  id: UnreferencedItemId;
-  type: TType;
-  data: TData;
-};
-
-export type UnreferencedTableItemData = Pick<
-  Table,
-  "name" | "display_name" | "db_id" | "schema"
->;
-
-export type UnreferencedTableItem = BaseUnreferencedItem<
-  "table",
-  UnreferencedTableItemData
->;
-
-export type UnreferencedCardItemData = Pick<
-  Card,
-  "name" | "type" | "display" | "last-edit-info"
->;
-
-export type UnreferencedCardItem = BaseUnreferencedItem<
-  "card",
-  UnreferencedCardItemData
->;
-
-export type UnreferencedSnippetItemData = Pick<NativeQuerySnippet, "name">;
-
-export type UnreferencedSnippetItem = BaseUnreferencedItem<
-  "snippet",
-  UnreferencedSnippetItemData
->;
-
-export type UnreferencedItem =
-  | UnreferencedTableItem
-  | UnreferencedCardItem
-  | UnreferencedSnippetItem;
-
-export type UnreferencedItemType = UnreferencedItem["type"];
-
-export type GetUnreferencedItemsRequest = {
-  types?: UnreferencedItemType[];
+export type ListUnreferencedNodesRequest = {
+  types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
-  sort_column?: UnreferencedItemSortColumn;
-  sort_direction?: UnreferencedItemSortDirection;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
   limit?: number;
   offset?: number;
 };
 
-export type GetUnreferencedItemsResponse = {
-  data: UnreferencedItem[];
-  sort_column: UnreferencedItemSortColumn;
-  sort_direction: UnreferencedItemSortDirection;
+export type ListUnreferencedNodesResponse = {
+  data: DependencyNode[];
+  sort_column: DependencySortColumn;
+  sort_direction: DependencySortDirection;
   limit: number;
   offset: number;
   total: number;

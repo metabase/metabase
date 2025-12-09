@@ -1,10 +1,10 @@
 import type * as Urls from "metabase/lib/urls";
 import type {
-  UnreferencedItemSortColumn,
-  UnreferencedItemSortDirection,
+  DependencySortColumn,
+  DependencySortDirection,
 } from "metabase-types/api";
 
-import type { UnreferencedItemsRawParams } from "./types";
+import type { UnreferencedDependenciesRawParams } from "./types";
 
 function parseNumber(number?: string): number | undefined {
   return number != null ? parseInt(number, 10) : undefined;
@@ -12,7 +12,7 @@ function parseNumber(number?: string): number | undefined {
 
 function parseSortColumn(
   sortColumn?: string,
-): UnreferencedItemSortColumn | undefined {
+): DependencySortColumn | undefined {
   switch (sortColumn) {
     case "name":
       return sortColumn;
@@ -23,7 +23,7 @@ function parseSortColumn(
 
 function parseSortDirection(
   sortDirection?: string,
-): UnreferencedItemSortDirection | undefined {
+): DependencySortDirection | undefined {
   switch (sortDirection) {
     case "asc":
     case "desc":
@@ -34,12 +34,12 @@ function parseSortDirection(
 }
 
 export function parseRawParams(
-  rawParams: UnreferencedItemsRawParams,
+  rawParams?: UnreferencedDependenciesRawParams,
 ): Urls.UnreferencedItemsParams {
   return {
-    page: parseNumber(rawParams.page),
-    sortColumn: parseSortColumn(rawParams["sort-column"]),
-    sortDirection: parseSortDirection(rawParams["sort-direction"]),
+    page: parseNumber(rawParams?.page),
+    sortColumn: parseSortColumn(rawParams?.["sort-column"]),
+    sortDirection: parseSortDirection(rawParams?.["sort-direction"]),
   };
 }
 

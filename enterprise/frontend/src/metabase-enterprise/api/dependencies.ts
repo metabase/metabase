@@ -6,16 +6,16 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
-  GetUnreferencedItemsRequest,
-  GetUnreferencedItemsResponse,
   ListNodeDependentsRequest,
+  ListUnreferencedNodesRequest,
+  ListUnreferencedNodesResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import {
   provideDependencyGraphTags,
   provideDependencyNodeListTags,
-  provideUnreferencedItemsResponseTags,
+  provideUnreferencedNodesTags,
 } from "./tags";
 
 export const dependencyApi = EnterpriseApi.injectEndpoints({
@@ -42,6 +42,18 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (nodes) =>
         nodes ? provideDependencyNodeListTags(nodes) : [],
+    }),
+    listUnreferencedNodes: builder.query<
+      ListUnreferencedNodesResponse,
+      ListUnreferencedNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/unreferenced-items",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideUnreferencedNodesTags(response) : [],
     }),
     checkCardDependencies: builder.query<
       CheckDependenciesResponse,
@@ -73,26 +85,14 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
-    listUnreferencedItems: builder.query<
-      GetUnreferencedItemsResponse,
-      GetUnreferencedItemsRequest
-    >({
-      query: (params) => ({
-        method: "GET",
-        url: "/api/ee/dependencies/unreferenced-items",
-        params,
-      }),
-      providesTags: (response) =>
-        response ? provideUnreferencedItemsResponseTags(response) : [],
-    }),
   }),
 });
 
 export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
+  useListUnreferencedNodesQuery,
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,
-  useListUnreferencedItemsQuery,
 } = dependencyApi;

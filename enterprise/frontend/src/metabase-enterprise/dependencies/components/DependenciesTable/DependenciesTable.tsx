@@ -6,13 +6,15 @@ import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-inst
 import type { ColumnOptions } from "metabase/data-grid/types";
 import { Box } from "metabase/ui";
 
-import S from "./TasksTable.module.css";
-import type { TablePaginationOptions, TableSortOptions } from "./types";
+import type { TablePaginationOptions } from "../../types";
+
+import S from "./DependenciesTable.module.css";
+import type { TableSortOptions } from "./types";
 
 const ROW_HEIGHT = 48;
 const HEADER_HEIGHT = 58;
 
-export type TasksTableProps<TData, TColumn extends string> = {
+export type DependenciesTableProps<TData, TColumn extends string> = {
   data: TData[];
   columns: ColumnOptions<TData, unknown, TColumn>[];
   sortOptions?: TableSortOptions<TColumn>;
@@ -21,14 +23,14 @@ export type TasksTableProps<TData, TColumn extends string> = {
   onPageChange?: (pageIndex: number) => void;
 };
 
-export function TasksTable<TData, TColumn extends string>({
+export function DependenciesTable<TData, TColumn extends string>({
   data,
   columns,
   sortOptions,
   paginationOptions,
   onSortChange,
   onPageChange,
-}: TasksTableProps<TData, TColumn>) {
+}: DependenciesTableProps<TData, TColumn>) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
 
   const theme = useMemo(
@@ -37,11 +39,11 @@ export function TasksTable<TData, TColumn extends string>({
   );
 
   const columnsWithSort = useMemo(() => {
-    return columns.map((col) => {
-      if (col.id === sortOptions?.column) {
-        return { ...col, sortDirection: sortOptions.direction };
+    return columns.map((column) => {
+      if (column.id === sortOptions?.column) {
+        return { ...column, sortDirection: sortOptions.direction };
       }
-      return col;
+      return column;
     });
   }, [columns, sortOptions]);
 
@@ -59,7 +61,7 @@ export function TasksTable<TData, TColumn extends string>({
 
   const handleHeaderCellClick = useCallback(
     (_event: MouseEvent<HTMLDivElement>, columnId?: string) => {
-      const column = columns.find((col) => col.id === columnId);
+      const column = columns.find((column) => column.id === columnId);
       if (column != null) {
         onSortChange?.(column.id);
       }

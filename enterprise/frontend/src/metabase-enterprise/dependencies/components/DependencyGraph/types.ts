@@ -11,16 +11,6 @@ export type NodeId = string;
 export type EdgeId = string;
 export type NodeType = Node<DependencyNode>;
 
-export type NodeTypeInfo = {
-  label: string;
-  color: string;
-};
-
-export type NodeLink = {
-  label: string;
-  url: string;
-};
-
 export type GraphData = {
   nodes: NodeType[];
   edges: Edge[];

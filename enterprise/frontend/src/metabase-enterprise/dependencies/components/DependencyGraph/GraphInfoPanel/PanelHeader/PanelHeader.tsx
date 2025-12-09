@@ -11,15 +11,15 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
-import { GraphExternalLink } from "../../GraphExternalLink";
-import { ACTION_ICON_PADDING } from "../../constants";
 import {
   getNodeIcon,
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
-} from "../../utils";
+} from "../../../../utils";
+import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
+import { GraphExternalLink } from "../../GraphExternalLink";
+import { ACTION_ICON_PADDING } from "../../constants";
 
 import S from "./PanelHeader.module.css";
 
