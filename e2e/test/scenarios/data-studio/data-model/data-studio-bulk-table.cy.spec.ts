@@ -174,7 +174,7 @@ describe("bulk table operations", () => {
   });
 
   describe(
-    "several databases with several schemas at once (metabase#GDGT-1275)",
+    "several databases with several schemas at once (GDGT-1275)",
     { tags: ["@external"] },
     () => {
       beforeEach(() => {
@@ -187,64 +187,75 @@ describe("bulk table operations", () => {
         H.DataModel.visitDataStudio();
       });
 
-      [{ withFilter: false }, { withFilter: true }].forEach(
-        ({ withFilter }) => {
-          it(`should change metadata and see that is changed for all selected tables withFilter=${withFilter}`, () => {
-            cy.log("change the owner and check the owner column");
-            if (withFilter) {
-              TablePicker.getSearchInput().type("a");
-            } else {
-              TablePicker.getDatabase("Writable Postgres12").click();
-              TablePicker.getDatabase("Sample Database").click();
-              TablePicker.getSchema("Domestic").click();
-            }
+      it("should change metadata and see that is changed for all selected tables without filters", () => {
+        cy.log("change the owner and check the owner column");
 
-            TablePicker.getTable("Accounts")
-              .find('input[type="checkbox"]')
-              .check();
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getDatabase("Sample Database").click();
+        TablePicker.getSchema("Domestic").click();
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
+        H.selectHasValue("Owner", "").click();
+        H.selectDropdown().contains("Bobby Tables").click();
 
-            TablePicker.getTable("Animals")
-              .find('input[type="checkbox"]')
-              .check();
-            H.selectHasValue("Owner", "").click();
-            H.selectDropdown().contains("Bobby Tables").click();
+        ["Accounts", "Animals"].forEach((tableName) => {
+          TablePicker.getTable(tableName)
+            .findByTestId("table-owner")
+            .should("have.text", "Bobby Tables");
+        });
 
-            ["Accounts", "Animals"].forEach((tableName) => {
-              TablePicker.getTable(tableName)
-                .findByTestId("table-owner")
-                .should("have.text", "Bobby Tables");
-            });
+        cy.log("publish and check publish state column");
 
-            cy.log("publish and check publish state column");
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
+        cy.findByRole("button", { name: /Publish/ }).click();
+        H.modal().findByText("Publish these tables").click();
+        cy.wait("@publishTables");
 
-            /**
-             * we need to wait a little until sidebar is closed. Otherwise, the button will be found, but it will be immediately removed.
-             * And then we have to reselect because when there is a filter rows are unselected after a change
-             */
-            cy.wait(100);
-            if (withFilter) {
-              TablePicker.getTable("Accounts")
-                .find('input[type="checkbox"]')
-                .check();
+        ["Accounts", "Animals"].forEach((tableName) => {
+          TablePicker.getTable(tableName)
+            .findByTestId("table-published")
+            .findByLabelText("Published")
+            .should("be.visible");
+        });
+      });
 
-              TablePicker.getTable("Animals")
-                .find('input[type="checkbox"]')
-                .check();
-            }
+      it("should change metadata and see that is changed for all selected tables with filters", () => {
+        TablePicker.getSearchInput().type("a");
+        cy.log("change the owner and check the owner column");
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
+        H.selectHasValue("Owner", "").click();
+        H.selectDropdown().contains("Bobby Tables").click();
 
-            cy.findByRole("button", { name: /Publish/ }).click();
-            H.modal().findByText("Publish these tables").click();
-            cy.wait("@publishTables");
+        ["Accounts", "Animals"].forEach((tableName) => {
+          TablePicker.getTable(tableName)
+            .findByTestId("table-owner")
+            .should("have.text", "Bobby Tables");
+        });
 
-            ["Accounts", "Animals"].forEach((tableName) => {
-              TablePicker.getTable(tableName)
-                .findByTestId("table-published")
-                .findByLabelText("Published")
-                .should("be.visible");
-            });
-          });
-        },
-      );
+        cy.log("publish and check publish state column");
+
+        /**
+         * we need to wait a little until TableAttributesEditBulk component is destroyed (see enterprise/frontend/src/metabase-enterprise/data-studio/data-model/components/TablePicker/components/SearchNew.tsx:153)
+         * Otherwise, the button will be found, but it will be immediately removed.
+         * And then we have to reselect because when there is a filter rows are unselected after a change
+         */
+        cy.findByRole("button", { name: /Publish/ }).should("not.exist");
+
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
+        cy.findByRole("button", { name: /Publish/ }).click();
+        H.modal().findByText("Publish these tables").click();
+        cy.wait("@publishTables");
+
+        ["Accounts", "Animals"].forEach((tableName) => {
+          TablePicker.getTable(tableName)
+            .findByTestId("table-published")
+            .findByLabelText("Published")
+            .should("be.visible");
+        });
+      });
     },
   );
 
