@@ -101,7 +101,7 @@ export const TransformListPageSidebar = () => {
                   accessorKey: "updated_at",
                   cell: ({ getValue }) => {
                     const value = getValue() as string;
-                    return value && dayjs(value).format("MMM D, h:mm: A");
+                    return value && dayjs(value).format("lll");
                   },
                   header: "Last Modified",
                 },

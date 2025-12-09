@@ -150,7 +150,7 @@ export function ModelingLandingPage() {
                     cell: ({ getValue }) => {
                       const value = getValue() as string;
 
-                      return value && dayjs(value).format("MMM D, h:mm: A");
+                      return value && dayjs(value).format("lll");
                     },
                   },
                   {

@@ -94,7 +94,7 @@ export const JobListPage = () => {
                       if (job.last_run) {
                         const formattedDate = dayjs(
                           job.last_run.start_time,
-                        ).format("MMM D, h:mm: A");
+                        ).format("lll");
                         return `${job.last_run.status === "failed" ? t`Failed` : t`Last run`} ${formattedDate}`;
                       }
                     },
