@@ -1,8 +1,9 @@
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -13,9 +14,11 @@ import {
 import { getLocation } from "metabase/selectors/routing";
 import {
   Box,
+  Center,
   FixedSizeIcon,
   Flex,
   type IconName,
+  Loader,
   Stack,
   Text,
   Tooltip,
@@ -29,9 +32,22 @@ type DataStudioLayoutProps = {
 };
 
 export function DataStudioLayout({ children }: DataStudioLayoutProps) {
-  const [isNavbarOpened, setIsNavbarOpened] = useState(false);
+  const {
+    value: _isNavbarOpened,
+    setValue: setIsNavbarOpened,
+    isLoading,
+  } = useUserKeyValue({
+    namespace: "data_studio",
+    key: "isNavbarOpened",
+  });
 
-  return (
+  const isNavbarOpened = _isNavbarOpened === false ? false : true;
+
+  return isLoading ? (
+    <Center h="100%">
+      <Loader />
+    </Center>
+  ) : (
     <Flex h="100%">
       <DataStudioNav
         isNavbarOpened={isNavbarOpened}
@@ -208,12 +224,25 @@ function DataStudioNavbarToggle({
   return (
     <Flex justify="space-between">
       <UnstyledButton
-        className={S.toggle}
+        className={cx(S.toggle, {
+          [S.hoverButton]: !isNavbarOpened,
+          [S.disablePointer]: isNavbarOpened,
+        })}
         p="0.5rem"
         bdrs="md"
         onClick={() => !isNavbarOpened && onNavbarToggle(true)}
       >
-        <FixedSizeIcon name="data_studio" size={27} mx="-5px" />
+        <FixedSizeIcon
+          name="data_studio"
+          size={27}
+          mx="-5px"
+          className={cx(S.hideOnHover)}
+        />
+        <FixedSizeIcon
+          name="sidebar_open"
+          className={S.showOnHover}
+          c="text-secondary"
+        />
       </UnstyledButton>
       {isNavbarOpened && (
         <UnstyledButton
@@ -222,7 +251,7 @@ function DataStudioNavbarToggle({
           bdrs="md"
           onClick={() => onNavbarToggle(false)}
         >
-          <FixedSizeIcon name="sidebar_closed" />
+          <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
         </UnstyledButton>
       )}
     </Flex>
