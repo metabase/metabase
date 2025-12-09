@@ -10,20 +10,23 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
+import { getIcon } from "metabase/lib/icon";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
 
 import { useMiniPickerContext } from "../context";
-import type {
-  MiniPickerCollectionItem,
-  MiniPickerDatabaseItem,
-  MiniPickerPickableItem,
-  MiniPickerSchemaItem,
+import {
+  type MiniPickerCollectionItem,
+  type MiniPickerDatabaseItem,
+  type MiniPickerPickableItem,
+  type MiniPickerSchemaItem,
+  isTableItem,
 } from "../types";
 
 import { MiniPickerItem } from "./MiniPickerItem";
@@ -319,6 +322,7 @@ function SearchItemList({ query }: { query: string }) {
             onClick={() => {
               onChange(item);
             }}
+            rightSection={<LocationInfo item={item} />}
           />
         );
       })}
@@ -334,4 +338,32 @@ export const MiniPickerListLoader = () => (
 
 const ItemList = ({ children }: { children: React.ReactNode[] }) => {
   return <VirtualizedList extraPadding={2}>{children}</VirtualizedList>;
+};
+
+const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
+  const isTable = isTableItem(item);
+
+  const itemText = isTable
+    ? `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`
+    : item?.collection?.name;
+
+  if (!itemText) {
+    return null;
+  }
+
+  const iconProps = isTable
+    ? null
+    : getIcon({
+        ...item.collection,
+        model: "collection",
+      });
+
+  return (
+    <Flex gap="xs">
+      {iconProps && <Icon {...iconProps} size={12} />}
+      <Text size="sm" c="text-medium">
+        <Ellipsified maw="12rem">{itemText}</Ellipsified>
+      </Text>
+    </Flex>
+  );
 };

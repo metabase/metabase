@@ -212,6 +212,18 @@ describe("MiniPicker", () => {
       expect(await screen.findByText("Bingley")).toBeInTheDocument();
     });
 
+    it("shows the collection name for collection items in search results", async () => {
+      await setup({ searchQuery: "bing" });
+      expect(await screen.findByText("Bingley")).toBeInTheDocument();
+      expect(await screen.findByText("Misc Metrics")).toBeInTheDocument();
+    });
+
+    it("shows db and schema names for table items in search results", async () => {
+      await setup({ searchQuery: "wick" });
+      expect(await screen.findByText("wickham")).toBeInTheDocument();
+      expect(await screen.findByText("london (lydia)")).toBeInTheDocument();
+    });
+
     it("properly filters search results", async () => {
       await setup({ searchQuery: "a" });
       expect(await screen.findByText("Lucas")).toBeInTheDocument();

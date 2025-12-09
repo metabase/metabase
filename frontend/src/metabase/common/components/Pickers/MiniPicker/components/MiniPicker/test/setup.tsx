@@ -213,9 +213,24 @@ export const setup = async (
   setupSearchEndpoints([
     createMockSearchResult({ id: 301, model: "card", name: "Lucas" }),
     createMockSearchResult({ id: 302, model: "dataset", name: "Forster" }),
-    createMockSearchResult({ id: 303, model: "metric", name: "Bingley" }),
+    createMockSearchResult({
+      id: 303,
+      model: "metric",
+      name: "Bingley",
+      collection: {
+        id: 789,
+        name: "Misc Metrics",
+      },
+    }),
     createMockSearchResult({ id: 304, model: "document", name: "Wickham" }),
     createMockSearchResult({ id: 305, model: "collection", name: "Reynolds" }),
+    createMockSearchResult({
+      id: 401,
+      model: "table",
+      name: "wickham",
+      table_schema: "lydia",
+      database_name: "london",
+    }),
   ]);
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"], {}, true);
