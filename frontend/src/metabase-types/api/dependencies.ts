@@ -211,11 +211,9 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export type UnreferencedItemCardType = "question" | "model" | "metric";
-export type UnreferencedItemSortColumn = "name" | "location" | "view_count";
-export type UnreferencedItemSortDirection = "asc" | "desc";
-
 export type UnreferencedItemId = number;
+export type UnreferencedItemSortColumn = "name";
+export type UnreferencedItemSortDirection = "asc" | "desc";
 
 type BaseUnreferencedItem<TType, TData> = {
   id: UnreferencedItemId;

@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { push } from "react-router-redux";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -8,14 +9,19 @@ import { useListUnreferencedItemsQuery } from "metabase-enterprise/api";
 import type { UnreferencedItemSortColumn } from "metabase-types/api";
 
 import { UnreferencedItemsTable } from "./UnreferencedItemsTable";
+import type { UnreferencedItemsRawParams } from "./types";
+import { parseRawParams } from "./utils";
 
 const PAGE_SIZE = 25;
 
 interface UnreferencedItemsPageProps {
-  params: Urls.UnreferencedItemsParams;
+  location: Location<UnreferencedItemsRawParams>;
 }
 
-export function UnreferencedItemsPage({ params }: UnreferencedItemsPageProps) {
+export function UnreferencedItemsPage({
+  location,
+}: UnreferencedItemsPageProps) {
+  const params = parseRawParams(location.query);
   const { page = 0, sortColumn, sortDirection } = params;
   const dispatch = useDispatch();
 
@@ -28,22 +34,26 @@ export function UnreferencedItemsPage({ params }: UnreferencedItemsPageProps) {
   });
 
   const handleSortChange = (newSortColumn: UnreferencedItemSortColumn) => {
-    const newSortDirection =
-      sortColumn === newSortColumn && sortDirection === "asc" ? "desc" : "asc";
     dispatch(
       push(
-        Urls.unreferencedItems({
+        Urls.dataStudioTasksUnreferenced({
           ...params,
           sortColumn: newSortColumn,
-          sortDirection: newSortDirection,
+          sortDirection:
+            sortColumn === newSortColumn && sortDirection === "asc"
+              ? "desc"
+              : "asc",
         }),
       ),
     );
   };
 
   const handlePageChange = (newPageIndex: number) => {
-    dispatch(push(Urls.unreferencedItems({ ...params, page: newPageIndex })));
+    dispatch(
+      push(Urls.dataStudioTasksUnreferenced({ ...params, page: newPageIndex })),
+    );
   };
+
   if (isLoading || error != null || data == null) {
     return (
       <Center h="100%">

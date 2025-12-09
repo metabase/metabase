@@ -3,9 +3,11 @@ import type {
   CollectionId,
   DatabaseId,
   NativeQuerySnippetId,
-  SegmentId,
   SchemaName,
+  SegmentId,
   TableId,
+  UnreferencedItemSortColumn,
+  UnreferencedItemSortDirection,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -142,11 +144,29 @@ export function dataStudioTasks() {
   return `${ROOT_URL}/tasks`;
 }
 
-export function dataStudioTasksBroken() {
-  return `${dataStudioTasks()}/broken`;
-}
+export type UnreferencedItemsParams = {
+  page?: number;
+  sortColumn?: UnreferencedItemSortColumn;
+  sortDirection?: UnreferencedItemSortDirection;
+};
 
-export function dataStudioTasksUnreferenced(entityType?: string) {
-  const base = `${dataStudioTasks()}/unreferenced`;
-  return entityType ? `${base}/${entityType}` : base;
+export function dataStudioTasksUnreferenced({
+  page,
+  sortColumn,
+  sortDirection,
+}: UnreferencedItemsParams) {
+  const searchParams = new URLSearchParams();
+  if (page != null) {
+    searchParams.set("page", page.toString());
+  }
+  if (sortColumn != null) {
+    searchParams.set("sortColumn", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sortDirection", sortDirection);
+  }
+
+  const baseUrl = `${dataStudioTasks()}/unreferenced`;
+  const queryString = searchParams.toString();
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
