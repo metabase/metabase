@@ -698,6 +698,7 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-email": string | null;
   "saml-attribute-firstname": string | null;
   "saml-attribute-lastname": string | null;
+  "saml-attribute-tenant": string | null;
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;

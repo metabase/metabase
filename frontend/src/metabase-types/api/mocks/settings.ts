@@ -335,6 +335,7 @@ export const createMockSettings = (
   "saml-attribute-email": null,
   "saml-attribute-firstname": null,
   "saml-attribute-lastname": null,
+  "saml-attribute-tenant": null,
   "saml-identity-provider-issuer": null,
   "saml-identity-provider-certificate": null,
   "saml-keystore-password": null,

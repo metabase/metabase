@@ -23,7 +23,6 @@ import Collections, {
 import Databases from "metabase/entities/databases";
 import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getHasDataAccess } from "metabase/selectors/data";
 import {
   getUser,
   getUserCanWriteToCollections,
