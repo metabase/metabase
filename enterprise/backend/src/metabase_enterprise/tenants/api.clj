@@ -22,6 +22,22 @@
                                       [:attributes {:optional true} [:maybe tenant/Attributes]]
                                       [:slug Slug]])
 
+(def ^:private Tenant [:map {:closed true}
+                       [:id ms/PositiveInt]
+                       [:name ms/NonBlankString]
+                       [:slug Slug]
+                       [:is_active ms/BooleanValue]
+                       [:member_count ms/Int]
+                       [:attributes [:maybe [:map-of :string :string]]]
+                       [:tenant_collection_id ms/PositiveInt]])
+
+(defn- present-tenants [tenants]
+  (->> (t2/hydrate tenants :member_count)
+       (map #(select-keys % [:id :name :slug :is_active :member_count :attributes :tenant_collection_id]))))
+
+(defn- present-tenant [tenant]
+  (first (present-tenants [tenant])))
+
 (defn create-tenant!
   "Creates a new tenant, validating it, verifying that it does not already exist and publishing audit events as
   necessary."
@@ -33,24 +49,18 @@
   (api/check-403 api/*is-superuser?*)
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
-  (u/prog1 (t2/insert-returning-instance! :model/Tenant tenant)
+  (u/prog1 (present-tenant
+            (t2/insert-returning-instance! :model/Tenant tenant))
     (events/publish-event! :event/tenant-create {:object <>})))
 
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/" :- Tenant
   "Create a new Tenant"
   [_route-params
    _query-params
    tenant :- CreateTenantArguments]
   (create-tenant! tenant))
 
-(defn- present-tenants [tenants]
-  (->> (t2/hydrate tenants :member_count)
-       (map #(select-keys % [:id :name :slug :is_active :member_count :attributes :tenant_collection_id]))))
-
-(defn- present-tenant [tenant]
-  (first (present-tenants [tenant])))
-
-(api.macros/defendpoint :get "/"
+(api.macros/defendpoint :get "/" :- [:map {:closed true} [:data [:sequential Tenant]]]
   "Get all tenants"
   [_
    {:keys [status]} :- [:map
@@ -86,7 +96,7 @@
                                                  :previous-object tenant-before-update})
     tenant-after-update))
 
-(api.macros/defendpoint :put ["/:id" :id #"[^/]+"]
+(api.macros/defendpoint :put ["/:id" :id #"[^/]+"] :- Tenant
   "Update a tenant, can set name, attributes, or whether this tenant is active."
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
@@ -96,9 +106,9 @@
     (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant) :id [:not= id]))
                    "This name is already taken."))
   (update-tenant! id tenant)
-  (present-tenant (update-tenant! id tenant)))
+  #p (present-tenant (update-tenant! id tenant)))
 
-(api.macros/defendpoint :get "/:id"
+(api.macros/defendpoint :get "/:id" :- Tenant
   "Get info about a tenant"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)

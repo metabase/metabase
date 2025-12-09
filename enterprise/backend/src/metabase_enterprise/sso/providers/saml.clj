@@ -5,7 +5,7 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.settings.core :as settings]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -118,7 +118,7 @@
             last-name (get attrs (sso-settings/saml-attribute-lastname))
             groups (get attrs (sso-settings/saml-attribute-group))
             tenant-slug (when (and (not-empty (sso-settings/saml-attribute-tenant))
-                                   (settings/get :use-tenants))
+                                   (setting/get :use-tenants))
                           (get attrs (sso-settings/saml-attribute-tenant)))
             user-attributes (sso-utils/remove-invalid-attributes attrs)]
         (when-not email

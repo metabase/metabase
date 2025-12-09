@@ -5,7 +5,7 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.settings.core :as settings]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -51,7 +51,7 @@
                                (jwt-attribute-firstname)
                                (jwt-attribute-lastname)
                                (jwt-attribute-groups)]
-                              (when (settings/get :use-tenants)
+                              (when (setting/get :use-tenants)
                                 [(jwt-attribute-tenant)]))]
     (sso-utils/remove-invalid-attributes (apply dissoc jwt-data excluded-keys))))
 
