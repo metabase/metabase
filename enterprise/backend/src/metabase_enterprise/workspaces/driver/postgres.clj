@@ -32,10 +32,10 @@
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql [(format "CREATE SCHEMA %s" schema-name)
                      (format "CREATE USER %s WITH PASSWORD '%s'" (:user read-user) (:password read-user))
-                     ;; grant all access on the destination schema
-                     (format "GRANT USAGE ON SCHEMA %s TO %s" schema-name (:user read-user))
-                     ;; need to be able insert and dropping, rename tables from this chema
-                     (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" schema-name (:user read-user))]]
+                     ;; grant schema access (CREATE to create tables, USAGE to access them)
+                     (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" schema-name (:user read-user))
+                     ;; grant all privileges on future tables created in this schema (by admin)
+                     (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s" schema-name (:user read-user))]]
           (.addBatch ^java.sql.Statement stmt ^String sql))
         (.executeBatch ^java.sql.Statement stmt)))
     {:schema           schema-name
