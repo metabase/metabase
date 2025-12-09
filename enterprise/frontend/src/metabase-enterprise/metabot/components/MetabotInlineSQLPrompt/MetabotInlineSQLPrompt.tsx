@@ -4,7 +4,7 @@ import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import { Box, Button, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -87,10 +87,14 @@ export const MetabotInlineSQLPrompt = ({
           onClick={handleSubmit}
           disabled={disabled}
           leftSection={
-            isDoingScience ? <Icon name="hourglass" /> : <Icon name="insight" />
+            isDoingScience ? (
+              <Loader size="xs" color="text-light" />
+            ) : (
+              <Icon name="insight" />
+            )
           }
         >
-          {isDoingScience ? t`Generating` : t`Generate`}
+          {isDoingScience ? t`Generating...` : t`Generate`}
         </Button>
         <Button size="xs" variant="subtle" onClick={handleClose}>
           {t`Cancel`}
