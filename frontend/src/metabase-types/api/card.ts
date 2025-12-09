@@ -283,7 +283,7 @@ export type VisualizationSettings = {
   "graph.metrics"?: string[];
 
   // Series settings
-  series_settings?: Record<string, SeriesSettings>;
+  series_settings?: Record<string, SeriesSettings | undefined>;
 
   "graph.series_order"?: SeriesOrderSetting[];
 
