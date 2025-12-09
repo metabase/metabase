@@ -72,7 +72,7 @@ export const ChartSettingSegmentsEditor = ({
                   className={CS.full}
                   value={segment.min}
                   onBlur={(e) =>
-                    onChangeProperty(index, "min", parseInt(e.target.value))
+                    onChangeProperty(index, "min", parseFloat(e.target.value))
                   }
                   placeholder={t`Min`}
                   w="4rem"
@@ -83,7 +83,7 @@ export const ChartSettingSegmentsEditor = ({
                   className={CS.full}
                   value={segment.max}
                   onBlur={(e) =>
-                    onChangeProperty(index, "max", parseInt(e.target.value))
+                    onChangeProperty(index, "max", parseFloat(e.target.value))
                   }
                   placeholder={t`Max`}
                   w="4rem"

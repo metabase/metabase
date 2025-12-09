@@ -86,3 +86,20 @@ it("Should allow you to add a new segment with apropriate defaults", async () =>
     }),
   ]);
 });
+
+it("Should handle floating point values", async () => {
+  const { onChange } = setup();
+
+  const min = await screen.findByDisplayValue("0");
+
+  await userEvent.clear(min);
+  await userEvent.type(min, "12.5");
+  fireEvent.blur(min);
+
+  expect(onChange).toHaveBeenCalledWith(
+    expect.arrayContaining([
+      expect.objectContaining({ ...DEFAULT_VALUE[0], min: 12.5 }),
+      expect.objectContaining(DEFAULT_VALUE[1]),
+    ]),
+  );
+});
