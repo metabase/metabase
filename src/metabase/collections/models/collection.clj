@@ -173,7 +173,8 @@
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
-  (= id (:id (audit/default-audit-collection))))
+  (when-not (audit/analytics-dev-mode)
+    (= id (:id (audit/default-audit-collection)))))
 
 (defmethod mi/can-write? :model/Collection
   ([instance]

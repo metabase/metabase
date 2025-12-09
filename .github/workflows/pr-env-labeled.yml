@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   uberjar:
-    if: ${{ github.event.label.name == 'PR-Env' }}
+    if: ${{ github.event.label.name == 'PR-Env' || github.event.label.name == 'PR-Env-analytics-dev' }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
@@ -19,3 +19,13 @@ jobs:
     if: ${{ github.event.label.name == 'PR-Env' }}
     uses: ./.github/workflows/pr-env.yml
     secrets: inherit
+    with:
+      analytics_dev_mode: false
+
+  pr-env-analytics-dev:
+    needs: [uberjar]
+    if: ${{ github.event.label.name == 'PR-Env-analytics-dev' }}
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+    with:
+      analytics_dev_mode: true

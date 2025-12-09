@@ -10,6 +10,15 @@ concurrency:
 
 jobs:
   pr-env:
-    if: ${{ github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'PR-Env') || github.event.label.name == 'PR-Env' }}
+    if: ${{ (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'PR-Env') && !contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')) || github.event.label.name == 'PR-Env' }}
     uses: ./.github/workflows/pr-env-destroy.yml
     secrets: inherit
+    with:
+      analytics_dev_mode: false
+
+  pr-env-analytics-dev:
+    if: ${{ (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')) || github.event.label.name == 'PR-Env-analytics-dev' }}
+    uses: ./.github/workflows/pr-env-destroy.yml
+    secrets: inherit
+    with:
+      analytics_dev_mode: false

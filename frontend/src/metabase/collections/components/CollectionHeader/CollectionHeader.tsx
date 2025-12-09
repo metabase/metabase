@@ -10,6 +10,7 @@ import { CollectionMenu } from "../CollectionMenu";
 
 import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
+import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
@@ -45,6 +46,7 @@ const CollectionHeader = ({
     collection.can_write && (canUpload || !uploadsEnabled);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
   const hasCuratePermissions = !!collection?.can_write;
+  const showExportButton = isInstanceAnalytics && isAdmin && showUploadButton;
 
   return (
     <HeaderRoot>
@@ -65,6 +67,7 @@ const CollectionHeader = ({
               saveFile={saveFile}
             />
           )}
+          {showExportButton && <CollectionExportAnalytics />}
           {!isInstanceAnalytics && (
             <CollectionTimeline collection={collection} />
           )}
