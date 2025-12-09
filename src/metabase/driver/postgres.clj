@@ -1009,9 +1009,12 @@
       (str "\\x" (String. (Hex/encodeHex bytes))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BIT]
-  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
-  (fn []
-    (.getString rs i)))
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= "bit" (.getColumnTypeName rsmeta i))
+    (fn []
+      (.getString rs i))
+    (fn []
+      (.getObject rs i))))
 
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres
