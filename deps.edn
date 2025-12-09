@@ -89,8 +89,6 @@
                                              :git/url "https://github.com/eerohele/pp"}
   ;; TODO: replace back to normal artifact
   io.github.metabase/macaw                  {:mvn/version "0.2.29"}             ; Parse native SQL queries
-  io.github.resilience4j/resilience4j-retry ^:antq/exclude                      ; 2.x do not support Java 8
-                                            {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
