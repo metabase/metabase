@@ -161,6 +161,13 @@ export type MetabotEntityInfo =
   | MetabotDocumentInfo
   | MetabotTransformInfo;
 
+export type MetabotCodeEdit = {
+  bufferId: string;
+  mode: "rewrite";
+  value: string;
+  active?: boolean;
+};
+
 /* Metabot v3 - API Request Types */
 
 export type MetabotAgentRequest = {

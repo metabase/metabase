@@ -1,12 +1,13 @@
 import type { EditorView } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 import type { Extension } from "@uiw/react-codemirror";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import {
+  addDeveloperMessage,
   deactivateSuggestedCodeEdit,
   getMetabotSuggestedCodeEdit,
 } from "metabase-enterprise/metabot/state";
@@ -85,15 +86,22 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     }
   }, [generatedSql, portalTarget?.view]);
 
-  const hideInput = () => {
+  const hideInput = useCallback(() => {
     portalTarget?.view.dispatch({ effects: hideEffect.of() });
     portalTarget?.view.focus();
-  };
+  }, [portalTarget?.view]);
 
-  const resetInput = () => {
+  const resetInput = useCallback(() => {
     dispatch(deactivateSuggestedCodeEdit("default"));
     hideInput();
-  };
+  }, [dispatch, hideInput]);
+
+  // NOTE: ref is needed for the extension to not be recalculated in the useMemo
+  // below, while still being able to reset the suggestion state on close
+  const resetInputRef = useRef(resetInput);
+  useEffect(() => {
+    resetInputRef.current = resetInput;
+  }, [resetInput]);
 
   const proposedQuestion = useMemo(
     () =>
@@ -103,7 +111,17 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     [generatedSql, question],
   );
 
-  const handleRejectProposed = generatedSql ? resetInput : undefined;
+  const handleRejectProposed = generatedSql
+    ? () => {
+        resetInput();
+        dispatch(
+          addDeveloperMessage({
+            message: `User rejected the following suggestion:\n\n${generatedSql}`,
+          }),
+        );
+      }
+    : undefined;
+
   const handleAcceptProposed = generatedSql
     ? () => {
         if (portalTarget?.view) {
@@ -127,6 +145,7 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
         {
           key: "Mod-e",
           run: (view) => {
+            resetInputRef.current();
             view.dispatch({ effects: toggleEffect.of({ view }) });
             return true;
           },
@@ -142,6 +161,7 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
       ? createPortal(
           <MetabotInlineSQLPrompt
             onClose={hideInput}
+            proposedSQL={generatedSql}
             onAcceptProposed={handleAcceptProposed}
             onRejectProposed={handleRejectProposed}
           />,

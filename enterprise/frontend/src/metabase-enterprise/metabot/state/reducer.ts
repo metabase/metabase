@@ -4,6 +4,7 @@ import _ from "underscore";
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
 import type {
+  MetabotCodeEdit,
   MetabotHistory,
   MetabotTodoItem,
   MetabotTransformInfo,
@@ -83,6 +84,12 @@ export type MetabotChatMessage =
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
 
+export type MetabotDeveloperMessage = {
+  id: string;
+  role: "developer";
+  message: string;
+};
+
 export type MetabotErrorMessage = {
   type: "message" | "alert";
   message: string;
@@ -98,13 +105,6 @@ export type MetabotToolCall = {
 export type MetabotSuggestedTransform = SuggestedTransform & {
   active: boolean;
   suggestionId: string; // internal unique identifier for marking active/inactive
-};
-
-export type MetabotCodeEdit = {
-  bufferId: string;
-  mode: "rewrite";
-  value: string;
-  active?: boolean;
 };
 
 export type MetabotReactionsState = {
@@ -166,6 +166,12 @@ export const metabot = createSlice({
       state.errorMessages = [];
       state.messages.push({ id, role: "user", message, ...rest } as any);
       state.history.push({ id, role: "user", content: message });
+    },
+    addDeveloperMessage: (
+      state,
+      action: PayloadAction<Omit<MetabotDeveloperMessage, "role">>,
+    ) => {
+      state.history.push({ ...action.payload, role: "developer" });
     },
     addAgentMessage: (
       state,

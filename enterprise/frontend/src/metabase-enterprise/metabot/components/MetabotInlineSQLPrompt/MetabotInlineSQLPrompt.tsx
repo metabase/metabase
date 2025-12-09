@@ -14,12 +14,14 @@ import { MetabotPromptInput } from "../MetabotPromptInput";
 import S from "./MetabotInlineSQLPrompt.module.css";
 
 interface MetabotInlineSQLPromptProps {
+  proposedSQL: string | undefined;
   onClose: () => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
 }
 
 export const MetabotInlineSQLPrompt = ({
+  proposedSQL,
   onClose,
   onAcceptProposed,
   onRejectProposed,
@@ -27,14 +29,20 @@ export const MetabotInlineSQLPrompt = ({
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
   const [hasError, setHasError] = useState(false);
-  const { submitInput, isDoingScience, cancelRequest } = useMetabotAgent();
+  const { isDoingScience, submitInput, addDeveloperMessage, cancelRequest } =
+    useMetabotAgent();
 
-  const hasProposal = !!onAcceptProposed && !!onRejectProposed;
+  const hasProposal = !!proposedSQL && !!onAcceptProposed && !!onRejectProposed;
   const disabled = !value.trim() || isDoingScience;
 
   const handleSubmit = useCallback(async () => {
     const value = inputRef.current?.getValue?.().trim() ?? "";
     setHasError(false);
+    if (hasProposal) {
+      addDeveloperMessage(
+        `User rejected the following suggestion:\n\n${proposedSQL}`,
+      );
+    }
     const action = await submitInput(value, {
       profile: METABOT_PROFILE_OVERRIDES.INLINE_SQL,
       preventOpenSidebar: true,
@@ -45,7 +53,7 @@ export const MetabotInlineSQLPrompt = ({
     ) {
       setHasError(true);
     }
-  }, [submitInput]);
+  }, [submitInput, addDeveloperMessage, hasProposal, proposedSQL]);
 
   const handleClose = useCallback(() => {
     cancelRequest();
