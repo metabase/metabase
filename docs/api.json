@@ -5055,6 +5055,8 @@
           }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ExpressionArg"
           }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
+          }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime"
           } ]
         } ]
