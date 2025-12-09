@@ -6,8 +6,6 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
  * Hook that fetches the personal collection for the currently logged-in user.
  * Returns the RTK Query result with the collection data, loading state, and any errors.
  */
- * gets the personal collection for the current user
- */
 export const useGetPersonalCollection = () => {
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const response = useGetCollectionQuery(
