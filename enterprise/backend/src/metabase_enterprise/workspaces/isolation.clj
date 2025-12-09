@@ -3,6 +3,7 @@
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;;;; Driver multimethods
@@ -48,45 +49,40 @@
    isolated table location, but skips actual table duplication."
   ;; TODO: Should be part of mirroring!
   [workspace database ctx]
-  (let [graph (:graph ctx)
+  (let [graph               (:graph ctx)
         existing-output-ids (keep :id (:outputs graph))
         ;; TODO (Chris 2025-11-20) Avoid querying again here, let's have this data passed down as part of the graph
         table-by-id         (when (seq existing-output-ids)
-                              (into {}
-                                    (map (juxt :id identity))
-                                    (t2/select [:model/Table :id :name :schema] :id [:in existing-output-ids])))
-        outputs             (for [upstream-output (:outputs graph)]
-                              (if (:id upstream-output)
-                                ;; Table exists, duplicate it
-                                (let [hydrated-output (merge upstream-output (get table-by-id (:id upstream-output)))
-                                      isolated-table  (duplicate-output-table! database workspace hydrated-output)]
-                                  (t2/insert! :model/WorkspaceMappingTable
-                                              {:upstream_id   (:id upstream-output)
-                                               :downstream_id (:id isolated-table)
-                                               :workspace_id  (:id workspace)})
-                                  (assoc hydrated-output :mapping isolated-table))
-                                ;; Table doesn't exist yet, provide the intended isolated location
-                                (let [isolated-schema (driver.common/isolation-namespace-name workspace)
-                                      isolated-name   (driver.common/isolated-table-name upstream-output)]
-                                  (assoc upstream-output :mapping {:id     nil
-                                                                   :schema isolated-schema
-                                                                   :name   isolated-name}))))
+                              (t2/select-fn->fn :id identity [:model/Table :id :name :schema] :id [:in existing-output-ids]))
+        isolated-schema     (driver.common/isolation-namespace-name workspace)
+        isolated-table->id  (t2/select-fn->fn :name :id [:model/Table :id :name] :db_id (:id database) :schema isolated-schema)
+        outputs             (for [global-output (:outputs graph)]
+                              (let [isolated-table  (driver.common/isolated-table-name global-output)
+                                    isolated-id     (isolated-table->id isolated-table)
+                                    upstream-output (if (:id global-output)
+                                                      (merge global-output (get table-by-id (:id global-output)))
+                                                      global-output)]
+                                ;; TODO name and schema of this table is changing
+                                #_(when isolated-id
+                                    (t2/insert! :model/WorkspaceMappingTable
+                                                {:workspace_id  (:id workspace)
+                                                 :upstream_id   (:id upstream-output)
+                                                 :downstream_id isolated-id}))
+                                (assoc upstream-output :mapping {:id     isolated-id
+                                                                 :schema isolated-schema
+                                                                 :name   isolated-table})))
         src-output-id->dst-output
-        (into {}
-              (comp (filter :id)
-                    (map (fn [{:keys [id mapping]}]
-                           [id mapping])))
-              outputs)
+        (u/for-map [{:keys [id mapping]} outputs :when id]
+          [id mapping])
+
         src-schema+table->dst->schema+table
-        (into {}
-              (map (fn [{:keys [mapping] :as output}]
-                     (let [src-schema (:schema output)
-                           src-table (:name output)
-                           dst-schema (:schema mapping)
-                           dst-table (:name mapping)]
-                       [[src-schema src-table]
-                        [dst-schema dst-table]])))
-              outputs)]
+        (u/for-map [{:keys [mapping] :as output} outputs]
+          (let [src-schema (:schema output)
+                src-table  (:name output)
+                dst-schema (:schema mapping)
+                dst-table  (:name mapping)]
+            [[src-schema src-table]
+             [dst-schema dst-table]]))]
     (-> ctx
         (update :graph assoc :outputs (vec outputs))
         (assoc :src-output-id->dst-output src-output-id->dst-output)

@@ -19,8 +19,11 @@
                         (mt/with-premium-features [:workspaces :dependencies :transforms]
                           (search.tu/with-index-disabled
                             (tests))))))
+
 (use-fixtures :each (fn [tests]
-                      (mt/with-model-cleanup [:model/Collection :model/Workspace :model/Transform
+                      (mt/with-model-cleanup [:model/Collection
+                                              :model/Workspace
+                                              :model/Transform
                                               :model/WorkspaceMappingTransform]
                         (tests))))
 

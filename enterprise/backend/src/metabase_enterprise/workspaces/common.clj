@@ -5,14 +5,11 @@
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
-   [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
@@ -24,16 +21,6 @@
     (api/check-400 false
                    (format "Cannot add transforms that depend on saved questions (cards). Found dependencies on card IDs: %s"
                            (pr-str (vec card-ids))))))
-
-;; wrong, should just be a 404 (not a global id)
-(defn check-transforms-not-in-workspace!
-  "Check that none of the transforms already belong to a workspace. Throws 400 if any do."
-  [transform-ids]
-  (when (seq (t2/select [:model/Transform :id :workspace_id]
-                        :id [:in transform-ids]
-                        :workspace_id [:not= nil]))
-    (throw (ex-info (tru "Cannot add transforms that belong to another workspace")
-                    {:status-code 400}))))
 
 (defn- extract-suffix-number
   "Extract the numeric suffix from a workspace name like 'Foo (3)', or nil if no valid suffix."
@@ -63,23 +50,6 @@
           numbers       (keep #(extract-suffix-number % stripped-name) existing)
           next-num      (inc (apply max 0 numbers))]
       (str stripped-name " (" next-num ")"))))
-
-;; TODO (Chris 2025-11-20) Just subsume the rest of this up into ws.dag/path-induced-subgraph
-(defn- build-graph
-  "Thin wrapper around the dag module, that should probably be absorbed by it."
-  [upstream]
-  (if (not-any? seq (vals upstream))
-    {:db_id      nil
-     :transforms []
-     :inputs     []
-     :outputs    []}
-    (let [graph        (ws.dag/path-induced-subgraph upstream)
-          ;; TODO weaken this, to only check the output databases, for future compatibility with cross-db phyton xforms
-          db-ids       (when-let [table-ids (seq (keep :id (concat #_(:inputs graph) (:outputs graph))))]
-                         (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-          _            (assert (<= (count db-ids) 1) "All inputs and outputs must belong to the same database.")]
-      ;; One reason this is here, is that I don't want the DAG module to have the single-DWH assumption.
-      (assoc graph :db_id (first db-ids)))))
 
 ;; TODO: Generate new metabase user for the workspace
 ;; TODO: Should we move this to model as per the diagram?
@@ -125,19 +95,13 @@
   "Background job: runs isolation, mirroring, grants. Updates status to :ready when done."
   [{ws-id :id :as workspace} database graph]
   (ws.log/track! ws-id :workspace-setup
-    (let [{:keys [schema
-                  database_details]} (ws.log/track! ws-id :database-isolation
+    (let [{:keys [database_details]} (ws.log/track! ws-id :database-isolation
                                        (-> (ws.isolation/ensure-database-isolation! workspace database)
                                            ;; it actually returns just those, this is more like a doc than behavior
                                            (select-keys [:schema :database_details])
                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))
-          ;; not sure this is necessary but `mirror-entities!` will at least get current state
-          workspace                  (assoc workspace :database_details database_details :schema schema)
-          {:keys [inputs]}           (if (empty? (:check-outs graph))
-                                       {}
-                                       (ws.log/track! ws-id :mirror-entities
-                                         (u/prog1 (ws.mirroring/mirror-entities! workspace database graph)
-                                           (t2/update! :model/Workspace ws-id {:graph <>}))))]
+          ;; TODO analyze graph. in the
+          {:keys [inputs]}           {}]
       (when-let [table-ids (seq (keep #(when (= :table (:type %)) (:id %)) inputs))]
         (ws.log/track! ws-id :grant-read-access
           (let [user         (:user database_details)
@@ -174,7 +138,7 @@
   ;; TODO put this in the malli schema for a request
   (assert (or maybe-db-id (some seq (vals upstream))) "Must provide a database_id unless initial entities are given.")
   (let [ws-name  (or ws-name-maybe (str (random-uuid)))
-        graph    (build-graph upstream)
+        graph    nil
         db-id    (or (:db_id graph) maybe-db-id)
         _        (when (and maybe-db-id (:db_id graph))
                    (assert (= maybe-db-id (:db_id graph))
@@ -189,7 +153,7 @@
   [workspace-id]
   (let [all-upstream-ids (t2/select-fn-vec :upstream_id :model/WorkspaceMappingTransform
                                            :workspace_id workspace-id)
-        graph            (build-graph {:transforms all-upstream-ids})
+        graph            nil
         ;; Add from-scratch transforms (those created directly in workspace, not mirrored)
         ;; These have workspace_id set but no entry in WorkspaceMappingTransform
         mirrored-ids     (t2/select-fn-set :downstream_id :model/WorkspaceMappingTransform
@@ -202,17 +166,6 @@
         graph            (update graph :transforms into from-scratch-txs)]
     (t2/update! :model/Workspace workspace-id {:graph graph})
     graph))
-
-(defn add-entities!
-  "Add upstream entities to an existing workspace by mirroring them.
-   Returns the workspace with updated graph."
-  [workspace upstream]
-  (let [new-graph (ws.dag/path-induced-subgraph upstream)
-        database  (t2/select-one :model/Database (:database_id workspace))]
-    (t2/with-transaction [_]
-      (ws.mirroring/mirror-entities! workspace database new-graph)
-      (let [graph (rebuild-workspace-graph! (:id workspace))]
-        (assoc workspace :graph graph)))))
 
 (defn create-transform!
   "Create a new transform directly within a workspace.

@@ -9,6 +9,7 @@
    [clojure.set :as set]
    [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.workspaces.dag :as ws.dag]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.util :as u]))
 
 ;;;; Shorthand notation helpers
@@ -69,7 +70,7 @@
   (let [child->parents (if (map? child->parents) child->parents (into {} child->parents))]
     (into (ordered-map/ordered-map)
           (keep (fn [n] (when-let [deps (get child->parents n)] [n deps])))
-          (#'ws.dag/toposort-dfs child->parents))))
+          (ws.u/toposort-dfs child->parents))))
 
 ;;;; Abstract path-induced subgraph solver
 

@@ -76,21 +76,6 @@
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
-(def ^:private Transform
-  "Schema for a transform in a workspace"
-  [:map
-   [:id ::ws.t/ref-id]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:source_type [:maybe :keyword]]
-   [:source :any]
-   [:target :any]
-   [:workspace_id ::ws.t/appdb-id]
-   [:creator_id ::ws.t/appdb-id]
-   [:run_trigger {:optional true} [:maybe :keyword]]
-   [:created_at {:optional true} :any]
-   [:updated_at {:optional true} :any]])
-
 (defn- check-transforms-enabled!
   [db-id]
   (let [database (api/check-400 (t2/select-one :model/Database db-id)

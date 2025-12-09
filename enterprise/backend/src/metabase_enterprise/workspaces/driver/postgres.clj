@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
-   [metabase-enterprise.workspaces.sync :as ws.sync]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]))
 
@@ -34,29 +33,6 @@
       (jdbc/execute! jdbc-spec [sql]))
     {:schema           schema-name
      :database_details read-user}))
-
-(defmethod isolation/duplicate-output-table! :postgres
-  [database workspace output]
-  (let [details            (:details database)
-        driver*            (driver.u/database->driver database)
-        jdbc-spec          (sql-jdbc.conn/connection-details->spec driver* details)
-        source-schema      (:schema output)
-        source-table       (:name output)
-        isolated-schema    (:schema workspace)
-        isolated-table     (driver.common/isolated-table-name output)]
-    (assert (every? some? [source-schema source-table isolated-schema isolated-table]) "Figured out table")
-    ;; TODO: execute the following only if the transform was previously executed and its table exists.
-    (doseq [sql [(format (str "CREATE TABLE \"%s\".\"%s\""
-                              "  AS SELECT * FROM \"%s\".\"%s\""
-                              "WITH NO DATA")
-                         isolated-schema
-                         isolated-table
-                         source-schema
-                         source-table)
-                 (format "ALTER TABLE \"%s\".\"%s\" OWNER TO %s" isolated-schema isolated-table (-> workspace :database_details :user))]]
-      (jdbc/execute! jdbc-spec [sql]))
-    (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]
-      (select-keys table-metadata [:id :schema :name]))))
 
 (defmethod isolation/drop-isolated-tables! :postgres
   [database s+t-tuples]
