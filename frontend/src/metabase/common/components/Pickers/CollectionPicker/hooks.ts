@@ -52,7 +52,6 @@ const getTenantSpecificCollectionsRoot = (): CollectionPickerItem | null => {
 export const useRootCollectionPickerItems = (
   options: CollectionItemListProps["options"],
 ) => {
-  const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
@@ -61,11 +60,7 @@ export const useRootCollectionPickerItems = (
   const tenantsEnabled = useSetting("use-tenants");
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
-    useGetCollectionQuery(
-      currentUser?.personal_collection_id
-        ? { id: currentUser.personal_collection_id }
-        : skipToken,
-    );
+    useGetPersonalCollection();
 
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection({
@@ -76,9 +71,9 @@ export const useRootCollectionPickerItems = (
     data: personalCollectionItems,
     isLoading: isLoadingPersonalCollectionItems,
   } = useListCollectionItemsQuery(
-    currentUser?.personal_collection_id
+    personalCollection
       ? {
-          id: currentUser?.personal_collection_id,
+          id: personalCollection.id,
           models: ["collection", "dashboard"],
           limit: 0, // we only want total number of items
         }
@@ -231,7 +226,6 @@ export const useRootCollectionPickerItems = (
 
     return collectionItems;
   }, [
-    currentUser,
     personalCollection,
     rootCollection,
     isAdmin,
