@@ -5,6 +5,7 @@ import { permissionApi } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 
@@ -23,6 +24,11 @@ export const EditUserStrategyModal = ({
     useAdminSetting("use-tenants");
 
   const [addToast] = useToast();
+  const { modalContent: confirmationModal, show: showConfirmation } =
+    useConfirmation();
+
+  // When the confirmation modal is confirmed, we don't have to show the parent modal while the request is ongoing
+  const [isApplyingAfterConfirm, setIsApplyingAfterConfirm] = useState(false);
 
   const initialStrategy = value ? "multi-tenant" : "single-tenant";
 
@@ -33,7 +39,28 @@ export const EditUserStrategyModal = ({
     setSelectedStrategy(initialStrategy);
   }, [initialStrategy]);
 
+  const isDisablingTenants =
+    initialStrategy === "multi-tenant" && selectedStrategy === "single-tenant";
+
   const handleApply = async () => {
+    if (isDisablingTenants) {
+      const confirmed = await new Promise<boolean>((resolve) =>
+        showConfirmation({
+          title: t`Disable tenants?`,
+          message: t`Disabling the tenants feature will automatically disable all tenant users. Email addresses must be unique across internal and tenant users, so if you are planning to set up existing tenant users as regular users again, you should first change their email addresses.`,
+          confirmButtonText: t`Proceed and disable`,
+          onConfirm: () => resolve(true),
+          onCancel: () => resolve(false),
+        }),
+      );
+
+      if (!confirmed) {
+        return;
+      } else {
+        setIsApplyingAfterConfirm(true);
+      }
+    }
+
     const response = await updateSetting({
       key: "use-tenants",
       value: selectedStrategy === "multi-tenant",
@@ -42,6 +69,7 @@ export const EditUserStrategyModal = ({
     // Revert selection to initial value if update fails
     if (response.error) {
       setSelectedStrategy(initialStrategy);
+      setIsApplyingAfterConfirm(false);
       return;
     }
 
@@ -60,6 +88,7 @@ export const EditUserStrategyModal = ({
       ]),
     );
 
+    setIsApplyingAfterConfirm(false);
     onClose();
   };
 
@@ -83,55 +112,61 @@ export const EditUserStrategyModal = ({
   ];
 
   return (
-    <Modal
-      opened
-      title={t`User strategy`}
-      padding="xl"
-      size="md"
-      onClose={onClose}
-    >
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
-        <Stack gap="md" mt="sm">
-          <Radio.Group value={selectedStrategy} onChange={setSelectedStrategy}>
-            <Stack gap="md">
-              {strategyOptions.map((option) => (
-                <Radio.Card
-                  key={option.value}
-                  value={option.value}
-                  radius="md"
-                  p="md"
-                  className={S.radioCard}
-                >
-                  <Group wrap="nowrap">
-                    <Radio.Indicator />
+    <>
+      <Modal
+        opened={!confirmationModal && !isApplyingAfterConfirm}
+        title={t`User strategy`}
+        padding="xl"
+        size="md"
+        onClose={onClose}
+      >
+        <LoadingAndErrorWrapper loading={isLoading} error={error}>
+          <Stack gap="md" mt="sm">
+            <Radio.Group
+              value={selectedStrategy}
+              onChange={setSelectedStrategy}
+            >
+              <Stack gap="md">
+                {strategyOptions.map((option) => (
+                  <Radio.Card
+                    key={option.value}
+                    value={option.value}
+                    radius="md"
+                    p="md"
+                    className={S.radioCard}
+                  >
+                    <Group wrap="nowrap">
+                      <Radio.Indicator />
 
-                    <div>
-                      <Text fw={700} fz="lg" lh="xl" mb="xs">
-                        {option.title}
-                      </Text>
+                      <div>
+                        <Text fw={700} fz="lg" lh="xl" mb="xs">
+                          {option.title}
+                        </Text>
 
-                      <Text c="text-secondary" fz="sm" lh="lg">
-                        {option.description}
-                      </Text>
-                    </div>
-                  </Group>
-                </Radio.Card>
-              ))}
-            </Stack>
-          </Radio.Group>
+                        <Text c="text-secondary" fz="sm" lh="lg">
+                          {option.description}
+                        </Text>
+                      </div>
+                    </Group>
+                  </Radio.Card>
+                ))}
+              </Stack>
+            </Radio.Group>
 
-          <Flex justify="flex-end" gap="md" mt="md">
-            <Button variant="outline" onClick={handleCancel}>
-              {t`Cancel`}
-            </Button>
+            <Flex justify="flex-end" gap="md" mt="md">
+              <Button variant="outline" onClick={handleCancel}>
+                {t`Cancel`}
+              </Button>
 
-            <Button
-              onClick={handleApply}
-              disabled={initialStrategy === selectedStrategy}
-            >{t`Apply`}</Button>
-          </Flex>
-        </Stack>
-      </LoadingAndErrorWrapper>
-    </Modal>
+              <Button
+                onClick={handleApply}
+                disabled={initialStrategy === selectedStrategy}
+              >{t`Apply`}</Button>
+            </Flex>
+          </Stack>
+        </LoadingAndErrorWrapper>
+      </Modal>
+      {confirmationModal}
+    </>
   );
 };

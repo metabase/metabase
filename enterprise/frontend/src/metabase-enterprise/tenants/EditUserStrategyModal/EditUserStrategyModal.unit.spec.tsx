@@ -1,3 +1,4 @@
+import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -99,6 +100,70 @@ describe("EditUserStrategyModal", () => {
 
     const puts = await findRequests("PUT");
     expect(puts[0].body).toEqual({ value: true });
+  });
+
+  it("asks for confirmation before disabling and only sends after confirm", async () => {
+    await setup({ useTenants: true });
+
+    await userEvent.click(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: false,
+      }),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Apply/ }));
+
+    const confirmModal = await screen.findByTestId("confirm-modal");
+    expect(
+      within(confirmModal).getByText(/Disable tenants\?/i),
+    ).toBeInTheDocument();
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(0);
+    });
+
+    await userEvent.click(
+      within(confirmModal).getByRole("button", {
+        name: /Proceed and disable/i,
+      }),
+    );
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+    });
+
+    const puts = await findRequests("PUT");
+    expect(puts[0].body).toEqual({ value: false });
+  });
+
+  it("closes confirmation without sending when disabling is cancelled", async () => {
+    await setup({ useTenants: true });
+
+    await userEvent.click(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: false,
+      }),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Apply/ }));
+
+    const confirmModal = await screen.findByTestId("confirm-modal");
+    await userEvent.click(
+      within(confirmModal).getByRole("button", { name: /Cancel/i }),
+    );
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(0);
+    });
+
+    expect(
+      screen.getByRole("radio", { name: /Single tenant/, checked: true }),
+    ).toBeInTheDocument();
   });
 
   it("reverts the selected user strategy if the setting update fails", async () => {
