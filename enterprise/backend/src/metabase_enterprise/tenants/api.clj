@@ -33,7 +33,7 @@
   (api/check-403 api/*is-superuser?*)
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
-  (u/prog1 (t2/insert-returning-instance! :model/Tenant (dissoc tenant ::is-verified?))
+  (u/prog1 (t2/insert-returning-instance! :model/Tenant tenant)
     (events/publish-event! :event/tenant-create {:object <>})))
 
 (api.macros/defendpoint :post "/"
