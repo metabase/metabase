@@ -53,7 +53,7 @@ export function ModelingLandingPage() {
 
   const libraryCollection = collections.find(isLibraryCollection);
 
-  const modelCollection =
+  const tableCollection =
     libraryCollection &&
     getWritableCollection(libraryCollection, "library-data");
 
@@ -76,10 +76,10 @@ export function ModelingLandingPage() {
     [dispatch],
   );
   const {
-    tree: modelsTree,
-    hasChildren: hasModels,
-    isLoading: loadingModels,
-  } = useBuildTreeForCollection(modelCollection);
+    tree: tablesTree,
+    hasChildren: hasTables,
+    isLoading: loadingTables,
+  } = useBuildTreeForCollection(tableCollection);
   const {
     tree: metricsTree,
     hasChildren: hasMetrics,
@@ -92,13 +92,13 @@ export function ModelingLandingPage() {
   } = useBuildSnippetTree();
 
   const filteredTree = useTreeFilter({
-    data: [...modelsTree, ...metricsTree, ...snippetTree],
+    data: [...tablesTree, ...metricsTree, ...snippetTree],
     searchQuery,
     searchProps: ["name"],
   });
 
-  const libraryHasContent = hasModels || hasMetrics || hasSnippets;
-  const isLoading = loadingModels || loadingMetrics || loadingSnippets;
+  const libraryHasContent = hasTables || hasMetrics || hasSnippets;
+  const isLoading = loadingTables || loadingMetrics || loadingSnippets;
 
   return (
     <>
