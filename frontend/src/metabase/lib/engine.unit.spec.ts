@@ -53,6 +53,62 @@ describe("formatNativeQuery", () => {
     expect(formatNativeQuery("-- foo", "postgres")).toEqual("-- foo");
   });
 
+  it("should not format SQL keywords inside comment lines", () => {
+    expect(
+      formatNativeQuery(
+        "-- SELECT * FROM products WHERE category = 'Widget'\nSELECT * FROM products WHERE category = 'Widget'",
+        "postgres",
+      ),
+    ).toEqual(
+      "-- SELECT * FROM products WHERE category = 'Widget'\nSELECT *\nFROM products\nWHERE category = 'Widget'",
+    );
+
+    expect(
+      formatNativeQuery(
+        "-- SELECT * FROM products LEFT JOIN orders ON products.id = orders.product_id\nSELECT * FROM products LEFT JOIN orders ON products.id = orders.product_id",
+        "postgres",
+      ),
+    ).toEqual(
+      "-- SELECT * FROM products LEFT JOIN orders ON products.id = orders.product_id\nSELECT *\nFROM products\nLEFT JOIN orders ON products.id = orders.product_id",
+    );
+
+    expect(
+      formatNativeQuery(
+        "-- SELECT * FROM products GROUP BY category\nSELECT * FROM products GROUP BY category",
+        "postgres",
+      ),
+    ).toEqual(
+      "-- SELECT * FROM products GROUP BY category\nSELECT *\nFROM products\nGROUP BY category",
+    );
+
+    expect(
+      formatNativeQuery(
+        "-- SELECT * FROM products ORDER BY category\nSELECT * FROM products ORDER BY category",
+        "postgres",
+      ),
+    ).toEqual(
+      "-- SELECT * FROM products ORDER BY category\nSELECT *\nFROM products\nORDER BY category",
+    );
+
+    expect(
+      formatNativeQuery(
+        "-- SELECT * FROM products LIMIT 3\nSELECT * FROM products LIMIT 3",
+        "postgres",
+      ),
+    ).toEqual(
+      "-- SELECT * FROM products LIMIT 3\nSELECT *\nFROM products\nLIMIT 3",
+    );
+
+    expect(
+      formatNativeQuery(
+        "-- SELECT * FROM products WHERE category = 'Widget' AND (rating > 4 OR rating < 2)\nSELECT * FROM products WHERE category = 'Widget' AND (rating > 4 OR rating < 2)",
+        "postgres",
+      ),
+    ).toEqual(
+      "-- SELECT * FROM products WHERE category = 'Widget' AND (rating > 4 OR rating < 2)\nSELECT *\nFROM products\nWHERE category = 'Widget'\n   AND (rating > 4\n    OR rating < 2)",
+    );
+  });
+
   it("should return formatted JSON", () => {
     expect(formatNativeQuery({}, "mongo")).toEqual("{}");
     expect(formatNativeQuery([], "mongo")).toEqual("[]");
