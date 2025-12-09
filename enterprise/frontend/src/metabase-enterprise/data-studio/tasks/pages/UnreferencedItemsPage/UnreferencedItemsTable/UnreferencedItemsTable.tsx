@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 import type {
   UnreferencedItem,
@@ -22,7 +22,7 @@ type UnreferencedItemsTableProps = {
   onPageChange?: (pageIndex: number) => void;
 };
 
-export function UnreferencedItemsTable({
+export const UnreferencedItemsTable = memo(function UnreferencedItemsTable({
   items,
   sortColumn,
   sortDirection,
@@ -49,4 +49,4 @@ export function UnreferencedItemsTable({
       onPageChange={onPageChange}
     />
   );
-}
+});
