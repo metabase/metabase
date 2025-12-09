@@ -166,6 +166,7 @@ function setup({
   });
 
   const onChange = jest.fn();
+  const setOnUpdateCallback = jest.fn();
   const params = {};
 
   renderWithProviders(
@@ -177,6 +178,7 @@ function setup({
             initialValue={path}
             onChange={onChange}
             params={params}
+            setOnUpdateCallback={setOnUpdateCallback}
           />
         </SelectionProvider>
       )}
