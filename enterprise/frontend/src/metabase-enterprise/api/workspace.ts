@@ -9,6 +9,8 @@ import type {
   ValidateTableNameResponse,
   Workspace,
   WorkspaceContents,
+  WorkspaceExecuteRequest,
+  WorkspaceExecuteResponse,
   WorkspaceId,
   WorkspaceListResponse,
   WorkspaceLogResponse,
@@ -171,6 +173,18 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (_, _error, id) => [idTag("workspace", id)],
     }),
+    executeWorkspace: builder.mutation<
+      WorkspaceExecuteResponse,
+      WorkspaceExecuteRequest
+    >({
+      query: ({ id, stale_only }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/execute`,
+        params: stale_only ? { stale_only: 1 } : undefined,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("workspace", id), tag("transform")]),
+    }),
   }),
 });
 
@@ -190,4 +204,5 @@ export const {
   useUpdateWorkspaceNameMutation,
   useGetWorkspaceTablesQuery,
   useGetWorkspaceLogQuery,
+  useExecuteWorkspaceMutation,
 } = workspaceApi;

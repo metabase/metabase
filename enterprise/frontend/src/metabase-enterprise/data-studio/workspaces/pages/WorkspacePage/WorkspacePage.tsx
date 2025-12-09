@@ -40,6 +40,7 @@ import {
   useUpdateWorkspaceNameMutation,
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import {
@@ -423,15 +424,21 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             onChange={handleWorkspaceNameChange}
           />
         </Flex>
-        <Button
-          variant="filled"
-          onClick={handleMergeWorkspace}
-          loading={isMerging}
-          disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
-          size="xs"
-        >
-          {t`Merge`}
-        </Button>
+        <Flex gap="sm">
+          <RunWorkspaceMenu
+            workspaceId={id}
+            disabled={workspaceTransforms.length === 0}
+          />
+          <Button
+            variant="filled"
+            onClick={handleMergeWorkspace}
+            loading={isMerging}
+            disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
+            size="xs"
+          >
+            {t`Merge`}
+          </Button>
+        </Flex>
       </Group>
 
       <Group
