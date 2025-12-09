@@ -65,31 +65,19 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     getMetabotSuggestedCodeEdit(state, "default"),
   )?.value;
 
-  // HACK: Closing and reopening the widget when we receive generated SQL
-  // to force CodeMirror to recalculate gutter positions. The line numbers
-  // and diff UI seem to not respect the height of the prompt input and
-  // forcing a remeasure doesn't seem to be sufficient. RAF usage is needed
-  // otherwise the effects happen too quickly and the measureing doesn't
-  // happen correctly
-  useEffect(() => {
-    if (generatedSql && portalTarget?.view) {
-      requestAnimationFrame(() => {
-        portalTarget.view.dispatch({ effects: hideEffect.of() });
-        portalTarget.view.dispatch({
-          effects: toggleEffect.of({ view: portalTarget.view }),
-        });
-        // Focus the SQL editor after reopening
-        requestAnimationFrame(() => {
-          portalTarget.view.focus();
-        });
-      });
-    }
-  }, [generatedSql, portalTarget?.view]);
-
   const hideInput = useCallback(() => {
     portalTarget?.view.dispatch({ effects: hideEffect.of() });
     portalTarget?.view.focus();
   }, [portalTarget?.view]);
+
+  useEffect(
+    function autoCloseOnResult() {
+      if (generatedSql) {
+        hideInput();
+      }
+    },
+    [generatedSql, hideInput],
+  );
 
   const resetInput = useCallback(() => {
     dispatch(deactivateSuggestedCodeEdit("default"));
@@ -122,28 +110,14 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
       }
     : undefined;
 
-  const handleAcceptProposed = generatedSql
-    ? () => {
-        if (portalTarget?.view) {
-          const { view } = portalTarget;
-          view.dispatch({
-            changes: {
-              from: 0,
-              to: view.state.doc.length,
-              insert: generatedSql,
-            },
-          });
-        }
-        resetInput();
-      }
-    : undefined;
+  const handleAcceptProposed = generatedSql ? resetInput : undefined;
 
   const extensions = useMemo(
     () => [
       createPromptInputExtension(setPortalTarget),
       keymap.of([
         {
-          key: "Mod-i",
+          key: "Mod-;",
           run: (view) => {
             resetInputRef.current();
             view.dispatch({ effects: toggleEffect.of({ view }) });
@@ -159,15 +133,12 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     extensions,
     portalElement: portalTarget
       ? createPortal(
-          <MetabotInlineSQLPrompt
-            onClose={hideInput}
-            proposedSQL={generatedSql}
-            onAcceptProposed={handleAcceptProposed}
-            onRejectProposed={handleRejectProposed}
-          />,
+          <MetabotInlineSQLPrompt onClose={hideInput} />,
           portalTarget.container,
         )
       : null,
     proposedQuestion,
+    handleRejectProposed,
+    handleAcceptProposed,
   };
 }

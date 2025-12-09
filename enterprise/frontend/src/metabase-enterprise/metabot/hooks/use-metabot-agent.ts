@@ -8,7 +8,6 @@ import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
-  addDeveloperMessage as addDeveloperMessageAction,
   cancelInflightAgentRequests,
   getActiveToolCalls,
   getAgentErrorMessages,
@@ -155,13 +154,6 @@ export const useMetabotAgent = () => {
     ],
   );
 
-  const addDeveloperMessage = useCallback(
-    (message: string) => {
-      dispatch(addDeveloperMessageAction(message));
-    },
-    [dispatch],
-  );
-
   const retryMessage = useCallback(
     async (messageId: string) => {
       const context = await getChatContext();
@@ -216,6 +208,5 @@ export const useMetabotAgent = () => {
     profileOverride,
     setProfileOverride,
     reactions,
-    addDeveloperMessage,
   };
 };
