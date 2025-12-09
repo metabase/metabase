@@ -1,9 +1,9 @@
 (ns metabase-enterprise.metabot-v3.dummy-tools
   (:require
    [medley.core :as m]
-   [metabase-enterprise.documents.core :as documents]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
+   [metabase.documents.core :as documents]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

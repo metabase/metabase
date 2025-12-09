@@ -40,6 +40,7 @@ import type Question from "metabase-lib/v1/Question";
 import { staticQuestionSchema } from "./StaticQuestion.schema";
 
 /**
+ * @interface
  * @expand
  * @category StaticQuestion
  */

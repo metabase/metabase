@@ -60,7 +60,9 @@ describe(
       });
 
       cy.log("shows tooltip with fair usage info");
-      getEmbedSidebar().findByLabelText("info icon").trigger("mouseover");
+      embedModalEnableEmbeddingCard()
+        .findByLabelText("info icon")
+        .trigger("mouseover");
 
       H.hovercard()
         .contains(
@@ -68,7 +70,9 @@ describe(
         )
         .should("be.visible");
 
-      getEmbedSidebar().findByLabelText("info icon").trigger("mouseout");
+      embedModalEnableEmbeddingCard()
+        .findByLabelText("info icon")
+        .trigger("mouseout");
 
       cy.findByRole("button", { name: "Agree and enable" }).should(
         "be.visible",

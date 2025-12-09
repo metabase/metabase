@@ -11,9 +11,14 @@ import type { TreePath } from "./types";
 
 type Props = TreePath & {
   params: RouteParams;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 };
 
-export function RouterTablePicker({ params, ...props }: Props) {
+export function RouterTablePicker({
+  params,
+  setOnUpdateCallback,
+  ...props
+}: Props) {
   const dispatch = useDispatch();
   const [value, setValue] = useState(props);
   const {
@@ -55,17 +60,26 @@ export function RouterTablePicker({ params, ...props }: Props) {
     });
   }, [propDatabaseId, propSchemaName, propTableId]);
 
-  return <TablePicker path={value} onChange={onChange} params={params} />;
+  return (
+    <TablePicker
+      path={value}
+      onChange={onChange}
+      params={params}
+      setOnUpdateCallback={setOnUpdateCallback}
+    />
+  );
 }
 
 export function UncontrolledTablePicker({
   initialValue,
   onChange,
   params,
+  setOnUpdateCallback,
 }: {
   initialValue: TreePath;
   onChange?: (path: TreePath) => void;
   params: RouteParams;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }) {
   const [value, setValue] = useState(initialValue);
   const handleChange = useCallback(
@@ -75,5 +89,12 @@ export function UncontrolledTablePicker({
     },
     [onChange],
   );
-  return <TablePicker path={value} onChange={handleChange} params={params} />;
+  return (
+    <TablePicker
+      path={value}
+      onChange={handleChange}
+      params={params}
+      setOnUpdateCallback={setOnUpdateCallback}
+    />
+  );
 }

@@ -210,7 +210,7 @@ export type EmbedWizardOpenedEvent = ValidateEvent<{
 
 export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
   event: "embed_wizard_experience_completed";
-  event_detail: "default" | `custom=${SdkIframeEmbedSetupExperience}`;
+  event_detail: string;
 }>;
 
 export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{

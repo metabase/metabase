@@ -1,6 +1,6 @@
 (ns metabase.query-processor.api
   "/api/dataset endpoints."
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [not-empty get-in])
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -33,7 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :refer [not-empty]]
+   [metabase.util.performance :refer [not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
