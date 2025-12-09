@@ -72,23 +72,31 @@ type NavigateToStepOptions =
   | {
       experience: "exploration" | "metabot";
       resourceName?: never;
+      preselectSso?: boolean;
     }
   | {
       experience: "dashboard" | "chart" | "browser";
       resourceName: string;
+      preselectSso?: boolean;
     };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience } = options;
+  const { experience, preselectSso } = options;
 
   visitNewEmbedPage();
 
   cy.log("select an experience");
 
+  const isQuestionOrDashboardExperience =
+    experience === "chart" || experience === "dashboard";
   const hasEntitySelection =
     experience !== "exploration" && experience !== "metabot";
+
+  if (preselectSso || !isQuestionOrDashboardExperience) {
+    cy.findByLabelText("Metabase account (SSO)").click();
+  }
 
   const labelByExperience = match(experience)
     .with("chart", () => "Chart")

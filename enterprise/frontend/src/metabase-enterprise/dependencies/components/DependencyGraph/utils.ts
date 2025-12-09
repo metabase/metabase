@@ -230,6 +230,14 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
           },
         ];
       }
+      if (node.data.document != null) {
+        return [
+          {
+            label: node.data.document.name,
+            url: Urls.document(node.data.document),
+          },
+        ];
+      }
       if (node.data.collection != null) {
         return [
           {
