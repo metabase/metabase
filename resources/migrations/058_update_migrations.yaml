@@ -963,7 +963,7 @@ databaseChangeLog:
                   name: type
                   value: 'library-models'
             where: type = 'library-data'
-     
+
   - changeSet:
       id: v58.2025-12-09T00:00:00
       author: nmezzopera
