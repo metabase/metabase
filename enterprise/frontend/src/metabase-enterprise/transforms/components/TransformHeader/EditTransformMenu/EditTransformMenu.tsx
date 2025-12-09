@@ -23,7 +23,7 @@ import {
   useGetWorkspacesQuery,
   useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
-import { CreateWorkspaceModal } from "metabase-enterprise/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
+import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
 import type { Transform, Workspace } from "metabase-types/api";
 
 type EditTransformMenuProps = {
