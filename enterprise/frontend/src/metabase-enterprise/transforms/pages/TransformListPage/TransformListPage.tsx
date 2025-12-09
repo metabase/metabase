@@ -17,7 +17,7 @@ import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEm
 import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { Transform } from "metabase-types/api";
 
-export const TransformListPageSidebar = () => {
+export const TransformListPage = () => {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
