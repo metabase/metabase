@@ -854,7 +854,7 @@
               (is (not (saml-test/successful-login? response)))
               (is (str/includes? #p (:body response) "Cannot add tenant claim to internal user")))))))))
 
-(deftest internal-user-can-login-with-tenant-claim-even-if-tenants-disabled
+(deftest internal-user-cannot-login-with-tenant-claim-if-tenants-disabled
   (testing "Internal user cannot log in with tenant claim in JWT"
     (with-jwt-default-setup!
       (mt/with-additional-premium-features #{:tenants}
@@ -862,7 +862,7 @@
           (mt/with-temp [:model/Tenant _ {:slug "tenant-mctenantson"
                                           :name "Tenant McTenantson"}
                          :model/User {email-without-tenant :email} {}]
-            (let [response (client/client-real-response :get 302 "/auth/sso"
+            (let [response (client/client-real-response :get 403 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
                                                         :jwt
@@ -871,10 +871,9 @@
                                                           "@tenant" "tenant-mctenantson"
                                                           :foo "bar"}
                                                          default-jwt-secret))]
-              (is (saml-test/successful-login? response))
+              (is (not (saml-test/successful-login? response)))
               ;; the `@tenant` key is special, does not become a user attribute
-              (is (= {"foo" "bar"}
-                     (t2/select-one-fn :jwt_attributes :model/User :email email-without-tenant))))))))))
+              (is (nil? (t2/select-one-fn :jwt_attributes :model/User :email email-without-tenant))))))))))
 
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."

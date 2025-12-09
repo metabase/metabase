@@ -93,7 +93,7 @@
                            :error :missing-email})))
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
         {:success? true
-         :tenant-slug (when (settings/get :use-tenants) tenant-slug)
+         :tenant-slug tenant-slug
          :user-data (->> {:email email
                           :first_name first-name
                           :last_name last-name
