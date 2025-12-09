@@ -160,10 +160,10 @@ export function dataStudioTasksUnreferenced({
     searchParams.set("page", page.toString());
   }
   if (sortColumn != null) {
-    searchParams.set("sortColumn", sortColumn);
+    searchParams.set("sort-column", sortColumn);
   }
   if (sortDirection != null) {
-    searchParams.set("sortDirection", sortDirection);
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const baseUrl = `${dataStudioTasks()}/unreferenced`;

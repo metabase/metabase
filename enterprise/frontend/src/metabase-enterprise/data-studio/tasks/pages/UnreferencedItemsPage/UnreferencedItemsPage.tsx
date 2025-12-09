@@ -42,6 +42,7 @@ export function UnreferencedItemsPage({
     useMemo(
       () => ({
         types: ["table", "card", "snippet"],
+        card_types: ["question", "model", "metric"],
         query: searchQuery,
         offset: page * PAGE_SIZE,
         limit: PAGE_SIZE,

@@ -231,7 +231,10 @@ export type UnreferencedTableItem = BaseUnreferencedItem<
   UnreferencedTableItemData
 >;
 
-export type UnreferencedCardItemData = Pick<Card, "name" | "type" | "display">;
+export type UnreferencedCardItemData = Pick<
+  Card,
+  "name" | "type" | "display" | "last-edit-info"
+>;
 
 export type UnreferencedCardItem = BaseUnreferencedItem<
   "card",

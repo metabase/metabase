@@ -38,8 +38,8 @@ export function parseRawParams(
 ): Urls.UnreferencedItemsParams {
   return {
     page: parseNumber(rawParams.page),
-    sortColumn: parseSortColumn(rawParams.sortColumn),
-    sortDirection: parseSortDirection(rawParams.sortDirection),
+    sortColumn: parseSortColumn(rawParams["sort-column"]),
+    sortDirection: parseSortDirection(rawParams["sort-direction"]),
   };
 }
 

@@ -1,17 +1,16 @@
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { BaseCell } from "metabase/data-grid";
 
-export type TextCellAlign = "left" | "right";
+import S from "./TextCell.module.css";
 
 export type TextCellProps = {
-  value: string;
-  align?: TextCellAlign;
+  value?: string;
 };
 
-export function TextCell({ value, align = "left" }: TextCellProps) {
+export function TextCell({ value }: TextCellProps) {
   return (
-    <BaseCell align={align}>
-      <Ellipsified>{value}</Ellipsified>
+    <BaseCell className={S.cell}>
+      {value != null ? <Ellipsified>{value}</Ellipsified> : null}
     </BaseCell>
   );
 }
