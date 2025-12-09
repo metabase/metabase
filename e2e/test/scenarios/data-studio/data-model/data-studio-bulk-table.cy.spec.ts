@@ -174,34 +174,38 @@ describe("bulk table operations", () => {
   });
 
   describe(
-    "several databases with several schemas at once",
+    "several databases with several schemas at once (metabase#GDGT-1275)",
     { tags: ["@external"] },
     () => {
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        H.activateToken("bleeding-edge");
+        H.createLibrary();
+        cy.signInAsAdmin();
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+        H.DataModel.visitDataStudio();
+      });
+
       [{ withFilter: false }, { withFilter: true }].forEach(
         ({ withFilter }) => {
-          beforeEach(() => {
-            H.restore("postgres-writable");
-            H.activateToken("bleeding-edge");
-            H.createLibrary();
-            cy.signInAsAdmin();
-            H.resetTestTable({ type: "postgres", table: "multi_schema" });
-            H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-            H.DataModel.visitDataStudio();
+          it(`should change metadata and see that is changed for all selected tables withFilter=${withFilter}`, () => {
+            cy.log("change the owner and check the owner column");
             if (withFilter) {
               TablePicker.getSearchInput().type("a");
+            } else {
+              TablePicker.getDatabase("Writable Postgres12").click();
+              TablePicker.getDatabase("Sample Database").click();
+              TablePicker.getSchema("Domestic").click();
             }
-            TablePicker.getDatabase("Writable Postgres12").click();
-            TablePicker.getDatabase("Sample Database").click();
+
             TablePicker.getTable("Accounts")
               .find('input[type="checkbox"]')
               .check();
-            TablePicker.getSchema("Domestic").click();
+
             TablePicker.getTable("Animals")
               .find('input[type="checkbox"]')
               .check();
-          });
-
-          it(`should show actual owner in the table after the change withFilter=${withFilter}`, () => {
             H.selectHasValue("Owner", "").click();
             H.selectDropdown().contains("Bobby Tables").click();
 
@@ -210,9 +214,24 @@ describe("bulk table operations", () => {
                 .findByTestId("table-owner")
                 .should("have.text", "Bobby Tables");
             });
-          });
 
-          it(`should show actual published stated in the table after it's published withFilter=${withFilter}`, () => {
+            cy.log("publish and check publish state column");
+
+            /**
+             * we need to wait a little until sidebar is closed. Otherwise, the button will be found, but it will be immediately removed.
+             * And then we have to reselect because when there is a filter rows are unselected after a change
+             */
+            cy.wait(100);
+            if (withFilter) {
+              TablePicker.getTable("Accounts")
+                .find('input[type="checkbox"]')
+                .check();
+
+              TablePicker.getTable("Animals")
+                .find('input[type="checkbox"]')
+                .check();
+            }
+
             cy.findByRole("button", { name: /Publish/ }).click();
             H.modal().findByText("Publish these tables").click();
             cy.wait("@publishTables");
