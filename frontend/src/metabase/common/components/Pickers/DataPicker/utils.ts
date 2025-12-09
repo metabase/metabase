@@ -143,9 +143,8 @@ export const createShouldShowItem = (
 
     if (item.model === "card" && models.includes(item.model)) {
       return (
-        hasNoDb ||
-        (canCollectionCardBeUsed(item as CollectionItem) &&
-          item.database_id === databaseId)
+        canCollectionCardBeUsed(item as CollectionItem) &&
+        (hasNoDb || item.database_id === databaseId)
       );
     }
 
