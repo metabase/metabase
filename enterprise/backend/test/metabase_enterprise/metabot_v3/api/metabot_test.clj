@@ -180,18 +180,13 @@
   (testing "GET /api/ee/metabot-v3/metabot should include use_cases"
     (mt/with-premium-features #{:metabot-v3}
       (with-clean-metabots
-        (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"
-                                                        :entity_id (get-in metabot-v3.config/metabot-config
-                                                                           [metabot-v3.config/internal-metabot-id :entity-id])}
-                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "nlq" :enabled false}
-                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "sql" :enabled false}
-                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "transforms" :enabled true}
-                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "omnibot" :enabled true}]
+        (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"}
+                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "omnibot" :enabled true}
+                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "transforms" :enabled true}]
           (let [{[metabot] :items} (mt/user-http-request :crowberto :get 200 "ee/metabot-v3/metabot")]
-            (is (= 4 (count (:use_cases metabot))))
-            (is (= #{"nlq" "omnibot" "sql" "transforms"}
-                   (set (map :name (:use_cases metabot)))))
-            (is (every? #(contains? % :enabled) (:use_cases metabot)))))))))
+            (is (= [{:metabot_id metabot-id :name "omnibot" :enabled true}
+                    {:metabot_id metabot-id :name "transforms" :enabled true}]
+                   (map #(select-keys % [:metabot_id :name :enabled]) (:use_cases metabot))))))))))
 
 (deftest metabot-get-single-test
   (testing "GET /api/ee/metabot-v3/metabot/:id"
@@ -200,7 +195,8 @@
                      :model/Metabot {metabot-id :id} {:name "Test Metabot"
                                                       :description "Test Description"
                                                       :use_verified_content true
-                                                      :collection_id collection-id}]
+                                                      :collection_id collection-id}
+                     :model/MetabotUseCase _ {:metabot_id metabot-id :name "transforms" :enabled true}]
 
         (testing "should return metabot with all fields"
           (let [response (mt/user-http-request :crowberto :get 200
@@ -209,7 +205,9 @@
             (is (= "Test Metabot" (:name response)))
             (is (= "Test Description" (:description response)))
             (is (true? (:use_verified_content response)))
-            (is (= collection-id (:collection_id response)))))
+            (is (= collection-id (:collection_id response)))
+            (is (= [{:metabot_id metabot-id :name "transforms" :enabled true}]
+                   (map #(select-keys % [:metabot_id :name :enabled]) (:use_cases response))))))
 
         (testing "should require superuser permissions"
           (is (= "You don't have permissions to do that."
@@ -219,17 +217,7 @@
         (testing "should return 404 for non-existent metabot"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :get 404
-                                       (format "ee/metabot-v3/metabot/%d" Integer/MAX_VALUE))))))))
-
-  (testing "GET /api/ee/metabot-v3/metabot/:id should include use_cases"
-    (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"}
-                     :model/MetabotUseCase {uc-id :id} {:metabot_id metabot-id :name "transforms" :enabled true}]
-        (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "ee/metabot-v3/metabot/%d" metabot-id))]
-          (is (sequential? (:use_cases response)))
-          (is (some #(= uc-id (:id %)) (:use_cases response)))
-          (is (some #(= "transforms" (:name %)) (:use_cases response))))))))
+                                       (format "ee/metabot-v3/metabot/%d" Integer/MAX_VALUE)))))))))
 
 (deftest metabot-put-test
   (testing "PUT /api/ee/metabot-v3/metabot/:id"
@@ -331,9 +319,7 @@
                                                (format "ee/metabot-v3/metabot/%d" metabot-id)
                                                {:use_cases [{:id uc-id :enabled false}]})]
             ;; Verify response includes updated use_cases
-            (is (sequential? (:use_cases response)))
             (let [updated-uc (some #(when (= uc-id (:id %)) %) (:use_cases response))]
-              (is (some? updated-uc))
               (is (false? (:enabled updated-uc))))
             ;; Verify persisted in database
             (let [db-uc (t2/select-one :model/MetabotUseCase :id uc-id)]

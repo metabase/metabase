@@ -20,13 +20,6 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-;;; --------------------------------------------------- Queries ------------------------------------------------------
-
-(defn use-case-for-metabot
-  "Return a specific use case for a metabot by name."
-  [metabot-id use-case-name]
-  (t2/select-one :model/MetabotUseCase :metabot_id metabot-id :name use-case-name))
-
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/MetabotUseCase

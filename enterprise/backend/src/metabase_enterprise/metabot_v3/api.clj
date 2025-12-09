@@ -10,7 +10,6 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
-   [metabase-enterprise.metabot-v3.models.metabot-use-case :as metabot-use-case]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -60,9 +59,8 @@
   (let [message       (metabot-v3.envelope/user-message message)
         metabot-id    (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
         metabot-pk    (metabot-v3.config/normalize-metabot-id metabot-id)
-        use-case-obj  (when use_case
-                        (metabot-use-case/use-case-for-metabot metabot-pk use_case))
-        use-case-id   (:id use-case-obj)
+        use-case-id   (when use_case
+                        (t2/select-one-pk :model/MetabotUseCase :metabot_id metabot-pk :name use_case))
         session-id    (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
         tracking-info {:use-case-id use-case-id
                        :profile-id  profile_id}]
