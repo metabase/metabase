@@ -1,6 +1,7 @@
 (ns metabase-enterprise.tenants.e2e-test
-  (:require  [clojure.test :refer [deftest testing is]]
-             [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer [deftest is]]
+   [metabase.test :as mt]))
 
 (deftest tenant-users-can-use-metabase
   (mt/with-premium-features #{:tenants}

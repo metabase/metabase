@@ -106,7 +106,7 @@
     (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant) :id [:not= id]))
                    "This name is already taken."))
   (update-tenant! id tenant)
-  #p (present-tenant (update-tenant! id tenant)))
+  (present-tenant (update-tenant! id tenant)))
 
 (api.macros/defendpoint :get "/:id" :- Tenant
   "Get info about a tenant"

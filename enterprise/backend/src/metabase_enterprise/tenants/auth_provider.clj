@@ -47,14 +47,14 @@
                        :tenant-slug/is-active (:is_active existing-tenant)
                        :status-code 403})))))
 
-(defn- validate-with-tenants-disabled! [{:keys [user tenant-slug]} existing-tenant]
+(defn- validate-with-tenants-disabled! [{:keys [user tenant-slug]}]
   (when (or (:tenant_id user) (not-empty tenant-slug))
     (throw (ex-info "Tenants and tenant users are disabled." {:status-code 403}))))
 
 (defn- create-tenant-if-not-exists!
   [{:as request :keys [user tenant-slug]} existing-tenant]
   (if-not (setting/get :use-tenants)
-    (do (validate-with-tenants-disabled! request existing-tenant)
+    (do (validate-with-tenants-disabled! request)
         request)
     (do (validate-user-and-tenant-slug! user existing-tenant (boolean tenant-slug))
         (cond-> request
@@ -65,7 +65,7 @@
                                    (api.tenants/create-tenant! {:slug tenant-slug :name tenant-slug})))))))))
 
 (methodical/defmethod auth-identity/login! ::create-tenant-if-not-exists
-  [provider {:keys [user tenant-slug]
+  [provider {:keys [tenant-slug]
              :as request}]
   (let [existing-tenant (t2/select-one :model/Tenant :slug tenant-slug)]
     (next-method provider (create-tenant-if-not-exists! request existing-tenant))))

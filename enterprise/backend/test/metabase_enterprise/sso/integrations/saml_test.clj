@@ -328,7 +328,7 @@
                (is (= default-redirect-uri
                       (get-in response [:headers "Location"])))
                (is (= (some-saml-attributes "rasta")
-                      #p (saml-login-attributes "rasta@metabase.com")))))))))))
+                      (saml-login-attributes "rasta@metabase.com")))))))))))
 
 (deftest validate-signatures-test
   ;; they were edited by hand I think, so the signatures are now incorrect (?)

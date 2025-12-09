@@ -852,7 +852,7 @@
                                                           "@tenant" "tenant-mctenantson"}
                                                          default-jwt-secret))]
               (is (not (saml-test/successful-login? response)))
-              (is (str/includes? #p (:body response) "Cannot add tenant claim to internal user")))))))))
+              (is (str/includes? (:body response) "Cannot add tenant claim to internal user")))))))))
 
 (deftest internal-user-cannot-login-with-tenant-claim-if-tenants-disabled
   (testing "Internal user cannot log in with tenant claim in JWT"
@@ -920,7 +920,7 @@
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
 
           (testing "warning messages are logged for non-stringable values"
-            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message #p (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
           (testing "warning messages are logged for `@`-prefixed keys"

@@ -28,7 +28,7 @@
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
    [metabase.session.core :as session]
-   [metabase.settings.core :as settings]
+   [metabase.settings.core :as setting]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -181,7 +181,7 @@
                                         (if (seq anti-csrf-token) :full-app-embed :normal)
                                         (premium-features/enable-advanced-permissions?)
                                         (and (premium-features/enable-tenants?)
-                                             (settings/get :use-tenants)))
+                                             (setting/get :use-tenants)))
           params (concat [session-key (session/hash-session-key session-key)]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
