@@ -74,37 +74,40 @@
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge")))))))
 
 (deftest workspace-crud-flow-test
-  (let [tx-id          (->> (t2/select :model/Transform :workspace_id nil)
-                            (filter #(= (mt/id) (get-in % [:target :database])))
-                            (sort-by :id >)
-                            first
-                            :id)
-        workspace-name (str "Workspace " (random-uuid))
-        ;; Create workspace with or without upstream transforms depending on availability
-        created        (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                             (cond-> {:name        workspace-name
-                                                      :database_id (mt/id)}
-                                               tx-id (assoc :upstream {:transforms [tx-id]})))
-        workspace-id   (:id created)
-        collection-id  (:collection_id created)]
-    (is (=? {:id            int?
-             :collection_id int?
-             :name          workspace-name}
-            created))
-    (is (t2/exists? :model/Workspace :id workspace-id :collection_id collection-id))
-    (is (t2/exists? :model/Collection :id collection-id :workspace_id workspace-id))
+  (mt/with-temp [:model/Transform {xf-id :id} {:name        "Upstream Transform"
+                                               :description "Original description"
+                                               :target      {:type     "table"
+                                                             :database 1
+                                                             :schema   "public"
+                                                             :name     "merge_test_table"}}]
+    (let [workspace-name (str "Workspace " (random-uuid))
+          ;; Create workspace with or without upstream transforms depending on availability
+          created        (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                         {:name        workspace-name
+                                                          :database_id (mt/id)
+                                                          :upstream    {:transforms [xf-id]}}))
+          workspace-id   (:id created)
+          collection-id  (:collection_id created)]
+      (is (=? {:id            int?
+               :collection_id int?
+               :name          workspace-name
+               :status        :ready}
+              created))
+      (is (t2/exists? :model/Workspace :id workspace-id :collection_id collection-id))
+      (is (t2/exists? :model/Collection :id collection-id :workspace_id workspace-id))
 
-    (testing "workspace appears in list response"
-      (let [{:keys [items]} (mt/user-http-request :crowberto :get 200 "ee/workspace")]
-        (is (some #(= workspace-id (:id %)) items))))
+      (testing "workspace appears in list response"
+        (let [{:keys [items]} (mt/user-http-request :crowberto :get 200 "ee/workspace")]
+          (is (some #(= workspace-id (:id %)) items))))
 
-    (testing "workspace can be fetched individually"
-      (let [response (mt/user-http-request :crowberto :get 200 (ws-url workspace-id ""))]
-        (is (= workspace-id (:id response)))))
+      (testing "workspace can be fetched individually"
+        (is (=? {:id       workspace-id
+                 :contents {:transforms [{:upstream_id xf-id}]}}
+                (mt/user-http-request :crowberto :get 200 (ws-url workspace-id "")))))
 
-    #_(testing "workspace can be archived"
-        (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
-          (is (some? (:archived_at updated)))))))
+      #_(testing "workspace can be archived"
+          (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
+            (is (some? (:archived_at updated))))))))
 
 (deftest ^:parallel promote-workspace-test
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
@@ -263,14 +266,11 @@
                                                         :database (mt/id)
                                                         :schema   "public"
                                                         :name     orig-name}}]
-        (let [;; create the workspace
-              {ws-id :id}   (mt/user-http-request :crowberto :post 200 "ee/workspace"
+        (let [{ws-id :id}   (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                   {:name        "Test Workspace"
                                                    :database_id (mt/id)})
-              ;; add the transform
               _             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/contents")
                                                   {:add {:transforms [(:id x1)]}})
-              ;; get the tables
               tables-result (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/tables"))]
           (testing "/tables returns expected results"
             (is (= {:inputs  [{:id (mt/id :orders) :schema orig-schema :table "orders"}]
@@ -290,10 +290,8 @@
                                                         :database (mt/id)
                                                         :schema   "public"
                                                         :name     orig-name}}]
-        ;; create the target table
         (transforms.i/execute! x1 {:run-method :manual})
-        (let [;; create the workspace
-              workspace        (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+        (let [workspace        (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                                {:name        "Test Workspace"
                                                                 :database_id (mt/id)}))
               ;; add the transform
