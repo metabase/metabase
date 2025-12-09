@@ -48,6 +48,7 @@ export const CodeTab = ({
   return (
     <Stack h="100%" gap={0}>
       <Stack
+        data-testid="workspace-transforms"
         gap="xs"
         pb="sm"
         style={{
@@ -55,7 +56,7 @@ export const CodeTab = ({
         }}
       >
         <Stack gap={0}>
-          <Text fw={600}>{t`Workspace Transforms`}</Text>
+          <Text fw={600}>{t`Workspace transforms`}</Text>
           {workspaceTransforms.map((transform) => {
             const isEdited = hasTransformEdits(transform);
 
@@ -84,7 +85,7 @@ export const CodeTab = ({
         )}
       </Stack>
 
-      <Stack py="sm" gap="xs">
+      <Stack data-testid="mainland-transforms" py="sm" gap="xs">
         {availableTransforms.map((transform) => (
           <TransformListItem
             key={transform.id}

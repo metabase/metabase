@@ -49,6 +49,26 @@ export const Workspaces = {
     return cy.findByRole("button", { name: /Merge/ });
   },
 
+  getTransformTargetButton() {
+    return cy.findByRole("button", { name: /Change target/ });
+  },
+
+  getTransformRunButton() {
+    return cy.findByRole("button", { name: /Run/ });
+  },
+
+  getTransformSaveButton() {
+    return cy.findByRole("button", { name: /Save/ });
+  },
+
+  getWorkspaceTransforms() {
+    return cy.findByTestId("workspace-transforms");
+  },
+
+  getMainlandTransforms() {
+    return cy.findByTestId("mainland-transforms");
+  },
+
   getNewWorkspaceButton() {
     return cy.findByRole("button", { name: /New workspace/ });
   },

@@ -64,6 +64,7 @@ export const TableListItem = ({
         [S.selected]: isSelected,
         [S.clickable]: isClickable,
       })}
+      aria-label={displayName}
       onClick={isClickable ? handleTableClick : undefined}
     >
       <Icon
