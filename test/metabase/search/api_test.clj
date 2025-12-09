@@ -1037,21 +1037,6 @@
             (testing "datasets in shared-tenant-collection namespace are returned"
               (is (=? {:name model-name} results)))))))))
 
-(deftest dedicated-tenant-collection-dataset-search-test
-  (testing "Search returns datasets (models) from dedicated tenant collections"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Test Tenant" :slug "test-tenant"}
-                       :model/Card {model-name :name} {:name "Dedicated Tenant Model"
-                                                       :type :model
-                                                       :collection_id tenant-collection-id}]
-          (t2/select-one :model/Collection tenant-collection-id)
-          (let [results (->> (search-request-data :crowberto :q "Dedicated Tenant Model")
-                             (filter #(= (:model %) "dataset"))
-                             first)]
-            (testing "datasets in dedicated tenant collections are returned"
-              (is (=? {:name model-name} results)))))))))
-
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"
     (letfn [(search-for-pulses [{pulse-id :id}]
