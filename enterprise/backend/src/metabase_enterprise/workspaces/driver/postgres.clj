@@ -10,13 +10,14 @@
 (set! *warn-on-reflection* true)
 
 (defmethod isolation/grant-read-access-to-tables! :postgres
-  [database username tables]
-  (let [schemas (distinct (map :schema tables))
-        sqls    (concat
-                 (for [schema schemas]
-                   (format "GRANT USAGE ON SCHEMA %s TO %s" schema username))
-                 (for [table tables]
-                   (format "GRANT SELECT ON TABLE %s.%s TO %s" (:schema table) (:name table) username)))]
+  [database workspace tables]
+  (let [username (-> workspace :database_details :user)
+        schemas  (distinct (map :schema tables))
+        sqls     (concat
+                  (for [schema schemas]
+                    (format "GRANT USAGE ON SCHEMA %s TO %s" schema username))
+                  (for [table tables]
+                    (format "GRANT SELECT ON TABLE %s.%s TO %s" (:schema table) (:name table) username)))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql sqls]

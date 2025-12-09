@@ -45,8 +45,9 @@
      :database_details read-user}))
 
 (defmethod isolation/grant-read-access-to-tables! :sqlserver
-  [database username tables]
+  [database workspace tables]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        username  (-> workspace :database_details :user)
         schemas   (distinct (map :schema tables))]
     ;; Grant SELECT on each schema
     (doseq [schema schemas]

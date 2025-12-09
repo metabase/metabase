@@ -29,9 +29,10 @@
     (get options "USER")))
 
 (defmethod isolation/grant-read-access-to-tables! :h2
-  [database username tables]
+  [database workspace tables]
   (let [driver    (driver.u/database->driver database)
         jdbc-spec (sql-jdbc.conn/connection-details->spec driver (:details database))
+        username  (-> workspace :database_details :db get-user-from-connection-string)
         schemas   (distinct (map :schema tables))]
     ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName
     (doseq [schema schemas]

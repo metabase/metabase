@@ -13,10 +13,14 @@
   ;; This is used on FE for workspace transform execution until proper API is provided in workspaces module!
   ;; Hence temp enabling that.
   ;; TODO: Cleanup when moving to woskapce transform execution api.
-  (if false #_(:workspace_id transform)
-      (deliver start-promise
-               (ex-info "Workspace transforms must be executed through the workspace API"
-                        {:status-code 404
-                         :transform-id (:id transform)
-                         :workspace-id (:workspace_id transform)}))
-      (transforms.i/execute! transform opts)))
+  (if (:workspace_id transform)
+    (metabase-enterprise.workspaces.isolation/with-workspace-isolation (toucan2.core/select-one :model/Workspace (:workspace_id transform))
+      (transforms.i/execute! transform opts))
+    (transforms.i/execute! transform opts))
+  #_(if false #_(:workspace_id transform)
+        (deliver start-promise
+                 (ex-info "Workspace transforms must be executed through the workspace API"
+                          {:status-code 404
+                           :transform-id (:id transform)
+                           :workspace-id (:workspace_id transform)}))
+        (transforms.i/execute! transform opts)))
