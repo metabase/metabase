@@ -266,7 +266,7 @@
   {:doc "Check your development environment for issues"
    :examples [["./bin/mage doctor" "Run all health checks"]]
    :requires [[mage.doctor :as doctor]]
-   :task (task! (doctor/doctor! parsed))}
+   :task (task! (doctor/doctor!))}
   
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:

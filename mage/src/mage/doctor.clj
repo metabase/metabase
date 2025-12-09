@@ -414,7 +414,7 @@
 
 (defn doctor!
   "Run all health checks and print results."
-  [_opts]
+  []
   (println)
   (println (c/bold "# 🩺 Metabase Development Environment Doctor"))
 
