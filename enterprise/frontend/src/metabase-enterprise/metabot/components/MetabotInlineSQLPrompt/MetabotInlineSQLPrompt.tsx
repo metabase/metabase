@@ -70,7 +70,7 @@ export const MetabotInlineSQLPrompt = ({
             handleSubmit();
           }
         },
-        "$mod+e": (e) => {
+        "$mod+i": (e) => {
           e.preventDefault();
           handleClose();
         },
