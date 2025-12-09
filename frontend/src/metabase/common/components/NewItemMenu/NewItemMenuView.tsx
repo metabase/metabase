@@ -49,14 +49,29 @@ const NewItemMenuView = ({
           key="question"
           component={ForwardRefLink}
           to={Urls.newQuestion({
-            mode: "notebook",
-            creationType: "custom_question",
-            collectionId,
+            mode: "ask",
+            collectionId, // TODO: make this do something...
             cardType: "question",
           })}
           leftSection={<Icon name="insight" />}
         >
           {t`Question`}
+        </Menu.Item>,
+      );
+
+      items.push(
+        <Menu.Item
+          key="question"
+          component={ForwardRefLink}
+          to={Urls.newQuestion({
+            mode: "notebook",
+            creationType: "custom_question",
+            collectionId,
+            cardType: "question",
+          })}
+          leftSection={<Icon name="notebook" />}
+        >
+          {t`Notebook`}
         </Menu.Item>,
       );
     }
