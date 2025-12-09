@@ -3,7 +3,7 @@
 
   DEPRECATED: Use [[metabase.lib.core]] for MBQL manipulation in all new code."
   {:deprecated "0.57.0"}
-  (:refer-clojure :exclude [replace some mapv every? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [replace some mapv every? not-empty get-in #?(:clj for)])
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]])
@@ -18,7 +18,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some mapv every? not-empty #?(:clj for)]]
+   [metabase.util.performance :refer [some mapv every? not-empty get-in #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (defn mbql-clause?

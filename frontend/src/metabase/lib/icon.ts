@@ -16,8 +16,10 @@ import type { ColorName } from "./colors/types";
 export type IconModel =
   | SearchModel
   | CollectionItemModel
+  | "model"
   | "schema"
   | "timeline"
+  | "question"
   | "transform"
   | "user";
 
@@ -45,7 +47,9 @@ export const modelIconMap: Record<IconModel, IconName> = {
   action: "bolt",
   "indexed-entity": "index",
   dashboard: "dashboard",
-  card: "table",
+  question: "table2",
+  model: "model",
+  card: "table2",
   segment: "segment",
   metric: "metric",
   snippet: "unknown",

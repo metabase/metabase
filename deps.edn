@@ -75,7 +75,6 @@
                                                            commons-logging/commons-logging]}
   compojure/compojure                       {:mvn/version "1.7.2"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
-  crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
   diehard/diehard                           {:mvn/version "0.12.0"}
   dk.ative/docjure                          {:mvn/version "1.22.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
@@ -90,8 +89,6 @@
                                              :git/url "https://github.com/eerohele/pp"}
   ;; TODO: replace back to normal artifact
   io.github.metabase/macaw                  {:mvn/version "0.2.29"}             ; Parse native SQL queries
-  io.github.resilience4j/resilience4j-retry ^:antq/exclude                      ; 2.x do not support Java 8
-                                            {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
