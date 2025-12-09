@@ -11,6 +11,7 @@ import type {
   WorkspaceContents,
   WorkspaceId,
   WorkspaceListResponse,
+  WorkspaceLogResponse,
   WorkspaceMergeResponse,
   WorkspaceTablesResponse,
   WorkspaceUpdateContentsRequest,
@@ -163,6 +164,13 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (_, __, id) => [idTag("workspace", id)],
     }),
+    getWorkspaceLog: builder.query<WorkspaceLogResponse, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/log`,
+      }),
+      providesTags: (_, _error, id) => [idTag("workspace", id)],
+    }),
   }),
 });
 
@@ -181,4 +189,5 @@ export const {
   useValidateTableNameMutation,
   useUpdateWorkspaceNameMutation,
   useGetWorkspaceTablesQuery,
+  useGetWorkspaceLogQuery,
 } = workspaceApi;

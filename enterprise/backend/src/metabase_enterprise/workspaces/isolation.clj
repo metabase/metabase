@@ -15,7 +15,7 @@
 
 (defmulti grant-read-access-to-tables!
   "Grant read access to these tables."
-  {:added "0.59.0" :arglists '([database username tables])}
+  {:added "0.59.0" :arglists '([database workspace tables])}
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
 
@@ -101,7 +101,7 @@
   "Impl of* with-workspace-isolation*."
   [workspace thunk]
   (driver/with-swapped-connection-details (:database_id workspace)
-                                          (:database_details workspace)
+    (:database_details workspace)
     (thunk)))
 
 (defmacro with-workspace-isolation

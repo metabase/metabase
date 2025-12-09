@@ -1,11 +1,10 @@
 (ns metabase-enterprise.workspaces.driver.sqlserver
   "SQL Server-specific implementations for workspace isolation.
 
-  SQL Server differences from other drivers:
-  - Uses SELECT INTO ... WHERE 1=0 for structure-only table copies
-  - Uses square brackets [] for identifier quoting
-  - Users are created with LOGIN, then USER for the database
-  - Schemas exist within databases"
+  Approach: Creates a server-level LOGIN, then a database-level USER mapped to that login,
+  then grants CONTROL on the isolation schema. Tables inherit permissions from schema.
+
+  Required permissions: CREATE LOGIN (server-level), CREATE USER, CREATE SCHEMA, and GRANT CONTROL."
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
@@ -45,8 +44,9 @@
      :database_details read-user}))
 
 (defmethod isolation/grant-read-access-to-tables! :sqlserver
-  [database username tables]
+  [database workspace tables]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        username  (-> workspace :database_details :user)
         schemas   (distinct (map :schema tables))]
     ;; Grant SELECT on each schema
     (doseq [schema schemas]
@@ -69,10 +69,10 @@
                          isolated-schema
                          isolated-table
                          source-schema
-                         source-table)
+                         source-table)]]
                  ;; Transfer ownership to the isolation user via schema permissions
                  ;; (user already has CONTROL on the schema from init)
-                 ]]
+
       (when (seq sql)
         (jdbc/execute! conn-spec [sql])))
     (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]

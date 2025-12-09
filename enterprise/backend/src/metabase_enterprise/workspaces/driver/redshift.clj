@@ -1,5 +1,5 @@
 (ns metabase-enterprise.workspaces.driver.redshift
-  "Postgres-specific implementations for workspace isolation."
+  "Redshift-specific implementations for workspace isolation."
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.driver.common :as driver.common]

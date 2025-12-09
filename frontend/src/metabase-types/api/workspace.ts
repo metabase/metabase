@@ -129,3 +129,33 @@ export type WorkspaceTablesResponse = {
   inputs: WorkspaceTable[];
   outputs: WorkspaceOutputTable[];
 };
+
+export type WorkspaceLogEntryId = number;
+
+export type WorkspaceStatus = "pending" | "ready";
+
+export type WorkspaceLogStatus = "started" | "success" | "failure";
+
+export type WorkspaceLogResponse = {
+  workspace_id: WorkspaceId;
+  status: WorkspaceStatus;
+  updated_at: string | null;
+  last_completed_at: string | null;
+  logs: WorkspaceLogEntry[];
+};
+
+export type WorkspaceTask =
+  | "workspace-setup"
+  | "database-isolation"
+  | "mirror-entities"
+  | "grant-read-access";
+
+export type WorkspaceLogEntry = {
+  id: WorkspaceLogEntryId;
+  task: WorkspaceTask | string;
+  started_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  status: WorkspaceLogStatus | null;
+  message: string | null;
+};
