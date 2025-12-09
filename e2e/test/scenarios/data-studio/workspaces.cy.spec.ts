@@ -9,7 +9,8 @@ import type {
 } from "metabase-types/api";
 
 const { H } = cy;
-const { Workspaces } = H;
+const { DataStudio, Workspaces } = H;
+const { Transforms } = DataStudio;
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -217,9 +218,31 @@ describe("scenarios > data studio > workspaces", () => {
       cy.findByText("Cow").should("not.exist");
       cy.findByText("30").should("not.exist");
     });
+
+    Workspaces.getMergeWorkspaceButton().click();
+
+    cy.findByRole("link", { name: /SQL transform/ }).click();
+    H.NativeEditor.value().should(
+      "eq",
+      'SELECT * FROM "Schema A"."Animals" LIMIT 2',
+    );
+    Transforms.runTab().click();
+    runTransformAndWaitForSuccess();
+    Transforms.targetTab().click();
+    getTableLink().should("contain.text", "transform_table").click();
+
+    H.assertTableData({
+      columns: ["Name", "Score"],
+      firstRows: [
+        ["Duck", "10"],
+        ["Horse", "20"],
+      ],
+    });
+    H.tableInteractiveBody().findByText("Cow").should("not.exist");
+    H.tableInteractiveBody().findByText("30").should("not.exist");
   });
 
-  // it("should be able to check out exisitng transforms into a new workspace from the workspace page", () => {
+  // it("should be able to check out existing transform into a new workspace from the workspace page", () => {
   //   createTransforms({ visit: true });
   // });
 });
@@ -308,4 +331,19 @@ function createPythonTransform(opts: {
     targetSchema: TARGET_SCHEMA,
     ...opts,
   });
+}
+
+function getTableLink({ isActive = true }: { isActive?: boolean } = {}) {
+  return cy
+    .findByTestId("table-link")
+    .should("have.attr", "aria-disabled", String(!isActive));
+}
+
+function runTransformAndWaitForSuccess() {
+  getRunButton().click();
+  getRunButton().should("have.text", "Ran successfully");
+}
+
+function getRunButton(options: { timeout?: number } = {}) {
+  return cy.findAllByTestId("run-button").eq(0, options);
 }

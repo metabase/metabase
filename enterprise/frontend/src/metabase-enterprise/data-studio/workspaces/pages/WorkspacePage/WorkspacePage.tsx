@@ -10,7 +10,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -337,7 +337,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         );
         return;
       }
-      dispatch(push(Urls.transformList()));
+      dispatch(replace(Urls.transformList()));
     } catch (error) {
       sendErrorToast(t`Failed to merge workspace`);
     }
