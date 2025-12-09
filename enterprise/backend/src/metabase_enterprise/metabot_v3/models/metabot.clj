@@ -20,11 +20,25 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Metabot :prompts]
   "Hydrate the list of prompts for a collection of metabots."
-  [_model k metabots]
+  [_model hydration-key metabots]
   (mi/instances-with-hydrated-data
-   metabots k
+   metabots
+   hydration-key
    #(group-by :metabot_id
               (t2/select :model/MetabotPrompt {:where [:in :metabot_id (map :id metabots)]}))
+   :id
+   {:default []}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Metabot :use_cases]
+  "Hydrate the list of use cases for a collection of metabots."
+  [_model hydration-key metabots]
+  (mi/instances-with-hydrated-data
+   metabots
+   hydration-key
+   #(group-by :metabot_id
+              (t2/select :model/MetabotUseCase
+                         {:where    [:in :metabot_id (map :id metabots)]
+                          :order-by [[:name :asc]]}))
    :id
    {:default []}))
 
