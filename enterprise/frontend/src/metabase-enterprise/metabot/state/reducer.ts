@@ -18,7 +18,6 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
-  MetabotDeveloperMessage,
   MetabotErrorMessage,
   MetabotSuggestedTransform,
   MetabotUserChatMessage,
@@ -56,11 +55,8 @@ export const metabot = createSlice({
     },
     // CONVERSATION REDUCERS
     addDeveloperMessage: convoReducer(
-      (
-        convo,
-        action: ConvoPayloadAction<Omit<MetabotDeveloperMessage, "role">>,
-      ) => {
-        convo.history.push({ ...action.payload, role: "developer" });
+      (convo, action: ConvoPayloadAction<{ message: string }>) => {
+        convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload}\n\n`;
       },
     ),
     addUserMessage: convoReducer(

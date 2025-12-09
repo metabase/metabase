@@ -31,6 +31,7 @@ import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
   getDebugMode,
+  getDeveloperMessage,
   getHistory,
   getIsProcessing,
   getLastMessage,
@@ -219,6 +220,7 @@ export const submitInput = createAsyncThunk<
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState(), agentId);
       const messageId = createMessageId();
+      const message = getDeveloperMessage(state, agentId) + prompt;
       dispatch(
         addUserMessage({
           id: messageId,
@@ -231,7 +233,7 @@ export const submitInput = createAsyncThunk<
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,
-          message: prompt,
+          message,
           agentId,
           conversation_id: convo.conversationId,
           ...agentMetadata,
@@ -431,7 +433,6 @@ export const addDeveloperMessage = ({
     } else {
       dispatch(
         metabot.actions.addDeveloperMessage({
-          id: createMessageId(),
           agentId,
           message,
         }),

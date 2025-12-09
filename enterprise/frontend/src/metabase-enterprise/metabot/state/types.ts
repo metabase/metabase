@@ -76,12 +76,6 @@ export type MetabotChatMessage =
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
 
-export type MetabotDeveloperMessage = {
-  id: string;
-  role: "developer";
-  message: string;
-};
-
 export type MetabotErrorMessage = {
   type: "message" | "alert";
   message: string;

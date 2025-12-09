@@ -122,6 +122,11 @@ export const getMessages = createSelector(
   },
 );
 
+export const getDeveloperMessage = createSelector(
+  getMetabotConversation,
+  (convo) => convo.experimental.developerMessage,
+);
+
 export const getActiveToolCalls = createSelector(
   getMetabotConversation,
   (convo) => convo.activeToolCalls,
