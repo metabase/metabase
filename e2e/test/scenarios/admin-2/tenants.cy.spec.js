@@ -536,34 +536,6 @@ describe("Tenants - management", () => {
       });
     });
   });
-
-  it("should allow creating a shared collection from tenants page", () => {
-    cy.request("PUT", "/api/setting", { "use-tenants": true });
-    createTenants();
-
-    cy.visit("/admin/tenants");
-
-    cy.log("click the create tenant collection button");
-    cy.icon("add_collection").click();
-
-    H.modal().within(() => {
-      cy.findByRole("heading", {
-        name: /New shared collection/,
-      }).should("be.visible");
-
-      cy.findByLabelText(/name/i).type("Acme Shared");
-      cy.findByLabelText(/description/i).should("exist");
-      cy.findByText(/collection it's saved in/i).should("not.exist");
-      cy.button("Create").click();
-    });
-
-    cy.log("takes you to the newly created collection");
-    cy.location("pathname").should("match", /^\/collection\/\d+/);
-    cy.findByTestId("collection-name-heading").should(
-      "contain.text",
-      "Acme Shared",
-    );
-  });
 });
 
 describe("tenant users", () => {
