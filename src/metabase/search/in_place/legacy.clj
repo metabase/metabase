@@ -193,7 +193,7 @@
     (-> honeysql-query
         (sql.helpers/where permitted-clause)
         (cond->
-          ;; add a JOIN against Collection *unless* the source table is already Collection
+      ;; add a JOIN against Collection *unless* the source table is already Collection
          (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
          personal-clause           (sql.helpers/where personal-clause)))))
 

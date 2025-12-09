@@ -57,11 +57,11 @@
     (try
       (let [#_notification-id #_(:notification_id handler)
             retry-config    default-retry-config
-            retry-errors    (volatile! [])
-            retry-report    (fn []
-                              {:attempted_retries (count @retry-errors)
-                               ;; we want the last retry to be the most recent
-                               :retry_errors       (reverse @retry-errors)})
+            retry-errors (volatile! [])
+            retry-report (fn []
+                           {:attempted_retries (count @retry-errors)
+                            ;; we want the last retry to be the most recent
+                            :retry_errors       (reverse @retry-errors)})
             send!           (fn []
                               (try
                                 (channel/send! channel message)

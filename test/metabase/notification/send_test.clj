@@ -285,10 +285,10 @@
                  (get-positive-retry-metrics test-retry))))))
     (testing "post slack message to missing channel fails without retry"
       (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
-        (with-redefs [slack/post-chat-message!               (fn [& _]
-                                                               (throw (ex-info "Channel not found"
-                                                                               {:error-type :slack/channel-not-found}))
-                                                               nil)
+        (with-redefs [slack/post-chat-message! (fn [& _]
+                                                 (throw (ex-info "Channel not found"
+                                                                 {:error-type :slack/channel-not-found}))
+                                                 nil)
                       retry/random-exponential-backoff-retry (constantly test-retry)]
           (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
           (is (= {:numberOfFailedCallsWithoutRetryAttempt 1}

@@ -106,19 +106,19 @@
      :model/DashboardTab
      :model/ModelIndex
      :model/ModelIndexValue
-     ;; 48+
+    ;; 48+
      :model/AuditLog
      :model/RecentViews
      :model/UserParameterValue
-     ;; 51+
+    ;; 51+
      :model/Notification
      :model/NotificationSubscription
      :model/NotificationHandler
      :model/NotificationRecipient
      :model/NotificationCard
-     ;; 57+
+    ;; 57+
      :model/Glossary
-     ;; 58+
+    ;; 58+
      :model/AuthIdentity
      :model/Document
      :model/DocumentBookmark]

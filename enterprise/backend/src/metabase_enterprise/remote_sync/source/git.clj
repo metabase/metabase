@@ -98,9 +98,9 @@
       (log/info "Successfully cloned repository" {:repo-path repo-path}))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
-                      {:url url
+                      {:url       url
                        :repo-path repo-path
-                       :error (.getMessage e)} e)))))
+                       :error     (.getMessage e)} e)))))
 
 (defn- open-jgit [^File repo-path args]
   (if (.exists repo-path)
@@ -405,7 +405,7 @@
 (defn- get-jgit [^File path {:keys [url token] :as args}]
   (if-let [obj (get @jgit (.getPath path))]
     obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:url url
+    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:url   url
                                                                      :token token})
                                              (when-not (has-data? (assoc args :git <>))
                                                (FileUtils/deleteDirectory path)

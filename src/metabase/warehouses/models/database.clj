@@ -261,9 +261,9 @@
   [database]
   (when-not (is-destination? database)
     (t2/with-transaction [_conn]
-      (let [all-users-group          (perms/all-users-group)
+      (let [all-users-group  (perms/all-users-group)
             all-external-users-group (perms/all-external-users-group)
-            non-magic-groups         (perms/non-magic-groups)
+            non-magic-groups (perms/non-magic-groups)
             non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
         (if (:is_audit database)
           (doseq [group non-admin-groups]

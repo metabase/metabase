@@ -300,8 +300,8 @@
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
                                  clauses  (cond-> (user/filter-clauses nil nil nil nil)
                                             (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                            (seq user-ids)            (sql.helpers/where [:in :core_user.id user-ids])
-                                            true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+                                            (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
+                                            true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                               :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                               :limit  (request/limit)
@@ -322,9 +322,9 @@
       ;; otherwise give them what the setting says on the tin
       :else
       (case (users.settings/user-visibility)
-        :none  (just-me)
+        :none (just-me)
         :group (within-group)
-        :all   (all)))))
+        :all (all)))))
 
 (defn- add-query-permissions
   "Add `:can_create_queries` and `:can_create_native_queries` flags to user based on their create-queries

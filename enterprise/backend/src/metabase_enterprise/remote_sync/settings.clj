@@ -92,10 +92,10 @@
   If no args are passed, it validates the current settings.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
-  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url (setting/get :remote-sync-url)
-                                                                     :remote-sync-token (setting/get :remote-sync-token)
+  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
+                                                                     :remote-sync-token  (setting/get :remote-sync-token)
                                                                      :remote-sync-branch (setting/get :remote-sync-branch)
-                                                                     :remote-sync-type (setting/get :remote-sync-type)})))
+                                                                     :remote-sync-type   (setting/get :remote-sync-type)})))
 
   ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
    (when-not (or (not (str/index-of remote-sync-url ":"))

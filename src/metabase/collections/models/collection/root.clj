@@ -37,7 +37,7 @@
            (not (premium-features/enable-snippet-collections?)))
     #{}
     #{((case read-or-write
-         :read perms/collection-read-path
+         :read  perms/collection-read-path
          :write perms/collection-readwrite-path) collection)}))
 
 (def ^RootCollection root-collection

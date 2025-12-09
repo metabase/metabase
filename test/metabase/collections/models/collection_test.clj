@@ -2444,7 +2444,7 @@
       (let [dependents (collection/remote-synced-dependents source-coll)]
         (is (= 2 (count dependents))
             "Should find dependents of cards in the collection")
-        (is (= #{{"Card" dep-card-id} {"Card" dep-card-2-id}} (set dependents))
+        (is (= #{{"Card" dep-card-id} {"Card" dep-card-2-id}}  (set dependents))
             "Should return the dependent cards")))))
 
 (deftest ^:parallel remote-synced-dependents-with-collection-no-cards-test

@@ -11,10 +11,10 @@
         other-token "other_token_value"
         obfuscated-token (setting/obfuscate-value full-token)
         default-settings
-        {:remote-sync-url "file://my/url.git"
-         :remote-sync-type :read-only
-         :remote-sync-branch "test-branch"
-         :remote-sync-token nil}]
+        {:remote-sync-url     "file://my/url.git"
+         :remote-sync-type    :read-only
+         :remote-sync-branch  "test-branch"
+         :remote-sync-token   nil}]
     (with-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
                                                  ;; git should always be checked with a nil or full token
                                                  (is (or (nil? remote-sync-token) (#{full-token other-token} remote-sync-token)))
