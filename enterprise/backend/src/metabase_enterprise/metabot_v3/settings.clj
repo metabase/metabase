@@ -40,4 +40,3 @@
   :encryption :no
   :export?    false
   :doc        false)
-
