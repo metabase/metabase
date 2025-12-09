@@ -82,7 +82,7 @@ export const defaultPermissionGroups: GroupInfo[] = [
 
 const externalUsersGroup = createMockGroup({
   id: 4,
-  name: "All External Users",
+  name: "All tenant users",
   magic_group_type: "all-external-users",
 });
 
@@ -126,7 +126,7 @@ export const defaultPermissionsGraphWithTenants: CollectionPermissionsGraph = {
   groups: {
     ...defaultPermissionsGraph.groups,
     4: {
-      // External users
+      // Tenant users
       1: "none", // one
       2: "none", // two
       3: "none", // nested one

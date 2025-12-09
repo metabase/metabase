@@ -49,7 +49,7 @@ export function PeopleNav() {
             <PeopleNavItem
               path="/admin/tenants/people"
               data-testid="nav-item-external-users"
-              label={t`External Users`}
+              label={t`Tenant users`}
               icon="person"
             />
           </>

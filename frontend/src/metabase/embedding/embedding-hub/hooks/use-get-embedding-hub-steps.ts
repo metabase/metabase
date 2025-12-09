@@ -52,7 +52,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           ? [
               {
                 title: t`Set up tenants`,
-                description: t`Define a multi tenant user strategy to manage access for external users.`,
+                description: t`Define a multi tenant user strategy to manage access for tenant users.`,
                 to: isUsingTenants
                   ? "/admin/tenants"
                   : "/admin/people/user-strategy",

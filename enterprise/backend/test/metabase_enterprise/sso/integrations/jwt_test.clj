@@ -1063,8 +1063,8 @@
                       (is (= tenant-id (:tenant_id user))))
                     (testing "user is assigned to the mapped tenant group"
                       (is (contains? (group-memberships (u/the-id user)) "Tenant Engineers")))
-                    (testing "user is assigned to All External Users (magic group for tenant users)"
-                      (is (contains? (group-memberships (u/the-id user)) "All External Users")))))))))))))
+                    (testing "user is assigned to All tenant users (magic group for tenant users)"
+                      (is (contains? (group-memberships (u/the-id user)) "All tenant users")))))))))))))
 
 (deftest tenant-user-assigned-to-tenant-group-via-name-matching-test
   (testing "JWT user with tenant claim can be assigned to tenant user groups via group name matching (no explicit mappings)"
@@ -1100,7 +1100,7 @@
                     (testing "user is assigned to the correct tenant"
                       (is (= tenant-id (:tenant_id user))))
                     (testing "user is assigned to groups matching the names from JWT claims"
-                      (is (= #{"All External Users" "tenant-developers" "tenant-analysts"}
+                      (is (= #{"All tenant users" "tenant-developers" "tenant-analysts"}
                              (group-memberships (u/the-id user)))))
                     (testing "user is not assigned to groups not mentioned in JWT claims"
                       (is (not (contains? (group-memberships (u/the-id user)) "tenant-admins"))))))))))))))
@@ -1135,7 +1135,7 @@
                   (is (saml-test/successful-login? response))
                   (let [user (t2/select-one :model/User :email "tenant-user@metabase.com")]
                     (is (= tenant-id (:tenant_id user)))
-                    (is (= #{"All External Users" "Group A"}
+                    (is (= #{"All tenant users" "Group A"}
                            (group-memberships (u/the-id user))))))
                 (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
@@ -1153,7 +1153,7 @@
                     (testing "user remains assigned to the same tenant"
                       (is (= tenant-id (:tenant_id user))))
                     (testing "user group memberships are updated to reflect JWT claims"
-                      (is (= #{"All External Users" "Group B"}
+                      (is (= #{"All tenant users" "Group B"}
                              (group-memberships (u/the-id user)))))
                     (testing "user is no longer in Group A"
                       (is (not (contains? (group-memberships (u/the-id user)) "Group A"))))))))))))))

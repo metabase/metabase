@@ -17,8 +17,8 @@ export const ExternalPeopleListingApp = (props: React.PropsWithChildren) => {
       showInviteButton={hasTenants}
       noResultsMessage={
         !hasTenants
-          ? t`Add your first tenant to add external users`
-          : t`Invite external users or provision them via SSO`
+          ? t`Add your first tenant to add tenant users`
+          : t`Invite tenant users or provision them via SSO`
       }
     />
   );

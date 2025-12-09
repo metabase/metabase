@@ -93,11 +93,11 @@ describe("page title", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show 'External Users' when tenants is enabled and viewing external users", async () => {
+  it("should show 'Tenant users' when tenants is enabled and viewing tenant users", async () => {
     setup({ useTenants: true, external: true });
 
     expect(
-      await screen.findByRole("heading", { name: "External Users", level: 1 }),
+      await screen.findByRole("heading", { name: "Tenant users", level: 1 }),
     ).toBeInTheDocument();
   });
 });

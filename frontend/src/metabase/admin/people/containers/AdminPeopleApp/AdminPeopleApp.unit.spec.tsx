@@ -58,7 +58,7 @@ describe("AdminPeopleApp", () => {
       assertNavLink("People", "/admin/people");
       assertNavLink("Groups", "/admin/people/groups");
       expect(screen.queryByText("Tenants")).not.toBeInTheDocument();
-      expect(screen.queryByText("External Users")).not.toBeInTheDocument();
+      expect(screen.queryByText("Tenant users")).not.toBeInTheDocument();
     });
 
     it("should render both internal and external people links if tenants is enabled", async () => {
@@ -67,7 +67,7 @@ describe("AdminPeopleApp", () => {
       assertNavLink("Internal Users", "/admin/people");
       assertNavLink("Internal Groups", "/admin/people/groups");
       assertNavLink("Tenants", "/admin/tenants");
-      assertNavLink("External Users", "/admin/tenants/people");
+      assertNavLink("Tenant users", "/admin/tenants/people");
     });
   });
 

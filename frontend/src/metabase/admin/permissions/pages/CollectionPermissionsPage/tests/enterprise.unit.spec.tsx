@@ -34,7 +34,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
     });
   });
 
-  describe("External Users Group", () => {
+  describe("Tenant users Group", () => {
     it("should not be able get access to Our Analytics", async () => {
       await setup({
         tokenFeatures,
@@ -46,8 +46,8 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       await assertCollectionAccessForGroup("Administrators", "Curate");
       await assertCollectionAccessForGroup("All Internal Users", "View");
       await assertCollectionAccessForGroup("Other Users", "View");
-      await assertCollectionAccessForGroup("All External Users", "No access");
-      await assertCollectionAccessIsDisabled("All External Users");
+      await assertCollectionAccessForGroup("All tenant users", "No access");
+      await assertCollectionAccessIsDisabled("All tenant users");
     });
 
     it("should not be able get access to normal collections", async () => {
@@ -61,8 +61,8 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       await assertCollectionAccessForGroup("Administrators", "Curate");
       await assertCollectionAccessForGroup("All Internal Users", "Curate");
       await assertCollectionAccessForGroup("Other Users", "View");
-      await assertCollectionAccessForGroup("All External Users", "No access");
-      await assertCollectionAccessIsDisabled("All External Users");
+      await assertCollectionAccessForGroup("All Tenant users", "No access");
+      await assertCollectionAccessIsDisabled("All Tenant users");
     });
   });
 

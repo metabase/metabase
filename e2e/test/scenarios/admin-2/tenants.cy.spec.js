@@ -88,7 +88,7 @@ describe("Tenants - management", () => {
     cy.findByRole("link", { name: /gear/ }).should("not.exist");
   });
 
-  it("should allow users to enable multi tenancy, and create / manage tenants and external users", () => {
+  it("should allow users to enable multi tenancy, and create / manage tenants and tenant users", () => {
     // We expect this to redirect to /admin/people
     cy.visit("/admin/tenants");
 
@@ -101,14 +101,14 @@ describe("Tenants - management", () => {
 
     cy.findByTestId("admin-content-table").within(() => {
       cy.findByRole("link", { name: /All Users/ }).should("exist");
-      cy.findByRole("link", { name: /External Users/ }).should("not.exist");
+      cy.findByRole("link", { name: /Tenant users/ }).should("not.exist");
     });
 
     cy.findByRole("navigation", { name: "people-nav" })
       .findByRole("link", { name: /People/ })
       .click();
 
-    cy.findByRole("link", { name: /External Users/ }).should("not.exist");
+    cy.findByRole("link", { name: /Tenant users/ }).should("not.exist");
     cy.findByRole("link", { name: /Tenants/ }).should("not.exist");
 
     cy.findByRole("link", { name: /gear/ }).click();
@@ -125,7 +125,7 @@ describe("Tenants - management", () => {
       .first()
       .should("be.visible");
 
-    cy.findByRole("link", { name: /External Users/ }).should("exist");
+    cy.findByRole("link", { name: /Tenant users/ }).should("exist");
     cy.findByRole("link", { name: /Tenants/ }).click();
 
     // Create some tenants
@@ -203,7 +203,7 @@ describe("Tenants - management", () => {
     });
 
     // Create an external user
-    cy.findByRole("link", { name: /External Users/ }).click();
+    cy.findByRole("link", { name: /Tenant users/ }).click();
     cy.button("Invite someone").click();
 
     H.modal().within(() => {
@@ -279,7 +279,7 @@ describe("Tenants - management", () => {
       cy.findByRole("link", { name: /All Internal Users/ }).should(
         "be.visible",
       );
-      cy.findByRole("link", { name: /All External Users/ }).should("not.exist");
+      cy.findByRole("link", { name: /All Tenant users/ }).should("not.exist");
     });
 
     cy.findByRole("navigation", { name: "people-nav" })
@@ -298,17 +298,17 @@ describe("Tenants - management", () => {
         cy.findByRole("button", {
           name: "group-action-button",
         }).should("not.exist");
-        cy.findByRole("link", { name: /All External Users/ }).click();
+        cy.findByRole("link", { name: /All Tenant users/ }).click();
       });
     });
 
     cy.findByTestId("admin-panel")
-      .findByText(/External Users group and can't be removed from it/)
+      .findByText(/Tenant users group and can't be removed from it/)
       .should("exist");
   });
 
   it("should allow you to manage external user permissions once multi tenancy is enabled", () => {
-    const EXTERNAL_USER_GROUP_NAME = "All External Users";
+    const EXTERNAL_USER_GROUP_NAME = "All Tenant users";
     const TENANT_GROUP_NAME = "Favorite tenant users";
 
     cy.request("POST", "/api/permissions/group", {
@@ -360,10 +360,10 @@ describe("Tenants - management", () => {
       "exist",
     ]);
 
-    getPermissionRowPermissions("All External Users")
+    getPermissionRowPermissions("All Tenant users")
       .eq(3)
       .should("have.attr", "aria-disabled", "true");
-    getPermissionRowPermissions("All External Users")
+    getPermissionRowPermissions("All Tenant users")
       .eq(4)
       .should("have.attr", "aria-disabled", "true");
 
@@ -373,7 +373,7 @@ describe("Tenants - management", () => {
     lacksGlobeIcon("All Internal Users");
   });
 
-  it("should show 'All External Users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
+  it("should show 'All Tenant users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
 
     // Create a tenant group
@@ -387,7 +387,7 @@ describe("Tenants - management", () => {
 
       cy.findByRole("radio", { name: "Groups" }).click({ force: true });
 
-      cy.findByRole("menuitem", { name: "All External Users" }).click();
+      cy.findByRole("menuitem", { name: "All Tenant users" }).click();
 
       cy.log("sample database's view data permission should be 'Can view'");
       getPermissionRowPermissions("Sample Database")
@@ -407,10 +407,10 @@ describe("Tenants - management", () => {
         .findByLabelText("warning icon")
         .realHover();
 
-      // Tooltip must reference "All External Users" not "All Internal Users"
+      // Tooltip must reference "All Tenant users" not "All Internal Users"
       H.tooltip().should(
         "contain",
-        'The "All External Users" group has a higher level of access',
+        'The "All Tenant users" group has a higher level of access',
       );
       H.tooltip().should("not.contain", "All Internal Users");
     });
@@ -426,7 +426,7 @@ describe("Tenants - management", () => {
 
     cy.visit("admin/tenants/people");
 
-    cy.findByRole("link", { name: /External Users/ }).click();
+    cy.findByRole("link", { name: /Tenant users/ }).click();
     cy.button("Invite someone").click();
 
     H.modal().within(() => {
@@ -513,10 +513,7 @@ describe("Tenants - management", () => {
     cy.log("check that tenant attributes propagate to users");
 
     cy.visit("/admin/tenants/people");
-    cy.findByTestId("nav-item-external-users").findByText(
-      "External Users",
-      1000,
-    );
+    cy.findByTestId("nav-item-external-users").findByText("Tenant users", 1000);
     cy.findByTestId("admin-people-list-table").within(() => {
       cy.findByText(`${GIZMO_USER.first_name} ${GIZMO_USER.last_name}`).should(
         "exist",
@@ -655,7 +652,7 @@ describe("tenant users", () => {
     H.popover().findByText("Deactivate tenant").click();
     H.modal().button("Deactivate").click();
 
-    cy.findByRole("link", { name: /external users/i }).click();
+    cy.findByRole("link", { name: /tenant users/i }).click();
 
     // assert that only gizmo users are still active
     cy.findByTestId("admin-layout-content").findByText("1 person found");
@@ -706,7 +703,7 @@ describe("tenant users", () => {
     H.popover().findByText("Reactivate tenant").click();
     H.modal().button("Reactivate").click();
 
-    cy.findByRole("link", { name: /external users/i }).click();
+    cy.findByRole("link", { name: /tenant users/i }).click();
 
     // Only 1 Doohickey user should have been re-activated
     cy.findByTestId("admin-layout-content").findByText("1 person found");
@@ -774,7 +771,7 @@ describe("tenant users", () => {
     cy.findByTestId("admin-content-table").findByText(GROUP_NAME);
 
     cy.findByTestId("admin-layout-sidebar")
-      .findByText(/External Users/)
+      .findByText(/Tenant users/)
       .click();
 
     cy.log("put existing user in a group");
@@ -786,7 +783,7 @@ describe("tenant users", () => {
 
     H.modal().within(() => {
       cy.findByText("Tenant Groups");
-      cy.findByText("All External Users").click();
+      cy.findByText("All Tenant users").click();
     });
 
     H.popover().findByText(GROUP_NAME).click();
@@ -815,7 +812,7 @@ describe("tenant users", () => {
     });
 
     H.popover().findByText(GIZMO_TENANT.name).click();
-    H.modal().findByText("All External Users").click();
+    H.modal().findByText("All Tenant users").click();
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
@@ -831,7 +828,7 @@ describe("tenant users", () => {
     );
   });
 
-  it("can add external users to a tenant group via 'Add members", () => {
+  it("can add tenant users to a tenant group via 'Add members", () => {
     cy.intercept("GET", "/api/user*").as("listUsers");
 
     const GROUP_NAME = "Marketing Team";

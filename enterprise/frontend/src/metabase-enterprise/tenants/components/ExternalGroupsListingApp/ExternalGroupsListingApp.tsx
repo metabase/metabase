@@ -5,7 +5,7 @@ import { GroupsListingApp } from "metabase/admin/people/containers/GroupsListing
 export const ExternalGroupsListingApp = () => {
   return (
     <GroupsListingApp
-      description={t`Use tenant groups to manage access for external users. Every tenant has access to these groups.`}
+      description={t`Use tenant groups to manage access for tenant users. Every tenant has access to these groups.`}
       external
     />
   );

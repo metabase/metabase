@@ -25,7 +25,7 @@
   false)
 
 (def ^:dynamic *allow-changing-all-external-users-group-members*
-  "Should we allow people to be added to or removed from the All External Users permissions group? By default, this is
+  "Should we allow people to be added to or removed from the All tenant users permissions group? By default, this is
   `false`, but enable it when adding or deleting users."
   false)
 
@@ -37,7 +37,7 @@
      ~@body))
 
 (defmacro allow-changing-all-external-users-group-members
-  "Allow users to be added to or removed from the All External Users permissions group? By default, this is disallowed."
+  "Allow users to be added to or removed from the All tenant users permissions group? By default, this is disallowed."
   {:style/indent 0}
   [& body]
   `(binding [*allow-changing-all-external-users-group-members* true]
@@ -56,7 +56,7 @@
   [group-id]
   (when (= group-id (:id (perms-group/all-external-users)))
     (when-not *allow-changing-all-external-users-group-members*
-      (throw (ex-info (tru "You cannot add or remove users to/from the ''All External Users'' group.")
+      (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
                       {:status-code 400})))))
 
 (defn- admin-count

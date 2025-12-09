@@ -587,7 +587,7 @@
           (t2/update! :model/User id changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
-                           "Superusers cannot be external users")
+                           "Superusers cannot be tenant users")
             (reset-magic-group-membership! id (:tenant_id changes)))
           (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
                                                      :previous-object user-before-update

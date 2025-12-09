@@ -159,7 +159,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
     return (
       <Box maw="38rem" px="1rem">
         <p>
-          {t`All external users belong to the ${getGroupNameLocalized(
+          {t`All tenant users belong to the ${getGroupNameLocalized(
             group,
           )} group and can't be removed from it. Setting permissions for this group is a great way to
         make sure you know what new Metabase users will be able to see.`}

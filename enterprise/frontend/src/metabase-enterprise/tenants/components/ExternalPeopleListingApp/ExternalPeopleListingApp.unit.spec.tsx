@@ -76,13 +76,13 @@ describe("ExternalPeopleListingApp", () => {
       tenants: [createMockTenant({})],
     });
 
-    expect(await screen.findByText("Create external user")).toBeInTheDocument();
+    expect(await screen.findByText("Create tenant user")).toBeInTheDocument();
   });
 
   it("should not show an invite button if there are no tenants", async () => {
     setup({});
 
-    expect(screen.queryByText("Create external user")).not.toBeInTheDocument();
+    expect(screen.queryByText("Create tenant user")).not.toBeInTheDocument();
   });
 
   it("should show a no results special message if there are no tenants", async () => {
@@ -91,7 +91,7 @@ describe("ExternalPeopleListingApp", () => {
     });
 
     expect(
-      await screen.findByText("Add your first tenant to add external users"),
+      await screen.findByText("Add your first tenant to add tenant users"),
     ).toBeInTheDocument();
   });
 
@@ -102,9 +102,7 @@ describe("ExternalPeopleListingApp", () => {
     });
 
     expect(
-      await screen.findByText(
-        "Invite external users or provision them via SSO",
-      ),
+      await screen.findByText("Invite tenant users or provision them via SSO"),
     ).toBeInTheDocument();
   });
 });

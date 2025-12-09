@@ -13,7 +13,7 @@
 
 (deftest create-tenant-user-auto-assigned-to-external-users-group-test
   (testing "POST /api/user"
-    (testing "Creating a tenant user automatically assigns them to All External Users group even when no groups are specified"
+    (testing "Creating a tenant user automatically assigns them to All tenant users group even when no groups are specified"
       (mt/with-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test-tenant"}]
@@ -32,7 +32,7 @@
 
                     (testing "user is actually assigned to all expected groups in database"
                       (let [created-user (t2/select-one :model/User :email email)]
-                        (is (= #{"All External Users"}
+                        (is (= #{"All tenant users"}
                                (user-test/user-group-names created-user)))))
 
                     (testing "tenant_id is set correctly"
@@ -41,7 +41,7 @@
 
 (deftest create-tenant-user-must-assign-to-external-users-group-test
   (testing "POST /api/user"
-    (testing "Creating a tenant user automatically assigns them to All External Users group even when other groups are specified"
+    (testing "Creating a tenant user automatically assigns them to All Tenant users group even when other groups are specified"
       (mt/with-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/PermissionsGroup group-1 {:name "Custom Group 1" :is_tenant_group true}
@@ -58,7 +58,7 @@
                                                     :tenant_id              tenant-id
                                                     :user_group_memberships (group-or-ids->user-group-memberships
                                                                              [group-1 group-2])})]
-                    (is (= "You cannot add or remove users to/from the 'All External Users' group." resp))))))))))))
+                    (is (= "You cannot add or remove users to/from the 'All tenant users' group." resp))))))))))))
 
 (deftest create-user-tenant-group-restrictions-test
   (testing "POST /api/user with tenant groups"
@@ -70,7 +70,7 @@
                        :model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"
                                                                       :is_tenant_group false}]
           (mt/with-model-cleanup [:model/User]
-            (testing "external users cannot be added to non-tenant groups via POST"
+            (testing "tenant users cannot be added to non-tenant groups via POST"
               (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
                       (mt/user-http-request :crowberto :post 400 "user"
                                             {:first_name "External"
@@ -99,7 +99,7 @@
                        :model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"
                                                                       :is_tenant_group false}]
 
-          (testing "external users cannot be added to non-tenant groups via PUT"
+          (testing "tenant users cannot be added to non-tenant groups via PUT"
             (mt/with-temp [:model/User {external-user-id :id} {:tenant_id tenant-id}]
               (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
                       (mt/user-http-request :crowberto :put 400 (str "user/" external-user-id)
@@ -121,7 +121,7 @@
                        :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group"
                                                                       :is_tenant_group true}]
 
-          (testing "cannot create external user as group manager via POST"
+          (testing "cannot create tenant user as group manager via POST"
             (mt/with-model-cleanup [:model/User]
               (is (=? {:message "Tenant users cannot be made group managers"}
                       (mt/user-http-request :crowberto :post 400 "user"
@@ -151,7 +151,7 @@
                        :model/PermissionsGroup {pg-id :id} {:is_tenant_group true}
                        :model/PermissionsGroupMembership _ {:user_id user-id
                                                             :group_id pg-id}]
-          (testing "before: the user is a member of the All External Users group and the group we added them to"
+          (testing "before: the user is a member of the All tenant users group and the group we added them to"
             (is (= #{(u/the-id (perms/all-external-users-group))
                      pg-id}
                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))))
@@ -180,12 +180,12 @@
           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:tenant_id tenant-id})
           (testing "the user is now a tenant user"
             (is (= tenant-id (t2/select-one-fn :tenant_id :model/User user-id))))
-          (testing "the user is now ONLY a member of All External Users"
+          (testing "the user is now ONLY a member of All tenant users"
             (is (= #{(u/the-id (perms/all-external-users-group))}
                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))))))))
 
 (deftest cannot-turn-an-external-user-into-a-superuser
-  (testing "external users can't become superusers"
+  (testing "tenant users can't become superusers"
     (mt/with-premium-features #{:tenants :advanced-permissions}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-id :id} {}

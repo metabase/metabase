@@ -72,7 +72,7 @@ export function PeopleListingApp({
   const buttonText =
     isAdmin && status === ACTIVE_STATUS.active && showInviteButton
       ? external
-        ? t`Create external user`
+        ? t`Create tenant user`
         : t`Invite someone`
       : undefined;
 
@@ -93,7 +93,7 @@ export function PeopleListingApp({
       return t`People`;
     }
 
-    return external ? t`External Users` : t`Internal Users`;
+    return external ? t`Tenant users` : t`Internal Users`;
   }, [external, isUsingTenants]);
 
   return (

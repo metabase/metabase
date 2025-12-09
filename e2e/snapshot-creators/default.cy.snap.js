@@ -321,7 +321,7 @@ describe("snapshots", () => {
 });
 
 function getDefaultInstanceData() {
-  // This is something we need to do to ensure that the All External Users group
+  // This is something we need to do to ensure that the All tenant users group
   // comes back with the call to /api/permissions/groups. After the API calls are
   // finished, we disable it
   if (IS_ENTERPRISE) {

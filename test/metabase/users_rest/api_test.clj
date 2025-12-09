@@ -890,7 +890,7 @@
 
 (deftest create-user-must-assign-to-all-users-group
   (testing "POST /api/user"
-    (testing "Creating a tenant user automatically assigns them to All External Users group even when other groups are specified"
+    (testing "Creating a tenant user automatically assigns them to All tenant users group even when other groups are specified"
       (mt/with-temp [:model/PermissionsGroup group-1 {:name "Custom Group 1"}
                      :model/PermissionsGroup group-2 {:name "Custom Group 2"}]
         (let [user-name (mt/random-name)

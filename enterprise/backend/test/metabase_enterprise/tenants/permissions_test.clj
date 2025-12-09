@@ -13,7 +13,7 @@
       (is (not (t2/exists? :model/PermissionsGroupMembership
                            :user_id user-id
                            :group_id (u/the-id (perms/all-users-group))))))
-    (testing "Should be added to the 'All External Users' group"
+    (testing "Should be added to the 'All tenant users' group"
       (is (t2/exists? :model/PermissionsGroupMembership
                       :user_id user-id
                       :group_id (u/the-id (perms/all-external-users-group)))))))

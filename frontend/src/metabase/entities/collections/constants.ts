@@ -48,7 +48,7 @@ export const DATABASES_COLLECTION = {
 export const TENANT_SPECIFIC_COLLECTIONS = {
   id: "tenant-specific" as const, // placeholder id
   get name() {
-    return t`Tenant-Specific Collections`;
+    return t`Tenant collections`;
   },
   location: "/",
   path: [ROOT_COLLECTION.id],

@@ -42,7 +42,7 @@ export const NewUserModal = ({
   return (
     <Modal
       opened
-      title={external ? t`Create External user` : t`Create user`}
+      title={external ? t`Create tenant user` : t`Create user`}
       padding="xl"
       onClose={onClose}
     >

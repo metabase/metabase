@@ -25,7 +25,7 @@ export const TenantCollectionList = () => {
               title: ROOT_COLLECTION.name,
               to: Urls.collection({ id: "root", name: "" }),
             },
-            { title: t`Tenant-Specific Collections` },
+            { title: t`Tenant collections` },
           ]}
         />
       </ListHeader>

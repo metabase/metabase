@@ -1,9 +1,9 @@
 ---
-title: Assigning external users to tenants
+title: Assigning tenant users to tenants
 description: How to automatically assign users to tenants using SSO authentication (JWT and SAML).
 ---
 
-# Assigning external users to tenants
+# Assigning tenant users to tenants
 
 {% include plans-blockquote.html feature="Tenants" %}
 
@@ -39,7 +39,7 @@ When a user logs in with JWT:
 
 If a user attempts to log in with mismatched tenant information, they will receive one of these errors:
 
-- `Cannot add tenant claim to internal user` - JWT includes a tenant, but the user is an internal user. Only external users can have a tenant.
+- `Cannot add tenant claim to internal user` - JWT includes a tenant, but the user is an internal user. Only tenant users can have a tenant.
 - `Tenant claim required for external user` - JWT lacks a tenant claim, but the user is an external user.
 - `Tenant ID mismatch with existing user` - JWT has a different tenant than the user's assigned tenant
 - `Tenant is not active` - The tenant exists but has been deactivated

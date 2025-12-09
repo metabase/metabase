@@ -56,11 +56,11 @@
   (magic-group all-users-magic-group-type))
 
 (def all-external-users-magic-group-type
-  "The magic group type of the \"All External Users\" magic group."
+  "The magic group type of the \"All tenant users\" magic group."
   "all-external-users")
 
 (def ^{:arglists '([])} all-external-users
-  "Fetch the `All External Users` permissions group"
+  "Fetch the `All tenant users` permissions group"
   (magic-group all-external-users-magic-group-type))
 
 (def admin-magic-group-type

@@ -304,13 +304,13 @@ describe("UserForm", () => {
     });
   });
 
-  describe("External Users", () => {
+  describe("Tenant users", () => {
     const TENANTS = [
       createMockTenant({ id: 1, name: "Acme Corp" }),
       createMockTenant({ id: 2, name: "TechStart Inc" }),
     ];
 
-    it("should require tenant_id for external users", async () => {
+    it("should require tenant_id for tenant users", async () => {
       setup({
         hasEnterprisePlugins: true,
         external: true,

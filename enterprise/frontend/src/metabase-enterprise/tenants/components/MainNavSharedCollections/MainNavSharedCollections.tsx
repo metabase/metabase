@@ -123,7 +123,7 @@ export const MainNavSharedCollections = () => {
           <Flex align="center" justify="space-between">
             <SidebarHeading>{t`External collections`}</SidebarHeading>
             {isAdmin && (
-              <Tooltip label={t`Create a new tenant collection`}>
+              <Tooltip label={t`Create a shared collection`}>
                 <ActionIcon
                   color="text-medium"
                   onClick={() => setModalOpen(true)}
@@ -144,7 +144,7 @@ export const MainNavSharedCollections = () => {
           />
           {isAdmin && (
             <PaddedSidebarLink icon="group" url={tenantSpecificCollections()}>
-              {t`Tenant-Specific Collections`}
+              {t`Tenant collections`}
             </PaddedSidebarLink>
           )}
         </SidebarSection>
