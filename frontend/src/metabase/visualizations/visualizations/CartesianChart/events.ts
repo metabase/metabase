@@ -155,7 +155,9 @@ export const getEventDimensions = (
   }
 
   return dimensions.filter(
-    (dimension) => dimension.column.source !== "query-transform",
+    (dimension) =>
+      dimension.column.source !== "query-transform" &&
+      dimension.column.source !== "aggregation",
   );
 };
 
