@@ -1,4 +1,5 @@
 import { useFormikContext } from "formik";
+import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -14,7 +15,7 @@ import type { DatabaseData } from "metabase-types/api";
 
 import { DatabaseFormError } from "../DatabaseFormError";
 
-import { useHasConnectionError } from "./utils";
+import { checkFormIsDirty, useHasConnectionError } from "./utils";
 
 interface DatabaseFormFooterProps {
   isAdvanced: boolean;
@@ -31,7 +32,11 @@ export const DatabaseFormFooter = ({
   ContinueWithoutDataSlot,
   location,
 }: DatabaseFormFooterProps) => {
-  const { values, dirty } = useFormikContext<DatabaseData>();
+  const { values, initialValues } = useFormikContext<DatabaseData>();
+  const isDirty = useMemo(
+    () => checkFormIsDirty(initialValues, values),
+    [initialValues, values],
+  );
   const isNew = values.id == null;
   const hasConnectionError = useHasConnectionError();
 
@@ -62,7 +67,7 @@ export const DatabaseFormFooter = ({
           <Flex gap="sm">
             <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
-              disabled={!dirty}
+              disabled={!isDirty}
               label={isNew ? t`Save` : t`Save changes`}
               variant="filled"
             />

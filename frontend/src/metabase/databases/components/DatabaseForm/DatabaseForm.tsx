@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
@@ -64,7 +64,9 @@ export const DatabaseForm = ({
   const engineFieldState = config.engine?.fieldState;
 
   const engines = useSelector(getEngines);
-  const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
+  const initialEngineKey = useMemo(() => {
+    return getEngineKey(engines, initialData, isAdvanced);
+  }, [engines, initialData, isAdvanced]);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
   const engine = getEngine(engines, engineKey);
 
@@ -78,6 +80,11 @@ export const DatabaseForm = ({
       { stripUnknown: true },
     );
   }, [initialData, engineKey, validationSchema]);
+
+  useEffect(() => {
+    // during page load, if initialData changes, initialEngineKey will also change
+    setEngineKey(initialEngineKey);
+  }, [initialEngineKey]);
 
   const handleSubmit = useCallback(
     (values: DatabaseData) => {
