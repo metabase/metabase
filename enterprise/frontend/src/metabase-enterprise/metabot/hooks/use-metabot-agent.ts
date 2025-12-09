@@ -8,6 +8,7 @@ import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
+  addDeveloperMessage as addDeveloperMessageAction,
   cancelInflightAgentRequests,
   getActiveToolCalls,
   getAgentErrorMessages,
@@ -22,6 +23,7 @@ import {
   getProfileOverride,
   resetConversation as resetConversationAction,
   retryPrompt,
+  setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
@@ -76,6 +78,13 @@ export const useMetabotAgent = () => {
     typeof getProfileOverride
   >;
 
+  const setProfileOverride = useCallback(
+    (profile: string | undefined) => {
+      dispatch(setProfileOverrideAction(profile));
+    },
+    [dispatch],
+  );
+
   const reactions = useSelector(getMetabotReactionsState as any) as ReturnType<
     typeof getMetabotReactionsState
   >;
@@ -96,8 +105,16 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    async (prompt: string | Omit<MetabotUserChatMessage, "id" | "role">) => {
-      if (!visible) {
+    async (
+      prompt: string | Omit<MetabotUserChatMessage, "id" | "role">,
+      options?: {
+        profile?: string | undefined;
+        preventOpenSidebar?: boolean;
+      },
+    ) => {
+      setProfileOverride(options?.profile);
+
+      if (!visible && !options?.preventOpenSidebar) {
         setVisible(true);
       }
 
@@ -132,9 +149,17 @@ export const useMetabotAgent = () => {
       getChatContext,
       metabotRequestId,
       prepareRetryIfUnsuccesful,
+      setProfileOverride,
       setVisible,
       visible,
     ],
+  );
+
+  const addDeveloperMessage = useCallback(
+    (message: string) => {
+      dispatch(addDeveloperMessageAction({ message }));
+    },
+    [dispatch],
   );
 
   const retryMessage = useCallback(
@@ -189,6 +214,8 @@ export const useMetabotAgent = () => {
     activeToolCalls,
     debugMode,
     profileOverride,
+    setProfileOverride,
     reactions,
+    addDeveloperMessage,
   };
 };

@@ -1,5 +1,6 @@
 import type { BaseQueryFn } from "@reduxjs/toolkit/query";
 import type { TypedUseLazyQuery } from "@reduxjs/toolkit/src/query/react/buildHooks";
+import type { Extension } from "@uiw/react-codemirror";
 import type { ComponentType } from "react";
 import React from "react";
 
@@ -8,6 +9,7 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
+  DatasetQuery,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
   SearchModel,
@@ -71,6 +73,13 @@ type PluginMetabotType = {
   MetabotAdminAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
+  useInlineSQLPrompt: (question: Question) => {
+    portalElement: React.ReactPortal | null;
+    extensions: Extension[];
+    proposedQuestion: Question | undefined;
+    handleAcceptProposed?: (datasetQuery: DatasetQuery) => void;
+    handleRejectProposed?: () => void;
+  } | void;
   useLazyMetabotGenerateContentQuery: TypedUseLazyQuery<
     MetabotGenerateContentResponse,
     MetabotGenerateContentRequest,
@@ -130,6 +139,7 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   MetabotAdminAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,
+  useInlineSQLPrompt: () => {},
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
