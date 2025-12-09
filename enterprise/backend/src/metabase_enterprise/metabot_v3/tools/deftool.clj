@@ -36,16 +36,18 @@
     - `:handler` - Function to call with encoded arguments (receives args map with :metabot-id)
 
   The handler receives a single map argument containing the encoded args plus `:metabot-id`
-  (extracted from the request). For no-args tools, the handler receives just `{:metabot-id ...}`."
+  and `:use-case` (extracted from the request)."
   [{:keys [arguments conversation_id] :as body}
    request
    {:keys [api-name args-schema result-schema handler]}]
   (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
   (let [metabot-id   (:metabot-v3/metabot-id request)
+        use-case     (get-in request [:headers "x-metabot-use-case"])
         encoded-args (cond-> (if args-schema
                                (mc/encode args-schema arguments request-transformer)
                                {})
-                       metabot-id (assoc :metabot-id metabot-id))
+                       metabot-id (assoc :metabot-id metabot-id)
+                       use-case (assoc :use-case use-case))
         raw-result   (handler encoded-args)
         result       (if result-schema
                        (mc/decode result-schema raw-result response-transformer)
