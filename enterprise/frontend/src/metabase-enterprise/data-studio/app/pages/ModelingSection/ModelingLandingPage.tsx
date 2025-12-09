@@ -112,7 +112,7 @@ export function ModelingLandingPage() {
         >
           <Flex gap="0.5rem">
             <TextInput
-              placeholder="Search..."
+              placeholder={t`Search...`}
               leftSection={<Icon name="search" />}
               bdrs="md"
               flex="1"
@@ -132,7 +132,7 @@ export function ModelingLandingPage() {
                 columns={[
                   {
                     accessorKey: "name",
-                    header: "Name",
+                    header: t`Name`,
                     meta: { width: "auto" },
                     cell: ({ getValue, row }) => {
                       const data = row.original;
@@ -146,7 +146,7 @@ export function ModelingLandingPage() {
                   },
                   {
                     accessorKey: "updatedAt",
-                    header: "Updated At",
+                    header: t`Updated At`,
                     cell: ({ getValue }) => {
                       const value = getValue() as string;
 

@@ -61,7 +61,7 @@ export const TransformListPageSidebar = () => {
       <Stack px="3.5rem" data-testid="transforms-list">
         <Flex gap="md">
           <TextInput
-            placeholder="Search..."
+            placeholder={t`Search...`}
             leftSection={<Icon name="search" />}
             bdrs="md"
             flex="1"
@@ -95,7 +95,7 @@ export const TransformListPageSidebar = () => {
                   meta: {
                     width: "auto",
                   },
-                  header: "Name",
+                  header: t`Name`,
                 },
                 {
                   accessorKey: "updated_at",
@@ -103,11 +103,11 @@ export const TransformListPageSidebar = () => {
                     const value = getValue() as string;
                     return value && dayjs(value).format("lll");
                   },
-                  header: "Last Modified",
+                  header: t`Last Modified`,
                 },
                 {
                   accessorFn: (transform) => transform.target.name,
-                  header: "Output table",
+                  header: t`Output table`,
                 },
               ]}
               onSelect={handleSelect}

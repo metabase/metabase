@@ -53,7 +53,7 @@ export const JobListPage = () => {
       <Stack px="3.5rem" data-testid="transforms-job-list">
         <Flex gap="0.5rem">
           <TextInput
-            placeholder="Search..."
+            placeholder={t`Search...`}
             leftSection={<Icon name="search" />}
             bdrs="md"
             flex="1"
@@ -81,14 +81,14 @@ export const JobListPage = () => {
                 columns={[
                   {
                     accessorKey: "name",
-                    header: "Name",
+                    header: t`Name`,
                     meta: {
                       width: "auto",
                     },
                   },
                   {
                     accessorFn: (job) => job.last_run?.start_time,
-                    header: "Last Run",
+                    header: t`Last Run`,
                     size: 200,
                     cell: ({ row: { original: job } }) => {
                       if (job.last_run) {
