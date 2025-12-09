@@ -13,9 +13,11 @@ export const DataModel = {
   TablePicker: {
     get: getTablePicker,
     getDatabase: getTablePickerDatabase,
+    getDatabaseToggle: getTablePickerDatabaseToggle,
     getDatabases: getTablePickerDatabases,
     getSchemas: getTablePickerSchemas,
     getSchema: getTablePickerSchema,
+    getSchemaToggle: getTablePickerSchemaToggle,
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
@@ -216,6 +218,10 @@ function getTablePickerDatabase(name: string) {
     .filter(`:contains("${name}")`);
 }
 
+function getTablePickerDatabaseToggle(name: string) {
+  return getTablePickerDatabase(name).find("[aria-expanded]");
+}
+
 function getTablePickerDatabases() {
   return cy.findAllByTestId("tree-item").filter('[data-type="database"]');
 }
@@ -225,6 +231,10 @@ function getTablePickerSchema(name: string) {
     .findAllByTestId("tree-item")
     .filter('[data-type="schema"]')
     .filter(`:contains("${name}")`);
+}
+
+function getTablePickerSchemaToggle(name: string) {
+  return getTablePickerSchema(name).find("[aria-expanded]");
 }
 
 function getTablePickerSchemas() {
