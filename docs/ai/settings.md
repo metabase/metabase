@@ -88,6 +88,12 @@ Metabot inherits the permissions of the current user, so you don't need to set p
 
 In other words, to restrict what data Metabot can see for each person, simply apply [data](../permissions/data.md) and [collection](../permissions/collections.md) permissions to their groups as you would normally, and those permissions will apply to their use of Metabot as well.
 
+## Viewing Metabot request usage
+
+You can see how many Metabot requests your Metabase has used this month by going to **Admin settings** > **License**. The **Metabot AI requests used, this month (updated daily)** field shows your current usage. To view request usage, you must have a [Metabase Store account](../cloud/accounts-and-billing.md). You'll need to log in to the store, then revisit this license page in your Metabase.
+
+Each message you send to Metabot counts as a request.
+
 ## Metabot is only available instance-wide, not per person
 
 Currently, Metabot will be available to everyone who uses your Metabase.
@@ -106,7 +112,7 @@ We've intentionally limited what Metabot can do. Metabot lacks access to API key
 
 Metabot has access to your Metabase metadata and some data values to help answer your questions:
 
-- **Table, Question, Model, Dashboard, and Metric metadata**: Metabot can see the structure and configuration of your content
+- **Table, Question, Model, Dashboard, and Metric metadata**: Metabot can see the structure and configuration of your content.
 - **Sample field values**: When you ask questions like "Filter everyone from Wisconsin," Metabot might check the values in the state field to understand how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
 - **Timeseries data**: For chart analysis, Metabot might see the timeseries data used to draw certain visualizations, depending on the chart type.
 
