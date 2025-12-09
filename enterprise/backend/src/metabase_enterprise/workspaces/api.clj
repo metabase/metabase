@@ -411,9 +411,9 @@
     (api/check-404 <>)
     (api/check-400 (nil? (:archived_at <>)) "Cannot execute archived workspace"))
   ;; TODO (Chris 11/21/25) -- implement execution logic
-  {:succeeded []
-   :failed    []
-   :not_run   []})
+  {:succeeded {}
+   :failed    {}
+   :not_run   {}})
 
 (api.macros/defendpoint :get "/:id/graph" :- GraphResult
   "Get the dependency graph for a workspace, for visualization.
