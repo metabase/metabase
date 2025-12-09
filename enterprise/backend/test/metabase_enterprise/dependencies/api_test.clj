@@ -69,6 +69,46 @@
             (is (= {:bad_cards [], :bad_transforms [], :success true}
                    response))))))))
 
+(deftest check-card-hydrates-dashboard-and-document-test
+  (testing "POST /api/ee/dependencies/check_card hydrates dashboard and document for cards"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-temp [:model/User user {:email "test@test.com"}
+                         :model/Dashboard dashboard {}
+                         :model/Document document {}]
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (let [metadata-provider (mt/metadata-provider)
+                    ;; Create base card querying real orders table
+                    base-card         (card/create-card! (basic-card) user)
+                    ;; Create dependent cards that filter on TOTAL
+                    base-card-meta    (lib.metadata/card metadata-provider (:id base-card))
+                    dependent-query   (let [q (lib/query metadata-provider base-card-meta)
+                                            cols (lib/filterable-columns q)
+                                            total-col (m/find-first #(= (:id %) (mt/id :orders :total)) cols)]
+                                        (lib/filter q (lib/> total-col 100)))
+                    dashboard-card    (card/create-card!
+                                       (merge (card-with-query "Dashboard card" dependent-query) {:dashboard_id (:id dashboard)})
+                                       user)
+                    document-card     (card/create-card!
+                                       (merge (card-with-query "Document card" dependent-query) {:document_id (:id document)})
+                                       user)
+                    ;; Propose changing to products table (doesn't have TOTAL column, breaks downstream)
+                    proposed-query    (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :products)))
+                    proposed-card     {:id (:id base-card)
+                                       :type :question
+                                       :dataset_query proposed-query
+                                       :result_metadata nil}]
+                (is (=? {:success       false
+                         :bad_cards      [{:id           (:id dashboard-card)
+                                           :dashboard_id (:id dashboard)
+                                           :dashboard    (select-keys dashboard [:id :name])}
+                                          {:id           (:id document-card)
+                                           :document_id  (:id document)
+                                           :document     (select-keys document [:id :name])}]
+                         :bad_transforms []}
+                        (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)))))))))))
+
 (deftest check-card-removing-column-breaks-downstream-test
   (testing "POST /api/ee/dependencies/check_card detects when removing a column breaks downstream cards"
     (mt/dataset test-data
@@ -697,3 +737,68 @@
                                                            :type "card")]
                         (is (empty? (:edges response))
                             "Should have no edges when table is filtered out")))))))))))))
+
+(deftest graph-returns-dashboard-for-cards-test
+  (testing "Graph endpoints return dashboard data for cards in dashboards"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (mt/with-temp [:model/User user {:email "test@test.com"}
+                         :model/Dashboard dashboard {:name "Test Dashboard"}]
+            (let [base-card (card/create-card! (basic-card "Base Card") user)
+                  dashboard-card (card/create-card! (assoc (wrap-card base-card)
+                                                           :dashboard_id (:id dashboard))
+                                                    user)]
+              (testing "GET /api/ee/dependencies/graph returns dashboard with :id and :name"
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                     :id (:id dashboard-card)
+                                                     :type :card)
+                      card-node (first (filter #(= (:id %) (:id dashboard-card)) (:nodes response)))]
+                  (is (= {:id (:id dashboard) :name "Test Dashboard"}
+                         (get-in card-node [:data :dashboard])))
+                  (is (= (:id dashboard)
+                         (get-in card-node [:data :dashboard_id])))))
+              (testing "GET /api/ee/dependencies/graph/dependents returns dashboard with :id and :name"
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                     :id (:id base-card)
+                                                     :type :card
+                                                     :dependent_type :card
+                                                     :dependent_card_type :question)
+                      card-node (first (filter #(= (:id %) (:id dashboard-card)) response))]
+                  (is (some? card-node))
+                  (is (= {:id (:id dashboard) :name "Test Dashboard"}
+                         (get-in card-node [:data :dashboard])))
+                  (is (= (:id dashboard)
+                         (get-in card-node [:data :dashboard_id]))))))))))))
+
+(deftest graph-returns-document-for-cards-test
+  (testing "Graph endpoints return document data for cards in documents"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (mt/with-temp [:model/User user {:email "test@test.com"}
+                       :model/Document document {:name "Test Document"}]
+          (let [base-card (card/create-card! (basic-card "Base Card") user)
+                document-card (card/create-card! (assoc (wrap-card base-card)
+                                                        :document_id (:id document))
+                                                 user)]
+            (testing "GET /api/ee/dependencies/graph returns document with :id and :name"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                   :id (:id document-card)
+                                                   :type :card)
+                    card-node (first (filter #(= (:id %) (:id document-card)) (:nodes response)))]
+                (is (= {:id (:id document) :name "Test Document"}
+                       (get-in card-node [:data :document])))
+                (is (= (:id document)
+                       (get-in card-node [:data :document_id])))))
+            (testing "GET /api/ee/dependencies/graph/dependents returns document with :id and :name"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                   :id (:id base-card)
+                                                   :type :card
+                                                   :dependent_type :card
+                                                   :dependent_card_type :question)
+                    card-node (first (filter #(= (:id %) (:id document-card)) response))]
+                (is (some? card-node))
+                (is (= {:id (:id document) :name "Test Document"}
+                       (get-in card-node [:data :document])))
+                (is (= (:id document)
+                       (get-in card-node [:data :document_id])))))))))))

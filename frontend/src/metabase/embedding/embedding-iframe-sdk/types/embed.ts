@@ -75,6 +75,7 @@ export type DashboardEmbedOptions = StrictUnion<
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  withSubscriptions?: boolean;
 
   // parameters
   initialParameters?: ParameterValues;
@@ -188,7 +189,8 @@ export type SdkIframeEmbedBaseSettings = {
   _isLocalhost?: boolean;
 };
 
-export type SdkIframeEmbedGuestEmbedSettings = {
+export type SdkIframeEmbedAuthTypeSettings = {
+  isSso: boolean;
   isGuest: boolean;
 };
 

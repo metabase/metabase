@@ -274,6 +274,10 @@ export const queryBuilderFooterDisplayToggle = () => {
   return cy.findByTestId("query-display-tabular-toggle");
 };
 
+export const queryVisualizationRoot = () => {
+  return cy.findByTestId("query-visualization-root");
+};
+
 export const closeQuestionActions = () => {
   queryBuilderHeader().click();
 };
@@ -583,7 +587,7 @@ export function assertTableData({ columns, firstRows = [] }) {
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
  * @returns
  */
-export function newButton(menuItem) {
+export function newButton(menuItem = undefined) {
   if (menuItem) {
     cy.findByTestId("app-bar").button("New").click();
     return popover().findByText(menuItem);

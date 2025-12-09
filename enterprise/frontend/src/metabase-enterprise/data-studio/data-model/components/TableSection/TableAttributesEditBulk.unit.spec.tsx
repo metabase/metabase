@@ -55,7 +55,7 @@ function TestWrapper({
 
   return (
     <SelectionProvider>
-      <TableAttributesEditBulk />
+      <TableAttributesEditBulk hasLibrary />
       <SelectionController
         initialTables={initialTables}
         onSelectionChange={() => setSelectionChanged(true)}
@@ -70,7 +70,7 @@ function setup({
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
-    key: "seen-publish-models-info",
+    key: "seen-publish-tables-info",
     value: true,
   });
   setupTableEndpoints(createMockTable());

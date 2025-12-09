@@ -6,13 +6,12 @@ import { Cell } from "metabase/browse/components/BrowseTable.styled";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, FixedSizeIcon, Menu } from "metabase/ui";
-
-import type { ModelingItem } from "../types";
+import type { CollectionItem } from "metabase-types/api";
 
 import S from "./MenuCell.module.css";
 
 interface MenuCellProps {
-  item?: ModelingItem;
+  item?: CollectionItem;
 }
 
 function stopPropagation(event: MouseEvent) {
@@ -36,8 +35,7 @@ export function MenuCell({ item }: MenuCellProps) {
     return <Cell />;
   }
 
-  const deleteLabel =
-    item.model === "metric" ? t`Delete metric` : t`Delete model`;
+  const deleteLabel = item.model === "metric" ? t`Delete metric` : t`Delete`;
 
   return (
     <Cell onClick={stopPropagation} className={S.menuCell}>

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -11,6 +11,7 @@ import { useUpdateSettingsMutation } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { SdkIframeStepHeader } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepHeader";
+import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { useDispatch } from "metabase/lib/redux";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal } from "metabase/redux/ui";
@@ -28,7 +29,6 @@ import {
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-import { useSdkIframeEmbedNavigation } from "../hooks";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
@@ -44,11 +44,17 @@ export const SdkIframeEmbedSetupContent = () => {
     isGuestEmbedsEnabled,
     isGuestEmbedsTermsAccepted,
     currentStep,
+    handleNext,
+    handleBack,
+    canGoBack,
     settings,
   } = useSdkIframeEmbedSetupContext();
 
-  const { handleNext, handleBack, canGoBack, StepContent } =
-    useSdkIframeEmbedNavigation();
+  const StepContent = useMemo(
+    () =>
+      EMBED_STEPS.find((step) => step.id === currentStep)?.component ?? noop,
+    [currentStep],
+  );
 
   function handleEmbedDone() {
     // Embedding Hub: track step completion
@@ -118,15 +124,17 @@ export const SdkIframeEmbedSetupContent = () => {
           </Stack>
 
           <Group className={S.Navigation} justify="space-between">
-            <Button
-              variant="default"
-              onClick={handleBack}
-              disabled={!canGoBack || !allowPreviewAndNavigation}
-            >
-              {t`Back`}
-            </Button>
+            {canGoBack && (
+              <Button
+                variant="default"
+                onClick={handleBack}
+                disabled={!allowPreviewAndNavigation}
+              >
+                {t`Back`}
+              </Button>
+            )}
 
-            {nextStepButton}
+            <Box ml="auto">{nextStepButton}</Box>
           </Group>
         </Box>
       </SidebarResizer>
@@ -192,3 +200,5 @@ export const SdkIframeEmbedSetupModal = ({
     </Modal.Content>
   </Modal>
 );
+
+const noop = () => null;

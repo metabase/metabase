@@ -35,7 +35,7 @@ export type CollectionType =
   | "trash"
   | "remote-synced"
   | "library"
-  | "library-models"
+  | "library-data"
   | "library-metrics"
   | null;
 
@@ -106,6 +106,7 @@ export const COLLECTION_ITEM_MODELS = [
   "collection",
   "indexed-entity",
   "document",
+  "table",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 

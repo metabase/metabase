@@ -5,16 +5,16 @@ import {
   ItemNameCell,
   MaybeItemLink,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
-import { entityForObject } from "metabase/lib/schema";
-import * as Urls from "metabase/lib/urls";
+import { getIcon } from "metabase/lib/icon";
 import { FixedSizeIcon, type IconName, Skeleton } from "metabase/ui";
+import type { CollectionItem } from "metabase-types/api";
 
-import type { ItemIcon, ModelingItem } from "../types";
+import { getItemUrl } from "../../../../utils";
 
 import S from "./NameCell.module.css";
 
 interface NameCellProps {
-  item?: ModelingItem;
+  item?: CollectionItem;
 }
 
 const CONTAINER_NAME = "ItemsTableContainer";
@@ -27,24 +27,10 @@ function preventDefault(event: MouseEvent) {
   event.preventDefault();
 }
 
-function getItemIcon(item: ModelingItem): ItemIcon {
-  const entityIcon = entityForObject(item)?.objectSelectors?.getIcon?.(item) as
-    | ItemIcon
-    | undefined;
-
-  return entityIcon ?? { name: "folder" as IconName };
-}
-
 export function NameCell({ item }: NameCellProps) {
   const headingId = item ? `${item.model}-${item.id}-heading` : "dummy-heading";
-
-  const icon = item ? getItemIcon(item) : { name: "folder" as IconName };
-
-  const itemUrl = item
-    ? item.model === "metric"
-      ? Urls.metric({ id: item.id, name: item.name, type: "metric" })
-      : Urls.dataStudioModel(item.id)
-    : undefined;
+  const icon = item ? getIcon(item) : { name: "folder" as IconName };
+  const itemUrl = item ? getItemUrl(item) : undefined;
 
   return (
     <ItemNameCell
