@@ -25,13 +25,14 @@ import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSetti
 
 function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
   const isEE = isEEBuild();
+  const isUsingTenants = useSetting("use-tenants");
 
   return (
     <SettingsPageWrapper title={t`Embedding settings`}>
       {children}
 
       <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems()}
+        items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
       />
 
       {isEE && <UpsellDevInstances location="embedding-page" />}

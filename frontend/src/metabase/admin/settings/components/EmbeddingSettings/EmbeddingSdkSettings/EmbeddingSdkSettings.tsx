@@ -21,26 +21,6 @@ const utmTags = {
 export const EmbeddingSdkSettings = () => {
   const isEE = isEEBuild();
   const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
-  const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
-
-  const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
-  const isSimpleEmbedFeatureAvailable =
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
-
-  const isEmbeddingAvailable =
-    isReactSdkFeatureAvailable || isSimpleEmbedFeatureAvailable;
-
-  const canEditSdkOrigins =
-    (isReactSdkFeatureAvailable && isReactSdkEnabled) ||
-    (isSimpleEmbedFeatureAvailable && isSimpleEmbedEnabled);
-
-  const isHosted = useSetting("is-hosted?");
-  const isUsingTenants = useSetting("use-tenants");
-
-  const { url: switchMetabaseBinariesUrl } = useDocsUrl(
-    "paid-features/activating-the-enterprise-edition",
-    { utm: utmTags },
-  );
 
   const implementJwtUrl = useDocsUrl("embedding/sdk/authentication", {
     utm: utmTags,
@@ -91,132 +71,24 @@ export const EmbeddingSdkSettings = () => {
   }
 
   return (
-    <SettingsPageWrapper title={t`Modular embedding`}>
-      <EmbeddingSettingsCard
-        title={t`Embedded Analytics JS`}
-        description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
-        settingKey="enable-embedding-simple"
-        isFeatureEnabled={isSimpleEmbedFeatureAvailable}
-        links={[
-          {
-            icon: "reference",
-            title: t`Documentation`,
-            href: embedJsDocumentationUrl?.url,
-          },
-        ]}
-        rightSideContent={
-          !isSimpleEmbedFeatureAvailable ? (
-            <UpsellEmbeddingButton
-              url="https://www.metabase.com/product/embedded-analytics"
-              campaign="embedded-analytics-js"
-              location="embedding-page"
-              size="default"
-            />
-          ) : undefined
-        }
-        actionButton={
-          isSimpleEmbedFeatureAvailable && (
-            <Button
-              variant="brand"
-              size="sm"
-              onClick={() => {
-                dispatch(setOpenModalWithProps({ id: "embed" }));
-              }}
-            >
-              {t`New embed`}
-            </Button>
-          )
-        }
-        testId="sdk-setting-card"
-      />
-
-      <EmbeddingSettingsCard
-        title={t`SDK for React`}
-        description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
-        settingKey="enable-embedding-sdk"
-        links={[
-          {
-            icon: "bolt",
-            title: t`Quick start`,
-            href: sdkQuickStartUrl,
-          },
-          {
-            icon: "reference",
-            title: t`Documentation`,
-            href: sdkDocumentationUrl,
-          },
-        ]}
-        alertInfoText={apiKeyBannerText}
-        testId="sdk-setting-card"
-      />
-
-      <Box py="lg" px="xl" className={S.SectionCard}>
-        <AdminSettingInput
-          title={t`Cross-Origin Resource Sharing (CORS)`}
-          description={
-            <Group align="center" gap="sm">
-              <Text c="text-medium" fz="md">
-                {isEmbeddingAvailable
-                  ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
-                  : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and enter the origins for the websites or apps where you want to allow SDK and Embedded Analytics JS.`}
-              </Text>
-
-              {isEmbeddingAvailable && (
-                <HoverCard position="bottom">
-                  <HoverCard.Target>
-                    <Icon name="info" c="text-medium" cursor="pointer" />
-                  </HoverCard.Target>
-
-                  <HoverCard.Dropdown>
-                    <Box p="md" w={270} bg="white">
-                      <Text lh="lg" c="text-medium">
-                        {corsHintText}
-                      </Text>
-                    </Box>
-                  </HoverCard.Dropdown>
-                </HoverCard>
-              )}
-            </Group>
-          }
-          name="embedding-app-origins-sdk"
-          placeholder="https://*.example.com"
-          inputType="text"
-          disabled={!canEditSdkOrigins}
-        />
-      </Box>
-
-      {isEmbeddingAvailable && isHosted && (
-        <Box py="lg" px="xl" className={S.SectionCard}>
-          <Stack gap="xs">
-            <Text
-              htmlFor="version-pinning"
-              component="label"
-              c="text-primary"
-              fw="bold"
-              fz="lg"
-            >
-              {t`Version pinning`}
-            </Text>
-
-            <Text c="text-secondary" lh="lg" mb="sm">
-              {t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
-            </Text>
-
-            <ExternalLink href="mailto:help@metabase.com">
-              <Group gap="sm" fw="bold" w="fit-content">
-                <Icon name="mail" size={14} aria-hidden />
-                <span>{t`Request version pinning`}</span>
-              </Group>
-            </ExternalLink>
-          </Stack>
-        </Box>
-      )}
-
-      <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
-      />
-
-      <UpsellDevInstances location="embedding-page" />
-    </SettingsPageWrapper>
+    <EmbeddingSettingsCard
+      title={t`Enable SDK for React`}
+      description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+      settingKey="enable-embedding-sdk"
+      links={[
+        {
+          icon: "bolt",
+          title: t`Quick start`,
+          href: sdkQuickStartUrl,
+        },
+        {
+          icon: "reference",
+          title: t`Documentation`,
+          href: sdkDocumentationUrl,
+        },
+      ]}
+      alertInfoText={apiKeyBannerText}
+      testId="sdk-setting-card"
+    />
   );
 };
