@@ -123,28 +123,32 @@
                                    (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))
                                    (map :id)
                                    (into #{})))]
-      (mt/with-temporary-setting-values [user-visibility :all]
+      (mt/with-temporary-setting-values [user-visibility :all
+                                         use-tenants true]
         (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
         (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
         (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
         ;; note that even superusers only see recipients in the same tenant - maybe revisit this?
         (is (=? #{tenant-user-id
                   other-tenant-user-id
-                  normal-user-id} (get-recipient-ids :crowberto))))
-      (mt/with-temporary-setting-values [user-visibility :group]
-        (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
-        (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
-        (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
-        (is (=? #{tenant-user-id
-                  other-tenant-user-id
-                  normal-user-id} (get-recipient-ids :crowberto))))
-      (mt/with-temporary-setting-values [user-visibility :none]
-        (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
-        (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
-        (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
-        (is (=? #{tenant-user-id
-                  other-tenant-user-id
-                  normal-user-id} (get-recipient-ids :crowberto)))))))
+                  normal-user-id} (get-recipient-ids :crowberto)))
+        (mt/with-temporary-setting-values [user-visibility :group
+                                           use-tenants true]
+
+          (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
+          (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
+          (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
+          (is (=? #{tenant-user-id
+                    other-tenant-user-id
+                    normal-user-id} (get-recipient-ids :crowberto))))
+        (mt/with-temporary-setting-values [user-visibility :none
+                                           use-tenants true]
+          (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
+          (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
+          (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
+          (is (=? #{tenant-user-id
+                    other-tenant-user-id
+                    normal-user-id} (get-recipient-ids :crowberto))))))))
 
 (deftest list-users-can-list-tenant-users
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
