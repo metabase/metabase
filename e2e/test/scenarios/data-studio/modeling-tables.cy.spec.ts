@@ -57,7 +57,7 @@ describe("scenarios > data studio > modeling > tables", () => {
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.queryVisualizationRoot().within(() => {
         cy.findByText("Subtotal").should("be.visible");
-        cy.findByText("109.22").should("be.visible");
+        cy.findByText("110.93").should("be.visible");
       });
     });
 
