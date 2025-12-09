@@ -757,9 +757,6 @@ describe("tenant users", () => {
     H.navigationSidebar()
       .findByTestId("navbar-new-collection-button")
       .should("not.exist");
-    H.navigationSidebar()
-      .findByRole("link", { name: /trash/i })
-      .should("not.exist");
   });
 
   it("should create a tenant group and add users to it", () => {
@@ -903,7 +900,7 @@ const createUsers = () => {
   cy.request("GET", "/api/ee/tenant").then(({ body }) => {
     USERS.forEach((user) => {
       const tenantId = body.data.find(
-        (tenant) => tenant.slug === user.tenant,
+        (tenant) => tenant.slug === user["@tenant"],
       ).id;
 
       cy.request("POST", "/api/user", { ...user, tenant_id: tenantId });

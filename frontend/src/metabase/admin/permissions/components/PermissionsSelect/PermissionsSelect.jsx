@@ -64,7 +64,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const hasActions = actionsForCurrentValue.length > 0;
 
   return (
-    <Popover opened={opened} onChange={toggle} disabled={isDisabled}>
+    <Popover opened={opened} onClose={close} disabled={isDisabled}>
       <Popover.Target>
         <PermissionsSelectRoot
           isDisabled={isDisabled}
