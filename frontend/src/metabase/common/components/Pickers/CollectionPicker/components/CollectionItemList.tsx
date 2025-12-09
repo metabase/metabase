@@ -1,4 +1,5 @@
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import type { CollectionItemModel } from "metabase-types/api";
 
 import { ItemList } from "../../../EntityPicker";
@@ -46,9 +47,11 @@ export const CollectionItemList = ({
       : skipToken,
   );
 
+  const items = collectionItems?.data?.filter(canCollectionCardBeUsed);
+
   return (
     <ItemList
-      items={collectionItems?.data}
+      items={items}
       isLoading={isLoading}
       error={error}
       onClick={onClick}

@@ -1364,7 +1364,7 @@ describe("issue 64293", () => {
 });
 
 describe("issue 13347", () => {
-  it("should not display questions in data picker that cannot be used for new questions (metabase#13347)", () => {
+  beforeEach(() => {
     H.restore();
     H.restore("postgres-12");
     cy.signInAsAdmin();
@@ -1388,11 +1388,25 @@ describe("issue 13347", () => {
     cy.signInAsNormalUser();
 
     cy.visit("/");
+  });
 
+  it("should not display questions in mini data picker that cannot be used for new questions (metabase#13347)", () => {
     H.startNewQuestion();
     H.miniPickerOurAnalytics().click();
 
     H.miniPicker().within(() => {
+      cy.findByText("Orders").should("exist");
+
+      cy.findByText("13347 structured").should("not.exist");
+      cy.findByText("13347 native").should("not.exist");
+    });
+  });
+
+  it("should not display questions in big data picker that cannot be used for new questions (metabase#13347)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+
+    H.entityPickerModalLevel(1).within(() => {
       cy.findByText("Orders").should("exist");
 
       cy.findByText("13347 structured").should("not.exist");
