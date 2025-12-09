@@ -1043,62 +1043,6 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v58.2025-12-05T17:41:52
-      author: ranquild
-      comment: Drop idx_report_card_published_table_id
-      changes:
-        - dropIndex:
-            tableName: report_card
-            indexName: idx_report_card_published_table_id
-      rollback:
-        - createIndex:
-            tableName: report_card
-            indexName: idx_report_card_published_table_id
-            columns:
-              - column:
-                  name: published_table_id
-
-  - changeSet:
-      id: v58.2025-12-05T17:41:53
-      author: ranquild
-      comment: Drop report_card.published_table_id
-      changes:
-        - dropColumn:
-            tableName: report_card
-            columnName: published_table_id
-      rollback:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: published_table_id
-                  type: int
-                  remarks: The table id that is 'published' by this model
-                  constraints:
-                    nullable: true
-
-
-  - changeSet:
-      id: v58.2025-12-05T17:41:54
-      author: ranquild
-      comment: Rename collection.type 'library-models' to 'library-data'
-      changes:
-        - update:
-            tableName: collection
-            columns:
-              - column:
-                  name: type
-                  value: 'library-data'
-            where: type = 'library-models'
-      rollback:
-        - update:
-            tableName: collection
-            columns:
-              - column:
-                  name: type
-                  value: 'library-models'
-            where: type = 'library-data'
-
       id: v58.2025-11-25T00:00:00
       author: edpaget
       comment: Add default read permissions for All Users group on shared-tenant-collection root
@@ -1158,6 +1102,63 @@ databaseChangeLog:
                   remarks: The ID of the collection
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:52
+      author: ranquild
+      comment: Drop idx_report_card_published_table_id
+      changes:
+        - dropIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+      rollback:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:53
+      author: ranquild
+      comment: Drop report_card.published_table_id
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: published_table_id
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: published_table_id
+                  type: int
+                  remarks: The table id that is 'published' by this model
+                  constraints:
+                    nullable: true
+
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:54
+      author: ranquild
+      comment: Rename collection.type 'library-models' to 'library-data'
+      changes:
+        - update:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  value: 'library-data'
+            where: type = 'library-models'
+      rollback:
+        - update:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  value: 'library-models'
+            where: type = 'library-data'
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
