@@ -14,10 +14,10 @@
 
 (def ^:private GraphMembers
   [:map
-   [:working-set [:sequential RefId]]
-   [:inputs [:sequential InputTable]]
-   [:outputs [:sequential OutputTable]]
-   [:entities [:sequential Entity]]])
+   [:working-set [:sequential ::RefId]]
+   [:inputs [:sequential ::InputTable]]
+   [:outputs [:sequential ::OutputTable]]
+   [:entities [:sequential ::Entity]]])
 
 (def ^:private Graph
   [:and GraphMembers [:dependencies [:map-of RefId [:sequential RefId]]]])
