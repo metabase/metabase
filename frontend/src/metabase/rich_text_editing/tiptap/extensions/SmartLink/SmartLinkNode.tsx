@@ -434,7 +434,7 @@ export const SmartLinkComponent = memo(
     const showLoading = isLoading && !entity;
     if (showLoading) {
       return (
-        <NodeViewWrapper as="span">
+        <NodeViewWrapper as="span" data-type="smart-link">
           <span className={styles.smartLink}>
             <span className={styles.smartLinkInner}>
               <Icon name="hourglass" className={styles.icon} />
@@ -447,7 +447,7 @@ export const SmartLinkComponent = memo(
 
     if (error || !entity) {
       return (
-        <NodeViewWrapper as="span">
+        <NodeViewWrapper as="span" data-type="smart-link">
           <span className={styles.smartLink}>
             <span className={styles.smartLinkInner}>
               {isObject(error) && error.status === 403 ? (
@@ -469,7 +469,7 @@ export const SmartLinkComponent = memo(
 
     if (model === "user" && isMentionableUser(entity)) {
       return (
-        <NodeViewWrapper as="span">
+        <NodeViewWrapper as="span" data-type="smart-link">
           <span className={styles.userMention}>@{entity.common_name}</span>
         </NodeViewWrapper>
       );
@@ -489,7 +489,7 @@ export const SmartLinkComponent = memo(
           );
 
     return (
-      <NodeViewWrapper as="span">
+      <NodeViewWrapper as="span" data-type="smart-link">
         <a
           href={entityUrl || "#"}
           target="_blank"

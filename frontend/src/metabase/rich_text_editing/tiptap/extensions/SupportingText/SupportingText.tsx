@@ -60,7 +60,7 @@ export const SupportingText = Node.create<{
   parseHTML() {
     return [
       {
-        tag: 'div[data-type="supportingText"]',
+        tag: `div[data-type="${SupportingText.name}"]`,
       },
     ];
   },
@@ -69,7 +69,7 @@ export const SupportingText = Node.create<{
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
-        "data-type": this.name,
+        "data-type": SupportingText.name,
       }),
       0,
     ];
@@ -175,6 +175,7 @@ const SupportingTextComponent = ({
     <NodeViewWrapper
       className={cx(S.wrapper, { [S.selected]: selected })}
       data-testid="document-card-supporting-text"
+      data-type="supportingText"
       onDragOver={handleDragOver}
       onDrop={() => setDragState({ isDraggedOver: false, side: null })}
       onCut={onCutOrCopy}
