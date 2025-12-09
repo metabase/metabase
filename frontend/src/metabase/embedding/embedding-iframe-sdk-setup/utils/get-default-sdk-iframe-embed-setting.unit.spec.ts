@@ -15,6 +15,7 @@ const BASE_PARAMS = {
   resourceId: 123,
   isSimpleEmbedFeatureAvailable: true,
   isGuestEmbedsEnabled: false,
+  isSsoEnabledAndConfigured: true,
 } as const;
 
 describe("getDefaultSdkIframeEmbedSettings", () => {
@@ -66,6 +67,8 @@ describe("getDefaultSdkIframeEmbedSettings", () => {
         const result = getDefaultSdkIframeEmbedSettings({
           ...BASE_PARAMS,
           experience,
+          isGuest: false,
+          useExistingUserSession: false,
         });
 
         expect(result).toMatchObject({
@@ -83,6 +86,8 @@ describe("getDefaultSdkIframeEmbedSettings", () => {
         ...BASE_PARAMS,
         experience: "dashboard",
         isSimpleEmbedFeatureAvailable: false,
+        isGuest: false,
+        useExistingUserSession: false,
       });
 
       expect(result.theme).toEqual({ preset: "light" });
@@ -95,6 +100,8 @@ describe("getDefaultSdkIframeEmbedSettings", () => {
         ...BASE_PARAMS,
         experience: "dashboard",
         isSimpleEmbedFeatureAvailable: true,
+        isGuest: false,
+        useExistingUserSession: false,
       });
 
       expect(result.theme).toBeUndefined();
