@@ -140,7 +140,9 @@ const resolveEntityId = (
   }
 };
 
-export const canCollectionCardBeUsed = (item: CollectionItem): boolean => {
+export const canCollectionCardBeUsed = (
+  item: CollectionItem | CollectionPickerItem,
+): boolean => {
   if (item.model === "card") {
     return "can_run_adhoc_query" in item ? !!item.can_run_adhoc_query : true;
   }
