@@ -24,8 +24,14 @@ import { useAddOnsBilling } from "./hooks";
 import type { IMetabotPurchaseFormFields } from "./types";
 
 export const MetabotPurchasePageForStoreUser = () => {
-  const { isLoading, error, billingPeriodMonths, tiers, defaultQuantity } =
-    useAddOnsBilling();
+  const {
+    isLoading,
+    error,
+    billingPeriodMonths,
+    defaultQuantity,
+    hadMetabot,
+    tiers,
+  } = useAddOnsBilling();
   const hasData =
     billingPeriodMonths !== undefined &&
     defaultQuantity !== undefined &&
@@ -98,12 +104,16 @@ export const MetabotPurchasePageForStoreUser = () => {
         {t`Your browser does not support the video tag.`}
       </video>
       <SettingsSection
-        title={t`Start free 14-day trial of Metabot`}
+        title={
+          hadMetabot
+            ? t`Pick Metabot usage limit`
+            : t`Start free 14-day trial of Metabot`
+        }
         description={
           <Text mt="sm">
             {t`Pick a usage limit below. Usage is measured in Metabot requests.`}
             <br />
-            {t`If a chat has multiple questions, they are counted as separate Metabot requests.`}
+            {t`Each message sent to Metabot is counted as a request. `}
             <br />
             {t`Usage limit applies to your whole organization.`}
           </Text>
@@ -145,8 +155,13 @@ export const MetabotPurchasePageForStoreUser = () => {
                     />
                   </Card>
 
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-                  <Text>{t`After 14 days of free trial an additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`}</Text>
+                  <Text>
+                    {hadMetabot
+                      ? /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+                        t`An additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`
+                      : /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+                        t`After 14 days of free trial an additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`}
+                  </Text>
 
                   <FormSubmitButton
                     disabled={!values.terms_of_service}

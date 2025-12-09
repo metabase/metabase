@@ -27,12 +27,14 @@ import { TableSectionGroup } from "./TableSectionGroup";
 
 type TableAttributesEditBulkProps = {
   hasLibrary: boolean;
+  onUpdate: () => void;
 };
 
 type TableModalType = "library" | "publish" | "unpublish" | "sync";
 
 export function TableAttributesEditBulk({
   hasLibrary,
+  onUpdate,
 }: TableAttributesEditBulkProps) {
   const {
     selectedDatabases,
@@ -104,10 +106,16 @@ export function TableAttributesEditBulk({
     if (entityType) {
       setEntityType(entityType);
     }
+    onUpdate();
   };
 
   const handleCloseModal = () => {
     setModalType(undefined);
+  };
+
+  const handleSuccessCloseModal = () => {
+    onUpdate();
+    handleCloseModal();
   };
 
   useEffect(() => {
@@ -263,7 +271,7 @@ export function TableAttributesEditBulk({
         databaseIds={Array.from(selectedDatabases)}
         schemaIds={Array.from(selectedSchemas)}
         tableIds={Array.from(selectedTables)}
-        onPublish={handleCloseModal}
+        onPublish={handleSuccessCloseModal}
         onClose={handleCloseModal}
       />
 
@@ -272,7 +280,7 @@ export function TableAttributesEditBulk({
         databaseIds={Array.from(selectedDatabases)}
         schemaIds={Array.from(selectedSchemas)}
         tableIds={Array.from(selectedTables)}
-        onUnpublish={handleCloseModal}
+        onUnpublish={handleSuccessCloseModal}
         onClose={handleCloseModal}
       />
 

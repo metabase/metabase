@@ -17,8 +17,6 @@
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.normalize :as leg-normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -679,18 +677,9 @@
 ;; Discussion: https://metaboat.slack.com/archives/C05MPF0TM3L/p1764944945966649?thread_ts=1763990244.080579&cid=C05MPF0TM3L
 (defmethod upgrade-card-schema-to 23
   [card _schema-version]
-  (cond
-    (seq (:dataset_query card))
-    card
-
-    (not (seq (:legacy_query card)))
-    card
-
-    :else
-    (assoc card :dataset_query (-> (:legacy_query card)
-                                   mi/json-out-without-keywordization
-                                   leg-normalize/normalize-or-throw
-                                   lib/->pMBQL))))
+  ;; This fix was a failure. We have to keep the schema upgrade, but now it's
+  ;; just a no-op.
+  card)
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]
