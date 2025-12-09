@@ -27,17 +27,13 @@
                      :password (driver.common/random-isolated-password)}
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; SQL Server: create login (server level), then user (database level), then schema
-    (doseq [sql [;; Create the login at server level (if not exists)
-                 (format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
+    (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
                               "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
                          login-name login-name (:password read-user))
-                 ;; Create the user in this database for the login
                  (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
                          (:user read-user) (:user read-user) login-name)
-                 ;; Create the isolation schema
                  (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"
                          schema-name schema-name)
-                 ;; Grant schema privileges to the user
                  (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name (:user read-user))]]
       (jdbc/execute! conn-spec [sql]))
     {:schema           schema-name
@@ -48,10 +44,8 @@
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
         username  (-> workspace :database_details :user)
         schemas   (distinct (map :schema tables))]
-    ;; Grant SELECT on each schema
     (doseq [schema schemas]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON SCHEMA::[%s] TO [%s]" schema username)]))
-    ;; Also grant on individual tables for fine-grained control
     (doseq [table tables]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
                                         (:schema table) (:name table) username)]))))
@@ -64,17 +58,12 @@
         isolated-table  (driver.common/isolated-table-name output)
         conn-spec       (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (assert (every? some? [source-schema source-table isolated-schema isolated-table]) "Figured out table")
-    ;; SQL Server: SELECT INTO with WHERE 1=0 copies structure only (no data)
-    (doseq [sql [(format "SELECT * INTO [%s].[%s] FROM [%s].[%s] WHERE 1=0"
-                         isolated-schema
-                         isolated-table
-                         source-schema
-                         source-table)]]
-                 ;; Transfer ownership to the isolation user via schema permissions
-                 ;; (user already has CONTROL on the schema from init)
-
-      (when (seq sql)
-        (jdbc/execute! conn-spec [sql])))
+    ;; User already has CONTROL on schema from init, so the created table inherits permissions
+    (jdbc/execute! conn-spec [(format "SELECT * INTO [%s].[%s] FROM [%s].[%s] WHERE 1=0"
+                                      isolated-schema
+                                      isolated-table
+                                      source-schema
+                                      source-table)])
     (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]
       (select-keys table-metadata [:id :schema :name]))))
 

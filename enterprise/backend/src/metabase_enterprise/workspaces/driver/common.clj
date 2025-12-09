@@ -40,7 +40,7 @@
   "Character sets for password generation. Cycles through these to ensure representation from each."
   ["ABCDEFGHJKLMNPQRSTUVWXYZ"
    "abcdefghjkmnpqrstuvwxyz"
-   "23456789"
+   "123456789"
    "!#$%&*+-="])
 
 (defn random-isolated-password
@@ -49,7 +49,7 @@
    by cycling through the character sets. Result is shuffled for randomness."
   []
   (->> (cycle password-char-sets)
-       (take 32)
+       (take (+ 32 (rand-int 32)))
        (map rand-nth)
        shuffle
        (apply str)))

@@ -28,24 +28,16 @@
         read-user   {:user     (driver.common/isolation-user-name workspace)
                      :password (driver.common/random-isolated-password)}
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    ;; Snowflake RBAC: create role, grant privileges to role, grant role to user
-    (doseq [sql [;; Create the isolation schema (must use fully qualified name)
-                 (format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
-                 ;; Create a role for this workspace
+    ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
+    (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
                  (format "CREATE ROLE IF NOT EXISTS %s" role-name)
-                 ;; Grant database usage to the role (required to set current database)
                  (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE %s" db-name role-name)
-                 ;; Grant warehouse usage to the role (required to execute queries)
                  (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE %s" warehouse role-name)
-                 ;; Grant schema privileges to the role
                  (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE %s" db-name schema-name role-name)
                  (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE %s" db-name schema-name role-name)
-                 ;; Grant all privileges on future tables created in this schema
                  (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE %s" db-name schema-name role-name)
-                 ;; Create the user
                  (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
                          (:user read-user) (:password read-user) role-name)
-                 ;; Grant the role to the user
                  (format "GRANT ROLE %s TO USER \"%s\"" role-name (:user read-user))]]
       (jdbc/execute! conn-spec [sql]))
     {:schema           schema-name
@@ -73,7 +65,6 @@
         role-name       (-> workspace :database_details :role)
         conn-spec       (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (assert (every? some? [source-schema source-table isolated-schema isolated-table]) "Figured out table")
-    ;; Snowflake: CREATE TABLE ... LIKE creates structure only (no data)
     (doseq [sql [(format "CREATE TABLE \"%s\".\"%s\".\"%s\" LIKE \"%s\".\"%s\".\"%s\""
                          db-name
                          isolated-schema
@@ -81,7 +72,6 @@
                          db-name
                          source-schema
                          source-table)
-                 ;; Grant ownership to the isolation role
                  (format "GRANT OWNERSHIP ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE %s COPY CURRENT GRANTS"
                          db-name isolated-schema isolated-table role-name)]]
       (jdbc/execute! conn-spec [sql]))
