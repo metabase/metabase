@@ -62,7 +62,6 @@ export const {
   deactivateSuggestedTransform,
   addSuggestedCodeEdit,
   deactivateSuggestedCodeEdit,
-  clearDeveloperMessage,
 } = metabot.actions;
 
 type PromptErrorOutcome = {

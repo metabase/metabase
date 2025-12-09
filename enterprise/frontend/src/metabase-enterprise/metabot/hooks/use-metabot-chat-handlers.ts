@@ -27,7 +27,9 @@ export const useMetabotChatHandlers = (
       }
       setPrompt("");
       promptInputRef?.current?.focus();
-      submitInput(trimmedInput).catch((err) => console.error(err));
+      submitInput(trimmedInput, { preventOpenSidebar: true }).catch((err) =>
+        console.error(err),
+      );
     },
     [isDoingScience, promptInputRef, setPrompt, submitInput],
   );
