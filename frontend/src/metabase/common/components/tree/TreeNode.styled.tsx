@@ -70,4 +70,5 @@ export const IconContainer = styled.div<{ transparent?: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.25rem;
+  opacity: ${({ transparent = true }) => (transparent ? 0.5 : 1)};
 `;
