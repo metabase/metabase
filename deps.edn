@@ -75,7 +75,6 @@
                                                            commons-logging/commons-logging]}
   compojure/compojure                       {:mvn/version "1.7.2"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
-  crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
   diehard/diehard                           {:mvn/version "0.12.0"}
   dk.ative/docjure                          {:mvn/version "1.22.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
