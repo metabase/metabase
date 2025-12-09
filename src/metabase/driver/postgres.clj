@@ -1010,6 +1010,7 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BIT]
   [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; convert bit strings to strings, leave booleans as objects
   (if (= "bit" (.getColumnTypeName rsmeta i))
     (fn []
       (.getString rs i))
