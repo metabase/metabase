@@ -3,7 +3,6 @@ import React from "react";
 
 import type { MetabotContext } from "metabase/metabot";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { ActionIconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
@@ -66,7 +65,7 @@ type PluginMetabotType = {
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
   MetabotAdminAppBarButton: ComponentType;
-  MetabotDataStudioButton: ComponentType<ActionIconProps>;
+  MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
 };
 
