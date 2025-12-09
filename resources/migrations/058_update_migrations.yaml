@@ -906,7 +906,7 @@ databaseChangeLog:
             sql: >-
               INSERT INTO permissions_group (name, magic_group_type, is_tenant_group)
               VALUES
-              ('All External Users', 'all-external-users', true);
+              ('All tenant users', 'all-external-users', true);
 
   - changeSet:
       id: v58.2025-11-19T00:00:00

@@ -204,7 +204,7 @@ describe("Tenants - management", () => {
 
     // Create an external user
     cy.findByRole("link", { name: /Tenant users/ }).click();
-    cy.button("Invite someone").click();
+    cy.button("Create tenant user").click();
 
     H.modal().within(() => {
       cy.findByRole("textbox", { name: "First name" }).type("Test");
@@ -279,7 +279,7 @@ describe("Tenants - management", () => {
       cy.findByRole("link", { name: /All Internal Users/ }).should(
         "be.visible",
       );
-      cy.findByRole("link", { name: /All Tenant users/ }).should("not.exist");
+      cy.findByRole("link", { name: /All tenant users/ }).should("not.exist");
     });
 
     cy.findByRole("navigation", { name: "people-nav" })
@@ -298,17 +298,17 @@ describe("Tenants - management", () => {
         cy.findByRole("button", {
           name: "group-action-button",
         }).should("not.exist");
-        cy.findByRole("link", { name: /All Tenant users/ }).click();
+        cy.findByRole("link", { name: /All tenant users/ }).click();
       });
     });
 
     cy.findByTestId("admin-panel")
-      .findByText(/Tenant users group and can't be removed from it/)
+      .findByText(/All tenant users group and can't be removed from it/)
       .should("exist");
   });
 
   it("should allow you to manage external user permissions once multi tenancy is enabled", () => {
-    const EXTERNAL_USER_GROUP_NAME = "All Tenant users";
+    const EXTERNAL_USER_GROUP_NAME = "All tenant users";
     const TENANT_GROUP_NAME = "Favorite tenant users";
 
     cy.request("POST", "/api/permissions/group", {
@@ -360,10 +360,10 @@ describe("Tenants - management", () => {
       "exist",
     ]);
 
-    getPermissionRowPermissions("All Tenant users")
+    getPermissionRowPermissions("All tenant users")
       .eq(3)
       .should("have.attr", "aria-disabled", "true");
-    getPermissionRowPermissions("All Tenant users")
+    getPermissionRowPermissions("All tenant users")
       .eq(4)
       .should("have.attr", "aria-disabled", "true");
 
@@ -373,7 +373,7 @@ describe("Tenants - management", () => {
     lacksGlobeIcon("All Internal Users");
   });
 
-  it("should show 'All Tenant users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
+  it("should show 'All tenant users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
 
     // Create a tenant group
@@ -387,7 +387,7 @@ describe("Tenants - management", () => {
 
       cy.findByRole("radio", { name: "Groups" }).click({ force: true });
 
-      cy.findByRole("menuitem", { name: "All Tenant users" }).click();
+      cy.findByRole("menuitem", { name: "All tenant users" }).click();
 
       cy.log("sample database's view data permission should be 'Can view'");
       getPermissionRowPermissions("Sample Database")
@@ -407,10 +407,10 @@ describe("Tenants - management", () => {
         .findByLabelText("warning icon")
         .realHover();
 
-      // Tooltip must reference "All Tenant users" not "All Internal Users"
+      // Tooltip must reference "All tenant users" not "All Internal Users"
       H.tooltip().should(
         "contain",
-        'The "All Tenant users" group has a higher level of access',
+        'The "All tenant users" group has a higher level of access',
       );
       H.tooltip().should("not.contain", "All Internal Users");
     });
@@ -427,7 +427,7 @@ describe("Tenants - management", () => {
     cy.visit("admin/tenants/people");
 
     cy.findByRole("link", { name: /Tenant users/ }).click();
-    cy.button("Invite someone").click();
+    cy.button("Create tenant user").click();
 
     H.modal().within(() => {
       cy.findByRole("textbox", { name: "First name" }).type("Test");
@@ -783,7 +783,7 @@ describe("tenant users", () => {
 
     H.modal().within(() => {
       cy.findByText("Tenant Groups");
-      cy.findByText("All Tenant users").click();
+      cy.findByText("All tenant users").click();
     });
 
     H.popover().findByText(GROUP_NAME).click();
@@ -802,7 +802,7 @@ describe("tenant users", () => {
     );
 
     cy.log("add user in a group");
-    cy.button("Invite someone").click();
+    cy.button("Create tenant user").click();
 
     H.modal().within(() => {
       cy.findByLabelText("First name").type("Misty");
@@ -812,7 +812,7 @@ describe("tenant users", () => {
     });
 
     H.popover().findByText(GIZMO_TENANT.name).click();
-    H.modal().findByText("All Tenant users").click();
+    H.modal().findByText("All tenant users").click();
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
