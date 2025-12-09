@@ -329,7 +329,7 @@ function WorkspacesSection({
   }
 
   return (
-    <Stack gap="0.5rem" className={S.workspacesSection}>
+    <Stack data-testid="workspaces-section" gap="0.5rem" className={S.workspacesSection}>
       <UnstyledButton
         className={cx(S.workspacesSectionHeader, {
           [S.selected]: isWorkspaceListPage,

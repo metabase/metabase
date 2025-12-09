@@ -407,7 +407,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   }
 
   return (
-    <Stack h="100%" gap={0}>
+    <Stack data-testid="workspace-page" h="100%" gap={0}>
       <Group
         px="md"
         py="sm"
@@ -442,6 +442,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         style={{ overflow: "hidden" }}
       >
         <Box
+          data-testid="workspace-content"
           w="70%"
           h="100%"
           style={{
@@ -617,7 +618,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           </Tabs>
         </Box>
 
-        <Box style={{ flex: "1 0 auto", width: "30%" }}>
+        <Box
+          data-testid="workspace-sidebar"
+          style={{ flex: "1 0 auto", width: "30%" }}
+        >
           <Tabs defaultValue="code">
             <Flex
               px="md"
