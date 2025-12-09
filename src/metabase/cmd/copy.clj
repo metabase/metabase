@@ -119,7 +119,9 @@
      ;; 57+
      :model/Glossary
      ;; 58+
-     :model/AuthIdentity]
+     :model/AuthIdentity
+     :model/Document
+     :model/DocumentBookmark]
     (when config/ee-available?
       [:model/Sandbox
        :model/ConnectionImpersonation
@@ -127,8 +129,6 @@
        :model/MetabotConversation
        :model/MetabotMessage
        :model/MetabotPrompt
-       :model/Document
-       :model/DocumentBookmark
        :model/Comment
        :model/CommentReaction]))))
 
