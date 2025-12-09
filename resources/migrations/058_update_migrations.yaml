@@ -951,6 +951,52 @@ databaseChangeLog:
             sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
 
   - changeSet:
+      id: v58.2025-11-25T00:00:00
+      author: edpaget
+      comment: Add default read permissions for All Users group on shared-tenant-collection root
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/namespace/shared-tenant-collection/root/read/'
+              FROM permissions_group pg
+              WHERE pg.magic_group_type = 'all-internal-users'
+                AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.group_id = pg.id
+                    AND p.object = '/collection/namespace/shared-tenant-collection/root/read/'
+                );
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions
+              WHERE object = '/collection/namespace/shared-tenant-collection/root/read/'
+                AND group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-internal-users');
+
+  - changeSet:
+      id: v58.2025-11-25T00:00:01
+      author: edpaget
+      comment: Add default read permissions for All External Users group on shared-tenant-collection root
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/namespace/shared-tenant-collection/root/read/'
+              FROM permissions_group pg
+              WHERE pg.magic_group_type = 'all-external-users'
+                AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.group_id = pg.id
+                    AND p.object = '/collection/namespace/shared-tenant-collection/root/read/'
+                );
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions
+              WHERE object = '/collection/namespace/shared-tenant-collection/root/read/'
+                AND group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-external-users');
+
+  - changeSet:
       id: v58.2025-11-25T17:04:00
       author: dependencies
       comment: Add dependency_analysis_version to segment table for tracking dependency changes
@@ -1024,52 +1070,6 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v58.2025-11-25T00:00:00
-      author: edpaget
-      comment: Add default read permissions for All Users group on shared-tenant-collection root
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO permissions (group_id, object)
-              SELECT pg.id, '/collection/namespace/shared-tenant-collection/root/read/'
-              FROM permissions_group pg
-              WHERE pg.magic_group_type = 'all-internal-users'
-                AND NOT EXISTS (
-                  SELECT 1 FROM permissions p
-                  WHERE p.group_id = pg.id
-                    AND p.object = '/collection/namespace/shared-tenant-collection/root/read/'
-                );
-      rollback:
-        - sql:
-            sql: >-
-              DELETE FROM permissions
-              WHERE object = '/collection/namespace/shared-tenant-collection/root/read/'
-                AND group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-internal-users');
-
-  - changeSet:
-      id: v58.2025-11-25T00:00:01
-      author: edpaget
-      comment: Add default read permissions for All External Users group on shared-tenant-collection root
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO permissions (group_id, object)
-              SELECT pg.id, '/collection/namespace/shared-tenant-collection/root/read/'
-              FROM permissions_group pg
-              WHERE pg.magic_group_type = 'all-external-users'
-                AND NOT EXISTS (
-                  SELECT 1 FROM permissions p
-                  WHERE p.group_id = pg.id
-                    AND p.object = '/collection/namespace/shared-tenant-collection/root/read/'
-                );
-      rollback:
-        - sql:
-            sql: >-
-              DELETE FROM permissions
-              WHERE object = '/collection/namespace/shared-tenant-collection/root/read/'
-                AND group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-external-users');
 
   - changeSet:
       id: v58.2025-12-01T05:21:37
