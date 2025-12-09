@@ -47,30 +47,20 @@ describe("scenarios > data studio > workspaces", () => {
   // });
 
   describe("workspaces list", () => {
-    it.only("should be able to create, navigate, and archive workspaces", () => {
+    it("should be able to create, navigate, and archive workspaces", () => {
       Workspaces.visitDataStudio();
 
       Workspaces.getWorkspacesSection()
         .findByText("No workspaces yet")
         .should("be.visible");
 
-      Workspaces.getNewWorkspaceButton().click();
-      H.modal().findByText("Create new workspace").should("be.visible");
-      Workspaces.getNewWorkspaceNameInput().clear().type("My workspace");
-      Workspaces.getNewWorkspaceDatabaseInput().click();
-      H.popover().within(() => {
-        // cy.findByText("Internal Metabase Database").should("not.exist"); // TODO: uncomment once it works
-        // cy.findByText("Sample Database").should("not.exist"); // TODO: uncomment once it works
-        cy.findByText("Writable Postgres12").should("be.visible").click();
-      });
-      H.modal().findByText("Create").click();
+      createWorkspace("Workspace A");
 
       cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
 
       cy.log("shows workspace name");
-      Workspaces.getWorkspaceNameInput()
-        .should("be.visible")
-        .and("have.value", "My workspace");
+      Workspaces.getWorkspaceNameInput().should("have.value", "Workspace A");
+      Workspaces.getMergeWorkspaceButton().should("be.disabled");
 
       Workspaces.getWorkspaceContent().within(() => {
         cy.log("starts on setup tab, and has only 2 tabs");
@@ -86,9 +76,54 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       Workspaces.getWorkspaceSidebar().within(() => {
+        cy.log("starts on Code tab, and has only 2 tabs");
+        H.tabsShouldBe("Code", ["Code", "Data"]);
+
         cy.log("shows transforms list");
         cy.findByText("Workspace is empty").should("be.visible");
       });
+
+      createWorkspace("Workspace B");
+      Workspaces.getWorkspaceNameInput().should("have.value", "Workspace B");
+
+      Workspaces.getWorkspacesSection().within(() => {
+        cy.findByText("Workspace B").should("be.visible");
+        cy.findByText("Workspace A").should("be.visible").click();
+      });
+
+      Workspaces.getWorkspaceNameInput().should("have.value", "Workspace A");
+
+      cy.log("can archive a workspace");
+      Workspaces.getWorkspaceItemActions(/Workspace A/).click();
+      H.popover().findByText("Archive").click();
+      H.undoToast().should("have.text", "Workspace archived successfully");
+      Workspaces.getWorkspaceItem(/Workspace A/).should("not.exist");
+      cy.location("pathname").should("eq", "/data-studio/workspaces");
+
+      Workspaces.getWorkspacesPage().within(() => {
+        cy.findByText("Workspaces").should("be.visible");
+        cy.findByText("Workspace A").should("not.exist");
+        cy.log("can navigate from workspaces list to a workspace");
+        cy.findByText("Workspace B").should("be.visible").click();
+      });
+
+      cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
+      Workspaces.getWorkspaceNameInput().should("have.value", "Workspace B");
+
+      // TODO: workspace deletion?
     });
   });
 });
+
+function createWorkspace(name: string) {
+  Workspaces.getNewWorkspaceButton().click();
+  H.modal().findByText("Create new workspace").should("be.visible");
+  Workspaces.getNewWorkspaceNameInput().clear().type(name);
+  Workspaces.getNewWorkspaceDatabaseInput().click();
+  H.popover().within(() => {
+    // cy.findByText("Internal Metabase Database").should("not.exist"); // TODO: uncomment once it works
+    // cy.findByText("Sample Database").should("not.exist"); // TODO: uncomment once it works
+    cy.findByText("Writable Postgres12").should("be.visible").click();
+  });
+  H.modal().findByText("Create").click();
+}

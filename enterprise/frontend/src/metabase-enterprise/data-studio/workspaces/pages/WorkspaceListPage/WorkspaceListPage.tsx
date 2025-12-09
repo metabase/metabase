@@ -1,25 +1,22 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { Anchor, Box, Card, Group, Stack, Text, Title } from "metabase/ui";
 import { useGetWorkspacesQuery } from "metabase-enterprise/api";
 
 export function WorkspaceListPage() {
-  const { data: workspacesData, isLoading } = useGetWorkspacesQuery();
+  const { data: workspacesData, error, isLoading } = useGetWorkspacesQuery();
 
-  if (isLoading) {
-    return (
-      <Box p="lg">
-        <Text>{t`Loading...`}</Text>
-      </Box>
-    );
+  if (error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
 
   const workspaces = workspacesData?.items ?? [];
 
   return (
-    <Box p="lg">
+    <Box data-testid="workspaces-page" p="lg">
       <Title order={2} mb="lg">{t`Workspaces`}</Title>
       {workspaces.length === 0 ? (
         <Text c="text-secondary">{t`No workspaces yet`}</Text>

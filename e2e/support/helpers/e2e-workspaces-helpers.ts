@@ -13,6 +13,10 @@ export const Workspaces = {
     return cy.visit("/data-studio/transforms");
   },
 
+  getWorkspacesPage() {
+    return cy.findByTestId("workspaces-page");
+  },
+
   getWorkspacePage() {
     return cy.findByTestId("workspace-page");
   },
@@ -29,8 +33,20 @@ export const Workspaces = {
     return cy.findByTestId("workspaces-section");
   },
 
+  getWorkspaceItem(name: string | RegExp) {
+    return Workspaces.getWorkspacesSection().findByRole("button", { name });
+  },
+
+  getWorkspaceItemActions(name: string | RegExp) {
+    return Workspaces.getWorkspaceItem(name).findByLabelText("More actions");
+  },
+
   getWorkspaceNameInput() {
     return cy.findByPlaceholderText("Workspace name");
+  },
+
+  getMergeWorkspaceButton() {
+    return cy.findByRole("button", { name: /Merge/ });
   },
 
   getNewWorkspaceButton() {
