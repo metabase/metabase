@@ -31,38 +31,43 @@
 
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
     query                 :- [:maybe :map]]
-   (let [metadata-providerable (or metadata-providerable
-                                   (when-let [mp (:lib/metadata query)]
-                                     (when (lib/metadata-provider? mp)
-                                       mp))
-                                   lib.metadata.jvm/application-database-metadata-provider)]
-     (cond
-       (empty? query)
-       {}
+   (try
+     (let [metadata-providerable (or metadata-providerable
+                                     (when-let [mp (:lib/metadata query)]
+                                       (when (lib/metadata-provider? mp)
+                                         mp))
+                                     lib.metadata.jvm/application-database-metadata-provider)]
+       (cond
+         (empty? query)
+         {}
 
-       (not (has-normalized-key? query :database))
-       (throw (ex-info "Query must include :database" {:query query}))
+         (not (has-normalized-key? query :database))
+         (throw (ex-info "Query must include :database" {:query query}))
 
-       (not (has-any-of-these-normalized-keys? query #{:lib/type :type}))
-       (throw (ex-info "Query must include :lib/type or :type" {:query query}))
+         (not (has-any-of-these-normalized-keys? query #{:lib/type :type}))
+         (throw (ex-info "Query must include :lib/type or :type" {:query query}))
 
-       (and (has-normalized-key? query :lib/type)
-            (has-any-of-these-normalized-keys? query #{:type :query :native}))
-       (throw (ex-info "MBQL 4 keys like :type, :query, or :native are not allowed in MBQL 5 queries with :lib/type"
-                       {:query query}))
+         (and (has-normalized-key? query :lib/type)
+              (has-any-of-these-normalized-keys? query #{:type :query :native}))
+         (throw (ex-info "MBQL 4 keys like :type, :query, or :native are not allowed in MBQL 5 queries with :lib/type"
+                         {:query query}))
 
-       (and (has-normalized-key? query :type)
-            (has-normalized-key? query :stages))
-       (throw (ex-info "MBQL 5 :stages is not allowed in an MBQL 4 query with :type" {:query query}))
+         (and (has-normalized-key? query :type)
+              (has-normalized-key? query :stages))
+         (throw (ex-info "MBQL 5 :stages is not allowed in an MBQL 4 query with :type" {:query query}))
 
-       (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
-       (lib/normalize ::lib.schema/query query)
+         (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
+         (lib/normalize ::lib.schema/query query)
 
-       :else
-       (->> query
-            (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
-                                                 metadata-providerable))
-            (lib/query metadata-providerable))))))
+         :else
+         (->> query
+              (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
+                                                   metadata-providerable))
+              (lib/query metadata-providerable))))
+     ;; return an empty map if we are unable to normalize the query correctly to prevent breaking things downstream
+     (catch Throwable e
+       (log/errorf e "Error normalizing query %s" (pr-str query))
+       {}))))
 
 (defn- transform-query-in [query]
   (when-not (map? query)
@@ -82,7 +87,7 @@
         (normalize-query query))
       (catch Throwable e
         (log/errorf e "Error deserializing dataset_query from app DB: %s" (ex-message e))
-        nil))))
+        {}))))
 
 (def transform-query
   "Toucan 2 transform spec for Card `dataset_query` and other columns that store MBQL."

@@ -8,7 +8,7 @@
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
                 "response because of one malformed Card, dump the error to the logs and return nil.")
-    (is (= nil
+    (is (= {}
            ((:out lib-be/transform-query)
             (json/encode
              {:database 1
@@ -60,3 +60,21 @@
          clojure.lang.ExceptionInfo
          #"\QMBQL 5 :stages is not allowed in an MBQL 4 query with :type\E"
          (lib-be/normalize-query {:database 1, :type :query, :stages []})))))
+
+(deftest ^:parallel normalize-busted-query-test-5
+  (testing "A totally broken query should get normalized to a map rather than return a string or nil"
+    (mu/disable-enforcement
+      (is (= {}
+             ((:out lib-be/transform-query) "WOW THIS IS A MESSED UP DATASET_QUERY!"))))))
+
+(deftest ^:parallel normalize-busted-query-test-6
+  (testing "A broken query that cannot be parsed correctly should return an empty map (rather than a partially-normalized query)"
+    (let [broken-query {"database" 1
+                        "type"     "query"
+                        "query"    {"source-table" 1
+                                    "aggregation"  [["aggregation-options"
+                                                    ["concat" "THIS" "IS NOT A VALID AGGREGATION"]
+                                                     {"name" "Sum", "display-name" "Sum"}]]}}]
+      (mu/disable-enforcement
+        (is (= {}
+               (lib-be/normalize-query broken-query)))))))
