@@ -724,6 +724,106 @@
      :sort_column sort_column
      :sort_direction sort_direction}))
 
+(def ^:private broken-items-args
+  [:map
+   [:types {:optional true} [:or
+                             (ms/enum-decode-keyword [:card :transform])
+                             [:sequential (ms/enum-decode-keyword [:card :transform])]]]
+   [:card_types {:optional true} [:or
+                                  (ms/enum-decode-keyword [:question :model :metric])
+                                  [:sequential (ms/enum-decode-keyword [:question :model :metric])]]]
+   [:query {:optional true} :string]
+   [:sort_column {:optional true} (ms/enum-decode-keyword [:name :location :view_count])]
+   [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
+
+(defn- broken-query [entity-type sort card-types query]
+  {:select [[[:inline (name entity-type)] :entity_type]
+            [:entity.id :entity_id]
+            [(case sort
+               :name :entity.name
+               :view_count (case entity-type
+                             :card :entity.view_count
+                             :transform [:coalesce
+                                         {:select [[[:count :*]]]
+                                          :from [:transform_run]
+                                          :where [:= :transform_run.transform_id :entity.id]}
+                                         0])
+               :location (case entity-type
+                           :card [:coalesce :report_dashboard.name :collection.name]
+                           :transform [:inline nil])
+               :entity.name) :sort_key]]
+   :from [[(case entity-type
+             :card :report_card
+             :transform :transform)
+           :entity]]
+   :left-join (cond-> [:analysis_finding [:and
+                                          [:= :analysis_finding.analyzed_entity_id :entity.id]
+                                          [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
+                (= entity-type :card) (into [:report_dashboard [:= :report_dashboard.id :entity.dashboard_id]
+                                             :collection [:= :collection.id :entity.collection_id]]))
+   :where (cond->> [:= :analysis_finding.result false]
+            (and (= entity-type :card)
+                 (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
+            query (conj [:and [:like [:lower :entity.name] (str "%" (u/lower-case-en query) "%")]]))})
+
+(api.macros/defendpoint :get "/broken-items"
+  "Returns a paginated list of all items (cards or transforms) with broken queries.
+
+   Accepts optional parameters for filtering, sorting, and pagination:
+   - limit: Number of items per page (default: 50)
+   - offset: Number of items to skip (default: 0)
+   - types: List of entity types to include (e.g., [:card :transform])
+   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
+   - query: Search string to filter by name or location
+   - sort_column: Field to sort by (:name, :location, :view_count) (default: :name)
+   - sort_direction: Sort direction (:asc or :desc) (default: :asc)
+
+   Returns a map with:
+   - data: List of unreferenced items, each with :id, :type, and :data fields
+   - limit: The limit used for pagination
+   - offset: The offset used for pagination
+   - total: Total count of unreferenced items matching the filters
+   - sort_column: The sort column used
+   - sort_direction: The sort direction used"
+  [_route-params
+   {:keys [types card_types query sort_column sort_direction]
+    :or {sort_column :name
+         sort_direction :asc
+         types [:card :transform]
+         card_types [:model :metric]}} :- broken-items-args]
+  (let [limit (or (request/limit) 50)
+        offset (or (request/offset) 0)
+        selected-types (if (sequential? types) types [types])
+        card-types (if (sequential? card_types) card_types [card_types])
+        _ (prn "selected-types" selected-types sort_column card-types query)
+        union-queries (map #(broken-query % sort_column card-types query) selected-types)
+        _ (prn "broken-queries" union-queries)
+        union-query {:union-all union-queries}
+        total (-> (t2/query {:select [[:%count.* :total]]
+                             :from [[union-query :subquery]]})
+                  first
+                  :total)
+        paginated-ids (t2/query (assoc union-query
+                                       :order-by [[:sort_key sort_direction]]
+                                       :limit limit
+                                       :offset offset))
+        ids-by-type (group-by :entity_type paginated-ids)
+        paginated-items (keep (fn [{:keys [entity_type entity_id]}]
+                                (let [entity-type (keyword entity_type)
+                                      entity (get-in (entities-by-type ids-by-type) [entity-type entity_id])]
+                                  (when entity
+                                    {:id entity_id
+                                     :type entity-type
+                                     :data (->> (select-keys entity (unreferenced-items-keys entity-type))
+                                                (m/map-vals format-subentity))})))
+                              paginated-ids)]
+    {:data paginated-items
+     :limit limit
+     :offset offset
+     :total total
+     :sort_column sort_column
+     :sort_direction sort_direction}))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
   (handlers/routes
