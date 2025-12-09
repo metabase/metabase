@@ -15,12 +15,12 @@ This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot
 
 Before using Metabot in your Metabase, you'll need to add the Metabot add-on to your instance in Metabase Store.
 
-## Add Metabot from Metabase Store
+## Add Metabot from the Metabase Store
 
-For now, Metabot is only available for Metabase Cloud. Before you can set up Metabot in your Metabase, you'll need to add Metabot to your subscription from Metabase Store.
+For now, Metabot is only available for Metabase Cloud. Before you can set up Metabot in your Metabase, you'll need to add Metabot to your subscription from the Metabase Store.
 
 1. Go to [store.metabase.com](https://store.metabase.com).
-2. Log in with your **Metabase Store account** (distinct from your Metabase instance account).
+2. Log in with your **Metabase Store account** (distinct from the account you use to log into your Metabase).
 3. In the **Instances** tab, find the instance you'd like to add Metabot to, and click "Add Metabot AI".
 4. Pick the plan based on the number of requests you expect you'll need.
 
@@ -28,7 +28,7 @@ For now, Metabot is only available for Metabase Cloud. Before you can set up Met
 
 5. Read through the [terms of service](https://www.metabase.com/license/hosting) and click **Add Metabot AI**.
 
-Once you add Metabot AI in Metabase store, you can log into your Metabase instance and configure it in _Admin settings > AI_
+Once you've added Metabot AI in the Metabase store, you can log into your Metabase and configure it in _Admin settings > AI_.
 
 ## Verified content
 
