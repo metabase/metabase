@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
@@ -53,10 +54,11 @@
   :type       :boolean
   :audit      :never)
 
-(defn update-use-tenants! [new-val]
+(defn- update-use-tenants! [new-val]
   (when-not new-val
     ;; deactivate all tenants
-    (t2/update! :model/Tenant {} {:is_active false})
+    (t2/query {:update :tenant
+               :set {:is_active false}})
     ;; deactivate all tenant users, so if the tenant is reactivated someday they'll come back too
     (t2/update! :model/User :tenant_id [:not= nil]
                 :is_active true
