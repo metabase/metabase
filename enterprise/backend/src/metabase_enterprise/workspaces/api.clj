@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api
   "`/api/ee/workspace/` routes"
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.transforms.util :as transforms.util]
@@ -353,6 +354,9 @@
 
       (not (or db_id ws-db-id))
       {:status 403 :body (deferred-tru "Must target a database")}
+
+      (not (str/starts-with? (:schema target) "mb__isolation_"))
+      {:status 403 :body (deferred-tru "Must not target an isolated workspace schema")}
 
       ;; Within a workspace, we defer blocking on conflicts outside the workspace
       #_{:status 403 :body (deferred-tru "A table with that name already exists.")}
