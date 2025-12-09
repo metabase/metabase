@@ -4,6 +4,7 @@ import { useState } from "react";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
+  setupDatabaseListEndpoint,
   setupRootCollectionItemsEndpoint,
   setupTenantCollectionItemsEndpoint,
 } from "__support__/server-mocks";
@@ -227,6 +228,8 @@ export const setup = ({
       ? [mockCollectionToCollectionItem(tenantCollectionsTree[0])]
       : [],
   });
+
+  setupDatabaseListEndpoint([]);
 
   const settings = mockSettings(
     createMockSettings({

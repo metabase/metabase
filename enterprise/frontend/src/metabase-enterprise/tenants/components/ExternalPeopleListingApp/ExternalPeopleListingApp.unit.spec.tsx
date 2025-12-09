@@ -76,13 +76,13 @@ describe("ExternalPeopleListingApp", () => {
       tenants: [createMockTenant({})],
     });
 
-    expect(await screen.findByText("Invite someone")).toBeInTheDocument();
+    expect(await screen.findByText("Create external user")).toBeInTheDocument();
   });
 
-  it("should not show an invite button if there are tenants", async () => {
+  it("should not show an invite button if there are no tenants", async () => {
     setup({});
 
-    expect(screen.queryByText("Invite someone")).not.toBeInTheDocument();
+    expect(screen.queryByText("Create external user")).not.toBeInTheDocument();
   });
 
   it("should show a no results special message if there are no tenants", async () => {
