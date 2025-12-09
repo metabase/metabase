@@ -8,6 +8,7 @@ import {
   type MetabotAgentId,
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
+  addDeveloperMessage as addDeveloperMessageAction,
   cancelInflightAgentRequests,
   getActiveToolCalls,
   getAgentErrorMessages,
@@ -106,6 +107,13 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     ],
   );
 
+  const addDeveloperMessage = useCallback(
+    (message: string) => {
+      dispatch(addDeveloperMessageAction({ agentId, message }));
+    },
+    [dispatch, agentId],
+  );
+
   const retryMessage = useCallback(
     async (messageId: string) => {
       const context = await getChatContext();
@@ -167,5 +175,6 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       getProfileOverride(state, agentId),
     ),
     reactions: useMetabotSelector(getMetabotReactionsState),
+    addDeveloperMessage,
   };
 };

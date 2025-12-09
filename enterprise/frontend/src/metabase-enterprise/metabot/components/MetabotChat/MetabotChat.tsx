@@ -79,6 +79,12 @@ export const MetabotChat = ({
       side="right"
       width="30rem"
       aria-hidden={!metabot.visible}
+      style={{
+        boxShadow: metabot.profileOverride
+          ? // TODO: do not merge to master, just meant to highlight another profile is set for now
+            "inset 0px 0px 33px -10px var(--mb-color-brand)"
+          : "unset",
+      }}
     >
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}

@@ -33,6 +33,10 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   useEffect(() => {
     return tinykeys(window, {
       "$mod+e": (e) => {
+        // ignore if focus is in a CodeMirror editor - it has its own handler
+        if (document.activeElement?.closest(".cm-editor")) {
+          return;
+        }
         e.preventDefault(); // prevent FF from opening bookmark menu
         if (!visible) {
           trackMetabotChatOpened("keyboard_shortcut");

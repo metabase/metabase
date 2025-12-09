@@ -216,3 +216,15 @@ export const getAgentRequestMetadata = createSelector(
     ...(profileOverride ? { profile_id: profileOverride } : {}),
   }),
 );
+
+export const getMetabotSuggestedCodeEdits = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.suggestedCodeEdits,
+);
+
+export const getMetabotSuggestedCodeEdit = createSelector(
+  [getMetabotSuggestedCodeEdits, (_, bufferId: string) => bufferId],
+  (codeEdits, bufferId) => {
+    return codeEdits.findLast((t) => t.bufferId === bufferId && t.active);
+  },
+);

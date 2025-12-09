@@ -68,6 +68,7 @@ const input: Input = {
   context: {
     user_is_viewing: [],
     current_time_with_timezone: "",
+    capabilities: [],
   },
 };
 

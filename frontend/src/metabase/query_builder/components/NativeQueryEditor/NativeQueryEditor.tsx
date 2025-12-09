@@ -261,6 +261,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       runQuery,
       highlightedLineNumbers,
       placeholder,
+      extensions,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -354,6 +355,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 readOnly={readOnly}
                 placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
+                extensions={extensions}
                 onChange={this.onChange}
                 onRunQuery={runQuery}
                 onSelectionChange={setNativeEditorSelectedRange}

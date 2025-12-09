@@ -126,6 +126,7 @@ export const getMetabotInitialState = (): MetabotState => {
     },
     reactions: {
       navigateToPath: null,
+      suggestedCodeEdits: [],
       // NOTE: suggestedTransforms should be folded into suggestedCodeEdits eventually
       suggestedTransforms: [],
     },

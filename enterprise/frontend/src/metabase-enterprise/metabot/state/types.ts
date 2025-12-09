@@ -1,6 +1,7 @@
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
+  MetabotCodeEdit,
   MetabotHistory,
   MetabotTodoItem,
   MetabotTransformInfo,
@@ -75,6 +76,12 @@ export type MetabotChatMessage =
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
 
+export type MetabotDeveloperMessage = {
+  id: string;
+  role: "developer";
+  message: string;
+};
+
 export type MetabotErrorMessage = {
   type: "message" | "alert";
   message: string;
@@ -94,6 +101,7 @@ export type MetabotSuggestedTransform = SuggestedTransform & {
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  suggestedCodeEdits: MetabotCodeEdit[];
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 

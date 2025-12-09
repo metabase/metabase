@@ -3,7 +3,7 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
-import type { SuggestedTransform } from "metabase-types/api";
+import type { MetabotCodeEdit, SuggestedTransform } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -18,6 +18,7 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotDeveloperMessage,
   MetabotErrorMessage,
   MetabotSuggestedTransform,
   MetabotUserChatMessage,
@@ -53,6 +54,15 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
+    // CONVERSATION REDUCERS
+    addDeveloperMessage: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<Omit<MetabotDeveloperMessage, "role">>,
+      ) => {
+        convo.history.push({ ...action.payload, role: "developer" });
+      },
+    ),
     addUserMessage: convoReducer(
       (
         convo,
@@ -238,6 +248,24 @@ export const metabot = createSlice({
         if (t.id === action.payload) {
           t.active = false;
         }
+      });
+    },
+    addSuggestedCodeEdit: (
+      state,
+      { payload }: PayloadAction<MetabotCodeEdit>,
+    ) => {
+      // mark all other edits w/ same buffer id as inactive before adding new one
+      state.reactions.suggestedCodeEdits.forEach((t) => {
+        t.active = t.bufferId === payload.bufferId ? false : t.active;
+      });
+      state.reactions.suggestedCodeEdits.push(payload);
+    },
+    deactivateSuggestedCodeEdit: (
+      state,
+      action: PayloadAction<MetabotCodeEdit["bufferId"] | undefined>,
+    ) => {
+      state.reactions.suggestedCodeEdits.forEach((t) => {
+        t.active = t.bufferId === action.payload ? false : t.active;
       });
     },
   },
