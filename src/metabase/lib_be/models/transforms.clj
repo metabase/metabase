@@ -29,8 +29,15 @@
   ([query]
    (normalize-query nil query))
 
+  ([metadata-providerable query]
+   (normalize-query metadata-providerable query nil))
+
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
-    query                 :- [:maybe :map]]
+    query                 :- [:maybe :map]
+    {:keys [strict?]}     :- [:maybe
+                              [:map
+                               {:closed true}
+                               [:strict? {:optional true, :default false} [:maybe :boolean]]]]]
    (try
      (let [metadata-providerable (or metadata-providerable
                                      (when-let [mp (:lib/metadata query)]
@@ -64,8 +71,11 @@
               (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
                                                    metadata-providerable))
               (lib/query metadata-providerable))))
-     ;; return an empty map if we are unable to normalize the query correctly to prevent breaking things downstream
+     ;; return an empty map if we are unable to normalize the query correctly to prevent breaking things downstream,
+     ;; unless strict mode is on (when we are saving a query)
      (catch Throwable e
+       (when strict?
+         (throw e))
        (log/errorf e "Error normalizing query %s" (pr-str query))
        {}))))
 
@@ -74,7 +84,7 @@
     (throw (ex-info (format "Query must be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query))
                     {:query query, :status-code 400})))
   (-> query
-      normalize-query
+      (as-> $query (normalize-query nil $query {:strict? true}))
       lib/prepare-for-serialization
       mi/json-in))
 
