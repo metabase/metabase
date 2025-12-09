@@ -1,7 +1,10 @@
 import * as Yup from "yup";
 
-import type { MetabotCodeEdit } from "metabase-enterprise/metabot/state";
-import type { MetabotTodoItem, SuggestedTransform } from "metabase-types/api";
+import type {
+  MetabotCodeEdit,
+  MetabotTodoItem,
+  SuggestedTransform,
+} from "metabase-types/api";
 
 export const dataPartSchema = Yup.object({
   type: Yup.string().required(),
