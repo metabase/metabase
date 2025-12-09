@@ -387,10 +387,10 @@
 
 (defn- status-icon [status]
   (case status
-    :ok (c/green "✅")
-    :warn (c/yellow "⚠️")
-    :error (c/red "❌")
-    :info (c/yellow "ℹ️")))
+    :ok (c/green "✓")
+    :warn (c/yellow "⚠")
+    :error (c/red "✗")
+    :info (c/yellow "–")))
 
 (defn- format-check
   "Format and print a check result. Returns nil for nil input (skips output)."
@@ -401,10 +401,10 @@
                 :ok (c/green message)
                 :warn (c/yellow message)
                 :error (c/red message)
-                :info (c/dark message))]
+                :info (c/yellow message))]
       (if hint
-        (println (str "- " icon " " name ": " msg " " (c/dark (str "— " hint))))
-        (println (str "- " icon " " name ": " msg))))))
+        (println (str "- " icon " **" name "**: " msg " " (c/gray (str "— " hint))))
+        (println (str "- " icon " **" name "**: " msg))))))
 
 (defn- print-section [title]
   (println)
@@ -421,13 +421,9 @@
   ;; Get mise info upfront
   (let [mise-info (get-mise-doctor-info)
         toolset (get-mise-toolset mise-info)
-        project-tools (get-mise-project-tools)
-        check-git-result (delay)]
+        project-tools (get-mise-project-tools)]
 
-;; Check git first, it takes the longest:
-    (future (deliver check-git-result (check-git)))
-
-    ;; Check mise
+    ;; Check mise first
     (when-not mise-info
       (print-section "⚠️  mise not installed")
       (println (c/red "mise is required for managing development tools."))
@@ -439,7 +435,7 @@
     (let [managers (detect-version-managers)]
       (print-section "Version Managers")
       (if (empty? managers)
-        (println (str "- " (c/dark "None detected (using system tools)")))
+        (println (str "- " (c/gray "None detected (using system tools)")))
         (do
           (doseq [{:keys [name]} managers]
             (println (str "- " (c/green "✓") " " name)))
@@ -448,7 +444,7 @@
 
     ;; Required tools
     (print-section "Required Tools")
-    (format-check @check-git-result)
+    (format-check (check-git))
     (doseq [tool-cfg (:required-tools config)]
       (format-check (check-required-tool toolset tool-cfg)))
 
@@ -473,7 +469,7 @@
       (if (seq optional-tools)
         (doseq [tool optional-tools]
           (format-check (check-optional-tool toolset tool)))
-        (println (c/dark "- No optional tools configured in mise.toml"))))
+        (println (c/gray "- No optional tools configured in mise.toml"))))
 
     ;; Git status
     (print-section "Git Status")
@@ -507,4 +503,4 @@
         (println (c/green (c/bold "✓ All checks passed!")))))
 
     (println)
-    (println (c/dark "Docs: docs/developers-guide/devenv.md"))))
+    (println (c/gray "Docs: docs/developers-guide/devenv.md"))))
