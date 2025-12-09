@@ -53,7 +53,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
+    H.activateToken("bleeding-edge");
     enableTenantsFeature();
   });
 
