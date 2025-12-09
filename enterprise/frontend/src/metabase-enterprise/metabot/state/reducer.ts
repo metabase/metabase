@@ -84,12 +84,6 @@ export type MetabotChatMessage =
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
 
-export type MetabotDeveloperMessage = {
-  id: string;
-  role: "developer";
-  message: string;
-};
-
 export type MetabotErrorMessage = {
   type: "message" | "alert";
   message: string;
@@ -126,6 +120,7 @@ export interface MetabotState {
   profile?: string;
   experimental: {
     debugMode: boolean;
+    developerMessage: string;
     metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
   };
@@ -148,6 +143,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   activeToolCalls: [],
   experimental: {
     debugMode: false,
+    developerMessage: "",
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
   },
@@ -157,6 +153,9 @@ export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
+    addDeveloperMessage: (state, action: PayloadAction<string>) => {
+      state.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload}\n\n`;
+    },
     addUserMessage: (
       state,
       action: PayloadAction<Omit<MetabotUserChatMessage, "role">>,
@@ -164,14 +163,8 @@ export const metabot = createSlice({
       const { id, message, ...rest } = action.payload;
 
       state.errorMessages = [];
-      state.messages.push({ id, role: "user", message, ...rest } as any);
+      state.messages.push({ id, role: "user", ...rest, message } as any);
       state.history.push({ id, role: "user", content: message });
-    },
-    addDeveloperMessage: (
-      state,
-      action: PayloadAction<Omit<MetabotDeveloperMessage, "role">>,
-    ) => {
-      state.history.push({ ...action.payload, role: "developer" });
     },
     addAgentMessage: (
       state,
@@ -283,6 +276,7 @@ export const metabot = createSlice({
       state.conversationId = uuid();
       state.reactions.suggestedTransforms = [];
       state.experimental.metabotReqIdOverride = undefined;
+      state.experimental.developerMessage = "";
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -379,6 +373,7 @@ export const metabot = createSlice({
         state.history = action.payload?.history?.slice() ?? [];
         state.activeToolCalls = [];
         state.isProcessing = false;
+        state.experimental.developerMessage = "";
       })
       .addCase(sendAgentRequest.rejected, (state, action) => {
         // aborted requests needs special state adjustments

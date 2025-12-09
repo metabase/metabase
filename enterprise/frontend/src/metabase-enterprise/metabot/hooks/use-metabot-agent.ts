@@ -157,7 +157,7 @@ export const useMetabotAgent = () => {
 
   const addDeveloperMessage = useCallback(
     (message: string) => {
-      dispatch(addDeveloperMessageAction({ message }));
+      dispatch(addDeveloperMessageAction(message));
     },
     [dispatch],
   );

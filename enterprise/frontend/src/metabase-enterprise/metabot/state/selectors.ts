@@ -207,3 +207,8 @@ export const getMetabotSuggestedCodeEdit = createSelector(
     return codeEdits.findLast((t) => t.bufferId === bufferId && t.active);
   },
 );
+
+export const getDeveloperMessage = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.developerMessage,
+);

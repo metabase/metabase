@@ -34,6 +34,7 @@ import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
   getDebugMode,
+  getDeveloperMessage,
   getHistory,
   getIsProcessing,
   getLastMessage,
@@ -61,6 +62,7 @@ export const {
   deactivateSuggestedTransform,
   addSuggestedCodeEdit,
   deactivateSuggestedCodeEdit,
+  clearDeveloperMessage,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -192,16 +194,19 @@ export const submitInput = createAsyncThunk<
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState() as any);
       const messageId = createMessageId();
+      const message = getDeveloperMessage(state) + data.message;
       dispatch(
         addUserMessage({
           id: messageId,
           ..._.omit(data, ["context", "metabot_id"]),
+          message,
         }),
       );
 
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,
+          message,
           ...agentMetadata,
         }),
       );
@@ -383,7 +388,7 @@ export const cancelInflightAgentRequests = createAsyncThunk(
   },
 );
 
-export const addDeveloperMessage = (message: { message: string }) => {
+export const addDeveloperMessage = (message: string) => {
   return (dispatch: Dispatch, getState: any) => {
     const state = getState() as any;
     const isProcessing = getIsProcessing(state);
@@ -396,12 +401,7 @@ export const addDeveloperMessage = (message: { message: string }) => {
       // it has settled.
       return;
     } else {
-      dispatch(
-        metabot.actions.addDeveloperMessage({
-          id: createMessageId(),
-          ...message,
-        }),
-      );
+      dispatch(metabot.actions.addDeveloperMessage(message));
     }
   };
 };
