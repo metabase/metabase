@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { BaseCell } from "metabase/data-grid";
 import { Anchor, FixedSizeIcon, Flex, type IconName } from "metabase/ui";
@@ -10,22 +12,15 @@ type EntityCellProps = {
   url?: string;
 };
 
-export function EntityCell({ name, icon, url }: EntityCellProps) {
+export function EntityCell({ name, icon, url = "" }: EntityCellProps) {
   return (
     <BaseCell className={S.cell}>
-      {url ? (
-        <Anchor className={S.cellContent} href={url}>
-          <Flex align="center" gap="sm">
-            <FixedSizeIcon name={icon} />
-            <Ellipsified>{name}</Ellipsified>
-          </Flex>
-        </Anchor>
-      ) : (
-        <Flex className={S.cellContent} align="center" gap="sm">
-          <FixedSizeIcon name={icon} c="text-medium" />
+      <Anchor className={S.link} component={Link} to={url}>
+        <Flex align="center" gap="sm">
+          <FixedSizeIcon name={icon} />
           <Ellipsified>{name}</Ellipsified>
         </Flex>
-      )}
+      </Anchor>
     </BaseCell>
   );
 }
