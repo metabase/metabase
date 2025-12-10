@@ -101,7 +101,7 @@
   (validate-user-type! user-type)
   (validate-user-locale! locale)
   (validate-sso-setup! sso_source)
-  (premium-features/airgap-check-user-count))
+  (premium-features/airgap-check-user-count-insert))
 
 ;;; -------------------------------------------------- Password Management --------------------------------------------------
 

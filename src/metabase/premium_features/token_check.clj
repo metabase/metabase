@@ -189,18 +189,13 @@
 (defn- active-user-count []
   (t2/count :model/User :is_active true, :type :personal))
 
-(defn- ag-user-info []
-  {:max-users-allowed (max-users-allowed)
-   :active-users-count (active-user-count)})
-
 (defn- illegal-airgap-user-count?
   "Returns true if the active user count exceeds the max allowed users in an airgap context."
   []
-  (let [{:keys [max-users-allowed active-users-count]} (ag-user-info)]
-    (if
-     max-users-allowed ;; no max user count -> always legal
-      (> active-users-count max-users-allowed)
-      false)))
+  (if-let [max-users-allowed (max-users-allowed)]
+    (> (active-user-count) max-users-allowed)
+    ;; no max user count -> always legal
+    false))
 
 (defn airgap-check-user-count
   "Checks that, when in an airgap context, the allowed user count is acceptable."
@@ -208,7 +203,34 @@
   (when (illegal-airgap-user-count?)
     (throw (Exception.
             (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users."
-                 max-users-allowed)))))
+                 (max-users-allowed))))))
+
+(defn airgap-check-user-count-insert
+  "When inserting a new user, check that we are not exceeding the allowed user count in an airgap context."
+  []
+  (let [max-users-allowed (max-users-allowed)]
+    (when (if max-users-allowed
+            (let [the-user-we-will-add 1]
+              (> (active-user-count) (+ the-user-we-will-add max-users-allowed)))
+            ;; no max user count -> always legal
+            false)
+      (throw (Exception.
+              (trs "Inserting another user would overflow the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                   (max-users-allowed)))))))
+
+(defn deactivate-illegal-users! []
+  (when-let [max-users-allowed (max-users-allowed)]
+    (let [active-users-count (active-user-count)
+          illegal-users (t2/select :model/User
+                                   :is_active true
+                                   :type :personal
+                                   :order-by [[:last_active_at :asc]]
+                                   :limit (- active-users-count max-users-allowed))]
+      (log/warnf
+       "Deactivating %d users to comply with the max user count of %d" (count illegal-users) max-users-allowed)
+      (doseq [user illegal-users]
+        (log/warnf "Deactivating user %s (last active at %s)" (:email user) (str (:last_active_at user)))
+        (t2/update! user {:is_active false})))))
 
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will

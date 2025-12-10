@@ -20,6 +20,7 @@
  [metabase.premium-features.token-check
    ;; TODO: move airgap code to a dedicated namespace?
   airgap-check-user-count
+  airgap-check-user-count-insert
   assert-has-feature
   assert-has-any-features
   ee-feature-error
