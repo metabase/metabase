@@ -3,7 +3,7 @@ import { trackSimpleEvent } from "metabase/lib/analytics";
 export const trackBranchSwitched = ({
   triggeredFrom,
 }: {
-  triggeredFrom: "sidebar" | "admin-settings" | "app-bar";
+  triggeredFrom: "admin-settings" | "app-bar";
 }) => {
   trackSimpleEvent({
     event: "remote_sync_branch_switched",
