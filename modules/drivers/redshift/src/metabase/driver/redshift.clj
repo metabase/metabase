@@ -236,8 +236,7 @@
             :geometry    :type/*    ; spatial data
             :geography   :type/*    ; spatial data
             :intervaly2m :type/*    ; interval literal
-            :intervald2s :type/*}   ; interval literal
-           ))
+            :intervald2s :type/*}))   ; interval literal
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]

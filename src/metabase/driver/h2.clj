@@ -140,7 +140,7 @@
   :monday)
 
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
-(defn- connection-string->file+options
+(defn connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
 
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
@@ -517,7 +517,7 @@
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
 ;; options users might try to put in their connection string, like INIT=...
 
-(defn- file+options->connection-string
+(defn file+options->connection-string
   "Implode the results of `connection-string->file+options` back into a connection string."
   [file options]
   (apply str file (for [[k v] options]

@@ -137,9 +137,8 @@
                                            (t2/update! :model/Workspace ws-id {:graph <>}))))]
       (when-let [table-ids (seq (keep #(when (= :table (:type %)) (:id %)) inputs))]
         (ws.log/track! ws-id :grant-read-access
-          (let [user         (:user database_details)
-                input-tables (t2/select :model/Table :id [:in table-ids])]
-            (ws.isolation/grant-read-access-to-tables! database user input-tables)))))
+          (let [input-tables (t2/select :model/Table :id [:in table-ids])]
+            (ws.isolation/grant-read-access-to-tables! database workspace input-tables)))))
     (t2/update! :model/Workspace ws-id {:status :ready})))
 
 ;; TODO (Chris 2025-11-20) We have not added a uniqueness constraint to the db, we should either do that, or remove

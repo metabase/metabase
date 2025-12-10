@@ -15,7 +15,7 @@
 
 (defmulti grant-read-access-to-tables!
   "Grant read access to these tables."
-  {:added "0.59.0" :arglists '([database username tables])}
+  {:added "0.59.0" :arglists '([database workspace tables])}
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
 

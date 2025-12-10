@@ -19,8 +19,9 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.log :as log])
-  (:import  [com.clickhouse.client.api.query QuerySettings]
-            [java.sql SQLException]))
+  (:import
+   (com.clickhouse.client.api.query QuerySettings)
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -61,7 +62,8 @@
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated           false
                               :describe-is-nullable            true
-                              :describe-default-expr           true}]
+                              :describe-default-expr           true
+                              :workspace                       true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:clickhouse :schemas]
@@ -346,3 +348,7 @@
   [_driver _database _table]
   (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
   #{})
+
+(defmethod driver/table-known-to-not-exist? :clickhouse
+  [_driver e]
+  (instance? SQLException e))
