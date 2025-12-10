@@ -2152,6 +2152,23 @@ databaseChangeLog:
             baseTableName: workspace_log
             constraintName: fk_workspace_log_workspace_id
 
+  # Workspaces feature is still in early development - clear existing workspace data
+  # to prevent migration issues with schema changes
+  - changeSet:
+      id: v58.2025-12-09T09:59:59
+      validCheckSum: ANY
+      author: christruter
+      comment: Delete workspace table contents before schema changes (feature in early development)
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace
+      changes:
+        - sql:
+            sql: DELETE FROM workspace
+      rollback:
+        # No rollback - data cannot be restored
+
   - changeSet:
       id: v58.2025-12-09T10:00:00
       author: christruter
@@ -2381,6 +2398,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:07
+      validCheckSum: ANY
       author: christruter
       comment: Add partial unique index on workspace_transform (workspace_id, global_id) where global_id is not null
       preConditions:
@@ -2392,9 +2410,11 @@ databaseChangeLog:
         - sql:
             dbms: postgresql
             sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id) WHERE global_id IS NOT NULL
+        # H2 doesn't support partial/filtered indexes with WHERE clause
+        # Use a regular unique index for H2 - nulls are not considered equal in H2
         - sql:
             dbms: h2
-            sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id) WHERE global_id IS NOT NULL
+            sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id)
         - sql:
             dbms: mysql,mariadb
             sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, (IFNULL(global_id, ref_id)))
