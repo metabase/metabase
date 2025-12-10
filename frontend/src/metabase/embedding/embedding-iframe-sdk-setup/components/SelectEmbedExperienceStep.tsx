@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import { UPSELL_CAMPAIGN_EXPERIENCE } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { AuthenticationSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/AuthenticationSection";
-import { WithSimpleEmbeddingFeatureUpsellTooltip } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/WithSimpleEmbeddingFeatureUpsellTooltip";
 import { useHandleExperienceChange } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-handle-experience-change";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
@@ -21,7 +19,6 @@ export const SelectEmbedExperienceStep = () => {
   const handleEmbedExperienceChange = useHandleExperienceChange();
 
   const experiences = getEmbedExperiences({
-    isSimpleEmbedFeatureAvailable,
     isMetabotAvailable,
   });
 
@@ -44,29 +41,20 @@ export const SelectEmbedExperienceStep = () => {
         >
           <Stack gap="md">
             {experiences.map((experience) => (
-              <WithSimpleEmbeddingFeatureUpsellTooltip
+              <Radio
                 key={experience.value}
-                mode="custom"
-                enableTooltip={experience.showUpsell === true}
-                campaign={UPSELL_CAMPAIGN_EXPERIENCE}
-              >
-                {({ disabled, hoverCard }) => (
-                  <Radio
-                    value={experience.value}
-                    label={
-                      <Flex gap="xs" align="center">
-                        {experience.title}
-                        {hoverCard}
-                      </Flex>
-                    }
-                    description={experience.description}
-                    disabled={
-                      disabled ||
-                      (isGuestEmbed && !experience.supportsGuestEmbed)
-                    }
-                  />
-                )}
-              </WithSimpleEmbeddingFeatureUpsellTooltip>
+                value={experience.value}
+                label={
+                  <Flex gap="xs" align="center">
+                    {experience.title}
+                  </Flex>
+                }
+                description={experience.description}
+                disabled={
+                  (!experience.supportsOss && !isSimpleEmbedFeatureAvailable) ||
+                  (!experience.supportsGuestEmbed && isGuestEmbed)
+                }
+              />
             ))}
           </Stack>
         </Radio.Group>

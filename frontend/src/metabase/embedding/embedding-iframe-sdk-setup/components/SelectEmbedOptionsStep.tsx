@@ -4,8 +4,6 @@ import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { useHasEmailSetup } from "metabase/common/hooks";
-import { UPSELL_CAMPAIGN_BEHAVIOR } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
-import { WithNotAvailableWithoutSimpleEmbeddingFeatureWarning } from "metabase/embedding/embedding-iframe-sdk-setup/components/Common/WithNotAvailableWithoutSimpleEmbeddingFeatureWarning";
 import type {
   MetabaseColors,
   MetabaseThemePreset,
@@ -26,7 +24,7 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
 import { AuthenticationSection } from "./Authentication/AuthenticationSection";
-import { WithNotAvailableForGuestEmbedsWarning } from "./Common/WithNotAvailableForGuestEmbedsWarning";
+import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
@@ -42,7 +40,8 @@ export const SelectEmbedOptionsStep = () => (
 );
 
 const BehaviorSection = () => {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
+    useSdkIframeEmbedSetupContext();
   const hasEmailSetup = useHasEmailSetup();
 
   const behaviorSection = useMemo(() => {
@@ -64,9 +63,7 @@ const BehaviorSection = () => {
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <WithNotAvailableForGuestEmbedsWarning
-              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
-            >
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to drill through on data points`}
@@ -75,26 +72,18 @@ const BehaviorSection = () => {
                   onChange={(e) => updateSettings({ drills: e.target.checked })}
                 />
               )}
-            </WithNotAvailableForGuestEmbedsWarning>
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
 
-            <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning
-              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
-            >
-              {({ disabled }) => (
-                <Checkbox
-                  label={t`Allow downloads`}
-                  disabled={disabled}
-                  checked={settings.withDownloads}
-                  onChange={(e) =>
-                    updateSettings({ withDownloads: e.target.checked })
-                  }
-                />
-              )}
-            </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+            <Checkbox
+              label={t`Allow downloads`}
+              disabled={!isSimpleEmbedFeatureAvailable}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
 
-            <WithNotAvailableForGuestEmbedsWarning
-              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
-            >
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to save new questions`}
@@ -105,7 +94,7 @@ const BehaviorSection = () => {
                   }
                 />
               )}
-            </WithNotAvailableForGuestEmbedsWarning>
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
           </Stack>
         ),
       )
@@ -113,9 +102,7 @@ const BehaviorSection = () => {
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <WithNotAvailableForGuestEmbedsWarning
-              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
-            >
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to drill through on data points`}
@@ -124,26 +111,18 @@ const BehaviorSection = () => {
                   onChange={(e) => updateSettings({ drills: e.target.checked })}
                 />
               )}
-            </WithNotAvailableForGuestEmbedsWarning>
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
 
-            <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning
-              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
-            >
-              {({ disabled }) => (
-                <Checkbox
-                  label={t`Allow downloads`}
-                  disabled={disabled}
-                  checked={settings.withDownloads}
-                  onChange={(e) =>
-                    updateSettings({ withDownloads: e.target.checked })
-                  }
-                />
-              )}
-            </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+            <Checkbox
+              label={t`Allow downloads`}
+              disabled={!isSimpleEmbedFeatureAvailable}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
 
-            <WithNotAvailableForGuestEmbedsWarning
-              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
-            >
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled: disabledInGuestEmbedding }) => {
                 return (
                   <Flex align="center" gap="xs">
@@ -187,7 +166,7 @@ const BehaviorSection = () => {
                   </Flex>
                 );
               }}
-            </WithNotAvailableForGuestEmbedsWarning>
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
           </Stack>
         ),
       )
@@ -203,7 +182,7 @@ const BehaviorSection = () => {
         ),
       )
       .otherwise(() => null);
-  }, [hasEmailSetup, settings, updateSettings]);
+  }, [hasEmailSetup, isSimpleEmbedFeatureAvailable, settings, updateSettings]);
 
   if (behaviorSection === null) {
     return null;
@@ -245,7 +224,8 @@ const ParametersSection = () => {
 };
 
 const AppearanceSection = () => {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
+    useSdkIframeEmbedSetupContext();
 
   const { theme } = settings;
 
@@ -289,28 +269,18 @@ const AppearanceSection = () => {
 
   return (
     <Card p="md">
-      <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning
-        mode="custom"
-        campaign={UPSELL_CAMPAIGN_BEHAVIOR}
-      >
-        {({ disabled, hoverCard }) => (
-          <>
-            {disabled ? (
-              <SimpleThemeSwitcherSection
-                preset={theme?.preset}
-                upsellIcon={hoverCard}
-                onPresetChange={updateThemePreset}
-              />
-            ) : (
-              <ColorCustomizationSection
-                theme={theme}
-                onColorChange={updateColors}
-                onColorReset={() => updateSettings({ theme: undefined })}
-              />
-            )}
-          </>
-        )}
-      </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+      {isSimpleEmbedFeatureAvailable ? (
+        <ColorCustomizationSection
+          theme={theme}
+          onColorChange={updateColors}
+          onColorReset={() => updateSettings({ theme: undefined })}
+        />
+      ) : (
+        <SimpleThemeSwitcherSection
+          preset={theme?.preset}
+          onPresetChange={updateThemePreset}
+        />
+      )}
 
       {appearanceSection && <Divider mt="lg" mb="md" />}
       {appearanceSection}
