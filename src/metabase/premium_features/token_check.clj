@@ -211,8 +211,7 @@
   (let [max-users-allowed (max-users-allowed)
         the-new-user-will-overflow? (if max-users-allowed
                                       (let [the-user-we-want-to-add 1]
-                                        (> (active-user-count)
-                                           (+ the-user-we-want-to-add max-users-allowed)))
+                                        (> (+ (active-user-count) the-user-we-want-to-add) max-users-allowed))
                                       ;; no max user count -> always legal
                                       false)]
     (when the-new-user-will-overflow?
