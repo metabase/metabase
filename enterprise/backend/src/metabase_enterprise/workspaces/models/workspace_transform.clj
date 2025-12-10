@@ -2,6 +2,7 @@
   "Model for WorkspaceTransform - holds the changeset of transforms being created
    and edited within a workspace."
   (:require
+   [clojure.string :as str]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -75,7 +76,8 @@
   (derive :hook/entity-id))
 
 (t2/deftransforms :model/WorkspaceTransform
-  {:source mi/transform-json
+  {:ref_id {:in identity :out str/trim}
+   :source mi/transform-json
    :target mi/transform-json})
 
 (t2/define-before-insert :model/WorkspaceTransform

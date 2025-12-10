@@ -362,6 +362,12 @@
             :date_joined (t/zoned-date-time)
             :updated_at (t/zoned-date-time)})
 
+   :model/Workspace
+   (fn [_]
+     (default-timestamped
+      {:name (str "Test Workspace " (u/generate-nano-id))
+       :schema (str "mb__isolate_" (u/generate-nano-id))}))
+
    :model/WorkspaceTransform
    (fn [_]
      (default-timestamped

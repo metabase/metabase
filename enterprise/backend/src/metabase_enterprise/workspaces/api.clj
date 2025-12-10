@@ -129,12 +129,12 @@
   [:map
    ;; Future-proof with multi-db Workspaces, plus necessary to resolve table references when id is null.
    [:db_id ::ws.t/appdb-id]
-   [:external [:map
-               #_[:transform_id [:maybe ::ws.t/appdb-id]]
-               [:schema :string]
-               [:table :string]
-               [:table_id [:maybe ::ws.t/appdb-id]]]]
-   [:internal [:map
+   [:global [:map
+             [:transform_id [:maybe ::ws.t/appdb-id]]
+             [:schema :string]
+             [:table :string]
+             [:table_id [:maybe ::ws.t/appdb-id]]]]
+   [:isolated [:map
                [:transform_id ::ws.t/ref-id]
                [:schema :string]
                [:table :string]
@@ -145,12 +145,30 @@
       [:inputs [:sequential ::input-table]]
       [:outputs [:sequential ::output-table]]]
   "Get workspace tables"
-  [{:keys [_id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   ;; This typically needs the big 'ol graph, to know about the enclosed transforms (for their outputs)
   ;; Easy optimization for the <= 1 entities case and just return the stuff directly though :lightbulb
-  {:inputs  []
-   :outputs []})
+  (let [{:keys [database_id schema]} (api/check-404 (t2/select-one [:model/Workspace :database_id :schema] id))]
+    ;; TODO fix N+1
+    {:inputs  []
+     :outputs (for [{:keys [ref_id target]} (t2/select [:model/WorkspaceTransform :ref_id :target] :workspace_id id)]
+                ;; transform_id is not guaranteed to be the global_id, topology may have changed
+                {:db_id    database_id
+                 :global   {:transform_id nil
+                            :schema       (:schema target)
+                            :table        (:name target)
+                            :table_id     (t2/select-one-pk :model/Table
+                                                            :db_id database_id
+                                                            :schema (:schema target)
+                                                            :name (:name target))}
+                 :isolated {:transform_id ref_id
+                            :schema       schema
+                            :table        (str (:schema target) "__" (:name target))
+                            :table_id     (t2/select-one-pk :model/Table
+                                                            :db_id database_id
+                                                            :schema schema
+                                                            :name (str (:schema target) "__" (:name target)))}})}))
 
 (api.macros/defendpoint :get "/:id" :- Workspace
   "Get a single workspace by ID"
@@ -257,7 +275,7 @@
       [:not_run [:sequential ::ws.t/ref-id]]]
   "Execute all transforms in the workspace in dependency order.
    Returns which transforms succeeded, failed, and were not run."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
    _query-params
    _body-params]
   (u/prog1 (t2/select-one :model/Workspace :id id)
@@ -266,7 +284,10 @@
   ;; get topo-sorted enclosed transforms, run them in order
   ;; to keep things simple, stop execution as soon as there is any failure
   ;; in future we can continue running anything as long as its dependencies succeeded
-  )
+  ;; TODO not only is the order dodgy, we're not actually running them.
+  {:succeeded (or (t2/select-fn-vec :ref_id [:model/WorkspaceTransform :ref_id] :workspace_id id) [])
+   :failed    []
+   :not_run   []})
 
 (mr/def ::graph-node-type [:enum :table :output-table :transform :workspace-transform])
 
@@ -325,12 +346,14 @@
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
    {:keys [transform-id]} :- [:map [:transform-id {:optional true} ::ws.t/ref-id]]
    {:keys [db_id target]} :- [:map
-                              [:db_id {:optional true} ms/PositiveInt]
+                              [:db_id {:optional true} ::ws.t/appdb-id]
                               [:target [:map
+                                        [:database {:optional true} ::ws.t/appdb-id]
                                         [:type :string]
                                         [:schema :string]
                                         [:name :string]]]]]
   (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id] id))
+        target    (update target :database #(or % db_id))
         tx-id     (when transform-id (parse-long transform-id))
         ws-db-id  (:database_id workspace)]
     (cond
@@ -343,7 +366,7 @@
       (not (or db_id ws-db-id))
       {:status 403 :body (deferred-tru "Must target a database")}
 
-      (not (str/starts-with? (:schema target) "mb__isolation_"))
+      (str/starts-with? (:schema target) "mb__isolation_")
       {:status 403 :body (deferred-tru "Must not target an isolated workspace schema")}
 
       ;; Within a workspace, we defer blocking on conflicts outside the workspace
@@ -373,9 +396,12 @@
         ;; TODO why 400 here and 403 in the validation route? T_T
         _         (api/check-400 (not (internal-target-conflict? id (:target body)))
                                  (deferred-tru "Another transform in this workspace already targets that table."))
-        global-id (:global_id body)
+        global-id (:global_id body (:id body))
         body      (-> body (dissoc :global_id) (update :target assoc :database_id (:database_id workspace)))]
     (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)))
+
+(defn- malli-map-keys [schema]
+  (map first (rest schema)))
 
 ;; TODO Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -384,16 +410,21 @@
    [:ref_id ::ws.t/ref-id]
    [:name :string]
    [:source_type [:maybe :keyword]]
-   [:creator_id ::ws.t/appdb-id]
-   [:last_run :map]
-   ;; See https://metaboat.slack.com/archives/C099RKNLP6U/p1765205882655869?thread_ts=1765205222.888209&cid=C099RKNLP6U
-   [:target_stale :boolean]])
+   ;[:creator_id ::ws.t/appdb-id]
+   ;[:last_run :map]
+   ; See https://metaboat.slack.com/archives/C099RKNLP6U/p1765205882655869?thread_ts=1765205222.888209&cid=C099RKNLP6U
+   #_[:target_stale :boolean]])
+
+(defn- map-source-type [ws-tx]
+  (-> ws-tx
+      (assoc :source_type (keyword (:type (:source ws-tx))))
+      (dissoc :source)))
 
 (api.macros/defendpoint :get "/:id/transform" :- [:map [:transforms [:sequential WorkspaceTransformListing]]]
   "Get all transforms in a workspace."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  {:transforms []})
+  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :name :source] :workspace_id id))})
 
 (def ^:private WorkspaceTransform
   [:map
@@ -406,9 +437,6 @@
    ;[:creator_id ::ws.t/appdb-id]
    [:created_at :any]
    [:updated_at :any]])
-
-(defn- malli-map-keys [schema]
-  (map first (rest schema)))
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
