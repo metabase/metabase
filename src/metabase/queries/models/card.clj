@@ -979,24 +979,33 @@
   (-> card :moderation_reviews first :status #{"verified"} boolean))
 
 (defn- changed?
-  "Return whether there were any changes in the objects at the keys for `consider`.
+  "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
+  `before` an exception will be thrown.
 
-  returns false because changes to collection_id are ignored:
-  (changed? #{:description}
-            {:collection_id 1 :description \"foo\"}
-            {:collection_id 2 :description \"foo\"})
+  returns false, `description` has not changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"foo\"})
 
-  returns true:
-  (changed? #{:description}
-            {:collection_id 1 :description \"foo\"}
-            {:collection_id 2 :description \"diff\"})"
-  [consider card-before updates]
+  returns true, `description` has changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"diff\"})
+
+  throws an exception, `before` is missing keys from `after`:
+  (changed? {:collection_id 1}
+            {:collection_id 1 :description \"foobar\"})"
+  [card-before updates]
   ;; normalize the query before comparison
   (let [after (-> updates
                   (m/update-existing :dataset_query lib-be/normalize-query)
-                  (update :query_type keyword))
-        before  (select-keys card-before consider)]
-    (boolean (some #(api/column-will-change? % before after) consider))))
+                  (m/update-existing :query_type keyword))
+        before  (select-keys card-before (keys after))]
+    (when-not (set/subset? (set (keys after))
+                           (set (keys before)))
+      (throw (ex-info "`before-card` card is missing keys from `updates`"
+                      {:missing-keys (apply disj
+                                            (set (keys after))
+                                            (set (keys before)))})))
+    (boolean (some #(do (api/column-will-change? % before after)) (keys after)))))
 
 (def ^:private card-compare-keys
   "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
@@ -1112,29 +1121,30 @@
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
     (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
-    (assert-is-valid-dashboard-internal-update card-updates card-before-update)
+    (let [updated-fields (u/select-keys-when card-updates
+                                             ;; `collection_id` and `description` can be `nil` (in order to unset them).
+                                             ;; Other values should only be modified if they're passed in as non-nil
+                                             :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
+                                             :non-nil #{:dataset_query :display :name :visualization_settings :archived
+                                                        :enable_embedding :type :parameters :parameter_mappings :embedding_params
+                                                        :result_metadata :collection_preview :verified-result-metadata?})]
 
-    (when (and (card-is-verified? card-before-update)
-               (changed? card-compare-keys card-before-update card-updates))
-      ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
-      ;; to remove it regardless if enterprise edition is present at the moment.
-      (moderation/create-review! {:moderated_item_id   (:id card-before-update)
-                                  :moderated_item_type "card"
-                                  :moderator_id        (:id actor)
-                                  :status              nil
-                                  :text                (tru "Unverified due to edit")}))
-    ;; Invalidate the cache for card
-    (cache/invalidate-config! {:questions [(:id card-before-update)]
-                               :with-overrides? true})
-    ;; ok, now save the Card
-    (t2/update! :model/Card (:id card-before-update)
-                ;; `collection_id` and `description` can be `nil` (in order to unset them).
-                ;; Other values should only be modified if they're passed in as non-nil
-                (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
-                                    :non-nil #{:dataset_query :display :name :visualization_settings :archived
-                                               :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                               :result_metadata :collection_preview :verified-result-metadata?}))
+      (assert-is-valid-dashboard-internal-update card-updates card-before-update)
+
+      (when (and (card-is-verified? card-before-update)
+                 (changed? card-before-update (select-keys updated-fields card-compare-keys)))
+        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+        ;; to remove it regardless if enterprise edition is present at the moment.
+        (moderation/create-review! {:moderated_item_id   (:id card-before-update)
+                                    :moderated_item_type "card"
+                                    :moderator_id        (:id actor)
+                                    :status              nil
+                                    :text                (tru "Unverified due to edit")}))
+      ;; Invalidate the cache for card
+      (cache/invalidate-config! {:questions [(:id card-before-update)]
+                                 :with-overrides? true})
+      ;; ok, now save the Card
+      (t2/update! :model/Card (:id card-before-update) updated-fields))
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)
