@@ -212,7 +212,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-
   - changeSet:
       id: v56.2025-07-17T20:11:56
       author: edpaget
