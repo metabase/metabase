@@ -70,7 +70,7 @@ const getTitle = (key: SettingKey) =>
     .with(
       "enable-embedding-sdk",
       () =>
-        t`When using the Embedded analytics SDK for React, each end user should have their own Metabase account.`,
+        t`When using the Modular Embedding SDK, each end user should have their own Metabase account.`,
     )
     .with(
       "enable-embedding-simple",

@@ -34,7 +34,7 @@ Storybook expects an instance running on `localhost:3000` with some configuratio
     JWT > String used by the JWT signing key
   - Press "Save and enable"
 - on [/admin/embedding/modular](http://localhost:3000/admin/embedding/modular)
-  - Enable the "SDK for React" card
+  - Enable the "Modular Embedding SDK" card
 
 Then you can run `yarn storybook-embedding-sdk` to start storybook.
 

@@ -54,7 +54,7 @@ describe("EmbedHomepage (OSS)", () => {
     setup();
 
     const sdkSection = screen.getByRole("region", {
-      name: "Embedded analytics SDK for React",
+      name: "Modular Embedding SDK",
     });
 
     const readSdkDocsLink = within(sdkSection).getByRole("link", {

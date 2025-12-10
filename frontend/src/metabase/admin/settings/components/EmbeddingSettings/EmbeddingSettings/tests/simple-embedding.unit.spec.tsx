@@ -27,7 +27,9 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     expect(toggles).toHaveLength(2);
 
     expect(
-      screen.getByRole("switch", { name: "Enable SDK for React toggle" }),
+      screen.getByRole("switch", {
+        name: "Enable Modular Embedding SDK toggle",
+      }),
     ).toBeInTheDocument();
 
     expect(

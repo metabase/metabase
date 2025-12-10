@@ -1,7 +1,7 @@
 {
   "name": "@metabase/embedding-sdk-react",
   "version": "0.57.0-alpha.3",
-  "description": "Metabase Embedding SDK for React",
+  "description": "Metabase Modular Embedding SDK",
   "bin": "./dist/cli.js",
   "repository": {
     "url": "git+https://github.com/metabase/metabase.git"

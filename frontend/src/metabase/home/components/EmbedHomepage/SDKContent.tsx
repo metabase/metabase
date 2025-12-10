@@ -15,7 +15,7 @@ export const SDKContent = ({
   <Box component="section" aria-labelledby="sdk-title">
     <Group gap="sm" align="center" mb="sm">
       <Text fw="bold" size="lg" color="text-medium" id="sdk-title">
-        {t`Embedded analytics SDK for React`}
+        {t`Modular Embedding SDK`}
       </Text>
     </Group>
     <Text mb="md">

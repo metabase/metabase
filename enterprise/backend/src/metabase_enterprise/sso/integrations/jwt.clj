@@ -45,7 +45,7 @@
 (defn- throw-react-sdk-embedding-disabled
   []
   (throw
-   (ex-info (tru "Embedding SDK for React is disabled. Enable it in the embedding settings.")
+   (ex-info (tru "Modular Embedding SDK is disabled. Enable it in the embedding settings.")
             {:status      "error-embedding-sdk-disabled"
              :status-code 402})))
 

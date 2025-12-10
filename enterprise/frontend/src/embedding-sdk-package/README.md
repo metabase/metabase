@@ -36,7 +36,7 @@ If you get stuck, check out our [installation docs](https://www.metabase.com/doc
 
 ### Installing the SDK
 
-You can install Metabase Embedded analytics SDK for React via npm:
+You can install Metabase Modular Embedding SDK via npm:
 
 ```bash
 npm install @metabase/embedding-sdk-react
