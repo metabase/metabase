@@ -3,15 +3,15 @@ import { t } from "ttag";
 import { getUserName } from "metabase/lib/user";
 import type { DependencySortColumn } from "metabase-types/api";
 
-import { DateTimeCell } from "../../../components/DependencyList/DateTimeCell";
-import { EntityCell } from "../../../components/DependencyList/EntityCell";
-import { TextCell } from "../../../components/DependencyList/TextCell";
 import {
   getNodeIcon,
   getNodeLabel,
   getNodeLastEditInfo,
   getNodeLink,
-} from "../../../utils";
+} from "../../utils";
+import { DateTimeCell } from "../DependencyTable/DateTimeCell";
+import { EntityCell } from "../DependencyTable/EntityCell";
+import { TextCell } from "../DependencyTable/TextCell";
 
 import type { DependencyColumn, DependencyColumnOptions } from "./types";
 

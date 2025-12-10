@@ -12,6 +12,7 @@ import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
 
 import { DependencyFilterPicker } from "../../components/DependencyFilterPicker";
+import { DependencyList } from "../../components/DependencyList";
 import { ListEmptyState } from "../../components/ListEmptyState";
 import type {
   DependencyListFilterOptions,
@@ -20,7 +21,6 @@ import type {
 } from "../../types";
 import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
 
-import { UnreferencedDependencyList } from "./UnreferencedDependencyList";
 import {
   AVAILABLE_GROUP_TYPES,
   DEFAULT_SORT_COLUMN,
@@ -168,7 +168,7 @@ export function UnreferencedDependencyListPage({
             <ListEmptyState label={t`No unreferenced entities found`} />
           </Center>
         ) : (
-          <UnreferencedDependencyList
+          <DependencyList
             items={data.data}
             sortOptions={sortOptions}
             paginationOptions={paginationOptions}

@@ -1,85 +1,58 @@
-import { useElementSize } from "@mantine/hooks";
-import { type MouseEvent, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 
-import { DataGrid } from "metabase/data-grid/components/DataGrid/DataGrid";
-import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
-import type { ColumnOptions } from "metabase/data-grid/types";
-import { Box } from "metabase/ui";
+import type {
+  DependencyListSortOptions,
+  PaginationOptions,
+} from "metabase-enterprise/dependencies/types";
+import type { DependencyNode } from "metabase-types/api";
 
-import type { PaginationOptions } from "../../types";
+import { EntityTable } from "../DependencyTable";
 
-import S from "./DependencyList.module.css";
-import type { TableSortOptions } from "./types";
+import type { DependencyColumn } from "./types";
+import { getColumns, isSortableColumn } from "./utils";
 
-const ROW_HEIGHT = 48;
-const HEADER_HEIGHT = 58;
-
-export type DependencyListProps<TData, TColumn extends string> = {
-  data: TData[];
-  columns: ColumnOptions<TData, unknown, TColumn>[];
-  sortOptions?: TableSortOptions<TColumn>;
+type DependencyListProps = {
+  items: DependencyNode[];
+  sortOptions?: DependencyListSortOptions;
   paginationOptions?: PaginationOptions;
-  onSortChange?: (sortColumn: TColumn) => void;
+  onSortChange?: (sortOptions: DependencyListSortOptions) => void;
   onPageChange?: (pageIndex: number) => void;
 };
 
-export function DependencyList<TData, TColumn extends string>({
-  data,
-  columns,
+export const DependencyList = memo(function DependencyList({
+  items,
   sortOptions,
   paginationOptions,
   onSortChange,
   onPageChange,
-}: DependencyListProps<TData, TColumn>) {
-  const { ref: containerRef, width: containerWidth } = useElementSize();
+}: DependencyListProps) {
+  const columns = useMemo(() => getColumns(), []);
 
-  const theme = useMemo(
-    () => ({ fontSize: "14px", headerHeight: HEADER_HEIGHT }),
-    [],
-  );
-
-  const columnsWithSort = useMemo(() => {
-    return columns.map((column) => {
-      if (column.id === sortOptions?.column) {
-        return { ...column, sortDirection: sortOptions.direction };
-      }
-      return column;
-    });
-  }, [columns, sortOptions]);
-
-  const tableProps = useDataGridInstance({
-    data,
-    columnsOptions: columnsWithSort,
-    defaultRowHeight: ROW_HEIGHT,
-    theme,
-    minGridWidth: containerWidth || undefined,
-    pageIndex: paginationOptions?.pageIndex,
-    pageSize: paginationOptions?.pageSize,
-    total: paginationOptions?.total,
-    onPageChange,
-  });
-
-  const handleHeaderCellClick = useCallback(
-    (_event: MouseEvent<HTMLDivElement>, columnId?: string) => {
-      const column = columns.find((column) => column.id === columnId);
-      if (column != null) {
-        onSortChange?.(column.id);
+  const handleSortChange = useCallback(
+    (newSortColumn: DependencyColumn) => {
+      if (isSortableColumn(newSortColumn)) {
+        const newSortDirection =
+          sortOptions?.column === newSortColumn &&
+          sortOptions?.direction === "asc"
+            ? "desc"
+            : "asc";
+        onSortChange?.({
+          column: newSortColumn,
+          direction: newSortDirection,
+        });
       }
     },
-    [columns, onSortChange],
+    [sortOptions, onSortChange],
   );
 
   return (
-    <Box
-      ref={containerRef}
-      h="100%"
-      pos="relative"
-      bd="1px solid var(--mb-color-border)"
-      className={S.tableContainer}
-    >
-      {containerWidth > 0 ? (
-        <DataGrid {...tableProps} onHeaderCellClick={handleHeaderCellClick} />
-      ) : null}
-    </Box>
+    <EntityTable
+      data={items}
+      columns={columns}
+      sortOptions={sortOptions}
+      paginationOptions={paginationOptions}
+      onSortChange={handleSortChange}
+      onPageChange={onPageChange}
+    />
   );
-}
+});

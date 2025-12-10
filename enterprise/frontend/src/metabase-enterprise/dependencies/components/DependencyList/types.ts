@@ -1,6 +1,10 @@
-export type TableSortDirection = "asc" | "desc";
+import type { ColumnOptions } from "metabase/data-grid/types";
+import type { DependencyNode } from "metabase-types/api";
 
-export type TableSortOptions<TColumn> = {
-  column: TColumn;
-  direction: TableSortDirection;
-};
+export type DependencyColumn = "name" | "last-edit-at" | "last-edit-by";
+
+export type DependencyColumnOptions = ColumnOptions<
+  DependencyNode,
+  unknown,
+  DependencyColumn
+>;

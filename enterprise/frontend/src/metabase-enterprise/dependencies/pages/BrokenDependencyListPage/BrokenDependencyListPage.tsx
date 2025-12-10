@@ -12,6 +12,7 @@ import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListBrokenNodesQuery } from "metabase-enterprise/api";
 
 import { DependencyFilterPicker } from "../../components/DependencyFilterPicker";
+import { DependencyList } from "../../components/DependencyList";
 import { ListEmptyState } from "../../components/ListEmptyState";
 import type {
   DependencyListFilterOptions,
@@ -20,7 +21,6 @@ import type {
 } from "../../types";
 import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
 
-import { BrokenDependencyList } from "./BrokenDependencyList";
 import {
   AVAILABLE_GROUP_TYPES,
   DEFAULT_SORT_COLUMN,
@@ -166,7 +166,7 @@ export function BrokenDependencyListPage({
             <ListEmptyState label={t`No broken entities found`} />
           </Center>
         ) : (
-          <BrokenDependencyList
+          <DependencyList
             items={data.data}
             sortOptions={sortOptions}
             paginationOptions={paginationOptions}
