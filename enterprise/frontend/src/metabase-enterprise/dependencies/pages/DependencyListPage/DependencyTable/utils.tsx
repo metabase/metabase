@@ -8,11 +8,11 @@ import {
   getNodeLabel,
   getNodeLastEditInfo,
   getNodeLink,
-} from "../../utils";
-import { DateTimeCell } from "../DependencyTable/DateTimeCell";
-import { EntityCell } from "../DependencyTable/EntityCell";
-import { TextCell } from "../DependencyTable/TextCell";
+} from "../../../utils";
 
+import { DateTimeCell } from "./DateTimeCell";
+import { EntityCell } from "./EntityCell";
+import { TextCell } from "./TextCell";
 import type { DependencyColumn, DependencyColumnOptions } from "./types";
 
 function getItemNameColumn(): DependencyColumnOptions {

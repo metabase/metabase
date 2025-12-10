@@ -6,12 +6,11 @@ import type {
 } from "metabase-enterprise/dependencies/types";
 import type { DependencyNode } from "metabase-types/api";
 
-import { EntityTable } from "../DependencyTable";
-
+import { EntityTable } from "./EntityTable";
 import type { DependencyColumn } from "./types";
 import { getColumns, isSortableColumn } from "./utils";
 
-type DependencyListProps = {
+type DependencyTableProps = {
   items: DependencyNode[];
   sortOptions?: DependencyListSortOptions;
   paginationOptions?: PaginationOptions;
@@ -19,13 +18,13 @@ type DependencyListProps = {
   onPageChange?: (pageIndex: number) => void;
 };
 
-export const DependencyList = memo(function DependencyList({
+export const DependencyTable = memo(function DependencyTable({
   items,
   sortOptions,
   paginationOptions,
   onSortChange,
   onPageChange,
-}: DependencyListProps) {
+}: DependencyTableProps) {
   const columns = useMemo(() => getColumns(), []);
 
   const handleSortChange = useCallback(

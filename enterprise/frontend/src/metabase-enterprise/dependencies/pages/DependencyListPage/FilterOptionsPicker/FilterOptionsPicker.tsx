@@ -5,21 +5,21 @@ import { t } from "ttag";
 import { Box, Button, FixedSizeIcon, Popover, Stack } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
 
-import type { DependencyListFilterOptions } from "../../types";
+import type { DependencyListFilterOptions } from "../../../types";
 
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
-type DependencyFilterPickerProps = {
+type FilterOptionsPickerProps = {
   filterOptions: DependencyListFilterOptions;
   availableGroupTypes: DependencyGroupType[];
   onFilterOptionsChange: (filterOptions: DependencyListFilterOptions) => void;
 };
 
-export const DependencyFilterPicker = memo(function DependencyFilterPicker({
+export const FilterOptionsPicker = memo(function FilterOptionsPicker({
   filterOptions,
   availableGroupTypes,
   onFilterOptionsChange,
-}: DependencyFilterPickerProps) {
+}: FilterOptionsPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
   return (
@@ -33,7 +33,7 @@ export const DependencyFilterPicker = memo(function DependencyFilterPicker({
         </Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <DependencyFilterPickerPopover
+        <FilterOptionsPopover
           filterOptions={filterOptions}
           availableGroupTypes={availableGroupTypes}
           onFilterOptionsChange={onFilterOptionsChange}
@@ -43,17 +43,17 @@ export const DependencyFilterPicker = memo(function DependencyFilterPicker({
   );
 });
 
-type DependencyFilterPickerPopoverProps = {
+type FilterOptionsPopoverProps = {
   filterOptions: DependencyListFilterOptions;
   availableGroupTypes: DependencyGroupType[];
   onFilterOptionsChange: (filterOptions: DependencyListFilterOptions) => void;
 };
 
-function DependencyFilterPickerPopover({
+function FilterOptionsPopover({
   filterOptions,
   availableGroupTypes,
   onFilterOptionsChange,
-}: DependencyFilterPickerPopoverProps) {
+}: FilterOptionsPopoverProps) {
   const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
     onFilterOptionsChange({ ...filterOptions, groupTypes });
   };

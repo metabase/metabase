@@ -9,10 +9,9 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
-import { useListBrokenNodesQuery } from "metabase-enterprise/api";
+import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
+import type { DependencyGroupType } from "metabase-types/api";
 
-import { DependencyFilterPicker } from "../../components/DependencyFilterPicker";
-import { DependencyList } from "../../components/DependencyList";
 import { ListEmptyState } from "../../components/ListEmptyState";
 import type {
   DependencyListFilterOptions,
@@ -21,24 +20,31 @@ import type {
 } from "../../types";
 import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
 
+import { DependencyTable } from "./DependencyTable";
+import { FilterOptionsPicker } from "./FilterOptionsPicker";
 import {
-  AVAILABLE_GROUP_TYPES,
+  BROKEN_GROUP_TYPES,
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
   PAGE_SIZE,
+  UNREFERENCED_GROUP_TYPES,
 } from "./constants";
 import { parseRawParams } from "./utils";
 
-interface BrokenDependencyListPageProps {
-  location?: Location<DependencyListRawParams>;
-}
+type DependencyListPageProps = {
+  availableGroupTypes: DependencyGroupType[];
+  nothingFoundMessage: string;
+  location: Location<DependencyListRawParams>;
+};
 
-export function BrokenDependencyListPage({
+function DependencyListPage({
+  availableGroupTypes,
+  nothingFoundMessage,
   location,
-}: BrokenDependencyListPageProps) {
+}: DependencyListPageProps) {
   const params = useMemo(
-    () => parseRawParams(location?.query),
-    [location?.query],
+    () => parseRawParams(location.query),
+    [location.query],
   );
   const {
     query = "",
@@ -50,10 +56,10 @@ export function BrokenDependencyListPage({
   const [searchValue, setSearchValue] = useState("");
   const dispatch = useDispatch();
 
-  const { data, isLoading, error } = useListBrokenNodesQuery({
+  const { data, isLoading, error } = useListUnreferencedNodesQuery({
     query,
-    types: getDependencyTypes(types ?? AVAILABLE_GROUP_TYPES),
-    card_types: getCardTypes(types ?? AVAILABLE_GROUP_TYPES),
+    types: getDependencyTypes(types ?? availableGroupTypes),
+    card_types: getCardTypes(types ?? availableGroupTypes),
     sort_column: sortColumn,
     sort_direction: sortDirection,
   });
@@ -84,7 +90,7 @@ export function BrokenDependencyListPage({
 
   const handleSearchDebounce = useDebouncedCallback(
     (query: string | undefined) => {
-      dispatch(replace(Urls.dataStudioBrokenItems({ ...params, query })));
+      dispatch(replace(Urls.dataStudioUnreferencedItems({ ...params, query })));
     },
     SEARCH_DEBOUNCE_DURATION,
   );
@@ -102,7 +108,7 @@ export function BrokenDependencyListPage({
     (filterOptions: DependencyListFilterOptions) => {
       dispatch(
         push(
-          Urls.dataStudioBrokenItems({
+          Urls.dataStudioUnreferencedItems({
             ...params,
             types: filterOptions.groupTypes,
           }),
@@ -116,7 +122,7 @@ export function BrokenDependencyListPage({
     (sortOptions: DependencyListSortOptions) => {
       dispatch(
         push(
-          Urls.dataStudioBrokenItems({
+          Urls.dataStudioUnreferencedItems({
             ...params,
             sortColumn: sortOptions.column,
             sortDirection: sortOptions.direction,
@@ -130,7 +136,9 @@ export function BrokenDependencyListPage({
   const handlePageChange = useCallback(
     (newPageIndex: number) => {
       dispatch(
-        push(Urls.dataStudioBrokenItems({ ...params, page: newPageIndex })),
+        push(
+          Urls.dataStudioUnreferencedItems({ ...params, page: newPageIndex }),
+        ),
       );
     },
     [params, dispatch],
@@ -154,19 +162,19 @@ export function BrokenDependencyListPage({
           leftSection={<Icon name="search" />}
           onChange={handleSearchChange}
         />
-        <DependencyFilterPicker
+        <FilterOptionsPicker
           filterOptions={filterOptions}
-          availableGroupTypes={AVAILABLE_GROUP_TYPES}
+          availableGroupTypes={availableGroupTypes}
           onFilterOptionsChange={handleFilterOptionsChange}
         />
       </Flex>
       <Box flex={1} mih={0}>
         {data.data.length === 0 ? (
           <Center h="100%">
-            <ListEmptyState label={t`No broken entities found`} />
+            <ListEmptyState label={nothingFoundMessage} />
           </Center>
         ) : (
-          <DependencyList
+          <DependencyTable
             items={data.data}
             sortOptions={sortOptions}
             paginationOptions={paginationOptions}
@@ -176,5 +184,37 @@ export function BrokenDependencyListPage({
         )}
       </Box>
     </Stack>
+  );
+}
+
+type BrokenDependencyListPageProps = {
+  location: Location<DependencyListRawParams>;
+};
+
+export function BrokenDependencyListPage({
+  location,
+}: BrokenDependencyListPageProps) {
+  return (
+    <DependencyListPage
+      availableGroupTypes={BROKEN_GROUP_TYPES}
+      nothingFoundMessage={t`No broken entities found`}
+      location={location}
+    />
+  );
+}
+
+type UnreferencedDependencyListPageProps = {
+  location: Location<DependencyListRawParams>;
+};
+
+export function UnreferencedDependencyListPage({
+  location,
+}: UnreferencedDependencyListPageProps) {
+  return (
+    <DependencyListPage
+      availableGroupTypes={UNREFERENCED_GROUP_TYPES}
+      nothingFoundMessage={t`No unreferenced entities found`}
+      location={location}
+    />
   );
 }

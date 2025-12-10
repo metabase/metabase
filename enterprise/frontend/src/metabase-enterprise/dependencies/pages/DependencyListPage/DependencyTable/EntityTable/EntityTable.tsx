@@ -6,7 +6,7 @@ import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-inst
 import type { ColumnOptions } from "metabase/data-grid/types";
 import { Box } from "metabase/ui";
 
-import type { PaginationOptions } from "../../types";
+import type { PaginationOptions } from "../../../../types";
 
 import S from "./EntityTable.module.css";
 import type { TableSortOptions } from "./types";
