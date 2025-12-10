@@ -10,6 +10,14 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(mu/defn get-returned-columns
+  "Get the returned columns of a `query`"
+  [driver :- :keyword
+   query :- ::lib.schema/query]
+  (if (lib/any-native-stage? query)
+    (lib/returned-columns query)
+    (deps.native/native-result-metadata driver query)))
+
 ;; Analyzing an entity in memory ================================================================
 (mu/defn- check-query
   "Find any bad refs in a `query`."
@@ -65,10 +73,7 @@
          :as _transform}  (lib.metadata/transform metadata-provider transform-id)
         driver            (:engine (lib.metadata/database metadata-provider))
         query             (lib/query metadata-provider query)
-        output-table      (m/find-first #(and (= (:schema %) target-schema)
-                                              (= (:name %)   target-name))
-                                        (lib.metadata/tables metadata-provider))
-        output-fields     (lib.metadata/active-fields metadata-provider (:id output-table))
+        output-fields     (get-returned-columns driver query)
         duplicated-fields (->> output-fields
                                (group-by :name)
                                vals
