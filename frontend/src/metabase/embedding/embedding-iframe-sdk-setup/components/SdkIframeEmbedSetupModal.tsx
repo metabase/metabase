@@ -108,11 +108,12 @@ export const SdkIframeEmbedSetupContent = () => {
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
           <Stack className={S.SidebarContent} gap="md">
-            <Stack gap="md">
+            <Stack gap="md" flex={1}>
               <SdkIframeStepHeader />
 
               <Stack
                 gap="md"
+                flex={1}
                 opacity={allowPreviewAndNavigation ? 1 : 0.5}
                 className={cx(
                   !allowPreviewAndNavigation && CS.pointerEventsNone,
