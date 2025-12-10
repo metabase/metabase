@@ -22,8 +22,8 @@
   (let [*tx-id (atom (:global_id ws-transform))]
     (if @*tx-id
       (transforms.api/update-transform! @*tx-id (select-keys ws-transform [:name :description :source :target]))
-      ;; TODO need to extract the create-transform function
-      (reset! *tx-id nil #_(:id (transforms.api/create-transform (select-keys ws-transform [:name :description :source :target])))))
+      (reset! *tx-id (:id (transforms.api/create-transform!
+                           (select-keys ws-transform [:name :description :source :target])))))
 
     ;; There are no longer any changes, so it can be removed from the changeset.
     (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
