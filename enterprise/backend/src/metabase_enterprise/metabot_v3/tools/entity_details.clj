@@ -1,6 +1,7 @@
-(ns metabase-enterprise.metabot-v3.dummy-tools
+(ns metabase-enterprise.metabot-v3.tools.entity-details
   (:require
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.documents.core :as documents]
@@ -10,13 +11,14 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- verified-review?
+(defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
   (let [review (t2/select-one [:model/ModerationReview :status]
@@ -49,7 +51,7 @@
 
 (defn get-current-user
   "Get information about the current user."
-  []
+  [_args]
   (if-let [{:keys [id email first_name last_name]}
            (or (some-> api/*current-user* deref)
                (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
@@ -295,19 +297,21 @@
          cards)))
 
 (defn answer-sources
-  "Get the details of metrics and models in the scope of the Metabot instance with ID `metabot-id`."
-  ([metabot-id]
-   (answer-sources metabot-id nil))
-  ([metabot-id options]
-   (lib-be/with-metadata-provider-cache
-     (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models metabot-id)
-           {metrics :metric, models :model}
-           (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
-                      detail (cards-details card-type database-id cards options)]
-                  detail)
-                (group-by :type))]
-       {:structured-output {:metrics (vec metrics)
-                            :models  (vec models)}}))))
+  "Get the details of metrics and models in the scope of the Metabot instance with ID `metabot-id`.
+  Accepts a map with `:metabot-id` and optional options for field values."
+  [{:keys [metabot-id] :as options}]
+  (if-let [normalized-metabot-id (metabot-v3.config/normalize-metabot-id metabot-id)]
+    (lib-be/with-metadata-provider-cache
+      (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models normalized-metabot-id)
+            {metrics :metric, models :model}
+            (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
+                       detail (cards-details card-type database-id cards options)]
+                   detail)
+                 (group-by :type))]
+        {:structured-output {:metrics (vec metrics)
+                             :models  (vec models)}}))
+    (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
+                    {:metabot_id metabot-id, :status-code 400}))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
