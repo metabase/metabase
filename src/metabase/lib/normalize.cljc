@@ -28,6 +28,7 @@
    :metadata/table    ::lib.schema.metadata/table
    :metadata/column   ::lib.schema.metadata/column
    :metadata/card     ::lib.schema.metadata/card
+   :metadata/measure  ::lib.schema.metadata/measure
    :metadata/segment  ::lib.schema.metadata/segment
    :metadata/metric   ::lib.schema.metadata/metric})
 
