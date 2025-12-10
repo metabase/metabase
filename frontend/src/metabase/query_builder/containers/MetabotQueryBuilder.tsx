@@ -9,6 +9,7 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQueryBuilder.module.css";
 import { useEffect, useState } from "react";
+import { useRouter } from "metabase/router";
 
 const defaultSuggestionModels = [
   "dataset",
@@ -73,6 +74,19 @@ export const MetabotQueryBuilder = () => {
       setVisible(false);
     },
     [setVisible],
+  );
+
+  const { router, routes } = useRouter();
+  const currentRoute = routes.at(-1);
+  useEffect(
+    () =>
+      router.setRouteLeaveHook(currentRoute, (nextLocation) => {
+        if (nextLocation?.pathname.startsWith("/question")) {
+          setVisible(true);
+        }
+        return true;
+      }),
+    [router, currentRoute, setVisible],
   );
 
   return (
