@@ -1,6 +1,9 @@
 /* istanbul ignore file */
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { LoadingMessage, TokenFeatures } from "metabase-types/api";
@@ -13,6 +16,7 @@ export interface SetupOpts {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   hasEnterprisePlugins?: boolean;
+  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export function setup({
@@ -21,6 +25,7 @@ export function setup({
   showMetabaseLinks = true,
   tokenFeatures = {},
   hasEnterprisePlugins = false,
+  specificPlugins = [],
 }: SetupOpts = {}) {
   const state = createMockState({
     settings: mockSettings({
@@ -32,7 +37,13 @@ export function setup({
   });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    if (specificPlugins.length > 0) {
+      specificPlugins.forEach((plugin) => {
+        setupEnterpriseOnlyPlugin(plugin);
+      });
+    } else {
+      setupEnterprisePlugins();
+    }
   }
 
   const {
