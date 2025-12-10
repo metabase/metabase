@@ -1197,6 +1197,22 @@ databaseChangeLog:
             columnName: use_case_id
 
   - changeSet:
+      id: v58.2025-12-10T16:07:30
+      author: noahmoss
+      comment: Add index on metabot_message.use_case_id
+      changes:
+        - createIndex:
+            tableName: metabot_message
+            indexName: idx_metabot_message_use_case_id
+            columns:
+              - column:
+                  name: use_case_id
+      rollback:
+        - dropIndex:
+            tableName: metabot_message
+            indexName: idx_metabot_message_use_case_id
+
+  - changeSet:
       id: v58.2025-12-10T16:08:00
       author: noahmoss
       comment: Make profile_id nullable on metabot_message
