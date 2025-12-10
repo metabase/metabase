@@ -50,7 +50,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     expect(await screen.findByText("Appearance")).toBeInTheDocument();
   });
 
-  it("does not show the Modular embedding toggle when token features are missing", () => {
+  it("does not show the modular embedding toggle when token features are missing", () => {
     setup({ tokenFeatures: { embedding_simple: false } });
 
     expect(

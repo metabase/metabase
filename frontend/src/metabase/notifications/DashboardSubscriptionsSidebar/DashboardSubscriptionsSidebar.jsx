@@ -143,10 +143,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
     const { isAdmin, pulses, loading: isSubscriptionListLoading } = this.props;
 
     /**
-     * (EMB-976): In Modular embedding/Modular embedding SDK context we need to avoid showing the NEW_PULSE view (the view that lets users select
+     * (EMB-976): In modular embedding/modular embedding SDK context we need to avoid showing the NEW_PULSE view (the view that lets users select
      * between Email and Slack options) because we only allow email subscriptions there.
      *
-     * And it's guaranteed that email would already be set up in Modular embedding/SDK context.
+     * And it's guaranteed that email would already be set up in modular embedding/SDK context.
      * Otherwise, we won't show the subscription button to open this sidebar
      * in the first place.
      */
@@ -172,7 +172,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
 
   fetchUsers = async () => {
     if (isEmbeddingSdk()) {
-      // We don't need the the list of users in Modular embedding/SDK context because we will hard code the recipient to the logged in user.
+      // We don't need the the list of users in modular embedding/SDK context because we will hard code the recipient to the logged in user.
       this.setState({ users: [] });
     } else {
       this.setState({ users: (await UserApi.list()).data });

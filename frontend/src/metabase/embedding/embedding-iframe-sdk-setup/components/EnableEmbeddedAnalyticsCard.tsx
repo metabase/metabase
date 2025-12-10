@@ -26,7 +26,7 @@ export const EnableEmbeddedAnalyticsCard = () => {
           "show-simple-embed-terms": false,
         }),
       }}
-      errorMessage={t`Failed to Enable modular embedding`}
+      errorMessage={t`Failed to enable modular embedding`}
     />
   );
 };

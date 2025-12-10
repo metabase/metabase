@@ -75,7 +75,7 @@ const getTitle = (key: SettingKey) =>
     .with(
       "enable-embedding-simple",
       () =>
-        t`When using Modular embedding, each end user should have their own Metabase account.`,
+        t`When using modular embedding, each end user should have their own Metabase account.`,
     )
     .exhaustive();
 

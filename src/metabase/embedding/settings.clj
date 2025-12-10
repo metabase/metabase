@@ -106,7 +106,7 @@
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
 
 (defsetting enable-embedding-simple
-  (deferred-tru "Allow admins to embed Metabase via Modular embedding?")
+  (deferred-tru "Allow admins to embed Metabase via modular embedding?")
   :type       :boolean
   :default    false
   :visibility :authenticated

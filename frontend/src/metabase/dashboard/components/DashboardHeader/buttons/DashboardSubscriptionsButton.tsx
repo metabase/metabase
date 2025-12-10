@@ -7,7 +7,7 @@ export function DashboardSubscriptionsButton() {
     return <PLUGIN_EMBEDDING_IFRAME_SDK.DashboardSubscriptionsButton />;
   }
 
-  // This flag isn't exclusive it could mean we're on either Modular embedding or Modular embedding SDK
+  // This flag isn't exclusive it could mean we're on either modular embedding or modular embedding SDK
   if (isEmbeddingSdk()) {
     return <PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton />;
   }

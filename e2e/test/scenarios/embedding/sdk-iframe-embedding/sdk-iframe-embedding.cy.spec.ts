@@ -320,7 +320,7 @@ describe("scenarios > embedding > Modular embedding", () => {
     H.enableTracking();
   });
 
-  it("should send an Modular embedding usage event", () => {
+  it("should send an modular embedding usage event", () => {
     cy.signOut();
     cy.visit("http://localhost:4000");
     const frame = H.loadSdkIframeEmbedTestPage({
@@ -410,7 +410,7 @@ describe("scenarios > embedding > Modular embedding", () => {
     });
   });
 
-  it("should not send an Modular embedding usage event in the preview", () => {
+  it("should not send an modular embedding usage event in the preview", () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();
