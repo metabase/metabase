@@ -38,18 +38,70 @@
                 :schema      "public"
                 :table       "orders_with_products"}
                (:output result))))
-      (testing "inputs contain the source table with metadata"
+      (testing "inputs contain the source table with table_id (since table exists)"
         (let [inputs (:inputs result)
               table-names (set (map :table inputs))]
           (is (= 1 (count inputs)))
           (is (contains? table-names "ORDERS"))
+          ;; MBQL queries have table_id since the tables must exist
           (is (every? #(and (:database_id %)
                             (:table %)
                             (:table_id %))
                       inputs)))))))
 
+(deftest ^:parallel analyze-entity-native-query-existing-table-test
+  (testing "analyze-entity extracts dependencies from native query referencing existing table"
+    (let [mp        (mt/metadata-provider)
+          query     (lib/native-query mp "SELECT * FROM ORDERS WHERE total > 100")
+          transform {:source {:type  "query"
+                              :query query}
+                     :target {:database (mt/id)
+                              :schema   "analytics"
+                              :name     "high_value_orders"}}
+          result    (ws.deps/analyze-entity :transform transform)]
+      (testing "output is extracted from target"
+        (is (= {:database_id (mt/id)
+                :schema      "analytics"
+                :table       "high_value_orders"}
+               (:output result))))
+      (testing "inputs include table_id since ORDERS table exists"
+        (let [inputs (:inputs result)]
+          ;; Native query parsing should detect ORDERS table reference and look up table_id
+          (is (pos? (count inputs)))
+          (is (every? #(and (:database_id %)
+                            (:table %)
+                            (:table_id %))
+                      inputs)))))))
+
+(deftest ^:parallel analyze-entity-native-query-nonexistent-table-test
+  (testing "analyze-entity handles native query referencing non-existent table"
+    (let [mp        (mt/metadata-provider)
+          ;; Reference a table that doesn't exist in the database
+          query     (lib/native-query mp "SELECT * FROM future_sales_data WHERE region = 'US'")
+          transform {:source {:type  "query"
+                              :query query}
+                     :target {:database (mt/id)
+                              :schema   "analytics"
+                              :name     "regional_sales"}}
+          result    (ws.deps/analyze-entity :transform transform)]
+      (testing "output is extracted from target"
+        (is (= {:database_id (mt/id)
+                :schema      "analytics"
+                :table       "regional_sales"}
+               (:output result))))
+      (testing "inputs have logical reference but no table_id (table doesn't exist)"
+        (let [inputs (:inputs result)]
+          ;; Should still parse the table reference even though table doesn't exist
+          (is (pos? (count inputs)))
+          ;; Has database_id and table name but NOT table_id
+          (is (every? #(and (:database_id %)
+                            (:table %))
+                      inputs))
+          ;; Verify table_id is nil or missing for non-existent tables
+          (is (every? #(nil? (:table_id %)) inputs)))))))
+
 (deftest ^:parallel analyze-entity-python-transform-test
-  (testing "analyze-entity extracts dependencies from a python transform"
+  (testing "analyze-entity extracts dependencies from t python transform"
     (let [transform {:source {:type          "python"
                               :source-tables {"orders"   (mt/id :orders)
                                               "products" (mt/id :products)}
@@ -63,12 +115,14 @@
                 :schema      "public"
                 :table       "python_result"}
                (:output result))))
-      (testing "inputs contain the source tables"
+      (testing "inputs contain the source tables with table_ids"
         (let [inputs (:inputs result)
               table-names (set (map :table inputs))]
           (is (= 2 (count inputs)))
           (is (contains? table-names "ORDERS"))
-          (is (contains? table-names "PRODUCTS")))))))
+          (is (contains? table-names "PRODUCTS"))
+          ;; Python transforms have table_ids since source-tables maps to existing table IDs
+          (is (every? :table_id inputs)))))))
 
 (deftest analyze-entity-asserts-transform-type-test
   (testing "analyze-entity asserts entity-type is :transform"
@@ -116,12 +170,11 @@
                                    :table       "test_output"}
                           :inputs [{:database_id (:db_id orders-table)
                                     :schema      (:schema orders-table)
-                                    :table       (:name orders-table)
-                                    :table_id    (mt/id :orders)}]}]
+                                    :table       (:name orders-table)}]}]
         (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
         (let [input (t2/select-one :model/WorkspaceInput
                                    :workspace_id (:id workspace)
-                                   :table_id (mt/id :orders))]
+                                   :table (:name orders-table))]
           (is (some? input))
           (is (= (:db_id orders-table) (:database_id input)))
           (is (= (:name orders-table) (:table input))))))))
@@ -142,8 +195,7 @@
                                    :table       "test_output"}
                           :inputs [{:database_id (:db_id orders-table)
                                     :schema      (:schema orders-table)
-                                    :table       (:name orders-table)
-                                    :table_id    (mt/id :orders)}]}]
+                                    :table       (:name orders-table)}]}]
         (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
         (let [edges (t2/select :model/WorkspaceDependency
                                :workspace_id (:id workspace)
@@ -182,8 +234,7 @@
                                              :table       "downstream_output"}
                                     :inputs [{:database_id (mt/id)
                                               :schema      "public"
-                                              :table       "upstream_output"
-                                              :table_id    nil}]})
+                                              :table       "upstream_output"}]})
 
       (let [edges (t2/select :model/WorkspaceDependency
                              :workspace_id (:id workspace)
@@ -216,8 +267,7 @@
                                                :table       "test_output"}
                                       :inputs [{:database_id (:db_id orders-table)
                                                 :schema      (:schema orders-table)
-                                                :table       (:name orders-table)
-                                                :table_id    (mt/id :orders)}]})
+                                                :table       (:name orders-table)}]})
         (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace))))
 
         ;; Update to depend on products instead
@@ -227,15 +277,14 @@
                                                :table       "test_output"}
                                       :inputs [{:database_id (:db_id products-table)
                                                 :schema      (:schema products-table)
-                                                :table       (:name products-table)
-                                                :table_id    (mt/id :products)}]})
+                                                :table       (:name products-table)}]})
 
         (testing "old edge is removed"
           (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace)))))
         (testing "new input is created"
           (is (some? (t2/select-one :model/WorkspaceInput
                                     :workspace_id (:id workspace)
-                                    :table_id (mt/id :products)))))))))
+                                    :table (:name products-table)))))))))
 
 ;;; ---------------------------------------- Integration test ----------------------------------------
 
