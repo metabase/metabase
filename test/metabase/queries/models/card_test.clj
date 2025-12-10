@@ -700,6 +700,14 @@
                  :visualization_settings
                  json/decode+kw))))))
 
+(deftest upgrade-card-schema-after-downgrade
+  (testing "We exit the loop if a chard_schema is higher than the current schema."
+    (let [card {:id 1
+                :dataset_query {}
+                :card_schema (inc @#'card/current-schema-version)}]
+      (is (= card
+             (#'card/upgrade-card-schema-to-latest card))))))
+
 (deftest storing-metabase-version
   (testing "Newly created Card should know a Metabase version used to create it"
     (mt/with-temp [:model/Card card {}]
