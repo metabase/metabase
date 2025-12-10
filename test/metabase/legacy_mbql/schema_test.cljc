@@ -317,3 +317,17 @@
   (testing "Remove deprecated keys like :model/inner_ident automatically (GIT-8399)"
     (is (= {:base_type :type/*, :name "X", :display_name "X"}
            (lib/normalize ::mbql.s/legacy-column-metadata {:name "X", :model/inner_ident "wow"})))))
+
+(deftest ^:parallel normalize-aggregation-inside-non-aggregation-function-test
+  (is (= [:concat "$" [:round [:sum [:field "cost_per_customer" {:base-type :type/Decimal}]]]]
+         (lib/normalize
+          ::mbql.s/Aggregation
+          ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]])))
+  (is (= [:aggregation-options
+          [:concat "$" [:round [:sum [:field "cost_per_customer" {:base-type :type/Decimal}]]]]
+          {:name "Sum", :display-name "Sum"}]
+         (lib/normalize
+          ::mbql.s/Aggregation
+          ["aggregation-options"
+           ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]]
+           {"name" "Sum", "display-name" "Sum"}]))))
