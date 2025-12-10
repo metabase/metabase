@@ -29,7 +29,8 @@ export const trackCollectionItemBookmarked = (item: CollectionItem) => {
       | "collection"
       | "dataset"
       | "document"
-      | "card",
+      | "card"
+      | "table",
   ) => {
     switch (analyticsModel) {
       case "card":

@@ -8,6 +8,7 @@ import { getParameterValues } from "metabase/dashboard/selectors";
 import Search from "metabase/entities/search";
 import { getUrlTarget } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
+import { modelToUrl } from "metabase/lib/urls";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
@@ -142,7 +143,7 @@ function LinkVizInner({
       <DisplayLinkCardWrapper>
         <CardLink
           data-testid="entity-view-display-link"
-          to={wrappedEntity.getUrl()}
+          to={modelToUrl(wrappedEntity)}
           rel="noreferrer"
           role="link"
         >

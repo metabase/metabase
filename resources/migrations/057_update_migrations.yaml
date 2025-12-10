@@ -2604,6 +2604,18 @@ databaseChangeLog:
             path: instance_analytics_views/content/v5/h2-content.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v57.2025-12-09T12:45:01
+      author: dpsutton
+      comment: >-
+        Copy legacy MBQL queries from report_card.legacy_query to report_card.dataset_query where the parsed query is erroneously '{}'
+      changes:
+        - sql: >-
+            UPDATE report_card
+            SET dataset_query = legacy_query
+            where dataset_query = '{}' and legacy_query is not null;
+      rollback: # nothing to undo
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

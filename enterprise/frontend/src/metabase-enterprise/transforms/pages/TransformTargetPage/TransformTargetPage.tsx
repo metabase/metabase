@@ -50,7 +50,7 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
   }
 
   return (
-    <ColumnLayout px="3.5rem">
+    <ColumnLayout px="3.5rem" data-testid="transforms-target-content">
       <TransformHeader transform={transform} />
       <ColumnLayoutBody>
         <TargetSection transform={transform} />

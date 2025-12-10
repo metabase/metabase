@@ -2,7 +2,6 @@
   "Settings related to embedding Metabase in other applications."
   (:require
    [clojure.string :as str]
-   [crypto.random :as crypto-random]
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
@@ -12,6 +11,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
 
 (defsetting embedding-secret-key
@@ -60,7 +60,7 @@
         (when (not= new-value old-value)
           (setting/set-value-of-type! :boolean setting-key new-value)
           (when (and new-value (str/blank? (embedding-secret-key)))
-            (embedding-secret-key! (crypto-random/hex 32)))
+            (embedding-secret-key! (u.random/secure-hex 32)))
           (analytics/track-event! :snowplow/embed_share
                                   {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
                                    :embedding-app-origin-set   (boolean

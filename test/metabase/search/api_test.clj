@@ -1930,3 +1930,17 @@
                                           :collection coll-1)]
         (is (= #{card-1}
                (set (map :id (:data results)))))))))
+
+(deftest published-table-not-in-collection-search-oss-test
+  (testing "In OSS, published tables should NOT appear in collection-filtered search"
+    (mt/with-premium-features #{}
+      (mt/with-temp
+        [:model/Collection {parent-coll :id} {:name "OSS Test Collection" :location "/"}
+         :model/Card       {card-id :id}     {:collection_id parent-coll :name "OSS Test Card"}
+         :model/Table      {table-id :id}    {:name "OSS Published Table" :is_published true :collection_id parent-coll}]
+        (testing "Collection-filtered search should NOT include published tables in OSS"
+          (let [result-ids (into #{} (map :id) (:data (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)))]
+            (is (contains? result-ids card-id)
+                "Card in collection should be included")
+            (is (not (contains? result-ids table-id))
+                "Published table should NOT be included in collection search in OSS")))))))

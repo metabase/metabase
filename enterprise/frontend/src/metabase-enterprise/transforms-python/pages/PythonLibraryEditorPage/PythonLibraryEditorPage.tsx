@@ -3,15 +3,18 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import Link from "metabase/common/components/Link/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isResourceNotFoundError } from "metabase/lib/errors";
-import type * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Flex, Group } from "metabase/ui";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
+import { TransformsSectionHeader } from "metabase-enterprise/transforms/components/TransformsSectionHeader";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PanelHeaderTitle,
@@ -93,6 +96,14 @@ export function PythonLibraryEditorPage({
   return (
     <>
       <Flex h="100%" w="100%" gap={0} direction="column">
+        <TransformsSectionHeader
+          leftSection={
+            <DataStudioBreadcrumbs>
+              <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+              {t`Python library`}
+            </DataStudioBreadcrumbs>
+          }
+        />
         <LibraryEditorHeader
           onSave={handleSave}
           onRevert={handleRevert}
@@ -125,6 +136,7 @@ export function LibraryEditorHeader({
 }) {
   return (
     <PaneHeader
+      pt={0}
       title={<PanelHeaderTitle>{t`Python library`}</PanelHeaderTitle>}
       actions={
         (isDirty || isSaving) && (

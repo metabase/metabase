@@ -50,7 +50,7 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
   }
 
   return (
-    <ColumnLayout px="3.5rem">
+    <ColumnLayout px="3.5rem" data-testid="transforms-run-content">
       <TransformHeader transform={transform} />
       <ColumnLayoutBody>
         <RunSection transform={transform} />
