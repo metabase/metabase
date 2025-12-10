@@ -1,4 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { t } from "ttag";
+import _ from "underscore";
 
 import {
   skipToken,
@@ -6,7 +8,9 @@ import {
   useListCollectionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { Collection } from "metabase-types/api";
 
 import type { TreeItem } from "./types";
@@ -18,8 +22,13 @@ export const useBuildTreeForCollection = (
   isLoading: boolean;
   hasChildren?: boolean;
   tree: TreeItem[];
+  error?: unknown;
 } => {
-  const { data: items, isLoading } = useListCollectionItemsQuery(
+  const {
+    data: items,
+    isLoading,
+    error,
+  } = useListCollectionItemsQuery(
     collection ? { id: collection.id, models: ["metric", "table"] } : skipToken,
   );
 
@@ -28,10 +37,12 @@ export const useBuildTreeForCollection = (
       return {
         isLoading,
         tree: [],
+        error,
       };
     }
     return {
       isLoading,
+      error,
       hasChildren: items.data.length > 0,
       tree: [
         {
@@ -51,15 +62,20 @@ export const useBuildTreeForCollection = (
         },
       ],
     };
-  }, [collection, items, isLoading]);
+  }, [isLoading, items, collection, error]);
 };
 
 export const useBuildSnippetTree = (): {
   isLoading: boolean;
   tree: TreeItem[];
   hasChildren?: boolean;
+  error?: unknown;
 } => {
-  const { data: snippets, isLoading: loadingSnippets } = useListSnippetsQuery();
+  const {
+    data: snippets,
+    isLoading: loadingSnippets,
+    error,
+  } = useListSnippetsQuery();
   const { data: snippetCollections, isLoading: loadingCollections } =
     useListCollectionsQuery({
       namespace: "snippets",
@@ -75,13 +91,34 @@ export const useBuildSnippetTree = (): {
       return {
         isLoading: true,
         tree: [],
+        error,
       };
     }
 
     return {
       isLoading: false,
+      error,
       tree: buildSnippetTree(snippetCollections, snippets),
       hasChildren: snippets.length > 0 || snippetCollections.length > 1,
     };
-  }, [loadingSnippets, loadingCollections, snippets, snippetCollections]);
+  }, [
+    loadingSnippets,
+    loadingCollections,
+    snippets,
+    snippetCollections,
+    error,
+  ]);
+};
+
+export const useErrorHandling = (_error: unknown) => {
+  const error = useDebouncedValue(_error, 1000);
+  const { sendErrorToast } = useMetadataToasts();
+
+  useEffect(() => {
+    if (_.isObject(error) && typeof error?.data?.message === "string") {
+      sendErrorToast(
+        t`Data couldn't be fetched properly: ${error.data.message}`,
+      );
+    }
+  }, [error, sendErrorToast]);
 };

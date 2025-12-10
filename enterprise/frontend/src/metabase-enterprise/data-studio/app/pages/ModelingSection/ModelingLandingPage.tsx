@@ -30,7 +30,11 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
-import { useBuildSnippetTree, useBuildTreeForCollection } from "./hooks";
+import {
+  useBuildSnippetTree,
+  useBuildTreeForCollection,
+  useErrorHandling,
+} from "./hooks";
 import { type TreeItem, isCollection } from "./types";
 import { getWritableCollection } from "./utils";
 
@@ -79,16 +83,19 @@ export function ModelingLandingPage() {
     tree: tablesTree,
     hasChildren: hasTables,
     isLoading: loadingTables,
+    error: tablesError,
   } = useBuildTreeForCollection(tableCollection);
   const {
     tree: metricsTree,
     hasChildren: hasMetrics,
     isLoading: loadingMetrics,
+    error: metricsError,
   } = useBuildTreeForCollection(metricCollection);
   const {
     tree: snippetTree,
     hasChildren: hasSnippets,
     isLoading: loadingSnippets,
+    error: snippetsError,
   } = useBuildSnippetTree();
 
   const filteredTree = useTreeFilter({
@@ -99,6 +106,9 @@ export function ModelingLandingPage() {
 
   const libraryHasContent = hasTables || hasMetrics || hasSnippets;
   const isLoading = loadingTables || loadingMetrics || loadingSnippets;
+  useErrorHandling(tablesError || metricsError || snippetsError);
+  const filterReturnedEmpty =
+    !!searchQuery && filteredTree.length === 0 && libraryHasContent;
 
   return (
     <>
@@ -124,8 +134,14 @@ export function ModelingLandingPage() {
           <Card withBorder p={0}>
             {isLoading ? (
               <ListLoadingState />
-            ) : !libraryHasContent ? (
-              <ListEmptyState label={t`No tables, metrics, or snippets yet`} />
+            ) : !libraryHasContent || filterReturnedEmpty ? (
+              <ListEmptyState
+                label={
+                  filterReturnedEmpty
+                    ? t`No results for "${searchQuery}"`
+                    : t`No tables, metrics, or snippets yet`
+                }
+              />
             ) : (
               <Table
                 data={filteredTree}

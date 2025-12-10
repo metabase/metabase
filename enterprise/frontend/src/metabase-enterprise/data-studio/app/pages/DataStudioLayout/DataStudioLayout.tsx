@@ -26,6 +26,7 @@ import {
 } from "metabase/ui";
 
 import S from "./DataStudioLayout.module.css";
+import { getCurrentTab } from "./utils";
 
 type DataStudioLayoutProps = {
   children?: ReactNode;
@@ -40,8 +41,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
     namespace: "data_studio",
     key: "isNavbarOpened",
   });
-
-  const isNavbarOpened = _isNavbarOpened === false ? false : true;
+  const isNavbarOpened = _isNavbarOpened !== false;
 
   return isLoading ? (
     <Center h="100%">
@@ -73,17 +73,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canAccessTransforms = useSelector(
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
-  const isDataTab = pathname.startsWith(Urls.dataStudioData());
-  const isGlossaryTab = pathname.startsWith(Urls.dataStudioGlossary());
 
-  const isModelingTab = pathname.startsWith(Urls.dataStudioModeling());
-  const isDependenciesTab = pathname.startsWith(Urls.dependencyGraph());
-  const isJobsTab = pathname.startsWith(Urls.transformJobList());
-  const isRunsTab = pathname.startsWith(Urls.transformRunList());
-
-  // TODO: Why am i like this?
-  const isTransformsTab =
-    pathname.startsWith(Urls.transformList()) && !isJobsTab;
+  const currentTab = getCurrentTab(pathname);
 
   return (
     <Stack
@@ -102,7 +93,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           label={t`Library`}
           icon="repository"
           to={Urls.dataStudioModeling()}
-          isSelected={isModelingTab}
+          isSelected={currentTab === "modeling"}
           showLabel={isNavbarOpened}
         />
 
@@ -111,7 +102,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             label={t`Data structure`}
             icon="open_folder"
             to={Urls.dataStudioData()}
-            isSelected={isDataTab}
+            isSelected={currentTab === "data"}
             showLabel={isNavbarOpened}
           />
         )}
@@ -120,7 +111,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             label={t`Glossary`}
             icon="glossary"
             to={Urls.dataStudioGlossary()}
-            isSelected={isGlossaryTab}
+            isSelected={currentTab === "glossary"}
             showLabel={isNavbarOpened}
           />
         )}
@@ -129,7 +120,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             label={t`Dependency graph`}
             icon="dependencies"
             to={Urls.dependencyGraph()}
-            isSelected={isDependenciesTab}
+            isSelected={currentTab === "dependencies"}
             showLabel={isNavbarOpened}
           />
         )}
@@ -138,7 +129,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             label={t`Transforms`}
             icon="transform"
             to={Urls.transformList()}
-            isSelected={isTransformsTab}
+            isSelected={currentTab === "transforms"}
             showLabel={isNavbarOpened}
           />
         )}
@@ -149,7 +140,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             label={t`Jobs`}
             icon="clock"
             to={Urls.transformJobList()}
-            isSelected={isJobsTab}
+            isSelected={currentTab === "jobs"}
             showLabel={isNavbarOpened}
           />
         )}
@@ -158,7 +149,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             label={t`Runs`}
             icon="play_outlined"
             to={Urls.transformRunList()}
-            isSelected={isRunsTab}
+            isSelected={currentTab === "runs"}
             showLabel={isNavbarOpened}
           />
         )}
