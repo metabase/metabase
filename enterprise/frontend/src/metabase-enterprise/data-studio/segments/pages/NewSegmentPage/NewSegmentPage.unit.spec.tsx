@@ -51,11 +51,11 @@ const TEST_TABLE = createMockTable({
 });
 
 const mockRoute = {
-  path: "/data-studio/modeling/segments/new",
+  path: "/data-studio/library/segments/new",
 } as any;
 
 const mockGetSuccessUrl = (segment: Segment) =>
-  `/data-studio/modeling/segments/${segment.id}`;
+  `/data-studio/library/segments/${segment.id}`;
 
 type SetupOpts = {
   table?: Table;
@@ -78,7 +78,7 @@ function setup({ table = TEST_TABLE, hasError = false }: SetupOpts = {}) {
       component={() => (
         <NewSegmentPage
           tableId={table.id}
-          cancelUrl="/data-studio/modeling"
+          cancelUrl="/data-studio/library"
           getSuccessUrl={mockGetSuccessUrl}
           renderBreadcrumbs={(t) => (
             <div data-testid="breadcrumbs">Table: {t.display_name}</div>
@@ -230,7 +230,7 @@ describe("NewSegmentPage", () => {
 
     await waitFor(() => {
       expect(history?.getCurrentLocation().pathname).toBe(
-        "/data-studio/modeling",
+        "/data-studio/library",
       );
     });
   });
@@ -298,7 +298,7 @@ describe("NewSegmentPage", () => {
 
     await waitFor(() => {
       expect(history?.getCurrentLocation().pathname).toBe(
-        "/data-studio/modeling/segments/123",
+        "/data-studio/library/segments/123",
       );
     });
 

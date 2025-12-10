@@ -80,13 +80,13 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
     const collectionLink = screen.getByText("Data").closest("a");
     expect(collectionLink).toHaveAttribute(
       "href",
-      "/data-studio/modeling/collections/1",
+      "/data-studio/library/collections/1",
     );
 
     const tableLink = screen.getByText("Orders").closest("a");
     expect(tableLink).toHaveAttribute(
       "href",
-      `/data-studio/modeling/tables/${TEST_TABLE.id}/segments`,
+      `/data-studio/library/tables/${TEST_TABLE.id}/segments`,
     );
 
     const segmentText = screen.getByText("High Value Orders");
@@ -117,11 +117,11 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
 
     expect(screen.getByText("Root").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/modeling/collections/3",
+      "/data-studio/library/collections/3",
     );
     expect(screen.getByText("Analytics").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/modeling/collections/2",
+      "/data-studio/library/collections/2",
     );
 
     const separators = screen.getAllByText("/");

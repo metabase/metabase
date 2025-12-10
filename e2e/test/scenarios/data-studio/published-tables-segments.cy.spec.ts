@@ -28,7 +28,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
 
       cy.url().should(
         "include",
-        `/data-studio/modeling/tables/${ORDERS_ID}/segments/new`,
+        `/data-studio/library/tables/${ORDERS_ID}/segments/new`,
       );
     });
 
@@ -41,7 +41,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
       cy.get<number>("@segmentId").then((segmentId) => {
         cy.url().should(
           "include",
-          `/data-studio/modeling/tables/${ORDERS_ID}/segments/${segmentId}`,
+          `/data-studio/library/tables/${ORDERS_ID}/segments/${segmentId}`,
         );
       });
     });
@@ -56,11 +56,11 @@ describe("scenarios > data studio > library > published tables > segments", () =
       H.DataStudio.Tables.segmentsTab().click();
       cy.url().should(
         "include",
-        `/data-studio/modeling/tables/${ORDERS_ID}/segments`,
+        `/data-studio/library/tables/${ORDERS_ID}/segments`,
       );
 
       H.DataStudio.Tables.overviewTab().click();
-      cy.url().should("include", `/data-studio/modeling/tables/${ORDERS_ID}`);
+      cy.url().should("include", `/data-studio/library/tables/${ORDERS_ID}`);
       cy.url().should("not.include", "/segments");
     });
   });
@@ -85,7 +85,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
       H.undoToast().should("contain.text", "Segment created");
       cy.url().should(
         "match",
-        new RegExp(`/data-studio/modeling/tables/${ORDERS_ID}/segments/\\d+$`),
+        new RegExp(`/data-studio/library/tables/${ORDERS_ID}/segments/\\d+$`),
       );
     });
   });
@@ -110,7 +110,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
 
       cy.url().should(
         "include",
-        `/data-studio/modeling/tables/${ORDERS_ID}/segments`,
+        `/data-studio/library/tables/${ORDERS_ID}/segments`,
       );
       cy.url().should("not.match", /segments\/\d+/);
     });
@@ -131,7 +131,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
       H.undoToast().should("contain.text", "Segment removed");
       cy.url().should(
         "include",
-        `/data-studio/modeling/tables/${ORDERS_ID}/segments`,
+        `/data-studio/library/tables/${ORDERS_ID}/segments`,
       );
       cy.url().should("not.match", /segments\/\d+/);
     });

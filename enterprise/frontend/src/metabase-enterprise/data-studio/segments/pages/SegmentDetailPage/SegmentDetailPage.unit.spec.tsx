@@ -74,7 +74,7 @@ const TEST_SEGMENT = createMockSegment({
 });
 
 const mockRoute = {
-  path: "/data-studio/modeling/segments/:segmentId",
+  path: "/data-studio/library/segments/:segmentId",
 } as any;
 
 type SetupOpts = {

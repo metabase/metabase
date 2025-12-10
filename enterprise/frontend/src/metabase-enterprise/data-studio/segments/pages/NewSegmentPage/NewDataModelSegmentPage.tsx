@@ -27,7 +27,7 @@ export function NewDataModelSegmentPage({
   return (
     <NewSegmentPage
       tableId={tableId}
-      cancelUrl={Urls.dataStudioModeling()}
+      cancelUrl={Urls.dataStudioLibrary()}
       getSuccessUrl={(segment: Segment) => Urls.dataStudioSegment(segment.id)}
       renderBreadcrumbs={(table) => (
         <DataModelSegmentBreadcrumbs table={table} />

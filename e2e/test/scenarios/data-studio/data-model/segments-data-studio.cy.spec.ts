@@ -480,7 +480,7 @@ describe("scenarios > data studio > data model > segments", () => {
         });
 
         cy.log("edit Segment A via UI and try to add Segment B as filter");
-        cy.visit(`/data-studio/modeling/segments/${segmentA.id}`);
+        cy.visit(`/data-studio/library/segments/${segmentA.id}`);
         cy.wait("@metadata");
 
         SegmentEditor.get().icon("add").click();
@@ -552,7 +552,7 @@ describe("scenarios > data studio > data model > segments", () => {
 
         cy.wait(1000);
 
-        cy.visit(`/data-studio/modeling/segments/${segmentId}`);
+        cy.visit(`/data-studio/library/segments/${segmentId}`);
       });
 
       cy.log("navigate to revision history tab");
@@ -562,7 +562,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.get<number>("@segmentId").then((segmentId) => {
         cy.url().should(
           "include",
-          `/data-studio/modeling/segments/${segmentId}/revisions`,
+          `/data-studio/library/segments/${segmentId}/revisions`,
         );
       });
 
@@ -585,7 +585,7 @@ describe("scenarios > data studio > data model > segments", () => {
     it("should display dependency graph for a segment", () => {
       createTestSegment({ name: "Dependencies Test Segment" });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/modeling/segments/${segmentId}`);
+        cy.visit(`/data-studio/library/segments/${segmentId}`);
       });
 
       cy.log("navigate to dependencies tab");
@@ -595,7 +595,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.get<number>("@segmentId").then((segmentId) => {
         cy.url().should(
           "include",
-          `/data-studio/modeling/segments/${segmentId}/dependencies`,
+          `/data-studio/library/segments/${segmentId}/dependencies`,
         );
       });
       H.DependencyGraph.graph().should("be.visible");
