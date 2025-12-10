@@ -27,16 +27,12 @@
   Returns a map from [src-type src-id] tuples to sets of [dst-type dst-id] tuples representing dependencies.
 
   When `destination-filter-fn` is provided, it should be a function accepting two arguments
-  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering destination entities.
-
-  When `source-filter-fn` is provided, it should be a function accepting two arguments
   (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering destination entities."
   ([src-type src-id dst-type dst-id key-seq]
    (deps-children src-type src-id dst-type dst-id key-seq nil))
-  ([src-type src-id dst-type dst-id key-seq destination-filter-fn source-filter-fn]
+  ([src-type src-id dst-type dst-id key-seq destination-filter-fn]
    (let [base-filter (cond-> [:and]
-                       destination-filter-fn (conj (destination-filter-fn dst-type dst-id))
-                       source-filter-fn (conj (source-filter-fn src-type src-id)))]
+                       destination-filter-fn (conj (destination-filter-fn dst-type dst-id)))]
      (transduce (map (fn [[entity-type entity-keys]]
                        (let [full-filter (conj base-filter
                                                [:= src-type (name entity-type)]
@@ -56,16 +52,11 @@
   to sets of dependent (downstream) entity keys.
 
   When `destination-filter-fn` is provided, it should be a function accepting two arguments
-  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering
-  the child side of a dependency.
-
-  When `source-filter-fn` is provided, it should be a function accepting two arguments
-  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering
-  the child side of a dependency."
+  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering."
   ([key-seq]
    (key-dependents key-seq nil))
-  ([key-seq destination-filter-fn source-filter-fn]
-   (deps-children :to_entity_type :to_entity_id :from_entity_type :from_entity_id key-seq destination-filter-fn source-filter-fn)))
+  ([key-seq destination-filter-fn]
+   (deps-children :to_entity_type :to_entity_id :from_entity_type :from_entity_id key-seq destination-filter-fn)))
 
 (defn- key-dependencies
   "Get the dependency entity keys for the entity keys in `key-seq`.
@@ -74,15 +65,10 @@
   to sets of dependency (upstream) entity keys.
 
   When `destination-filter-fn` is provided, it should be a function accepting two arguments
-  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering
-  the child side of a dependency.
-
-  When `source-filter-fn` is provided, it should be a function accepting two arguments
-  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering
-  the child side of a dependency."
+  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering."
   ([key-seq]
    (key-dependencies key-seq nil))
-  ([key-seq destination-filter-fn source-filter-fn]
+  ([key-seq destination-filter-fn]
    (deps-children :from_entity_type :from_entity_id :to_entity_type :to_entity_id key-seq destination-filter-fn)))
 
 (p/deftype+ DependencyGraph [children-fn]
@@ -106,40 +92,29 @@
   Arguments:
   - `key-fn`: Either key-dependencies or key-dependents, determining graph direction
   - `destination-filter-fn`: Function accepting (entity-type-field, entity-id-field)
-    and returning a HoneySQL WHERE clause that will filter the child side of a dependency
-  - `source-filter-fn`: Function accepting (entity-type-field, entity-id-field) and
-    returning a HoneySQL WHERE clause that will filter the parent side of a dependency"
-
-  [key-fn destination-filter-fn source-filter-fn]
+    and returning a HoneySQL WHERE clause"
+  [key-fn destination-filter-fn]
   (->DependencyGraph
    (fn [key-seq]
-     (key-fn key-seq destination-filter-fn source-filter-fn))))
+     (key-fn key-seq destination-filter-fn))))
 
 (defn filtered-graph-dependencies
   "Create a permission-aware dependency graph for finding upstream dependencies.
 
   Arguments:
   - `destination-filter-fn`: Function accepting (entity-type-field, entity-id-field)
-    and returning a HoneySQL WHERE clause for filtering destination entities
-  - `source-filter-fn`: Optional function accepting (entity-type-field, entity-id-field)
-    and returning a HoneySQL WHERE clause that will filter the parent side of a dependency"
-  ([destination-filter-fn]
-   (filtered-graph-dependencies destination-filter-fn nil))
-  ([destination-filter-fn source-filter-fn]
-   (filtered-graph key-dependencies destination-filter-fn source-filter-fn)))
+    and returning a HoneySQL WHERE clause for filtering destination entities"
+  [destination-filter-fn]
+  (filtered-graph key-dependencies destination-filter-fn))
 
 (defn filtered-graph-dependents
   "Create a permission-aware dependency graph for finding downstream dependents.
 
   Arguments:
   - `destination-filter-fn`: Function accepting (entity-type-field, entity-id-field)
-    and returning a HoneySQL WHERE clause for filtering destination entities
-  - `source-filter-fn`: Optional function accepting (entity-type-field, entity-id-field)
-    and returning a HoneySQL WHERE clause that will filter the parent side of a dependency"
-  ([destination-filter-fn]
-   (filtered-graph-dependents destination-filter-fn nil))
-  ([destination-filter-fn source-filter-fn]
-   (filtered-graph key-dependents destination-filter-fn source-filter-fn)))
+    and returning a HoneySQL WHERE clause for filtering destination entities"
+  [destination-filter-fn]
+  (filtered-graph key-dependents destination-filter-fn))
 
 (defn transitive-dependents
   "Given a map of updated entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents

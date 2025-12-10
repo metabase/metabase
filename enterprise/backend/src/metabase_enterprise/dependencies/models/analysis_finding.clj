@@ -13,7 +13,7 @@
   {:analyzed_entity_type mi/transform-keyword
    :finding_details mi/transform-json})
 
-(def ^:dynamic current-analysis-version
+(def current-analysis-version
   "Current version of the analysis logic.
   This should be incremented when the analysis logic changes.
   The background task will re-analyze anything with out-of-date analyses."
