@@ -1,14 +1,13 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
-   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
@@ -136,61 +135,22 @@
         database (t2/select-one :model/Database :id db-id)]
     (create-workspace-with-unique-name! creator-id database ws-name 5)))
 
-(defn- rebuild-workspace-graph!
-  "Rebuild the workspace graph from scratch based on all upstream transforms.
-   Returns the new graph."
-  [workspace-id]
-  (let [all-upstream-ids (t2/select-fn-vec :upstream_id :model/WorkspaceMappingTransform
-                                           :workspace_id workspace-id)
-        graph            nil
-        ;; Add from-scratch transforms (those created directly in workspace, not mirrored)
-        ;; These have workspace_id set but no entry in WorkspaceMappingTransform
-        mirrored-ids     (t2/select-fn-set :downstream_id :model/WorkspaceMappingTransform
-                                           :workspace_id workspace-id)
-        from-scratch-txs (->> (t2/select [:model/Transform :id] :workspace_id workspace-id
-                                         {:where (if (seq mirrored-ids)
-                                                   [:not [:in :id mirrored-ids]]
-                                                   true)})
-                              (mapv #(assoc % :type :transform)))
-        graph            (update graph :transforms into from-scratch-txs)]
-    (t2/update! :model/Workspace workspace-id {:graph graph})
-    graph))
-
-(defn create-transform!
-  "Create a new transform directly within a workspace.
-   Returns the created transform with hydrated tag_ids and creator."
-  [workspace body creator-id]
+(defn add-to-changeset!
+  "Add the given "
+  [_creator-id workspace entity-type global-id body]
+  (ws.u/assert-transform! entity-type)
   (u/prog1
     (t2/with-transaction [_]
       (let [workspace-id    (:id workspace)
             workspace-db-id (:database_id workspace)
-            database        (t2/select-one :model/Database workspace-db-id)
-            tag-ids         (:tag_ids body)
-            body            (assoc-in body [:target :database] workspace-db-id)
-            transform       (t2/insert-returning-instance!
-                             :model/Transform
-                             (assoc (select-keys body [:name :description :source :target :run_trigger])
-                                    :creator_id creator-id
-                                    :workspace_id workspace-id))]
-        (when (seq tag-ids)
-          (transforms/update-transform-tags! (:id transform) tag-ids))
-
-        ;; Create isolated output table for the new transform
-        (let [target    (:target transform)
-              new-graph {:db_id      workspace-db-id
-                         :transforms [transform]
-                         :inputs     []
-                         :outputs    [{:id     nil
-                                       :schema (:schema target)
-                                       :name   (:name target)}]
-                         :check-outs []}]
-          (ws.isolation/create-isolated-output-tables! workspace database new-graph))
-
-        ;; Rebuild the full graph from scratch
-        (rebuild-workspace-graph! workspace-id)
-
-        (t2/hydrate transform :transform_tag_ids :creator)))
-    (events/publish-event! :event/transform-create {:object <> :user-id creator-id})))
+            body            (assoc-in body [:target :database] workspace-db-id)]
+        (t2/insert-returning-instance!
+         :model/WorkspaceTransform
+         (assoc (select-keys body [:name :description :source :target])
+                ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
+                ;:creator_id creator-id
+                :global_id global-id
+                :workspace_id workspace-id))))))
 
 (defn- mirror-table-to-delete-where
   [database-id targets]

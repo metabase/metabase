@@ -53,4 +53,4 @@
               (is (thrown-with-msg?
                    Exception
                    #"ERROR: permission denied for table.*"
-                   #p (execute-workspace-transform! workspace (t2/select-one :model/Transform isolated-transform-id) {:run-method :manual}))))))))))
+                   (execute-workspace-transform! workspace (t2/select-one :model/Transform isolated-transform-id) {:run-method :manual}))))))))))

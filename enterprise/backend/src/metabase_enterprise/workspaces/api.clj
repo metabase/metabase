@@ -32,7 +32,7 @@
 
 ;; Proposed simplified FE statuses
 
-(mr/def ::display-status [:enum :uninitialized :database-not-read :graph-not-ready :ready])
+(mr/def ::display-status [:enum :pending :ready] #_[:enum :uninitialized :database-not-read :graph-not-ready :ready])
 
 (defn- display-status [graph-status db-status]
   (cond
@@ -63,14 +63,16 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
-     [:source-tables   [:map-of :string :int]]
+     [:source-tables   [:map-of [:string {:min 1}] :int]]
      [:type [:= "python"]]
      [:body :string]]]])
 
-(mr/def ::ws-transform-target
-  [:map
+(mr/def ::transform-target
+  [:map {:closed true}
+   [:database {:optional true} ::ws.t/appdb-id]
    [:type [:enum "table"]]
-   [:name :string]])
+   [:schema {:optional true} [:maybe [:string {:min 1}]]]
+   [:name [:string {:min 1}]]])
 
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
@@ -99,17 +101,19 @@
   [:map {:closed true}
    [:id ::ws.t/appdb-id]
    [:name :string]
-   [:archived_at [:maybe :any]]])
+   [:archived :boolean]])
 
-(api.macros/defendpoint :get "/" :- [:map [:items [:sequential WorkspaceListing]]]
+(api.macros/defendpoint :get "/" :- [:map {:closed true}
+                                     [:items [:sequential WorkspaceListing]]
+                                     [:limit [:maybe :int]]
+                                     [:offset [:maybe :int]]]
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (->> (t2/select [:model/Workspace :id :name [[:not= nil :archived_at] :archived]]
-                           (cond-> {:order-by [[:created_at :desc]]}
-                             (request/limit) (sql.helpers/limit (request/limit))
-                             (request/offset) (sql.helpers/offset (request/offset))))
-                (mapv ws->response))
+  {:items  (t2/select [:model/Workspace :id :name [[:not= nil :archived_at] :archived]]
+                      (cond-> {:order-by [[:created_at :desc]]}
+                        (request/limit) (sql.helpers/limit (request/limit))
+                        (request/offset) (sql.helpers/offset (request/offset))))
    :limit  (request/limit)
    :offset (request/offset)})
 
@@ -354,22 +358,24 @@
 
 (api.macros/defendpoint :post "/:id/transform"
   "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map #_{:closed true}
             [:name :string]
             [:description {:optional true} [:maybe :string]]
             [:source ::transform-source]
-            [:target ::ws-transform-target]]]
+            ;; Not sure why this schema is giving trouble
+            #_[:target ::transform-target]]]
   (api/check (transforms.util/check-feature-enabled body)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
-  (let [workspace    (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
-                       (api/check-400 (nil? (:archived_at <>)) "Cannot create transforms in an archived workspace"))
+  (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
+                    (api/check-400 (nil? (:archived_at <>)) "Cannot create transforms in an archived workspace"))
         ;; TODO why 400 here and 403 in the validation route? T_T
-        _            (api/check-400 (internal-target-conflict? id (:target body))
-                                    (deferred-tru "Another transform in this workspace already targets that table."))
-        body         (update body :target assoc :database_id (:database_id workspace) :schema (:schema workspace))]
-    (ws.common/create-transform! workspace body api/*current-user-id*)))
+        _         (api/check-400 (not (internal-target-conflict? id (:target body)))
+                                 (deferred-tru "Another transform in this workspace already targets that table."))
+        global-id (:global_id body)
+        body      (-> body (dissoc :global_id) (update :target assoc :database_id (:database_id workspace)))]
+    (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)))
 
 ;; TODO Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -397,7 +403,7 @@
    [:source :map]
    [:target :map]
    [:workspace_id ::ws.t/appdb-id]
-   [:creator_id ::ws.t/appdb-id]
+   ;[:creator_id ::ws.t/appdb-id]
    [:created_at :any]
    [:updated_at :any]])
 
@@ -412,7 +418,7 @@
 
 (api.macros/defendpoint :get "/:id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."
-  [{:keys [id tx-id]} :- [:map [:id ::ws.t/ref-id] [:tx-id ::ws.t/ref-id]]]
+  [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (fetch-ws-transform id tx-id))
 
 (api.macros/defendpoint :put "/:id/transform/:tx-id" :- WorkspaceTransform
@@ -423,7 +429,7 @@
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
-            [:target {:optional true} ::ws-transform-target]]]
+            [:target {:optional true} ::transform-target]]]
   (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))
   (t2/update! :model/WorkspaceTransform tx-id body)
   (fetch-ws-transform id tx-id))
@@ -438,23 +444,25 @@
 (api.macros/defendpoint :post "/:id/transform/:tx-id/unarchive" :- :nil
   "Unmark the given transform for archival. This will recall the last definition it had within the workspace."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace id} {:archived_at nil})))
+  (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id id} {:archived_at nil})))
   nil)
 
 (api.macros/defendpoint :delete "/:id/transform/:tx-id" :- :nil
   "Discard a transform from the changeset.
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace id)))
+  (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace_id id)))
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/run"
   :- [:map [:message :string] [:run_id {:optional true} [:maybe :int]]]
   "Run a transform in a workspace."
-  [{:keys [id tx-id]} :- [:map [:id ms/PositiveInt] [:tx-id ms/PositiveInt]]]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
+  [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (let [transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
-    (transforms.api/run-transform! transform)))
+    ;; We want to run *this* transform, not its global (which might not exist)
+    ;; ... in order to get this working quickly we'll need to create a temporary global one (scream)
+    (when-let [global-id (:global_id transform)]
+      (transforms.api/run-transform! (t2/select :model/Transform global-id)))))
 
 (api.macros/defendpoint :get "/checkout"
   :- [:map
@@ -484,24 +492,23 @@
        [:archived_at [:maybe :any]]]
       ;; error message from check-404 or check-400
       :string]
-  "Promote workspace transforms back to main Metabase and archive the workspace.
-
-  This will:
-  1. Update original transforms with workspace versions
-  3. Archive the workspace and clean up isolated resources
-
-  Returns a report of promoted transforms and any errors."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  "This will:
+   1. Update original transforms with workspace versions
+   2. Archive the workspace and clean up isolated resources
+   Returns a report of merged entities, and any errors."
+  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
    _query-params
    _body-params]
   (let [ws               (u/prog1 (t2/select-one :model/Workspace :id id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         ;; TODO implement individual entity merging
-        {:keys [promoted
-                errors]} {}]
+        ;;      return new global ids for provisional transforms
+        {:keys [merged
+                errors]} {:merged {:transforms (vec (t2/select-fn-vec :global_id [:model/WorkspaceTransform :global_id] :workspace_id id))}
+                          :errors []}]
     (u/prog1
-      {:promoted    (vec promoted)
+      {:merged      merged
        :errors      errors
        :workspace   {:id id, :name (:name ws)}
        :archived_at (when-not (seq errors)

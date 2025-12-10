@@ -3,11 +3,11 @@
 (defn assert-transform!
   "Test whether we support the given entity type within workspaces yet.
    Named for the only case we support currently, to make call sites assumptions more obvious."
-  [type]
-  (when (not= "transform" type)
-    (throw (ex-info "Type not supported"
+  [entity-type]
+  (when (not= "transform" (name entity-type))
+    (throw (ex-info "Entity type not supported"
                     {:status-code 400
-                     :type        type}))))
+                     :entity-type entity-type}))))
 
 (defn- toposort-visit [node child->parents visited result]
   (cond
