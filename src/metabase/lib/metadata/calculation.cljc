@@ -493,7 +493,8 @@
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:and
    [:map
-    [:include-remaps? {:optional true, :default false} :boolean]]
+    [:include-remaps?           {:optional true, :default false} :boolean]
+    [:include-sensitive-fields? {:optional true, :default false} :boolean]]
    [:fn
     {:error/message "unique-name-fn is no longer allowed as an option."}
     (complement :unique-name-fn)]
@@ -598,7 +599,8 @@
   {:include-joined?                              true
    :include-expressions?                         true
    :include-implicitly-joinable?                 true
-   :include-implicitly-joinable-for-source-card? true})
+   :include-implicitly-joinable-for-source-card? true
+   :include-sensitive-fields?                    false})
 
 ;;; TODO (Cam 8/7/25) -- historically `visible-columns` worked on a bunch of stuff besides just a stage, but Braden
 ;;; pointed out that it really only makes any sense at all for a stage here
