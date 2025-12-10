@@ -377,16 +377,16 @@ export function toggleSchemaSelection(
 
 /**
  * Computes which tables, schemas, and databases are selected within a sliced
- * hierarchical range. The function tracks "open" items by level and adds them
+ * hierarchical range. The function tracks candidate items by level and adds them
  * to the result only when the traversal explicitly exits their scope:
  *
- * - An item is considered "closed" when:
+ * - An item is considered "committed" when:
  *     1) The next item appears on the same level (i.e., a sibling replaces it), or
  *     2) The next item appears on a higher level (level decrease, moving upward).
  *
  * - Tables are collected immediately.
- * - Items that remain open at the end of the range are NOT included — only those
- *   that were explicitly closed during traversal.
+ * - Items that remain to be as a candidate at the end of the range are NOT included — only those
+ *   that were explicitly committed during traversal.
  *
  * This ensures the result reflects only the structures that the slice fully
  * exits, matching typical range-selection behavior in hierarchical trees.
@@ -400,13 +400,13 @@ export const computeRangeSelectionFromSlice = (
     databases: new Set<DatabaseId>(),
   };
 
-  // Tracks currently "open" expanded items per level
-  const openByLevel = new Map<number, ExpandedItem[]>();
+  // Tracks current candidate items per level
+  const itemsByLevel = new Map<number, ExpandedItem[]>();
   const getLevel = (i: number) => rangeItems[i]?.level ?? 0;
 
-  // Closes all items registered at a given level
-  const closeLevel = (level: number) => {
-    const items = openByLevel.get(level) ?? [];
+  // Commit all items registered at a given level
+  const commitLevel = (level: number) => {
+    const items = itemsByLevel.get(level) ?? [];
     for (const candidate of items) {
       if (isSchemaItem(candidate)) {
         const sid = getSchemaId(candidate);
@@ -417,7 +417,7 @@ export const computeRangeSelectionFromSlice = (
         selection.databases.add(candidate.value.databaseId);
       }
     }
-    openByLevel.delete(level);
+    itemsByLevel.delete(level);
   };
 
   for (let i = 0; i < rangeItems.length; i++) {
@@ -431,24 +431,24 @@ export const computeRangeSelectionFromSlice = (
     const deltaLevel = currentLevel - prevLevel;
 
     // If another item appears at the same level,
-    // the previous ones at this level are considered "closed".
-    if (openByLevel.has(currentLevel)) {
-      closeLevel(currentLevel);
+    // the previous ones at this level are considered committed.
+    if (itemsByLevel.has(currentLevel)) {
+      commitLevel(currentLevel);
     }
 
-    // Register current item as "open" for its level
-    openByLevel.set(currentLevel, [item]);
+    // Register current item as a candidate for its level
+    itemsByLevel.set(currentLevel, [item]);
 
     // Tables are collected immediately
     if (isTableNode(item)) {
       selection.tables.add(item.value.tableId);
     }
 
-    // On upward movement: close all levels above currentLevel
+    // On upward movement: commit all levels above currentLevel
     if (deltaLevel < 0) {
       let level = prevLevel;
       while (level > currentLevel) {
-        closeLevel(level);
+        commitLevel(level);
         level--;
       }
     }
