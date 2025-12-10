@@ -173,6 +173,7 @@
   (case (t2/model entity)
     :model/Collection (select-keys entity [:id :name :authority_level :is_personal])
     :model/Dashboard (select-keys entity [:id :name])
+    :model/Document (select-keys entity [:id :name])
     entity))
 
 (defn- entity-value [entity-type {:keys [id] :as entity} usages]
@@ -201,7 +202,7 @@
 ;; and others (like :last-edit-info, :view_count) are computed/added separately.
 ;; This map only lists the base database columns to SELECT.
 (def ^:private entity-select-fields
-  {:card [:id :name :description :type :display :database_id :collection_id :dashboard_id :result_metadata
+  {:card [:id :name :description :type :display :database_id :collection_id :dashboard_id :document_id :result_metadata
           :created_at :creator_id
                ;; :card_schema always has to be selected
           :card_schema]
@@ -584,7 +585,7 @@
 (defn- entities-by-type [ids-by-type]
   {:card (when-let [card-ids (seq (map :entity_id (get ids-by-type "card")))]
            (-> (t2/select :model/Card :id [:in card-ids])
-               (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
+               (t2/hydrate :creator :dashboard :document [:collection :is_personal] :moderation_reviews)
                (->> (map collection.root/hydrate-root-collection))
                (revisions/with-last-edit-info :card)
                (->> (map (fn [card] [(:id card) card]))
