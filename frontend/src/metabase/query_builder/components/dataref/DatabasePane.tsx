@@ -2,20 +2,22 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import {
+  skipToken,
+  useListDatabaseSchemasQuery,
+  useSearchQuery,
+} from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Tree } from "metabase/common/components/tree";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
-import Databases from "metabase/entities/databases";
-import Schemas from "metabase/entities/schemas";
-import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type { CollectionId, SearchResult } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import {
   NodeListContainer,
@@ -67,21 +69,21 @@ const groupTablesBySchema = (tables: SearchResult[]) => {
 };
 
 export interface TablesListProps {
-  database: Database;
+  schemas: string[];
   tables: SearchResult[];
   onItemClick: (type: string, item: unknown) => void;
 }
 
 const TablesList = ({
-  database,
+  schemas,
   tables,
   onItemClick,
 }: {
-  database: Database;
+  schemas: string[];
   tables: SearchResult[];
   onItemClick: (type: string, item: unknown) => void;
 }) => {
-  const hasMultipleSchemas = (database.schemas?.length ?? 0) > 1;
+  const hasMultipleSchemas = schemas.length > 1;
 
   if (hasMultipleSchemas) {
     const tablesBySchema = groupTablesBySchema(tables).sort((a, b) =>
@@ -94,9 +96,9 @@ const TablesList = ({
           <NodeListIcon name="folder" />
           <NodeListTitleText>
             {ngettext(
-              msgid`${database.schemas?.length ?? 0} schema`,
-              `${database.schemas?.length ?? 0} schemas`,
-              database.schemas?.length ?? 0,
+              msgid`${schemas.length} schema`,
+              `${schemas.length} schemas`,
+              schemas.length,
             )}
           </NodeListTitleText>
         </NodeListTitle>
@@ -201,19 +203,49 @@ const CollectionsList = ({
 
 export interface DatabasePaneProps {
   database: Database;
-  searchResults: SearchResult[];
   onBack: () => void;
   onClose: () => void;
   onItemClick: (type: string, item: unknown) => void;
 }
 
-const _DatabasePane = ({
+export const DatabasePane = ({
   database,
-  searchResults,
   onBack,
   onClose,
   onItemClick,
 }: DatabasePaneProps) => {
+  const databaseId = database.id;
+
+  const {
+    data: schemasData,
+    isLoading: isLoadingSchemas,
+    error: schemasError,
+  } = useListDatabaseSchemasQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
+
+  const {
+    data: searchResponse,
+    isLoading: isLoadingSearch,
+    error: searchError,
+  } = useSearchQuery(
+    databaseId != null
+      ? {
+          models: ["dataset", "table"],
+          table_db_id: databaseId,
+        }
+      : skipToken,
+  );
+
+  const isLoading = isLoadingSchemas || isLoadingSearch;
+  const error = schemasError || searchError;
+
+  const schemas = useMemo(() => schemasData ?? [], [schemasData]);
+  const searchResults = useMemo(
+    () => searchResponse?.data ?? [],
+    [searchResponse],
+  );
+
   const tables = useMemo(
     () =>
       searchResults
@@ -230,41 +262,24 @@ const _DatabasePane = ({
   );
 
   return (
-    <SidebarContent
-      title={database.name}
-      icon={"database"}
-      onBack={onBack}
-      onClose={onClose}
-    >
-      <SidebarContent.Pane>
-        <NodeListContainer>
-          <TablesList
-            database={database}
-            tables={tables}
-            onItemClick={onItemClick}
-          />
-          <CollectionsList models={models} onItemClick={onItemClick} />
-        </NodeListContainer>
-      </SidebarContent.Pane>
-    </SidebarContent>
+    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      <SidebarContent
+        title={database.name}
+        icon={"database"}
+        onBack={onBack}
+        onClose={onClose}
+      >
+        <SidebarContent.Pane>
+          <NodeListContainer>
+            <TablesList
+              schemas={schemas}
+              tables={tables}
+              onItemClick={onItemClick}
+            />
+            <CollectionsList models={models} onItemClick={onItemClick} />
+          </NodeListContainer>
+        </SidebarContent.Pane>
+      </SidebarContent>
+    </LoadingAndErrorWrapper>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export const DatabasePane = Databases.load({
-  id: (_state: State, props: DatabasePaneProps) => props.database.id,
-})(
-  Schemas.loadList({
-    query: (_state: State, props: DatabasePaneProps) => ({
-      dbId: props.database.id,
-    }),
-  })(
-    Search.loadList({
-      query: (_state: State, props: DatabasePaneProps) => ({
-        models: ["dataset", "table"],
-        table_db_id: props.database.id,
-      }),
-      listName: "searchResults",
-    })(_DatabasePane),
-  ),
-);
