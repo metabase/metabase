@@ -74,7 +74,7 @@
                  :name                "Our analytics"
                  :authority_level     nil
                  :is_personal         false
-                 :is_remote_synced false
+                 :is_remote_synced    false
                  :id                  "root"
                  :can_restore         false
                  :can_delete          false}
