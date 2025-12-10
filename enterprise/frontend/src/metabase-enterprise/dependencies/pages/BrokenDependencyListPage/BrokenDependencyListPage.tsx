@@ -9,7 +9,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
-import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
+import { useListBrokenNodesQuery } from "metabase-enterprise/api";
 
 import { DependencyFilterPicker } from "../../components/DependencyFilterPicker";
 import type {
@@ -19,7 +19,7 @@ import type {
 } from "../../types";
 import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
 
-import { UnreferencedDependencyList } from "./UnreferencedDependencyList";
+import { BrokenDependencyList } from "./BrokenDependencyList";
 import {
   AVAILABLE_GROUP_TYPES,
   DEFAULT_SORT_COLUMN,
@@ -28,13 +28,13 @@ import {
 } from "./constants";
 import { parseRawParams } from "./utils";
 
-interface UnreferencedDependencyListPageProps {
+interface BrokenDependencyListPageProps {
   location?: Location<DependencyListRawParams>;
 }
 
-export function UnreferencedDependencyListPage({
+export function BrokenDependencyListPage({
   location,
-}: UnreferencedDependencyListPageProps) {
+}: BrokenDependencyListPageProps) {
   const params = useMemo(
     () => parseRawParams(location?.query),
     [location?.query],
@@ -49,7 +49,7 @@ export function UnreferencedDependencyListPage({
   const [searchValue, setSearchValue] = useState("");
   const dispatch = useDispatch();
 
-  const { data, isLoading, error } = useListUnreferencedNodesQuery({
+  const { data, isLoading, error } = useListBrokenNodesQuery({
     query,
     types: getDependencyTypes(types ?? AVAILABLE_GROUP_TYPES),
     card_types: getCardTypes(types ?? AVAILABLE_GROUP_TYPES),
@@ -83,7 +83,7 @@ export function UnreferencedDependencyListPage({
 
   const handleSearchDebounce = useDebouncedCallback(
     (query: string | undefined) => {
-      dispatch(replace(Urls.dataStudioUnreferencedItems({ ...params, query })));
+      dispatch(replace(Urls.dataStudioBrokenItems({ ...params, query })));
     },
     SEARCH_DEBOUNCE_DURATION,
   );
@@ -101,7 +101,7 @@ export function UnreferencedDependencyListPage({
     (filterOptions: DependencyListFilterOptions) => {
       dispatch(
         push(
-          Urls.dataStudioUnreferencedItems({
+          Urls.dataStudioBrokenItems({
             ...params,
             types: filterOptions.groupTypes,
           }),
@@ -115,7 +115,7 @@ export function UnreferencedDependencyListPage({
     (sortOptions: DependencyListSortOptions) => {
       dispatch(
         push(
-          Urls.dataStudioUnreferencedItems({
+          Urls.dataStudioBrokenItems({
             ...params,
             sortColumn: sortOptions.column,
             sortDirection: sortOptions.direction,
@@ -129,9 +129,7 @@ export function UnreferencedDependencyListPage({
   const handlePageChange = useCallback(
     (newPageIndex: number) => {
       dispatch(
-        push(
-          Urls.dataStudioUnreferencedItems({ ...params, page: newPageIndex }),
-        ),
+        push(Urls.dataStudioBrokenItems({ ...params, page: newPageIndex })),
       );
     },
     [params, dispatch],
@@ -162,7 +160,7 @@ export function UnreferencedDependencyListPage({
         />
       </Flex>
       <Box flex={1} mih={0}>
-        <UnreferencedDependencyList
+        <BrokenDependencyList
           items={data.data}
           sortOptions={sortOptions}
           paginationOptions={paginationOptions}

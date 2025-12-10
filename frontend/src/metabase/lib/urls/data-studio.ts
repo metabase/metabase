@@ -184,14 +184,14 @@ export function dataStudioTasks() {
 export type DependencyListParams = {
   query?: string;
   page?: number;
-  groupTypes?: DependencyGroupType[];
+  types?: DependencyGroupType[];
   sortColumn?: DependencySortColumn;
   sortDirection?: DependencySortDirection;
 };
 
 function dataStudioDependencies(
   baseUrl: string,
-  { query, page, groupTypes, sortColumn, sortDirection }: DependencyListParams,
+  { query, page, types, sortColumn, sortDirection }: DependencyListParams,
 ) {
   const searchParams = new URLSearchParams();
 
@@ -201,10 +201,8 @@ function dataStudioDependencies(
   if (page != null) {
     searchParams.set("page", page.toString());
   }
-  if (groupTypes != null) {
-    groupTypes.forEach((groupType) =>
-      searchParams.append("groupTypes", groupType),
-    );
+  if (types != null) {
+    types.forEach((type) => searchParams.append("types", type));
   }
   if (sortColumn != null) {
     searchParams.set("sortColumn", sortColumn);

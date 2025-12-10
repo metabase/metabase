@@ -309,6 +309,25 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
   }
 }
 
+export function getDependencyTypes(
+  groupTypes: DependencyGroupType[],
+): DependencyType[] {
+  const types = groupTypes.map(getDependencyType);
+  return Array.from(new Set(types));
+}
+
+export function getCardTypes(groupTypes: DependencyGroupType[]): CardType[] {
+  const cardTypes = groupTypes
+    .map(getCardType)
+    .filter((cardType) => cardType !== null);
+  return Array.from(new Set(cardTypes));
+}
+
+export function getSearchQuery(searchValue: string): string | undefined {
+  const searchQuery = searchValue.trim();
+  return searchQuery.length > 0 ? searchQuery : undefined;
+}
+
 export function parseString(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
