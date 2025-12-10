@@ -102,8 +102,6 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
     selectedSchemas,
     selectedDatabases,
     resetSelection,
-    setSelectedDatabases,
-    setSelectedSchemas,
   } = useSelection();
   const routeParams = parseRouteParams(params);
   const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
@@ -195,15 +193,12 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
   };
 
   const handleRangeSelect = (items: FlatItem[]) => {
-    const { databases, schemas, tables } =
-      computeRangeSelectionFromSlice(items);
+    const { tables } = computeRangeSelectionFromSlice(items);
 
-    if (databases.size) {
-      setSelectedDatabases((prev) => new Set([...prev, ...databases]));
-    }
-    if (schemas.size) {
-      setSelectedSchemas((prev) => new Set([...prev, ...schemas]));
-    }
+    /**
+     * We must select only the tables, otherwise a bulk request will be sent for the whole database/schemas,
+     * even though they’re filtered out, and we only want to update the filtered tables.
+     */
     if (tables.size) {
       setSelectedTables((prev) => new Set([...prev, ...tables]));
     }
