@@ -39,7 +39,7 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
   renderWithProviders(<GuestEmbedsSettings />);
 
   expect(await screen.findAllByText("Guest embeds")).toHaveLength(1); // Title
-  expect(await screen.findAllByText("Enable guest embeds")).toHaveLength(2); // Card
+  expect(await screen.findAllByText("Enable guest embeds")).toHaveLength(1); // Card
 };
 
 describe("GuestEmbedsSettings", () => {
