@@ -5,6 +5,7 @@ import type {
   TransformDownstreamMapping,
   TransformId,
   TransformUpstreamMapping,
+  UpdateWorkspaceTransformRequest,
   ValidateTableNameRequest,
   ValidateTableNameResponse,
   Workspace,
@@ -17,6 +18,7 @@ import type {
   WorkspaceTablesResponse,
   WorkspaceTransform,
   WorkspaceTransformItem,
+  WorkspaceTransformRef,
   WorkspaceTransformsResponse,
   WorkspaceUpdateContentsRequest,
 } from "metabase-types/api";
@@ -216,6 +218,62 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("workspace", id), tag("transform")]),
     }),
+    updateWorkspaceTransform: builder.mutation<
+      WorkspaceTransform,
+      UpdateWorkspaceTransformRequest
+    >({
+      query: ({ workspaceId, transformId, ...body }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          tag("transform"),
+        ]),
+    }),
+    archiveWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/archive`,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          tag("transform"),
+        ]),
+    }),
+    unarchiveWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/unarchive`,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          tag("transform"),
+        ]),
+    }),
+    deleteWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
+      query: ({ workspaceId, transformId }) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          tag("transform"),
+        ]),
+    }),
   }),
 });
 
@@ -228,6 +286,10 @@ export const {
   useCreateWorkspaceMutation,
   useUpdateWorkspaceContentsMutation,
   useCreateWorkspaceTransformMutation,
+  useUpdateWorkspaceTransformMutation,
+  useArchiveWorkspaceTransformMutation,
+  useUnarchiveWorkspaceTransformMutation,
+  useDeleteWorkspaceTransformMutation,
   useGetTransformUpstreamMappingQuery,
   useGetTransformDownstreamMappingQuery,
   useMergeWorkspaceMutation,

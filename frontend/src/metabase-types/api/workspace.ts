@@ -114,11 +114,27 @@ export type ValidateTableNameResponse =
   | "A table with that name already exists";
 
 export type CreateWorkspaceTransformRequest = {
+  global_id?: TransformId;
   name: string;
   description?: string | null;
   source: TransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
+};
+
+export type UpdateWorkspaceTransformRequest = {
+  workspaceId: WorkspaceId;
+  transformId: string;
+  name?: string;
+  description?: string | null;
+  source?: TransformSource;
+  target?: TransformTarget;
+  tag_ids?: TransformTagId[];
+};
+
+export type WorkspaceTransformRef = {
+  workspaceId: WorkspaceId;
+  transformId: string;
 };
 
 export type CreateWorkspaceTransformResponse = Transform;
