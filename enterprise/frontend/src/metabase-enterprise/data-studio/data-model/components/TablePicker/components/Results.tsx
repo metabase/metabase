@@ -132,10 +132,8 @@ export function TablePickerResults({
     }
 
     const isShiftPressed = Boolean(options?.isShiftPressed);
-    const isTable = isTableNode(item);
-    const hasRangeAnchor =
-      lastSelectedTableIndex.current != null && onRangeSelect != null;
-    const isRangeSelection = isShiftPressed && isTable && hasRangeAnchor;
+    const hasRangeAnchor = lastSelectedTableIndex.current != null;
+    const isRangeSelection = isShiftPressed && hasRangeAnchor;
 
     if (isRangeSelection) {
       if (!lastSelectedTableIndex.current) {
@@ -156,7 +154,7 @@ export function TablePickerResults({
     }
 
     onItemToggle(item);
-    lastSelectedTableIndex.current = isTable ? itemIndex : null;
+    lastSelectedTableIndex.current = itemIndex;
   };
 
   return (

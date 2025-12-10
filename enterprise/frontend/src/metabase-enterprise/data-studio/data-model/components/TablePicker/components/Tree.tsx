@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import type { TableId } from "metabase-types/api";
-
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
+  computeRangeSelectionFromSlice,
   getSchemaId,
   getSchemaTableIds,
   isItemSelected,
@@ -18,7 +17,6 @@ import { useExpandedState, useTableLoader } from "../hooks";
 import type {
   ChangeOptions,
   DatabaseNode,
-  ExpandedItem,
   ExpandedSchemaItem,
   FlatItem,
   SchemaItem,
@@ -31,7 +29,6 @@ import {
   isSchemaItem,
   isSchemaNode,
   isTableNode,
-  isTableOrSchemaNode,
 } from "../types";
 import { flatten } from "../utils";
 
@@ -334,34 +331,24 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     }
   }
 
-  function onItemRangeSelect(rangeItems: FlatItem[], targetItem: FlatItem) {
-    const tableIds = rangeItems
-      .filter(
-        (rangeItem): rangeItem is ExpandedItem =>
-          rangeItem.isLoading === undefined,
-      )
-      .filter(isTableOrSchemaNode)
-      .map((rangeItem) =>
-        rangeItem.value?.tableId ? rangeItem.value.tableId : null,
-      )
-      .filter((tableId): tableId is TableId => tableId != null);
+  const onItemRangeSelect = (rangeItems: FlatItem[], targetItem: FlatItem) => {
+    const { databases, schemas, tables } =
+      computeRangeSelectionFromSlice(rangeItems);
 
-    if (tableIds.length === 0) {
-      return;
+    if (databases.size) {
+      setSelectedDatabases((prev) => new Set([...prev, ...databases]));
+    }
+    if (schemas.size) {
+      setSelectedSchemas((prev) => new Set([...prev, ...schemas]));
+    }
+    if (tables.size) {
+      setSelectedTables((prev) => new Set([...prev, ...tables]));
     }
 
-    setSelectedTables((prev) => {
-      const newSet = new Set(prev);
-      tableIds.forEach((tableId) => {
-        newSet.add(tableId);
-      });
-      return newSet;
-    });
-
-    if (isTableNode(targetItem) && targetItem.value) {
+    if (targetItem.value) {
       onChange(targetItem.value);
     }
-  }
+  };
 
   return (
     <TablePickerResults

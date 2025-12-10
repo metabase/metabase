@@ -10,6 +10,7 @@ import type { Table } from "metabase-types/api";
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import type { RouteParams } from "../../../pages/DataModel/types";
 import {
+  computeRangeSelectionFromSlice,
   toggleDatabaseSelection,
   toggleSchemaSelection,
 } from "../bulk-selection.utils";
@@ -101,6 +102,8 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
     selectedSchemas,
     selectedDatabases,
     resetSelection,
+    setSelectedDatabases,
+    setSelectedSchemas,
   } = useSelection();
   const routeParams = parseRouteParams(params);
   const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
@@ -192,17 +195,18 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
   };
 
   const handleRangeSelect = (items: FlatItem[]) => {
-    const tableItems = items.filter((item) => isTableNode(item) && item.table);
+    const { databases, schemas, tables } =
+      computeRangeSelectionFromSlice(items);
 
-    setSelectedTables((prev) => {
-      const newSet = new Set(prev);
-      tableItems.forEach((item) => {
-        if (isTableNode(item) && item.table) {
-          newSet.add(item.table.id);
-        }
-      });
-      return newSet;
-    });
+    if (databases.size) {
+      setSelectedDatabases((prev) => new Set([...prev, ...databases]));
+    }
+    if (schemas.size) {
+      setSelectedSchemas((prev) => new Set([...prev, ...schemas]));
+    }
+    if (tables.size) {
+      setSelectedTables((prev) => new Set([...prev, ...tables]));
+    }
   };
 
   if (isLoading) {

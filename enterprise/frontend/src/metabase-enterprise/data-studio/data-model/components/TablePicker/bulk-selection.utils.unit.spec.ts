@@ -4,6 +4,7 @@ import {
   type NodeSelection,
   areSchemasSelected,
   areTablesSelected,
+  computeRangeSelectionFromSlice,
   getChildSchemas,
   getParentSchema,
   getSchemaChildrenTableIds,
@@ -251,6 +252,114 @@ describe("bulk-selection.utils", () => {
       const table = createMockTableNode(1, "public", 101);
 
       expect(isItemSelected(table, null as any)).toBe("no");
+    });
+  });
+
+  describe("computeRangeSelectionFromSlice", () => {
+    it("collects only tables when slice contains only tables", () => {
+      const table1 = createMockTableNode(1, "public", 101);
+      const table2 = createMockTableNode(1, "public", 102);
+
+      const slice: FlatItem[] = [
+        createMockFlatItem(table1, "db-1-schema-public", 2),
+        createMockFlatItem(table2, "db-1-schema-public", 2),
+      ];
+
+      const res = computeRangeSelectionFromSlice(slice);
+
+      expect(Array.from(res.tables).sort()).toEqual([101, 102]);
+      expect(res.schemas.size).toBe(0);
+      expect(res.databases.size).toBe(0);
+    });
+
+    it("adds schema when it is closed by a sibling at the same level", () => {
+      const database1 = createMockDatabaseNode(1);
+      const schema1 = createMockSchemaNode(1, "public");
+      const table11 = createMockTableNode(1, "public", 11);
+      const schema2 = createMockSchemaNode(1, "sales");
+
+      const slice: FlatItem[] = [
+        createMockFlatItem(database1, undefined, 0),
+        createMockFlatItem(schema1, database1.key, 1),
+        createMockFlatItem(table11, schema1.key, 2),
+        // appearance of sibling schema at the same level should close schema1
+        createMockFlatItem(schema2, database1.key, 1),
+      ];
+
+      const res = computeRangeSelectionFromSlice(slice);
+
+      expect(res.schemas).toEqual(new Set(["1:public"]));
+      expect(res.tables).toEqual(new Set([11]));
+      // schema2 remains open and should NOT be included
+      expect(res.databases.size).toBe(0);
+    });
+
+    it("closes schema and database on upward movement to level 0", () => {
+      const database1 = createMockDatabaseNode(1);
+      const schema1 = createMockSchemaNode(1, "public");
+      const table11 = createMockTableNode(1, "public", 11);
+      const database2 = createMockDatabaseNode(2);
+
+      const slice: FlatItem[] = [
+        createMockFlatItem(database1, undefined, 0),
+        createMockFlatItem(schema1, database1.key, 1),
+        createMockFlatItem(table11, schema1.key, 2),
+        // jump back to level 0
+        createMockFlatItem(database2, undefined, 0),
+      ];
+
+      const res = computeRangeSelectionFromSlice(slice);
+
+      // database database1 should be closed by sibling database2
+      expect(res.databases).toEqual(new Set([1]));
+      // schema schema1 should be closed due to upward movement
+      expect(res.schemas).toEqual(new Set(["1:public"]));
+      // tables are always collected immediately
+      expect(res.tables).toEqual(new Set([11]));
+    });
+
+    it("does not include items that remain open at the end of the slice", () => {
+      const database1 = createMockDatabaseNode(1);
+      const schema1 = createMockSchemaNode(1, "public");
+
+      const slice: FlatItem[] = [
+        createMockFlatItem(database1, undefined, 0),
+        createMockFlatItem(schema1, database1.key, 1),
+        // slice ends while database1 and schema1 are still open
+      ];
+
+      const res = computeRangeSelectionFromSlice(slice);
+
+      expect(res.databases.size).toBe(0);
+      expect(res.schemas.size).toBe(0);
+      expect(res.tables.size).toBe(0);
+    });
+
+    it("handles multiple closures across mixed levels", () => {
+      const database1 = createMockDatabaseNode(1);
+      const schema1 = createMockSchemaNode(1, "public");
+      const table11 = createMockTableNode(1, "public", 11);
+      const schema2 = createMockSchemaNode(1, "sales");
+      const table21 = createMockTableNode(1, "sales", 21);
+      const schema3 = createMockSchemaNode(1, "hr");
+
+      const slice: FlatItem[] = [
+        createMockFlatItem(database1, undefined, 0),
+        createMockFlatItem(schema1, database1.key, 1),
+        createMockFlatItem(table11, schema1.key, 2),
+        // close schema1 by encountering sibling schema2 at same level
+        createMockFlatItem(schema2, database1.key, 1),
+        createMockFlatItem(table21, schema2.key, 2),
+        // close schema2 by encountering sibling schema3
+        createMockFlatItem(schema3, database1.key, 1),
+      ];
+
+      const res = computeRangeSelectionFromSlice(slice);
+
+      // schema1 and schema2 closed; schema3 still open at end
+      expect(res.schemas).toEqual(new Set(["1:public", "1:sales"]));
+      expect(res.tables).toEqual(new Set([11, 21]));
+      expect(res.databases.size).toBe(0);
     });
   });
 
