@@ -424,6 +424,7 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-type="cardEmbed"
+          data-id={id}
           data-testid="document-card-embed"
           style={{ position: "relative" }}
         >
@@ -459,6 +460,7 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-type="cardEmbed"
+          data-id={id}
           data-testid="document-card-embed"
           style={{ position: "relative" }}
         >
@@ -489,6 +491,7 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-type="cardEmbed"
+          data-id={id}
           data-testid="document-card-embed"
           data-drag-handle
           onDragOver={handleDragOver}
