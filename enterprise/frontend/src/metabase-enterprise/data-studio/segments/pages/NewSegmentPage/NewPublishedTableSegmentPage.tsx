@@ -29,7 +29,6 @@ export function NewPublishedTableSegmentPage({
   return (
     <NewSegmentPage
       tableId={tableId}
-      cancelUrl={Urls.dataStudioTableSegments(tableId)}
       getSuccessUrl={(segment: Segment) =>
         Urls.dataStudioPublishedTableSegment(tableId, segment.id)
       }

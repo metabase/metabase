@@ -10,7 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Center, Flex, Group } from "metabase/ui";
+import { Button, Center, Flex } from "metabase/ui";
 import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table, TableId } from "metabase-types/api";
@@ -25,7 +25,6 @@ import {
 
 type NewSegmentPageProps = {
   tableId: TableId;
-  cancelUrl: string;
   getSuccessUrl: (segment: Segment) => string;
   renderBreadcrumbs: (table: Table) => ReactNode;
   route: Route;
@@ -33,7 +32,6 @@ type NewSegmentPageProps = {
 
 export function NewSegmentPage({
   tableId,
-  cancelUrl,
   getSuccessUrl,
   renderBreadcrumbs,
   route,
@@ -102,10 +100,6 @@ export function NewSegmentPage({
     sendErrorToast,
   ]);
 
-  const handleCancel = useCallback(() => {
-    dispatch(push(cancelUrl));
-  }, [dispatch, cancelUrl]);
-
   if (isLoading || error != null || table == null) {
     return (
       <Center h="100%">
@@ -129,17 +123,14 @@ export function NewSegmentPage({
         breadcrumbs={renderBreadcrumbs(table)}
         actions={
           isDirty && (
-            <Group gap="sm">
-              <Button onClick={handleCancel}>{t`Cancel`}</Button>
-              <Button
-                variant="filled"
-                disabled={!isValid}
-                loading={isSaving}
-                onClick={handleSave}
-              >
-                {t`Save`}
-              </Button>
-            </Group>
+            <Button
+              variant="filled"
+              disabled={!isValid}
+              loading={isSaving}
+              onClick={handleSave}
+            >
+              {t`Save`}
+            </Button>
           )
         }
       />

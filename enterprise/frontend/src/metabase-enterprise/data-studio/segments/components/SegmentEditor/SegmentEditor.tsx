@@ -18,7 +18,7 @@ export function SegmentEditor({
   onDescriptionChange,
 }: SegmentEditorProps) {
   return (
-    <Stack flex={1} gap="lg" px="xl" py="lg" style={{ overflow: "auto" }}>
+    <Stack flex={1} gap="lg" px="lg" py="lg" style={{ overflow: "auto" }}>
       {query && <SegmentEditorV2 query={query} onChange={onQueryChange} />}
       <Textarea
         label={t`Description`}

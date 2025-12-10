@@ -24,7 +24,14 @@ export function NewSegmentHeader({
   return (
     <Stack gap="sm">
       {breadcrumbs}
-      <Group gap="xs" align="center" justify="space-between" w="100%" px="lg">
+      <Group
+        gap="xs"
+        align="center"
+        justify="space-between"
+        w="100%"
+        px="lg"
+        mih={40}
+      >
         <Group gap="xs" align="center">
           <EditableText
             initialValue=""
