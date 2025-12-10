@@ -1,9 +1,5 @@
 import { IndexRoute, Redirect, Route } from "react-router";
 
-import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
-import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
-
 import { DataModel } from "./pages/DataModel";
 
 export function getDataStudioMetadataRoutes() {
@@ -44,12 +40,6 @@ export function getDataStudioMetadataRoutes() {
         from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
         to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
       />
-      <Route component={DataModel}>
-        <Route path="segments" component={SegmentListApp} />
-        <Route path="segment/create" component={SegmentApp} />
-        <Route path="segment/:id" component={SegmentApp} />
-        <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
-      </Route>
     </>
   );
 }

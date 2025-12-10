@@ -91,7 +91,6 @@ export const DataModel = {
   SegmentRevisionHistory: {
     get: getSegmentRevisionHistory,
   },
-  visitPublishedTableSegments,
 };
 
 const DEFAULT_BASE_PATH = "/admin/datamodel";
@@ -520,14 +519,6 @@ function getSegmentEditorRevisionHistoryTab() {
 
 function getSegmentEditorDependenciesTab() {
   return cy.findByTestId("segment-pane-header").findByText("Dependencies");
-}
-
-function visitPublishedTableSegments(tableId: TableId) {
-  cy.intercept("GET", "/api/table/*/query_metadata*").as(
-    "publishedTableSegments/visit/metadata",
-  );
-  cy.visit(`/data-studio/modeling/tables/${tableId}/segments`);
-  cy.wait("@publishedTableSegments/visit/metadata");
 }
 
 function getSegmentRevisionHistory() {

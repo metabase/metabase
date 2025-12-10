@@ -1,4 +1,4 @@
-import type { TableId } from "metabase-types/api";
+import type { SegmentId, TableId } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
@@ -77,6 +77,10 @@ export const DataStudio = {
       cy.visit(`/data-studio/library/tables/${tableId}`),
     visitSegmentsPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/segments`),
+    visitSegmentPage: (tableId: TableId, segmentId: SegmentId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/segments/${segmentId}`),
+    visitNewSegmentPage: (tableId: TableId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/segments/new`),
     moreMenuViewTable: () =>
       popover()
         .findByRole("menuitem", { name: /View/ })
