@@ -81,8 +81,9 @@
    [:attributes {:optional true} [:maybe tenant/Attributes]]
    [:is_active {:optional true} [:maybe ms/BooleanValue]]])
 
-(mu/defn- update-tenant! [tenant-id :- ms/PositiveInt
-                          {:keys [is_active] :as tenant} :- UpdateTenantArguments]
+(mu/defn- update-tenant!
+  [tenant-id :- ms/PositiveInt
+   {:keys [is_active] :as tenant} :- UpdateTenantArguments]
   (when (false? is_active)
     (t2/update! :model/User {:is_active true :tenant_id tenant-id}
                 {:is_active false :deactivated_with_tenant true}))
@@ -96,7 +97,7 @@
                                                  :previous-object tenant-before-update})
     tenant-after-update))
 
-(api.macros/defendpoint :put ["/:id" :id #"[^/]+"] :- Tenant
+(api.macros/defendpoint :put "/:id" :- Tenant
   "Update a tenant, can set name, attributes, or whether this tenant is active."
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
