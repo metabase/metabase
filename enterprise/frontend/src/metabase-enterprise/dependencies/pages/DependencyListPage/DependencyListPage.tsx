@@ -15,7 +15,6 @@ import {
 } from "metabase-enterprise/api";
 import type {
   CardType,
-  DependencyGroupType,
   DependencyNode,
   DependencySortColumn,
   DependencySortDirection,
@@ -31,15 +30,18 @@ import type {
 import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
 
 import { DependencyTable } from "./DependencyTable";
-import { FilterOptionsPicker } from "./FilterOptionsPicker";
+import { ListFilterPicker } from "./ListFilterPicker";
 import {
-  BROKEN_GROUP_TYPES,
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
   PAGE_SIZE,
-  UNREFERENCED_GROUP_TYPES,
 } from "./constants";
-import { parseRawParams } from "./utils";
+import type { DependencyListVariant } from "./types";
+import {
+  getDependencyGroupTypes,
+  getDependencyNothingFoundMessage,
+  parseRawParams,
+} from "./utils";
 
 type ListNodesRequest = {
   types?: DependencyType[];
@@ -69,20 +71,14 @@ type ListNodesResult = {
 
 type DependencyListPageProps = {
   useListNodesQuery: (request: ListNodesRequest) => ListNodesResult;
-  availableGroupTypes: DependencyGroupType[];
-  nothingFoundMessage: string;
+  variant: DependencyListVariant;
   location: Location<DependencyListRawParams>;
-  withErrorsColumn?: boolean;
-  withDependentsCountColumn?: boolean;
 };
 
 function DependencyListPage({
   useListNodesQuery,
-  availableGroupTypes,
-  nothingFoundMessage,
+  variant,
   location,
-  withErrorsColumn,
-  withDependentsCountColumn,
 }: DependencyListPageProps) {
   const params = useMemo(
     () => parseRawParams(location.query),
@@ -97,6 +93,11 @@ function DependencyListPage({
   } = params;
   const [searchValue, setSearchValue] = useState("");
   const dispatch = useDispatch();
+
+  const availableGroupTypes = useMemo(
+    () => getDependencyGroupTypes(variant),
+    [variant],
+  );
 
   const { data, isFetching, isLoading, error } = useListNodesQuery({
     query,
@@ -205,7 +206,7 @@ function DependencyListPage({
           rightSection={isFetching ? <Loader size="sm" /> : undefined}
           onChange={handleSearchChange}
         />
-        <FilterOptionsPicker
+        <ListFilterPicker
           filterOptions={filterOptions}
           availableGroupTypes={availableGroupTypes}
           onFilterOptionsChange={handleFilterOptionsChange}
@@ -214,15 +215,15 @@ function DependencyListPage({
       <Box flex={1} mih={0}>
         {data.data.length === 0 ? (
           <Center h="100%">
-            <ListEmptyState label={nothingFoundMessage} />
+            <ListEmptyState label={getDependencyNothingFoundMessage(variant)} />
           </Center>
         ) : (
           <DependencyTable
             items={data.data}
             sortOptions={sortOptions}
             paginationOptions={paginationOptions}
-            withErrorsColumn={withErrorsColumn}
-            withDependentsCountColumn={withDependentsCountColumn}
+            withErrorsColumn={variant === "broken"}
+            withDependentsCountColumn={variant === "broken"}
             onSortChange={handleSortChange}
             onPageChange={handlePageChange}
           />
@@ -242,11 +243,8 @@ export function BrokenDependencyListPage({
   return (
     <DependencyListPage
       useListNodesQuery={useListBrokenGraphNodesQuery}
-      availableGroupTypes={BROKEN_GROUP_TYPES}
-      nothingFoundMessage={t`No broken entities found`}
+      variant="broken"
       location={location}
-      withErrorsColumn
-      withDependentsCountColumn
     />
   );
 }
@@ -261,8 +259,7 @@ export function UnreferencedDependencyListPage({
   return (
     <DependencyListPage
       useListNodesQuery={useListUnreferencedGraphNodesQuery}
-      availableGroupTypes={UNREFERENCED_GROUP_TYPES}
-      nothingFoundMessage={t`No unreferenced entities found`}
+      variant="unreferenced"
       location={location}
     />
   );

@@ -9,17 +9,17 @@ import type { DependencyListFilterOptions } from "../../../types";
 
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
-type FilterOptionsPickerProps = {
+type ListFilterPickerProps = {
   filterOptions: DependencyListFilterOptions;
   availableGroupTypes: DependencyGroupType[];
   onFilterOptionsChange: (filterOptions: DependencyListFilterOptions) => void;
 };
 
-export const FilterOptionsPicker = memo(function FilterOptionsPicker({
+export const ListFilterPicker = memo(function ListFilterPicker({
   filterOptions,
   availableGroupTypes,
   onFilterOptionsChange,
-}: FilterOptionsPickerProps) {
+}: ListFilterPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
   return (
@@ -33,7 +33,7 @@ export const FilterOptionsPicker = memo(function FilterOptionsPicker({
         </Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <FilterOptionsPopover
+        <ListFilterPopover
           filterOptions={filterOptions}
           availableGroupTypes={availableGroupTypes}
           onFilterOptionsChange={onFilterOptionsChange}
@@ -43,17 +43,17 @@ export const FilterOptionsPicker = memo(function FilterOptionsPicker({
   );
 });
 
-type FilterOptionsPopoverProps = {
+type ListFilterPopoverProps = {
   filterOptions: DependencyListFilterOptions;
   availableGroupTypes: DependencyGroupType[];
   onFilterOptionsChange: (filterOptions: DependencyListFilterOptions) => void;
 };
 
-function FilterOptionsPopover({
+function ListFilterPopover({
   filterOptions,
   availableGroupTypes,
   onFilterOptionsChange,
-}: FilterOptionsPopoverProps) {
+}: ListFilterPopoverProps) {
   const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
     onFilterOptionsChange({ ...filterOptions, groupTypes });
   };
