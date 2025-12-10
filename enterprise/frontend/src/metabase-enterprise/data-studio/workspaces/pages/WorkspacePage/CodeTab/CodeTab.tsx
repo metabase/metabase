@@ -86,6 +86,7 @@ export const CodeTab = ({
       </Stack>
 
       <Stack data-testid="mainland-transforms" py="sm" gap="xs">
+        <Text fw={600} mt="sm">{t`Available transforms`}</Text>
         {availableTransforms.map((transform) => (
           <TransformListItem
             key={transform.id}
