@@ -54,7 +54,9 @@ export const Workspaces = {
   },
 
   getTransformRunButton() {
-    return cy.findByRole("button", { name: /Run/ });
+    return Workspaces.getWorkspaceContent().findByRole("button", {
+      name: /Run/,
+    });
   },
 
   getTransformSaveButton() {
