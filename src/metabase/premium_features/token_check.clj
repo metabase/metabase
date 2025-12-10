@@ -216,7 +216,7 @@
                                       false)]
     (when the-new-user-will-overflow?
       (throw (Exception.
-              (trs "Inserting another user would overflow the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+              (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
                    max-users-allowed))))))
 
 (mu/defn- decode-token* :- TokenStatus
