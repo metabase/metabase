@@ -24,22 +24,7 @@
 
 (mr/def ::appdb-or-ref-id [:or ::ws.t/appdb-id ::ws.t/ref-id])
 
-;; Workspace status
-
-(mr/def ::graph-status [:enum :stale :calculating :ready])
-
-(mr/def ::db-status [:enum :uninitialized :provisioning :granting :cleaning :ready])
-
-;; Proposed simplified FE statuses
-
-(mr/def ::display-status [:enum :pending :ready] #_[:enum :uninitialized :database-not-read :graph-not-ready :ready])
-
-(defn- display-status [graph-status db-status]
-  (cond
-    (= :uninitialized db-status) :uninitialized
-    (not (#{:ready :cleaning} db-status)) :database-not-ready
-    (not= :ready graph-status) :graph-not-ready
-    :else :ready))
+(mr/def ::status [:enum :pending :ready] #_[:enum :uninitialized :database-not-read :graph-not-ready :ready])
 
 (def ^:private Workspace
   [:map
@@ -47,12 +32,13 @@
    [:name :string]
    [:collection_id ::ws.t/appdb-id]
    [:database_id ::ws.t/appdb-id]
-   [:status ::display-status]
+   [:status ::status]
    [:created_at ms/TemporalInstant]
    [:updated_at ms/TemporalInstant]
    [:archived_at [:maybe :any]]])
 
 ;; Transform-related schemas (adapted from transforms/api.clj)
+;; TODO we should reuse these schemas, by exposing common types from the transforms module. they *can* match exactly.
 
 (mr/def ::transform-source
   [:multi {:dispatch (comp keyword :type)}
