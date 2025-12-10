@@ -157,8 +157,9 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     activeTransform,
     activeEditedTransform,
     activeTable,
-    setActiveTransform,
     setActiveTab,
+    setActiveTable,
+    setActiveTransform,
     addOpenedTab,
     removeOpenedTab,
     setOpenedTabs,
@@ -596,6 +597,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   <DataTab
                     databaseId={workspace?.database_id ?? null}
                     tableId={activeTable.tableId}
+                    transform={workspaceTransforms.find(
+                      (transform) =>
+                        transform.target.schema === activeTable.schema,
+                    )}
                   />
                 )}
               </Tabs.Panel>
@@ -645,6 +650,9 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   workspaceId={id}
                   onCreate={(transform) => {
                     addOpenedTransform(transform);
+                    if (activeTable) {
+                      setActiveTable(null);
+                    }
                   }}
                 />
               )}

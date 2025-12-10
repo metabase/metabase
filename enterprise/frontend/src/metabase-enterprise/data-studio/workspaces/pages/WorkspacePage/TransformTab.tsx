@@ -197,6 +197,7 @@ export const TransformTab = ({
           {isSaved && (
             <SaveTransformButton
               databaseId={databaseId}
+              workspaceId={workspaceId}
               editedTransform={editedTransform}
               transform={transform}
             />

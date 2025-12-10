@@ -7,16 +7,16 @@ import {
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useSelector } from "metabase/lib/redux";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatabaseId, RawSeries, TableId } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 interface UseTableQuestionProps {
   databaseId: DatabaseId | null;
   tableId: TableId | null;
+  metadata: Metadata;
 }
 
 interface UseTablePreviewResult {
@@ -30,16 +30,8 @@ interface UseTablePreviewResult {
 export function useTablePreview({
   databaseId,
   tableId,
+  metadata,
 }: UseTableQuestionProps): UseTablePreviewResult {
-  const metadata = useSelector(getMetadata);
-  // Need to fetch this to make sure metadata is populated with proper table information on
-  // initial page load.
-  useGetTableQueryMetadataQuery(
-    tableId && tableId in metadata.tables
-      ? skipToken
-      : getTableMetadataQuery(tableId),
-  );
-
   const metadataProvider =
     Object.keys(metadata.tables).length > 0
       ? Lib.metadataProvider(databaseId, metadata)
@@ -55,7 +47,7 @@ export function useTablePreview({
       ? Lib.queryFromTableOrCardMetadata(metadataProvider, table)
       : null;
 
-  const { data, refetch, ...rest } = useGetAdhocQueryQuery(
+  const { data, ...rest } = useGetAdhocQueryQuery(
     query == null
       ? skipToken
       : {

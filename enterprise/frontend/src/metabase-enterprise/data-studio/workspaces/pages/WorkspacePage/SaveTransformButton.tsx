@@ -1,22 +1,28 @@
 import { t } from "ttag";
 
 import { Button } from "metabase/ui";
-import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import {
+  useUpdateTransformMutation,
+  workspaceApi,
+} from "metabase-enterprise/api";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type { DatabaseId, Transform } from "metabase-types/api";
 
 import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
+import { useDispatch } from "metabase/lib/redux";
 
 interface Props {
   databaseId: DatabaseId;
   editedTransform: EditedTransform;
   transform: Transform;
+  workspaceId: string | number;
 }
 
 export const SaveTransformButton = ({
   databaseId,
   editedTransform,
   transform,
+  workspaceId,
 }: Props) => {
   const [updateTransform] = useUpdateTransformMutation();
   const { updateTransformState } = useWorkspace();

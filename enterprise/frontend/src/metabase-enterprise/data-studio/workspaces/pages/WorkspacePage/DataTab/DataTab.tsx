@@ -1,22 +1,49 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import { createMockMetadata } from "__support__/metadata";
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Box, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { DatabaseId, TableId, Transform } from "metabase-types/api";
 
 import { useTablePreview } from "./useTablePreview";
 
 interface DataTabProps {
   databaseId: DatabaseId | null;
   tableId: TableId | null;
+  transform?: Transform;
 }
 
-export function DataTab({ databaseId, tableId }: DataTabProps) {
+export function DataTab({
+  databaseId,
+  tableId,
+  transform: _transform,
+}: DataTabProps) {
+  const { data: table } = useGetTableQuery(
+    tableId ? { id: tableId } : skipToken,
+  );
+  const metadata = useMemo(
+    () =>
+      createMockMetadata({
+        tables: table
+          ? [
+              {
+                ...table,
+                visibility_type: null,
+              },
+            ]
+          : [],
+      }),
+    [table],
+  );
+
   const { rawSeries, isFetching, error } = useTablePreview({
     databaseId,
     tableId,
+    metadata,
   });
 
   if (!databaseId || !tableId) {
