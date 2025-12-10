@@ -11,7 +11,8 @@ import type {
   OnCopy,
   OnMove,
 } from "metabase/collections/types";
-import { canArchiveItem,
+import {
+  canArchiveItem,
   canBookmarkItem,
   canCopyItem,
   canMoveItem,

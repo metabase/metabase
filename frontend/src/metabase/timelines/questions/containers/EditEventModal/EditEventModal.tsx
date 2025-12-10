@@ -11,7 +11,7 @@ import type { State } from "metabase-types/store";
 interface EditEventModalProps {
   eventId: number;
   onClose?: () => void;
-  onSubmit?: (event: TimelineEvent) => Promise<void>;
+  sendToast?: (args: any) => void;
 }
 
 const timelineEventProps = {
@@ -28,9 +28,9 @@ const mapStateToProps = (state: State, { onClose }: EditEventModalProps) => ({
 const mapDispatchToProps = (dispatch: any, ownProps: EditEventModalProps) => ({
   onSubmit: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.update(event));
-    // Call the wrapper's onSubmit if provided
-    if (ownProps.onSubmit) {
-      await ownProps.onSubmit(event);
+    // Call sendToast from wrapper
+    if (ownProps.sendToast) {
+      ownProps.sendToast({ message: t`Updated event` });
     }
   },
   onArchive: async (event: TimelineEvent) => {
@@ -46,13 +46,8 @@ const ConnectedEditEventModal = _.compose(
 // Wrapper component to use the useToast hook
 const EditEventModalWrapper = (props: EditEventModalProps) => {
   const [sendToast] = useToast();
-  
-  // Handle the onSubmit to show toast
-  const handleSubmit = async (event: TimelineEvent) => {
-    sendToast({ message: t`Updated event` });
-  };
 
-  return <ConnectedEditEventModal {...props} onSubmit={handleSubmit} />;
+  return <ConnectedEditEventModal {...props} sendToast={sendToast} />;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

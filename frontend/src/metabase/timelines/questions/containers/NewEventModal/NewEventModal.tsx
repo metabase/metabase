@@ -14,7 +14,7 @@ interface NewEventModalProps {
   cardId?: number;
   collectionId?: number;
   onClose?: () => void;
-  onSubmit?: (values: Partial<TimelineEvent>, collection: Collection) => Promise<void>;
+  sendToast?: (args: any) => void;
 }
 
 const timelineProps = {
@@ -41,9 +41,9 @@ const mapDispatchToProps = (dispatch: any, ownProps: NewEventModalProps) => ({
       await dispatch(Timelines.actions.createWithEvent(values, collection));
     }
 
-    // Call the wrapper's onSubmit if provided
-    if (ownProps.onSubmit) {
-      await ownProps.onSubmit(values, collection);
+    // Call sendToast from wrapper
+    if (ownProps.sendToast) {
+      ownProps.sendToast({ message: t`Created event` });
     }
   },
 });
@@ -57,13 +57,8 @@ const ConnectedNewEventModal = _.compose(
 // Wrapper component to use the useToast hook
 const NewEventModalWrapper = (props: NewEventModalProps) => {
   const [sendToast] = useToast();
-  
-  // Handle the onSubmit to show toast
-  const handleSubmit = async (values: Partial<TimelineEvent>, collection: Collection) => {
-    sendToast({ message: t`Created event` });
-  };
 
-  return <ConnectedNewEventModal {...props} onSubmit={handleSubmit} />;
+  return <ConnectedNewEventModal {...props} sendToast={sendToast} />;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
