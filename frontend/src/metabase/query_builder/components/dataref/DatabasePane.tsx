@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import {
   skipToken,
+  useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
   useSearchQuery,
 } from "metabase/api";
@@ -228,6 +229,12 @@ export const DatabasePane = ({
   const databaseId = database.id;
 
   const {
+    data: databaseData,
+    isLoading: isLoadingDatabase,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
+
+  const {
     data: schemasData,
     isLoading: isLoadingSchemas,
     error: schemasError,
@@ -248,8 +255,8 @@ export const DatabasePane = ({
       : skipToken,
   );
 
-  const isLoading = isLoadingSchemas || isLoadingSearch;
-  const error = schemasError || searchError;
+  const isLoading = isLoadingDatabase || isLoadingSchemas || isLoadingSearch;
+  const error = databaseError || schemasError || searchError;
 
   const schemas = useMemo(() => schemasData ?? [], [schemasData]);
   const searchResults = useMemo(
@@ -275,7 +282,7 @@ export const DatabasePane = ({
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
       <SidebarContent
-        title={database.name}
+        title={databaseData?.name ?? "Untitled Database"}
         icon={"database"}
         onBack={onBack}
         onClose={onClose}
