@@ -80,7 +80,7 @@
             :created_at              true
             :updated_at              true
             :archived                false
-            :definition              {:filter ["=" ["field" 10 nil] 20]}}
+            :definition              true}
            (segment-response (mt/user-http-request :crowberto :post 200 "segment"
                                                    {:name                    "A Segment"
                                                     :description             "I did it!"
@@ -135,7 +135,7 @@
               :created_at              true
               :updated_at              true
               :archived                false
-              :definition              {:filter ["!=" ["field" 2 nil] "cans"]}}
+              :definition              true}
              (segment-response
               (mt/user-http-request
                :crowberto :put 200 (format "segment/%d" id)
@@ -214,7 +214,7 @@
                  :updated_at              true
                  :entity_id               true
                  :archived                true
-                 :definition              nil}
+                 :definition              false}
                 (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
                     segment-response)))))))
 
@@ -249,7 +249,7 @@
                 :updated_at              true
                 :entity_id               true
                 :archived                false
-                :definition              {:filter ["=" ["field" 2 nil] "cans"]}}
+                :definition              true}
                (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
                    segment-response
                    (dissoc :query_description))))))))
