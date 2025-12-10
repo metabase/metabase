@@ -14,6 +14,7 @@ import type {
   TableId,
   Transform,
   TransformTargetType,
+  WorkspaceTransformItem,
 } from "metabase-types/api";
 
 export interface OpenTable {
@@ -62,7 +63,7 @@ export interface WorkspaceContextValue {
   addOpenedTab: (tab: WorkspaceTab) => void;
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
-  addOpenedTransform: (transform: Transform) => void;
+  addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
   removeOpenedTransform: (transformId: number) => void;
   editedTransforms: Map<number, EditedTransform>;
   patchEditedTransform: (

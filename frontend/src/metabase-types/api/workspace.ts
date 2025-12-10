@@ -38,7 +38,7 @@ export type WorkspaceListResponse = {
 };
 
 export type WorkspaceTransformItem = {
-  "ref-id": string;
+  ref_id: string;
   name: string;
   source_type: string;
   stale: boolean;
@@ -106,24 +106,28 @@ export type CreateWorkspaceTransformRequest = {
 
 export type CreateWorkspaceTransformResponse = Transform;
 
-export type WorkspaceTable = {
-  id?: number;
-  schema: string | null;
-  table: string | null;
+export type WorkspaceInputTable = {
+  db_id: DatabaseId;
+  schema: string;
+  table: string;
+  table_id: number | null;
+};
+
+export type WorkspaceOutputTableRef = {
+  transform_id: number | string | null;
+  schema: string;
+  table: string;
+  table_id: number | null;
 };
 
 export type WorkspaceOutputTable = {
-  global?: WorkspaceTable;
-  workspace?: {
-    "transform-id": number;
-    "table-id": number;
-    schema: string | null;
-    table: string | null;
-  };
+  db_id: DatabaseId;
+  global: WorkspaceOutputTableRef;
+  isolated: WorkspaceOutputTableRef;
 };
 
 export type WorkspaceTablesResponse = {
-  inputs: WorkspaceTable[];
+  inputs: WorkspaceInputTable[];
   outputs: WorkspaceOutputTable[];
 };
 

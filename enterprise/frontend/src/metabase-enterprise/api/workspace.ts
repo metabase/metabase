@@ -147,7 +147,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
     getWorkspaceTables: builder.query<WorkspaceTablesResponse, WorkspaceId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/workspace/${id}/tables`,
+        url: `/api/ee/workspace/${id}/table`,
       }),
       providesTags: (_, __, id) => [idTag("workspace", id)],
     }),

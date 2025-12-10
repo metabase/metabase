@@ -660,7 +660,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 transforms={dbTransforms}
                 workspaceId={workspace.id}
                 workspaceTransforms={allTransforms}
-                onTransformClick={() => {
+                onTransformClick={(transform) => {
+                  addOpenedTransform(transform);
                   if (activeTable) {
                     setActiveTable(undefined);
                   }
