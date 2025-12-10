@@ -55,7 +55,7 @@ const CypressBackend = {
 
       this.server.process = spawn(
         "clojure",
-        [`-M:run:${edition}:dev:dev-start:e2e`, "--hot"],
+        [`-M:run:${edition}:dev:dev-start:drivers:e2e`, "--hot"],
         {
           env: process.env,
           stdio: process.env.CI ? "ignore" : "inherit",

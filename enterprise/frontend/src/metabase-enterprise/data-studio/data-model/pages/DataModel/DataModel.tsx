@@ -20,6 +20,7 @@ import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import { hasLibraryCollection } from "metabase-enterprise/data-studio/common/utils";
 
 import { trackMetadataChange } from "../../analytics";
 import {
@@ -105,8 +106,8 @@ function DataModelContent({ params }: Props) {
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
   const error = databasesError ?? tableError ?? libraryError;
-  // TODO Alex P 12/05/2025 Fix the endpoint to return sensible data
-  const hasLibrary = libraryCollection != null && "name" in libraryCollection;
+
+  const hasLibrary = hasLibraryCollection(libraryCollection);
 
   const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
     null,
@@ -158,7 +159,6 @@ function DataModelContent({ params }: Props) {
       style={{ overflow: "auto" }}
     >
       <Stack
-        bg="bg-white"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}
