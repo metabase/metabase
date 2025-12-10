@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 
 import { getCollectionName } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
@@ -12,11 +13,8 @@ import Schemas from "metabase/entities/schemas";
 import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  CollectionId,
-  SchemaName,
-  SearchResult,
-} from "metabase-types/api";
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
+import type { CollectionId, SearchResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
@@ -30,57 +28,43 @@ import {
 } from "./NodeList";
 import { ResourceTreeNode } from "./ResourceTreeNode";
 
-const groupModelsByCollection = (models: SearchResult[]) =>
-  Object.values(
-    models.reduce(
-      (acc, curr) => {
-        const id = curr.collection?.id ?? ("root" as CollectionId);
+const groupModelsByCollection = (models: SearchResult[]) => {
+  const grouped = _.groupBy(models, (model) => model.collection?.id ?? "root");
 
-        acc[id] ??= {
-          id,
-          name: getCollectionName(curr.collection),
-          icon: "folder",
-          children: [] as ITreeNodeItem[],
-        };
+  return _.pairs(grouped).map(
+    ([id, models = []]): ITreeNodeItem => ({
+      id: id as CollectionId,
+      name: getCollectionName(models[0]?.collection),
+      icon: "folder",
+      children: models.map((model: SearchResult) => ({
+        id: model.id,
+        name: model.name,
+        icon: "model",
+        data: model,
+      })),
+    }),
+  );
+};
 
-        acc[id].children!.push({
-          id: curr.id,
-          name: curr.name,
-          icon: "model",
-          data: curr,
-        });
-
-        return acc;
-      },
-      {} as Record<CollectionId, ITreeNodeItem>,
-    ),
+const groupTablesBySchema = (tables: SearchResult[]) => {
+  const grouped = _.groupBy(tables, (table) =>
+    getSchemaName(table.table_schema),
   );
 
-const groupTablesBySchema = (tables: SearchResult[]) =>
-  Object.values(
-    tables.reduce(
-      (acc, curr) => {
-        const id = curr.table_schema as SchemaName;
-
-        acc[id] ??= {
-          id,
-          name: id,
-          icon: "folder_database",
-          children: [] as ITreeNodeItem[],
-        };
-
-        acc[id].children!.push({
-          id: curr.id,
-          name: curr.name,
-          icon: "table",
-          data: curr,
-        });
-
-        return acc;
-      },
-      {} as Record<SchemaName, ITreeNodeItem>,
-    ),
+  return _.pairs(grouped).map(
+    ([id, tables = []]): ITreeNodeItem => ({
+      id,
+      name: id,
+      icon: "folder_database",
+      children: tables.map((table) => ({
+        id: table.id,
+        name: table.name,
+        icon: "table",
+        data: table,
+      })),
+    }),
   );
+};
 
 export interface TablesListProps {
   database: Database;
