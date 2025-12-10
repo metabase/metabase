@@ -116,11 +116,12 @@ export function LibrarySectionLayout() {
         <Stack
           px="3.5rem"
           pt="4rem"
+          pb="2rem"
           bg="background-light"
-          mih="100%"
+          h="100%"
           data-testid="library-page"
         >
-          <Flex gap="0.5rem">
+          <Flex gap="md">
             <TextInput
               placeholder={t`Search...`}
               leftSection={<Icon name="search" />}

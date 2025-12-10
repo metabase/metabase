@@ -1,9 +1,10 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { type ReactNode, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import DateTime from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -41,6 +42,33 @@ export const JobListPage = () => {
     dispatch(push(Urls.transformJob(item.id)));
   };
 
+  const JOBS_COLUMNS = useMemo<ColumnDef<TransformJob, ReactNode>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: t`Name`,
+        meta: {
+          width: "auto",
+        },
+      },
+      {
+        accessorFn: (job) => job.last_run?.start_time,
+        header: t`Last Run`,
+        meta: {
+          width: "auto",
+        },
+        cell: ({ row: { original: job } }) =>
+          job.last_run ? (
+            <>
+              {job.last_run.status === "failed" ? t`Failed` : t`Last run`}
+              <DateTime value={job.last_run.start_time} />
+            </>
+          ) : null,
+      },
+    ],
+    [],
+  );
+
   if (error) {
     return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
@@ -50,7 +78,13 @@ export const JobListPage = () => {
       <TransformsSectionHeader
         leftSection={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
       />
-      <Stack px="3.5rem" data-testid="transforms-job-list">
+      <Stack
+        px="3.5rem"
+        data-testid="transforms-job-list"
+        pb="2rem"
+        bg="background-light"
+        h="100%"
+      >
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}
@@ -78,28 +112,7 @@ export const JobListPage = () => {
             <Card withBorder p={0}>
               <Table
                 data={filteredJobs}
-                columns={[
-                  {
-                    accessorKey: "name",
-                    header: t`Name`,
-                    meta: {
-                      width: "auto",
-                    },
-                  },
-                  {
-                    accessorFn: (job) => job.last_run?.start_time,
-                    header: t`Last Run`,
-                    size: 200,
-                    cell: ({ row: { original: job } }) => {
-                      if (job.last_run) {
-                        const formattedDate = dayjs(
-                          job.last_run.start_time,
-                        ).format("lll");
-                        return `${job.last_run.status === "failed" ? t`Failed` : t`Last run`} ${formattedDate}`;
-                      }
-                    },
-                  },
-                ]}
+                columns={JOBS_COLUMNS}
                 onSelect={handleSelect}
               />
             </Card>
