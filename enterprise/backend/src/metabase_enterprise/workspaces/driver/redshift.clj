@@ -1,5 +1,8 @@
 (ns metabase-enterprise.workspaces.driver.redshift
-  "Redshift-specific implementations for workspace isolation."
+  "Redshift-specific implementations for workspace isolation.
+
+  Redshift derives from :postgres for most methods. This file only overrides methods that require
+  Redshift-specific syntax (e.g., CREATE TABLE ... LIKE has different syntax)."
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
