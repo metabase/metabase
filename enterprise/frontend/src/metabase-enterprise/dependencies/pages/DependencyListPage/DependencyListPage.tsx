@@ -71,7 +71,7 @@ type DependencyListPageProps = {
   availableGroupTypes: DependencyGroupType[];
   nothingFoundMessage: string;
   location: Location<DependencyListRawParams>;
-  withDependentsCount?: boolean;
+  withDependentsCountColumn?: boolean;
 };
 
 function DependencyListPage({
@@ -79,7 +79,7 @@ function DependencyListPage({
   availableGroupTypes,
   nothingFoundMessage,
   location,
-  withDependentsCount,
+  withDependentsCountColumn,
 }: DependencyListPageProps) {
   const params = useMemo(
     () => parseRawParams(location.query),
@@ -217,7 +217,7 @@ function DependencyListPage({
             items={data.data}
             sortOptions={sortOptions}
             paginationOptions={paginationOptions}
-            withDependentsCount={withDependentsCount}
+            withDependentsCountColumn={withDependentsCountColumn}
             onSortChange={handleSortChange}
             onPageChange={handlePageChange}
           />
@@ -240,7 +240,7 @@ export function BrokenDependencyListPage({
       availableGroupTypes={BROKEN_GROUP_TYPES}
       nothingFoundMessage={t`No broken entities found`}
       location={location}
-      withDependentsCount
+      withDependentsCountColumn
     />
   );
 }

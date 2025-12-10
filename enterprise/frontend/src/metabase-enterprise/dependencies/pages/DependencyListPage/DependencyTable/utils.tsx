@@ -21,7 +21,7 @@ import { LocationCell } from "./LocationCell";
 import { TextCell } from "./TextCell";
 import type { DependencyColumn, DependencyColumnOptions } from "./types";
 
-function getItemNameColumn(): DependencyColumnOptions {
+function getNodeNameColumn(): DependencyColumnOptions {
   return {
     id: "name",
     get name() {
@@ -41,7 +41,7 @@ function getItemNameColumn(): DependencyColumnOptions {
   };
 }
 
-function getItemLocationColumn(): DependencyColumnOptions {
+function getNodeLocationColumn(): DependencyColumnOptions {
   return {
     id: "location",
     get name() {
@@ -58,7 +58,7 @@ function getItemLocationColumn(): DependencyColumnOptions {
   };
 }
 
-function getItemDependentsColumn(): DependencyColumnOptions {
+function getNodeDependentsCountColumn(): DependencyColumnOptions {
   return {
     id: "dependents-count",
     get name() {
@@ -73,7 +73,7 @@ function getItemDependentsColumn(): DependencyColumnOptions {
   };
 }
 
-function getItemLastEditAtColumn(): DependencyColumnOptions {
+function getNodeLastEditAtColumn(): DependencyColumnOptions {
   return {
     id: "last-edit-at",
     get name() {
@@ -89,7 +89,7 @@ function getItemLastEditAtColumn(): DependencyColumnOptions {
   };
 }
 
-function getItemLastEditByColumn(): DependencyColumnOptions {
+function getNodeLastEditByColumn(): DependencyColumnOptions {
   return {
     id: "last-edit-by",
     get name() {
@@ -106,18 +106,18 @@ function getItemLastEditByColumn(): DependencyColumnOptions {
 }
 
 type ColumnOptions = {
-  withDependentsCount?: boolean;
+  withDependentsCountColumn?: boolean;
 };
 
 export function getColumns({
-  withDependentsCount,
+  withDependentsCountColumn,
 }: ColumnOptions): DependencyColumnOptions[] {
   return [
-    getItemNameColumn(),
-    getItemLocationColumn(),
-    ...(withDependentsCount ? [getItemDependentsColumn()] : []),
-    getItemLastEditAtColumn(),
-    getItemLastEditByColumn(),
+    getNodeNameColumn(),
+    getNodeLocationColumn(),
+    ...(withDependentsCountColumn ? [getNodeDependentsCountColumn()] : []),
+    getNodeLastEditAtColumn(),
+    getNodeLastEditByColumn(),
   ];
 }
 
