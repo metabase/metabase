@@ -9,7 +9,6 @@
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
-   [metabase-enterprise.workspaces.sync :as ws.sync]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 (set! *warn-on-reflection* true)
@@ -49,23 +48,6 @@
     (doseq [table tables]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
                                         (:schema table) (:name table) username)]))))
-
-(defmethod isolation/duplicate-output-table! :sqlserver
-  [database workspace output]
-  (let [source-schema   (:schema output)
-        source-table    (:name output)
-        isolated-schema (:schema workspace)
-        isolated-table  (driver.common/isolated-table-name output)
-        conn-spec       (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    (assert (every? some? [source-schema source-table isolated-schema isolated-table]) "Figured out table")
-    ;; User already has CONTROL on schema from init, so the created table inherits permissions
-    (jdbc/execute! conn-spec [(format "SELECT * INTO [%s].[%s] FROM [%s].[%s] WHERE 1=0"
-                                      isolated-schema
-                                      isolated-table
-                                      source-schema
-                                      source-table)])
-    (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]
-      (select-keys table-metadata [:id :schema :name]))))
 
 (defmethod isolation/drop-isolated-tables! :sqlserver
   [database s+t-tuples]

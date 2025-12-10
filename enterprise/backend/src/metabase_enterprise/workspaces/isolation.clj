@@ -23,15 +23,6 @@
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
 
-(defmulti duplicate-output-table!
-  "Create an isolated copy of the given output tables, for a workspace transform to write to.
-
-  TODO: Consider removing this method once we have 'remap-on-execute' semantics, where
-  transforms write directly to the isolated location without needing to duplicate existing tables."
-  {:added "0.59.0" :arglists '([database workspace output])}
-  #'dispatch-on-engine
-  :hierarchy #'driver/hierarchy)
-
 (defmulti drop-isolated-tables!
   "Drop isolated tables"
   {:added "0.59.0" :arglists '([database s+t-tuples])}

@@ -9,7 +9,6 @@
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
-   [metabase-enterprise.workspaces.sync :as ws.sync]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 (set! *warn-on-reflection* true)
@@ -54,29 +53,6 @@
     (doseq [table tables]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE %s"
                                         db-name (:schema table) (:name table) role-name)]))))
-
-(defmethod isolation/duplicate-output-table! :snowflake
-  [database workspace output]
-  (let [source-schema   (:schema output)
-        source-table    (:name output)
-        isolated-schema (:schema workspace)
-        isolated-table  (driver.common/isolated-table-name output)
-        db-name         (-> database :details :db)
-        role-name       (-> workspace :database_details :role)
-        conn-spec       (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    (assert (every? some? [source-schema source-table isolated-schema isolated-table]) "Figured out table")
-    (doseq [sql [(format "CREATE TABLE \"%s\".\"%s\".\"%s\" LIKE \"%s\".\"%s\".\"%s\""
-                         db-name
-                         isolated-schema
-                         isolated-table
-                         db-name
-                         source-schema
-                         source-table)
-                 (format "GRANT OWNERSHIP ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE %s COPY CURRENT GRANTS"
-                         db-name isolated-schema isolated-table role-name)]]
-      (jdbc/execute! conn-spec [sql]))
-    (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]
-      (select-keys table-metadata [:id :schema :name]))))
 
 (defmethod isolation/drop-isolated-tables! :snowflake
   [database s+t-tuples]
