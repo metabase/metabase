@@ -145,7 +145,7 @@ export function BrokenDependencyListPage({
   }
 
   return (
-    <Stack h="100%" p="lg" gap="md">
+    <Stack h="100%" p="lg" gap="md" bg="accent-gray-light">
       <Flex gap="md" align="center">
         <TextInput
           value={searchValue}
