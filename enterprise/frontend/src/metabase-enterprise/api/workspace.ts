@@ -2,7 +2,6 @@ import type {
   CreateWorkspaceRequest,
   CreateWorkspaceTransformRequest,
   CreateWorkspaceTransformResponse,
-  Transform,
   TransformDownstreamMapping,
   TransformId,
   TransformUpstreamMapping,
@@ -16,6 +15,8 @@ import type {
   WorkspaceLogResponse,
   WorkspaceMergeResponse,
   WorkspaceTablesResponse,
+  WorkspaceTransformItem,
+  WorkspaceTransformsResponse,
   WorkspaceUpdateContentsRequest,
 } from "metabase-types/api";
 
@@ -150,13 +151,16 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (_, __, id) => [idTag("workspace", id)],
     }),
-    getWorkspaceTransforms: builder.query<Transform[], WorkspaceId>({
+    getWorkspaceTransforms: builder.query<
+      WorkspaceTransformItem[],
+      WorkspaceId
+    >({
       query: (id) => ({
         method: "GET",
         url: `/api/ee/workspace/${id}/transform`,
       }),
       providesTags: (_, __, id) => [idTag("workspace-transforms", id)],
-      transformResponse: (response: { transforms: Transform[] }) =>
+      transformResponse: (response: WorkspaceTransformsResponse) =>
         response.transforms,
     }),
     getWorkspaceLog: builder.query<WorkspaceLogResponse, WorkspaceId>({

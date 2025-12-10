@@ -38,18 +38,18 @@ export type WorkspaceListResponse = {
 };
 
 export type WorkspaceTransformItem = {
-  type: "transform";
-  id: TransformId;
+  "ref-id": string;
   name: string;
-  upstream_id: TransformId;
-  workspace_id: WorkspaceId;
+  source_type: string;
+  stale: boolean;
+  global_id: TransformId | null;
+  target_stale: boolean;
 };
 
-export type WorkspaceContents = {
-  contents: {
-    transforms: Transform[];
-  };
+export type WorkspaceTransformsResponse = {
+  transforms: WorkspaceTransformItem[];
 };
+
 
 export type TransformUpstreamMapping = {
   transform: WorkspaceTransformItem | null;
