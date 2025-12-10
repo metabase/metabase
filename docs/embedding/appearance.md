@@ -16,7 +16,7 @@ Here's an example that includes the various styling options available:
 {% include_file "{{ dirname }}/sdk/snippets/appearance/theme.ts" %}
 ```
 
-### Customizing loader and error components
+## Customizing loader and error components
 
 You can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
