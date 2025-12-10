@@ -42,7 +42,7 @@ export const TransformListPage = () => {
     );
   }, [transforms, debouncedSearchQuery]);
 
-  const TRANSFORM_COLUMNS = useMemo<ColumnDef<Transform, ReactNode>[]>(
+  const transformColumnDef = useMemo<ColumnDef<Transform, ReactNode>[]>(
     () => [
       {
         accessorKey: "name",
@@ -130,7 +130,7 @@ export const TransformListPage = () => {
                 out_table: t.target.name,
                 last_modified: new Date(t.updated_at).toDateString(),
               }))}
-              columns={TRANSFORM_COLUMNS}
+              columns={transformColumnDef}
               onSelect={handleSelect}
             />
           )}

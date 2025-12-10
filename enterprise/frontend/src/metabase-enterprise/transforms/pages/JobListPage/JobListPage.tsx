@@ -42,7 +42,7 @@ export const JobListPage = () => {
     dispatch(push(Urls.transformJob(item.id)));
   };
 
-  const JOBS_COLUMNS = useMemo<ColumnDef<TransformJob, ReactNode>[]>(
+  const jobColumnDef = useMemo<ColumnDef<TransformJob, ReactNode>[]>(
     () => [
       {
         accessorKey: "name",
@@ -112,7 +112,7 @@ export const JobListPage = () => {
             <Card withBorder p={0}>
               <Table
                 data={filteredJobs}
-                columns={JOBS_COLUMNS}
+                columns={jobColumnDef}
                 onSelect={handleSelect}
               />
             </Card>
