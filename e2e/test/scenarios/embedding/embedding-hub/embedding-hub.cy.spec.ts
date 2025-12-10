@@ -320,8 +320,8 @@ describe("scenarios - embedding hub", () => {
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
-      cy.visit("/admin/embedding/setup-guide");
       H.updateSetting("use-tenants", true);
+      cy.visit("/admin/embedding/setup-guide");
 
       H.main()
         .findByText("Tenants")

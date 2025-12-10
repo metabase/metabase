@@ -5,20 +5,6 @@ const TENANT_ROOT_NAME = "Shared collections";
 const TENANT_NAMESPACE = "shared-tenant-collection";
 
 /**
- * Enable tenants feature - this makes the virtual tenant root appear
- */
-function enableTenantsFeature() {
-  cy.request("PUT", "/api/setting/use-tenants", { value: true });
-}
-
-/**
- * Disable tenants feature
- */
-function disableTenantsFeature() {
-  cy.request("PUT", "/api/setting/use-tenants", { value: false });
-}
-
-/**
  * Create a collection in the shared-tenant-collection namespace.
  * Collections with this namespace and no parent_id are children of the virtual root.
  */
@@ -54,7 +40,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    enableTenantsFeature();
+    H.updateSetting("use-tenants", true);
   });
 
   describe("virtual tenant root display", () => {
@@ -72,7 +58,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
     });
 
     it("should NOT display Shared collections when tenants are disabled", () => {
-      disableTenantsFeature();
+      H.updateSetting("use-tenants", false);
 
       H.visitQuestion(ORDERS_QUESTION_ID);
       H.openQuestionActions();

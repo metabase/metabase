@@ -19,8 +19,8 @@ describe("scenarios > modular embedding settings", { tags: "@EE" }, () => {
   });
 
   it("should link to tenants page when tenants are enabled", () => {
-    cy.visit("/admin/embedding/modular");
     H.updateSetting("use-tenants", true);
+    cy.visit("/admin/embedding/modular");
 
     H.main()
       .findByText("Tenants")
