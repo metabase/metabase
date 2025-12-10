@@ -1411,7 +1411,7 @@
 
   tenants
   {:team "Admin Webapp"
-   :api #{metabase.tenants.core}
+   :api  #{metabase.tenants.core}
    :uses #{premium-features
            util}}
 
@@ -2239,7 +2239,7 @@
 
   enterprise/tenants
   {:team "Admin Webapp"
-   :api #{metabase-enterprise.tenants.api}
+   :api  #{metabase-enterprise.tenants.api}
    :uses #{api
            audit-app
            auth-identity
