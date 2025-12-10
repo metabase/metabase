@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import type { WrappedResult } from "metabase/search/types";
@@ -100,7 +101,7 @@ export function SearchResult({
       entityId: typeof result.id === "number" ? result.id : null,
       searchTerm,
     });
-    onChangeLocation(result.getUrl());
+    onChangeLocation(modelToUrl(result));
   };
 
   return (
@@ -128,7 +129,7 @@ export function SearchResult({
             role="heading"
             data-testid="search-result-item-name"
             truncate
-            href={!onClick ? result.getUrl() : undefined}
+            href={!onClick ? modelToUrl(result) : undefined}
           >
             {name}
           </ResultTitle>

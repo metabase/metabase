@@ -1110,7 +1110,11 @@ export function formatDateTimeWithUnit(
   }
 
   if (unit === "week-of-year") {
-    return dayjs().localeData().ordinal(m.isoWeek()).slice(1, -1);
+    const ordinal = String(dayjs().localeData().ordinal(m.isoWeek()));
+    if (ordinal.startsWith("[") && ordinal.endsWith("]")) {
+      return ordinal.slice(1, -1);
+    }
+    return ordinal;
   }
 
   // expand "week" into a range in specific contexts

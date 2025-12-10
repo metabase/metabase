@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
+import { setLocalization } from "metabase/lib/i18n";
 
 import { DateRangePickerBody } from "./DateRangePickerBody";
 
@@ -83,5 +84,40 @@ describe("DateRangePickerBody", () => {
       expect(screen.getByText("January 2019")).toBeInTheDocument();
       expect(screen.queryByText("January 2020")).not.toBeInTheDocument();
     });
+  });
+
+  describe("locale-dependent formatting", () => {
+    afterAll(() => jest.resetModules());
+
+    it.each([
+      {
+        locale: "en",
+        expectedStart: "January 2, 2025",
+        expectedEnd: "February 3, 2025",
+      },
+      {
+        locale: "de",
+        expectedStart: "2. Januar 2025",
+        expectedEnd: "3. Februar 2025",
+      },
+    ])(
+      "should display localized start/end date inputs for $locale",
+      ({ locale, expectedStart, expectedEnd }) => {
+        setLocalization({
+          headers: {
+            language: locale,
+            "plural-forms": "nplurals=2; plural=(n != 1);",
+          },
+          translations: { "": {} },
+        });
+
+        setup({
+          value: [new Date(2025, 0, 2), new Date(2025, 1, 3)],
+        });
+
+        expect(screen.getByLabelText("Start date")).toHaveValue(expectedStart);
+        expect(screen.getByLabelText("End date")).toHaveValue(expectedEnd);
+      },
+    );
   });
 });

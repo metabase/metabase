@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
-import { cardApi, collectionApi, databaseApi } from "metabase/api";
+import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
 import { useDispatch } from "metabase/lib/redux";
 import type { SchemaName } from "metabase-types/api";
@@ -59,7 +59,14 @@ async function getPathFromValue(
   dispatch: DispatchFn,
   libraryCollection?: MiniPickerCollectionItem,
 ): Promise<MiniPickerFolderItem[]> {
-  return value?.model === "table"
+  if (value.model !== "table") {
+    return getCollectionPathFromValue(value, dispatch, libraryCollection);
+  }
+
+  const table = await dispatch(
+    tableApi.endpoints.getTable.initiate({ id: value.id }),
+  ).unwrap();
+  return table.collection == null
     ? getTablePathFromValue(value, dispatch)
     : getCollectionPathFromValue(value, dispatch, libraryCollection);
 }
@@ -93,16 +100,26 @@ async function getTablePathFromValue(
 }
 
 async function getCollectionPathFromValue(
-  value: Exclude<DataPickerValue, TablePickerValue>,
+  value: DataPickerValue,
   dispatch: DispatchFn,
   libraryCollection?: MiniPickerCollectionItem,
 ): Promise<MiniPickerFolderItem[]> {
-  const card = await dispatch(
-    cardApi.endpoints.getCard.initiate({ id: value.id }),
-  ).unwrap();
+  const table =
+    value.model === "table"
+      ? await dispatch(
+          tableApi.endpoints.getTable.initiate({ id: value.id }),
+        ).unwrap()
+      : null;
+  const card =
+    value.model !== "table"
+      ? await dispatch(
+          cardApi.endpoints.getCard.initiate({ id: value.id }),
+        ).unwrap()
+      : null;
 
-  const location =
-    card.collection?.effective_location ?? card.collection?.location;
+  const collection = table?.collection ?? card?.collection;
+
+  const location = collection?.effective_location ?? collection?.location;
 
   if (!location) {
     return [getOurAnalytics()];
@@ -112,11 +129,11 @@ async function getCollectionPathFromValue(
 
   const collectionIds = [
     "root",
-    ...(location?.split("/") ?? []),
-    card?.collection_id,
+    ...(location?.split("/") ?? []).map((id) => parseInt(id, 10)),
+    collection?.id,
   ].filter(Boolean);
 
-  if (collectionIds.includes(String(libraryCollection?.id))) {
+  if (collectionIds.includes(libraryCollection?.id)) {
     collectionIds.shift(); // pretend the library is at the top level
     locationPath.shift();
   }
@@ -139,9 +156,7 @@ async function getCollectionPathFromValue(
     }
 
     const nextItem = collectionItems.data.find(
-      (item) =>
-        item.model === "collection" &&
-        String(item.id) === String(collectionIds[i + 1]),
+      (item) => item.model === "collection" && item.id === collectionIds[i + 1],
     );
 
     if (!nextItem) {

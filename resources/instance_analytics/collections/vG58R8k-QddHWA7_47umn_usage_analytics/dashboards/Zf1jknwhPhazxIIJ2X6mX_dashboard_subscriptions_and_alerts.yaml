@@ -16,15 +16,9 @@ show_in_getting_started: false
 caveats: null
 points_of_interest: null
 parameters:
-- id: 1f56492a
-  name: Creator
-  sectionId: string
-  slug: creator
-  type: string/=
+- {id: 1f56492a, name: Creator, sectionId: string, slug: creator, type: string/=}
 serdes/meta:
-- id: Zf1jknwhPhazxIIJ2X6mX
-  label: dashboard_subscriptions_and_alerts
-  model: Dashboard
+- {id: Zf1jknwhPhazxIIJ2X6mX, label: dashboard_subscriptions_and_alerts, model: Dashboard}
 archived_directly: false
 dashcards:
 - entity_id: Gqo7FTMaVg63eHACcYK7C
@@ -36,19 +30,16 @@ dashcards:
   size_y: 13
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: g-99yx3A8bwFtrfuWdIgb
     parameter_id: 1f56492a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - base-type: type/Text
-        join-alias: People - Creator
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_users, full_name]
+      - {base-type: type/Text, join-alias: People - Creator}
+    - {stage-number: 0}
   series: []
   visualization_settings:
     column_settings:
@@ -58,29 +49,16 @@ dashcards:
           parameterMapping:
             6b3da96f:
               id: 6b3da96f
-              source:
-                id: creator_id
-                name: Creator ID
-                type: column
-              target:
-                id: 6b3da96f
-                type: parameter
-          tabId:
-          - DHMhMa1FYxiyIgM7_xdgR
-          - VLzpbzPlShrECFp-dG4pH
+              source: {id: creator_id, name: Creator ID, type: column}
+              target: {id: 6b3da96f, type: parameter}
+          tabId: [DHMhMa1FYxiyIgM7_xdgR, VLzpbzPlShrECFp-dG4pH]
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
       '["name","name"]':
-        click_behavior:
-          linkTemplate: /dashboard/{{entity_id}}
-          linkType: url
-          targetId: null
-          type: link
+        click_behavior: {linkTemplate: '/dashboard/{{entity_id}}', linkType: url, targetId: null, type: link}
   serdes/meta:
-  - id: Zf1jknwhPhazxIIJ2X6mX
-    model: Dashboard
-  - id: Gqo7FTMaVg63eHACcYK7C
-    model: DashboardCard
+  - {id: Zf1jknwhPhazxIIJ2X6mX, model: Dashboard}
+  - {id: Gqo7FTMaVg63eHACcYK7C, model: DashboardCard}
 - entity_id: 51ogDBhNtVwqBt0AFyJSr
   card_id: fwkC3nWB_uouifA5kkaBp
   created_at: '2024-03-06T14:13:39.193112Z'
@@ -90,19 +68,16 @@ dashcards:
   size_y: 13
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: fwkC3nWB_uouifA5kkaBp
     parameter_id: 1f56492a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - base-type: type/Text
-        join-alias: People - Creator
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_users, full_name]
+      - {base-type: type/Text, join-alias: People - Creator}
+    - {stage-number: 0}
   series: []
   visualization_settings:
     column_settings:
@@ -112,23 +87,15 @@ dashcards:
           parameterMapping:
             6b3da96f:
               id: 6b3da96f
-              source:
-                id: creator_id
-                name: Creator ID
-                type: column
-              target:
-                id: 6b3da96f
-                type: parameter
-          tabId:
-          - DHMhMa1FYxiyIgM7_xdgR
-          - VLzpbzPlShrECFp-dG4pH
+              source: {id: creator_id, name: Creator ID, type: column}
+              target: {id: 6b3da96f, type: parameter}
+          tabId: [DHMhMa1FYxiyIgM7_xdgR, VLzpbzPlShrECFp-dG4pH]
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
   serdes/meta:
-  - id: Zf1jknwhPhazxIIJ2X6mX
-    model: Dashboard
-  - id: 51ogDBhNtVwqBt0AFyJSr
-    model: DashboardCard
+  - {id: Zf1jknwhPhazxIIJ2X6mX, model: Dashboard}
+  - {id: 51ogDBhNtVwqBt0AFyJSr, model: DashboardCard}
+embedding_type: null
 initially_published_at: null
 tabs: []
 width: full

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.calculation-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as calculation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,9 +18,11 @@
                                                                (lib/filter (lib/= product-category
                                                                                   "Widget")))}]
       (is (= {:card #{}
+              :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card prod-card)))
       (is (= {:card #{prod-card-id}
+              :segment #{}
               :table #{}}
              (calculation/upstream-deps:card widget-card))))))
 
@@ -34,9 +36,11 @@
                    :model/Card joined-card {:dataset_query (-> (lib/query mp (lib.metadata/card mp products-card-id))
                                                                (lib/join orders))}]
       (is (= {:card #{}
+              :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card products-card)))
       (is (= {:card #{products-card-id}
+              :segment #{}
               :table #{orders-id}}
              (calculation/upstream-deps:card joined-card))))))
 
@@ -52,6 +56,7 @@
         user-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "User" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/with-fields base-query [venue-name user-name])}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id users-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -65,6 +70,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query filterable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/filter base-query (lib/= venue-name "Bird's Nest"))}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -78,6 +84,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query breakoutable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/breakout base-query venue-name)}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -91,6 +98,7 @@
         venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/aggregate base-query (lib/sum venue-price))}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -104,6 +112,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query orderable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/order-by base-query venue-name)}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -125,6 +134,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :segment #{}
                 :table #{checkins-id venues-id users-id}}
                (calculation/upstream-deps:transform transform)))))))
 
@@ -146,6 +156,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:transform transform)))))))
 
@@ -166,6 +177,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:transform transform)))))))
 
@@ -195,6 +207,7 @@
                                   :values_source_type "card"
                                   :values_source_config {:card_id category-values-card-id}}]}]
       (is (= {:card #{}
+              :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card category-values-card)))
       (is (= {:card #{category-values-card-id}
@@ -383,3 +396,79 @@
                                            :card_id sandbox-card-id}]
       (is (= {:card #{sandbox-card-id}}
              (calculation/upstream-deps:sandbox sandbox))))))
+
+(deftest ^:parallel upstream-deps-segment-test
+  (let [products-id (mt/id :products)
+        price-field-id (mt/id :products :price)
+        category-field-id (mt/id :products :category)]
+    (testing "segment depending only on table"
+      (mt/with-temp [:model/Segment segment {:table_id products-id
+                                             :definition {:filter [:> [:field price-field-id nil] 50]}}]
+        (is (= {:segment #{} :table #{products-id}}
+               (calculation/upstream-deps:segment segment)))))
+
+    (testing "segment depending on another segment"
+      (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:table_id products-id
+                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                     :model/Segment segment-b {:table_id products-id
+                                               :definition {:filter [:and
+                                                                     [:segment segment-a-id]
+                                                                     [:= [:field category-field-id nil] "Widget"]]}}]
+        (testing "base segment depends only on table"
+          (is (= {:segment #{} :table #{products-id}}
+                 (calculation/upstream-deps:segment segment-a))))
+        (testing "dependent segment depends on both table and segment"
+          (is (= {:table #{products-id}
+                  :segment #{segment-a-id}}
+                 (calculation/upstream-deps:segment segment-b))))))))
+
+(deftest ^:parallel upstream-deps-card-with-multiple-segments-test
+  (testing "Card using multiple segments depends on all of them"
+    (let [products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          category-field-id (mt/id :products :category)]
+      (mt/with-temp [:model/Segment {segment-a-id :id} {:table_id products-id
+                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}
+                     :model/Segment {segment-b-id :id} {:table_id products-id
+                                                        :definition {:filter [:= [:field category-field-id nil] "Widget"]}}
+                     :model/Card card {:dataset_query {:database (mt/id)
+                                                       :type :query
+                                                       :query {:source-table products-id
+                                                               :filter [:and
+                                                                        [:segment segment-a-id]
+                                                                        [:segment segment-b-id]]}}}]
+        (is (= {:card #{}
+                :table #{products-id}
+                :segment #{segment-a-id segment-b-id}}
+               (calculation/upstream-deps:card card)))))))
+
+(deftest ^:parallel upstream-deps-segment-with-multiple-segments-test
+  (testing "Segment depending on multiple other segments tracks all dependencies"
+    (let [products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          category-field-id (mt/id :products :category)
+          rating-field-id (mt/id :products :rating)]
+      (mt/with-temp [:model/Segment {segment-a-id :id} {:table_id products-id
+                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}
+                     :model/Segment {segment-b-id :id} {:table_id products-id
+                                                        :definition {:filter [:= [:field category-field-id nil] "Widget"]}}
+                     :model/Segment segment-c {:table_id products-id
+                                               :definition {:filter [:and
+                                                                     [:segment segment-a-id]
+                                                                     [:segment segment-b-id]
+                                                                     [:> [:field rating-field-id nil] 4]]}}]
+        (is (= {:table #{products-id}
+                :segment #{segment-a-id segment-b-id}}
+               (calculation/upstream-deps:segment segment-c)))))))
+
+(deftest ^:parallel upstream-deps-segment-implicit-join-test
+  (testing "Segment depending on implicitly joined field adds dep on that field's table"
+    (let  [checkins-id (mt/id :checkins)
+           venues-id (mt/id :venues)
+           venue-fk-field-id (mt/id :checkins :venue_id)
+           venue-name-field-id (mt/id :venues :name)]
+      (mt/with-temp [:model/Segment segment {:table_id checkins-id
+                                             :definition {:filter [:= [:field venue-name-field-id {:source-field venue-fk-field-id}] "Bird's Nest"]}}]
+        (is (= {:segment #{}
+                :table #{checkins-id venues-id}}
+               (calculation/upstream-deps:segment segment)))))))

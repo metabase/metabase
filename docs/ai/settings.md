@@ -19,13 +19,12 @@ This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot
 
 Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models.md) and [metrics](../data-modeling/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
 
-Restricting Metabot to verified models and metrics (and only models and metrics) can help Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
+Restricting Metabot to verified models and metrics (and only models and metrics) helps Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
 
 ## When embedding Metabot, you can pick a collection for Metabot to have access to
 
 When embedding Metabot in your app, you can select a collection for Metabot:
 
-1. Go to **Settings** > **Admin settings** > **AI**.
 2. Click **Embedded Metabot**.
 3. In the **Collection Embedded Metabot can use** section, click **Pick a collection**.
 4. Select the collection that contains the models and metrics you want Metabot to use.
@@ -88,9 +87,17 @@ Metabot inherits the permissions of the current user, so you don't need to set p
 
 In other words, to restrict what data Metabot can see for each person, simply apply [data](../permissions/data.md) and [collection](../permissions/collections.md) permissions to their groups as you would normally, and those permissions will apply to their use of Metabot as well.
 
-## Metabot is only available instance-wide, not per person
+## Viewing Metabot usage
 
-Currently, Metabot will be available to everyone who uses your Metabase.
+You can see how many Metabot requests people have made this month by going to **Admin settings > Settings > License**.
+
+If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md).(, you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
+
+The **Metabot AI requests used, this month (updated daily)** field shows how many requests your Metabase has used this month. Each message sent to Metabot counts as a request.
+
+## Metabot can't be enabled per person
+
+Currently, Metabot is available to everyone who uses your Metabase.
 
 ## Metabot uses a variety of generative AI models to answer your questions
 
@@ -106,7 +113,7 @@ We've intentionally limited what Metabot can do. Metabot lacks access to API key
 
 Metabot has access to your Metabase metadata and some data values to help answer your questions:
 
-- **Table, Question, Model, Dashboard, and Metric metadata**: Metabot can see the structure and configuration of your content
+- **Table, Question, Model, Dashboard, and Metric metadata**: Metabot can see the structure and configuration of your content.
 - **Sample field values**: When you ask questions like "Filter everyone from Wisconsin," Metabot might check the values in the state field to understand how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
 - **Timeseries data**: For chart analysis, Metabot might see the timeseries data used to draw certain visualizations, depending on the chart type.
 

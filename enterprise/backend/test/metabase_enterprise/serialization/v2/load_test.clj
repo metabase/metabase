@@ -846,6 +846,59 @@
             (is (= (dissoc @fv2s :id :field_id :created_at :updated_at)
                    (dissoc @fv2d :id :field_id :created_at :updated_at)))))))))
 
+(deftest table-publishing-round-trip-test
+  ;; Tests that is_published and collection_id survive a round-trip through serialization.
+  ;; The collection_id FK transform converts DB id to entity_id and back.
+  (testing "published table with collection_id survives round-trip"
+    (let [serialized (atom nil)
+          db1s       (atom nil)
+          table1s    (atom nil)
+          coll1s     (atom nil)
+          table2s    (atom nil)
+
+          db1d       (atom nil)
+          table1d    (atom nil)
+          coll1d     (atom nil)
+          table2d    (atom nil)]
+
+      (ts/with-dbs [source-db dest-db]
+        (testing "serializing published tables"
+          (ts/with-db source-db
+            (reset! db1s    (ts/create! :model/Database :name "my-db"))
+            (reset! coll1s  (ts/create! :model/Collection :name "Publishing Collection"))
+            (reset! table1s (ts/create! :model/Table :name "published_table" :db_id (:id @db1s)
+                                        :is_published true :collection_id (:id @coll1s)))
+            (reset! table2s (ts/create! :model/Table :name "unpublished_table" :db_id (:id @db1s)
+                                        :is_published false))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (testing "serialized form has collection entity_id, not DB id"
+          (let [pub-table (->> @serialized
+                               (filter #(and (-> % :serdes/meta last :model (= "Table"))
+                                             (= (:name %) "published_table")))
+                               first)]
+            (is (true? (:is_published pub-table)))
+            (is (= (:entity_id @coll1s) (:collection_id pub-table)))))
+
+        (testing "deserializing restores collection_id correctly"
+          (ts/with-db dest-db
+            ;; Load the serialized content
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
+            (reset! coll1d  (t2/select-one :model/Collection :name "Publishing Collection"))
+            (reset! table1d (t2/select-one :model/Table :name "published_table" :db_id (:id @db1d)))
+            (reset! table2d (t2/select-one :model/Table :name "unpublished_table" :db_id (:id @db1d)))
+
+            (testing "published table has correct is_published and collection_id"
+              (is (true? (:is_published @table1d)))
+              (is (= (:id @coll1d) (:collection_id @table1d))))
+
+            (testing "unpublished table has is_published=false and no collection"
+              (is (false? (:is_published @table2d)))
+              (is (nil? (:collection_id @table2d))))))))))
+
 (deftest bare-import-test
   ;; If the dependencies of an entity exist in the receiving database, they don't need to be in the export.
   ;; This tests that such an import will succeed, and that it still fails when the dependency is not found in

@@ -31,6 +31,11 @@
 (defmethod search.engine/supported-engine? :search.engine/in-place [_]
   true)
 
+(defmethod search.engine/disjunction :search.engine/in-place [_ terms]
+  ;; The default composition is disjunction with this engine.
+  (when (seq terms)
+    [(str/join " " terms)]))
+
 (defn search-model->revision-model
   "Return the appropriate revision model given a search model."
   [model]
@@ -438,6 +443,13 @@
    [:table.schema :table_schema]
    [:table.name :table_name]
    [:table.description :table_description]
+   [:table.collection_id :collection_id]
+   [[:case [:and [:= :table.collection_id nil] [:= :table.is_published true]]
+     [:inline "Our analytics"]
+     :else
+     :collection.name] :collection_name]
+   [:collection.authority_level :collection_authority_level]
+   [:collection.type :collection_type]
    [:metabase_database.name :database_name]])
 
 (defmethod columns-for-model "transform"
@@ -594,6 +606,7 @@
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
         (add-table-where-clauses model search-ctx)
+        (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defmethod search.engine/model-set :search.engine/in-place

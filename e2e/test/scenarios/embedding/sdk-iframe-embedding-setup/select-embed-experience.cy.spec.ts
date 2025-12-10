@@ -51,7 +51,8 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "default",
+        event_detail:
+          "authType=guest-embed,experience=dashboard,isDefaultExperience=true",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -81,10 +82,9 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=chart",
+        event_detail:
+          "authType=guest-embed,experience=chart,isDefaultExperience=false",
       });
-
-      cy.wait("@cardQuery");
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title is visible");
@@ -96,13 +96,16 @@ describe(suiteTitle, () => {
       visitNewEmbedPage();
 
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
         cy.findByText("Exploration").click();
         cy.findByText("Next").click();
       });
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=exploration",
+        event_detail:
+          "authType=sso,experience=exploration,isDefaultExperience=false",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -117,13 +120,16 @@ describe(suiteTitle, () => {
       visitNewEmbedPage();
 
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
       });
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=browser",
+        event_detail:
+          "authType=sso,experience=browser,isDefaultExperience=false",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -176,7 +182,8 @@ describe(suiteTitle, () => {
 
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_experience_completed",
-          event_detail: "custom=chart",
+          event_detail:
+            "authType=guest-embed,experience=chart,isDefaultExperience=false",
         });
 
         H.waitForSimpleEmbedIframesToLoad();
@@ -193,6 +200,7 @@ describe(suiteTitle, () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();
+    H.embedModalEnableEmbedding();
 
     cy.get("#iframe-embed-container")
       .findByTestId("preview-loading-indicator", { timeout: 20_000 })
@@ -210,13 +218,15 @@ describe(suiteTitle, () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();
     });
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_experience_completed",
-      event_detail: "custom=metabot",
+      event_detail: "authType=sso,experience=metabot,isDefaultExperience=false",
     });
 
     H.getSimpleEmbedIframeContent().within(() => {

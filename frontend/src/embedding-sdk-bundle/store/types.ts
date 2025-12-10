@@ -11,11 +11,11 @@ import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config"
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type {
+  InitializationStatus,
   SdkErrorComponent,
   SdkLoadingError,
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import type { State } from "metabase-types/store";
 
@@ -32,10 +32,11 @@ export type SdkStore = Omit<Store<SdkStoreState, Action>, "dispatch"> & {
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
 export type SdkState = {
+  isGuestEmbed: boolean | null;
   metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
   metabaseInstanceVersion: string | null;
   token: EmbeddingSessionTokenState;
-  loginStatus: LoginStatus;
+  initStatus: InitializationStatus;
   error: SdkLoadingError | null;
   plugins: null | MetabasePluginsConfig;
   eventHandlers: null | SdkEventHandlersConfig;

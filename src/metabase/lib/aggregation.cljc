@@ -265,7 +265,7 @@
   [query stage-number [_tag _opts first-arg :as clause]]
   (merge
    ;; flow the `:options` from the field we're aggregating. This is important, for some reason.
-   ;; See [[metabase.query-processor-test.aggregation-test/field-settings-for-aggregate-fields-test]]
+   ;; See [[metabase.query-processor.aggregation-test/field-settings-for-aggregate-fields-test]]
    (when first-arg
      ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
      ;; here for its type!

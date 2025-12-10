@@ -82,7 +82,7 @@
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
   and including [[current-schema-version]]."
-  22)
+  23)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
@@ -670,6 +670,17 @@
   (update card :result_metadata (fn [cols]
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
+;; Schema upgrade: 22 to 23 ==========================================================================================
+;; #66199 shows a customer upgrading to 57 breaking certain cards
+;; The cards in question have {} as their dataset_query.
+;; This schema upgrade is to overwrite cards with dataset_query = "{}" with a converted legacy_query.
+;; Discussion: https://metaboat.slack.com/archives/C05MPF0TM3L/p1764944945966649?thread_ts=1763990244.080579&cid=C05MPF0TM3L
+(defmethod upgrade-card-schema-to 23
+  [card _schema-version]
+  ;; This fix was a failure. We have to keep the schema upgrade, but now it's
+  ;; just a no-op.
+  card)
+
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]
   (-> (if (and (:id card)
@@ -900,7 +911,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id :document_id :published_table_id]
+                                             :cache_ttl :type :dashboard_id :document_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)
@@ -1215,7 +1226,6 @@
     :document_id            (serdes/fk :model/Document)
     :creator_id             (serdes/fk :model/User)
     :made_public_by_id      (serdes/fk :model/User)
-    :published_table_id     (serdes/fk :model/Table)
     :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}

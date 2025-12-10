@@ -15,6 +15,10 @@
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `Segment`."
   [_route-params
@@ -40,16 +44,26 @@
   (-> (api/read-check (t2/select-one :model/Segment :id id))
       (t2/hydrate :creator)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (hydrated-segment id))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
-  (as-> (t2/select :model/Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
+  (as-> (t2/select :model/Segment
+                   :archived false
+                   {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (t2/hydrate segments :creator :definition_description)))
 
@@ -77,6 +91,10 @@
       (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Segment` with ID."
   [{:keys [id]} :- [:map
@@ -95,7 +113,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [{:keys [id]} :- [:map
@@ -106,6 +129,10 @@
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
   [{:keys [id]} :- [:map

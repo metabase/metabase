@@ -71,7 +71,6 @@ export {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
 } from "./oss/database";
-export { PLUGIN_DOCUMENTS } from "./oss/documents";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
 export {
@@ -105,9 +104,7 @@ export {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
-  type UserWithApplicationPermissions,
 } from "./oss/permissions";
-export { PLUGIN_PUBLIC_SHARING } from "./oss/public-sharing";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
 export { PLUGIN_SEMANTIC_SEARCH } from "./oss/semantic-search";
@@ -150,6 +147,8 @@ export type {
 } from "./types";
 
 // Export a single reinitialize function that calls all individual reinitialize functions
+import { reinitialize as reinitializeDashboardSubscriptionsSdk } from "../../embedding-sdk-bundle/components/public/subscriptions";
+
 import { reinitialize as reinitializeAi } from "./oss/ai";
 import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
@@ -162,7 +161,6 @@ import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeDashcardMenu } from "./oss/dashcard-menu";
 import { reinitialize as reinitializeDatastudio } from "./oss/data-studio";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
-import { reinitialize as reinitializeDocuments } from "./oss/documents";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
@@ -171,7 +169,6 @@ import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
-import { reinitialize as reinitializePublicSharing } from "./oss/public-sharing";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
@@ -189,6 +186,8 @@ import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
  * so reinitializing them all ensures that dependencies are correctly set up.
  */
 export function reinitialize() {
+  reinitializeDashboardSubscriptionsSdk();
+
   reinitializeAi();
   reinitializeApi();
   reinitializeAudit();
@@ -201,7 +200,6 @@ export function reinitialize() {
   reinitializeDashcardMenu();
   reinitializeDatabase();
   reinitializeDatastudio();
-  reinitializeDocuments();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
   reinitializeEmbeddingIframeSdkSetup();
@@ -210,7 +208,6 @@ export function reinitialize() {
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();
-  reinitializePublicSharing();
   reinitializeRemoteSync();
   reinitializeResourceDownloads();
   reinitializeSemanticSearch();

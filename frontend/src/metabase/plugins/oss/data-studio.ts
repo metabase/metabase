@@ -19,7 +19,7 @@ export type NavbarLibrarySectionProps = {
   onItemSelect: () => void;
 };
 
-export type LibraryCollectionType = "root" | "models" | "metrics";
+export type LibraryCollectionType = "root" | "data" | "metrics";
 
 export type DataStudioToolbarButtonProps = {
   question: Question;
@@ -58,6 +58,10 @@ type DataStudioPlugin = {
     data: undefined | MiniPickerCollectionItem;
     isLoading: boolean;
   };
+  useGetResolvedLibraryCollection: (props?: { skip?: boolean }) => {
+    data: undefined | MiniPickerCollectionItem;
+    isLoading: boolean;
+  };
 };
 
 const getDefaultPluginDataStudio = (): DataStudioPlugin => ({
@@ -72,6 +76,10 @@ const getDefaultPluginDataStudio = (): DataStudioPlugin => ({
   useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
     undefined,
   useGetLibraryCollection: (_props) => ({ data: undefined, isLoading: false }),
+  useGetResolvedLibraryCollection: (_props) => ({
+    data: undefined,
+    isLoading: false,
+  }),
 });
 
 export const PLUGIN_DATA_STUDIO = getDefaultPluginDataStudio();

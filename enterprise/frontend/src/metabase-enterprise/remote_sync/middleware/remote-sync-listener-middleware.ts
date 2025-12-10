@@ -5,11 +5,11 @@ import { Api } from "metabase/api";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
+import { documentApi } from "metabase/api/document";
 import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
-import { documentApi } from "metabase-enterprise/api/document";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type {
   Card,

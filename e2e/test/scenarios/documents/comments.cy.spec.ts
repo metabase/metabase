@@ -28,7 +28,6 @@ describe("document comments", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.resetSnowplow();
   });
 
@@ -737,7 +736,6 @@ describe("document comments", () => {
         cy.findByText("Lorem ipsum").should("not.exist");
         cy.findByText("Bobby Tables").should("be.visible");
         cy.findByText("No Collection Tableton").should("be.visible");
-        cy.findByText("Most viewed content").should("be.visible");
       });
 
       cy.realType("s");
@@ -1054,7 +1052,7 @@ describe("document comments", () => {
 
     it("opens a link to a resolved comment correctly", () => {
       cy.get<number>("@headingCommentId").then((commentId) => {
-        cy.request("PUT", `/api/ee/comment/${commentId}`, {
+        cy.request("PUT", `/api/comment/${commentId}`, {
           is_resolved: true,
         });
         H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
@@ -1573,6 +1571,21 @@ describe("document comments", () => {
         });
       });
     });
+  });
+
+  it("handles commenting with users without first and last names", () => {
+    cy.request("post", "/api/user", { email: "no-name@metabase.test" });
+    startNewCommentIn1ParagraphDocument();
+    Comments.getNewThreadInput().type("@No");
+    Comments.getMentionDialog().findByText("no-name@metabase.test").click();
+    Comments.getNewThreadInput().type("needs to see this");
+    cy.realPress([META_KEY, "Enter"]);
+
+    // assert that the comment was created
+    Comments.getAllComments().should("have.length", 1);
+    // mention is it's own span, so we need to search for the pieces individually
+    Comments.getCommentByText("@no-name@metabase.test").should("exist");
+    Comments.getCommentByText("needs to see this").should("exist");
   });
 });
 

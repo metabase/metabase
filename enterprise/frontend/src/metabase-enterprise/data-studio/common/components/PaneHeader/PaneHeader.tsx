@@ -18,6 +18,7 @@ interface PaneHeaderProps extends Omit<GroupProps, "title"> {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
+  breadcrumbs?: ReactNode;
 }
 
 export const PaneHeader = ({
@@ -27,6 +28,7 @@ export const PaneHeader = ({
   menu,
   tabs,
   actions,
+  breadcrumbs,
   ...rest
 }: PaneHeaderProps) => {
   return (
@@ -40,6 +42,11 @@ export const PaneHeader = ({
       {...rest}
     >
       <Stack gap="sm">
+        {breadcrumbs && (
+          <Box mb="lg" mt="sm">
+            {breadcrumbs}
+          </Box>
+        )}
         <Group align="center" gap="xs" wrap="nowrap">
           {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
           {title}
@@ -69,6 +76,7 @@ type PaneHeaderInputProps = {
   placeholder?: string;
   maxLength?: number;
   isOptional?: boolean;
+  "data-testid"?: string;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
 };
@@ -77,6 +85,7 @@ export function PaneHeaderInput({
   initialValue,
   placeholder = t`Name`,
   maxLength,
+  "data-testid": dataTestId,
   isOptional,
   onChange,
   onContentChange,
@@ -93,6 +102,7 @@ export function PaneHeaderInput({
       px={isOptional ? "xs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
       isOptional={isOptional}
+      data-testid={dataTestId}
       onChange={onChange}
       onContentChange={onContentChange}
     />

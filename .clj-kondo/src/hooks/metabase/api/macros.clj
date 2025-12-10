@@ -90,6 +90,10 @@
                                            :else
                                            (recur (conj bindings x) (conj schemas nil) (list* y z more)))))]
               (validate-route! route)
+              (when-not result-schema
+                (api/reg-finding! (assoc (meta node)
+                                         :message "All REST API endpoints should have a detailed response schema"
+                                         :type    :metabase/validate-defendpoint-has-response-schema)))
               (let [[_route-param-schema query-param-schema _body-param-schema] schemas]
                 (when query-param-schema
                   (validate-query-params! query-param-schema)))

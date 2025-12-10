@@ -2,6 +2,8 @@ import type { Location } from "history";
 import _ from "underscore";
 
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
+import type { StaticEmbeddingEntityError } from "metabase/lib/errors/types";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import {
@@ -284,7 +286,10 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-export function getDashcardResultsError(datasets: Dataset[]) {
+export function getDashcardResultsError(
+  datasets: Dataset[],
+  isGuestEmbed: boolean,
+) {
   const isAccessRestricted = datasets.some(
     (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
@@ -295,6 +300,19 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     return {
       message: getPermissionErrorMessage(),
       icon: "key" as const,
+    };
+  }
+
+  const staticEntityLoadingError = datasets.find((dataset) =>
+    isStaticEmbeddingEntityLoadingError(dataset.error, {
+      isGuestEmbed,
+    }),
+  )?.error as StaticEmbeddingEntityError | undefined;
+
+  if (staticEntityLoadingError) {
+    return {
+      message: staticEntityLoadingError.data,
+      icon: "warning" as const,
     };
   }
 
@@ -357,7 +375,7 @@ const shouldHideCard = (
 
   return (
     !hasRows(dashcardData) &&
-    !getDashcardResultsError(Object.values(dashcardData))
+    !getDashcardResultsError(Object.values(dashcardData), false)
   );
 };
 

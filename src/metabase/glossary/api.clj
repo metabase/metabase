@@ -7,6 +7,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
@@ -19,6 +23,10 @@
                                                     where (assoc :where where)))
                        :creator)}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new glossary entry."
   [_route-params
@@ -35,6 +43,10 @@
                             :user-id api/*current-user-id*})
     (t2/hydrate glossary :creator)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an existing glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -51,6 +63,10 @@
                               :user-id api/*current-user-id*})
       (t2/hydrate glossary :creator))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]

@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -299,13 +300,17 @@
                     {perm-type (permissions.schema/data-permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
-    (let [perm-values (->> (get-permissions user-id perm-type database-id)
-                           (filter #(or (= (:table_id %) table-id)
-                                        (nil? (:table_id %))))
-                           (map :perm_value)
-                           (into #{}))]
-      (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
-                                                                                  perm-type)))
+    (let [perm-values (into #{}
+                            (comp (filter #(or (= (:table_id %) table-id)
+                                               (nil? (:table_id %))))
+                                  (map :perm_value))
+                            (get-permissions user-id perm-type database-id))
+          table-perm (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
+                                                                                             perm-type)))]
+      (or (when-not (= table-perm (least-permissive-value perm-type))
+            table-perm)
+          (when (pos-int? table-id)
+            (published-tables/user-published-table-permission perm-type table-id))
           (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-table? :- :boolean

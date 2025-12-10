@@ -29,8 +29,6 @@ export const MetabotDataStudioButton = () => {
   return (
     <Tooltip label={label}>
       <ActionIcon
-        variant="subtle"
-        bd="1px solid var(--mb-color-border)"
         p="sm"
         h="2.25rem"
         w="2.25rem"

@@ -1,5 +1,5 @@
 (ns metabase.lib.drill-thru.quick-filter-test
-  "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
+  "See also [[metabase.query-processor.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]

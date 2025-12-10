@@ -21,6 +21,20 @@
     "Main";
 }
 
+.ContainerTwoRows {
+  display: grid;
+  grid-template: auto 1fr / 1fr;
+  grid-template-areas:
+    "TopBar"
+    "Main";
+}
+
+.ContainerSingleRow {
+  display: grid;
+  grid-template: 1fr / 1fr;
+  grid-template-areas: "Main";
+}
+
 .TopBar {
   grid-area: TopBar;
 }

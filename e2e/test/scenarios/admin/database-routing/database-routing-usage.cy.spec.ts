@@ -264,7 +264,6 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
     }).then(({ body: { id: questionId } }) => {
       cy.log("Sandboxing a destination db should have no effect");
       H.blockUserGroupPermissions(ALL_USERS_GROUP, this.destinationOneDbId);
-      // @ts-expect-error - this isn't typed yet
       cy.sandboxTable({
         table_id: this.destinationOneDb_db_identifier_table_ID,
         group_id: COLLECTION_GROUP,
@@ -281,7 +280,6 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
 
       cy.signInAsAdmin();
       H.blockUserGroupPermissions(ALL_USERS_GROUP, this.leadDbId);
-      // @ts-expect-error - this isn't typed yet
       cy.sandboxTable({
         table_id: this.leadDb_db_identifier_table_ID,
         group_id: COLLECTION_GROUP,
@@ -317,7 +315,6 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         },
       }).then(({ body: { id: redColorQuestionId } }) => {
         H.blockUserGroupPermissions(COLLECTION_GROUP, this.leadDbId);
-        // @ts-expect-error - this isn't typed yet
         cy.sandboxTable({
           table_id: this.leadDb_db_identifier_table_ID,
           group_id: COLLECTION_GROUP,

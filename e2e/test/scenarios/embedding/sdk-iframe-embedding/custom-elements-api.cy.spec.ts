@@ -14,7 +14,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   beforeEach(() => {
     cy.signInAsAdmin();
     H.prepareSdkIframeEmbedTest({
-      withTokenFeatures: true,
+      withToken: "bleeding-edge",
     });
   });
 

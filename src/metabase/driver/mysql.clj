@@ -432,7 +432,7 @@
           nfc-path              (:nfc-path stored-field)
           parent-identifier     (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
-          json-extract+jsonpath [:json_extract parent-identifier jsonpath-query]]
+          json-extract+jsonpath [:json_unquote [:json_extract parent-identifier jsonpath-query]]]
       (case (u/lower-case-en field-type)
         ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
         ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.

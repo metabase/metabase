@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]

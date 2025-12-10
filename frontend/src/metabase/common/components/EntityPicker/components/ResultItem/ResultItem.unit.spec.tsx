@@ -218,7 +218,7 @@ describe("EntityPicker > ResultItem", () => {
     });
     expect(screen.getByText("My Verified Model")).toBeInTheDocument();
 
-    expect(getIcon("model")).toBeInTheDocument();
+    expect(getIcon("model_with_badge")).toBeInTheDocument();
     expect(getIcon("verified_filled")).toBeInTheDocument();
     expect(screen.getByText("in My parent collection")).toBeInTheDocument();
   });

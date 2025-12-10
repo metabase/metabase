@@ -196,6 +196,8 @@ describe("Dashboard utils", () => {
   });
 
   describe("getDashcardResultsError", () => {
+    const isGuestEmbed = false;
+
     const expectedPermissionError = {
       icon: "key",
       message: "Sorry, you don't have permission to see this card.",
@@ -207,48 +209,60 @@ describe("Dashboard utils", () => {
     };
 
     it("should return the access restricted error when the error type is missing-required-permissions", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({
-          error_type: SERVER_ERROR_TYPES.missingPermissions,
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({
+            error_type: SERVER_ERROR_TYPES.missingPermissions,
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toStrictEqual(expectedPermissionError);
     });
 
     it("should return the access restricted error when the status code is 403", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({
-          error: {
-            status: 403,
-          },
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({
+            error: {
+              status: 403,
+            },
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toStrictEqual(expectedPermissionError);
     });
 
     it("should return a generic error if a dataset has an error", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({}),
-        createMockDataset({
-          error: {
-            status: 401,
-          },
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({}),
+          createMockDataset({
+            error: {
+              status: 401,
+            },
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toStrictEqual(expectedGenericError);
     });
 
     it("should return a curated error in case it is set in the response", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({}),
-        createMockDataset({
-          error: "Wrong query",
-          error_is_curated: true,
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({}),
+          createMockDataset({
+            error: "Wrong query",
+            error_is_curated: true,
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toEqual({
         icon: "warning",
@@ -257,30 +271,39 @@ describe("Dashboard utils", () => {
     });
 
     it("should return a generic error in case the error is curated but is not a string", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({}),
-        createMockDataset({
-          error: { status: 500 },
-          error_is_curated: true,
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({}),
+          createMockDataset({
+            error: { status: 500 },
+            error_is_curated: true,
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toEqual(expectedGenericError);
     });
 
     it("should not return any errors if there are no any errors", () => {
-      const error = getDashcardResultsError([createMockDataset({})]);
+      const error = getDashcardResultsError(
+        [createMockDataset({})],
+        isGuestEmbed,
+      );
 
       expect(error).toBeUndefined();
     });
 
     it("should not return any errors if the error is curated but there is no error message or object set", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({
-          error: undefined,
-          error_is_curated: true,
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({
+            error: undefined,
+            error_is_curated: true,
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toBeUndefined();
     });

@@ -23,7 +23,10 @@ import type {
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
-import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import {
+  EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
+  isEmbeddingEajs,
+} from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import api from "metabase/lib/api";
@@ -121,7 +124,7 @@ const refreshTokenImpl = async (
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
   const state = getState() as SdkStoreState;
 
-  if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
+  if (isEmbeddingEajs()) {
     return requestSessionTokenFromEmbedJs();
   }
 

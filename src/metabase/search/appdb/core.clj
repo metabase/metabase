@@ -1,5 +1,6 @@
 (ns metabase.search.appdb.core
   (:require
+   [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -48,6 +49,13 @@
            ;; if the default engine is semantic we want appdb to be available, as we want to mix results
            (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
+
+(defmethod search.engine/disjunction :search.engine/appdb [_ terms]
+  (when (seq terms)
+    (if (or (= (mdb/db-type) :h2)
+            (= 1 (count terms)))
+      terms
+      [(str/join " OR " (map #(str "(" % ")") terms))])))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))

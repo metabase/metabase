@@ -1,7 +1,20 @@
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import type { DatabaseNode, ExpandedItem, FlatItem, TreeNode } from "./types";
-import { isExpandedItem, isSchemaNode, isTableNode } from "./types";
+import type {
+  DatabaseNode,
+  ExpandedDatabaseItem,
+  ExpandedItem,
+  ExpandedSchemaItem,
+  FlatItem,
+  SchemaNode,
+  TreeNode,
+} from "./types";
+import {
+  isExpandedItem,
+  isSchemaNode,
+  isTableNode,
+  isTableOrSchemaNode,
+} from "./types";
 
 export interface NodeSelection {
   tables: Set<TableId>;
@@ -9,14 +22,16 @@ export interface NodeSelection {
   databases: Set<DatabaseId>;
 }
 
+type NodeSelectionValues = "yes" | "no" | "some";
+
 export function isItemSelected(
   node: TreeNode,
   selection: NodeSelection,
-): "yes" | "no" | "some" {
+): NodeSelectionValues {
   if (!selection) {
     return "no";
   }
-  if (node.type === "table") {
+  if (isTableNode(node)) {
     return selection.tables.has(node.value.tableId) ? "yes" : "no";
   }
   if (isSchemaNode(node)) {
@@ -39,7 +54,7 @@ export function isItemSelected(
 function areChildTablesSelected(
   node: TreeNode,
   selectedTables: Set<TableId>,
-): "yes" | "no" | "some" {
+): NodeSelectionValues {
   if (node.children.length === 0) {
     return "no";
   }
@@ -59,7 +74,7 @@ function areChildTablesSelected(
 function areChildSchemasSelected(
   node: TreeNode,
   selection: NodeSelection,
-): "yes" | "no" | "some" {
+): NodeSelectionValues {
   if (node.children.length === 0) {
     return "no";
   }
@@ -75,21 +90,22 @@ function areChildSchemasSelected(
       : "some";
 }
 
-export function getSchemaId(item: FlatItem) {
-  if (!isExpandedItem(item)) {
-    return undefined;
+export function getSchemaId(item: FlatItem | SchemaNode) {
+  if (
+    "value" in item &&
+    item.value &&
+    "databaseId" in item.value &&
+    "schemaName" in item.value
+  ) {
+    return `${item.value.databaseId}:${item.value.schemaName}`;
   }
-  if (!isTableNode(item)) {
-    return undefined;
-  }
-  return `${item.value.databaseId}:${item.value.schemaName}`;
 }
 
 export function isParentSchemaSelected(
   item: FlatItem,
   selectedSchemas: Set<string>,
 ) {
-  if (item.type !== "table") {
+  if (!isTableNode(item)) {
     return false;
   }
 
@@ -171,11 +187,11 @@ export function getSchemaTables(
   const result = allItems
     .filter(
       (item) =>
-        isTableNode(item) &&
+        isTableOrSchemaNode(item) &&
         getSchemaId(schema) === getSchemaId(item) &&
         item.value.tableId,
     )
-    .filter(isTableNode);
+    .filter(isTableOrSchemaNode);
 
   return result;
 }
@@ -191,20 +207,6 @@ export function getSchemaChildrenTableIds(schema: TreeNode) {
   return schema.children
     .filter((child) => child.type === "table")
     .map((child) => child.value.tableId);
-}
-
-export function getParentSchemaTables(item: FlatItem, allItems: FlatItem[]) {
-  const parentSchema = getParentSchema(item, allItems);
-
-  if (!parentSchema) {
-    return [];
-  }
-
-  return allItems.filter((item) => {
-    return (
-      item.type === "table" && getSchemaId(parentSchema) === getSchemaId(item)
-    );
-  });
 }
 
 export function areTablesSelected(
@@ -274,4 +276,99 @@ export function areSchemasSelected(
   }
 
   return "none";
+}
+
+export function markAllSchemas(
+  item: FlatItem,
+  targetChecked: "yes" | "no",
+  selection: NodeSelection,
+): NodeSelection {
+  const schemas = new Set(selection.schemas);
+  const tables = new Set(selection.tables);
+
+  if (item.type !== "database") {
+    return {
+      tables,
+      schemas,
+      databases: selection.databases,
+    };
+  }
+
+  const filteredSchemas = item.children.filter(
+    (child): child is SchemaNode => child.type === "schema",
+  );
+  filteredSchemas.forEach((schema) => {
+    if (!isSchemaNode(schema)) {
+      return;
+    }
+    const schemaId = getSchemaId(schema);
+    if (!schemaId) {
+      return;
+    }
+    if (schema.children.length === 0) {
+      targetChecked === "yes"
+        ? schemas.add(schemaId)
+        : schemas.delete(schemaId);
+    } else {
+      markAllTables(schema, targetChecked, tables);
+    }
+  });
+
+  return {
+    tables,
+    schemas,
+    databases: selection.databases,
+  };
+}
+
+function markAllTables(
+  schema: SchemaNode,
+  targetChecked: "yes" | "no",
+  tablesSelection: Set<TableId>,
+) {
+  const tables = getSchemaChildrenTableIds(schema);
+  tables.forEach((tableId) => {
+    if (tableId === -1) {
+      return;
+    }
+    targetChecked === "yes"
+      ? tablesSelection.add(tableId)
+      : tablesSelection.delete(tableId);
+  });
+}
+
+export function toggleDatabaseSelection(
+  item: ExpandedDatabaseItem,
+  selection: NodeSelection,
+): NodeSelection {
+  const isSelected = isItemSelected(item, selection);
+  const targetChecked = isSelected === "yes" ? "no" : "yes";
+
+  return markAllSchemas(item, targetChecked, selection);
+}
+
+export function toggleSchemaSelection(
+  item: ExpandedSchemaItem,
+  selection: NodeSelection,
+): NodeSelection {
+  const isSelected = isItemSelected(item, selection);
+  const tables = new Set(selection.tables);
+
+  if (isSelected === "yes") {
+    const tableIds = getSchemaChildrenTableIds(item);
+    tableIds.forEach((x) => {
+      tables.delete(x);
+    });
+  } else {
+    const tableIds = getSchemaChildrenTableIds(item);
+    tableIds.forEach((x) => {
+      tables.add(x);
+    });
+  }
+
+  return {
+    tables,
+    schemas: selection.schemas,
+    databases: selection.databases,
+  };
 }

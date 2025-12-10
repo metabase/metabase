@@ -8,6 +8,7 @@ import { useDisableCommandPalette } from "metabase/palette/hooks/useDisableComma
 import { PreventEagerPortal } from "metabase/ui";
 
 export type { ModalProps } from "@mantine/core";
+export { useModalsStack } from "@mantine/core";
 
 export * from "./Modal.config";
 

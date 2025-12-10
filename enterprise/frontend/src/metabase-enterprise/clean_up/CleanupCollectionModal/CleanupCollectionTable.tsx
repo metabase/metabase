@@ -12,6 +12,7 @@ import {
   TableColumn,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
+import { getIcon } from "metabase/lib/icon";
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
@@ -97,7 +98,7 @@ export const CleanupCollectionTable = ({
             {/* Select */}
             <Columns.Select.Cell
               testIdPrefix="clean-up-table"
-              icon={item.getIcon()}
+              icon={getIcon(item)}
               isPinned={false}
               isSelected={getIsSelected(item)}
               handleSelectionToggled={() => onToggleSelected(item)}
@@ -106,7 +107,7 @@ export const CleanupCollectionTable = ({
             <ItemCell data-testid="clean-up-table-collection">
               <Flex align="center" gap="sm">
                 <FixedSizeIcon
-                  name={item.getIcon().name}
+                  name={getIcon(item).name}
                   color="var(--mb-color-brand)"
                 />
                 <Ellipsified>{item.name}</Ellipsified>

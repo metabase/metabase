@@ -49,7 +49,8 @@
         (t2/query-one {:update :segment
                        :set {:definition (json/encode {:filter "X"})}
                        :where [:= :id segment-id]})
-        (is (nil? (:definition (t2/select-one :model/Segment :id segment-id)))))))
+        (is (= {}
+               (:definition (t2/select-one :model/Segment :id segment-id)))))))
   (testing "...but should still throw them on insert"
     (is (thrown? Exception
                  (t2/insert! :model/Segment {:table_id (mt/id :venues)

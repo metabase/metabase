@@ -12,6 +12,7 @@
    [metabase.permissions.models.permissions-group-membership]
    [metabase.permissions.models.permissions-revision]
    [metabase.permissions.path]
+   [metabase.permissions.published-tables]
    [metabase.permissions.user]
    [metabase.permissions.util]
    [metabase.permissions.validation]
@@ -28,6 +29,7 @@
   metabase.permissions.models.permissions-group-membership/keep-me
   metabase.permissions.models.permissions-revision/keep-me
   metabase.permissions.path/keep-me
+  metabase.permissions.published-tables/keep-me
   metabase.permissions.user/keep-me
   metabase.permissions.util/keep-me
   metabase.permissions.validation/keep-me)
@@ -114,7 +116,11 @@
   check-manager-of-group]
  [metabase.permissions.models.collection.graph
   graph
-  update-graph!])
+  update-graph!]
+ [metabase.permissions.published-tables
+  user-published-table-permission
+  user-has-any-published-table-permission?
+  user-has-published-table-permission-for-database?])
 
 ;;; import these vars with different names to make their purpose more obvious.
 

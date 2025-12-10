@@ -3,15 +3,17 @@ import type React from "react";
 import { createContext, useCallback, useRef, useState } from "react";
 import _ from "underscore";
 
-import { useLazyListDatabasesQuery } from "metabase/api";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
   MetabotChatInputRef,
   MetabotContext as MetabotCtx,
 } from "metabase/metabot";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 
 export const defaultContext = {
   prompt: "",
@@ -43,17 +45,13 @@ export const MetabotProvider = ({
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
   const store = useStore();
 
-  const [listDbs] = useLazyListDatabasesQuery();
-
   const getChatContext = useCallback(async () => {
     const state = store.getState();
     const providerFns = [...providerFnsRef.current];
 
-    const { data: dbData } = await listDbs(undefined, true);
-    const databases = dbData?.data ?? [];
-    const hasDataAccess = getHasDataAccess(databases);
-    const hasNativeWrite = getHasNativeWrite(databases);
     const isAdmin = getUserIsAdmin(state);
+    const hasDataAccess = canUserCreateQueries(state);
+    const hasNativeWrite = canUserCreateNativeQueries(state);
 
     const ctx = {
       user_is_viewing: [],
@@ -76,7 +74,7 @@ export const MetabotProvider = ({
     }
 
     return ctx;
-  }, [store, listDbs]);
+  }, [store]);
 
   const registerChatContextProvider = useCallback(
     (providerFn: ChatContextProviderFn) => {

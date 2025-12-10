@@ -12,7 +12,6 @@ import {
   undo,
 } from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { ActionSchema } from "metabase/schema";
 import type {
   CreateActionRequest,
@@ -225,11 +224,6 @@ const Actions = createEntity({
         return state;
       }
     }
-  },
-  objectSelectors: {
-    getUrl: (action: WritebackAction) =>
-      Urls.action({ id: action.model_id }, action.id),
-    getIcon: () => ({ name: "bolt" }),
   },
 });
 

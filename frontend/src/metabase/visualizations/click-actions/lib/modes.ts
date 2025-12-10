@@ -5,7 +5,6 @@ import type Question from "metabase-lib/v1/Question";
 import { Mode } from "../Mode";
 import { ArchivedMode } from "../modes/ArchivedMode";
 import { DefaultMode } from "../modes/DefaultMode";
-import { EmbeddingSdkMode } from "../modes/EmbeddingSdkMode";
 import { ListMode } from "../modes/ListMode";
 
 export function getMode(question: Question): Mode | null {
@@ -18,11 +17,11 @@ export function getMode(question: Question): Mode | null {
 
 export function getEmbeddingMode({
   question,
-  queryMode = EmbeddingSdkMode,
+  queryMode,
   plugins,
 }: {
   question: Question;
-  queryMode?: QueryClickActionsMode;
+  queryMode: QueryClickActionsMode;
   plugins?: MetabasePluginsConfig;
 }): Mode {
   return new Mode(question, queryMode, plugins);

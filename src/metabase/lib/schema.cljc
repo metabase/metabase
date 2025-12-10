@@ -6,7 +6,7 @@
   Some primitives below are duplicated from [[metabase.util.malli.schema]] since that's not `.cljc`. Other stuff is
   copied from [[metabase.legacy-mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
-  (:refer-clojure :exclude [ref every? some select-keys empty?])
+  (:refer-clojure :exclude [ref every? some select-keys empty? get-in])
   (:require
    [medley.core :as m]
    [metabase.lib.schema.actions :as actions]
@@ -34,7 +34,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? select-keys some empty?]]))
+   [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me

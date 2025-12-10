@@ -88,7 +88,7 @@ export const setup = (config: MetabaseConfigProps = {}) => {
 
   const { state } = setupSdkState({
     sdkState: createMockSdkState({
-      loginStatus: createMockLoginStatusState({ status: "uninitialized" }),
+      initStatus: createMockLoginStatusState({ status: "uninitialized" }),
     }),
   });
   const view = renderWithProviders(<TestComponent config={config} />, {

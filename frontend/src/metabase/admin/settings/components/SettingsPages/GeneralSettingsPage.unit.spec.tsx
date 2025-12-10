@@ -16,6 +16,7 @@ import {
   createMockDashboard,
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { GeneralSettingsPage } from "./GeneralSettingsPage";
@@ -35,8 +36,15 @@ const generalSettings = {
   "search-engine": "appdb",
 } as const;
 
-const setup = async () => {
-  const settings = createMockSettings(generalSettings);
+const setup = async (
+  { isCloudPlan }: { isCloudPlan: boolean } = { isCloudPlan: false },
+) => {
+  const settings = createMockSettings({
+    ...generalSettings,
+    "token-features": createMockTokenFeatures({
+      hosting: isCloudPlan,
+    }),
+  });
 
   fetchMock.get("https://mysite.biz/api/health", { status: 200 });
 
@@ -69,7 +77,7 @@ const setup = async () => {
     </>,
   );
 
-  await screen.findByText("Redirect to HTTPS");
+  await screen.findByText("Site name");
 };
 
 describe("GeneralSettingsPage", () => {
@@ -154,5 +162,17 @@ describe("GeneralSettingsPage", () => {
       const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(2);
     });
+  });
+
+  it("should show Anonymous Tracking input for non-cloud plans", async () => {
+    await setup({ isCloudPlan: false });
+
+    expect(screen.getByText("Anonymous tracking")).toBeInTheDocument();
+  });
+
+  it("should not show Anonymous Tracking input if the plan is cloud", async () => {
+    await setup({ isCloudPlan: true });
+
+    expect(screen.queryByText("Anonymous tracking")).not.toBeInTheDocument();
   });
 });

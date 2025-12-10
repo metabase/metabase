@@ -10,6 +10,7 @@
 
   DEPRECATED: use [[metabase.query-processor.parameters.operators]] going forward."
   {:deprecated "0.57.0"}
+  (:refer-clojure :exclude [get-in])
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -18,6 +19,7 @@
    [metabase.query-processor.parameters.operators :as qp.params.ops]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]]
    [potemkin :as p]))
 
 (p/import-vars

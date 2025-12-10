@@ -51,6 +51,9 @@ interface EmbeddingHubAction {
   /** Path of the documentation page, e.g. `embedding/embedded-analytics-js` */
   docsPath?: string;
 
+  /** Anchor on the documentation page, e.g. `set-up-sso` */
+  anchor?: string;
+
   /** CTA button variant. */
   variant?: "outline" | "subtle" | "filled";
 

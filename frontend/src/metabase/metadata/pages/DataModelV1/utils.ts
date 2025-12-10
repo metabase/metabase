@@ -17,34 +17,6 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
   };
 }
 
-export function getUrl(params: ParsedRouteParams): string {
-  const { databaseId, schemaName, tableId, fieldId } = params;
-  const schemaId = `${databaseId}:${schemaName}`;
-
-  if (
-    databaseId != null &&
-    schemaName != null &&
-    tableId != null &&
-    fieldId != null
-  ) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`;
-  }
-
-  if (databaseId != null && schemaName != null && tableId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`;
-  }
-
-  if (databaseId != null && schemaName != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}`;
-  }
-
-  if (databaseId != null) {
-    return `/admin/datamodel/database/${databaseId}`;
-  }
-
-  return `/admin/datamodel`;
-}
-
 export function getTableMetadataQuery(
   tableId: TableId | undefined,
 ): GetTableQueryMetadataRequest | typeof skipToken {

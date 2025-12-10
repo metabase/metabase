@@ -38,7 +38,11 @@ export function TransformDependenciesPage({
   }
 
   return (
-    <Flex direction="column" h="100%">
+    <Flex
+      direction="column"
+      h="100%"
+      data-testid="transforms-dependencies-content"
+    >
       <TransformHeader transform={transform} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{

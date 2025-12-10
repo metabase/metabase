@@ -85,7 +85,7 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioModeling()));
+    dispatch(push(Urls.dataStudioLibrary()));
   };
 
   return (

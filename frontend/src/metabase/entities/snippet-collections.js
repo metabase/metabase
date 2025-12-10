@@ -67,10 +67,6 @@ const SnippetCollections = createEntity({
       getFetched(state, props) || getObject(state, props),
   }),
 
-  objectSelectors: {
-    getIcon: () => ({ name: "folder" }),
-  },
-
   getAnalyticsMetadata() {
     return undefined; // not tracking
   },

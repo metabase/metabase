@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { getLocation } from "metabase/selectors/routing";
 
 import { TablePicker } from "./components";
 import type { ChangeOptions, TreePath } from "./types";
-import { getUrl } from "./utils";
 
 export function RouterTablePicker(props: TreePath) {
   const dispatch = useDispatch();
@@ -26,10 +26,10 @@ export function RouterTablePicker(props: TreePath) {
         if (options?.isAutomatic) {
           // prevent auto-navigation from table-picker when Segments tab is open
           if (!isSegments) {
-            dispatch(replace(getUrl(value)));
+            dispatch(replace(Urls.dataModel(value)));
           }
         } else {
-          dispatch(push(getUrl(value)));
+          dispatch(push(Urls.dataModel(value)));
         }
       }
     },

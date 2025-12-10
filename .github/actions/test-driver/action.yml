@@ -9,6 +9,9 @@ inputs:
   build-static-viz:
     required: true
     default: false
+  logs-artifact-suffix:
+    required: false
+    description: Suffix to append to the test logs artifact name to avoid conflicts in matrix jobs
 
 outputs:
   quarantine-skipped:
@@ -82,7 +85,7 @@ runs:
       if: always() && steps.run-test.outcome != 'success' && steps.check-driver.outputs.skip != 'true'
       uses: actions/upload-artifact@v4
       with:
-        name: test-logs-${{ github.job }}
+        name: ${{ format('test-logs-{0}{1}', github.job, (inputs.logs-artifact-suffix == '' || inputs.logs-artifact-suffix == null) && '' || format('-{0}', inputs.logs-artifact-suffix)) }}
         path: logs/test-log.json
         retention-days: 1
       # Failing to upload the artifact should never affect the outcome of the whole test run.

@@ -5,17 +5,14 @@ import {
   skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type {
-  Collection,
-  CollectionItemModel,
-  Dashboard,
-} from "metabase-types/api";
+import type { Collection, Dashboard } from "metabase-types/api";
 
 import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
@@ -38,8 +35,12 @@ const personalCollectionsRoot: CollectionPickerItem = {
 export const useRootCollectionPickerItems = (
   options: CollectionItemListProps["options"],
 ) => {
-  const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  const { data: databaseData, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery(undefined, { skip: !options.showDatabases });
+  const databases = databaseData?.data ?? [];
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
     useGetCollectionQuery(
@@ -84,7 +85,7 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showDatabases) {
+    if (options.showDatabases && databases.length > 0) {
       collectionItems.push({
         id: "databases",
         name: t`Databases`,
@@ -92,7 +93,7 @@ export const useRootCollectionPickerItems = (
         can_write: true,
         location: "/",
         here: ["collection"],
-        below: ["table" as CollectionItemModel],
+        below: ["table"],
       });
     }
 
@@ -146,12 +147,14 @@ export const useRootCollectionPickerItems = (
     rootCollection,
     isAdmin,
     options,
+    databases.length,
     rootCollectionError,
     totalPersonalCollectionItems,
     libraryCollection,
   ]);
 
   const isLoading =
+    isLoadingDatabases ||
     isLoadingRootCollecton ||
     isLoadingPersonalCollecton ||
     isLoadingPersonalCollectionItems;

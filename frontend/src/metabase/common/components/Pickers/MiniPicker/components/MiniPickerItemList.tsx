@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import {
   skipToken,
+  useGetCollectionQuery,
   useListCollectionItemsQuery,
   useListDatabaseSchemaTablesQuery,
   useListDatabaseSchemasQuery,
@@ -10,6 +11,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
@@ -54,11 +56,13 @@ function RootItemList() {
   const { data: databases } = useListDatabasesQuery();
   const { setPath, isHidden, models, shouldShowLibrary } =
     useMiniPickerContext();
+  const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
+    useGetCollectionQuery({ id: "root" });
   const { data: libraryCollection, isLoading } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+    PLUGIN_DATA_STUDIO.useGetResolvedLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");
 
-  if (isLoading) {
+  if (isLoading || isLoadingRootCollection) {
     return <MiniPickerListLoader />;
   }
 
@@ -84,9 +88,13 @@ function RootItemList() {
       </ItemList>
     );
   }
+
   if (
     libraryCollection &&
-    _.intersection(models, libraryCollection.below || []).length &&
+    _.intersection(models, [
+      ...(libraryCollection.below || []),
+      ...(libraryCollection.here || []),
+    ]).length &&
     shouldShowLibrary
   ) {
     return (
@@ -115,7 +123,7 @@ function RootItemList() {
         />
       )) ?? <MiniPickerListLoader />}
       <MiniPickerItem
-        name={t`Our analytics`}
+        name={rootCollectionError ? t`Collections` : t`Our analytics`}
         model="collection"
         isFolder
         onClick={() => {
@@ -123,7 +131,7 @@ function RootItemList() {
             {
               model: "collection",
               id: "root" as any, // cmon typescript, trust me
-              name: t`Our analytics`,
+              name: rootCollectionError ? t`Collections` : t`Our analytics`,
             },
           ]);
         }}
@@ -234,26 +242,26 @@ function DatabaseItemList({
 function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
   const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
 
-  const {
-    data: items,
-    isLoading,
-    isFetching,
-  } = useListCollectionItemsQuery({
+  const { data, isLoading, isFetching } = useListCollectionItemsQuery({
     id: parent.id === null ? "root" : parent.id,
+    include_can_run_adhoc_query: true,
   });
+
+  const items = data?.data?.filter(canCollectionCardBeUsed);
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;
   }
 
-  if (items?.data?.length) {
+  if (items?.length) {
     return (
       <ItemList>
-        {items.data.map((item) => (
+        {items.map((item) => (
           <MiniPickerItem
             key={`${item.model}-${item.id}`}
             name={item.name}
             model={item.model}
+            display={item.display}
             isFolder={isFolder(item)}
             isHidden={isHidden(item)}
             onClick={() => {
@@ -282,14 +290,12 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 }
 
 function SearchItemList({ query }: { query: string }) {
-  const { onChange, models, libraryCollection, isHidden } =
-    useMiniPickerContext();
+  const { onChange, models, isHidden } = useMiniPickerContext();
 
   const { data: searchResponse, isLoading } = useSearchQuery({
     q: query,
     models: models as SearchModel[],
     limit: 50,
-    ...(libraryCollection ? { collection: libraryCollection.id } : {}),
   });
 
   const searchResults: MiniPickerPickableItem[] = (

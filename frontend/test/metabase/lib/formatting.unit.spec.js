@@ -789,6 +789,25 @@ describe("formatting", () => {
         const endYear = formatDateTimeWithUnit("2023-12-25", "week-of-year");
         expect(endYear).toMatch(/^5[0-3][a-z]+$/);
       });
+
+      it("should remove square brackets from English ordinals", () => {
+        expect(formatDateTimeWithUnit(1, "week-of-year")).toEqual("1st");
+        expect(formatDateTimeWithUnit(2, "week-of-year")).toEqual("2nd");
+        expect(formatDateTimeWithUnit(3, "week-of-year")).toEqual("3rd");
+      });
+
+      it("should handle non-English locales where ordinals are not wrapped in brackets (#66658)", () => {
+        const originalLocale = dayjs.locale();
+        try {
+          require("dayjs/locale/fr");
+          dayjs.locale("fr");
+          expect(formatDateTimeWithUnit(1, "week-of-year")).toEqual("1er");
+          expect(formatDateTimeWithUnit(2, "week-of-year")).toEqual("2");
+          expect(formatDateTimeWithUnit(3, "week-of-year")).toEqual("3");
+        } finally {
+          dayjs.locale(originalLocale);
+        }
+      });
     });
   });
 

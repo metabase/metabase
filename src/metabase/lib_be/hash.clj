@@ -37,7 +37,8 @@
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   ^bytes [query :- :map]
   (-> query
-      (cond-> (not= (keyword (:type query)) :internal) lib-be.models.transforms/normalize-query)
+      (cond-> (not= (keyword (:type query)) :internal)
+        (as-> $query (lib-be.models.transforms/normalize-query nil $query {:strict? true})))
       encode
       json/encode
       buddy-hash/sha3-256))

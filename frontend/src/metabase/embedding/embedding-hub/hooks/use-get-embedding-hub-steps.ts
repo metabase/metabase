@@ -33,7 +33,10 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
           onClick: () => {
             openEmbedModal({
-              initialState: { useExistingUserSession: true },
+              initialState: {
+                isGuest: true,
+                useExistingUserSession: true,
+              },
             });
           },
           variant: "outline",
@@ -99,14 +102,15 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         {
           title: t`Configure SSO`,
           description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
-          docsPath: "embedding/embedded-analytics-js#set-up-sso",
+          docsPath: "embedding/embedded-analytics-js",
+          anchor: "set-up-sso",
           variant: "outline",
           stepId: "secure-embeds",
         },
         {
           title: t`Configure data permissions`,
-          docsPath:
-            "permissions/embedding#one-database-for-all-customers-commingled-setups",
+          docsPath: "permissions/embedding",
+          anchor: "one-database-for-all-customers-commingled-setups",
           description: t`Manage permissions to limit what data your users can access.`,
           variant: "outline",
           stepId: "configure-row-column-security",
@@ -130,7 +134,10 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
           onClick: () => {
             openEmbedModal({
-              initialState: { useExistingUserSession: false },
+              initialState: {
+                isGuest: false,
+                useExistingUserSession: false,
+              },
             });
           },
           variant: "outline",

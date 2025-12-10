@@ -21,12 +21,24 @@ export function getDataStudioMetadataRoutes() {
         component={DataModel}
       />
       <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+        path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
+        component={DataModel}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
         component={DataModel}
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
+      />
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+      />
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
@@ -38,14 +50,6 @@ export function getDataStudioMetadataRoutes() {
         <Route path="segment/:id" component={SegmentApp} />
         <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
       </Route>
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId"
-      />
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-      />
     </>
   );
 }

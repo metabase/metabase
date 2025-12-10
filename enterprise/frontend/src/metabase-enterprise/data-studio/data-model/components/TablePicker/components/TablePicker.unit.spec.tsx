@@ -161,11 +161,12 @@ function setup({
   setupUsersEndpoints([currentUser]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
-    key: "seen-publish-models-info",
+    key: "seen-publish-tables-info",
     value: false,
   });
 
   const onChange = jest.fn();
+  const setOnUpdateCallback = jest.fn();
   const params = {};
 
   renderWithProviders(
@@ -177,6 +178,7 @@ function setup({
             initialValue={path}
             onChange={onChange}
             params={params}
+            setOnUpdateCallback={setOnUpdateCallback}
           />
         </SelectionProvider>
       )}

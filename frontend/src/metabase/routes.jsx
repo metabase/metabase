@@ -30,6 +30,8 @@ import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/Ar
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
+import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
+import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -39,7 +41,6 @@ import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_STUDIO,
-  PLUGIN_DOCUMENTS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
@@ -154,7 +155,17 @@ export const getRoutes = (store) => {
           <Redirect from="archive" to="trash" replace />
           <Route path="trash" component={TrashCollectionLanding} />
 
-          {PLUGIN_DOCUMENTS.getRoutes()}
+          <Route path="document/:entityId" component={DocumentPageOuter}>
+            <ModalRoute
+              path="comments/:childTargetId"
+              modal={CommentsSidesheet}
+              noWrap
+              modalProps={{
+                enableTransition: false,
+                closeOnClickOutside: false,
+              }}
+            />
+          </Route>
 
           <Route
             path="collection/entity/:entity_id(**)"

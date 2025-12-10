@@ -23,7 +23,6 @@ import Collections, {
 import Databases from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -41,7 +40,7 @@ function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
   return {
     currentUser: getUser(state),
     isAdmin: getUserIsAdmin(state),
-    hasDataAccess: getHasDataAccess(databases),
+    hasDataAccess: databases.length > 0,
     bookmarks: getOrderedBookmarks(state),
   };
 }
