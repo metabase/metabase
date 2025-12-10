@@ -427,7 +427,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         <Flex gap="sm">
           <RunWorkspaceMenu
             workspaceId={id}
-            disabled={workspaceTransforms.length === 0}
+            disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
           />
           <Button
             variant="filled"

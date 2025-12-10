@@ -156,20 +156,23 @@ describe("scenarios > data studio > workspaces", () => {
       H.tabsShouldBe("SQL transform", ["Setup", "Agent Chat", "SQL transform"]);
     });
     Workspaces.getMergeWorkspaceButton().should("be.enabled");
+    Workspaces.getRunWorkspaceButton().should("be.enabled");
     Workspaces.getTransformTargetButton().should("be.enabled");
-    Workspaces.getTransformRunButton().should("be.enabled");
-    Workspaces.getTransformSaveButton().should("be.disabled");
+    Workspaces.getRunTransformButton().should("be.enabled");
+    Workspaces.getSaveTransformButton().should("be.disabled");
 
     H.NativeEditor.type(" LIMIT 2");
     Workspaces.getMergeWorkspaceButton().should("be.disabled");
+    Workspaces.getRunWorkspaceButton().should("be.disabled");
     Workspaces.getTransformTargetButton().should("be.disabled");
-    Workspaces.getTransformRunButton().should("be.disabled");
-    Workspaces.getTransformSaveButton().should("be.enabled").click();
+    Workspaces.getRunTransformButton().should("be.disabled");
+    Workspaces.getSaveTransformButton().should("be.enabled").click();
 
     Workspaces.getMergeWorkspaceButton().should("be.enabled");
+    Workspaces.getRunWorkspaceButton().should("be.enabled");
     Workspaces.getTransformTargetButton().should("be.enabled");
-    Workspaces.getTransformSaveButton().should("be.disabled");
-    Workspaces.getTransformRunButton().should("be.enabled").click();
+    Workspaces.getSaveTransformButton().should("be.disabled");
+    Workspaces.getRunTransformButton().should("be.enabled").click();
 
     Workspaces.getWorkspaceSidebar().within(() => {
       cy.findByRole("tab", { name: "Data" }).click();
