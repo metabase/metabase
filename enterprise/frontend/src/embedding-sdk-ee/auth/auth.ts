@@ -212,7 +212,7 @@ const getRefreshToken = async ({
   jwtProviderUri?: string;
   fetchRequestToken?: MetabaseAuthConfig["fetchRequestToken"];
 }) => {
-  const shouldSkipSsoDiscovery = Boolean(jwtProviderUri);
+  const shouldSkipSsoDiscovery = jwtProviderUri !== undefined;
 
   const urlResponseJson = shouldSkipSsoDiscovery
     ? { method: "jwt", url: jwtProviderUri }
