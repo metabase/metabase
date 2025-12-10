@@ -217,6 +217,10 @@ function dataStudioDependencies(
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
+export function dataStudioBrokenItems(params: DependencyListParams = {}) {
+  return dataStudioDependencies(`${dataStudioTasks()}/broken`, params);
+}
+
 export function dataStudioUnreferencedItems(params: DependencyListParams = {}) {
   return dataStudioDependencies(`${dataStudioTasks()}/unreferenced`, params);
 }

@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -12,42 +11,30 @@ import {
 import { SectionLayout } from "../../components/SectionLayout";
 
 type TasksSectionLayoutProps = {
-  location: Location;
   children?: ReactNode;
 };
 
-export function TasksSectionLayout({
-  location,
-  children,
-}: TasksSectionLayoutProps) {
+export function TasksSectionLayout({ children }: TasksSectionLayoutProps) {
   usePageTitle(t`Unreferenced items`);
 
-  return (
-    <SectionLayout tabs={<TasksTabs location={location} />}>
-      {children}
-    </SectionLayout>
-  );
+  return <SectionLayout tabs={<TasksTabs />}>{children}</SectionLayout>;
 }
 
-type TasksTabsProps = {
-  location: Location;
-};
-
-function TasksTabs({ location }: TasksTabsProps) {
-  return <PaneHeaderTabs tabs={getTabs(location)} withBackground />;
+function TasksTabs() {
+  return <PaneHeaderTabs tabs={getTabs()} withBackground />;
 }
 
-function getTabs({ pathname }: Location): PaneHeaderTab[] {
-  const isUnreferencedItems = pathname.startsWith(
-    Urls.dataStudioUnreferencedItems(),
-  );
-
+function getTabs(): PaneHeaderTab[] {
   return [
+    {
+      label: t`Broken`,
+      to: Urls.dataStudioBrokenItems(),
+      icon: "warning",
+    },
     {
       label: t`Unreferenced`,
       to: Urls.dataStudioUnreferencedItems(),
-      icon: "transform",
-      isSelected: isUnreferencedItems,
+      icon: "link",
     },
   ];
 }
