@@ -208,16 +208,16 @@
 (defn airgap-check-user-count-insert
   "When inserting a new user, check that we are not exceeding the allowed user count in an airgap context."
   []
-  (let [max-users-allowed (max-users-allowed)
-        the-new-user-will-overflow? (if max-users-allowed
+  (let [max-user-limit (max-users-allowed)
+        the-new-user-will-overflow? (if max-user-limit
                                       (let [the-user-we-want-to-add 1]
-                                        (> (+ (active-user-count) the-user-we-want-to-add) max-users-allowed))
+                                        (> (+ (active-user-count) the-user-we-want-to-add) max-user-limit))
                                       ;; no max user count -> always legal
                                       false)]
     (when the-new-user-will-overflow?
       (throw (Exception.
-              (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
-                   max-users-allowed))))))
+              (trs "Inserting another user would overflow the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                   max-user-limit))))))
 
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
