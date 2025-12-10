@@ -87,7 +87,7 @@ describe("Table editing", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "data_studio_table_published",
       });
-      H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
       cy.go("back");
 
       cy.log("unpublish the table and verify it's unpublished");
@@ -95,7 +95,7 @@ describe("Table editing", () => {
       H.modal().findByText("Unpublish this table").click();
       cy.wait("@unpublishTables");
       H.DataStudio.nav().findByLabelText("Library").click();
-      H.DataStudio.Modeling.modelingPage()
+      H.DataStudio.Library.libraryPage()
         .findByText("No tables, metrics, or snippets yet")
         .should("be.visible");
     },

@@ -3,7 +3,7 @@ import type { TableId } from "metabase-types/api";
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
-const modelingPage = () => cy.findByTestId("modeling-page");
+const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
@@ -72,7 +72,7 @@ export const DataStudio = {
     dependenciesTab: () =>
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
-      cy.visit(`/data-studio/modeling/tables/${tableId}`),
+      cy.visit(`/data-studio/library/tables/${tableId}`),
     moreMenuViewTable: () =>
       popover()
         .findByRole("menuitem", { name: /View/ })
@@ -90,17 +90,17 @@ export const DataStudio = {
           .findByPlaceholderText("No description"),
     },
   },
-  Modeling: {
+  Library: {
     emptyPage: () =>
-      modelingPage().findByText("No tables, metrics, or snippets yet"),
-    modelingPage,
+      libraryPage().findByText("No tables, metrics, or snippets yet"),
+    libraryPage,
     metricItem: (name: string) =>
       cy.findAllByTestId("metric-name").contains(name),
     tableItem: (name: string) =>
-      modelingPage().findAllByTestId("table-name").contains(name),
-    result: (name: string) => modelingPage().findByText(name).closest("tr"),
-    newButton: () => modelingPage().findByRole("button", { name: /New/ }),
+      libraryPage().findAllByTestId("table-name").contains(name),
+    result: (name: string) => libraryPage().findByText(name).closest("tr"),
+    newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string) =>
-      modelingPage().findAllByTestId("collection-name").contains(name),
+      libraryPage().findAllByTestId("collection-name").contains(name),
   },
 };

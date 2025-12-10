@@ -2,7 +2,7 @@ import * as Urls from "metabase/lib/urls";
 
 type TabName =
   | "data"
-  | "modeling"
+  | "library"
   | "transforms"
   | "jobs"
   | "runs"
@@ -17,8 +17,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "jobs";
     case pathname.startsWith(Urls.dependencyGraph()):
       return "dependencies";
-    case pathname.startsWith(Urls.dataStudioModeling()):
-      return "modeling";
+    case pathname.startsWith(Urls.dataStudioLibrary()):
+      return "library";
     case pathname.startsWith(Urls.transformRunList()):
       return "runs";
     case pathname.startsWith(Urls.transformList()):

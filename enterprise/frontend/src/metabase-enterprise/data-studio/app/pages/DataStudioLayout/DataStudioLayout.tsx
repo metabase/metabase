@@ -92,8 +92,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         <DataStudioTab
           label={t`Library`}
           icon="repository"
-          to={Urls.dataStudioModeling()}
-          isSelected={currentTab === "modeling"}
+          to={Urls.dataStudioLibrary()}
+          isSelected={currentTab === "library"}
           showLabel={isNavbarOpened}
         />
 

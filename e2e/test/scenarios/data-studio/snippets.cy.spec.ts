@@ -7,7 +7,7 @@ describe("scenarios > data studio > snippets", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    // TODO: We likely shouln't need to do this to access the data studio modeling page
+    // TODO: We likely shouldn't need to do this to access the data studio library page
     H.createLibrary();
 
     cy.intercept("POST", "/api/native-query-snippet").as("createSnippet");
@@ -16,9 +16,9 @@ describe("scenarios > data studio > snippets", () => {
 
   describe("creation", () => {
     it("should create a new snippet with proper validation", () => {
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.newButton().click();
+      H.DataStudio.Library.newButton().click();
       H.popover().findByText("New snippet").click();
 
       H.DataStudio.Snippets.newPage().should("be.visible");
@@ -49,7 +49,7 @@ describe("scenarios > data studio > snippets", () => {
       });
 
       H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
-      H.DataStudio.Modeling.modelingPage()
+      H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
         .should("be.visible");
     });
@@ -62,9 +62,9 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editPage().should("be.visible");
 
@@ -85,9 +85,9 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 
@@ -106,9 +106,9 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 
@@ -131,9 +131,9 @@ describe("scenarios > data studio > snippets", () => {
         description: "**Bold text** and *italic text*",
       });
 
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
       H.DataStudio.Snippets.editPage().within(() => {
         cy.findByText("Bold text").should("have.css", "font-weight", "700");
         cy.findByText("italic text").should("have.css", "font-style", "italic");
@@ -148,9 +148,9 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
       cy.findByTestId("snippet-header").findByRole("button").click();
       H.popover().findByText("Delete").click();
@@ -161,7 +161,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@updateSnippet");
       });
 
-      H.DataStudio.Modeling.modelingPage()
+      H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
         .should("not.exist");
     });
@@ -175,9 +175,9 @@ describe("scenarios > data studio > snippets", () => {
     });
 
     it("should be able to create a folder and snippet inside it", () => {
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.newButton().click();
+      H.DataStudio.Library.newButton().click();
       H.popover().findByText("New snippet folder").click();
 
       H.modal().within(() => {
@@ -189,11 +189,11 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@createCollection");
       });
 
-      H.DataStudio.Modeling.modelingPage()
+      H.DataStudio.Library.libraryPage()
         .findByText("Test Folder")
         .should("be.visible");
 
-      H.DataStudio.Modeling.newButton().click();
+      H.DataStudio.Library.newButton().click();
       H.popover().findByText("New snippet").click();
 
       H.DataStudio.Snippets.nameInput().type("Folder snippet");
@@ -208,7 +208,7 @@ describe("scenarios > data studio > snippets", () => {
       cy.wait("@createSnippet");
 
       H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
-      H.DataStudio.Modeling.modelingPage()
+      H.DataStudio.Library.libraryPage()
         .findByText("Folder snippet")
         .should("be.visible");
     });
@@ -218,9 +218,9 @@ describe("scenarios > data studio > snippets", () => {
         name: "Test Folder",
       });
 
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.result("Test Folder").icon("ellipsis").click();
+      H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 
       H.popover().findByText("Edit folder details").click();
 
@@ -232,7 +232,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@updateCollection");
       });
 
-      H.DataStudio.Modeling.modelingPage()
+      H.DataStudio.Library.libraryPage()
         .findByText("Updated Folder")
         .should("be.visible");
     });
@@ -242,22 +242,22 @@ describe("scenarios > data studio > snippets", () => {
         name: "Test Folder",
       });
 
-      visitModelingPage();
+      visitLibraryPage();
 
-      H.DataStudio.Modeling.result("Test Folder").icon("ellipsis").click();
+      H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 
       H.popover().findByText("Archive").click();
 
       cy.wait("@updateCollection");
 
-      H.DataStudio.Modeling.modelingPage()
+      H.DataStudio.Library.libraryPage()
         .findByText("Test Folder")
         .should("not.exist");
     });
   });
 });
 
-function visitModelingPage() {
-  cy.visit("/data-studio/modeling");
-  H.DataStudio.Modeling.modelingPage().should("be.visible");
+function visitLibraryPage() {
+  cy.visit("/data-studio/library");
+  H.DataStudio.Library.libraryPage().should("be.visible");
 }
