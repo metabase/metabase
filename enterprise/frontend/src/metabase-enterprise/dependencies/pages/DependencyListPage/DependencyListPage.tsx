@@ -67,17 +67,19 @@ type ListNodesResult = {
 };
 
 type DependencyListPageProps = {
+  useListNodesQuery: (request: ListNodesRequest) => ListNodesResult;
   availableGroupTypes: DependencyGroupType[];
   nothingFoundMessage: string;
   location: Location<DependencyListRawParams>;
-  useListNodesQuery: (request: ListNodesRequest) => ListNodesResult;
+  withDependentsCount?: boolean;
 };
 
 function DependencyListPage({
+  useListNodesQuery,
   availableGroupTypes,
   nothingFoundMessage,
   location,
-  useListNodesQuery,
+  withDependentsCount,
 }: DependencyListPageProps) {
   const params = useMemo(
     () => parseRawParams(location.query),
@@ -215,6 +217,7 @@ function DependencyListPage({
             items={data.data}
             sortOptions={sortOptions}
             paginationOptions={paginationOptions}
+            withDependentsCount={withDependentsCount}
             onSortChange={handleSortChange}
             onPageChange={handlePageChange}
           />
@@ -233,10 +236,11 @@ export function BrokenDependencyListPage({
 }: BrokenDependencyListPageProps) {
   return (
     <DependencyListPage
+      useListNodesQuery={useListBrokenGraphNodesQuery}
       availableGroupTypes={BROKEN_GROUP_TYPES}
       nothingFoundMessage={t`No broken entities found`}
       location={location}
-      useListNodesQuery={useListBrokenGraphNodesQuery}
+      withDependentsCount
     />
   );
 }
@@ -250,10 +254,10 @@ export function UnreferencedDependencyListPage({
 }: UnreferencedDependencyListPageProps) {
   return (
     <DependencyListPage
+      useListNodesQuery={useListUnreferencedGraphNodesQuery}
       availableGroupTypes={UNREFERENCED_GROUP_TYPES}
       nothingFoundMessage={t`No unreferenced entities found`}
       location={location}
-      useListNodesQuery={useListUnreferencedGraphNodesQuery}
     />
   );
 }

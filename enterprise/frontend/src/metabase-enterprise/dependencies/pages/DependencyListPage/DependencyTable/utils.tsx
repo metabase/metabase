@@ -7,6 +7,7 @@ import {
 } from "metabase-types/api";
 
 import {
+  getNodeDependentsCount,
   getNodeIcon,
   getNodeLabel,
   getNodeLastEditInfo,
@@ -57,6 +58,21 @@ function getItemLocationColumn(): DependencyColumnOptions {
   };
 }
 
+function getItemDependentsColumn(): DependencyColumnOptions {
+  return {
+    id: "dependents-count",
+    get name() {
+      return t`Dependents`;
+    },
+    accessorFn: (item) => getNodeDependentsCount(item),
+    cell: ({ row }) => {
+      const item = row.original;
+      const value = getNodeDependentsCount(item);
+      return <TextCell value={String(value)} />;
+    },
+  };
+}
+
 function getItemLastEditAtColumn(): DependencyColumnOptions {
   return {
     id: "last-edit-at",
@@ -89,10 +105,17 @@ function getItemLastEditByColumn(): DependencyColumnOptions {
   };
 }
 
-export function getColumns(): DependencyColumnOptions[] {
+type ColumnOptions = {
+  withDependentsCount?: boolean;
+};
+
+export function getColumns({
+  withDependentsCount,
+}: ColumnOptions): DependencyColumnOptions[] {
   return [
     getItemNameColumn(),
     getItemLocationColumn(),
+    ...(withDependentsCount ? [getItemDependentsColumn()] : []),
     getItemLastEditAtColumn(),
     getItemLastEditByColumn(),
   ];

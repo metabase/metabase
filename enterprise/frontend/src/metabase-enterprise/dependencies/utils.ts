@@ -278,6 +278,17 @@ export function getNodeViewCount(node: DependencyNode): number | null {
   }
 }
 
+export function getNodeDependentsCount(node: DependencyNode): number {
+  const dependentsCount = node.dependents_count;
+  if (dependentsCount == null) {
+    return 0;
+  }
+  return Object.values(dependentsCount).reduce(
+    (total, count) => total + count,
+    0,
+  );
+}
+
 export function getCardType(groupType: DependencyGroupType): CardType | null {
   switch (groupType) {
     case "question":
