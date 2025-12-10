@@ -1,0 +1,44 @@
+name: Querying Team PagerDuty Alert
+
+on:
+  issues:
+    types:
+      - labeled
+  # Remove these after testing:
+  workflow_dispatch:  # Allows manual triggering from Actions tab
+    inputs:
+      test_issue_number:
+        description: 'Issue number to simulate (for testing)'
+        required: false
+        default: '12345'
+
+jobs:
+  notify-querying-team:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    # Trigger when both .Team/Querying AND .Test labels are present, OR when manually triggered
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (contains(github.event.issue.labels.*.name, '.Team/Querying') &&
+       contains(github.event.issue.labels.*.name, '.Test'))
+    steps:
+      - name: Debug output
+        run: |
+          echo "🚨 Querying Team PagerDuty workflow triggered!"
+          echo ""
+          echo "Event type: ${{ github.event_name }}"
+          echo ""
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "This is a MANUAL TEST run"
+            echo "Test issue number input: ${{ github.event.inputs.test_issue_number }}"
+          else
+            echo "Issue Number: ${{ github.event.issue.number }}"
+            echo "Issue Title: ${{ github.event.issue.title }}"
+            echo "Issue URL: ${{ github.event.issue.html_url }}"
+            echo "Issue Author: ${{ github.event.issue.user.login }}"
+            echo ""
+            echo "Labels on issue:"
+            echo '${{ toJson(github.event.issue.labels.*.name) }}'
+            echo ""
+            echo "Label that triggered this workflow: ${{ github.event.label.name }}"
+          fi
