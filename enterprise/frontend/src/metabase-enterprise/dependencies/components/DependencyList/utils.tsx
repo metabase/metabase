@@ -47,6 +47,7 @@ function getItemLastEditAtColumn(): DependencyColumnOptions {
       const value = getNodeLastEditInfo(item)?.timestamp;
       return <DateTimeCell value={value} unit="day" />;
     },
+    headerClickable: false,
   };
 }
 
@@ -62,6 +63,7 @@ function getItemLastEditByColumn(): DependencyColumnOptions {
       const value = getNodeLastEditInfo(item);
       return <TextCell value={value ? getUserName(value) : undefined} />;
     },
+    headerClickable: false,
   };
 }
 
