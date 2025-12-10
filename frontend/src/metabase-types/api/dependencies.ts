@@ -13,16 +13,32 @@ import type { Transform } from "./transform";
 import type { UserInfo } from "./user";
 
 export type DependencyId = number;
-export type DependencyType =
-  | "card"
-  | "table"
-  | "transform"
-  | "snippet"
-  | "dashboard"
-  | "document"
-  | "sandbox"
-  | "segment";
-export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
+
+export const DEPENDENCY_TYPES = [
+  "card",
+  "table",
+  "transform",
+  "snippet",
+  "dashboard",
+  "document",
+  "sandbox",
+  "segment",
+] as const;
+export type DependencyType = (typeof DEPENDENCY_TYPES)[number];
+
+export const DEPENDENCY_GROUP_TYPES = [
+  "question",
+  "model",
+  "metric",
+  "table",
+  "transform",
+  "snippet",
+  "dashboard",
+  "document",
+  "sandbox",
+  "segment",
+] as const;
+export type DependencyGroupType = (typeof DEPENDENCY_GROUP_TYPES)[number];
 
 export type DependencyEntry = {
   id: DependencyId;
@@ -213,8 +229,12 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export type DependencySortColumn = "name";
-export type DependencySortDirection = "asc" | "desc";
+export const DEPENDENCY_SORT_COLUMNS = ["name"] as const;
+export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
+
+export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
+export type DependencySortDirection =
+  (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
 
 export type ListUnreferencedNodesRequest = {
   types?: DependencyType[];

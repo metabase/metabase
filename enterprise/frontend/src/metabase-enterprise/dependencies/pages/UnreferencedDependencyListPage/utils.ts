@@ -1,82 +1,22 @@
 import type * as Urls from "metabase/lib/urls";
 import type { DependencyListRawParams } from "metabase-enterprise/dependencies/types";
-import type {
-  CardType,
-  DependencyGroupType,
-  DependencySortColumn,
-  DependencySortDirection,
-  DependencyType,
+import {
+  type CardType,
+  DEPENDENCY_GROUP_TYPES,
+  DEPENDENCY_SORT_COLUMNS,
+  DEPENDENCY_SORT_DIRECTIONS,
+  type DependencyGroupType,
+  type DependencyType,
 } from "metabase-types/api";
 
-import { getCardType, getDependencyType } from "../../utils";
-
-function parseString(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  return value;
-}
-
-function parseNumber(value: unknown): number | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  return parseInt(value, 10);
-}
-
-function parseList<T>(
-  value: unknown,
-  parseItem: (value: unknown) => T | undefined,
-): T[] | undefined {
-  if (value == null) {
-    return undefined;
-  }
-  const values = Array.isArray(value) ? value : [value];
-  return values.map(parseItem).filter((item) => item != null);
-}
-
-function parseDependencyGroupType(
-  value: unknown,
-): DependencyGroupType | undefined {
-  switch (value) {
-    case "question":
-    case "model":
-    case "metric":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "dashboard":
-    case "document":
-    case "sandbox":
-    case "segment":
-      return value;
-    default:
-      return undefined;
-  }
-}
-
-function parseDependencySortColumn(
-  value: unknown,
-): DependencySortColumn | undefined {
-  switch (value) {
-    case "name":
-      return value;
-    default:
-      return undefined;
-  }
-}
-
-function parseDependencySortDirection(
-  value: unknown,
-): DependencySortDirection | undefined {
-  switch (value) {
-    case "asc":
-    case "desc":
-      return value;
-    default:
-      return undefined;
-  }
-}
+import {
+  getCardType,
+  getDependencyType,
+  parseEnum,
+  parseList,
+  parseNumber,
+  parseString,
+} from "../../utils";
 
 export function parseRawParams(
   rawParams?: DependencyListRawParams,
@@ -84,9 +24,14 @@ export function parseRawParams(
   return {
     query: parseString(rawParams?.query),
     page: parseNumber(rawParams?.page),
-    groupTypes: parseList(rawParams?.groupTypes, parseDependencyGroupType),
-    sortColumn: parseDependencySortColumn(rawParams?.sortColumn),
-    sortDirection: parseDependencySortDirection(rawParams?.sortDirection),
+    groupTypes: parseList(rawParams?.groupTypes, (value) =>
+      parseEnum(value, DEPENDENCY_GROUP_TYPES),
+    ),
+    sortColumn: parseEnum(rawParams?.sortColumn, DEPENDENCY_SORT_COLUMNS),
+    sortDirection: parseEnum(
+      rawParams?.sortDirection,
+      DEPENDENCY_SORT_DIRECTIONS,
+    ),
   };
 }
 

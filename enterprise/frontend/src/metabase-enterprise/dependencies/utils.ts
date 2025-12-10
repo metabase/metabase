@@ -308,3 +308,39 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Segment`, color: "accent2" };
   }
 }
+
+export function parseString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  return value;
+}
+
+export function parseNumber(value: unknown): number | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  return parseInt(value, 10);
+}
+
+export function parseEnum<T extends string>(
+  value: unknown,
+  items: readonly T[],
+): T | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const item = items.find((item) => item === value);
+  return item != null ? item : undefined;
+}
+
+export function parseList<T>(
+  value: unknown,
+  parseItem: (value: unknown) => T | undefined,
+): T[] | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  const values = Array.isArray(value) ? value : [value];
+  return values.map(parseItem).filter((item) => item != null);
+}
