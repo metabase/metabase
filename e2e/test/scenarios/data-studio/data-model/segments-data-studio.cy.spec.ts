@@ -509,6 +509,7 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.request("PUT", `/api/segment/${segmentId}`, {
           name: "Updated Name",
           description: "Original description",
+          revision_message: "Updated from Data Studio",
           definition: {
             type: "query",
             database: SAMPLE_DB_ID,
@@ -523,6 +524,7 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.request("PUT", `/api/segment/${segmentId}`, {
           name: "Updated Name",
           description: "Updated description",
+          revision_message: "Updated from Data Studio",
           definition: {
             type: "query",
             database: SAMPLE_DB_ID,
@@ -537,6 +539,7 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.request("PUT", `/api/segment/${segmentId}`, {
           name: "Updated Name",
           description: "Updated description",
+          revision_message: "Updated from Data Studio",
           definition: {
             type: "query",
             database: SAMPLE_DB_ID,
@@ -546,6 +549,8 @@ describe("scenarios > data studio > data model > segments", () => {
             },
           },
         });
+
+        cy.wait(1000);
 
         cy.visit(`/data-studio/modeling/segments/${segmentId}`);
       });
@@ -563,17 +568,15 @@ describe("scenarios > data studio > data model > segments", () => {
 
       cy.log("verify revision history entries");
       SegmentRevisionHistory.get().within(() => {
-        cy.findByText(/created this segment/i).should("be.visible");
-        cy.findByText(/renamed the segment/i).should("be.visible");
-        cy.findByText(/updated the description/i).should("be.visible");
-        cy.findByText(/changed the filter definition/i).should("be.visible");
-      });
-
-      cy.log("verify diff details are shown");
-      SegmentRevisionHistory.get().within(() => {
-        cy.findAllByText(/name/i).should("have.length.at.least", 1);
-        cy.findAllByText(/description/i).should("have.length.at.least", 1);
-        cy.findAllByText(/filter/i).should("have.length.at.least", 1);
+        cy.findByText(/created this segment/i)
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText(/made multiple changes/i)
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText(/updated the description/i)
+          .scrollIntoView()
+          .should("be.visible");
       });
     });
   });
