@@ -499,6 +499,7 @@
     {:transforms (for [transform transforms]
                    (assoc transform :workspace (get workspaces-by-id (:workspace_id transform))))}))
 
+;; TODO: shape of the error for/and underlying transaction failure.
 (api.macros/defendpoint :post "/:id/merge"
   :- [:or
       [:map
@@ -531,6 +532,19 @@
       (when-not (seq errors)
         ;; Most of the APIs and the FE are not respecting when a Workspace is archived yet.
         (t2/delete! :model/Workspace id)))))
+
+;; TODO: shape of the error
+(api.macros/defendpoint :post "/:id/transform/:txid/merge"
+  :- [:map
+      [:global_id ::ws.t/appdb-id]
+      [:ref_id ::ws.t/ref-id]]
+  "Merge single transform from workspace back to the core."
+  [{:keys [id txid]} :- [:map
+                         [:id ::ws.t/appdb-id]
+                         [:txid ::ws.t/ref-id]]]
+  (let [ws-transform (u/prog1 (t2/select-one :model/WorkspaceTransform :workspace_id id :ref_id txid)
+                       (api/check-404 <>))]
+    (ws.merge/merge-transform! ws-transform)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
