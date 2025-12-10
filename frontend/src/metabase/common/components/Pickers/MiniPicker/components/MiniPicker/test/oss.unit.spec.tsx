@@ -185,6 +185,7 @@ describe("MiniPicker", () => {
           name: "Rosings",
           collection_id: 101,
           collection: createMockCollection({
+            id: 101,
             effective_location: "/",
           }),
         }),

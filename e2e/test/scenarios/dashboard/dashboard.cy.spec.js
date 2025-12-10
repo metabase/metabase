@@ -92,7 +92,10 @@ describe("scenarios > dashboard", () => {
 
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("Pro");
+        cy.findByText("Databases").click();
+        cy.findByPlaceholderText("Search this database or everywhere…").type(
+          "Pro",
+        );
         cy.findByText("Products").click();
       });
 

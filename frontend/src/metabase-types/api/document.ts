@@ -41,3 +41,5 @@ export type UpdateDocumentRequest = Pick<Document, "id"> &
   Partial<Omit<Document, "id">>;
 
 export type DeleteDocumentRequest = Pick<Document, "id">;
+
+export type GetPublicDocument = Pick<Document, "id" | "name" | "public_uuid">;

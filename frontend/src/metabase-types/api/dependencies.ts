@@ -73,6 +73,8 @@ export type CardDependencyNodeData = Pick<
   | "collection"
   | "dashboard_id"
   | "dashboard"
+  | "document_id"
+  | "document"
   | "result_metadata"
   | "creator"
   | "created_at"

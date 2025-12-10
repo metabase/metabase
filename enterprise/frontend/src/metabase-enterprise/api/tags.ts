@@ -9,8 +9,9 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import type {
+  BulkTableInfo,
+  BulkTableSelectionInfo,
   CardDependencyNode,
-  Comment,
   DashboardDependencyNode,
   DependencyGraph,
   DependencyNode,
@@ -36,9 +37,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",
-  "document",
-  "public-document",
-  "comment",
   "sandbox",
   "transform-tag",
   "transform-job",
@@ -140,22 +138,6 @@ export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
-}
-
-export function provideCommentListTags(
-  comments: Comment[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
-}
-
-export function provideCommentTags(
-  comment: Comment,
-): TagDescription<EnterpriseTagType>[] {
-  if (comment.creator) {
-    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
-  }
-
-  return [idTag("comment", comment.id)];
 }
 
 export function providePythonLibraryTags(
@@ -304,6 +286,25 @@ export function provideSupportAccessGrantListTags(
   return [
     listTag("support-access-grant"),
     ...grants.flatMap(provideSupportAccessGrantTags),
+  ];
+}
+
+export function provideBulkTableInfoTags(
+  table: BulkTableInfo,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("table", table.id)];
+}
+
+export function provideBulkTableSelectionInfoTags({
+  selected_table,
+  published_downstream_tables,
+  unpublished_upstream_tables,
+}: BulkTableSelectionInfo): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("table"),
+    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
+    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
+    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
   ];
 }
 

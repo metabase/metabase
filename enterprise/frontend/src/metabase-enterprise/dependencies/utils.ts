@@ -109,7 +109,11 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "table":
       return {
         label: t`View metadata`,
-        url: Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
+        url: Urls.dataModel({
+          databaseId: node.data.db_id,
+          schemaName: node.data.schema,
+          tableId: node.id,
+        }),
       };
     case "transform":
       return {
@@ -173,11 +177,11 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
         return [
           {
             label: node.data.db.name,
-            url: Urls.dataModelDatabase(node.data.db_id),
+            url: Urls.dataModel({ databaseId: node.data.db_id }),
           },
           {
             label: node.data.schema,
-            url: Urls.dataModelSchema(node.data.db_id, node.data.schema),
+            url: Urls.dataModel({ databaseId: node.data.db_id, schemaName: node.data.schema }),
           },
         ];
       }
@@ -198,11 +202,11 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
         return [
           {
             label: node.data.table.display_name,
-            url: Urls.dataModelTable(
-              node.data.table.db_id,
-              node.data.table.schema,
-              node.data.table.id,
-            ),
+            url: Urls.dataModel({
+              databaseId: node.data.table.db_id,
+              schemaName: node.data.table.schema,
+              tableId: node.data.table.id,
+            })
           },
         ];
       }

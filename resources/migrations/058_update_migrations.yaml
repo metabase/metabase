@@ -836,6 +836,134 @@ databaseChangeLog:
             columnName: dependency_analysis_version
 
   - changeSet:
+      id: v58.2025-11-25T17:41:50
+      author: metamben
+      comment: Add collection_id column to metabase_table for publishing tables to collections
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection this table is published to (null if not published or published to root)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-25T17:41:51
+      author: metamben
+      comment: Add index on metabase_table.collection_id
+      changes:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v58.2025-11-25T17:41:52
+      author: metamben
+      comment: Add foreign key constraint from metabase_table.collection_id to collection.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: collection_id
+            constraintName: fk_metabase_table_collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v58.2025-11-25T17:41:53
+      author: metamben
+      comment: Add is_published column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_published
+                  type: ${boolean.type}
+                  remarks: Whether this table is published
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:51
+      author: ranquild
+      comment: Drop fk_report_card_published_table
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_published_table
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: published_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_report_card_published_table
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:52
+      author: ranquild
+      comment: Drop idx_report_card_published_table_id
+      changes:
+        - dropIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+      rollback:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:53
+      author: ranquild
+      comment: Drop report_card.published_table_id
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: published_table_id
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: published_table_id
+                  type: int
+                  remarks: The table id that is 'published' by this model
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:54
+      author: ranquild
+      comment: Rename collection.type 'library-models' to 'library-data'
+      changes:
+        - update:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  value: "library-data"
+            where: type = 'library-models'
+      rollback:
+        - update:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  value: "library-models"
+            where: type = 'library-data'
+
+  - changeSet:
       id: v58.2025-12-02T00:00:01
       author: bshepherdson
       comment: Create analysis finding table
@@ -925,7 +1053,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: result
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
