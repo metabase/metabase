@@ -37,14 +37,14 @@ const setup = ({
 describe("MainNavSharedCollections > create shared tenant collection button", () => {
   it("shows the create button for admin users", async () => {
     setup({ isAdmin: true });
-    await screen.findByText("Tenant collections");
+    await screen.findByText("External collections");
 
     expect(screen.getByRole("button", { name: /add/i })).toBeInTheDocument();
   });
 
   it("hides the create button for non-admin users", async () => {
     setup({ isAdmin: false });
-    await screen.findByText("Tenant collections");
+    await screen.findByText("External collections");
 
     expect(
       screen.queryByRole("button", { name: /add/i }),
@@ -56,19 +56,19 @@ describe("MainNavSharedCollections > section visibility", () => {
   it("shows the section for admins when there are no collections", async () => {
     setup({ isAdmin: true, tenantCollections: [] });
 
-    expect(await screen.findByText("Tenant collections")).toBeInTheDocument();
+    expect(await screen.findByText("External collections")).toBeInTheDocument();
   });
 
   it("shows the section for non-admins when some collections exist", async () => {
     setup({ isAdmin: false, tenantCollections: MOCK_TENANT_COLLECTIONS });
 
-    expect(await screen.findByText("Tenant collections")).toBeInTheDocument();
+    expect(await screen.findByText("External collections")).toBeInTheDocument();
   });
 
   it("hides the section for non-admins when there are no collections", () => {
     setup({ isAdmin: false, tenantCollections: [] });
 
-    expect(screen.queryByText("Tenant collections")).not.toBeInTheDocument();
+    expect(screen.queryByText("External collections")).not.toBeInTheDocument();
   });
 
   it("hides the section for non-admins when collections exist but are filtered out by permissions", () => {
@@ -85,6 +85,6 @@ describe("MainNavSharedCollections > section visibility", () => {
       storeInitialState: createMockState({ settings, currentUser }),
     });
 
-    expect(screen.queryByText("Tenant collections")).not.toBeInTheDocument();
+    expect(screen.queryByText("External collections")).not.toBeInTheDocument();
   });
 });
