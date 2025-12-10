@@ -124,9 +124,22 @@ jobs:
     needs: [uberjar]
     if: |
       !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env')
+      contains(github.event.pull_request.labels.*.name, 'PR-Env') &&
+      !contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
     uses: ./.github/workflows/pr-env.yml
     secrets: inherit
+    with:
+      analytics_dev_mode: false
+
+  pr-env-analytics-dev:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+    with:
+      analytics_dev_mode: true
 
   containerize:
     needs: [uberjar]

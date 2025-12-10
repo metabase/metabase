@@ -209,6 +209,38 @@
       :requires [[mage.util :as u]]
       :task     (task! (u/print-tasks parsed))}
 
+  analytics:setup
+  {:doc "Set up usage analytics development mode"
+   :examples [["./bin/mage analytics:setup" "Enable usage analytics dev mode and import content"]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (analytics/setup!))}
+
+  analytics:export
+  {:doc "Export usage analytics content to YAML files"
+   :examples [["./bin/mage analytics:export" "Export to default location (resources/instance_analytics)"]
+              ["./bin/mage analytics:export my-custom-dir" "Export to custom directory"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:string {:description "Target directory for export"}]]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (if-let [target-dir (first (:arguments parsed))]
+                  (analytics/export! target-dir)
+                  (analytics/export!)))}
+
+  analytics:teardown
+  {:doc "Tear down usage analytics development mode"
+   :examples [["./bin/mage analytics:teardown" "Remove usage analytics dev database and disable dev mode"]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (analytics/teardown!))}
+
+  analytics:finalize
+  {:doc "Export usage analytics content and tear down development mode"
+   :examples [["./bin/mage analytics:finalize" "Export to default location and tear down"]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (do
+                  (analytics/export!)
+                  (analytics/teardown!)))}
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.

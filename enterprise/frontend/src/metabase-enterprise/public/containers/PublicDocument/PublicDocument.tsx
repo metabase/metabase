@@ -20,6 +20,7 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
+import { MetabotNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotEmbed/MetabotEmbed";
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type { Document } from "metabase-types/api";
@@ -77,6 +78,7 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
       CardEmbed,
       FlexContainer,
       ResizeNode,
+      MetabotNode,
     ],
     [siteUrl],
   );

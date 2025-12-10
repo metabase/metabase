@@ -3,6 +3,12 @@ run-name: Building Dynamic PR Environment for ${{ github.ref_name }} by @${{ git
 
 on:
   workflow_call:
+    inputs:
+      analytics_dev_mode:
+        description: 'Enable analytics development mode'
+        required: false
+        type: boolean
+        default: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -124,6 +130,7 @@ jobs:
           PR_NUMBER: ${{ github.event.number }}
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
       - name: Deploy PR Review ENV
         run: |
           kubectl apply -f ./metabase.yml
@@ -139,3 +146,4 @@ jobs:
             ✅ Preview:
                 https://pr${{ github.event.number }}.coredev.metabase.com
             🗒️ [login instructions](https://www.notion.so/metabase/Ephemeral-PR-Environments-c74a3710c87a460dbf4fc0007a001458)
+            📦 Deployment type: ${{ inputs.analytics_dev_mode && 'PR-Env-analytics-dev' || 'PR-Env' }}

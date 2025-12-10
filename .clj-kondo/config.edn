@@ -903,6 +903,7 @@
      clojure.core/every?          {:message "Use metabase.util.performance/every?"}
      clojure.core/mapv            {:message "Use metabase.util.performance/mapv"}
      clojure.core/run!            {:message "Use metabase.util.performance/run!"}
+     clojure.core/get-in          {:message "Use metabase.util.performance/get-in"}
      clojure.core/select-keys     {:message "Use metabase.util.performance/select-keys"}
      clojure.core/some            {:message "Use metabase.util.performance/some"}
      clojure.core/update-keys     {:message "Use metabase.util.performance/update-keys"}

@@ -287,6 +287,75 @@ describe("user > settings", () => {
       cy.visit("/account/profile");
       assertDarkMode();
     });
+
+    it("should apply user's selected theme instead of browser's OS theme preference", () => {
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Light").click();
+
+      assertLightMode();
+
+      H.navigationSidebar().findByText("Our analytics").click();
+      H.collectionTable().findByText("Orders").should("exist").click();
+
+      cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
+
+      cy.window().then((win) => {
+        H.appBar()
+          .findByLabelText("Settings")
+          .should("exist")
+          .then(($button) => {
+            cy.wrap(win.getComputedStyle($button[0]).color).should(
+              "eq",
+              "rgba(7, 23, 34, 0.84)", // text-dark
+            );
+          });
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-left")
+          .findByText("Other charts")
+          .then(($text) => {
+            cy.wrap(win.getComputedStyle($text[0]).color).should(
+              "eq",
+              "rgba(7, 23, 34, 0.62)", // text-medium
+            );
+          });
+      });
+
+      H.appBar().findByLabelText("Settings").click();
+      H.popover().findByText("Account settings").click();
+      cy.findByDisplayValue("Light").click();
+      H.popover().findByText("Dark").click();
+
+      H.openNavigationSidebar();
+      H.navigationSidebar().findByText("Our analytics").click();
+      H.collectionTable().findByText("Orders").should("exist").click();
+
+      cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
+
+      cy.window().then((win) => {
+        H.appBar()
+          .findByLabelText("Settings")
+          .should("exist")
+          .then(($button) => {
+            cy.wrap(win.getComputedStyle($button[0]).color).should(
+              "eq",
+              "rgba(255, 255, 255, 0.95)", // text-dark
+            );
+          });
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-left")
+          .findByText("Other charts")
+          .then(($text) => {
+            cy.wrap(win.getComputedStyle($text[0]).color).should(
+              "eq",
+              "rgba(255, 255, 255, 0.69)", // text-medium
+            );
+          });
+      });
+    });
   });
 });
 

@@ -19,23 +19,35 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 import { MetabotPurchasePage } from ".";
 
 const nonStoreUserPageRegex = /Please ask a Metabase Store Admin/;
-const storeUserPageRegex = /After 14 days of free trial an additional amount/;
+const storeUserTrialPageRegex =
+  /After 14 days of free trial an additional amount/;
+const storeUserNoTrialPageRegex = /An additional amount/;
 const errorPageRegex = /Error fetching information/;
 const expectNonStoreUserPage = async () => {
   expect(await screen.findByText(nonStoreUserPageRegex)).toBeVisible();
-  expect(screen.queryByText(storeUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
   expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
 };
 
-const expectStoreUserPage = async () => {
+const expectStoreUserTrialPage = async () => {
   expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
-  expect(await screen.findByText(storeUserPageRegex)).toBeVisible();
+  expect(await screen.findByText(storeUserTrialPageRegex)).toBeVisible();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
+};
+
+const expectStoreUserNoTrialPage = async () => {
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(storeUserNoTrialPageRegex)).toBeVisible();
   expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
 };
 
 const expectErrorPage = async () => {
   expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
-  expect(screen.queryByText(storeUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
   expect(await screen.findByText(errorPageRegex)).toBeVisible();
 };
 
@@ -64,11 +76,13 @@ const setupRefreshableProperties = ({
 const setup = async ({
   current_user_matches_store_user,
   billing_period_months,
+  had_metabot,
   simulate_http_get_error,
   simulate_http_post_error,
 }: {
   current_user_matches_store_user: boolean;
   billing_period_months: number;
+  had_metabot: false | "trial" | "tiered";
   simulate_http_get_error: boolean;
   simulate_http_post_error: false | "error-no-quantity" | "error-no-connection";
 }) => {
@@ -79,7 +93,11 @@ const setup = async ({
   const user = createMockUser({ email: "user@example.com" });
   setupCurrentUserEndpoint(user);
 
-  setupStoreEEBillingEndpoint(billing_period_months, simulate_http_get_error);
+  setupStoreEEBillingEndpoint(
+    billing_period_months,
+    had_metabot,
+    simulate_http_get_error,
+  );
   setupStoreEECloudAddOnsEndpoint(
     billing_period_months,
     simulate_http_get_error,
@@ -102,6 +120,7 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: false,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
@@ -113,6 +132,7 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: true,
       simulate_http_post_error: false,
     });
@@ -124,6 +144,7 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: false,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: true,
       simulate_http_post_error: false,
     });
@@ -131,15 +152,40 @@ describe("MetabotPurchasePage", () => {
     await expectNonStoreUserPage();
   });
 
-  it("shows monthly tiers according to own billing period", async () => {
+  it("does not show trial page when metabot was trialed previously", async () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 1,
+      had_metabot: "trial",
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserNoTrialPage();
+  });
+
+  it("does not show trial page when metabot was purchased previously", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+      billing_period_months: 1,
+      had_metabot: "tiered",
+      simulate_http_get_error: false,
+      simulate_http_post_error: false,
+    });
+
+    await expectStoreUserNoTrialPage();
+  });
+
+  it("shows monthly tiers according to own billing period", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+      billing_period_months: 1,
+      had_metabot: false,
+      simulate_http_get_error: false,
+      simulate_http_post_error: false,
+    });
+
+    await expectStoreUserTrialPage();
 
     const metabase_ai_tier1 = screen.getByRole("radio", {
       name: /up to 1234 requests\/month/,
@@ -157,11 +203,12 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     const metabase_ai_tier3 = screen.getByRole("radio", {
       name: /up to 3456 requests\/month/,
@@ -179,11 +226,12 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     // This add-on product tier has `is_default = true`:
     expect(
@@ -240,11 +288,12 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     await userEvent.click(
       screen.getByRole("radio", { name: /up to 3456 requests/ }),
@@ -272,11 +321,12 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: "error-no-quantity",
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
@@ -299,11 +349,12 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: "error-no-connection",
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
