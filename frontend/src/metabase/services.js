@@ -138,9 +138,7 @@ export async function runQuestionQuery(
       datasetQueryWithParameters,
       cancelDeferred
         ? {
-            cancelled: cancelDeferred.promise.then(() => {
-              throw new Error("Query cancelled");
-            }),
+            cancelled: cancelDeferred.promise,
           }
         : {},
     );
