@@ -54,4 +54,5 @@ export type QueryEditorUiOptions = {
   shouldDisableDatabasePickerItem?: (
     item: QueryEditorDatabasePickerItem,
   ) => boolean;
+  editorHeight?: number;
 };

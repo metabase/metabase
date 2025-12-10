@@ -29,6 +29,7 @@ export function TransformEditor({
     () => ({
       canChangeDatabase: false,
       readOnly: disabled,
+      editorHeight: 350,
     }),
     [disabled],
   );
