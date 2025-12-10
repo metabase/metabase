@@ -30,6 +30,7 @@ export const PublishQuestionEmptyState = () => {
               size="md"
               lh="lg"
               onClick={handleSave}
+              data-testid="publish-guest-embed-link"
             >
               {t`publish this question`}
             </Anchor>
