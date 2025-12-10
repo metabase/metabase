@@ -10,6 +10,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
+import { DependencyFilterPicker } from "metabase-enterprise/dependencies/components/DependencyFilterPicker";
 
 import type {
   DependencyListRawParams,
@@ -117,6 +118,11 @@ export function UnreferencedDependencyListPage({
           flex={1}
           leftSection={<Icon name="search" />}
           onChange={handleSearchChange}
+        />
+        <DependencyFilterPicker
+          filterOptions={filterOptions}
+          availableGroupTypes={availableGroupTypes}
+          onFilterOptionsChange={handleFilterOptionsChange}
         />
       </Flex>
       <Box flex={1} mih={0}>

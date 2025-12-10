@@ -1,9 +1,11 @@
 import type {
   CardId,
+  CardType,
   CollectionId,
   DatabaseId,
   DependencySortColumn,
   DependencySortDirection,
+  DependencyType,
   NativeQuerySnippetId,
   SchemaName,
   SegmentId,
@@ -145,9 +147,12 @@ export function dataStudioTasks() {
 }
 
 export type DependencyListParams = {
-  page?: number;
+  query?: string;
+  types?: DependencyType[];
+  cardTypes?: CardType[];
   sortColumn?: DependencySortColumn;
   sortDirection?: DependencySortDirection;
+  page?: number;
 };
 
 function dataStudioDependencies(
