@@ -4,14 +4,15 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase.lib.core :as lib]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
+   [metabase.util :as u]
    [toucan2.core :as t2])
-  (:import (java.time OffsetDateTime)))
+  (:import
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -29,23 +30,22 @@
                                               :model/WorkspaceMappingTransform]
                         (tests))))
 
-(defn ws-url [id & [path]]
-  (str "ee/workspace/" id path))
+(defn ws-url [id & path]
+  (reduce (fn [url part] (if (or (str/starts-with? part "/")
+                                 (str/ends-with? url "/"))
+                           (str url part)
+                           (str url "/" part)))
+          (str "ee/workspace/" id)
+          (map str path)))
 
 (defn- ws-ready
   "Poll until workspace status becomes :ready or timeout"
   [ws-or-id]
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
-    (try
-      (tu/poll-until 300 (or (t2/select-one :model/Workspace :id ws-id :status :ready)
-                             (Thread/sleep 10)))
-      (catch Exception e
-        (if (:timeout-ms (ex-data e))
-          (throw (ex-info "Workspace is not ready yet" {:logs (t2/select [:model/WorkspaceLog :task :status :message]
-                                                                         :workspace_id ws-id
-                                                                         {:order-by [[:started_at :desc]]})}))
-          (throw e))))))
+    (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
+             :done?      #(= :ready (:status %))
+             :timeout-ms 5000})))
 
 (deftest workspace-endpoints-require-superuser-test
   (mt/with-temp [:model/Workspace workspace {:name "Private Workspace"}]
@@ -611,18 +611,33 @@
 
 (deftest run-workspace-transform-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run"
-    (mt/with-temp [:model/Workspace workspace1 {:name "Workspace 1"}
-                   :model/Workspace workspace2 {:name "Workspace 2"}
-                   :model/WorkspaceTransform transform {:name         "Transform in WS1"
-                                                        :workspace_id (:id workspace1)}]
-      (testing "returns 404 if transform not in workspace"
-        (is (= "Not found."
-               (mt/user-http-request :crowberto :post 404
-                                     (ws-url (:id workspace2) (str "/transform/" (:ref_id transform) "/run"))))))
-      (testing "requires superuser"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403
-                                     (ws-url (:id workspace1) (str "/transform/" (:ref_id transform) "/run")))))))))
+    (transforms.tu/with-transform-cleanup! [output-table "ws_api"]
+      (mt/with-temp [:model/Workspace workspace1 {:name        "Workspace 1"
+                                                  :database_id (mt/id)}
+                     :model/Workspace workspace2 {:name "Workspace 2"}
+                     :model/WorkspaceTransform transform {:name         "Transform in WS1"
+                                                          :workspace_id (:id workspace1)
+                                                          :source       {:type  "query"
+                                                                         :query (mt/native-query {:query "SELECT 42 as answer"})}
+                                                          :target       {:type     "table"
+                                                                         :database (:database_id workspace1)
+                                                                         :schema   (:schema workspace1)
+                                                                         :name     output-table}}]
+        (testing "returns 404 if transform not in workspace"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :post 404
+                                       (ws-url (:id workspace2) "/transform/" (:ref_id transform) "/run")))))
+        (testing "requires superuser"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403
+                                       (ws-url (:id workspace1) "/transform/" (:ref_id transform) "/run")))))
+        (testing "sucessful execution"
+          (is (=? {:status     "succeeded"
+                   :start_time some?
+                   :end_time   some?
+                   :table      {:name   output-table
+                                :schema (:schema workspace1)}}
+                  (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "transform" (:ref_id transform) "run")))))))))
 
 (deftest run-workspace-test
   (testing "POST /api/ee/workspace/:id/execute"
