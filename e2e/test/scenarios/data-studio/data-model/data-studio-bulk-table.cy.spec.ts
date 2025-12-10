@@ -124,8 +124,8 @@ describe("bulk table operations", () => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
       });
-      H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
-      H.DataStudio.Modeling.tableItem("Products").should("be.visible");
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+      H.DataStudio.Library.tableItem("Products").should("be.visible");
       cy.go("back");
 
       cy.log("unpublish some tables and verify they are unpublished");
@@ -134,9 +134,9 @@ describe("bulk table operations", () => {
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().findByText("Unpublish these tables").click();
       cy.wait("@unpublishTables");
-      H.DataStudio.nav().findByLabelText("Modeling").click();
-      H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
-      H.DataStudio.Modeling.collectionPage().within(() => {
+      H.DataStudio.nav().findByLabelText("Library").click();
+
+      H.DataStudio.Library.libraryPage().within(() => {
         cy.findByText("Reviews").should("be.visible");
         cy.findByText("Orders").should("not.exist");
         cy.findByText("Products").should("not.exist");

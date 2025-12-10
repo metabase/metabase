@@ -120,6 +120,16 @@
                     :metrics []}))
                all-tables))))))
 
+(defn get-tables
+  "Get information about the tables in a given database.
+
+  Returns a map with :structured-output containing :database and :tables info.
+  This is the handler for the /get-tables tool endpoint."
+  [{:keys [database-id]}]
+  {:structured-output
+   {:database (t2/select-one [:model/Database :id :name :description :engine] database-id)
+    :tables   (database-tables database-id)}})
+
 (defn similar?
   "Check if two strings are similar using Levenshtein distance with a max distance of 4."
   [left right]

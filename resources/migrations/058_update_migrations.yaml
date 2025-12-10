@@ -964,7 +964,38 @@ databaseChangeLog:
             where: type = 'library-data'
 
   - changeSet:
-      id: v58.2025-12-06T00:00:01
+      id: v58.2025-12-09T00:00:00
+      author: nmezzopera
+      comment: Usage analytics; Add entity_type, visibility_type, estimated_row_count, view_count, owner_email, owner_user_id to tables
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tables/v3/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tables/v3/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tables/v3/h2-tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tables/v1/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tables/v2/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tables/v1/h2-tables.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v58.2025-12-10T00:00:01
       author: bshepherdson
       comment: Create analysis finding table
       changes:
@@ -1019,7 +1050,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v58.2025-12-06T00:00:02
+      id: v58.2025-12-10T00:00:02
       author: bshepherdson
       comment: Unique constraint to prevent duplicate analyses
       changes:
@@ -1029,7 +1060,7 @@ databaseChangeLog:
             constraintName: idx_unique_analysis_finding
 
   - changeSet:
-      id: v58.2025-12-06T00:00:03
+      id: v58.2025-12-10T00:00:03
       author: bshepherdson
       comment: Index for analysis_finding by analyzed entity
       changes:
@@ -1043,7 +1074,7 @@ databaseChangeLog:
                   name: analyzed_entity_id
 
   - changeSet:
-      id: v58.2025-12-06T00:00:04
+      id: v58.2025-12-10T00:00:04
       author: bshepherdson
       comment: Index for analysis_finding by analysis result
       changes:

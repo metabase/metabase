@@ -24,7 +24,7 @@ dataset_query:
     - - max
       - - field
         - timestamp
-        - {base-type: type/DateTimeWithLocalTZ, inherited-temporal-unit: default, temporal-unit: minute, original-temporal-unit: month}
+        - {base-type: type/DateTimeWithLocalTZ, original-temporal-unit: month, inherited-temporal-unit: default, temporal-unit: minute}
     breakout:
     - - field
       - entity_qualified_id
