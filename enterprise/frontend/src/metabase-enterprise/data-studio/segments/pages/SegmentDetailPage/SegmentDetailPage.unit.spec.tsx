@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRoute, Route } from "react-router";
+import { Route } from "react-router";
 
 import {
   setupSchemaEndpoints,
@@ -23,7 +23,8 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 
-import { SegmentLayout } from "../../layouts/SegmentLayout";
+import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
+import { ExistingSegmentLayout } from "../../layouts/SegmentLayout";
 
 import { SegmentDetailPage } from "./SegmentDetailPage";
 
@@ -73,10 +74,6 @@ const TEST_SEGMENT = createMockSegment({
   }),
 });
 
-const mockRoute = {
-  path: "/data-studio/library/segments/:segmentId",
-} as any;
-
 type SetupOpts = {
   segment?: Segment;
   table?: Table;
@@ -110,13 +107,32 @@ function setup({
 
   setupSchemaEndpoints(checkNotNull(table.db));
 
+  const baseUrl = `/data-studio/data/database/${TEST_DATABASE.id}/schema/${TEST_DATABASE.id}:PUBLIC/table/${table.id}/segments/${segment.id}`;
+
   renderWithProviders(
-    <Route path="/segments/:segmentId" component={SegmentLayout}>
-      <IndexRoute component={() => <SegmentDetailPage route={mockRoute} />} />
-    </Route>,
+    <Route
+      path="/"
+      component={() => (
+        <ExistingSegmentLayout
+          config={{
+            segmentId: segment.id,
+            backUrl: `/data-studio/data/database/${TEST_DATABASE.id}/schema/${TEST_DATABASE.id}:PUBLIC/table/${table.id}/segments`,
+            tabUrls: {
+              definition: baseUrl,
+              revisions: `${baseUrl}/revisions`,
+              dependencies: `${baseUrl}/dependencies`,
+            },
+            renderBreadcrumbs: (t, s) => (
+              <DataModelSegmentBreadcrumbs table={t} segment={s} />
+            ),
+          }}
+        >
+          <SegmentDetailPage route={{ path: "/" } as never} />
+        </ExistingSegmentLayout>
+      )}
+    />,
     {
       withRouter: true,
-      initialRoute: `/segments/${segment.id}`,
     },
   );
 }

@@ -13,7 +13,7 @@ import * as Lib from "metabase-lib";
 import { SegmentEditor } from "../../components/SegmentEditor";
 import { SegmentHeader } from "../../components/SegmentHeader";
 import { useSegmentQuery } from "../../hooks/use-segment-query";
-import { useSegmentContext } from "../../layouts/SegmentLayout";
+import { useExistingSegmentContext } from "../../layouts/SegmentLayout";
 import { getPreviewUrl } from "../../utils/segment-query";
 
 type SegmentDetailPageProps = {
@@ -21,7 +21,8 @@ type SegmentDetailPageProps = {
 };
 
 export function SegmentDetailPage({ route }: SegmentDetailPageProps) {
-  const { segment, tabUrls, breadcrumbs, onRemove } = useSegmentContext();
+  const { segment, tabUrls, breadcrumbs, onRemove } =
+    useExistingSegmentContext();
   const metadata = useSelector(getMetadata);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 

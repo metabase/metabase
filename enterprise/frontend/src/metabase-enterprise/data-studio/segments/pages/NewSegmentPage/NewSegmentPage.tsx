@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -6,43 +5,32 @@ import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Center, Flex } from "metabase/ui";
-import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
+import { Button, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery, Segment, Table, TableId } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
 import { NewSegmentHeader } from "../../components/NewSegmentHeader";
 import { SegmentEditor } from "../../components/SegmentEditor";
 import { useSegmentQuery } from "../../hooks/use-segment-query";
+import { useNewSegmentContext } from "../../layouts/SegmentLayout";
 import {
   createInitialQueryForTable,
   getPreviewUrl,
 } from "../../utils/segment-query";
 
 type NewSegmentPageProps = {
-  tableId: TableId;
-  getSuccessUrl: (segment: Segment) => string;
-  renderBreadcrumbs: (table: Table) => ReactNode;
   route: Route;
 };
 
-export function NewSegmentPage({
-  tableId,
-  getSuccessUrl,
-  renderBreadcrumbs,
-  route,
-}: NewSegmentPageProps) {
+export function NewSegmentPage({ route }: NewSegmentPageProps) {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const { table, isLoading, error } = useLoadTableWithMetadata(tableId, {
-    includeForeignTables: true,
-  });
+  const { table, breadcrumbs, getSuccessUrl } = useNewSegmentContext();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -100,14 +88,6 @@ export function NewSegmentPage({
     sendErrorToast,
   ]);
 
-  if (isLoading || error != null || table == null) {
-    return (
-      <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </Center>
-    );
-  }
-
   return (
     <Flex
       direction="column"
@@ -120,7 +100,7 @@ export function NewSegmentPage({
       <NewSegmentHeader
         previewUrl={previewUrl}
         onNameChange={setName}
-        breadcrumbs={renderBreadcrumbs(table)}
+        breadcrumbs={breadcrumbs}
         actions={
           isDirty && (
             <Button

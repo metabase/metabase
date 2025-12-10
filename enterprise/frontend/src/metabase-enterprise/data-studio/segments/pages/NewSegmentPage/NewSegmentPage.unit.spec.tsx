@@ -2,20 +2,26 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupTableQueryMetadataEndpoint } from "__support__/server-mocks";
+import {
+  setupSchemaEndpoints,
+  setupTableQueryMetadataEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { Segment, Table } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockField,
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
+
+import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
+import { NewSegmentLayout } from "../../layouts/SegmentLayout";
 
 import { NewSegmentPage } from "./NewSegmentPage";
 
@@ -50,13 +56,6 @@ const TEST_TABLE = createMockTable({
   ],
 });
 
-const mockRoute = {
-  path: "/data-studio/library/segments/new",
-} as any;
-
-const mockGetSuccessUrl = (segment: Segment) =>
-  `/data-studio/library/segments/${segment.id}`;
-
 type SetupOpts = {
   table?: Table;
   hasError?: boolean;
@@ -72,24 +71,31 @@ function setup({ table = TEST_TABLE, hasError = false }: SetupOpts = {}) {
     setupTableQueryMetadataEndpoint(table);
   }
 
+  setupSchemaEndpoints(TEST_DATABASE);
+
+  const successUrl = `/data-studio/data/database/${TEST_DATABASE.id}/schema/${TEST_DATABASE.id}:PUBLIC/table/${table.id}/segments`;
+
   const { history } = renderWithProviders(
     <Route
       path="/"
       component={() => (
-        <NewSegmentPage
-          tableId={table.id}
-          getSuccessUrl={mockGetSuccessUrl}
-          renderBreadcrumbs={(t) => (
-            <div data-testid="breadcrumbs">Table: {t.display_name}</div>
-          )}
-          route={mockRoute}
-        />
+        <NewSegmentLayout
+          config={{
+            tableId: table.id,
+            getSuccessUrl: (segment) => `${successUrl}/${segment.id}`,
+            renderBreadcrumbs: (t) => <DataModelSegmentBreadcrumbs table={t} />,
+          }}
+        >
+          <NewSegmentPage route={{ path: "/" } as never} />
+        </NewSegmentLayout>
       )}
     />,
-    { withRouter: true },
+    {
+      withRouter: true,
+    },
   );
 
-  return { history };
+  return { history, successUrl };
 }
 
 async function addFilter() {
@@ -121,14 +127,11 @@ describe("NewSegmentPage", () => {
     expect(screen.getByText("Server error")).toBeInTheDocument();
   });
 
-  it("renders page with empty form, breadcrumbs, and no Save button", async () => {
+  it("renders page with empty form and no Save button", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByTestId("new-segment-page")).toBeInTheDocument();
-    expect(screen.getByTestId("breadcrumbs")).toHaveTextContent(
-      "Table: Orders",
-    );
     expect(screen.getByPlaceholderText("New segment")).toHaveValue("");
     expect(screen.getByLabelText("Description")).toHaveValue("");
     expect(
@@ -253,7 +256,7 @@ describe("NewSegmentPage", () => {
 
     fetchMock.post("path:/api/segment", createdSegment);
 
-    const { history } = setup();
+    const { history, successUrl } = setup();
     await waitForLoaderToBeRemoved();
 
     await userEvent.type(
@@ -275,7 +278,7 @@ describe("NewSegmentPage", () => {
 
     await waitFor(() => {
       expect(history?.getCurrentLocation().pathname).toBe(
-        "/data-studio/library/segments/123",
+        `${successUrl}/${createdSegment.id}`,
       );
     });
 

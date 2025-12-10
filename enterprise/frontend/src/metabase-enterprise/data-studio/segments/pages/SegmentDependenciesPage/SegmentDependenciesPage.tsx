@@ -4,7 +4,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
-import { useSegmentContext } from "../../layouts/SegmentLayout";
+import { useExistingSegmentContext } from "../../layouts/SegmentLayout";
 import { getSegmentPreviewUrl } from "../../utils/get-segment-preview-url";
 
 type SegmentDependenciesPageProps = {
@@ -14,7 +14,8 @@ type SegmentDependenciesPageProps = {
 export function SegmentDependenciesPage({
   children,
 }: SegmentDependenciesPageProps) {
-  const { segment, tabUrls, breadcrumbs, onRemove } = useSegmentContext();
+  const { segment, tabUrls, breadcrumbs, onRemove } =
+    useExistingSegmentContext();
 
   return (
     <Flex direction="column" h="100%" data-testid="segment-dependencies-page">

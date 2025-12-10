@@ -135,20 +135,40 @@ export function dataStudioPublishedTableSegmentDependencies(
   return `${dataStudioPublishedTableSegment(tableId, segmentId)}/dependencies`;
 }
 
-export function dataStudioSegment(segmentId: SegmentId) {
-  return `${dataStudioLibrary()}/segments/${segmentId}`;
+type DataModelSegmentParams = {
+  databaseId: DatabaseId;
+  schemaName: SchemaName;
+  tableId: TableId;
+  segmentId: SegmentId;
+};
+
+export function dataStudioDataModelSegment({
+  databaseId,
+  schemaName,
+  tableId,
+  segmentId,
+}: DataModelSegmentParams) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/${segmentId}`;
 }
 
-export function dataStudioSegmentRevisions(segmentId: SegmentId) {
-  return `${dataStudioSegment(segmentId)}/revisions`;
+export function dataStudioDataModelSegmentRevisions(
+  params: DataModelSegmentParams,
+) {
+  return `${dataStudioDataModelSegment(params)}/revisions`;
 }
 
-export function dataStudioSegmentDependencies(segmentId: SegmentId) {
-  return `${dataStudioSegment(segmentId)}/dependencies`;
+export function dataStudioDataModelSegmentDependencies(
+  params: DataModelSegmentParams,
+) {
+  return `${dataStudioDataModelSegment(params)}/dependencies`;
 }
 
-export function newDataStudioSegment(tableId: TableId) {
-  return `${dataStudioLibrary()}/segments/new?tableId=${tableId}`;
+export function newDataStudioDataModelSegment({
+  databaseId,
+  schemaName,
+  tableId,
+}: Omit<DataModelSegmentParams, "segmentId">) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/new`;
 }
 
 export type NewDataStudioQueryModelParams = {

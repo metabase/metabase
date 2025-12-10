@@ -12,15 +12,13 @@ describe("SegmentItem", () => {
       definition_description: "Total > $1000",
     });
 
+    const segmentUrl =
+      "/data-studio/data/database/1/schema/1:PUBLIC/table/1/segments/42";
+
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
-          <SegmentItem
-            segment={segment}
-            href="/data-studio/library/segments/42"
-          />
-        )}
+        component={() => <SegmentItem segment={segment} href={segmentUrl} />}
       />,
       { withRouter: true },
     );
@@ -30,7 +28,7 @@ describe("SegmentItem", () => {
 
     const item = screen.getByRole("listitem");
     expect(item).toBeInTheDocument();
-    expect(item).toHaveAttribute("href", "/data-studio/library/segments/42");
+    expect(item).toHaveAttribute("href", segmentUrl);
     expect(item).toHaveAttribute("aria-label", "Premium Customers");
   });
 

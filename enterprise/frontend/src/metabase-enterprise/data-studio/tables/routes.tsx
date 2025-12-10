@@ -1,8 +1,8 @@
 import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { SegmentLayout } from "metabase-enterprise/data-studio/segments/layouts/SegmentLayout";
-import { NewPublishedTableSegmentPage } from "metabase-enterprise/data-studio/segments/pages/NewSegmentPage/NewPublishedTableSegmentPage";
+import { PublishedTableSegmentLayout } from "metabase-enterprise/data-studio/segments/layouts/PublishedTableSegmentLayout";
+import { NewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/NewSegmentPage";
 import { SegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/SegmentDependenciesPage";
 import { SegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/SegmentDetailPage";
 import { SegmentRevisionHistoryPage } from "metabase-enterprise/data-studio/segments/pages/SegmentRevisionHistoryPage";
@@ -21,9 +21,14 @@ export function getDataStudioTableRoutes() {
       <Route path=":tableId/segments" component={TableSegmentsPage} />
       <Route
         path=":tableId/segments/new"
-        component={NewPublishedTableSegmentPage}
-      />
-      <Route path=":tableId/segments/:segmentId" component={SegmentLayout}>
+        component={PublishedTableSegmentLayout}
+      >
+        <IndexRoute component={NewSegmentPage} />
+      </Route>
+      <Route
+        path=":tableId/segments/:segmentId"
+        component={PublishedTableSegmentLayout}
+      >
         <IndexRoute component={SegmentDetailPage} />
         <Route path="revisions" component={SegmentRevisionHistoryPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (

@@ -31,10 +31,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.log("verify new segment link and navigation");
       SegmentList.getNewSegmentLink().scrollIntoView().click();
 
-      cy.url().should(
-        "include",
-        `/data-studio/library/segments/new?tableId=${ORDERS_ID}`,
-      );
+      cy.url().should("include", `${getSegmentsBaseUrl(ORDERS_ID)}/new`);
     });
 
     it("should display segments and allow navigation to edit page", () => {
@@ -57,7 +54,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.get<number>("@segmentId").then((segmentId) => {
         cy.url().should(
           "include",
-          `/data-studio/library/segments/${segmentId}`,
+          `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}`,
         );
       });
     });
@@ -120,7 +117,12 @@ describe("scenarios > data studio > data model > segments", () => {
 
       cy.log("verify redirect to edit page and toast");
       H.undoToast().should("contain.text", "Segment created");
-      cy.url().should("match", /\/data-studio\/library\/segments\/\d+$/);
+      cy.url().should(
+        "match",
+        new RegExp(
+          `${getSegmentsBaseUrl(ORDERS_ID).replace(/\//g, "\\/")}\/\\d+$`,
+        ),
+      );
 
       cy.log("verify segment in query builder");
       verifySegmentInQueryBuilder("Premium Orders");
@@ -157,7 +159,7 @@ describe("scenarios > data studio > data model > segments", () => {
         description: "Test description",
       });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/library/segments/${segmentId}`);
+        visitDataModelSegment(ORDERS_ID, segmentId);
       });
 
       cy.log("verify existing data displayed");
@@ -191,7 +193,7 @@ describe("scenarios > data studio > data model > segments", () => {
     it("should navigate back to segments tab via breadcrumb", () => {
       createTestSegment({ name: "Breadcrumb Test Segment" });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/library/segments/${segmentId}`);
+        visitDataModelSegment(ORDERS_ID, segmentId);
       });
 
       SegmentEditor.getBreadcrumb("Orders").click();
@@ -210,7 +212,7 @@ describe("scenarios > data studio > data model > segments", () => {
     it("should remove segment via more menu", () => {
       createTestSegment({ name: "Segment to Delete" });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/library/segments/${segmentId}`);
+        visitDataModelSegment(ORDERS_ID, segmentId);
       });
 
       cy.log("delete via more menu");
@@ -480,7 +482,7 @@ describe("scenarios > data studio > data model > segments", () => {
         });
 
         cy.log("edit Segment A via UI and try to add Segment B as filter");
-        cy.visit(`/data-studio/library/segments/${segmentA.id}`);
+        visitDataModelSegment(ORDERS_ID, segmentA.id);
         cy.wait("@metadata");
 
         SegmentEditor.get().icon("add").click();
@@ -552,7 +554,7 @@ describe("scenarios > data studio > data model > segments", () => {
 
         cy.wait(1000);
 
-        cy.visit(`/data-studio/library/segments/${segmentId}`);
+        visitDataModelSegment(ORDERS_ID, segmentId);
       });
 
       cy.log("navigate to revision history tab");
@@ -562,7 +564,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.get<number>("@segmentId").then((segmentId) => {
         cy.url().should(
           "include",
-          `/data-studio/library/segments/${segmentId}/revisions`,
+          `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}/revisions`,
         );
       });
 
@@ -585,7 +587,7 @@ describe("scenarios > data studio > data model > segments", () => {
     it("should display dependency graph for a segment", () => {
       createTestSegment({ name: "Dependencies Test Segment" });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/library/segments/${segmentId}`);
+        visitDataModelSegment(ORDERS_ID, segmentId);
       });
 
       cy.log("navigate to dependencies tab");
@@ -595,7 +597,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.get<number>("@segmentId").then((segmentId) => {
         cy.url().should(
           "include",
-          `/data-studio/library/segments/${segmentId}/dependencies`,
+          `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}/dependencies`,
         );
       });
       H.DependencyGraph.graph().should("be.visible");
@@ -620,6 +622,14 @@ function visitDataStudioSegments(tableId: number) {
     schemaId: SAMPLE_DB_SCHEMA_ID,
     tableId,
   });
+}
+
+function getSegmentsBaseUrl(tableId: number) {
+  return `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${tableId}/segments`;
+}
+
+function visitDataModelSegment(tableId: number, segmentId: number) {
+  cy.visit(`${getSegmentsBaseUrl(tableId)}/${segmentId}`);
 }
 
 function createTestSegment(

@@ -2,11 +2,12 @@ import { Flex, Stack } from "metabase/ui";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
 import { SegmentRevisionHistory } from "../../components/SegmentRevisionHistory";
-import { useSegmentContext } from "../../layouts/SegmentLayout";
+import { useExistingSegmentContext } from "../../layouts/SegmentLayout";
 import { getSegmentPreviewUrl } from "../../utils/get-segment-preview-url";
 
 export function SegmentRevisionHistoryPage() {
-  const { segment, tabUrls, breadcrumbs, onRemove } = useSegmentContext();
+  const { segment, tabUrls, breadcrumbs, onRemove } =
+    useExistingSegmentContext();
 
   return (
     <Flex

@@ -1,4 +1,3 @@
-import { skipToken } from "@reduxjs/toolkit/query";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useMemo } from "react";
 import { push } from "react-router-redux";
@@ -7,16 +6,10 @@ import { t } from "ttag";
 import { useDeleteSegmentMutation, useGetSegmentQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Center } from "metabase/ui";
 import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
-import type { Segment, Table, TableId } from "metabase-types/api";
-
-import {
-  DataModelSegmentBreadcrumbs,
-  PublishedTableSegmentBreadcrumbs,
-} from "../../components/SegmentBreadcrumbs";
+import type { Segment, SegmentId, Table, TableId } from "metabase-types/api";
 
 export type SegmentTabUrls = {
   definition: string;
@@ -24,7 +17,8 @@ export type SegmentTabUrls = {
   dependencies: string;
 };
 
-type SegmentContextValue = {
+// Context for pages with an existing segment (detail, revisions, dependencies)
+type ExistingSegmentContextValue = {
   segment: Segment;
   table: Table;
   breadcrumbs: ReactNode;
@@ -32,37 +26,69 @@ type SegmentContextValue = {
   onRemove: () => Promise<void>;
 };
 
-const SegmentContext = createContext<SegmentContextValue | null>(null);
+const ExistingSegmentContext =
+  createContext<ExistingSegmentContextValue | null>(null);
 
-export function useSegmentContext() {
-  const context = useContext(SegmentContext);
+export function useExistingSegmentContext(): ExistingSegmentContextValue {
+  const context = useContext(ExistingSegmentContext);
   if (!context) {
-    throw new Error("useSegmentContext must be used within SegmentLayout");
+    throw new Error(
+      "useExistingSegmentContext must be used within ExistingSegmentLayout",
+    );
   }
   return context;
 }
 
-type SegmentLayoutParams = {
-  segmentId: string;
-  tableId?: string;
+// Context for new segment page
+type NewSegmentContextValue = {
+  table: Table;
+  breadcrumbs: ReactNode;
+  getSuccessUrl: (segment: Segment) => string;
 };
 
-type SegmentLayoutProps = {
-  params: SegmentLayoutParams;
+const NewSegmentContext = createContext<NewSegmentContextValue | null>(null);
+
+export function useNewSegmentContext(): NewSegmentContextValue {
+  const context = useContext(NewSegmentContext);
+  if (!context) {
+    throw new Error(
+      "useNewSegmentContext must be used within NewSegmentLayout",
+    );
+  }
+  return context;
+}
+
+// Config types for the wrapper layouts
+export type ExistingSegmentLayoutConfig = {
+  segmentId: SegmentId;
+  backUrl: string;
+  tabUrls: SegmentTabUrls;
+  renderBreadcrumbs: (table: Table, segment: Segment) => ReactNode;
+};
+
+export type NewSegmentLayoutConfig = {
+  tableId: TableId;
+  getSuccessUrl: (segment: Segment) => string;
+  renderBreadcrumbs: (table: Table) => ReactNode;
+};
+
+// Layout for existing segment pages
+type ExistingSegmentLayoutProps = {
+  config: ExistingSegmentLayoutConfig;
   children?: ReactNode;
 };
 
-export function SegmentLayout({ params, children }: SegmentLayoutProps) {
-  const segmentId = Urls.extractEntityId(params.segmentId);
-  const publishedTableId: TableId | undefined = params.tableId
-    ? Urls.extractEntityId(params.tableId)
-    : undefined;
+export function ExistingSegmentLayout({
+  config,
+  children,
+}: ExistingSegmentLayoutProps) {
+  const { segmentId, backUrl, tabUrls, renderBreadcrumbs } = config;
 
   const {
     data: segment,
     isLoading: isLoadingSegment,
     error: segmentError,
-  } = useGetSegmentQuery(segmentId ?? skipToken);
+  } = useGetSegmentQuery(segmentId);
 
   const {
     table,
@@ -84,68 +110,38 @@ export function SegmentLayout({ params, children }: SegmentLayoutProps) {
   }
 
   return (
-    <SegmentLayoutContent
+    <ExistingSegmentLayoutContent
       segment={segment}
       table={table}
-      publishedTableId={publishedTableId}
+      backUrl={backUrl}
+      tabUrls={tabUrls}
+      renderBreadcrumbs={renderBreadcrumbs}
     >
       {children}
-    </SegmentLayoutContent>
+    </ExistingSegmentLayoutContent>
   );
 }
 
-type SegmentLayoutContentProps = {
+type ExistingSegmentLayoutContentProps = {
   segment: Segment;
   table: Table;
-  publishedTableId: TableId | undefined;
+  backUrl: string;
+  tabUrls: SegmentTabUrls;
+  renderBreadcrumbs: (table: Table, segment: Segment) => ReactNode;
   children?: ReactNode;
 };
 
-function SegmentLayoutContent({
+function ExistingSegmentLayoutContent({
   segment,
   table,
-  publishedTableId,
+  backUrl,
+  tabUrls,
+  renderBreadcrumbs,
   children,
-}: SegmentLayoutContentProps) {
+}: ExistingSegmentLayoutContentProps) {
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [deleteSegment] = useDeleteSegmentMutation();
-
-  const backUrl = useMemo(() => {
-    if (publishedTableId != null) {
-      return Urls.dataStudioTableSegments(publishedTableId);
-    }
-    return Urls.dataStudioData({
-      databaseId: table.db_id,
-      schemaName: table.schema,
-      tableId: table.id,
-      tab: "segments",
-    });
-  }, [publishedTableId, table]);
-
-  const tabUrls = useMemo<SegmentTabUrls>(() => {
-    if (publishedTableId != null) {
-      return {
-        definition: Urls.dataStudioPublishedTableSegment(
-          publishedTableId,
-          segment.id,
-        ),
-        revisions: Urls.dataStudioPublishedTableSegmentRevisions(
-          publishedTableId,
-          segment.id,
-        ),
-        dependencies: Urls.dataStudioPublishedTableSegmentDependencies(
-          publishedTableId,
-          segment.id,
-        ),
-      };
-    }
-    return {
-      definition: Urls.dataStudioSegment(segment.id),
-      revisions: Urls.dataStudioSegmentRevisions(segment.id),
-      dependencies: Urls.dataStudioSegmentDependencies(segment.id),
-    };
-  }, [publishedTableId, segment.id]);
 
   const handleRemove = useCallback(async () => {
     const { error } = await deleteSegment({
@@ -169,13 +165,8 @@ function SegmentLayoutContent({
   ]);
 
   const breadcrumbs = useMemo(
-    () =>
-      publishedTableId != null ? (
-        <PublishedTableSegmentBreadcrumbs table={table} segment={segment} />
-      ) : (
-        <DataModelSegmentBreadcrumbs table={table} segment={segment} />
-      ),
-    [publishedTableId, table, segment],
+    () => renderBreadcrumbs(table, segment),
+    [renderBreadcrumbs, table, segment],
   );
 
   const contextValue = useMemo(
@@ -190,8 +181,44 @@ function SegmentLayoutContent({
   );
 
   return (
-    <SegmentContext.Provider value={contextValue}>
+    <ExistingSegmentContext.Provider value={contextValue}>
       {children}
-    </SegmentContext.Provider>
+    </ExistingSegmentContext.Provider>
+  );
+}
+
+// Layout for new segment page
+type NewSegmentLayoutProps = {
+  config: NewSegmentLayoutConfig;
+  children?: ReactNode;
+};
+
+export function NewSegmentLayout({ config, children }: NewSegmentLayoutProps) {
+  const { tableId, getSuccessUrl, renderBreadcrumbs } = config;
+
+  const { table, isLoading, error } = useLoadTableWithMetadata(tableId, {
+    includeForeignTables: true,
+  });
+
+  if (isLoading || error != null || table == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
+  }
+
+  const breadcrumbs = renderBreadcrumbs(table);
+
+  const contextValue: NewSegmentContextValue = {
+    table,
+    breadcrumbs,
+    getSuccessUrl,
+  };
+
+  return (
+    <NewSegmentContext.Provider value={contextValue}>
+      {children}
+    </NewSegmentContext.Provider>
   );
 }
