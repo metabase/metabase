@@ -1,4 +1,4 @@
-import { goBack, push } from "react-router-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
 import Collections from "metabase/entities/collections";
@@ -43,9 +43,6 @@ const mapDispatchToProps = (dispatch: any) => ({
   ) => {
     await dispatch(TimelineEvents.actions.setTimeline(event, newTimeline));
     dispatch(push(Urls.timelineInCollection(oldTimeline)));
-  },
-  onCancel: () => {
-    dispatch(goBack());
   },
 });
 

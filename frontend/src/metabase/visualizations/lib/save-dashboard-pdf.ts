@@ -217,11 +217,13 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  let backgroundColor = Color(
-    getComputedStyle(document.documentElement)
-      .getPropertyValue("--mb-color-bg-dashboard")
-      .trim(),
-  ).hex();
+  const rawBackgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-color-bg-dashboard")
+    .trim();
+  let backgroundColor =
+    rawBackgroundColor === "transparent"
+      ? "transparent"
+      : Color(rawBackgroundColor).hex();
 
   if (!(await isValidColor(backgroundColor))) {
     backgroundColor = "white"; // Fallback to white if the color is invalid
@@ -234,6 +236,14 @@ export const saveDashboardPdf = async ({
     useCORS: true,
     backgroundColor,
     scale: window.devicePixelRatio || 1,
+    /**
+     * html2canvas-pro creates inline <style> elements that can be blocked by
+     * CSP (observed from Firefox). We created a temporary patch to support
+     * nonce until the library officially implements it.
+     *
+     * @see https://github.com/metabase/metabase/issues/66234
+     */
+    nonce: window.MetabaseNonce,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;

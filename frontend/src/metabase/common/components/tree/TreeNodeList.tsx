@@ -1,27 +1,26 @@
 import { Fragment } from "react";
 
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
+import type { BoxProps } from "metabase/ui";
+import { Box } from "metabase/ui";
 
-import { ListRoot } from "./TreeNodeList.styled";
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
-interface TreeNodeListProps {
-  items: ITreeNodeItem[];
-  expandedIds: Set<ITreeNodeItem["id"]>;
-  selectedId?: ITreeNodeItem["id"];
+interface TreeNodeListProps<TData = unknown>
+  extends Omit<BoxProps, "children"> {
+  items: ITreeNodeItem<TData>[];
+  expandedIds: Set<ITreeNodeItem<TData>["id"]>;
+  selectedId?: ITreeNodeItem<TData>["id"];
   depth: number;
   role?: string;
-  className?: string;
-  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
-  onSelect?: (item: ITreeNodeItem) => void;
-  TreeNode: TreeNodeComponent;
-  rightSection?: (item: ITreeNodeItem) => React.ReactNode;
+  onToggleExpand: (id: ITreeNodeItem<TData>["id"]) => void;
+  onSelect?: (item: ITreeNodeItem<TData>) => void;
+  TreeNode: TreeNodeComponent<TData>;
+  rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
 }
 
-function BaseTreeNodeList({
+function BaseTreeNodeList<TData = unknown>({
   items,
-  role,
-  className,
   expandedIds,
   selectedId,
   depth,
@@ -29,11 +28,13 @@ function BaseTreeNodeList({
   onToggleExpand,
   TreeNode,
   rightSection,
-}: TreeNodeListProps) {
+  role,
+  ...boxProps
+}: TreeNodeListProps<TData>) {
   const selectedRef = useScrollOnMount();
 
   return (
-    <ListRoot className={className} role={role}>
+    <Box component="ul" role={role} {...boxProps}>
       {items.map((item) => {
         const isSelected = selectedId === item.id;
         const hasChildren =
@@ -71,10 +72,8 @@ function BaseTreeNodeList({
           </Fragment>
         );
       })}
-    </ListRoot>
+    </Box>
   );
 }
 
-export const TreeNodeList = Object.assign(BaseTreeNodeList, {
-  Root: ListRoot,
-});
+export const TreeNodeList = BaseTreeNodeList;

@@ -91,11 +91,12 @@ export const isNavigationAllowed = ({
   if (question.type() === "model") {
     const isRunningModel = pathname === "/model" && hash.length > 0;
     const allowedPathnames = isNewQuestion
-      ? ["/model/query", "/model/columns"]
+      ? ["/model/query", "/model/columns", "/model/metadata"]
       : validSlugs.flatMap((slug) => [
           `/model/${slug}/query`,
           `/model/${slug}/columns`,
           `/model/${slug}/notebook`,
+          `/model/${slug}/metadata`,
         ]);
 
     return isRunningModel || allowedPathnames.includes(pathname);

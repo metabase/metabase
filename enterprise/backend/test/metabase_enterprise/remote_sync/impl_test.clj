@@ -36,7 +36,7 @@
 (deftest import!-successful-without-collections-test
   (testing "import! successful without collections (imports all remote-synced)"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
         (let [result (impl/import! (source.p/snapshot (test-helpers/create-mock-source)) task-id)]
           (is (= :success (:status result))))))))
 
@@ -114,7 +114,7 @@
             task-defaults (mt/with-temp-defaults :model/RemoteSyncTask)]
         (t2/insert! :model/Collection (merge coll-defaults
                                              {:name "Test Collection"
-                                              :type "remote-synced"
+                                              :is_remote_synced true
                                               :entity_id "test-collection-1xxxx"
                                               :location "/"}))
         (t2/insert! :model/RemoteSyncTask (merge task-defaults
@@ -134,7 +134,7 @@
 
 (deftest export!-with-no-source-configured-test
   (testing "export! with no source configured"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
             result (impl/export! nil task-id "Test commit")]
         (is (= :error (:status result)))
@@ -142,7 +142,7 @@
 
 (deftest export!-with-no-remote-synced-collections-test
   (testing "export! errors when there are no remote-synced collections"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
         ;; Create a regular collection (not remote-synced) to verify it's not included
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Regular Collection" :type nil :location "/"}]
@@ -153,18 +153,18 @@
 
 (deftest export!-successful-with-default-collections-test
   (testing "export! successful with default collections"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
           (let [mock-source (test-helpers/create-mock-source)
                 result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
             (is (= :success (:status result)))))))))
 
 (deftest export!-handles-store-failure-test
   (testing "export! handles store failure"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
           (let [mock-source (test-helpers/create-mock-source :fail-mode :store-error)
                 result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
             (is (= :error (:status result)))
@@ -172,9 +172,9 @@
 
 (deftest export!-handles-network-errors-during-write-test
   (testing "export! handles network errors during write"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
           (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)
                 result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
             (is (= :error (:status result)))
@@ -184,8 +184,8 @@
 
 (deftest complete-import-export-workflow-test
   (testing "complete import-export workflow"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
                      :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
         (let [mock-main (test-helpers/create-mock-source :branch "test-branch")
               export-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
@@ -217,7 +217,7 @@
             (let [collection (t2/select-one :model/Collection :id coll-id)
                   card (t2/select-one :model/Card :id card-id)]
               (is (= "Test Collection" (:name collection)))
-              (is (= "remote-synced" (:type collection)))
+              (is (true? (:is_remote_synced collection)))
               (is (= "test-collection-1xxxx" (:entity_id collection)))
               (is (= "Test Card" (:name card)))
               (is (= "test-card-1xxxxxxxxxx" (:entity_id card)))
@@ -226,8 +226,8 @@
 (deftest collection-cleanup-during-import-test
   (testing "collection cleanup during import (tests clean-synced! private function)"
     (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
-                     :model/Collection {coll2-id :id} {:name "Collection 2" :type "remote-synced" :entity_id "test-collection-2xxxx" :location "/"}
+      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                     :model/Collection {coll2-id :id} {:name "Collection 2" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
                      :model/Card {card1-id :id} {:name "Card 1" :collection_id coll1-id :entity_id "test-card-1xxxxxxxxxx"}
                      :model/Card {card2-id :id} {:name "Card 2" :collection_id coll2-id :entity_id "test-card-2xxxxxxxxxx"}]
         (let [test-files {"test-branch" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
@@ -254,7 +254,7 @@
 (deftest import!-calls-update-progress-with-expected-values-test
   (testing "import! calls update-progress! with expected progress values"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
         (let [mock-source (test-helpers/create-mock-source)
               progress-calls (atom [])]
           (with-redefs [remote-sync.task/update-progress!
@@ -275,10 +275,10 @@
 (deftest export!-calls-update-progress-with-expected-values-test
   (testing "export! calls update-progress! with expected progress values"
     (mt/dataset test-data
-      (mt/with-temporary-setting-values [remote-sync-type :development]
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
         (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
-                         :model/Collection _ {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-2xxxx" :location "/"}
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                         :model/Collection _ {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
                          :model/Card _ {:collection_id coll-id}]
             (let [mock-source (test-helpers/create-mock-source)
                   progress-calls (atom [])]
@@ -297,7 +297,7 @@
   (testing "import! deletes and recreates RemoteSyncObject table with synced status"
     (mt/with-model-cleanup [:model/RemoteSyncObject]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
                        :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
           (t2/insert! :model/RemoteSyncObject
                       [{:model_type "Collection" :model_id coll-id :status "created" :status_changed_at (t/offset-date-time)}
@@ -323,9 +323,9 @@
 (deftest export!-updates-all-statuses-to-synced-test
   (testing "export! updates all RemoteSyncObject entries to synced status"
     (mt/with-model-cleanup [:model/RemoteSyncObject]
-      (mt/with-temporary-setting-values [remote-sync-type :development]
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
         (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
                          :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}
                          :model/Dashboard {dash-id :id} {:name "Test Dashboard" :collection_id coll-id :entity_id "test-dashboard-1xxxxx"}]
             (t2/insert! :model/RemoteSyncObject
@@ -370,7 +370,7 @@
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-branch "main"
-                                           remote-sync-type :development]
+                                           remote-sync-type :read-write]
           (with-redefs [source/source-from-settings (constantly mock-source)
                         impl/async-import! (fn [branch force? args]
                                              (reset! import-called? true)
@@ -386,34 +386,34 @@
                      @import-args)
                   "Should call async-import! with correct arguments"))))))))
 
-(deftest finish-remote-config!-starts-import-in-production-mode-test
-  (testing "finish-remote-config! starts import in production mode even when collection exists"
+(deftest finish-remote-config!-starts-import-in-read-only-mode-test
+  (testing "finish-remote-config! starts import in read-only mode even when collection exists"
     (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
       (let [mock-source (test-helpers/create-mock-source)
             import-called? (atom false)]
-        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :type "remote-synced" :location "/"}]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :is_remote_synced true :location "/"}]
           (mt/with-temporary-setting-values [remote-sync-enabled true
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-branch "main"
-                                             remote-sync-type :production]
+                                             remote-sync-type :read-only]
             (with-redefs [source/source-from-settings (constantly mock-source)
                           impl/async-import! (fn [& _args] (reset! import-called? true) {:id 123})]
               (let [task-id (impl/finish-remote-config!)]
                 (is (= 123 task-id)
                     "Should return task ID from async-import!")
                 (is @import-called?
-                    "Should call async-import! in production mode")))))))))
+                    "Should call async-import! in read-only mode")))))))))
 
 (deftest finish-remote-config!-does-nothing-when-collection-exists-in-dev-mode-test
-  (testing "finish-remote-config! does nothing when collection exists in development mode"
+  (testing "finish-remote-config! does nothing when collection exists in read-write mode"
     (mt/with-model-cleanup [:model/Collection]
       (let [mock-source (test-helpers/create-mock-source)
             import-called? (atom false)]
-        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :type "remote-synced" :location "/"}]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :is_remote_synced true :location "/"}]
           (mt/with-temporary-setting-values [remote-sync-enabled true
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-branch "main"
-                                             remote-sync-type :development]
+                                             remote-sync-type :read-write]
             (with-redefs [source/source-from-settings (constantly mock-source)
                           impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
               (let [result (impl/finish-remote-config!)]
@@ -426,7 +426,7 @@
   (testing "finish-remote-config! clears remote-synced collection when remote sync is disabled"
     (mt/with-model-cleanup [:model/Collection]
       (let [clear-called? (atom false)]
-        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :type "remote-synced" :location "/"}]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :is_remote_synced true :location "/"}]
           (mt/with-temporary-setting-values [remote-sync-enabled false]
             (with-redefs [collection/clear-remote-synced-collection! (fn [] (reset! clear-called? true))]
               (let [result (impl/finish-remote-config!)]

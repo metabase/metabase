@@ -104,7 +104,6 @@ describe("scenarios > question > native query drill", () => {
         cy.button("Save").click();
         cy.wait("@saveCard");
       });
-      H.modal().findByText("Not now").click();
 
       H.tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
       H.popover().within(() => {

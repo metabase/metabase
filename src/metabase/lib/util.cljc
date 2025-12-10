@@ -1,5 +1,5 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format every? mapv select-keys update-keys some #?(:clj for)])
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([potemkin :as p])
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? mapv select-keys update-keys some #?(:clj for)]]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in #?(:clj for)]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -533,10 +533,3 @@
     (:query :native) :mbql-version/legacy
     ;; otherwise, this is not a valid MBQL query.
     nil))
-
-(defn drop-summary-clauses
-  "Remove :aggregation and :breakout from the stage at `stage-number` of a `query`."
-  ([query]
-   (drop-summary-clauses query -1))
-  ([query stage-number]
-   (update-query-stage query stage-number dissoc :aggregation :breakout)))

@@ -241,6 +241,7 @@
   text
   today
   split-part
+  collate
   integer
   float]
  [lib.extraction
@@ -472,10 +473,8 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
-  canonical-stage-index
   clause?
   clause-of-type?
-  drop-summary-clauses
   fresh-uuids
   mbql-stage?
   native-stage?
@@ -498,6 +497,7 @@
   all-field-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
+  all-segment-ids
   all-source-card-ids
   all-source-table-ids
   all-template-tag-field-ids

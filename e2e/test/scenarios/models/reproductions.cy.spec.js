@@ -94,8 +94,8 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
@@ -119,8 +119,8 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -143,60 +143,12 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").should("not.exist");
       H.entityPickerModalLevel(1).should("exist");
       H.entityPickerModalLevel(2).should("not.exist");
     });
-  });
-});
-
-// this is only testable in OSS because EE always has models from auditv2
-describe("issue 19776", { tags: "@OSS" }, () => {
-  const modelName = "Orders Model";
-  function openEllipsisMenuFor(item) {
-    cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should reflect archived model in the data picker without refreshing (metabase#19776)", () => {
-    cy.visit("/");
-
-    cy.findByTestId("app-bar").button("New").click();
-    H.popover().findByText("Question").click();
-    H.entityPickerModalTab("Collections").click(); // now you see it
-    H.entityPickerModal()
-      .button(/Filter/)
-      .click();
-
-    H.popover().findByText("Models").should("exist");
-
-    H.entityPickerModal().findByLabelText("Close").click();
-
-    // navigate without a page load
-    cy.findByTestId("sidebar-toggle").click();
-    H.navigationSidebar().findByText("Our analytics").click();
-
-    // archive the only model
-    cy.findByTestId("collection-table").within(() => {
-      openEllipsisMenuFor(modelName);
-    });
-    H.popover().contains("Move to trash").click();
-    cy.findByTestId("undo-list").findByText("Trashed model");
-
-    cy.findByTestId("app-bar").button("New").click();
-    H.popover().findByText("Question").click();
-    H.entityPickerModalTab("Collections").click(); // now you don't
-    H.entityPickerModal()
-      .button(/Filter/)
-      .click();
-
-    H.popover().findByText("Models").should("not.exist");
   });
 });
 
@@ -539,76 +491,72 @@ describe("issue 22519", { tags: "@skip" }, () => {
   });
 });
 
-describe(
-  "filtering based on the remapped column name should result in a correct query (metabase#22715)",
-  { tags: "@flaky" },
-  () => {
-    beforeEach(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.intercept("PUT", "/api/card/*").as("updateModel");
+describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
+  beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
 
-      H.restore();
-      cy.signInAsAdmin();
+    H.restore();
+    cy.signInAsAdmin();
 
-      H.createNativeQuestion({
-        native: {
-          query:
-            'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
-        },
-      }).then(({ body: { id } }) => {
-        // Visit the question to first load metadata
-        H.visitQuestion(id);
+    H.createNativeQuestion({
+      native: {
+        query:
+          'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
+      },
+    }).then(({ body: { id } }) => {
+      // Visit the question to first load metadata
+      H.visitQuestion(id);
 
-        // Turn the question into a model
-        cy.request("PUT", `/api/card/${id}`, { type: "model" });
+      // Turn the question into a model
+      cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
-        // Let's go straight to the model metadata editor
-        cy.visit(`/model/${id}/columns`);
-        cy.findByText("Database column this maps to").should("be.visible");
+      // Let's go straight to the model metadata editor
+      cy.visit(`/model/${id}/columns`);
+      cy.findByText("Database column this maps to").should("be.visible");
 
-        // The first column `ID` is automatically selected
-        H.mapColumnTo({ table: "Orders", column: "ID" });
-        cy.findByText("ALIAS_CREATED_AT").click();
+      // The first column `ID` is automatically selected
+      H.mapColumnTo({ table: "Orders", column: "ID" });
+      cy.findByText("ALIAS_CREATED_AT").click();
 
-        H.mapColumnTo({ table: "Orders", column: "Created At" });
+      H.mapColumnTo({ table: "Orders", column: "Created At" });
 
-        // Make sure the column name updated before saving
-        cy.findByDisplayValue("Created At");
+      // Make sure the column name updated before saving
+      cy.findByDisplayValue("Created At");
 
-        cy.button("Save changes").click();
-        cy.wait("@updateModel");
+      cy.button("Save changes").click();
+      cy.wait("@updateModel");
 
-        H.visitModel(id);
-      });
+      H.visitModel(id);
     });
+  });
 
-    it("when done through the column header action (metabase#22715-1)", () => {
-      H.tableHeaderClick("Created At");
-      H.popover().within(() => {
-        cy.findByText("Filter by this column").click();
-        cy.findByText("Today").click();
-      });
-      cy.wait("@dataset");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Today").should("not.exist");
-      cy.get("[data-testid=cell-data]")
-        .should("have.length", 4)
-        .and("contain", "Created At");
+  it("when done through the column header action (metabase#22715-1)", () => {
+    H.tableHeaderClick("Created At");
+    H.popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Today").click();
     });
+    cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Today").should("not.exist");
+    cy.get("[data-testid=cell-data]")
+      .should("have.length", 4)
+      .and("contain", "Created At");
+  });
 
-    it("when done through the filter trigger (metabase#22715-2)", () => {
-      H.filter();
-      H.popover().within(() => {
-        cy.findByText("Created At").click();
-        cy.findByText("Today").click();
-      });
-      cy.wait("@dataset");
-      cy.get("[data-testid=cell-data]")
-        .should("have.length", 4)
-        .and("contain", "Created At");
+  it("when done through the filter trigger (metabase#22715-2)", () => {
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Today").click();
     });
-  },
-);
+    cy.wait("@dataset");
+    cy.get("[data-testid=cell-data]")
+      .should("have.length", 4)
+      .and("contain", "Created At");
+  });
+});
 
 describe("issue 23024", () => {
   function addModelToDashboardAndVisit() {
@@ -807,7 +755,6 @@ describe("issue 25537", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
   });
 
   it("should be able to pick a saved model when using a non-english locale (metabase#25537)", () => {
@@ -815,9 +762,8 @@ describe("issue 25537", () => {
     H.createQuestion(questionDetails);
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Sammlungen").click();
-      cy.wait("@getCollectionContent");
+    H.miniPicker().within(() => {
+      cy.findByText("Unsere Analysen").click();
       cy.findByText(questionDetails.name).should("exist");
     });
   });
@@ -846,8 +792,8 @@ describe("issue 26091", () => {
     cy.visit("/");
 
     startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.saveQuestion("New model", undefined, {
@@ -857,8 +803,8 @@ describe("issue 26091", () => {
     turnIntoModel();
 
     startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("New model").should("be.visible");
       cy.findByText("Old model").should("be.visible");
       cy.findByText("Orders Model").should("be.visible");
@@ -925,8 +871,8 @@ describe("issue 28971", () => {
 
   it("should be able to filter a newly created model (metabase#28971)", () => {
     H.startNewModel();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("run-button").click();

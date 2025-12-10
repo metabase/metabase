@@ -9,7 +9,6 @@ describe("documents card embed node custom logic", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
   });
 
   describe("cardEmbed drag and drop", () => {
@@ -377,6 +376,80 @@ describe("documents card embed node custom logic", () => {
         });
     });
 
+    it("should preserve card widths when swapping cards within the same flexContainer", () => {
+      // Wait for all cards to load
+      H.getDocumentCard("Orders")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+      H.getDocumentCard("Orders, Count")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      // Verify initial order: Orders | Orders, Count
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("exist")
+        .within(() => {
+          assertFlexContainerCardsOrder(["Orders", "Orders, Count"]);
+        });
+
+      // Verify both cards start with equal widths
+      getCardWidths(["Orders", "Orders, Count"], (first, second) => {
+        expect(first).to.be.closeTo(second, 3);
+      });
+
+      // Resize the columns to have different widths
+      const flexContainer = H.getFlexContainerForCard("Orders");
+      const handles = H.getResizeHandlesForFlexContianer(flexContainer);
+      H.documentDoDrag(handles.eq(0), { x: 150 });
+
+      // Store the widths after resizing
+      getCardWidths(
+        ["Orders", "Orders, Count"],
+        (ordersWidth, ordersCountWidth) => {
+          cy.wrap(ordersWidth).as("ordersWidth");
+          cy.wrap(ordersCountWidth).as("ordersCountWidth");
+          // Verify the widths are now different
+          expect(ordersWidth).to.be.greaterThan(ordersCountWidth);
+        },
+      );
+
+      // Swap the cards by dragging Orders to the right side of Orders, Count
+      H.dragAndDropCardOnAnotherCard("Orders", "Orders, Count", {
+        side: "right",
+      });
+
+      // Verify new order: Orders, Count | Orders
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("exist")
+        .within(() => {
+          assertFlexContainerCardsOrder(["Orders, Count", "Orders"]);
+        });
+
+      // Verify that each card preserved its width after swapping
+      getCardWidths(
+        ["Orders, Count", "Orders"],
+        (ordersCountNewWidth, ordersNewWidth) => {
+          cy.get<number>("@ordersWidth").then((originalOrdersWidth) => {
+            cy.get<number>("@ordersCountWidth").then(
+              (originalOrdersCountWidth) => {
+                // Orders should still have its original width (now on the right)
+                expect(ordersNewWidth).to.be.closeTo(originalOrdersWidth, 3);
+                // Orders, Count should still have its original width (now on the left)
+                expect(ordersCountNewWidth).to.be.closeTo(
+                  originalOrdersCountWidth,
+                  3,
+                );
+              },
+            );
+          });
+        },
+      );
+    });
+
     it("should handle moving cards between different flexContainers", () => {
       // First create another flexContainer by dragging the standalone card onto a new location
       // Add another standalone card first
@@ -583,6 +656,7 @@ function addNewStandaloneCard(
   cy.get(".node-paragraph.is-empty").click();
   H.addToDocument("/", false);
   H.commandSuggestionItem("Chart").click();
+  H.commandSuggestionItem(/Browse all/).click();
   H.entityPickerModalTab(
     cardType === "question" ? "Questions" : "Models",
   ).click();

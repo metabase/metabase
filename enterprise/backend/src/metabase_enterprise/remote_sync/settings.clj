@@ -46,15 +46,15 @@
   :can-read-from-env? false)
 
 (defsetting remote-sync-type
-  (deferred-tru "Git synchronization type - :development or :production")
+  (deferred-tru "Git synchronization type - :read-write or :read-only")
   :type :keyword
   :visibility :authenticated
   :export? false
   :encryption :no
-  :default :production
+  :default :read-only
   :setter (fn [new-value]
-            (let [new-value (or new-value :production)
-                  valid-types #{:production :development}
+            (let [new-value (or new-value :read-only)
+                  valid-types #{:read-only :read-write}
                   value (or (valid-types (keyword new-value))
                             (throw (ex-info "Remote-sync-type set to an unsupported value"
                                             {:value new-value
@@ -63,7 +63,7 @@
   :can-read-from-env? false)
 
 (defsetting remote-sync-auto-import
-  (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production.")
+  (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.")
   :type :boolean
   :visibility :authenticated
   :export? false
@@ -71,7 +71,7 @@
   :default false)
 
 (defsetting remote-sync-auto-import-rate
-  (deferred-tru "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.")
+  (deferred-tru "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.")
   :type :integer
   :visibility :authenticated
   :export? false
@@ -107,7 +107,7 @@
                      {:url remote-sync-url})))
 
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
-     (when (and (= :production remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
+     (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
 
 (defn check-and-update-remote-settings!

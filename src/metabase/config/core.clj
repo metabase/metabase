@@ -1,7 +1,6 @@
 (ns metabase.config.core
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
@@ -173,12 +172,6 @@
   ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
   mb-version-and-process-identifier
   (format "%s [%s]" mb-app-id-string local-process-uuid))
-
-(defn mb-user-defaults
-  "Default user details provided as a JSON string at launch time for first-user setup flow."
-  []
-  (when-let [user-json (env/env :mb-user-defaults)]
-    (json/parse-string user-json true)))
 
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.

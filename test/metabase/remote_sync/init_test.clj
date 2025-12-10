@@ -12,7 +12,7 @@
 (deftest is-remote-synced-hydration-test
   (testing ":is_remote_synced hydration adds boolean field indicating if item is in remote-synced collection"
     (mt/with-temp [:model/Collection remote-sync-coll {:name "Remote Sync Collection"
-                                                       :type "remote-synced"
+                                                       :is_remote_synced true
                                                        :location "/"}
                    :model/Collection normal-coll {:name "Normal Collection"
                                                   :location "/"}
@@ -34,7 +34,7 @@
 (deftest is-remote-synced-hydration-dashboard-test
   (testing ":is_remote_synced hydration works for dashboards"
     (mt/with-temp [:model/Collection remote-sync-coll {:name "Remote Sync Collection"
-                                                       :type "remote-synced"
+                                                       :is_remote_synced true
                                                        :location "/"}
                    :model/Collection normal-coll {:name "Normal Collection"
                                                   :location "/"}
@@ -52,7 +52,7 @@
 (deftest is-remote-synced-hydration-batched-test
   (testing ":is_remote_synced hydration is efficient with batch hydration"
     (mt/with-temp [:model/Collection remote-sync-coll {:name "Remote Sync Collection"
-                                                       :type "remote-synced"
+                                                       :is_remote_synced true
                                                        :location "/"}
                    :model/Collection normal-coll {:name "Normal Collection"
                                                   :location "/"}

@@ -32,6 +32,7 @@ export * from "./session";
 export * from "./settings";
 export * from "./snippets";
 export * from "./store";
+export * from "./support-access-grants";
 export * from "./table";
 export * from "./task";
 export * from "./timeline";

@@ -68,4 +68,6 @@ export type DataPickerValueItem =
 export type DataPickerItem = DataPickerFolderItem | DataPickerValueItem;
 
 export type DataPickerModalOptions = EntityPickerModalOptions &
-  QuestionPickerOptions;
+  QuestionPickerOptions & {
+    showDatabases?: boolean;
+  };

@@ -558,6 +558,7 @@
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
     :development-mode
+    :data-studio
     :embedding
     :embedding-sdk
     :embedding-simple
@@ -569,7 +570,8 @@
     :query-reference-validation
     :cloud-custom-smtp
     :session-timeout-config
-    :offer-metabase-ai})
+    :offer-metabase-ai
+    :offer-metabase-ai-tiered})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

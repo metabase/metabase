@@ -209,6 +209,7 @@ config:
     not-behind-proxy: false
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
+    notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
@@ -222,10 +223,10 @@ config:
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
-    retry-max-attempts: 7
+    retry-max-retries: 6
     retry-max-interval-millis: 30000
     retry-multiplier: 2.0
-    retry-randomization-factor: 0.1
+    retry-jitter-factor: 0.1
     saml-application-name: Metabase
     saml-attribute-email: null
     saml-attribute-firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname

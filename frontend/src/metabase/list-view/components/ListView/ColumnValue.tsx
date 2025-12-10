@@ -190,6 +190,10 @@ export function ColumnValue({
       );
     case isQuantity(column):
     case isScore(column): {
+      if (!column?.settings?.["show_mini_bar"]) {
+        return <Text fw="bold">{value}</Text>;
+      }
+
       return (
         <Flex direction="row" align="center" gap="sm">
           <MiniBarCell

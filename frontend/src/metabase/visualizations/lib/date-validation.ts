@@ -34,7 +34,7 @@ const minutePattern = /(?<minute>[0-5]\d)/;
  * Seconds are always 2 digits.
  * 60 is used to represent leap seconds.
  */
-const secondsPattern = /(?<seconds>([0-5]\d)|60)/;
+const secondsPattern = /(?<seconds>([0-5]\d)|60)?/;
 /**
  * Milliseconds have no defined precision.
  * Allowing for up to 9 since this gets to nanoseconds.
@@ -127,7 +127,8 @@ const spaceSeparatedDateTimePattern =
   hourPattern.source +
   /:/.source +
   minutePattern.source +
-  /:/.source +
+  // seconds and milliseconds are optional
+  /:?/.source +
   secondsPattern.source +
   millisecondsPattern.source +
   /$/.source;

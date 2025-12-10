@@ -10,7 +10,7 @@ const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-H.describeWithSnowplowEE("Remote Sync", () => {
+describe("Remote Sync", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -24,9 +24,9 @@ H.describeWithSnowplowEE("Remote Sync", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  describe("Development Mode", () => {
+  describe("read-write Mode", () => {
     it("can push and pull changes", () => {
-      H.configureGit("development");
+      H.configureGit("read-write");
       H.wrapSyncedCollection();
       const UPDATED_REMOTE_QUESTION_NAME = "Updated Question Name";
 
@@ -96,7 +96,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
     });
 
     it("should not allow you to move content to the Synced Collection that references non Synced Collection items", () => {
-      H.configureGit("development");
+      H.configureGit("read-write");
       H.wrapSyncedCollection();
       cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
         "updateDashboard",
@@ -139,7 +139,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
       const NEW_BRANCH = `new-branch-${Date.now()}`;
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("development");
+      H.configureGit("read-write");
       H.wrapSyncedCollection();
 
       cy.visit("/collection/root");
@@ -250,7 +250,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
       };
 
       it("should allow you to create new branches and switch between them", () => {
-        H.configureGit("development");
+        H.configureGit("read-write");
         H.wrapSyncedCollection();
 
         const NEW_BRANCH_1 = `new-branch-${Date.now()}`;
@@ -296,7 +296,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
       });
 
       it("should show a popup when trying to switch branches with unsynced changes", () => {
-        H.configureGit("development");
+        H.configureGit("read-write");
 
         const NEW_BRANCH = `new-branch-${Date.now()}`;
 
@@ -351,7 +351,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
       beforeEach(() => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        H.configureGit("development");
+        H.configureGit("read-write");
         H.wrapSyncedCollection();
 
         cy.visit("/collection/root");
@@ -448,12 +448,12 @@ H.describeWithSnowplowEE("Remote Sync", () => {
       cy.signInAsAdmin();
     });
 
-    it("can set up development mode", () => {
+    it("can set up read-write mode", () => {
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
         .clear()
         .type(LOCAL_GIT_URL);
-      cy.findByTestId("admin-layout-content").findByText("Development").click();
+      cy.findByTestId("admin-layout-content").findByText("Read-write").click();
       cy.button("Set up Remote Sync").click();
 
       H.expectUnstructuredSnowplowEvent({
@@ -480,8 +480,8 @@ H.describeWithSnowplowEE("Remote Sync", () => {
       });
     });
 
-    it("can set up production mode", () => {
-      // Set up a Synced Collection to connect to, otherwise production mode will be empty
+    it("can set up read-only mode", () => {
+      // Set up a Synced Collection to connect to, otherwise read-only mode will be empty
       // Copy some files
       H.copySyncedCollectionFixture();
 
@@ -493,7 +493,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
         .clear()
         .type(LOCAL_GIT_URL);
 
-      cy.findByTestId("admin-layout-content").findByText("Production").click();
+      cy.findByTestId("admin-layout-content").findByText("Read-only").click();
       cy.button("Set up Remote Sync").click();
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
@@ -510,6 +510,31 @@ H.describeWithSnowplowEE("Remote Sync", () => {
 
         cy.findByRole("treeitem", { name: /Synced Collection/ }).click();
       });
+    });
+
+    it("should disable 'Set up Remote Sync' button if git url is not set (#65653)", () => {
+      cy.visit("/admin/settings/remote-sync");
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByRole("switch", { name: "Auto-sync with git" }).click({
+        force: true,
+      });
+
+      // Trivial dirty state should not be enough to enable the button
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByLabelText(/Access Token/i)
+        .clear()
+        .type("SecretToken");
+      // Still disabled - url is not set
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByLabelText(/repository url/i)
+        .clear()
+        .type(LOCAL_GIT_URL);
+
+      // Enabled now - url is set
+      cy.button("Set up Remote Sync").should("be.enabled");
     });
 
     it("shows an error if git settings are invalid", () => {
@@ -534,7 +559,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
     it("can deactivate remote sync", () => {
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("development");
+      H.configureGit("read-write");
 
       cy.visit("/admin/settings/remote-sync");
 
@@ -566,7 +591,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
     });
   });
 
-  describe("production mode", () => {
+  describe("read-only mode", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
@@ -579,7 +604,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
 
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("production");
+      H.configureGit("read-only");
 
       cy.visit("/");
 
@@ -597,7 +622,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
 
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText("Sync branch").clear().type("test");
-      cy.button("Save changes").click();
+      cy.findByTestId("remote-sync-submit-button").click();
 
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
@@ -609,7 +634,7 @@ H.describeWithSnowplowEE("Remote Sync", () => {
 
       H.waitForTask({ taskName: "import" });
 
-      cy.findByRole("button", { name: "Save changes" }).should("be.disabled");
+      cy.findByTestId("remote-sync-submit-button").should("be.disabled");
 
       cy.visit("/");
 

@@ -430,7 +430,10 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping();
 
-      H.findDashCardAction(H.getDashboardCard(1), "Replace").click();
+      H.getDashboardCard(1)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Replace")
+        .click();
 
       H.modal().findByText("Orders, Count").click();
 

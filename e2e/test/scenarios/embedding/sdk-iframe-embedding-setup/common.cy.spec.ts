@@ -42,4 +42,35 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     H.modal().should("not.exist");
     cy.findAllByTestId("sdk-setting-card").should("be.visible");
   });
+
+  it("should close wizard when navigating back in browser history", () => {
+    cy.visit("/admin");
+    cy.findAllByTestId("settings-sidebar-link")
+      .contains("General")
+      .should("be.visible");
+
+    cy.visit("/admin/embedding");
+    cy.findAllByTestId("sdk-setting-card").should("be.visible");
+
+    cy.findAllByTestId("sdk-setting-card")
+      .first()
+      .within(() => {
+        cy.findByText("New embed").click();
+      });
+
+    cy.wait("@dashboard");
+
+    H.embedModalEnableEmbedding();
+
+    cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
+
+    H.modal().should("exist");
+
+    cy.go("back");
+
+    H.modal().should("not.exist");
+    cy.findAllByTestId("settings-sidebar-link")
+      .contains("General")
+      .should("be.visible");
+  });
 });

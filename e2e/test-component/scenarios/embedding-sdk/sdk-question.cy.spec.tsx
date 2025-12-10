@@ -609,4 +609,27 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
     });
   });
+
+  it("downloads should work when using entity IDs", () => {
+    cy.intercept("POST", "/api/card/*/query/xlsx").as("questionDownload");
+
+    cy.get<string>("@questionEntityId").then((questionEntityId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionEntityId} withDownloads />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("interactive-question-result-toolbar")
+        .findByTestId("question-download-widget-button")
+        .click();
+
+      cy.findByText(".xlsx").click();
+      cy.findByTestId("download-results-button").click();
+    });
+
+    cy.wait("@questionDownload").then((interception) => {
+      expect(interception.response?.statusCode).to.equal(200);
+    });
+  });
 });

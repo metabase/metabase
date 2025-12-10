@@ -146,7 +146,13 @@ jobs:
     runs-on: ubuntu-22.04
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: [build, check-existing-artifacts]
-    if: always() && !cancelled() && (needs.build.result == 'success' || (needs.check-existing-artifacts.outputs.should_build == 'false' && needs.check-existing-artifacts.outputs.ee_exists == 'true' && needs.check-existing-artifacts.outputs.oss_exists == 'true'))
+    # We only care about the explicit JAR health check on push to `master` and the `release-` branches.
+    # JARs created in random branches on PRs are 99% of the time treated as ephemeral, and used only in e2e tests.
+    # E2E tests already have a step where they wait for the instance health check.
+    if: |
+      always() && !cancelled() &&
+      (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) &&
+      (needs.build.result == 'success' || (needs.check-existing-artifacts.outputs.should_build == 'false' && needs.check-existing-artifacts.outputs.ee_exists == 'true' && needs.check-existing-artifacts.outputs.oss_exists == 'true'))
     timeout-minutes: 10
     strategy:
       matrix:

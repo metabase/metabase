@@ -89,29 +89,8 @@
        :matches []
        :error (str e)})))
 
-(defn- git-ignored-files
-  "Returns a set of files that are ignored by git."
-  [files]
-  (println (c/yellow "Checking git ignore status for " (c/white (count files)) " files..."))
-  (let [{:keys [exit]
-         :as proc} (p/sh {:out :string
-                          :err :string
-                          :continue true
-                          :dir u/project-root-directory
-                          :in (str/join "\n" files)}
-                         "git" "check-ignore" "--stdin")
-        output (:out proc)]
-    (when (= 128 exit)
-      (throw (ex-info "git check-ignore has failed with an exceptional status code: maybe git is not initialized in this directory or no gitignore file found."
-                      {:babashka/exit exit :git-error (:err proc)})))
-    (->> output
-         str/split-lines
-         (remove str/blank?)
-         (map str/trim)
-         set)))
-
 (defn remove-ignored [files]
-  (let [ignored (git-ignored-files files) ;; Returns a set of git-ignored files
+  (let [ignored (u/git-ignored-files files) ;; Returns a set of git-ignored files
         _       (u/debug "Ignored files:" (count ignored))
         files'  (remove ignored files)]
     (u/debug "Files to scan:" (count files'))

@@ -4604,7 +4604,10 @@ describe("issue 62627", () => {
 
     cy.log("add an inline card filter");
     H.showDashboardCardActions();
-    H.findDashCardAction(H.getDashboardCard(), "Add a filter").click();
+    H.getDashboardCard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Add a filter")
+      .click();
     H.popover().findByText("Text or Category").click();
     H.selectDashboardFilter(H.getDashboardCard(), "Category");
     H.setDashboardParameterName("Category");

@@ -5,11 +5,11 @@ import { Api } from "metabase/api";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
+import { documentApi } from "metabase/api/document";
 import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
-import { documentApi } from "metabase-enterprise/api/document";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type {
   Card,
@@ -90,10 +90,10 @@ function shouldInvalidateForCollection(
     return false;
   }
 
-  const oldType = oldCollection?.type;
-  const newType = newCollection.type;
+  const oldSynced = oldCollection?.is_remote_synced ?? false;
+  const newSynced = newCollection.is_remote_synced ?? false;
 
-  return oldType === "remote-synced" || newType === "remote-synced";
+  return oldSynced || newSynced;
 }
 
 function getOriginalDocument(originalState: State, id: number) {
@@ -240,7 +240,7 @@ remoteSyncListenerMiddleware.startListening({
   effect: async (action: PayloadAction<Collection>, { dispatch }) => {
     const collection = action.payload;
 
-    if (collection.type === "remote-synced") {
+    if (collection.is_remote_synced) {
       invalidateRemoteSyncTags(dispatch);
     }
   },
@@ -277,7 +277,7 @@ remoteSyncListenerMiddleware.startListening({
         deleteRequest.id,
       );
 
-      if (collection?.type === "remote-synced") {
+      if (collection?.is_remote_synced) {
         invalidateRemoteSyncTags(dispatch);
       }
     }

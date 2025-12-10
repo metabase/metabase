@@ -112,7 +112,7 @@
 (mu/defn- update-breakout-unit* :- ::lib.schema/stage
   [stage         :- ::lib.schema/stage
    target-column :- [:or ::lib.schema.id/field :string]
-   temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
+   temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
   (lib.util.match/replace stage
     [(tag :guard #{:field :expression})

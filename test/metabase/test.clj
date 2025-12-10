@@ -264,7 +264,10 @@
   file->bytes
   file-path->bytes
   bytes->base64-data-uri
+  format-env-key
+  priv-key->base64-uri
   latest-audit-log-entry
+  all-entries-for
   let-url
   metric-value
   obj->json->obj

@@ -6,13 +6,13 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [f]
-                      (mt/with-temporary-setting-values [remote-sync-type :development]
+                      (mt/with-temporary-setting-values [remote-sync-type :read-write]
                         (f))))
 
 (deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-success-test
   (testing "PUT /api/dashboard/:id with collection_id in remote-synced succeeds when all dependencies are in remote-synced"
-    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :type "remote-synced"}
-                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :is_remote_synced true}
                    :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
                    :model/Dashboard {dash-id :id} {:name "Dashboard to Move"
                                                    :collection_id source-id}
@@ -34,8 +34,8 @@
 (deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-failure-test
   (testing "PUT /api/dashboard/:id with collection_id in remote-synced throws 400 when dependencies exist outside remote-synced"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
-                   :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :type "remote-synced"}
-                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :type "remote-synced"}
+                   :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :is_remote_synced true}
                    :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
                    :model/Dashboard {dash-id :id} {:name "Dashboard to Move"
                                                    :collection_id source-id}
@@ -62,8 +62,8 @@
 (deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-transaction-rollback-test
   (testing "PUT /api/dashboard/:id transaction rollback when dependency check fails"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
-                   :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :type "remote-synced"}
-                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :type "remote-synced"}
+                   :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :is_remote_synced true}
                    :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
                    :model/Dashboard {dash-id :id} {:name "Dashboard to Move"
                                                    :collection_id source-id}
@@ -108,8 +108,8 @@
 
 (deftest api-copy-dashboard-into-remote-synced-dependency-checking-success-test
   (testing "POST /api/dashboard/:id/copy into remote-synced succeeds when all dependencies are in remote-synced"
-    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :type "remote-synced"}
-                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :is_remote_synced true}
                    :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
                    :model/Dashboard {dash-id :id} {:name "Dashboard to Copy"
                                                    :collection_id source-id}
@@ -133,8 +133,8 @@
 (deftest api-copy-dashboard-into-remote-synced-dependency-checking-failure-test
   (testing "POST /api/dashboard/:id/copy into remote-synced throws 400 when dependencies exist outside remote-synced"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
-                   :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :type "remote-synced"}
-                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :type "remote-synced"}
+                   :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :is_remote_synced true}
                    :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
                    :model/Dashboard {dash-id :id} {:name "Dashboard to Copy"
                                                    :collection_id source-id}

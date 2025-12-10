@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v58.2025-10-30T09:03:00
+      author: alice
+      comment: Test
+      changes:
+        - addColumn:
+            tableName: test
+
+  - changeSet:
+      id: v58.2025-11-01T10:00:00
+      author: bob
+      comment: Our change
+      changes: []
+
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+# ADVICE:
+# Keep this at the bottom

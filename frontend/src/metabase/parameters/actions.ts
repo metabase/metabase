@@ -49,15 +49,16 @@ export const fetchParameterValues =
 
 export interface FetchCardParameterValuesOpts {
   cardId: CardId;
+  token?: string | null;
   parameter: Parameter;
   query?: string;
 }
 
 export const fetchCardParameterValues =
-  ({ cardId, parameter, query }: FetchCardParameterValuesOpts) =>
+  ({ cardId, token, parameter, query }: FetchCardParameterValuesOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const request = {
-      cardId,
+    const request: CardParameterValuesRequest = {
+      ...(token ? { token } : { cardId }),
       paramId: parameter.id,
       query,
     };
@@ -72,6 +73,7 @@ export const fetchCardParameterValues =
 
 export interface FetchDashboardParameterValuesOpts {
   dashboardId: DashboardId;
+  token?: string | null;
   parameter: Parameter;
   parameters: Parameter[];
   query?: string;
@@ -80,14 +82,15 @@ export interface FetchDashboardParameterValuesOpts {
 export const fetchDashboardParameterValues =
   ({
     dashboardId,
+    token,
     parameter,
     parameters,
     query,
   }: FetchDashboardParameterValuesOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const request = {
+    const request: DashboardParameterValuesRequest = {
+      ...(token ? { token } : { dashId: dashboardId }),
       paramId: parameter.id,
-      dashId: dashboardId,
       query,
       ...getFilteringParameterValuesMap(parameter, parameters),
     };
@@ -118,7 +121,8 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
 };
 
 interface CardParameterValuesRequest {
-  cardId: CardId;
+  cardId?: CardId;
+  token?: string | null;
   paramId: ParameterId;
   query?: string;
 }
@@ -135,7 +139,8 @@ const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
 };
 
 interface DashboardParameterValuesRequest {
-  dashId: DashboardId;
+  dashId?: DashboardId;
+  token?: string | null;
   paramId: ParameterId;
   query?: string;
 }

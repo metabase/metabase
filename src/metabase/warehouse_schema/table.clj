@@ -3,18 +3,24 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- nil-if-unreadable
+  [instance]
+  (when (and instance (mi/can-read? instance))
+    instance))
+
 (defn present-table
   "Given a table, shape it for the API."
   [table]
   (-> table
       (update :db dissoc :router_database_id)
+      (m/update-existing :collection nil-if-unreadable)
       (update :schema str)))
 
 (defn- format-fields-for-response [resp]
@@ -25,30 +31,50 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
+(defenterprise can-access-via-collection?
+  "Returns true if the user can access this published table via collection read permissions.
+  OSS returns false (published tables don't grant access).
+  Enterprise checks collection permissions for published tables."
+  metabase-enterprise.data-studio.permissions.published-tables
+  [_table]
+  false)
+
+(defn- can-access-table-for-query-metadata?
+  "Returns true if the current user can access this table for query metadata.
+  Checks collection permissions for published tables, data permissions for unpublished tables."
+  [table]
+  (or (can-access-via-collection? table)
+      (mi/can-read? table)))
+
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  (api/check-404 table)
   (if include-editable-data-model?
     (api/write-check table)
-    (api/read-check table))
-  (-> table
-      (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
-      (m/dissoc-in [:db :details])
-      format-fields-for-response
-      present-table
-      (update :fields (partial filter (fn [{visibility-type :visibility_type}]
-                                        (case (keyword visibility-type)
-                                          :hidden    include-hidden-fields?
-                                          :sensitive include-sensitive-fields?
-                                          true))))))
+    (api/check-403 (can-access-table-for-query-metadata? table)))
+  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                                [:segments :definition_description] :metrics :collection]
+                         (premium-features/has-feature? :transforms) (conj :transform))]
+    (-> table
+        (update :collection nil-if-unreadable)
+        (#(apply t2/hydrate % hydration-keys))
+        (m/dissoc-in [:db :details])
+        format-fields-for-response
+        present-table
+        (update :fields (partial filter (fn [{visibility-type :visibility_type}]
+                                          (case (keyword visibility-type)
+                                            :hidden    include-hidden-fields?
+                                            :sensitive include-sensitive-fields?
+                                            true)))))))
 
 (defn batch-fetch-query-metadatas*
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."
   [ids]
   (when (seq ids)
     (let [tables (->> (t2/select :model/Table :id [:in ids])
-                      (filter mi/can-read?))
+                      (filter can-access-table-for-query-metadata?))
           tables (t2/hydrate tables
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments

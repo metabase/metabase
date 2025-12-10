@@ -246,34 +246,35 @@ export const RemoteSyncAdminSettings = () => {
                   <FormRadioGroup name={TYPE_KEY} label={t`Remote Sync Mode`}>
                     <Stack mt="sm">
                       <Radio
-                        value="development"
-                        label={t`Development`}
-                        description={t`In development mode, you can make changes to synced collections and pull and push from any git branch`}
+                        value="read-write"
+                        label={t`Read-write`}
+                        description={t`In read-write mode, you can make changes to synced collections and pull and push from any git branch`}
                       />
                       <Tooltip
                         disabled={!hasUnsyncedChanges}
-                        label={t`You can't switch to production as you have unpublished changes.`}
+                        label={t`You can't switch to Read-only as you have unpublished changes.`}
                         position="bottom-start"
                       >
                         <Box>
                           <Radio
-                            description={t`In production mode, synced collections are read-only, and automatically sync with the specified branch`}
+                            description={t`In Read-only mode, synced collections are read-only, and automatically sync with the specified branch`}
                             disabled={hasUnsyncedChanges}
-                            label={t`Production`}
-                            value="production"
+                            label={t`Read-only`}
+                            value="read-only"
                           />
                         </Box>
                       </Tooltip>
                     </Stack>
                   </FormRadioGroup>
 
-                  {values?.[TYPE_KEY] === "production" && (
+                  {values?.[TYPE_KEY] === "read-only" && (
                     <Stack ml="1.875rem">
                       <Flex align="end" gap="md">
                         <Box style={{ flex: 1 }}>
                           <FormTextInput
                             name={BRANCH_KEY}
                             label={t`Sync branch`}
+                            mr={0}
                             placeholder="main"
                             {...getEnvSettingProps(
                               settingDetails?.[BRANCH_KEY],
@@ -304,13 +305,16 @@ export const RemoteSyncAdminSettings = () => {
                       </Button>
                     )}
                     <FormSubmitButton
+                      data-testid="remote-sync-submit-button"
                       label={
                         isRemoteSyncEnabled
                           ? t`Save changes`
                           : t`Set up Remote Sync`
                       }
                       variant="filled"
-                      disabled={!dirty}
+                      disabled={
+                        isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]
+                      }
                       flex="auto 0 0"
                     />
                   </Flex>

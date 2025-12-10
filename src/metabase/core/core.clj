@@ -12,12 +12,12 @@
    [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
-   [metabase.core.initialization-status :as init-status]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
+   [metabase.initialization-status.core :as init-status]
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.plugins.core :as plugins]
@@ -210,12 +210,13 @@
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
 
-  (init-status/set-progress! 0.9)
+  (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
-  (init-status/set-progress! 0.95)
+  (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
+  (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)

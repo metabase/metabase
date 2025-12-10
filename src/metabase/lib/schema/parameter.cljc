@@ -21,6 +21,7 @@
   currently still allowed for backwards-compatibility purposes -- currently the FE client will just parrot back the
   `:widget-type` in some cases. In these cases, the backend is just supposed to infer the actual type of the parameter
   value."
+  (:refer-clojure :exclude [get-in])
   (:require
    #?@(:clj
        ([flatland.ordered.map :as ordered-map]))
@@ -28,7 +29,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 (defn- variadic-opts-first
   "Some clauses, like `:contains`, have optional `options` last in their binary form, and required options first in
@@ -95,7 +97,7 @@
    ;;
    ;; TODO FIXME -- actually, it turns out the the FE client passes parameter type `:category` for parameters in
    ;; public Cards. Who knows why! For now, we'll continue allowing it. But we should fix it soon. See
-   ;; [[metabase.public-sharing.api-test/execute-public-card-with-parameters-test]]
+   ;; [[metabase.public-sharing-rest.api-test/execute-public-card-with-parameters-test]]
    :id       {:allowed-for #{:id}}
    :category {:allowed-for #{:category #_FIXME :number :text :date :boolean}}
 
@@ -130,10 +132,10 @@
 
    ;; "operator" parameter types.
    :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=}}
-   :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<=}}
+   :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<= :number/between}}
    :number/=                {:type :numeric, :operator :variadic, :allowed-for #{:number/= :number :id :category
                                                                                  :location/zip_code}}
-   :number/>=               {:type :numeric, :operator :unary, :allowed-for #{:number/>=}}
+   :number/>=               {:type :numeric, :operator :unary, :allowed-for #{:number/>= :number/between}}
    :number/between          {:type :numeric, :operator :binary, :allowed-for #{:number/between}}
    :string/!=               {:type :string, :operator :variadic, :allowed-for #{:string/!=}}
    :string/=                {:type :string, :operator :variadic, :allowed-for #{:string/= :text :id :category

@@ -6,6 +6,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupDashboardItemsEndpoint,
+  setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -17,7 +18,11 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import type { CollectionId, CollectionItem } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionItem,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -243,11 +248,13 @@ interface SetupOpts {
   onChange?: (item: QuestionPickerItem) => void;
   models?: [QuestionPickerValueModel, ...QuestionPickerValueModel[]];
   options?: typeof defaultOptions;
+  tokenFeatures?: Partial<TokenFeatures>;
 }
 
 const commonSetup = () => {
   mockGetBoundingClientRect();
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupDatabasesEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,
@@ -278,18 +285,19 @@ const commonSetup = () => {
 const setupPicker = async ({
   initialValue = { id: "root", model: "collection" },
   onChange = jest.fn<void, [QuestionPickerItem]>(),
+  tokenFeatures = {},
 }: SetupOpts = {}) => {
   commonSetup();
 
-  const tokenFeatures = createMockTokenFeatures({
-    content_verification: true,
-    official_collections: true,
-  });
   const settings = createMockSettings();
 
   const settingValuesWithToken = {
     ...settings,
-    "token-features": tokenFeatures,
+    "token-features": createMockTokenFeatures({
+      content_verification: true,
+      official_collections: true,
+      ...tokenFeatures,
+    }),
   };
 
   const state = createMockState({
@@ -329,8 +337,15 @@ const setupModal = async ({
   models = ["card", "dataset"],
   onChange = jest.fn<void, [QuestionPickerItem]>(),
   options = defaultOptions,
+  tokenFeatures = {},
 }: SetupOpts = {}) => {
   commonSetup();
+
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+  });
 
   renderWithProviders(
     <QuestionPickerModal
@@ -340,6 +355,9 @@ const setupModal = async ({
       models={models}
       options={options}
     />,
+    {
+      storeInitialState: state,
+    },
   );
 
   await waitForLoaderToBeRemoved();
@@ -650,7 +668,10 @@ describe("QuestionPickerModal", () => {
 
   it("should be able to search for metrics", async () => {
     setupSearchEndpoints([nestedQuestion, myModel, myMetric]);
-    await setupModal({ models: ["card", "dataset", "metric"] });
+    await setupModal({
+      tokenFeatures: { snippet_collections: true },
+      models: ["card", "dataset", "metric"],
+    });
     const searchInput = await screen.findByPlaceholderText(/search/i);
     await userEvent.type(searchInput, myMetric.name);
     await userEvent.click(screen.getByText("Everywhere"));

@@ -11,7 +11,7 @@
         obfuscated-token (setting/obfuscate-value full-token)
         default-settings
         {:remote-sync-url     "file://my/url.git"
-         :remote-sync-type    :production
+         :remote-sync-type    :read-only
          :remote-sync-branch  "test-branch"
          :remote-sync-token   nil}]
     (with-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
@@ -25,7 +25,7 @@
         (testing "Allows setting with no token"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token nil))
           (is (= "file://my/url.git" (settings/remote-sync-url)))
-          (is (= :production (settings/remote-sync-type)))
+          (is (= :read-only (settings/remote-sync-type)))
           (is (= "test-branch" (settings/remote-sync-branch)))
           (is (true? (settings/remote-sync-enabled)))
           (is (= nil (settings/remote-sync-token))))

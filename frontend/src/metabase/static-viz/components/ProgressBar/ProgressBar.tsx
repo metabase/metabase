@@ -197,6 +197,8 @@ export const ProgressBar = ({
           height={layout.height}
           width={layout.width}
           preserveAspectRatio="xMidYMid slice"
+          fill={renderingContext.getColor("text-secondary")}
+          opacity={0.2}
         />
       )}
     </svg>

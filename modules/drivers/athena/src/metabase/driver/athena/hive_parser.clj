@@ -6,10 +6,14 @@
 
 (set! *warn-on-reflection* true)
 
+(def map-close
+  "The closing brackets of a map type"
+  "}]")
+
 (defn- parse-to-json-string [s]
-  (loop  [schema s
-          closes []
-          result ""]
+  (loop [schema s
+         closes []
+         result ""]
     (cond
       (not (nil? (re-find #"^array<[a-z0-9]*>" schema)))
       (recur (str/replace-first schema #"^array<[a-z0-9]*>" "")
@@ -21,10 +25,10 @@
              (conj closes "]")
              (str result "["))
 
-      (str/starts-with? schema "map<string,string>")
-      (recur (str/replace-first schema #"map<string,string>" "")
-             closes
-             (str result "[{\"key\":\"string\",\"value\":\"string\"}]"))
+      (str/starts-with? schema "map<")
+      (recur (str/replace-first schema #"map<" "")
+             (conj closes map-close)
+             (str result "[{\"key\":"))
 
       (str/starts-with? schema "struct<")
       (recur (str/replace-first schema #"struct<" "")
@@ -39,12 +43,14 @@
       (str/starts-with? schema ",")
       (recur (str/replace-first schema #",\s*" "")
              closes
-             (str result ","))
+             (str result (if (= (peek closes) map-close)
+                           ",\"value\":"
+                           ",")))
 
       (str/starts-with? schema ">")
       (recur (str/replace-first schema #">" "")
              (pop closes)
-             (str result (peek closes))) ; Preciso saber se é } ou ]
+             (str result (peek closes)))
 
       :else (let [name-or-type (re-find #"\w+" schema)]
               (if (= name-or-type nil)

@@ -194,19 +194,21 @@ jobs:
 
       - name: Run a few important OSS Cypress tests as sanity check
         if: ${{ matrix.edition == 'oss' }}
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@EE",grepOmitFiltered=true \
-            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+            --env grepTags="@smoke+-@EE" \
+            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important EE Cypress tests as sanity check
         if: ${{ matrix.edition == 'ee' }}
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@OSS",grepOmitFiltered=true \
-            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+            --env grepTags="@smoke+-@OSS" \
+            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

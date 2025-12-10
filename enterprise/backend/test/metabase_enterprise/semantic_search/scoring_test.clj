@@ -183,10 +183,10 @@
         [{:model "card"      :id 1 :name "view card"      :view_count 0}
          {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
          {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
-        ;; fix some test flakes where dataset 3 exists and has some sort of recent views
-        (semantic.tu/with-weights (assoc (search.config/weights :default)
-                                         :user-recency 0
-                                         :rrf 0)
+        (semantic.tu/with-weights (search.config/weights {:context :default
+                                                          ;; fix some test flakes where dataset 3 exists and has some
+                                                          ;; sort of recent views
+                                                          :weights {:user-recency 0, :rrf 0}})
           (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
                    {:model "card",      :id 1, :name "view card"}
                    {:model "dataset",   :id 3, :name "view dataset"}]

@@ -15,9 +15,10 @@ describe("scenarios > visualizations > table", () => {
 
   function joinTable(table) {
     cy.findByText("Join data").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText(table).click();
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, table).click();
     });
   }
 
@@ -126,13 +127,17 @@ describe("scenarios > visualizations > table", () => {
 
     // Copy formatted content with Cmd+C
     cy.realPress(["Meta", "c"]);
-    H.readClipboard().should("equal", "39.72		February 11, 2025, 9:40 PM");
+    H.readClipboard().should(
+      "equal",
+      "Total	Discount ($)	Created At\n39.72		February 11, 2025, 9:40 PM",
+    );
 
     // Copy unformatted content with Shift+Cmd+C
     cy.realPress(["Shift", "Meta", "c"]);
     H.readClipboard().should(
       "equal",
-      "39.718145389078366	null	2025-02-11T21:40:27.892-08:00",
+      "Total	Discount ($)	Created At\n" +
+        "39.718145389078366	null	2025-02-11T21:40:27.892-08:00",
     );
 
     // Escape to clear selection

@@ -71,8 +71,6 @@ describe("scenarios > question > saved", () => {
       cy.wait("@cardCreate");
     });
 
-    cy.button("Not now").click();
-
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
     });
@@ -146,8 +144,6 @@ describe("scenarios > question > saved", () => {
       cy.button("Duplicate").click();
       cy.wait("@cardCreate");
     });
-
-    cy.button("Not now").click();
 
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
@@ -378,8 +374,8 @@ describe("scenarios > question > saved", () => {
       .findByText("Use the notebook editor")
       .click();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 

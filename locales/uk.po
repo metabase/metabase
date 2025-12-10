@@ -31420,16 +31420,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "Розташування вашого git-репозиторію, наприклад https://github.com/acme-inco/metabase.git"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "Тип синхронізації Git — :development або :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "Тип синхронізації Git — :read-write або :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "Чи слід автоматично імпортувати з віддаленого репозиторію git. Застосовується лише якщо remote-sync-type має значення :production."
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "Чи слід автоматично імпортувати з віддаленого репозиторію git. Застосовується лише якщо remote-sync-type має значення :read-only."
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "Якщо remote-sync-type має значення :production, а remote-sync-auto-import має значення true, то це означає частоту (у хвилинах), з якою слід перевіряти наявність оновлень для імпорту. Значення за замовчуванням — 5."
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "Якщо remote-sync-type має значення :read-only, а remote-sync-auto-import має значення true, то це означає частоту (у хвилинах), з якою слід перевіряти наявність оновлень для імпорту. Значення за замовчуванням — 5."
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"

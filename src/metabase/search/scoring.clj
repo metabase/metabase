@@ -86,12 +86,12 @@
 
 (defn model-rank-expr
   "Score an item based on its :model type."
-  [{:keys [context]}]
+  [search-ctx]
   (let [search-order search.config/models-search-order
         n            (double (count search-order))
         cases        (map-indexed (fn [i sm]
                                     [[:= :search_index.model sm]
-                                     (or (search.config/scorer-param context :model sm)
+                                     (or (search.config/scorer-param search-ctx :model sm)
                                          [:inline (/ (- n i) n)])])
                                   search-order)]
     (-> (into [:case] cat (concat cases))
@@ -144,22 +144,22 @@
 
 (defn weighted-score
   "Multiply a score by its weight."
-  [context [column-alias expr]]
-  [:* [:inline (search.config/weight context column-alias)] expr])
+  [search-ctx [column-alias expr]]
+  [:* [:inline (search.config/weight search-ctx column-alias)] expr])
 
 (defn select-items
   "Select expressions for each scorer, plus a :total_score that is the weighted sum of the `scorers`."
-  [context scorers]
+  [search-ctx scorers]
   (concat
    (for [[column-alias expr] scorers]
      [expr column-alias])
-   [[(sum-columns (map (partial weighted-score context) scorers))
+   [[(sum-columns (map (partial weighted-score search-ctx) scorers))
      :total_score]]))
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores."
   [search-ctx scorers qry]
-  (apply sql.helpers/select qry (select-items (:context search-ctx) scorers)))
+  (apply sql.helpers/select qry (select-items search-ctx scorers)))
 
 (defn all-scores
   "Scoring stats for each `index-row`."
@@ -172,3 +172,8 @@
              :weight       weight
              :contribution (* weight score)}))
         scorers))
+
+(defn no-scoring-required?
+  "Scoring is unnecessary when we are not returning any results, e.g. counting potential results"
+  [{:keys [limit-int]}]
+  (and limit-int (zero? limit-int)))

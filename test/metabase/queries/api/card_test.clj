@@ -345,7 +345,8 @@
 (deftest filter-by-using-model-segment-metric
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}
-                 :model/Segment {segment-id :id} {:table_id table-id}
+                 :model/Segment {segment-id :id} {:table_id table-id
+                                                  :definition {:filter 100}} ; just a random filter
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:database (mt/id)
@@ -1161,6 +1162,75 @@
             (is (=? {:collection_id       (u/the-id collection)
                      :collection_position 1}
                     (t2/select-one :model/Card :name card-name)))))))))
+
+(deftest create-card-with-entity-id-as-collection-id-test
+  (testing "POST /api/card with entity ID as collection_id"
+    (testing "Should be able to create a Card using collection entity ID"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [card-name (mt/random-name)]
+          (mt/with-temp [:model/Collection collection {}]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (mt/with-model-cleanup [:model/Card]
+              (let [collection-entity-id (:entity_id collection)
+                    created-card (mt/user-http-request :rasta :post 200 "card"
+                                                       (assoc (card-with-name-and-query card-name)
+                                                              :collection_id collection-entity-id))]
+                (testing "Card should be created successfully"
+                  (is (=? {:collection_id (u/the-id collection)
+                           :name          card-name}
+                          created-card)))
+                (testing "Card should be saved with numeric collection_id in database"
+                  (is (=? {:collection_id (u/the-id collection)}
+                          (t2/select-one :model/Card :name card-name))))))))))))
+
+(deftest create-card-with-entity-id-and-nil-collection-id-test
+  (testing "POST /api/card with nil collection_id should work (root collection)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [card-name (mt/random-name)]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection/root-collection)
+        (mt/with-model-cleanup [:model/Card]
+          (let [created-card (mt/user-http-request :rasta :post 200 "card"
+                                                   (assoc (card-with-name-and-query card-name)
+                                                          :collection_id nil))]
+            (testing "Card should be created successfully in root collection"
+              (is (=? {:collection_id nil
+                       :name          card-name}
+                      created-card)))
+            (testing "Card should be saved with nil collection_id in database"
+              (is (=? {:collection_id nil}
+                      (t2/select-one :model/Card :name card-name))))))))))
+
+(deftest create-card-with-entity-id-and-position-test
+  (testing "POST /api/card with entity ID as collection_id and collection_position"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [card-name (mt/random-name)]
+        (mt/with-temp [:model/Collection collection {}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (mt/with-model-cleanup [:model/Card]
+            (let [collection-entity-id (:entity_id collection)
+                  created-card (mt/user-http-request :rasta :post 200 "card"
+                                                     (assoc (card-with-name-and-query card-name)
+                                                            :collection_id collection-entity-id
+                                                            :collection_position 1))]
+              (testing "Card should be created with correct collection and position"
+                (is (=? {:collection_id       (u/the-id collection)
+                         :collection_position 1
+                         :name                card-name}
+                        created-card)))
+              (testing "Card should be saved correctly in database"
+                (is (=? {:collection_id       (u/the-id collection)
+                         :collection_position 1}
+                        (t2/select-one :model/Card :name card-name)))))))))))
+
+(deftest create-card-with-invalid-entity-id-test
+  (testing "POST /api/card with invalid entity ID should return 400"
+    (mt/with-model-cleanup [:model/Card]
+      (let [invalid-entity-id "invalid_entity_id_12345"
+            response (mt/user-http-request :crowberto :post 400 "card"
+                                           (assoc (card-with-name-and-query)
+                                                  :collection_id invalid-entity-id))]
+        (testing "Should get 400 for malformed entity ID"
+          (is (contains? (:errors response) :collection_id)))))))
 
 (deftest need-permission-for-collection
   (testing "You need to have Collection permissions to create a Card in a Collection"
@@ -2905,6 +2975,48 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
 
+(deftest share-card-audit-log-test
+  (testing "POST /api/card/:id/public_link creates audit log entry"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card {card-id :id :as _card}]
+          (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" card-id))
+          (is (partial=
+               {:topic :card-public-link-created
+                :user_id (mt/user->id :crowberto)
+                :model "Card"
+                :model_id card-id}
+               (mt/latest-audit-log-entry :card-public-link-created card-id)))
+
+          (testing "Does not create duplicate audit log entry when returning existing public link"
+            (let [audit-log-count-before (count (mt/all-entries-for :card-public-link-created
+                                                                    :model/Card
+                                                                    card-id))]
+              (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" card-id))
+              (is (= audit-log-count-before
+                     (count (mt/all-entries-for :card-public-link-created
+                                                :model/Card
+                                                card-id)))
+                  "Should not create additional audit log entry for existing public link"))))))))
+
+(deftest unshare-card-audit-log-test
+  (testing "DELETE /api/card/:id/public_link creates audit log entry"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card {card-id :id :as _card} (shared-card)]
+          (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" card-id))
+          (is (partial=
+               {:topic :card-public-link-deleted
+                :user_id (mt/user->id :crowberto)
+                :model "Card"
+                :model_id card-id}
+               (mt/latest-audit-log-entry :card-public-link-deleted card-id)))
+          (testing "Does not create duplicate audit entries if not public"
+            (let [all-events-before (mt/all-entries-for nil :model/Card card-id)]
+              (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" card-id))
+              (is (= all-events-before
+                     (mt/all-entries-for nil :model/Card card-id))))))))))
+
 (deftest test-that-we-can-fetch-a-list-of-publicly-accessible-cards
   (testing "GET /api/card/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -2949,7 +3061,7 @@
                                      :dataset_query (mbql-count-query)}]
       (is (=? {:display "table" :type "model"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                    (assoc card :type :model :type "model")))))))
+                                    (assoc card :type :model)))))))
 
 ;;; See also:
 ;;;

@@ -18,7 +18,6 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls/collections";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
@@ -33,7 +32,7 @@ import type { Dispatch, GetState, ReduxAction } from "metabase-types/store";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import getInitialCollectionId from "./getInitialCollectionId";
-import { getCollectionIcon, getCollectionType } from "./utils";
+import { getCollectionType } from "./utils";
 
 const listCollectionsTree = (
   entityQuery: ListCollectionsTreeRequest,
@@ -54,10 +53,6 @@ const listCollections = (
     dispatch,
     collectionApi.endpoints.listCollections,
   );
-
-type EntityInCollection = {
-  collection?: Collection;
-};
 
 type ListParams = {
   tree?: boolean;
@@ -145,15 +140,6 @@ const Collections = createEntity({
 
   objectSelectors: {
     getName: (collection?: Collection) => collection?.name,
-    getUrl: (collection?: Collection) => Urls.collection(collection),
-    getIcon: (
-      item: Collection | EntityInCollection,
-      opts: { tooltip?: string },
-    ) => {
-      const collection =
-        (item as EntityInCollection).collection || (item as Collection);
-      return getCollectionIcon(collection, opts);
-    },
   },
 
   selectors: {

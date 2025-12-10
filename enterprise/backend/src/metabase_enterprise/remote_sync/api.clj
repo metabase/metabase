@@ -81,7 +81,7 @@
                                        [:force {:optional true} :boolean]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (api/check-400 (= (settings/remote-sync-type) :development) "Exports are only allowed when remote-sync-type is set to 'development'")
+  (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
   (let [branch-name (or branch (settings/remote-sync-branch))
         {task-id :id :as task} (impl/async-export! branch-name
                                                    (or force false)
@@ -115,11 +115,11 @@
    :- [:map
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
-       [:remote-sync-type {:optional true} [:maybe [:enum :production :development]]]
+       [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :production remote-sync-type)))
-                 "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode.")
+  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :read-only remote-sync-type)))
+                 "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
   (try
     (settings/check-and-update-remote-settings! settings)
     (catch Exception e
@@ -187,7 +187,7 @@
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
-  (api/check-400 (= (settings/remote-sync-type) :development) "Stash is only allowed when remote-sync-type is set to 'development'")
+  (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
   (let [source (source/source-from-settings)]
     (api/check-400 source  "Source not configured")
     (try

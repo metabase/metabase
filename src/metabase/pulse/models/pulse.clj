@@ -71,6 +71,7 @@
                            (apply merge defaults {:collection_id collection-id}))]
     (u/prog1 notification
       (assert-valid-parameters notification)
+      (collection/check-allowed-content :model/Pulse (:collection_id notification))
       (collection/check-collection-namespace :model/Pulse (:collection_id notification)))))
 
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
@@ -82,6 +83,7 @@
   [notification]
   (let [{:keys [collection_id dashboard_id]} (t2/original notification)
         changes                              (t2/changes notification)]
+    (collection/check-allowed-content :model/Pulse (:collection_id changes))
     (when (and dashboard_id
                (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)

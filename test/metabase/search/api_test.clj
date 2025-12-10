@@ -37,7 +37,7 @@
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available (thunk)))))
+                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
 
 (def ^:private default-search-row
   {:archived                   false
@@ -1690,7 +1690,7 @@
 
 (deftest ^:synchronized weights-test
   (let [base-url         (weights-url)
-        original-weights (search.config/weights :default)]
+        original-weights (search.config/weights)]
     (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
       (testing "default weights"
         (is (= original-weights (mt/user-http-request :crowberto :get 200 base-url)))
@@ -1706,8 +1706,9 @@
   (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
     (testing "custom context"
       (let [context          :none-given
+            search-ctx       {:context context}
             context-url      (weights-url context {})
-            original-weights (search.config/weights context)]
+            original-weights (search.config/weights search-ctx)]
         (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
         (mt/user-http-request :rasta :put 403 (weights-url context {:recency 5}))
         (is (= original-weights
@@ -1724,8 +1725,9 @@
     (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
       (testing "all weights (nested)"
         (let [context     :all
+              search-ctx  {:context context}
               context-url (weights-url context {})
-              all-weights (search.config/weights context)]
+              all-weights (search.config/weights search-ctx)]
           (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))
           (is (= (mt/user-http-request :crowberto :get 200 base-url)
                  (:default (mt/user-http-request :crowberto :get 200 context-url))))
@@ -1741,13 +1743,14 @@
 (deftest ^:synchronized weights-test-4
   (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
     (testing "ranker parameters"
-      (let [context :just-for-fun]
+      (let [context    :just-for-fun
+            search-ctx {:context context}]
         (is (=? {:model/dataset 10.0}
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 10}))))
-        (is (= 10.0 (search.config/scorer-param context :model :dataset)))
+        (is (= 10.0 (search.config/scorer-param search-ctx :model :dataset)))
         (is (=? {:model/dataset 5.0}
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
-        (is (= 5.0 (search.config/scorer-param context :model :dataset)))))))
+        (is (= 5.0 (search.config/scorer-param search-ctx :model :dataset)))))))
 
 (deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
@@ -1878,3 +1881,66 @@
             (is (not (some #{card-id}
                            (mapv :id (:data search-results))))
                 "Card should not be found in search results after database deletion")))))))
+
+(deftest collection-filter-test
+  (mt/with-temp
+    [:model/Collection {parent-coll :id}      {:name "Parent Collection"
+                                               :location "/"}
+     :model/Collection {child-coll :id}       {:name "Child Collection"
+                                               :location (collection/location-path parent-coll)}
+     :model/Collection {grandchild-coll :id}  {:name "Grandchild Collection"
+                                               :location (collection/location-path parent-coll child-coll)}
+     :model/Card       {parent-card :id}      {:collection_id parent-coll :name "Parent Card"}
+     :model/Card       {child-card :id}       {:collection_id child-coll :name "Child Card"}
+     :model/Card       {grandchild-card :id}  {:collection_id grandchild-coll :name "Grandchild Card"}
+     :model/Dashboard  {parent-dash :id}      {:collection_id parent-coll :name "Parent Dashboard"}
+     :model/Card       {other-card :id}       {:collection_id nil :name "No Collection Card"}]
+    (testing "Filter by parent collection returns parent and all descendants"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+        (is (= #{parent-card parent-dash child-card grandchild-card parent-coll child-coll grandchild-coll}
+               (set (map :id (:data results)))))))
+
+    (testing "Filter by child collection returns child and descendants only"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection child-coll)]
+        (is (= #{child-card grandchild-card child-coll grandchild-coll}
+               (set (map :id (:data results)))))))
+
+    (testing "Filter by leaf collection returns only that collection's items"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection grandchild-coll)]
+        (is (= #{grandchild-card grandchild-coll}
+               (set (map :id (:data results)))))))
+
+    (testing "Filter by non-existent collection returns no results"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection 99999)]
+        (is (empty? (:data results)))))
+
+    (testing "Items with no collection are not included when filtering by collection"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+        (is (not (some #{other-card} (map :id (:data results)))))))))
+
+(deftest collection-filter-with-search-string-test
+  (mt/with-temp
+    [:model/Collection {coll-1 :id}  {:name "Collection 1"}
+     :model/Collection _             {:name "Collection 2"}
+     :model/Card       {card-1 :id}  {:collection_id coll-1 :name "Test Card"}
+     :model/Card       _             {:collection_id coll-1 :name "Other Card"}]
+    (testing "Search string filters results within the specified collection"
+      (let [results (mt/user-http-request :crowberto :get 200 "search"
+                                          :q "Test"
+                                          :collection coll-1)]
+        (is (= #{card-1}
+               (set (map :id (:data results)))))))))
+
+(deftest published-table-not-in-collection-search-oss-test
+  (testing "In OSS, published tables should NOT appear in collection-filtered search"
+    (mt/with-premium-features #{}
+      (mt/with-temp
+        [:model/Collection {parent-coll :id} {:name "OSS Test Collection" :location "/"}
+         :model/Card       {card-id :id}     {:collection_id parent-coll :name "OSS Test Card"}
+         :model/Table      {table-id :id}    {:name "OSS Published Table" :is_published true :collection_id parent-coll}]
+        (testing "Collection-filtered search should NOT include published tables in OSS"
+          (let [result-ids (into #{} (map :id) (:data (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)))]
+            (is (contains? result-ids card-id)
+                "Card in collection should be included")
+            (is (not (contains? result-ids table-id))
+                "Published table should NOT be included in collection search in OSS")))))))

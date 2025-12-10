@@ -49,9 +49,9 @@ Admins can edit the metadata in this reference by clicking the **Edit** button i
 
 ## Glossary
 
-The glossary is a place where anyone can define terms relevant to your data. Currently, the glossary is a simple key-value store of terms and their definitions.
+The glossary is a place where anyone can define terms relevant to your data. To add a new term, click **+ New term**. Add the term name and its definitions, then click the checkmark to save the term to the glossary.
 
-To add a new term, click **+ New term**. Add the term name and its definitions, then click the checkmark to save the term to the glossary.
+The glossary is particularly useful for [Metabot](../ai/metabot.md). When Metabot gets a prompt, it can look up glossary terms to understand your request. For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?"
 
 ## Segments
 

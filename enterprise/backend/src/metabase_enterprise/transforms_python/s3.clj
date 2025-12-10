@@ -179,9 +179,12 @@
 
 (defn upload-file
   "Upload the given file to s3"
-  [^S3Client s3-client ^String bucket-name ^String key ^File file]
-  (let [^PutObjectRequest request (put-object-request bucket-name key)]
-    (.putObject s3-client request (RequestBody/fromFile file))))
+  [^S3Client s3 ^String bucket ^String key ^File file]
+  (let [^PutObjectRequest req (put-object-request bucket key)
+        body (if (zero? (.length file))
+               (RequestBody/empty)
+               (RequestBody/fromFile file))]
+    (.putObject  s3 req body)))
 
 (defn open-object
   "Get back the contents of the given key as a InputStream."

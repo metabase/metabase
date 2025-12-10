@@ -92,10 +92,10 @@
      :ssl-cert                         mb-db-ssl-cert}))
 
 (defn- env->DataSource
-  [db-type {:keys [mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id aws-iam], :as env-vars}]
+  [db-type {:keys [mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id mb-db-aws-iam], :as env-vars}]
   (if mb-db-connection-uri
     (mdb.data-source/raw-connection-string->DataSource
-     mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id aws-iam)
+     mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id mb-db-aws-iam)
     (mdb.data-source/broken-out-details->DataSource db-type (broken-out-details db-type env-vars))))
 
 ;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using environment variables.

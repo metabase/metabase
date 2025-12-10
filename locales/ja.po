@@ -31073,16 +31073,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "Git リポジトリの場所 (例: https://github.com/acme-inco/metabase.git)"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "Git 同期タイプ - :development または :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "Git 同期タイプ - :read-write または :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "リモート Git リポジトリから自動的にインポートするかどうか。remote-sync-type が :production の場合にのみ適用されます。"
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "リモート Git リポジトリから自動的にインポートするかどうか。remote-sync-type が :read-only の場合にのみ適用されます。"
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "remote-sync-type が :production で、remote-sync-auto-import が true の場合、インポートする更新をチェックする間隔（分単位）。デフォルトは 5 です。"
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "remote-sync-type が :read-only で、remote-sync-auto-import が true の場合、インポートする更新をチェックする間隔（分単位）。デフォルトは 5 です。"
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"

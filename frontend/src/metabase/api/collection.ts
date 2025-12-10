@@ -70,11 +70,12 @@ export const collectionApi = Api.injectEndpoints({
       ],
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
-      query: ({ id, ...params }) => {
+      query: ({ id, ignore_error, ...params }) => {
         return {
           method: "GET",
           url: `/api/collection/${id}`,
           params,
+          noEvent: ignore_error,
         };
       },
       providesTags: (collection) =>

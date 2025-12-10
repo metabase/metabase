@@ -1,5 +1,6 @@
 import type { ChangeEvent } from "react";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo } from "react";
+import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -11,7 +12,6 @@ import Radio from "metabase/common/components/Radio";
 import type { SelectChangeEvent } from "metabase/common/components/Select";
 import Select, { Option } from "metabase/common/components/Select";
 import SelectButton from "metabase/common/components/SelectButton";
-import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { connect, useSelector } from "metabase/lib/redux";
@@ -509,12 +509,6 @@ const getSourceTypeOptions = (
   ];
 };
 
-interface ParameterValuesState {
-  values: ParameterValue[];
-  isLoading?: boolean;
-  isError?: boolean;
-}
-
 interface UseParameterValuesOpts {
   parameter: Parameter;
   sourceType: ValuesSourceType;
@@ -530,8 +524,6 @@ const useParameterValues = ({
   sourceConfig,
   onFetchParameterValues,
 }: UseParameterValuesOpts) => {
-  const [state, setState] = useState<ParameterValuesState>({ values: [] });
-  const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
   const isValidSource = isValidSourceConfig(sourceType, sourceConfig);
 
   const parameter = useMemo(
@@ -543,17 +535,22 @@ const useParameterValues = ({
     [initialParameter, sourceType, sourceConfig],
   );
 
+  const [{ loading, error, value }, handleFetchValues] = useAsyncFn(
+    () => onFetchParameterValues({ parameter }),
+    [onFetchParameterValues, parameter],
+  );
+
   useLayoutEffect(() => {
     if (isValidSource) {
-      setState(({ values }) => ({ values, isLoading: true }));
-
-      handleFetchValues({ parameter })
-        .then(({ values }) => setState({ values }))
-        .catch(() => setState({ values: [], isError: true }));
+      handleFetchValues();
     }
-  }, [parameter, isValidSource, handleFetchValues]);
+  }, [isValidSource, handleFetchValues]);
 
-  return state;
+  return {
+    values: value?.values ?? [],
+    isLoading: loading,
+    isError: !!error,
+  };
 };
 
 const mapDispatchToProps = {

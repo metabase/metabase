@@ -1,4 +1,5 @@
 (ns metabase.driver.sql.references
+  (:refer-clojure :exclude [every? mapv select-keys some])
   (:require
    [macaw.ast-types :as macaw.ast-types]
    [metabase.driver :as driver]
@@ -294,8 +295,10 @@
 
 (defmethod field-references-impl [:sql :macaw.ast/select]
   [driver outside-sources outside-withs expr]
-  (let [local-withs (map (partial field-references-impl driver outside-sources outside-withs)
-                         (:with expr))
+  (let [local-withs (reduce (fn [current-withs with-expr]
+                              (conj current-withs (field-references-impl driver outside-sources current-withs with-expr)))
+                            outside-withs
+                            (:with expr))
         withs (into outside-withs local-withs)]
     {:used-fields (into (find-used-fields driver outside-sources withs expr)
                         (mapcat :used-fields)

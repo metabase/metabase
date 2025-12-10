@@ -90,6 +90,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", id),
           tag("database"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
@@ -99,7 +100,12 @@ export const tableApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
+        invalidateTags(error, [
+          tag("table"),
+          tag("database"),
+          tag("card"),
+          tag("dataset"),
+        ]),
     }),
     updateTableFieldsOrder: builder.mutation<
       Table,
@@ -116,6 +122,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", id),
           listTag("field"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
@@ -155,6 +162,7 @@ export const {
   useListTablesQuery,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
   useGetTableDataQuery,
   useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,
@@ -165,3 +173,23 @@ export const {
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;
+
+export const fetchForeignTablesMetadata = (
+  table: Table,
+  params?: Omit<GetTableQueryMetadataRequest, "id">,
+) => {
+  return (dispatch: (action: unknown) => void) => {
+    const fkTableIds = new Set<TableId>();
+    for (const field of table.fields ?? []) {
+      if (field.target?.table_id != null) {
+        fkTableIds.add(field.target.table_id);
+      }
+    }
+
+    fkTableIds.forEach((id) =>
+      dispatch(
+        tableApi.endpoints.getTableQueryMetadata.initiate({ id, ...params }),
+      ),
+    );
+  };
+};

@@ -13,8 +13,8 @@ import {
   NativeQueryPreviewSidebarToggle,
 } from "./NativeQueryPreviewSidebar";
 import { NativeQuerySidebar } from "./NativeQuerySidebar";
-import { QuerySection } from "./QuerySection";
-import { VisualizationSection } from "./VisualizationSection";
+import { QueryEditorBody } from "./QueryEditorBody";
+import { QueryEditorVisualization } from "./QueryEditorVisualization";
 
 type QueryEditorProps = {
   query: Lib.Query;
@@ -65,6 +65,7 @@ export function QueryEditor({
   } = useQueryEditor({
     query,
     uiState,
+    uiOptions,
     proposedQuery,
     onChangeQuery,
     onChangeUiState,
@@ -80,13 +81,14 @@ export function QueryEditor({
 
   return (
     <>
-      <Flex flex={1} h="100%">
-        <Flex flex="2 1 0" direction="column" pos="relative">
-          <QuerySection
+      <Flex flex={1} h="100%" mih={0}>
+        <Flex flex="2 1 0" miw={0} direction="column" pos="relative">
+          <QueryEditorBody
             question={question}
             proposedQuestion={proposedQuestion}
             modalSnippet={uiState.modalSnippet}
             nativeEditorSelectedText={selectedText}
+            readOnly={uiOptions?.readOnly}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}
@@ -95,6 +97,7 @@ export function QueryEditor({
             isShowingSnippetSidebar={uiState.sidebarType === "snippet"}
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
+            shouldShowLibrary={uiOptions?.shouldShowLibrary}
             onChange={setQuestion}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
@@ -107,7 +110,7 @@ export function QueryEditor({
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
           />
-          <VisualizationSection
+          <QueryEditorVisualization
             question={question}
             result={result}
             rawSeries={rawSeries}
@@ -118,7 +121,7 @@ export function QueryEditor({
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
           />
-          {!isNative && (
+          {!isNative && uiOptions?.canConvertToNative && (
             <NativeQueryPreviewSidebarToggle
               isNativeQueryPreviewSidebarOpen={
                 uiState.sidebarType === "native-query"

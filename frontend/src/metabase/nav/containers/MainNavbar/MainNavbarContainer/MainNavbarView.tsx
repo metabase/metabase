@@ -7,9 +7,11 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   isExamplesCollection,
+  isLibraryCollection,
   isRootTrashCollection,
   isSyncedCollection,
 } from "metabase/collections/utils";
+import CollapseSection from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
@@ -22,8 +24,8 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
+import { PLUGIN_DATA_STUDIO, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Bookmark } from "metabase-types/api";
 
 import {
@@ -78,9 +80,12 @@ export function MainNavbarView({
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
+  const [expandCollections = true, setExpandCollections] = useUserSetting(
+    "expand-collections-in-nav",
+  );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
-  const showSyncGroup = useSetting("remote-sync-type") === "development";
+  const showSyncGroup = useSetting("remote-sync-type") === "read-write";
 
   const [
     addDataModalOpened,
@@ -112,38 +117,49 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  const [
+  const {
     regularCollections,
     trashCollection,
     examplesCollection,
     syncedCollections,
-  ] = useMemo(() => {
-    const synced = collections.filter(isSyncedCollection);
+  } = useMemo(() => {
+    const syncedCollections = collections.filter(isSyncedCollection);
+    const trashCollection = collections.find(isRootTrashCollection);
+    const examplesCollection = collections.find(isExamplesCollection);
 
-    const normalCollections = collections.filter((c) => {
+    const regularCollections = collections.filter((c) => {
       const isNormalCollection =
         !isRootTrashCollection(c) && !isExamplesCollection(c);
-      return isNormalCollection && !isSyncedCollection(c);
+      return (
+        isNormalCollection && !isSyncedCollection(c) && !isLibraryCollection(c)
+      );
     });
 
-    if (!showSyncGroup && synced.length > 0 && normalCollections.length > 0) {
-      const [root, ...rest] = normalCollections;
-      const reordered = [root, ...synced, ...rest];
+    const shouldMoveSyncedCollectionToTop =
+      !showSyncGroup &&
+      syncedCollections.length > 0 &&
+      regularCollections.length > 0;
 
-      return [
-        reordered,
-        collections.find(isRootTrashCollection),
-        collections.find(isExamplesCollection),
-        synced,
-      ];
+    const collectionsByCategory = {
+      trashCollection,
+      examplesCollection,
+      syncedCollections,
+    };
+
+    if (shouldMoveSyncedCollectionToTop) {
+      const [root, ...rest] = regularCollections;
+      const reordered = [root, ...syncedCollections, ...rest];
+
+      return {
+        ...collectionsByCategory,
+        regularCollections: reordered,
+      };
     }
 
-    return [
-      normalCollections,
-      collections.find(isRootTrashCollection),
-      collections.find(isExamplesCollection),
-      synced,
-    ];
+    return {
+      ...collectionsByCategory,
+      regularCollections,
+    };
   }, [collections, showSyncGroup]);
 
   const isNewInstance = useSelector(getIsNewInstance);
@@ -217,28 +233,56 @@ export function MainNavbarView({
             />
           )}
 
+          {PLUGIN_DATA_STUDIO.isEnabled && (
+            <PLUGIN_DATA_STUDIO.NavbarLibrarySection
+              collections={collections}
+              selectedId={collectionItem?.id}
+              onItemSelect={onItemSelect}
+            />
+          )}
+
           <SidebarSection>
             <ErrorBoundary>
-              <CollectionSectionHeading
-                handleCreateNewCollection={handleCreateNewCollection}
-              />
-
-              <Tree
-                data={regularCollections}
-                selectedId={collectionItem?.id}
-                onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
-                role="tree"
-                aria-label="collection-tree"
-              />
-              {showOtherUsersCollections && (
-                <PaddedSidebarLink
-                  icon="group"
-                  url={OTHER_USERS_COLLECTIONS_URL}
-                >
-                  {t`Other users' personal collections`}
-                </PaddedSidebarLink>
-              )}
+              <CollapseSection
+                header={<SidebarHeading>{t`Collections`}</SidebarHeading>}
+                initialState={expandCollections ? "expanded" : "collapsed"}
+                iconPosition="right"
+                iconSize={8}
+                onToggle={setExpandCollections}
+                rightAction={
+                  <Tooltip label={t`Create a new collection`}>
+                    <ActionIcon
+                      aria-label={t`Create a new collection`}
+                      color="var(--mb-color-text-medium)"
+                      onClick={() => {
+                        trackNewCollectionFromNavInitiated();
+                        handleCreateNewCollection();
+                      }}
+                    >
+                      <Icon name="add" />
+                    </ActionIcon>
+                  </Tooltip>
+                }
+                role="section"
+                aria-label={t`Collections`}
+              >
+                <Tree
+                  data={regularCollections}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                  aria-label="collection-tree"
+                />
+                {showOtherUsersCollections && (
+                  <PaddedSidebarLink
+                    icon="group"
+                    url={OTHER_USERS_COLLECTIONS_URL}
+                  >
+                    {t`Other users' personal collections`}
+                  </PaddedSidebarLink>
+                )}
+              </CollapseSection>
             </ErrorBoundary>
           </SidebarSection>
 
@@ -274,30 +318,5 @@ export function MainNavbarView({
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </ErrorBoundary>
-  );
-}
-interface CollectionSectionHeadingProps {
-  handleCreateNewCollection: () => void;
-}
-
-function CollectionSectionHeading({
-  handleCreateNewCollection,
-}: CollectionSectionHeadingProps) {
-  return (
-    <Flex align="center" justify="space-between">
-      <SidebarHeading>{t`Collections`}</SidebarHeading>
-      <Tooltip label={t`Create a new collection`}>
-        <ActionIcon
-          aria-label={t`Create a new collection`}
-          color="var(--mb-color-text-medium)"
-          onClick={() => {
-            trackNewCollectionFromNavInitiated();
-            handleCreateNewCollection();
-          }}
-        >
-          <Icon name="add" />
-        </ActionIcon>
-      </Tooltip>
-    </Flex>
   );
 }

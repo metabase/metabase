@@ -5,9 +5,12 @@ import {
   skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
+import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -32,8 +35,12 @@ const personalCollectionsRoot: CollectionPickerItem = {
 export const useRootCollectionPickerItems = (
   options: CollectionItemListProps["options"],
 ) => {
-  const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  const { data: databaseData, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery(undefined, { skip: !options.showDatabases });
+  const databases = databaseData?.data ?? [];
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
     useGetCollectionQuery(
@@ -41,6 +48,11 @@ export const useRootCollectionPickerItems = (
         ? { id: currentUser.personal_collection_id }
         : skipToken,
     );
+
+  const { data: libraryCollection } =
+    PLUGIN_DATA_STUDIO.useGetLibraryCollection({
+      skip: !options.showLibrary,
+    });
 
   const {
     data: personalCollectionItems,
@@ -64,6 +76,26 @@ export const useRootCollectionPickerItems = (
 
   const items = useMemo(() => {
     const collectionItems: CollectionPickerItem[] = [];
+
+    if (options.showLibrary && libraryCollection) {
+      collectionItems.push({
+        ...libraryCollection,
+        model: "collection",
+        moderated_status: null,
+      });
+    }
+
+    if (options.showDatabases && databases.length > 0) {
+      collectionItems.push({
+        id: "databases",
+        name: t`Databases`,
+        model: "collection",
+        can_write: true,
+        location: "/",
+        here: ["collection"],
+        below: ["table"],
+      });
+    }
 
     if (options.showRootCollection || options.namespace === "snippets") {
       if (rootCollection && !rootCollectionError) {
@@ -115,11 +147,14 @@ export const useRootCollectionPickerItems = (
     rootCollection,
     isAdmin,
     options,
+    databases.length,
     rootCollectionError,
     totalPersonalCollectionItems,
+    libraryCollection,
   ]);
 
   const isLoading =
+    isLoadingDatabases ||
     isLoadingRootCollecton ||
     isLoadingPersonalCollecton ||
     isLoadingPersonalCollectionItems;
@@ -171,7 +206,7 @@ export const useEnsureCollectionSelected = ({
     }, [currentCollection, currentDashboard]);
 
   const defaultCollectionItem = useRootCollection
-    ? items[0]
+    ? items.find(isRootCollection)
     : currentCollectionItem;
 
   useEffect(() => {

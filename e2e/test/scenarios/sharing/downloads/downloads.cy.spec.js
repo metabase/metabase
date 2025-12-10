@@ -39,7 +39,7 @@ describe("scenarios > question > download", () => {
     cy.signInAsAdmin();
   });
 
-  H.describeWithSnowplow("[snowplow]", () => {
+  describe("[snowplow]", () => {
     beforeEach(() => {
       H.resetSnowplow();
       H.enableTracking();
@@ -52,8 +52,8 @@ describe("scenarios > question > download", () => {
     testCases.forEach((fileType) => {
       it(`downloads ${fileType} file`, () => {
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Our analytics").click();
           cy.findByText("Orders, Count").click();
         });
 
@@ -492,7 +492,7 @@ describe("scenarios > dashboard > download pdf", () => {
   });
 });
 
-H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
+describe("[snowplow] scenarios > dashboard", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

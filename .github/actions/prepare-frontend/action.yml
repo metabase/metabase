@@ -6,7 +6,7 @@ inputs:
   apply-patches:
     description: "Whether to patch frontend dependencies with patch-package."
     required: true
-    default: 'true'
+    default: "true"
 runs:
   using: "composite"
   steps:
@@ -28,11 +28,21 @@ runs:
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
+    - name: Get yarn cache directory
+      id: yarn-cache-dir
+      run: |
+        YARN_CACHE_DIR=$(yarn cache dir)
+        echo "Yarn cache directory: $YARN_CACHE_DIR"
+        echo "dir=$YARN_CACHE_DIR" >> $GITHUB_OUTPUT
+      shell: bash
+
     - name: Restore node_modules cache
       uses: actions/cache/restore@v4
       id: node-modules-cache
       with:
-        path: node_modules
+        path: |
+          ${{ steps.yarn-cache-dir.outputs.dir }}
+          node_modules
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)

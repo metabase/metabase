@@ -3,7 +3,7 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]
-   [metabase-enterprise.api.routes.common :as ee.api.common]
+   [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -26,6 +26,10 @@
                                     {:locale "ja" :msgid "Sample translation" :msgstr "サンプル翻訳"}
                                     {:locale "ko" :msgid "Sample translation" :msgstr "샘플 번역"}])
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/csv"
   "Provides content translation dictionary in CSV"
   []
@@ -44,6 +48,10 @@
      :body (with-out-str
              (csv/write-csv *out* csv-data))}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post
   "/upload-dictionary"
   "Upload a CSV of content translations"
@@ -69,6 +77,10 @@
     (dictionary/read-and-import-csv! file)
     {:success true}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dictionary/:token"
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
   [{:keys [token]} :- [:map
@@ -81,7 +93,7 @@
     (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
 
 (defn- +require-content-translation [handler]
-  (ee.api.common/+require-premium-feature :content-translation (deferred-tru "Content translation") handler))
+  (ee.api/+require-premium-feature :content-translation (deferred-tru "Content translation") handler))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."

@@ -16,7 +16,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="base-href" content="{{{baseHref}}}" />
     <meta name="uri" content="{{{uri}}}" />
+
+    {{#hasColorSchemeMetaTag}}
     <meta name="color-scheme" content="light dark" />
+    {{/hasColorSchemeMetaTag}}
 
     {{{embedCode}}}
 
@@ -34,6 +37,10 @@
 
     <script type="application/json" id="_metabaseSiteLocalization">
       {{{siteLocalizationJSON}}}
+    </script>
+
+    <script type="application/json" id="_metabaseUserColorScheme">
+      {{{userColorScheme}}}
     </script>
 
     <script type="application/json" id="_metabaseNonce">

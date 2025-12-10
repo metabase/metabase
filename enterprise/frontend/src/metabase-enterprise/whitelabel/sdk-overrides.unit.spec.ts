@@ -1,6 +1,24 @@
 import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { initializeSdkPlugins } from "./sdk-overrides";
+import { initializePlugin, resetInitialization } from "./sdk-overrides";
+
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
+
+const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
+
+const mockWhitelabelEnabled = (enabled: boolean) => {
+  mockHasPremiumFeature.mockImplementation((feature) => {
+    if (feature === "whitelabel") {
+      return enabled;
+    }
+    return true; // Mock other features as enabled by default
+  });
+};
 
 describe("SDK Plugin Initialization", () => {
   let originalGetNoDataIllustration: typeof PLUGIN_SELECTORS.getNoDataIllustration;
@@ -10,18 +28,43 @@ describe("SDK Plugin Initialization", () => {
     // Store original selectors before all tests
     originalGetNoDataIllustration = PLUGIN_SELECTORS.getNoDataIllustration;
     originalGetNoObjectIllustration = PLUGIN_SELECTORS.getNoObjectIllustration;
-
-    // Initialize SDK plugins once for all tests
-    initializeSdkPlugins();
   });
 
-  afterAll(() => {
-    // Restore original selectors after all tests
+  afterEach(() => {
+    // Reset mocks after each test
+    jest.clearAllMocks();
+
+    // Reset initialization state for next test
+    resetInitialization();
+
+    // Restore original selectors after each test
     PLUGIN_SELECTORS.getNoDataIllustration = originalGetNoDataIllustration;
     PLUGIN_SELECTORS.getNoObjectIllustration = originalGetNoObjectIllustration;
   });
 
-  describe("initializeSdkPlugins", () => {
+  describe("when whitelabel feature is disabled", () => {
+    beforeEach(() => {
+      mockWhitelabelEnabled(false);
+      initializePlugin();
+    });
+
+    it("should not initialize SDK plugins when whitelabel is disabled", () => {
+      // Selectors should remain unchanged
+      expect(PLUGIN_SELECTORS.getNoDataIllustration).toBe(
+        originalGetNoDataIllustration,
+      );
+      expect(PLUGIN_SELECTORS.getNoObjectIllustration).toBe(
+        originalGetNoObjectIllustration,
+      );
+    });
+  });
+
+  describe("when whitelabel feature is enabled", () => {
+    beforeEach(() => {
+      mockWhitelabelEnabled(true);
+      initializePlugin();
+    });
+
     it("should initialize SDK plugins and make selectors SDK-aware", () => {
       // Selectors should be different after initialization
       expect(PLUGIN_SELECTORS.getNoDataIllustration).not.toBe(
@@ -120,6 +163,8 @@ describe("SDK Plugin Initialization", () => {
     });
 
     it("should return SDK plugin result for getNoObjectIllustration when SDK plugins are available", () => {
+      initializePlugin();
+
       const mockSdkIllustration = "custom-sdk-no-object-illustration.svg";
       const mockSdkPlugins = {
         getNoObjectIllustration: jest.fn().mockReturnValue(mockSdkIllustration),
@@ -216,6 +261,18 @@ describe("SDK Plugin Initialization", () => {
       );
 
       consoleSpy.mockRestore();
+    });
+
+    it("should not initialize twice when called multiple times", () => {
+      // First call is in beforeEach, get the selector reference
+      const firstSelector = PLUGIN_SELECTORS.getNoDataIllustration;
+
+      // Call initialize again
+      initializePlugin();
+      const secondSelector = PLUGIN_SELECTORS.getNoDataIllustration;
+
+      // Should be the same selector instance (not re-wrapped)
+      expect(firstSelector).toBe(secondSelector);
     });
   });
 });

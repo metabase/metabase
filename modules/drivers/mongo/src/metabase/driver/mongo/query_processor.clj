@@ -1779,7 +1779,9 @@ function(bin) {
 (defn mbql->native
   "Compile an MBQL query."
   [query]
-  (let [query (update query :query preprocess)]
+  (let [query (-> query
+                  driver-api/->legacy-MBQL
+                  (update :query preprocess))]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]

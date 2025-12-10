@@ -34,7 +34,6 @@ export interface AppBarSmallProps {
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBarSmall = ({
@@ -49,7 +48,6 @@ const AppBarSmall = ({
   isQuestionLineageVisible,
   onToggleNavbar,
   onCloseNavbar,
-  onLogout,
 }: AppBarSmallProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
@@ -97,7 +95,7 @@ const AppBarSmall = ({
             {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
             {isProfileLinkVisible && (
               <AppBarProfileLinkContainer>
-                <ProfileLink onLogout={onLogout} />
+                <ProfileLink />
               </AppBarProfileLinkContainer>
             )}
           </Flex>

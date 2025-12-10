@@ -4,7 +4,8 @@ import { match } from "ts-pattern";
 import {
   METABSE_PROTOCOL_MD_LINK,
   createMetabaseProtocolLink,
-} from "metabase-enterprise/metabot/utils/links";
+} from "metabase/metabot/utils/links";
+import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 
 function serializeNodes(nodes: JSONContent[]): string {
   return nodes.map((node) => serializeNode(node)).join("");
@@ -44,10 +45,6 @@ export function serializeTiptapToMetabotMessage(content: JSONContent): string {
 }
 
 const MENTION_REGEX = new RegExp(METABSE_PROTOCOL_MD_LINK, "g");
-const MODEL_MAP: Record<string, string | undefined> = {
-  model: "dataset",
-  question: "card",
-};
 
 export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
   // Split text by lines to handle paragraphs
@@ -56,8 +53,8 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
     let lastIndex = 0;
 
     for (const match of line.matchAll(MENTION_REGEX)) {
-      const [fullMatch, label, internalModel, entityId] = match;
-      const model = MODEL_MAP[internalModel] || internalModel;
+      const [fullMatch, label, mbProtocolModel, entityId] = match;
+      const model = mbProtocolModelToSuggestionModel(mbProtocolModel);
 
       // Add text before the mention
       if (match.index > lastIndex) {

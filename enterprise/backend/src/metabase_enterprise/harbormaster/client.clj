@@ -104,6 +104,9 @@
 (mu/defn make-request :- :hm-client/http-reply
   "Makes a request to the store-api-url with the given method, path, and body.
 
+  The Harbormaster API uses snake_keys, and this fn automatically converts kebab-keys to snake_keys on request,
+  and back to kebab-keys on response.
+
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
   [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
@@ -112,10 +115,10 @@
                 api-key]} (->config)
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
                                              "Content-Type" "application/json"}}
-                            body (assoc :body (json/encode body)))
+                            body (assoc :body (json/encode (m.util/deep-snake-keys body))))
         request-method-fn (->requestor method)
         unparsed-response (send-request request-method-fn store-api-url url request)
-        response          (decode-response unparsed-response url request)
+        response          (m.util/deep-kebab-keys (decode-response unparsed-response url request))
         success?          (calculate-success response url request)]
     [(if success? :ok :error) response]))
 
@@ -130,10 +133,10 @@
   (martian-http/bootstrap-openapi
    (str store-api-url "/openapi.json")
    ;; martian options for calling operations
-   {:server-url   store-api-url
-    :interceptors (into [(bearer-auth api-key)] martian-http/default-interceptors)}
+   (merge {:server-url store-api-url}
+          (when api-key {:interceptors (into [(bearer-auth api-key)] martian-http/default-interceptors)}))
    ;; clj-http options for loading the openapi.json itself
-   {:headers {"Authorization" (str "Bearer " api-key)}}))
+   {:headers (merge {} (when api-key {"Authorization" (str "Bearer " api-key)}))}))
 
 (def ^:private create-client-memo
   (memoize/ttl create-client
@@ -145,9 +148,6 @@
     (when (str/blank? store-api-url)
       (log/error "Missing store-api-url. Cannot create hm client config.")
       (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
-    (when (str/blank? api-key)
-      (log/error "Missing api-key. Cannot create hm client config.")
-      (throw (ex-info (tru "Missing api-key.") {:api-key api-key})))
     (create-client-memo store-api-url api-key)))
 
 (defn explore
@@ -166,15 +166,17 @@
 
 (defn call
   "Call the API, using Martian. Will throw on non 2xx, and you can get the failure body (if any) using ex-data.
+  The Harbormaster API uses snake_keys, and this fn automatically converts kebab-keys to snake_keys on request,
+  and back to kebab-keys on response.
   e.g.
     ;; call the :foo endpoint with {:some-id id}
     ;; use (explore :list-connections) for params, if any, and pass them in a map
     (call :list-connections)"
   [operation-id & {:as args}]
   (try
-    (:body (martian/response-for (client) operation-id args))
+    (m.util/deep-kebab-keys (:body (martian/response-for (client) operation-id (m.util/deep-snake-keys args))))
     (catch Exception e
-      (let [resp-body (some-> e ex-data :body maybe-decode)
+      (let [resp-body (some-> e ex-data :body maybe-decode m.util/deep-kebab-keys)
             msg (format "Error on Harbormaster operation call %s" operation-id)]
         (log/error msg (or resp-body e))
         (throw (ex-info msg (if (map? resp-body) resp-body {})))))))
