@@ -37,7 +37,6 @@ export function createMockTableDependencyNodeData(
     description: null,
     db_id: 1,
     schema: "public",
-    view_count: 0,
     ...opts,
   };
 }
@@ -48,12 +47,6 @@ export function createMockTransformDependencyNodeData(
   return {
     name: "Transform",
     description: null,
-    target: {
-      type: "table",
-      name: "target_table",
-      schema: null,
-      database: 1,
-    },
     ...opts,
   };
 }
