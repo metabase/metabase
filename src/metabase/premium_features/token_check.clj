@@ -208,12 +208,14 @@
 (defn airgap-check-user-count-insert
   "When inserting a new user, check that we are not exceeding the allowed user count in an airgap context."
   []
-  (let [max-users-allowed (max-users-allowed)]
-    (when (if max-users-allowed
-            (let [the-user-we-will-add 1]
-              (> (active-user-count) (+ the-user-we-will-add max-users-allowed)))
-            ;; no max user count -> always legal
-            false)
+  (let [max-users-allowed (max-users-allowed)
+        the-new-user-will-overflow? (if max-users-allowed
+                                      (let [the-user-we-want-to-add 1]
+                                        (> (active-user-count)
+                                           (+ the-user-we-want-to-add max-users-allowed)))
+                                      ;; no max user count -> always legal
+                                      false)]
+    (when the-new-user-will-overflow?
       (throw (Exception.
               (trs "Inserting another user would overflow the maximum number of users ({0}) for your plan. Please upgrade to add more users."
                    (max-users-allowed)))))))
@@ -246,11 +248,7 @@
         (mr/validate [:re AirgapToken] token)
         (do
           (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (if (illegal-airgap-user-count?)
-            {:valid         false
-             :status        (tru "Unable to validate token")
-             :error-details (tru "The number of active users exceeds the maximum allowed by your plan.")}
-            (decode-airgap-token token)))
+          (decode-airgap-token token))
 
         :else
         (do
