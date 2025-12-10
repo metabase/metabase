@@ -16,8 +16,11 @@ import type {
 } from "metabase/common/components/tree/types";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
-import type { CollectionId, SearchResult } from "metabase-types/api";
+import type {
+  CollectionId,
+  SchemaName,
+  SearchResult,
+} from "metabase-types/api";
 
 import {
   NodeListContainer,
@@ -31,7 +34,10 @@ import {
 import { ResourceTreeNode } from "./ResourceTreeNode";
 
 const groupModelsByCollection = (models: SearchResult[]) => {
-  const grouped = _.groupBy(models, (model) => model.collection?.id ?? "root");
+  const grouped = _.groupBy(
+    models,
+    (model) => model.collection?.id ?? ("root" as CollectionId),
+  );
 
   return _.pairs(grouped).map(
     ([id, models = []]): ITreeNodeItem => ({
@@ -49,8 +55,9 @@ const groupModelsByCollection = (models: SearchResult[]) => {
 };
 
 const groupTablesBySchema = (tables: SearchResult[]) => {
-  const grouped = _.groupBy(tables, (table) =>
-    getSchemaName(table.table_schema),
+  const grouped = _.groupBy(
+    tables,
+    (table) => table.table_schema ?? ("" as SchemaName),
   );
 
   return _.pairs(grouped).map(
