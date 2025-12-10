@@ -8,13 +8,13 @@ import { Box } from "metabase/ui";
 
 import type { PaginationOptions } from "../../types";
 
-import S from "./DependenciesTable.module.css";
+import S from "./DependencyList.module.css";
 import type { TableSortOptions } from "./types";
 
 const ROW_HEIGHT = 48;
 const HEADER_HEIGHT = 58;
 
-export type DependenciesTableProps<TData, TColumn extends string> = {
+export type DependencyListProps<TData, TColumn extends string> = {
   data: TData[];
   columns: ColumnOptions<TData, unknown, TColumn>[];
   sortOptions?: TableSortOptions<TColumn>;
@@ -23,14 +23,14 @@ export type DependenciesTableProps<TData, TColumn extends string> = {
   onPageChange?: (pageIndex: number) => void;
 };
 
-export function DependenciesTable<TData, TColumn extends string>({
+export function DependencyList<TData, TColumn extends string>({
   data,
   columns,
   sortOptions,
   paginationOptions,
   onSortChange,
   onPageChange,
-}: DependenciesTableProps<TData, TColumn>) {
+}: DependencyListProps<TData, TColumn>) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
 
   const theme = useMemo(

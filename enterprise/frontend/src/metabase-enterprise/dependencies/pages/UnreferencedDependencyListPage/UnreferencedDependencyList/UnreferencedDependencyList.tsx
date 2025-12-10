@@ -6,12 +6,12 @@ import type {
 } from "metabase-enterprise/dependencies/types";
 import type { DependencyNode } from "metabase-types/api";
 
-import { DependenciesTable } from "../../../components/DependenciesTable";
+import { DependencyList } from "../../../components/DependencyList";
 
 import type { DependencyColumn } from "./types";
 import { getColumns, isSortableColumn } from "./utils";
 
-type UnreferencedDependenciesTable = {
+type UnreferencedDependencyListProps = {
   items: DependencyNode[];
   sortOptions?: DependencyListSortOptions;
   paginationOptions?: PaginationOptions;
@@ -19,14 +19,14 @@ type UnreferencedDependenciesTable = {
   onPageChange?: (pageIndex: number) => void;
 };
 
-export const UnreferencedDependenciesTable = memo(
-  function UnreferencedDependenciesTable({
+export const UnreferencedDependencyList = memo(
+  function UnreferencedDependencyList({
     items,
     sortOptions,
     paginationOptions,
     onSortChange,
     onPageChange,
-  }: UnreferencedDependenciesTable) {
+  }: UnreferencedDependencyListProps) {
     const columns = useMemo(() => getColumns(), []);
 
     const handleSortChange = useCallback(
@@ -47,7 +47,7 @@ export const UnreferencedDependenciesTable = memo(
     );
 
     return (
-      <DependenciesTable
+      <DependencyList
         data={items}
         columns={columns}
         sortOptions={sortOptions}

@@ -16,18 +16,18 @@ import type {
   DependencyListSortOptions,
 } from "../../types";
 
-import { UnreferencedDependenciesTable } from "./UnreferencedDependenciesTable";
+import { UnreferencedDependencyList } from "./UnreferencedDependencyList";
 import { getSearchQuery, parseRawParams } from "./utils";
 
 const PAGE_SIZE = 25;
 
-interface UnreferencedDependenciesPageProps {
+interface UnreferencedDependencyListPageProps {
   location?: Location<DependencyListRawParams>;
 }
 
-export function UnreferencedDependenciesPage({
+export function UnreferencedDependencyListPage({
   location,
-}: UnreferencedDependenciesPageProps) {
+}: UnreferencedDependencyListPageProps) {
   const params = useMemo(
     () => parseRawParams(location?.query),
     [location?.query],
@@ -120,7 +120,7 @@ export function UnreferencedDependenciesPage({
         />
       </Flex>
       <Box flex={1} mih={0}>
-        <UnreferencedDependenciesTable
+        <UnreferencedDependencyList
           items={data.data}
           sortOptions={sortOptions}
           paginationOptions={paginationOptions}

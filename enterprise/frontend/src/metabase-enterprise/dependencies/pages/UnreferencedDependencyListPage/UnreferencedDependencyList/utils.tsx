@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { getUserName } from "metabase/lib/user";
 import type { DependencySortColumn } from "metabase-types/api";
 
-import { DateTimeCell } from "../../../components/DependenciesTable/DateTimeCell";
-import { EntityCell } from "../../../components/DependenciesTable/EntityCell";
-import { TextCell } from "../../../components/DependenciesTable/TextCell";
+import { DateTimeCell } from "../../../components/DependencyList/DateTimeCell";
+import { EntityCell } from "../../../components/DependencyList/EntityCell";
+import { TextCell } from "../../../components/DependencyList/TextCell";
 import {
   getNodeIcon,
   getNodeLabel,
