@@ -12,6 +12,7 @@ import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListBrokenNodesQuery } from "metabase-enterprise/api";
 
 import { DependencyFilterPicker } from "../../components/DependencyFilterPicker";
+import { ListEmptyState } from "../../components/ListEmptyState";
 import type {
   DependencyListFilterOptions,
   DependencyListRawParams,
@@ -160,13 +161,19 @@ export function BrokenDependencyListPage({
         />
       </Flex>
       <Box flex={1} mih={0}>
-        <BrokenDependencyList
-          items={data.data}
-          sortOptions={sortOptions}
-          paginationOptions={paginationOptions}
-          onSortChange={handleSortChange}
-          onPageChange={handlePageChange}
-        />
+        {data.data.length === 0 ? (
+          <Center h="100%">
+            <ListEmptyState label={t`No broken entities found`} />
+          </Center>
+        ) : (
+          <BrokenDependencyList
+            items={data.data}
+            sortOptions={sortOptions}
+            paginationOptions={paginationOptions}
+            onSortChange={handleSortChange}
+            onPageChange={handlePageChange}
+          />
+        )}
       </Box>
     </Stack>
   );

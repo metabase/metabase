@@ -12,6 +12,7 @@ import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
 
 import { DependencyFilterPicker } from "../../components/DependencyFilterPicker";
+import { ListEmptyState } from "../../components/ListEmptyState";
 import type {
   DependencyListFilterOptions,
   DependencyListRawParams,
@@ -146,7 +147,7 @@ export function UnreferencedDependencyListPage({
   }
 
   return (
-    <Stack h="100%" p="lg" gap="md">
+    <Stack h="100%" p="lg" gap="md" bg="accent-gray-light">
       <Flex gap="md" align="center">
         <TextInput
           value={searchValue}
@@ -162,13 +163,19 @@ export function UnreferencedDependencyListPage({
         />
       </Flex>
       <Box flex={1} mih={0}>
-        <UnreferencedDependencyList
-          items={data.data}
-          sortOptions={sortOptions}
-          paginationOptions={paginationOptions}
-          onSortChange={handleSortChange}
-          onPageChange={handlePageChange}
-        />
+        {data.data.length === 0 ? (
+          <Center h="100%">
+            <ListEmptyState label={t`No unreferenced entities found`} />
+          </Center>
+        ) : (
+          <UnreferencedDependencyList
+            items={data.data}
+            sortOptions={sortOptions}
+            paginationOptions={paginationOptions}
+            onSortChange={handleSortChange}
+            onPageChange={handlePageChange}
+          />
+        )}
       </Box>
     </Stack>
   );
