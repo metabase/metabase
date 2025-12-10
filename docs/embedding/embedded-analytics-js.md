@@ -190,7 +190,7 @@ For example, this code defines the font, color, and size for text, background co
 </script>
 ```
 
-See [appearance](./sdk/appearance.md).
+See [appearance](./appearance.md).
 
 ## Authentication
 
