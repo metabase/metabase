@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.e2e-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
@@ -61,12 +60,12 @@
                 #_#_output-table       (-> executed-transform :object :output-table)]
 
             #_(testing "execute the transform with the original query is fine and the output is in an isolated schema"
-              (u/poll {:thunk     #(t2/select-one :model/Table :name (name output-table))
-                       :done?      some?
-                       :timeout-ms 1000})
-              (transforms.tu/wait-for-table (name output-table) 1000)
-              (is (str/starts-with? (namespace output-table) "mb__isolation"))
-              (is (= 1 (count (transforms.tu/table-rows (name output-table))))))
+                (u/poll {:thunk     #(t2/select-one :model/Table :name (name output-table))
+                         :done?      some?
+                         :timeout-ms 1000})
+                (transforms.tu/wait-for-table (name output-table) 1000)
+                (is (str/starts-with? (namespace output-table) "mb__isolation"))
+                (is (= 1 (count (transforms.tu/table-rows (name output-table))))))
 
             (testing "changing the query without granting access will fail"
               (t2/update! :model/WorkspaceTransform

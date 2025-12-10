@@ -3,7 +3,6 @@
    All functions assumes that validation of the dependencies AFTER merge is done BEFORE calling any of these methods."
   (:require
    [metabase-enterprise.transforms.api :as transforms.api]
-   [metabase-enterprise.workspaces.util :as ws.u]
    [toucan2.core :as t2]))
 
 ;; TODO we need to implement the route that calls this, see API reference.

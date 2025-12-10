@@ -1,10 +1,7 @@
 (ns metabase-enterprise.workspaces.isolation
   (:require
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.driver.util :as driver.u]))
 
 ;;;; Driver multimethods
 ;; Implementations are in metabase-enterprise.workspaces.driver.{postgres,h2}

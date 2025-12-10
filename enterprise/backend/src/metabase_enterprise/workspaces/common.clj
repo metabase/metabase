@@ -94,11 +94,11 @@
   "Background job: runs isolation, mirroring, grants. Updates status to :ready when done."
   [{ws-id :id :as workspace} database]
   (ws.log/track! ws-id :workspace-setup
-    (let [{:keys [database_details]} (ws.log/track! ws-id :database-isolation
-                                       (-> (ws.isolation/ensure-database-isolation! workspace database)
+    (let [{:keys [_database_details]} (ws.log/track! ws-id :database-isolation
+                                        (-> (ws.isolation/ensure-database-isolation! workspace database)
                                            ;; it actually returns just those, this is more like a doc than behavior
-                                           (select-keys [:schema :database_details])
-                                           (u/prog1 (t2/update! :model/Workspace ws-id <>))))
+                                            (select-keys [:schema :database_details])
+                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))
           ;; TODO analyze graph. in the
           {:keys [inputs]}           {}]
       (when-let [table-ids (seq (keep #(when (= :table (:type %)) (:id %)) inputs))]

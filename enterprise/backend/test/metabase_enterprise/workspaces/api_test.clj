@@ -93,13 +93,13 @@
       (is (t2/exists? :model/Workspace :id workspace-id :collection_id collection-id))
       (is (t2/exists? :model/Collection :id collection-id :workspace_id workspace-id)))
 
-      (testing "workspace appears in list response"
-        (let [{:keys [items]} (mt/user-http-request :crowberto :get 200 "ee/workspace")]
-          (is (some #(= workspace-id (:id %)) items))))
+    (testing "workspace appears in list response"
+      (let [{:keys [items]} (mt/user-http-request :crowberto :get 200 "ee/workspace")]
+        (is (some #(= workspace-id (:id %)) items))))
 
-      (testing "workspace can be fetched individually"
-        (is (=? {:id workspace-id}
-                (mt/user-http-request :crowberto :get 200 (ws-url workspace-id "")))))
+    (testing "workspace can be fetched individually"
+      (is (=? {:id workspace-id}
+              (mt/user-http-request :crowberto :get 200 (ws-url workspace-id "")))))
 
     (testing "workspace can be archived"
       (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
@@ -254,9 +254,8 @@
            (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "/table"))))))
 
 (deftest tables-endpoint-transform-not-run-test
-  (let [mp          (mt/metadata-provider)
-        query       (lib/native-query mp "select * from orders limit 10;")
-        orig-schema "public"]
+  (let [mp    (mt/metadata-provider)
+        query (lib/native-query mp "select * from orders limit 10;")]
     (with-transform-cleanup! [orig-name "ws_tables_test"]
       (mt/with-temp [:model/Transform x1 {:source_type "native"
                                           :name        "My X1"
