@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.dag :as ws.dag]
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -71,7 +70,7 @@
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
                                                 :workspace_id (:id ws)})
-        schema  (driver.common/isolation-namespace-name ws)
+        schema  (ws.u/isolation-namespace-name ws)
         ws      (assoc ws
                        :collection_id (:id coll)
                        :schema schema)]

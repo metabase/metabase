@@ -7,8 +7,8 @@
   Required permissions: CREATE LOGIN (server-level), CREATE USER, CREATE SCHEMA, and GRANT CONTROL."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 (set! *warn-on-reflection* true)
@@ -20,10 +20,10 @@
 
 (defmethod isolation/init-workspace-database-isolation! :sqlserver
   [database workspace]
-  (let [schema-name (driver.common/isolation-namespace-name workspace)
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
         login-name  (isolation-login-name workspace)
-        read-user   {:user     (driver.common/isolation-user-name workspace)
-                     :password (driver.common/random-isolated-password)}
+        read-user   {:user     (ws.u/isolation-user-name workspace)
+                     :password (ws.u/random-isolated-password)}
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; SQL Server: create login (server level), then user (database level), then schema
     (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "

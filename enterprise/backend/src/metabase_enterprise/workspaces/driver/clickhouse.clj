@@ -2,17 +2,17 @@
   "Postgres-specific implementations for workspace isolation."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 (set! *warn-on-reflection* true)
 
 (defmethod isolation/init-workspace-database-isolation! :clickhouse
   [database workspace]
-  (let [db-name   (driver.common/isolation-namespace-name workspace)
-        read-user {:user     (driver.common/isolation-user-name workspace)
-                   :password (driver.common/random-isolated-password)}]
+  (let [db-name   (ws.u/isolation-namespace-name workspace)
+        read-user {:user     (ws.u/isolation-user-name workspace)
+                   :password (ws.u/random-isolated-password)}]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql [(format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)

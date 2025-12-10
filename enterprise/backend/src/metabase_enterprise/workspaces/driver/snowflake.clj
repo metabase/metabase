@@ -7,8 +7,8 @@
   Required permissions: CREATE SCHEMA, CREATE USER, CREATE ROLE, and GRANT OWNERSHIP privileges."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 (set! *warn-on-reflection* true)
@@ -20,12 +20,12 @@
 
 (defmethod isolation/init-workspace-database-isolation! :snowflake
   [database workspace]
-  (let [schema-name (driver.common/isolation-namespace-name workspace)
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
         db-name     (-> database :details :db)
         warehouse   (-> database :details :warehouse)
         role-name   (isolation-role-name workspace)
-        read-user   {:user     (driver.common/isolation-user-name workspace)
-                     :password (driver.common/random-isolated-password)}
+        read-user   {:user     (ws.u/isolation-user-name workspace)
+                     :password (ws.u/random-isolated-password)}
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
     (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
