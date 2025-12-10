@@ -964,7 +964,7 @@ databaseChangeLog:
             where: type = 'library-data'
 
   - changeSet:
-      id: v58.2025-12-02T00:00:01
+      id: v58.2025-12-06T00:00:01
       author: bshepherdson
       comment: Create analysis finding table
       changes:
@@ -1019,7 +1019,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v58.2025-12-02T00:00:02
+      id: v58.2025-12-06T00:00:02
       author: bshepherdson
       comment: Unique constraint to prevent duplicate analyses
       changes:
@@ -1029,7 +1029,7 @@ databaseChangeLog:
             constraintName: idx_unique_analysis_finding
 
   - changeSet:
-      id: v58.2025-12-02T00:00:03
+      id: v58.2025-12-06T00:00:03
       author: bshepherdson
       comment: Index for analysis_finding by analyzed entity
       changes:
@@ -1043,7 +1043,7 @@ databaseChangeLog:
                   name: analyzed_entity_id
 
   - changeSet:
-      id: v58.2025-12-02T00:00:04
+      id: v58.2025-12-06T00:00:04
       author: bshepherdson
       comment: Index for analysis_finding by analysis result
       changes:
