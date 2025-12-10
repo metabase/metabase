@@ -4,6 +4,7 @@ import type { DependencyNode } from "metabase-types/api";
 export type DependencyColumn =
   | "name"
   | "location"
+  | "errors"
   | "dependents-count"
   | "last-edit-at"
   | "last-edit-by";

@@ -14,6 +14,7 @@ type DependencyTableProps = {
   items: DependencyNode[];
   sortOptions?: DependencyListSortOptions;
   paginationOptions?: PaginationOptions;
+  withErrorsColumn?: boolean;
   withDependentsCountColumn?: boolean;
   onSortChange?: (sortOptions: DependencyListSortOptions) => void;
   onPageChange?: (pageIndex: number) => void;
@@ -23,13 +24,14 @@ export const DependencyTable = memo(function DependencyTable({
   items,
   sortOptions,
   paginationOptions,
+  withErrorsColumn = false,
   withDependentsCountColumn = false,
   onSortChange,
   onPageChange,
 }: DependencyTableProps) {
   const columns = useMemo(
-    () => getColumns({ withDependentsCountColumn }),
-    [withDependentsCountColumn],
+    () => getColumns({ withErrorsColumn, withDependentsCountColumn }),
+    [withErrorsColumn, withDependentsCountColumn],
   );
 
   const handleSortChange = useCallback(
