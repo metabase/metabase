@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
-import { Group } from "metabase/ui";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
@@ -24,22 +23,18 @@ export function TransformsSectionLayout({
   usePageTitle(t`Transforms`);
 
   return (
-    <SectionLayout tabs={<DataSectionTabs location={location} />}>
+    <SectionLayout tabs={<TransformTabs location={location} />}>
       {children}
     </SectionLayout>
   );
 }
 
-type DataSectionTabsProps = {
+type TransformTabsProps = {
   location: Location;
 };
 
-function DataSectionTabs({ location }: DataSectionTabsProps) {
-  return (
-    <Group>
-      <PaneHeaderTabs tabs={getTabs(location)} withBackground />
-    </Group>
-  );
+function TransformTabs({ location }: TransformTabsProps) {
+  return <PaneHeaderTabs tabs={getTabs(location)} withBackground />;
 }
 
 function getTabs({ pathname }: Location): PaneHeaderTab[] {

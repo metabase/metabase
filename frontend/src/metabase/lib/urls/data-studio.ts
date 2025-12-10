@@ -217,6 +217,6 @@ function dataStudioDependencies(
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
-export function dataStudioUnreferencedItems(params: DependencyListParams) {
+export function dataStudioUnreferencedItems(params: DependencyListParams = {}) {
   return dataStudioDependencies(`${dataStudioTasks()}/unreferenced`, params);
 }
