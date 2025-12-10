@@ -37,8 +37,9 @@ export type DependencyListFilterOptions = {
 };
 
 export type DependencyListRawParams = {
-  page?: string;
-  groupTypes?: string | string[];
-  sortColumn?: string;
-  sortDirection?: string;
+  query?: unknown;
+  page?: unknown;
+  groupTypes?: unknown;
+  sortColumn?: unknown;
+  sortDirection?: unknown;
 };

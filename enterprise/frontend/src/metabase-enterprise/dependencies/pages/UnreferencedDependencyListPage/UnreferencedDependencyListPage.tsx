@@ -1,7 +1,7 @@
-import { useDebouncedValue } from "@mantine/hooks";
+import { useDebouncedCallback } from "@mantine/hooks";
 import type { Location } from "history";
 import { type ChangeEvent, useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -44,24 +44,19 @@ export function UnreferencedDependencyListPage({
     [location?.query],
   );
   const {
+    query = "",
+    page = 0,
     groupTypes,
     sortColumn = DEFAULT_SORT_COLUMN,
     sortDirection = DEFAULT_SORT_DIRECTION,
-    page = 0,
   } = params;
   const [searchValue, setSearchValue] = useState("");
-  const [searchQuery] = useDebouncedValue(
-    getSearchQuery(searchValue),
-    SEARCH_DEBOUNCE_DURATION,
-  );
   const dispatch = useDispatch();
 
   const { data, isLoading, error } = useListUnreferencedNodesQuery({
+    query,
     types: getDependencyTypes(groupTypes ?? AVAILABLE_GROUP_TYPES),
     card_types: getCardTypes(groupTypes ?? AVAILABLE_GROUP_TYPES),
-    query: searchQuery,
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
     sort_column: sortColumn,
     sort_direction: sortDirection,
   });
@@ -90,11 +85,20 @@ export function UnreferencedDependencyListPage({
     [page, data?.total],
   );
 
+  const handleSearchDebounce = useDebouncedCallback(
+    (query: string | undefined) => {
+      dispatch(replace(Urls.dataStudioUnreferencedItems({ ...params, query })));
+    },
+    SEARCH_DEBOUNCE_DURATION,
+  );
+
   const handleSearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      setSearchValue(event.target.value);
+      const searchValue = event.target.value;
+      setSearchValue(searchValue);
+      handleSearchDebounce(getSearchQuery(searchValue));
     },
-    [],
+    [handleSearchDebounce],
   );
 
   const handleFilterOptionsChange = useCallback(

@@ -10,6 +10,13 @@ import type {
 
 import { getCardType, getDependencyType } from "../../utils";
 
+function parseString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  return value;
+}
+
 function parseNumber(value: unknown): number | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -75,6 +82,7 @@ export function parseRawParams(
   rawParams?: DependencyListRawParams,
 ): Urls.DependencyListParams {
   return {
+    query: parseString(rawParams?.query),
     page: parseNumber(rawParams?.page),
     groupTypes: parseList(rawParams?.groupTypes, parseDependencyGroupType),
     sortColumn: parseDependencySortColumn(rawParams?.sortColumn),

@@ -4,11 +4,7 @@ import type {
   DependencySortDirection,
 } from "metabase-types/api";
 
-export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = [
-  "table",
-  "model",
-  "metric",
-];
+export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = ["model", "metric"];
 
 export const PAGE_SIZE = 25;
 
