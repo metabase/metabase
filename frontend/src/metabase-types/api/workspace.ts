@@ -89,6 +89,12 @@ export type WorkspaceMergeResponse = {
   archived_at: string | null;
 };
 
+export type WorkspaceTransformMergeResponse = {
+  // I have no idea atm how are we going to use this
+  workspace: WorkspaceItem;
+  archived_at: string | null;
+};
+
 export type WorkspaceUpdateContentsRequest = {
   id: WorkspaceId;
   add?: {

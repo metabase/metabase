@@ -20,6 +20,7 @@ import type {
   WorkspaceTablesResponse,
   WorkspaceTransform,
   WorkspaceTransformItem,
+  WorkspaceTransformMergeResponse,
   WorkspaceTransformRef,
   WorkspaceTransformsResponse,
   WorkspaceUpdateContentsRequest,
@@ -115,6 +116,17 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       query: (id) => ({
         method: "POST",
         url: `/api/ee/workspace/${id}/merge`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    mergeWorkspaceTransform: builder.mutation<
+      WorkspaceTransformMergeResponse,
+      WorkspaceTransformRef
+    >({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/merge`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
@@ -319,6 +331,7 @@ export const {
   useGetTransformUpstreamMappingQuery,
   useGetTransformDownstreamMappingQuery,
   useMergeWorkspaceMutation,
+  useMergeWorkspaceTransformMutation,
   useArchiveWorkspaceMutation,
   useUnarchiveWorkspaceMutation,
   useDeleteWorkspaceMutation,
