@@ -6,14 +6,17 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
   {:card (or (lib/all-source-card-ids query) #{})
+   :segment (or (lib/all-segment-ids query) #{})
    :table (-> #{}
               (into (lib/all-source-table-ids query))
               (into (lib/all-implicitly-joined-table-ids query)))})
@@ -130,3 +133,21 @@
   (if-let [card-id (:card_id sandbox)]
     {:card #{card-id}}
     {}))
+
+(mu/defn upstream-deps:segment :- ::deps.schema/upstream-deps
+  "Given a segment, return its upstream dependencies (the table it filters and any segments it references)"
+  [{:keys [table_id definition] :as _segment}]
+  (let [segment-ids (into #{}
+                          (lib.util.match/match definition
+                            [:segment (id :guard pos-int?)] id
+                            [:segment _ (id :guard pos-int?)] id))
+
+        implicit-join-field-ids (into #{}
+                                      (lib.util.match/match definition
+                                        [:field (id :guard pos-int?) (opts :guard #(and (:source-field %) (not (:join-alias %))))]
+                                        id))
+        implicit-join-table-ids (when (seq implicit-join-field-ids)
+                                  (t2/select-fn-set :table_id :model/Field :id [:in implicit-join-field-ids]))]
+    {:segment segment-ids
+     :table (cond-> (if table_id #{table_id} #{})
+              implicit-join-table-ids (into implicit-join-table-ids))}))

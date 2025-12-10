@@ -17,6 +17,7 @@ import type {
   DependencyId,
   DependencyType,
   NativeQuerySnippetId,
+  SegmentId,
   TableId,
   TransformId,
 } from "metabase-types/api";
@@ -45,6 +46,11 @@ const SNIPPET_BASED_QUESTION_NAME = "Snippet-based question";
 const SNIPPET_BASED_MODEL_NAME = "Snippet-based model";
 const SNIPPET_BASED_TRANSFORM_NAME = "Snippet-based transform";
 const SNIPPET_BASED_SNIPPET_NAME = "Snippet-based snippet";
+const TABLE_BASED_SEGMENT_NAME = "Table-based segment";
+const SEGMENT_BASED_QUESTION_NAME = "Segment-based question";
+const SEGMENT_BASED_MODEL_NAME = "Segment-based model";
+const SEGMENT_BASED_METRIC_NAME = "Segment-based metric";
+const SEGMENT_BASED_SEGMENT_NAME = "Segment-based segment";
 
 // TODO skipped until v57 is released
 describe.skip("scenarios > dependencies > dependency graph", () => {
@@ -246,6 +252,7 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         createTableBasedModel({ tableId });
         createTableBasedMetric({ tableId });
         createTableBasedTransform({ tableName: TABLE_NAME });
+        createTableBasedSegment({ tableId });
         visitGraphForEntity(tableId, "table");
       });
       verifyPanelNavigation({
@@ -267,6 +274,43 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_DISPLAY_NAME,
         groupTitle: "1 transform",
         dependentItemTitle: TABLE_BASED_TRANSFORM_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 segment",
+        dependentItemTitle: TABLE_BASED_SEGMENT_NAME,
+      });
+    });
+
+    it("should display dependencies for a segment and navigate to them", () => {
+      getScoreboardTableId().then((tableId) =>
+        createTableBasedSegment({ tableId }).then(({ body: segment }) => {
+          createSegmentBasedQuestion({ tableId, segmentId: segment.id });
+          createSegmentBasedModel({ tableId, segmentId: segment.id });
+          createSegmentBasedMetric({ tableId, segmentId: segment.id });
+          createSegmentBasedSegment({ tableId, segmentId: segment.id });
+          visitGraphForEntity(segment.id, "segment");
+        }),
+      );
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: SEGMENT_BASED_QUESTION_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 model",
+        dependentItemTitle: SEGMENT_BASED_MODEL_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 metric",
+        dependentItemTitle: SEGMENT_BASED_METRIC_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 segment",
+        dependentItemTitle: SEGMENT_BASED_SEGMENT_NAME,
       });
     });
 
@@ -1027,5 +1071,103 @@ function createSnippetBasedSnippet({ snippetName }: { snippetName: string }) {
   return H.createSnippet({
     name: SNIPPET_BASED_SNIPPET_NAME,
     content: `{{snippet:${snippetName}}}`,
+  });
+}
+
+function createTableBasedSegment({ tableId }: { tableId: TableId }) {
+  return H.createSegment({
+    name: TABLE_BASED_SEGMENT_NAME,
+    description: "Segment description",
+    table_id: tableId,
+    definition: {
+      "source-table": tableId,
+      filter: ["=", 1, 1],
+    },
+  });
+}
+
+function createSegmentBasedSegment({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return H.createSegment({
+    name: SEGMENT_BASED_SEGMENT_NAME,
+    description: "Segment description",
+    table_id: tableId,
+    definition: {
+      "source-table": tableId,
+      filter: ["segment", segmentId],
+    },
+  });
+}
+
+function createSegmentBasedCard({
+  name,
+  type,
+  tableId,
+  segmentId,
+}: {
+  name: string;
+  type: CardType;
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return H.createQuestion({
+    name,
+    type,
+    database: WRITABLE_DB_ID,
+    query: {
+      "source-table": tableId,
+      filter: ["segment", segmentId],
+      aggregation: [["count"]],
+    },
+  });
+}
+
+function createSegmentBasedQuestion({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return createSegmentBasedCard({
+    name: SEGMENT_BASED_QUESTION_NAME,
+    type: "question",
+    tableId,
+    segmentId,
+  });
+}
+
+function createSegmentBasedModel({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return createSegmentBasedCard({
+    name: SEGMENT_BASED_MODEL_NAME,
+    type: "model",
+    tableId,
+    segmentId,
+  });
+}
+
+function createSegmentBasedMetric({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return createSegmentBasedCard({
+    name: SEGMENT_BASED_METRIC_NAME,
+    type: "metric",
+    tableId,
+    segmentId,
   });
 }
