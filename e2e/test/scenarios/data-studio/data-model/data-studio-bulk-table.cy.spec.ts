@@ -124,8 +124,8 @@ describe("bulk table operations", () => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
       });
-      H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
-      H.DataStudio.Modeling.tableItem("Products").should("be.visible");
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+      H.DataStudio.Library.tableItem("Products").should("be.visible");
       cy.go("back");
 
       cy.log("unpublish some tables and verify they are unpublished");
@@ -134,9 +134,9 @@ describe("bulk table operations", () => {
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().findByText("Unpublish these tables").click();
       cy.wait("@unpublishTables");
-      H.DataStudio.nav().findByLabelText("Modeling").click();
-      H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
-      H.DataStudio.Modeling.collectionPage().within(() => {
+      H.DataStudio.nav().findByLabelText("Library").click();
+
+      H.DataStudio.Library.libraryPage().within(() => {
         cy.findByText("Reviews").should("be.visible");
         cy.findByText("Orders").should("not.exist");
         cy.findByText("Products").should("not.exist");
@@ -172,6 +172,92 @@ describe("bulk table operations", () => {
       .findByTestId("table-owner")
       .should("have.text", "Bobby Tables");
   });
+
+  describe(
+    "several databases with several schemas at once (GDGT-1275)",
+    { tags: ["@external"] },
+    () => {
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        H.activateToken("bleeding-edge");
+        H.createLibrary();
+        cy.signInAsAdmin();
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+        H.DataModel.visitDataStudio();
+      });
+
+      it("should change metadata and see that is changed for all selected tables without filters", () => {
+        cy.log("change the owner and check the owner column");
+
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getDatabase("Sample Database").click();
+        TablePicker.getSchema("Domestic").click();
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
+        H.selectHasValue("Owner", "").click();
+        H.selectDropdown().contains("Bobby Tables").click();
+
+        ["Accounts", "Animals"].forEach((tableName) => {
+          TablePicker.getTable(tableName)
+            .findByTestId("table-owner")
+            .should("have.text", "Bobby Tables");
+        });
+
+        cy.log("publish and check publish state column");
+
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
+        cy.findByRole("button", { name: /Publish/ }).click();
+        H.modal().findByText("Publish these tables").click();
+        cy.wait("@publishTables");
+
+        ["Accounts", "Animals"].forEach((tableName) => {
+          TablePicker.getTable(tableName)
+            .findByTestId("table-published")
+            .findByLabelText("Published")
+            .should("be.visible");
+        });
+      });
+
+      it("should change metadata and see that is changed for all selected tables with filters", () => {
+        TablePicker.getSearchInput().type("a");
+        cy.log("change the owner and check the owner column");
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
+        H.selectHasValue("Owner", "").click();
+        H.selectDropdown().contains("Bobby Tables").click();
+
+        ["Accounts", "Animals"].forEach((tableName) => {
+          TablePicker.getTable(tableName)
+            .findByTestId("table-owner")
+            .should("have.text", "Bobby Tables");
+        });
+
+        cy.log("publish and check publish state column");
+
+        /**
+         * we need to wait a little until TableAttributesEditBulk component is destroyed (see enterprise/frontend/src/metabase-enterprise/data-studio/data-model/components/TablePicker/components/SearchNew.tsx:153)
+         * Otherwise, the button will be found, but it will be immediately removed.
+         * And then we have to reselect because when there is a filter rows are unselected after a change
+         */
+        cy.findByRole("button", { name: /Publish/ }).should("not.exist");
+
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
+        cy.findByRole("button", { name: /Publish/ }).click();
+        H.modal().findByText("Publish these tables").click();
+        cy.wait("@publishTables");
+
+        ["Accounts", "Animals"].forEach((tableName) => {
+          TablePicker.getTable(tableName)
+            .findByTestId("table-published")
+            .findByLabelText("Published")
+            .should("be.visible");
+        });
+      });
+    },
+  );
 
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
