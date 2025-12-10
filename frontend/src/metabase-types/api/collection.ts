@@ -139,6 +139,7 @@ export interface CollectionItem {
   can_write?: boolean;
   can_restore?: boolean;
   can_delete?: boolean;
+  can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
@@ -185,6 +186,7 @@ export type ListCollectionItemsRequest = {
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: "snippets";
   collection_type?: CollectionType;
+  include_can_run_adhoc_query?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 

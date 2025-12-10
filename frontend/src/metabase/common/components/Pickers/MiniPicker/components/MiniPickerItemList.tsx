@@ -11,6 +11,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
@@ -241,22 +242,21 @@ function DatabaseItemList({
 function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
   const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
 
-  const {
-    data: items,
-    isLoading,
-    isFetching,
-  } = useListCollectionItemsQuery({
+  const { data, isLoading, isFetching } = useListCollectionItemsQuery({
     id: parent.id === null ? "root" : parent.id,
+    include_can_run_adhoc_query: true,
   });
+
+  const items = data?.data?.filter(canCollectionCardBeUsed);
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;
   }
 
-  if (items?.data?.length) {
+  if (items?.length) {
     return (
       <ItemList>
-        {items.data.map((item) => (
+        {items.map((item) => (
           <MiniPickerItem
             key={`${item.model}-${item.id}`}
             name={item.name}
