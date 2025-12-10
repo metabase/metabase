@@ -259,8 +259,6 @@ export function EntityPickerModal<
 
     computedTabs.push(...passedTabs);
 
-    // console.log({ selectedFolder, initialValue, selectedTabId });
-
     if (hasSearchTab) {
       computedTabs.push({
         id: SEARCH_TAB_ID,
