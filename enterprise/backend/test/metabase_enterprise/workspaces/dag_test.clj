@@ -114,7 +114,7 @@
                       :dependencies {:x1 [:t1]}}
           id-map     (create-test-graph! shorthand)
           result     nil #_(ws.dag/path-induced-subgraph {:transforms [(id-map :x1)]})
-          translated (translate-result result id-map)]
+          _translated (translate-result result id-map)]
       #_(is (= {:check-outs #{:x1}
                 :transforms #{:x1}
                 :inputs     #{:t1}}
@@ -130,7 +130,7 @@
                                      :x5 [:x2, :x4, :t9]}}
           id-map     (create-test-graph! (dag-abstract/expand-shorthand shorthand))
           result     nil #_(ws.dag/path-induced-subgraph {:transforms (mapv id-map (:check-outs shorthand))})
-          translated (translate-result result id-map)]
+          _translated (translate-result result id-map)]
       #_(is (=? {:check-outs   #{:x2, :x4}
                  :transforms   #{:x2, :x3, :x4}
                  :inputs       #{:t0, :t1, :t8, :t10}

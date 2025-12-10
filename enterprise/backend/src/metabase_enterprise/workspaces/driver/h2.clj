@@ -14,6 +14,8 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
+(set! *warn-on-reflection* true)
+
 (defn- replace-credentials
   "Replace USER and PASSWORD in an H2 connection string."
   [connection-string new-user new-password]
@@ -32,7 +34,7 @@
         schemas  (distinct (map :schema tables))]
     ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+      (with-open [^java.sql.Statement stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [schema schemas]
           (.addBatch ^java.sql.Statement stmt
                      ^String (format "GRANT SELECT ON SCHEMA \"%s\" TO \"%s\"" schema username)))

@@ -8,7 +8,6 @@
   (:require
    [clojure.set :as set]
    [flatland.ordered.map :as ordered-map]
-   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.util :as u]))
 

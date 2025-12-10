@@ -24,6 +24,7 @@
 
 ;;;; Public API
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- path-induced-subgraph
   "Given a map of entity types to IDs, compute the path-induced subgraph.
    `entities-by-type` is a map like {:transform [1 2 3]}.
