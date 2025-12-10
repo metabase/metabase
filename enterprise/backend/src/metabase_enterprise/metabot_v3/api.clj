@@ -61,15 +61,16 @@
         metabot-pk    (metabot-v3.config/normalize-metabot-id metabot-id)
         use-case-id   (when use_case
                         (t2/select-one-pk :model/MetabotUseCase :metabot_id metabot-pk :name use_case))
+        profile       (metabot-v3.config/resolve-profile metabot-pk use_case profile_id)
         session-id    (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
         tracking-info {:use-case-id use-case-id
-                       :profile-id  profile_id}]
+                       :profile-id  profile}]
     (store-message! conversation_id tracking-info [message])
     (metabot-v3.client/streaming-request
      {:context         (metabot-v3.context/create-context context)
       :metabot-id      metabot-id
       :use-case        use_case
-      :profile-id      profile_id
+      :profile-id      profile
       :session-id      session-id
       :conversation-id conversation_id
       :message         message

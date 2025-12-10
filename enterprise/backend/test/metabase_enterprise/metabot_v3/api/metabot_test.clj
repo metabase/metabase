@@ -181,12 +181,12 @@
     (mt/with-premium-features #{:metabot-v3}
       (with-clean-metabots
         (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"}
-                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "omnibot" :enabled true}
-                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "transforms" :enabled true}]
+                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "omnibot" :profile "internal" :enabled true}
+                       :model/MetabotUseCase _ {:metabot_id metabot-id :name "transforms" :profile "transforms_codegen" :enabled true}]
           (let [{[metabot] :items} (mt/user-http-request :crowberto :get 200 "ee/metabot-v3/metabot")]
-            (is (= [{:metabot_id metabot-id :name "omnibot" :enabled true}
-                    {:metabot_id metabot-id :name "transforms" :enabled true}]
-                   (map #(select-keys % [:metabot_id :name :enabled]) (:use_cases metabot))))))))))
+            (is (= [{:metabot_id metabot-id :name "omnibot" :profile "internal" :enabled true}
+                    {:metabot_id metabot-id :name "transforms" :profile "transforms_codegen" :enabled true}]
+                   (map #(select-keys % [:metabot_id :name :profile :enabled]) (:use_cases metabot))))))))))
 
 (deftest metabot-get-single-test
   (testing "GET /api/ee/metabot-v3/metabot/:id"
@@ -196,7 +196,7 @@
                                                       :description "Test Description"
                                                       :use_verified_content true
                                                       :collection_id collection-id}
-                     :model/MetabotUseCase _ {:metabot_id metabot-id :name "transforms" :enabled true}]
+                     :model/MetabotUseCase _ {:metabot_id metabot-id :name "transforms" :profile "transforms_codegen" :enabled true}]
 
         (testing "should return metabot with all fields"
           (let [response (mt/user-http-request :crowberto :get 200
@@ -206,8 +206,8 @@
             (is (= "Test Description" (:description response)))
             (is (true? (:use_verified_content response)))
             (is (= collection-id (:collection_id response)))
-            (is (= [{:metabot_id metabot-id :name "transforms" :enabled true}]
-                   (map #(select-keys % [:metabot_id :name :enabled]) (:use_cases response))))))
+            (is (= [{:metabot_id metabot-id :name "transforms" :profile "transforms_codegen" :enabled true}]
+                   (map #(select-keys % [:metabot_id :name :profile :enabled]) (:use_cases response))))))
 
         (testing "should require superuser permissions"
           (is (= "You don't have permissions to do that."
@@ -312,8 +312,9 @@
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"}
                      :model/MetabotUseCase {uc-id :id} {:metabot_id metabot-id
-                                                        :name "transforms"
-                                                        :enabled true}]
+                                                        :name       "transforms"
+                                                        :profile    "transforms_codegen"
+                                                        :enabled    true}]
         (testing "should update use_case enabled status"
           (let [response (mt/user-http-request :crowberto :put 200
                                                (format "ee/metabot-v3/metabot/%d" metabot-id)
@@ -334,8 +335,9 @@
         (testing "should return 404 for use_case belonging to different metabot"
           (mt/with-temp [:model/Metabot {other-metabot-id :id} {:name "Other Metabot"}
                          :model/MetabotUseCase {other-uc-id :id} {:metabot_id other-metabot-id
-                                                                  :name "embedding"
-                                                                  :enabled true}]
+                                                                  :name       "embedding"
+                                                                  :profile    "embedding"
+                                                                  :enabled    true}]
             (is (= "Not found."
                    (mt/user-http-request :crowberto :put 404
                                          (format "ee/metabot-v3/metabot/%d" metabot-id)

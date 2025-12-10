@@ -222,6 +222,7 @@ export type MetabotName = string;
 export type MetabotUseCaseInfo = {
   id: number;
   name: MetabotUseCase;
+  profile: string;
   enabled: boolean;
 };
 

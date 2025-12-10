@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.config
   (:require
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (def internal-metabot-id
@@ -31,3 +32,21 @@
   (or metabot-id
       (metabot-v3.settings/metabot-id)
       internal-metabot-id))
+
+(defn resolve-profile
+  "Resolve the AI service profile for a use case.
+   Precedence: explicit profile override > use case profile from DB
+
+   Arguments:
+   - metabot-pk: The primary key of the metabot instance
+   - use-case: The use case name (e.g., \"nlq\", \"transforms\")
+   - profile-override: Optional explicit profile override (e.g., from /profile command)"
+  [metabot-pk use-case profile-override]
+  (or profile-override
+      (when (and metabot-pk use-case)
+        (let [profile (t2/select-one-fn :profile :model/MetabotUseCase
+                                        :metabot_id metabot-pk
+                                        :name use-case)]
+          (when-not profile
+            (log/warnf "No use case found for metabot %d with name %s" metabot-pk use-case))
+          profile))))

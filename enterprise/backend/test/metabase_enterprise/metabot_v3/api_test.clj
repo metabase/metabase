@@ -113,8 +113,9 @@
             conversation-id (str (random-uuid))]
         (mt/with-temp [:model/Metabot {metabot-id :id :as metabot} {:name "Test Metabot"}
                        :model/MetabotUseCase {uc-id :id} {:metabot_id metabot-id
-                                                          :name "test-use-case"
-                                                          :enabled true}]
+                                                          :name       "test-use-case"
+                                                          :profile    "test-profile"
+                                                          :enabled    true}]
           (mt/with-dynamic-fn-redefs [client/post! (fn [url opts]
                                                      ((client-test/mock-post! mock-response) url opts))]
             (mt/with-model-cleanup [:model/MetabotMessage
