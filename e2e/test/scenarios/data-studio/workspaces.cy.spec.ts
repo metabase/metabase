@@ -117,7 +117,7 @@ describe("scenarios > data studio > workspaces", () => {
     // TODO: workspace deletion?
   });
 
-  it("should be able to check out exisitng transforms into a new workspace from the transform page", () => {
+  it("should be able to check out exisitng transform into a new workspace from the transform page", () => {
     const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
 
     createTransforms({ visit: true });
