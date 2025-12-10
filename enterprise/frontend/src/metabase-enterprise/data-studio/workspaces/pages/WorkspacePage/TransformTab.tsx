@@ -1,14 +1,20 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect, useState } from "react";
+import { skipToken } from "@reduxjs/toolkit/query";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import * as Yup from "yup";
 
+import { useListDatabaseSchemasQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import {
+  useCreateWorkspaceTransformMutation,
   useGetTransformQuery,
   useRunTransformMutation,
+  useValidateTableNameMutation,
   workspaceApi,
 } from "metabase-enterprise/api";
 import {
@@ -17,6 +23,10 @@ import {
 } from "metabase-enterprise/metabot/state";
 import { RunStatus } from "metabase-enterprise/transforms/components/RunStatus";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
+import {
+  CreateTransformModal,
+  type NewTransformValues,
+} from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
 import {
   isSameSource,
@@ -27,10 +37,13 @@ import {
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
+  CreateWorkspaceTransformRequest,
   DatabaseId,
   DraftTransformSource,
+  EditedTransform,
   Transform,
   TransformId,
+  TransformTarget,
   WorkspaceId,
 } from "metabase-types/api";
 
@@ -39,7 +52,7 @@ import { WorkspaceRunButton } from "../../components/WorkspaceRunButton/Workspac
 import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
-import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
+import { useWorkspace } from "./WorkspaceProvider";
 
 interface Props {
   databaseId: DatabaseId;
@@ -64,6 +77,7 @@ export const TransformTab = ({
     updateTransformState,
     isWorkspaceExecuting,
     setIsWorkspaceExecuting,
+    removeUnsavedTransform,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
@@ -85,6 +99,7 @@ export const TransformTab = ({
     isFetching,
   } = useGetTransformQuery(transform.id, {
     pollingInterval: shouldPoll ? POLLING_INTERVAL : undefined,
+    skip: transform.id < 0,
   });
 
   useEffect(() => {
@@ -147,7 +162,7 @@ export const TransformTab = ({
 
   const proposedSource =
     suggestedTransform?.source &&
-      !isSameSource(suggestedTransform.source, editedTransform.source)
+    !isSameSource(suggestedTransform.source, editedTransform.source)
       ? normalizeSource(suggestedTransform.source)
       : undefined;
 
@@ -159,7 +174,79 @@ export const TransformTab = ({
 
   const isSaved = workspaceTransforms.some((t) => t.id === transform.id);
 
+  const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [runTransform] = useRunTransformMutation();
+  const [_validateTableName] = useValidateTableNameMutation();
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+
+  const { data: fetchedSchemas = [] } = useListDatabaseSchemasQuery(
+    databaseId ? { id: databaseId, include_hidden: false } : skipToken,
+  );
+  const allowedSchemas = useMemo(
+    () =>
+      fetchedSchemas.filter((schema) => !schema.startsWith("mb__isolation")),
+    [fetchedSchemas],
+  );
+
+  const handleSave = async (values: NewTransformValues): Promise<Transform> => {
+    try {
+      const request: CreateWorkspaceTransformRequest & { id: WorkspaceId } =
+        values.incremental
+          ? {
+              id: workspaceId,
+              name: values.name,
+              description: null,
+              source: transform.source,
+              target: {
+                type: "table-incremental" as const,
+                name: values.targetName,
+                schema: values.targetSchema,
+                database: databaseId,
+                "target-incremental-strategy": {
+                  type: "append" as const,
+                },
+              },
+            }
+          : {
+              id: workspaceId,
+              name: values.name,
+              description: null,
+              source: transform.source,
+              target: {
+                type: "table" as const,
+                name: values.targetName,
+                schema: values.targetSchema,
+                database: databaseId,
+              },
+            };
+
+      const savedTransform = await createWorkspaceTransform(request).unwrap();
+
+      // Remove from unsaved transforms and refresh workspace
+      removeUnsavedTransform(transform.id);
+
+      // TODO stasgavrylov 2025-12-10
+      // Invalidate workspace transforms after creating new one
+      // dispatch(workspaceApi.util.invalidateTags(["workspace"]));
+
+      // Open the newly saved transform
+      onOpenTransform(savedTransform.id);
+
+      sendSuccessToast(t`Transform saved successfully`);
+      setSaveModalOpen(false);
+
+      return savedTransform;
+    } catch (error) {
+      sendErrorToast(t`Failed to save transform`);
+      throw error;
+    }
+  };
+
+  const validationSchemaExtension = useTransformValidation({
+    databaseId,
+    target: transform.target,
+    workspaceId,
+  });
 
   const handleRun = async () => {
     try {
@@ -264,7 +351,15 @@ export const TransformTab = ({
               />
             )}
 
-            {!isSaved && (
+            {!isSaved && transform.id < 0 && (
+              <Button
+                leftSection={<Icon name="check" />}
+                size="sm"
+                onClick={() => setSaveModalOpen(true)}
+              >{t`Save`}</Button>
+            )}
+
+            {!isSaved && transform.id >= 0 && (
               <CheckOutTransformButton
                 transform={transform}
                 workspaceId={workspaceId}
@@ -308,6 +403,17 @@ export const TransformTab = ({
           onClose={closeChangeTargetModal}
         />
       )}
+      {saveModalOpen && (
+        <CreateTransformModal
+          source={editedTransform.source}
+          defaultValues={{ name: transform.name }}
+          onClose={() => setSaveModalOpen(false)}
+          schemas={allowedSchemas}
+          showIncrementalSettings={true}
+          validationSchemaExtension={validationSchemaExtension}
+          handleSubmit={handleSave}
+        />
+      )}
     </Stack>
   );
 };
@@ -319,3 +425,51 @@ function isPollingNeeded(transform: Transform) {
     isTransformSyncing(transform)
   );
 }
+
+export const useTransformValidation = ({
+  databaseId,
+  target,
+  workspaceId,
+}: {
+  databaseId: DatabaseId;
+  target?: TransformTarget;
+  workspaceId: WorkspaceId;
+}) => {
+  const [validateTableName] = useValidateTableNameMutation();
+
+  const yupSchema = useMemo(
+    () => ({
+      targetName: Yup.string()
+        .required("Target table name is required")
+        .test(async (value, context) => {
+          if (!value) {
+            return context.createError({
+              message: "Target table name is required",
+            });
+          }
+
+          const schema = context.parent.targetSchema;
+
+          if (target && target.name === value && target.schema === schema) {
+            return true;
+          }
+
+          try {
+            const message = await validateTableName({
+              id: workspaceId,
+              db_id: databaseId,
+              target: { type: "table", name: value, schema },
+            }).unwrap();
+
+            return message === "OK" ? true : context.createError({ message });
+          } catch (error) {
+            const message = getErrorMessage(error);
+            return context.createError({ message });
+          }
+        }),
+    }),
+    [databaseId, target, workspaceId, validateTableName],
+  );
+
+  return yupSchema;
+};

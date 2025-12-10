@@ -143,7 +143,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ id, ...body }) => ({
         method: "POST",
-        url: `/api/ee/workspace/${id}/validate-target`,
+        url: `/api/ee/workspace/${id}/transform/validate/target`,
         body,
       }),
     }),

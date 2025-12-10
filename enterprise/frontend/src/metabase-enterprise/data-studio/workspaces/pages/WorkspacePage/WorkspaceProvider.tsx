@@ -76,6 +76,9 @@ export interface WorkspaceContextValue {
   hasTransformEdits: (originalTransform: Transform) => boolean;
   isWorkspaceExecuting: boolean;
   setIsWorkspaceExecuting: (value: boolean) => void;
+  unsavedTransforms: Transform[];
+  addUnsavedTransform: (transform: Transform) => void;
+  removeUnsavedTransform: (transformId: number) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
@@ -90,6 +93,8 @@ interface WorkspaceState {
   activeTab?: WorkspaceTab;
   editedTransforms: Map<number, EditedTransform>;
   runTransforms: Set<number>;
+  unsavedTransforms: Transform[];
+  nextUnsavedTransformIndex: number;
 }
 
 interface WorkspaceProviderProps {
@@ -104,6 +109,8 @@ const createEmptyWorkspaceState = (): WorkspaceState => ({
   activeTab: undefined,
   editedTransforms: new Map(),
   runTransforms: new Set(),
+  unsavedTransforms: [],
+  nextUnsavedTransformIndex: 0,
 });
 
 export const WorkspaceProvider = ({
@@ -439,11 +446,19 @@ export const WorkspaceProvider = ({
   );
 
   const hasUnsavedChanges = useCallback(() => {
-    return currentState.editedTransforms.size > 0;
-  }, [currentState.editedTransforms]);
+    return (
+      currentState.editedTransforms.size > 0 ||
+      currentState.unsavedTransforms.length > 0
+    );
+  }, [currentState.editedTransforms, currentState.unsavedTransforms]);
 
   const hasTransformEdits = useCallback(
     (originalTransform: Transform) => {
+      // Check if it's an unsaved transform (negative IDs, always has changes)
+      if (originalTransform.id < 0) {
+        return true;
+      }
+
       const edited = currentState.editedTransforms.get(originalTransform.id);
       return (
         edited != null &&
@@ -453,6 +468,91 @@ export const WorkspaceProvider = ({
       );
     },
     [currentState.editedTransforms],
+  );
+
+  const addUnsavedTransform = useCallback(
+    (transform: Transform) => {
+      updateWorkspaceState((state) => {
+        const currentIndex = state.nextUnsavedTransformIndex;
+        const name =
+          currentIndex === 0
+            ? "New transform"
+            : `New transform (${currentIndex})`;
+
+        const newTransform: Transform = {
+          ...transform,
+          name,
+          id: -1 - currentIndex, // Use negative IDs to distinguish unsaved transforms
+        };
+
+        // Add edited transform to mark it as having changes
+        const newEditedTransforms = new Map(state.editedTransforms);
+        newEditedTransforms.set(newTransform.id, {
+          name: newTransform.name,
+          source: newTransform.source,
+          target: newTransform.target,
+        });
+
+        // Create and add the new transform tab
+        const newTransformTab: TransformTab = {
+          id: `transform-${newTransform.id}`,
+          name: newTransform.name,
+          type: "transform",
+          transform: newTransform,
+        };
+
+        return {
+          ...state,
+          unsavedTransforms: [...state.unsavedTransforms, newTransform],
+          nextUnsavedTransformIndex: currentIndex + 1,
+          editedTransforms: newEditedTransforms,
+          openedTabs: [...state.openedTabs, newTransformTab],
+          activeTab: newTransformTab,
+          activeTransform: newTransform,
+          activeTable: undefined,
+        };
+      });
+    },
+    [updateWorkspaceState],
+  );
+
+  const removeUnsavedTransform = useCallback(
+    (transformId: number) => {
+      updateWorkspaceState((state) => {
+        const newUnsavedTransforms = state.unsavedTransforms.filter(
+          (transform) => transform.id !== transformId,
+        );
+
+        const newEditedTransforms = new Map(state.editedTransforms);
+        newEditedTransforms.delete(transformId);
+
+        // Remove from opened tabs if present
+        const newOpenedTabs = state.openedTabs.filter(
+          (tab) =>
+            !(tab.type === "transform" && tab.transform.id === transformId),
+        );
+
+        // Clear active state if this was the active transform
+        const newActiveTransform =
+          state.activeTransform?.id === transformId
+            ? undefined
+            : state.activeTransform;
+        const newActiveTab =
+          state.activeTab?.id === `transform-${transformId}`
+            ? undefined
+            : state.activeTab;
+
+        return {
+          ...state,
+          unsavedTransforms: newUnsavedTransforms,
+          editedTransforms: newEditedTransforms,
+          openedTabs: newOpenedTabs,
+          activeTransform: newActiveTransform,
+          activeTab: newActiveTab,
+        };
+      });
+    },
+    [updateWorkspaceState],
   );
 
   const setActiveTable = useCallback(
@@ -529,6 +629,9 @@ export const WorkspaceProvider = ({
       hasTransformEdits,
       isWorkspaceExecuting,
       setIsWorkspaceExecuting,
+      unsavedTransforms: currentState.unsavedTransforms,
+      addUnsavedTransform,
+      removeUnsavedTransform,
     }),
     [
       workspaceId,
@@ -547,12 +650,15 @@ export const WorkspaceProvider = ({
       removeOpenedTransform,
       currentState.editedTransforms,
       currentState.runTransforms,
+      currentState.unsavedTransforms,
       patchEditedTransform,
       removeEditedTransform,
       updateTransformState,
       hasUnsavedChanges,
       hasTransformEdits,
       isWorkspaceExecuting,
+      addUnsavedTransform,
+      removeUnsavedTransform,
     ],
   );
 

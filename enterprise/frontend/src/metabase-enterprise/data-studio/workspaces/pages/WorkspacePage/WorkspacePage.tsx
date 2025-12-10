@@ -105,7 +105,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
   const { data: databases = { data: [] } } = useListDatabasesQuery({});
 
-  const { data: allTransforms = [] } = useListTransformsQuery({});
+  const { data: allDbTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
   useRegisterMetabotContextProvider(async () => {
@@ -133,7 +133,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
   const dbTransforms = useMemo(
     () =>
-      allTransforms.filter((t) => {
+      allDbTransforms.filter((t) => {
         // TODO: @uladzimirdev add guards
         if (t.source_type === "python") {
           return (
@@ -148,7 +148,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         }
         return false;
       }),
-    [allTransforms, sourceDb],
+    [allDbTransforms, sourceDb],
   );
 
   const {
@@ -167,6 +167,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     patchEditedTransform,
     hasUnsavedChanges,
     setIsWorkspaceExecuting,
+    unsavedTransforms,
   } = useWorkspace();
   const [metabotContextTransform, setMetabotContextTransform] = useState<
     Transform | undefined
@@ -178,6 +179,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const workspaceTransforms = useMemo(
     () => workspace?.contents?.transforms ?? [],
     [workspace],
+  );
+
+  const allTransforms = useMemo(
+    () => [...unsavedTransforms, ...workspaceTransforms],
+    [unsavedTransforms, workspaceTransforms],
   );
 
   useEffect(() => {
@@ -609,8 +615,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
               <Tabs.Panel value={`transform-${activeTransform?.id}`} h="100%">
                 {openedTabs.length === 0 ||
-                  !activeTransform ||
-                  !activeEditedTransform ? (
+                !activeTransform ||
+                !activeEditedTransform ? (
                   <Text c="text-medium">
                     {t`Select a transform on the right.`}
                   </Text>
@@ -664,9 +670,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 activeTransformId={activeTransform?.id}
                 transforms={dbTransforms}
                 workspaceId={workspace.id}
-                workspaceTransforms={workspaceTransforms}
-                onTransformClick={(transform) => {
-                  addOpenedTransform(transform);
+                workspaceTransforms={allTransforms}
+                onTransformClick={() => {
+                  if (activeTable) {
+                    setActiveTable(null);
+                  }
                 }}
               />
             </Tabs.Panel>
