@@ -54,7 +54,7 @@ function EmbeddingSettingsEE() {
       </Text>
 
       <EmbeddingSettingsCard
-        title={t`Enable Modular embedding`}
+        title={t`Enable modular embedding`}
         description={t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, AI chat, and more in your app with components (no React required). Built on the SDK with per-component controls and theming.`}
         settingKey="enable-embedding-simple"
         links={[

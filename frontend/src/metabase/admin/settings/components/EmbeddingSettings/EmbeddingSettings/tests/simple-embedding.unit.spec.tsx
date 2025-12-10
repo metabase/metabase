@@ -68,7 +68,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     });
 
     const toggle = await screen.findByRole("switch", {
-      name: "Enable Modular Embedding toggle",
+      name: "Enable Modular embedding toggle",
     });
 
     await userEvent.click(toggle);
