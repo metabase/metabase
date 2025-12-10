@@ -246,4 +246,4 @@ In your app, you'll see an embedded `InteractiveQuestion` component.
 
 ## Next steps
 
-To style the components, try changing some of the `theme` options in the client app at `client/src/App.jsx`. For more on theming, check out [Appearance](./appearance.md).
+To style the components, try changing some of the `theme` options in the client app at `client/src/App.jsx`. For more on theming, check out [Appearance](../appearance.md).
