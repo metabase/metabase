@@ -1,8 +1,10 @@
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
@@ -21,7 +23,7 @@ import {
   useGetWorkspacesQuery,
   useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
-import { CreateWorkspaceModal } from "metabase-enterprise/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
+import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
 import type { Transform, Workspace } from "metabase-types/api";
 
 type EditTransformMenuProps = {
@@ -29,6 +31,7 @@ type EditTransformMenuProps = {
 };
 
 export function EditTransformMenu({ transform }: EditTransformMenuProps) {
+  const dispatch = useDispatch();
   const { sendErrorToast } = useMetadataToasts();
 
   const sourceDatabaseId = getTransformDatabaseId(transform);
@@ -128,6 +131,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
       setAddedWorkspaceIds((prev) => new Set(prev).add(workspace.id));
       handleCloseCreateModal();
+      dispatch(push(`/data-studio/workspaces/${workspace.id}`));
     } catch (error) {
       sendErrorToast(t`Failed to create workspace`);
     }
@@ -143,7 +147,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
           rightSection={<Icon name="chevrondown" />}
           loading={isBusy}
         >
-          {t`Edit Transform`}
+          {t`Edit transform`}
         </Button>
       </Menu.Target>
       <Menu.Dropdown>

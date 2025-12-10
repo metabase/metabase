@@ -10,7 +10,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -40,6 +40,7 @@ import {
   useUpdateWorkspaceNameMutation,
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import {
@@ -336,7 +337,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         );
         return;
       }
-      dispatch(push(Urls.transformList()));
+      dispatch(replace(Urls.transformList()));
     } catch (error) {
       sendErrorToast(t`Failed to merge workspace`);
     }
@@ -407,7 +408,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   }
 
   return (
-    <Stack h="100%" gap={0}>
+    <Stack data-testid="workspace-page" h="100%" gap={0}>
       <Group
         px="md"
         py="sm"
@@ -423,15 +424,21 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             onChange={handleWorkspaceNameChange}
           />
         </Flex>
-        <Button
-          variant="filled"
-          onClick={handleMergeWorkspace}
-          loading={isMerging}
-          disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
-          size="xs"
-        >
-          {t`Merge`}
-        </Button>
+        <Flex gap="sm">
+          <RunWorkspaceMenu
+            workspaceId={id}
+            disabled={workspaceTransforms.length === 0}
+          />
+          <Button
+            variant="filled"
+            onClick={handleMergeWorkspace}
+            loading={isMerging}
+            disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
+            size="xs"
+          >
+            {t`Merge`}
+          </Button>
+        </Flex>
       </Group>
 
       <Group
@@ -442,6 +449,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         style={{ overflow: "hidden" }}
       >
         <Box
+          data-testid="workspace-content"
           w="70%"
           h="100%"
           style={{
@@ -535,15 +543,15 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                               aria-hidden
                             />
                             {tab.name}
-                            <ActionIcon size="1rem" p="0" ml="xs">
-                              <Icon
-                                name="close"
-                                size={10}
-                                aria-hidden
-                                onClick={(event) =>
-                                  handleTabClose(event, tab, index)
-                                }
-                              />
+                            <ActionIcon
+                              size="1rem"
+                              p="0"
+                              ml="xs"
+                              onClick={(event) =>
+                                handleTabClose(event, tab, index)
+                              }
+                            >
+                              <Icon name="close" size={10} aria-hidden />
                             </ActionIcon>
                           </Group>
                         </Tabs.Tab>
@@ -617,7 +625,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           </Tabs>
         </Box>
 
-        <Box style={{ flex: "1 0 auto", width: "30%" }}>
+        <Box
+          data-testid="workspace-sidebar"
+          style={{ flex: "1 0 auto", width: "30%" }}
+        >
           <Tabs defaultValue="code">
             <Flex
               px="md"

@@ -50,7 +50,7 @@
 
     (testing "GET /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 (str "ee/workspace/" (:id workspace))))))
+             (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "")))))
 
     (testing "POST /api/ee/workspace requires superuser"
       (is (= "You don't have permissions to do that."
@@ -60,18 +60,18 @@
   (mt/with-temp [:model/Workspace workspace {:name "Put Workspace"}]
     (testing "PUT /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (str "ee/workspace/" (:id workspace))
+             (mt/user-http-request :rasta :put 403 (ws-url (:id workspace) "")
                                    {:name "Updated"})))))
 
   (mt/with-temp [:model/Workspace workspace {:name "Delete Workspace"}]
     (testing "DELETE /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :delete 403 (str "ee/workspace/" (:id workspace)))))))
+             (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace) ""))))))
 
   (mt/with-temp [:model/Workspace workspace {:name "Promote Workspace"}]
     (testing "POST /api/ee/workspace/:id/promote requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (str "ee/workspace/" (:id workspace) "/merge")))))))
+             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge")))))))
 
 (deftest workspace-crud-flow-test
   (let [tx-id          (->> (t2/select :model/Transform :workspace_id nil)
@@ -99,7 +99,7 @@
         (is (some #(= workspace-id (:id %)) items))))
 
     (testing "workspace can be fetched individually"
-      (let [response (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" workspace-id))]
+      (let [response (mt/user-http-request :crowberto :get 200 (ws-url workspace-id ""))]
         (is (= workspace-id (:id response)))))
 
     #_(testing "workspace can be archived"
@@ -110,13 +110,13 @@
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
     (mt/with-temp [:model/Workspace workspace {:name "Promote Test"}]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (str "ee/workspace/" (:id workspace) "/merge"))))))
+             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge"))))))
 
   (testing "Cannot promote an already archived workspace"
-    (mt/with-temp [:model/Workspace workspace {:name      "Archived Workspace"
+    (mt/with-temp [:model/Workspace workspace {:name        "Archived Workspace"
                                                :archived_at (java.time.OffsetDateTime/now)}]
       (is (= "Cannot promote an already archived workspace"
-             (mt/user-http-request :crowberto :post 400 (str "ee/workspace/" (:id workspace) "/merge")))))))
+             (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/merge")))))))
 
 (deftest merge-workspace-with-transform-test
   (testing "POST /api/ee/workspace/:id/merge promotes transforms and archives workspace"
@@ -139,8 +139,7 @@
         (testing "returns promoted transforms"
           (is (=? {:promoted  [{:id (:id x1)}]
                    :workspace {:id ws-id :name "Merge test"}}
-                  (mt/user-http-request :crowberto :post 200
-                                        (str "ee/workspace/" ws-id "/merge")))))
+                  (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")))))
         (testing "original transform was updated with workspace version"
           (is (= "Modified in workspace"
                  (t2/select-one-fn :description :model/Transform :id (:id x1)))))
@@ -151,21 +150,19 @@
   (testing "POST /api/ee/workspace/:id/transform requires superuser"
     (mt/with-temp [:model/Workspace workspace {:name "Transform Test"}]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403
-                                   (str "ee/workspace/" (:id workspace) "/transform")
-                                   {:name "Should Fail"
-                                    :source {:type "query"
+             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
+                                   {:name   "Should Fail"
+                                    :source {:type  "query"
                                              :query {}}
                                     :target {:type "table"
                                              :name "should_fail"}}))))))
 
 (deftest create-workspace-transform-archived-test
   (testing "Cannot create transform in archived workspace"
-    (mt/with-temp [:model/Workspace workspace {:name "Archived"
+    (mt/with-temp [:model/Workspace workspace {:name        "Archived"
                                                :archived_at (java.time.OffsetDateTime/now)}]
       (is (= "Cannot create transforms in an archived workspace"
-             (mt/user-http-request :crowberto :post 400
-                                   (str "ee/workspace/" (:id workspace) "/transform")
+             (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/transform")
                                    {:name   "Should Fail"
                                     :source {:type  "query"
                                              :query (mt/mbql-query venues)}
@@ -191,69 +188,67 @@
           (testing "Can add new entities to workspace"
             (is (=? {:contents {:transforms [{:upstream_id x1-id}
                                              {:upstream_id x2-id}]}}
-                    (mt/user-http-request :crowberto :post 200
-                                          (str "ee/workspace/" ws-id "/contents")
+                    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/contents")
                                           {:add {:transforms [x2-id]}}))))
 
           (testing "Adding duplicate entity is a noop"
             (is (=? {:contents {:transforms #(>= (count %) 2)}}
-                    (mt/user-http-request :crowberto :post 200
-                                          (str "ee/workspace/" ws-id "/contents")
+                    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/contents")
                                           {:add {:transforms [x1-id]}}))))
 
           (testing "Cannot add entities to archived workspace"
             (t2/update! :model/Workspace ws-id {:archived_at (java.time.OffsetDateTime/now)})
             (is (= "Cannot add entities to an archived workspace"
-                   (mt/user-http-request :crowberto :post 400
-                                         (str "ee/workspace/" ws-id "/contents")
+                   (mt/user-http-request :crowberto :post 400 (ws-url ws-id "/contents")
                                          {:add {:transforms [x2-id]}})))))))))
 
 (deftest add-entities-requires-superuser-test
   (testing "POST /api/ee/workspace/:id/add requires superuser"
     (mt/with-temp [:model/Workspace workspace {:name "Permission Test"}]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403
-                                   (str "ee/workspace/" (:id workspace) "/contents")
+             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/contents")
                                    {:add {:transforms [1]}}))))))
 
 (deftest add-entities-no-nested-branching-test
   (testing "Cannot add transforms that belong to another workspace (no nested branching)"
     (mt/with-temp [:model/Workspace workspace-1 {:name "Workspace 1"}
                    :model/Workspace workspace-2 {:name "Workspace 2"}
-                   :model/Transform transform {:name         "Downstream Transform"
-                                               :workspace_id (:id workspace-1)}]
+                   :model/Transform transform   {:name         "Downstream Transform"
+                                                 :workspace_id (:id workspace-1)}]
       (is (= "Cannot add transforms that belong to another workspace"
-             (mt/user-http-request :crowberto :post 400
-                                   (str "ee/workspace/" (:id workspace-2) "/contents")
+             (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace-2) "/contents")
                                    {:add {:transforms [(:id transform)]}}))))))
 
 (deftest create-workspace-transform-test
   (mt/dataset transforms-dataset/transforms-test
-    (let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                  {:name        "Test Workspace"
-                                                   :database_id (mt/id)}))]
+    (let [{ws-id :id} (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                      {:name        "Test Workspace"
+                                                       :database_id (mt/id)}))]
       (with-transform-cleanup! [table-name "workspace_transform_test"]
         (is (=? {:id           pos-int?
-                 :workspace_id workspace-id
+                 :workspace_id ws-id
                  :creator_id   (mt/user->id :crowberto)
                  :target       {:database (mt/id)}}
-                (mt/user-http-request :crowberto :post 200
-                                      (str "ee/workspace/" workspace-id "/transform")
+                (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                       {:name   "Workspace Transform"
                                        :source {:type  "query"
                                                 :query (mt/mbql-query transforms_products)}
                                        :target {:type "table"
-                                                :name table-name}})))))))
+                                                :name table-name}})))
+        (is (=? {:id       ws-id
+                 :status   "ready"
+                 :contents {:transforms [{:id pos-int?}]}}
+                (mt/user-http-request :crowberto :get 200 (ws-url ws-id ""))))))))
+
 (deftest tables-endpoint-empty-ws-test
   (let [user-id (mt/user->id :crowberto)
-        ws (mt/user-http-request :crowberto :post 200 "ee/workspace/"
-                                 {:name        "My test ws"
-                                  :creator_id  user-id
-                                  :database_id (mt/id)})]
+        ws      (mt/user-http-request :crowberto :post 200 "ee/workspace/"
+                                      {:name        "My test ws"
+                                       :creator_id  user-id
+                                       :database_id (mt/id)})]
     (is (= {:inputs  []
             :outputs []}
-           (mt/user-http-request :crowberto :get 200
-                                 (str "ee/workspace/" (:id ws) "/tables"))))))
+           (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "/tables"))))))
 
 (deftest tables-endpoint-transform-not-run-test
   (let [mp          (mt/metadata-provider)
@@ -269,16 +264,14 @@
                                                         :schema   "public"
                                                         :name     orig-name}}]
         (let [;; create the workspace
-              workspace     (mt/user-http-request :crowberto :post 200 "ee/workspace"
+              {ws-id :id}   (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                   {:name        "Test Workspace"
                                                    :database_id (mt/id)})
               ;; add the transform
-              _             (mt/user-http-request :crowberto :post 200
-                                                  (str "ee/workspace/" (:id workspace) "/contents")
+              _             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/contents")
                                                   {:add {:transforms [(:id x1)]}})
               ;; get the tables
-              tables-result (mt/user-http-request :crowberto :get 200
-                                                  (str "ee/workspace/" (:id workspace) "/tables"))]
+              tables-result (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/tables"))]
           (testing "/tables returns expected results"
             (is (= {:inputs  [{:id (mt/id :orders) :schema orig-schema :table "orders"}]
                     :outputs []}
@@ -304,12 +297,10 @@
                                                                {:name        "Test Workspace"
                                                                 :database_id (mt/id)}))
               ;; add the transform
-              _                (mt/user-http-request :crowberto :post 200
-                                                     (str "ee/workspace/" (:id workspace) "/contents")
+              _                (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/contents")
                                                      {:add {:transforms [(:id x1)]}})
               ;; get the tables
-              tables-result    (mt/user-http-request :crowberto :get 200
-                                                     (str "ee/workspace/" (:id workspace) "/tables"))
+              tables-result    (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/tables"))
               mirror-transform (t2/select-one :model/Transform :workspace_id (:id workspace))
               mirror-table     (t2/select-one :model/Table
                                               :schema (-> mirror-transform :target :schema)
@@ -391,11 +382,10 @@
 (deftest rename-workspace-test
   (testing "POST /api/ee/workspace/:id/name updates the workspace name"
     (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Workspace  workspace {:name          "Original Name"
-                                                :database_id   (mt/id)
-                                                :collection_id coll-id}]
-      (let [response (mt/user-http-request :crowberto :post 200
-                                           (str "ee/workspace/" (:id workspace) "/name")
+                   :model/Workspace  workspace     {:name          "Original Name"
+                                                    :database_id   (mt/id)
+                                                    :collection_id coll-id}]
+      (let [response (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/name")
                                            {:name "Updated Name"})]
         (is (= "Updated Name"
                (:name response)
@@ -404,16 +394,14 @@
   (testing "Requires superuser"
     (mt/with-temp [:model/Workspace workspace {:name "Permission Test"}]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403
-                                   (str "ee/workspace/" (:id workspace) "/name")
+             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/name")
                                    {:name "Should Fail"})))))
 
   (testing "Cannot rename an archived workspace"
     (mt/with-temp [:model/Workspace workspace {:name        "Archived"
                                                :archived_at (java.time.OffsetDateTime/now)}]
       (is (= "Cannot update an archived workspace"
-             (mt/user-http-request :crowberto :post 400
-                                   (str "ee/workspace/" (:id workspace) "/name")
+             (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/name")
                                    {:name "Should Fail"}))))))
 
 (deftest add-entities-rejects-card-dependencies-test
@@ -488,8 +476,7 @@
                :logs              [{:task   "database-isolation"
                                     :status "success"}
                                    {:task "workspace-setup"}]}
-              (mt/user-http-request :crowberto :get 200
-                                    (format "ee/workspace/%d/log" ws-id)))))))
+              (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/log")))))))
 
 (deftest workspace-log-endpoint-404-test
   (testing "GET /api/ee/workspace/:id/log returns 404 for non-existent workspace"
@@ -633,3 +620,20 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403
                                      (ws-url (:id workspace1) (str "/transform/" (:id transform) "/run")))))))))
+
+(deftest execute-workspace-test
+  (testing "POST /api/ee/workspace/:id/execute"
+    (mt/with-temp [:model/Workspace workspace1 {:name "Workspace 1"}
+                   :model/Workspace workspace2 {:name "Workspace 2"}
+                   :model/Transform transform {:name         "Transform in WS1"
+                                               :workspace_id (:id workspace1)}]
+      (testing "returns "
+        (is (= {:succeeded []
+                :failed    []
+                :not_run   []}
+               (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace2) "/execute")))))
+      (testing "requires superuser"
+        (is (= {:succeeded [(str (:id transform))]
+                :failed    []
+                :not_run   []}
+               (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "/execute"))))))))

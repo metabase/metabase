@@ -35,7 +35,7 @@ import {
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
 import { DataStudioContext } from "metabase-enterprise/data-studio/common/contexts/DataStudioContext";
-import { CreateWorkspaceModal } from "metabase-enterprise/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
+import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
 import type { Database, WorkspaceId } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
@@ -329,7 +329,11 @@ function WorkspacesSection({
   }
 
   return (
-    <Stack gap="0.5rem" className={S.workspacesSection}>
+    <Stack
+      data-testid="workspaces-section"
+      gap="0.5rem"
+      className={S.workspacesSection}
+    >
       <UnstyledButton
         className={cx(S.workspacesSectionHeader, {
           [S.selected]: isWorkspaceListPage,
@@ -504,6 +508,7 @@ function WorkspaceItem({
           <Menu.Target>
             <ActionIcon
               className={S.workspaceMenuButton}
+              aria-label={t`More actions`}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
               size="sm"
               variant="subtle"

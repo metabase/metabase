@@ -155,37 +155,11 @@ export const TransformTab = ({
 
   const handleTargetUpdate = useCallback(
     (updatedTransform: Transform) => {
-      const hasNameChanged = editedTransform.name !== transform.name;
-      const hasSourceChanged = !isSameSource(
-        editedTransform.source,
-        transform.source,
-      );
-
-      const editedTransformToKeep =
-        hasNameChanged || hasSourceChanged
-          ? {
-              name: editedTransform.name,
-              source: editedTransform.source,
-              target: {
-                type: updatedTransform.target.type,
-                name: updatedTransform.target.name,
-              },
-            }
-          : null;
-
-      updateTransformState(updatedTransform, editedTransformToKeep);
+      updateTransformState(updatedTransform);
       sendSuccessToast(t`Transform target updated`);
       closeChangeTargetModal();
     },
-    [
-      closeChangeTargetModal,
-      editedTransform.name,
-      editedTransform.source,
-      transform.name,
-      transform.source,
-      updateTransformState,
-      sendSuccessToast,
-    ],
+    [closeChangeTargetModal, updateTransformState, sendSuccessToast],
   );
 
   const isRunning = isTransformRunning(transform);
@@ -225,7 +199,6 @@ export const TransformTab = ({
               databaseId={databaseId}
               editedTransform={editedTransform}
               transform={transform}
-              workspaceId={workspaceId}
             />
           )}
 

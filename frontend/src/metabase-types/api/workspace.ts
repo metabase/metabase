@@ -159,3 +159,14 @@ export type WorkspaceLogEntry = {
   status: WorkspaceLogStatus | null;
   message: string | null;
 };
+
+export type WorkspaceExecuteRequest = {
+  id: WorkspaceId;
+  stale_only?: boolean;
+};
+
+export type WorkspaceExecuteResponse = {
+  succeeded: TransformId[];
+  failed: TransformId[];
+  not_run: TransformId[];
+};

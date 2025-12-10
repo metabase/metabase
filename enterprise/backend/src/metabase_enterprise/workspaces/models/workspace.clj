@@ -25,7 +25,7 @@
          :transform
          (t2/select [:model/Transform
                      :id :name :description :source :target :source_type :creator_id :collection_id
-                     :created_at :updated_at :wmt.workspace_id :wmt.upstream_id
+                     :created_at :updated_at :transform.workspace_id :wmt.upstream_id
                      [:upstream.target :upstream]]
                     :transform.workspace_id [:in ids]
                     {:left-join [[:workspace_mapping_transform :wmt] [:= :wmt.downstream_id :transform.id]

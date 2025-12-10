@@ -32,6 +32,8 @@
 (mr/def ::entity-map
   [:map-of ::entity-grouping [:sequential {:min 1} ms/PositiveInt]])
 
+(mr/def ::workspace-entity-id :string)
+
 ;; Entities that live within the Workspace
 (mr/def ::downstream-entity
   [:map
@@ -121,9 +123,9 @@
 (def ^:private ExecuteResult
   "Schema for workspace execution result"
   [:map
-   [:succeeded ::entity-map]
-   [:failed ::entity-map]
-   [:not_run ::entity-map]])
+   [:succeeded [:sequential ::workspace-entity-id]]
+   [:failed [:sequential ::workspace-entity-id]]
+   [:not_run [:sequential ::workspace-entity-id]]])
 
 (def ^:private GraphResult
   "Schema for workspace graph visualization"
@@ -410,10 +412,19 @@
   (u/prog1 (t2/select-one :model/Workspace :id id)
     (api/check-404 <>)
     (api/check-400 (nil? (:archived_at <>)) "Cannot execute archived workspace"))
-  ;; TODO (Chris 11/21/25) -- implement execution logic
-  {:succeeded []
-   :failed    []
-   :not_run   []})
+  (reduce
+   (fn [acc {tx-id :id :as transform}]
+     ;; Prepare for workspace entities to have string ids.
+     (let [tx-id (str tx-id)]
+       (try (transforms.api/run-transform! transform)
+            (update acc :succeeded conj tx-id)
+            (catch Exception _
+              (update acc :failed conj tx-id)))))
+   {:succeeded []
+    :failed    []
+    :not_run   []}
+   ;; TODO topologically sort these properly
+   (t2/select :model/Transform :workspace_id id {:order-by [:id]})))
 
 (api.macros/defendpoint :get "/:id/graph" :- GraphResult
   "Get the dependency graph for a workspace, for visualization.
