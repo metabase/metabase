@@ -31,7 +31,7 @@
         (serdes/infer-self-path "MetabotUseCase" entity)))
 
 (defmethod serdes/make-spec "MetabotUseCase" [_model-name _opts]
-  {:copy      [:entity_id :name :enabled]
+  {:copy      [:entity_id :name :profile :enabled]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :metabot_id (serdes/parent-ref)}})
