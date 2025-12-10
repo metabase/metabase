@@ -315,7 +315,7 @@
   "Should we enable the Data Studio?"
   :data-studio)
 
-(define-premium-feature ^{:added "0.56.0"} enable-tenants?
+(define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Is this a development instance that should have watermarks?"
   :tenants)
 
