@@ -308,30 +308,3 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Segment`, color: "accent2" };
   }
 }
-
-export function parseDependencyType(type: unknown): DependencyType | undefined {
-  switch (type) {
-    case "card":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "dashboard":
-    case "document":
-    case "sandbox":
-    case "segment":
-      return type;
-    default:
-      return undefined;
-  }
-}
-
-export function parseCardType(type: unknown): CardType | undefined {
-  switch (type) {
-    case "question":
-    case "model":
-    case "metric":
-      return type;
-    default:
-      return undefined;
-  }
-}

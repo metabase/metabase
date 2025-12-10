@@ -1,12 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
+import { memo } from "react";
 import { t } from "ttag";
 
 import { Box, Button, FixedSizeIcon, Popover, Stack } from "metabase/ui";
-import type {
-  CardType,
-  DependencyGroupType,
-  DependencyType,
-} from "metabase-types/api";
+import type { DependencyGroupType } from "metabase-types/api";
 
 import type { DependencyListFilterOptions } from "../../types";
 
@@ -18,7 +15,7 @@ type DependencyFilterPickerProps = {
   onFilterOptionsChange: (filterOptions: DependencyListFilterOptions) => void;
 };
 
-export function DependencyFilterPicker({
+export const DependencyFilterPicker = memo(function DependencyFilterPicker({
   filterOptions,
   availableGroupTypes,
   onFilterOptionsChange,
@@ -44,7 +41,7 @@ export function DependencyFilterPicker({
       </Popover.Dropdown>
     </Popover>
   );
-}
+});
 
 type DependencyFilterPickerPopoverProps = {
   filterOptions: DependencyListFilterOptions;
@@ -57,19 +54,15 @@ function DependencyFilterPickerPopover({
   availableGroupTypes,
   onFilterOptionsChange,
 }: DependencyFilterPickerPopoverProps) {
-  const handleTypesChange = (
-    types: DependencyType[],
-    cardTypes: CardType[],
-  ) => {
-    onFilterOptionsChange({ ...filterOptions, types, cardTypes });
+  const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
+    onFilterOptionsChange({ ...filterOptions, groupTypes });
   };
 
   return (
     <Box w="20rem" p="md">
       <Stack>
         <TypeFilterPicker
-          types={filterOptions.types}
-          cardTypes={filterOptions.cardTypes}
+          groupTypes={filterOptions.groupTypes}
           availableGroupTypes={availableGroupTypes}
           onChange={handleTypesChange}
         />

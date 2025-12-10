@@ -213,12 +213,8 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export const DEPENDENCY_SORT_COLUMNS = ["name"] as const;
-export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
-
-export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
-export type DependencySortDirection =
-  (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
+export type DependencySortColumn = "name";
+export type DependencySortDirection = "asc" | "desc";
 
 export type ListUnreferencedNodesRequest = {
   types?: DependencyType[];

@@ -1,8 +1,7 @@
 import type {
-  CardType,
+  DependencyGroupType,
   DependencySortColumn as DependencyListSortColumn,
   DependencySortDirection as DependencyListSortDirection,
-  DependencyType,
 } from "metabase-types/api";
 
 export type NodeId = string;
@@ -34,14 +33,12 @@ export type DependencyListSortOptions = {
 };
 
 export type DependencyListFilterOptions = {
-  types: DependencyType[];
-  cardTypes: CardType[];
+  groupTypes: DependencyGroupType[];
 };
 
 export type DependencyListRawParams = {
-  types?: string | string[];
-  cardTypes?: string | string[];
   page?: string;
+  groupTypes?: string | string[];
   sortColumn?: string;
   sortDirection?: string;
 };

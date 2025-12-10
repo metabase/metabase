@@ -1,11 +1,10 @@
 import type {
   CardId,
-  CardType,
   CollectionId,
   DatabaseId,
+  DependencyGroupType,
   DependencySortColumn,
   DependencySortDirection,
-  DependencyType,
   FieldId,
   NativeQuerySnippetId,
   SchemaName,
@@ -184,43 +183,34 @@ export function dataStudioTasks() {
 
 export type DependencyListParams = {
   query?: string;
-  types?: DependencyType[];
-  cardTypes?: CardType[];
+  page?: number;
+  groupTypes?: DependencyGroupType[];
   sortColumn?: DependencySortColumn;
   sortDirection?: DependencySortDirection;
-  page?: number;
 };
 
 function dataStudioDependencies(
   baseUrl: string,
-  {
-    query,
-    types,
-    cardTypes,
-    sortColumn,
-    sortDirection,
-    page,
-  }: DependencyListParams,
+  { query, page, groupTypes, sortColumn, sortDirection }: DependencyListParams,
 ) {
   const searchParams = new URLSearchParams();
 
   if (query != null) {
     searchParams.set("query", query);
   }
-  if (types != null) {
-    types.forEach((type) => searchParams.append("types", type));
+  if (page != null) {
+    searchParams.set("page", page.toString());
   }
-  if (cardTypes != null) {
-    cardTypes.forEach((cardType) => searchParams.append("cardTypes", cardType));
+  if (groupTypes != null) {
+    groupTypes.forEach((groupType) =>
+      searchParams.append("groupTypes", groupType),
+    );
   }
   if (sortColumn != null) {
     searchParams.set("sortColumn", sortColumn);
   }
   if (sortDirection != null) {
     searchParams.set("sortDirection", sortDirection);
-  }
-  if (page != null) {
-    searchParams.set("page", page.toString());
   }
 
   const queryString = searchParams.toString();

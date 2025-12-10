@@ -1,37 +1,6 @@
 import { t } from "ttag";
 
-import type {
-  CardType,
-  DependencyGroupType,
-  DependencyType,
-} from "metabase-types/api";
-
-import { getCardType, getDependencyType } from "../../../utils";
-
-export function getDependencyTypes(
-  groupTypes: DependencyGroupType[],
-): DependencyType[] {
-  const types = groupTypes.map(getDependencyType);
-  return Array.from(new Set(types));
-}
-
-export function getCardTypes(groupTypes: DependencyGroupType[]): CardType[] {
-  const cardTypes = groupTypes
-    .map(getCardType)
-    .filter((cardType) => cardType !== null);
-  return Array.from(new Set(cardTypes));
-}
-
-export function getDependencyGroupTypes(
-  types: DependencyType[],
-  cardTypes: CardType[],
-): DependencyGroupType[] {
-  const groupTypes = [
-    ...types.filter((type) => type !== "card"),
-    ...(types.includes("card") ? cardTypes : []),
-  ];
-  return Array.from(new Set(groupTypes));
-}
+import type { DependencyGroupType } from "metabase-types/api";
 
 export function getDependencyGroupOptions(
   availableGroupTypes: DependencyGroupType[],

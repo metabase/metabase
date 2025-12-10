@@ -2,36 +2,21 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Stack } from "metabase/ui";
-import type {
-  CardType,
-  DependencyGroupType,
-  DependencyType,
-} from "metabase-types/api";
+import type { DependencyGroupType } from "metabase-types/api";
 
-import {
-  getCardTypes,
-  getDependencyGroupOptions,
-  getDependencyGroupTypes,
-  getDependencyTypes,
-} from "./utils";
+import { getDependencyGroupOptions } from "./utils";
 
 type TypeFilterPickerProps = {
-  types: DependencyType[];
-  cardTypes: CardType[];
+  groupTypes: DependencyGroupType[];
   availableGroupTypes: DependencyGroupType[];
-  onChange: (types: DependencyType[], cardTypes: CardType[]) => void;
+  onChange: (groupTypes: DependencyGroupType[]) => void;
 };
 
 export function TypeFilterPicker({
-  types,
-  cardTypes,
+  groupTypes,
   availableGroupTypes,
   onChange,
 }: TypeFilterPickerProps) {
-  const groupTypes = useMemo(
-    () => getDependencyGroupTypes(types, cardTypes),
-    [types, cardTypes],
-  );
   const groupOptions = useMemo(
     () => getDependencyGroupOptions(availableGroupTypes),
     [availableGroupTypes],
@@ -41,9 +26,7 @@ export function TypeFilterPicker({
     const newGroupTypes = availableGroupTypes.filter((groupType) =>
       value.includes(groupType),
     );
-    const newTypes = getDependencyTypes(newGroupTypes);
-    const newCardTypes = getCardTypes(newGroupTypes);
-    onChange(newTypes, newCardTypes);
+    onChange(newGroupTypes);
   };
 
   return (

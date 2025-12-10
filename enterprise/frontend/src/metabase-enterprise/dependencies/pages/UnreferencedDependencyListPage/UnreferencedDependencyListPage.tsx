@@ -21,13 +21,16 @@ import type {
 import { UnreferencedDependencyList } from "./UnreferencedDependencyList";
 import {
   AVAILABLE_GROUP_TYPES,
-  DEFAULT_CARD_TYPES,
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
-  DEFAULT_TYPES,
   PAGE_SIZE,
 } from "./constants";
-import { getSearchQuery, parseRawParams } from "./utils";
+import {
+  getCardTypes,
+  getDependencyTypes,
+  getSearchQuery,
+  parseRawParams,
+} from "./utils";
 
 interface UnreferencedDependencyListPageProps {
   location?: Location<DependencyListRawParams>;
@@ -41,8 +44,7 @@ export function UnreferencedDependencyListPage({
     [location?.query],
   );
   const {
-    types = DEFAULT_TYPES,
-    cardTypes = DEFAULT_CARD_TYPES,
+    groupTypes,
     sortColumn = DEFAULT_SORT_COLUMN,
     sortDirection = DEFAULT_SORT_DIRECTION,
     page = 0,
@@ -55,8 +57,8 @@ export function UnreferencedDependencyListPage({
   const dispatch = useDispatch();
 
   const { data, isLoading, error } = useListUnreferencedNodesQuery({
-    types,
-    card_types: cardTypes,
+    types: getDependencyTypes(groupTypes ?? AVAILABLE_GROUP_TYPES),
+    card_types: getCardTypes(groupTypes ?? AVAILABLE_GROUP_TYPES),
     query: searchQuery,
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
@@ -66,10 +68,9 @@ export function UnreferencedDependencyListPage({
 
   const filterOptions = useMemo(
     () => ({
-      types,
-      cardTypes,
+      groupTypes: groupTypes ?? [],
     }),
-    [types, cardTypes],
+    [groupTypes],
   );
 
   const sortOptions = useMemo(
@@ -102,8 +103,7 @@ export function UnreferencedDependencyListPage({
         push(
           Urls.dataStudioUnreferencedItems({
             ...params,
-            types: filterOptions.types,
-            cardTypes: filterOptions.cardTypes,
+            groupTypes: filterOptions.groupTypes,
           }),
         ),
       );
