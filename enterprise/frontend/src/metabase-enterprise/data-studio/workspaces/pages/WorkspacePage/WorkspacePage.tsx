@@ -38,7 +38,7 @@ import {
   useGetWorkspaceTransformsQuery,
   useListTransformsQuery,
   useMergeWorkspaceMutation,
-  useUpdateWorkspaceNameMutation,
+  useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
@@ -131,7 +131,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
 
-  const [updateWorkspaceName] = useUpdateWorkspaceNameMutation();
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
 
   const sourceDb = databases?.data.find(
     (db) => db.id === workspace?.database_id,
@@ -361,12 +361,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       }
 
       try {
-        await updateWorkspaceName({ id, name: newName.trim() }).unwrap();
+        await updateWorkspace({ id, name: newName.trim() }).unwrap();
       } catch (error) {
         sendErrorToast(t`Failed to update workspace name`);
       }
     },
-    [workspace, id, updateWorkspaceName, sendErrorToast],
+    [workspace, id, updateWorkspace, sendErrorToast],
   );
 
   const handleTableSelect = useCallback(

@@ -13,11 +13,11 @@ export type WorkspaceId = number;
 export type Workspace = {
   id: WorkspaceId;
   name: string;
-  collection_id: CollectionId | null;
-  database_id: DatabaseId | null;
-  created_at: string;
-  updated_at: string;
-  archived_at?: string | null;
+  archived: boolean;
+  collection_id?: CollectionId | null;
+  database_id?: DatabaseId | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type WorkspaceItem = {
@@ -35,6 +35,8 @@ export type CreateWorkspaceRequest = {
 
 export type WorkspaceListResponse = {
   items: Workspace[];
+  limit: number | null;
+  offset: number | null;
 };
 
 export type WorkspaceTransformItem = {
@@ -141,13 +143,14 @@ export type WorkspaceTablesResponse = {
 
 export type WorkspaceLogEntryId = number;
 
-export type WorkspaceStatus = "pending" | "ready";
+// Status used in workspace log responses (different from archived boolean on Workspace)
+export type WorkspaceSetupStatus = "pending" | "ready" | "archived";
 
 export type WorkspaceLogStatus = "started" | "success" | "failure";
 
 export type WorkspaceLogResponse = {
   workspace_id: WorkspaceId;
-  status: WorkspaceStatus;
+  status: WorkspaceSetupStatus;
   updated_at: string | null;
   last_completed_at: string | null;
   logs: WorkspaceLogEntry[];

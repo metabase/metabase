@@ -25,7 +25,7 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
     skip: !shouldPoll,
   });
   useEffect(() => {
-    if (data?.status === "ready") {
+    if (data?.status === "ready" || data?.status === "archived") {
       setShouldPoll(false);
     }
   }, [data?.status]);
@@ -68,6 +68,14 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
           <LogIcon status="success" />
 
           {t`Workspace ready!`}
+        </Group>
+      )}
+
+      {data?.status === "archived" && (
+        <Group gap="xs">
+          <Icon c="text-light" name="archive" />
+
+          {t`Workspace is archived`}
         </Group>
       )}
     </Stack>

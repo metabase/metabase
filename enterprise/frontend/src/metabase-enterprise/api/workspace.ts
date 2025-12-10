@@ -123,6 +123,22 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
     }),
+    unarchiveWorkspace: builder.mutation<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/unarchive`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    deleteWorkspace: builder.mutation<void, WorkspaceId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace/${id}`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
     validateTableName: builder.mutation<
       ValidateTableNameResponse,
       ValidateTableNameRequest
@@ -133,13 +149,13 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
-    updateWorkspaceName: builder.mutation<
+    updateWorkspace: builder.mutation<
       Workspace,
-      { id: WorkspaceId; name: string }
+      { id: WorkspaceId; name?: string; database_id?: number }
     >({
       query: ({ id, ...body }) => ({
-        method: "POST",
-        url: `/api/ee/workspace/${id}/name`,
+        method: "PUT",
+        url: `/api/ee/workspace/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -172,7 +188,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
       }),
-      providesTags: (_, __, { workspaceId, transformId }) => [
+      providesTags: (_, __, { transformId }) => [
         // idTag("workspace-transforms", workspaceId),
         idTag("workspace-transform", transformId),
       ],
@@ -216,8 +232,10 @@ export const {
   useGetTransformDownstreamMappingQuery,
   useMergeWorkspaceMutation,
   useArchiveWorkspaceMutation,
+  useUnarchiveWorkspaceMutation,
+  useDeleteWorkspaceMutation,
   useValidateTableNameMutation,
-  useUpdateWorkspaceNameMutation,
+  useUpdateWorkspaceMutation,
   useGetWorkspaceTablesQuery,
   useGetWorkspaceLogQuery,
   useExecuteWorkspaceMutation,
