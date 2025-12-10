@@ -12,15 +12,13 @@ export const useCollectionPath = ({
 }: UseCollectionPathOptions) => {
   const { data: collection, isLoading: isLoadingPath } = useGetCollectionQuery(
     !collectionId ? skipToken : { id: collectionId },
-    { skip: !collectionId },
   );
 
-  const ancestors = collection?.effective_ancestors?.filter(
-    (c) => !isRootCollection(c),
-  );
+  const ancestors =
+    collection?.effective_ancestors?.filter((c) => !isRootCollection(c)) ?? [];
 
   return {
     isLoadingPath,
-    path: collection ? [...(ancestors || []), collection] : null,
+    path: collection ? [...ancestors, collection] : null,
   };
 };
