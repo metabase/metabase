@@ -32,7 +32,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     expect(
       screen.getByRole("switch", {
-        name: "Enable Modular embedding toggle",
+        name: "Enable modular embedding toggle",
       }),
     ).toBeInTheDocument();
   });
@@ -48,7 +48,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     // Enable Embedded Analytics JS
     const toggle = await screen.findByRole("switch", {
-      name: "Enable Modular embedding toggle",
+      name: "Enable modular embedding toggle",
     });
 
     await userEvent.click(toggle);
@@ -68,7 +68,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     });
 
     const toggle = await screen.findByRole("switch", {
-      name: "Enable Modular embedding toggle",
+      name: "Enable modular embedding toggle",
     });
 
     await userEvent.click(toggle);
@@ -94,7 +94,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     const card = screen
       .getAllByTestId("sdk-setting-card")
-      .find((card) => card.textContent?.includes("Enable Modular embedding"));
+      .find((card) => card.textContent?.includes("Enable modular embedding"));
 
     expect(card).toHaveTextContent("New embed");
     expect(card).toHaveTextContent("Documentation");

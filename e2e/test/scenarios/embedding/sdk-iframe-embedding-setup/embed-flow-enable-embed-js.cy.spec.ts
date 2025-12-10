@@ -19,7 +19,7 @@ const DATA_BY_MB_EDITION = {
   ee: {
     cardTestId: "sdk-setting-card",
     cardText:
-      "To continue, enable Modular embedding and agree to the usage conditions.",
+      "To continue, Enable modular embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-simple",
     showTermsSettingName: "show-simple-embed-terms",
   },

@@ -54,7 +54,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     setup({ tokenFeatures: { embedding_simple: false } });
 
     expect(
-      screen.queryByText("Enable Modular embedding"),
+      screen.queryByText("Enable modular embedding"),
     ).not.toBeInTheDocument();
   });
 
