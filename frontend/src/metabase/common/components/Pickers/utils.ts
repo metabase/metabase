@@ -6,6 +6,7 @@ import type {
   Collection,
   CollectionId,
   CollectionItemModel,
+  CollectionNamespace,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
@@ -19,7 +20,7 @@ import type {
 
 export const SHARED_TENANT_NAMESPACE = "shared-tenant-collection";
 
-const isTenantNamespace = (namespace?: string): boolean => {
+const isTenantNamespace = (namespace?: CollectionNamespace): boolean => {
   return namespace === SHARED_TENANT_NAMESPACE;
 };
 
@@ -30,7 +31,7 @@ const isTenantNamespace = (namespace?: string): boolean => {
  */
 export const getNamespaceForItem = (
   item: Pick<CollectionPickerItem, "id" | "namespace"> | null | undefined,
-): string | undefined => {
+): CollectionNamespace | undefined => {
   if (!item) {
     return undefined;
   }
@@ -145,7 +146,7 @@ export const getStateFromIdPath = ({
   models,
 }: {
   idPath: CollectionId[];
-  namespace?: string;
+  namespace?: CollectionNamespace;
   models: CollectionItemModel[];
 }): CollectionPickerStatePath => {
   // Determine the effective namespace based on the path

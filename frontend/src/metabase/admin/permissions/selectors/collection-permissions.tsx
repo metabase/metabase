@@ -23,6 +23,7 @@ import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,
+  CollectionNamespace,
   CollectionPermissions,
   Group as GroupType,
 } from "metabase-types/api";
@@ -56,7 +57,7 @@ export const getIsDirty = createSelector(
 
 export type CollectionIdProps = {
   params: { collectionId: CollectionId };
-  namespace?: string;
+  namespace?: CollectionNamespace;
 };
 
 export const getCurrentCollectionId = (
@@ -204,7 +205,7 @@ const getCollectionPermission = (
 const getNamespace = (_state: State, props: CollectionIdProps) =>
   props.namespace;
 
-const getToggleLabel = (namespace?: string) =>
+const getToggleLabel = (namespace?: CollectionNamespace) =>
   namespace === "snippets"
     ? t`Also change sub-folders`
     : t`Also change sub-collections`;

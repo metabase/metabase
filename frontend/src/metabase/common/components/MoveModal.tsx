@@ -24,6 +24,7 @@ import { SHARED_TENANT_NAMESPACE } from "metabase/common/components/Pickers/util
 import type {
   CollectionId,
   CollectionItem,
+  CollectionNamespace,
   RecentItem,
   SearchResult,
 } from "metabase-types/api";
@@ -46,7 +47,7 @@ interface BaseMoveModalProps {
    * - If "shared-tenant-collection", only tenant collections are shown
    * - Otherwise, tenant collections are hidden from the picker
    */
-  movingCollectionNamespace?: string;
+  movingCollectionNamespace?: CollectionNamespace;
 }
 
 type MoveModalProps =

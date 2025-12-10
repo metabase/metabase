@@ -13,7 +13,7 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Button, Flex, Modal } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 import type { CollectionPickerItem } from "../types";
 
@@ -29,7 +29,7 @@ interface NewCollectionDialogProps {
   onClose: () => void;
   parentCollectionId: CollectionId | null;
   onNewCollection: (item: CollectionPickerItem) => void;
-  namespace?: string;
+  namespace?: CollectionNamespace;
 }
 
 export const NewCollectionDialog = ({

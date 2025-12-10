@@ -177,7 +177,7 @@ describe("getCollectionIdPath", () => {
         location: "/4/5/6/7/8/",
         effective_location: "/6/7/8/",
         model: "collection",
-        namespace: "shared-tenant-collection",
+        namespace: "shared-tenant-collection" as const,
       },
       1337,
     );
@@ -192,7 +192,7 @@ describe("getCollectionIdPath", () => {
         location: "/4/5/6/7/8/",
         effective_location: "/6/7/8/",
         model: "collection",
-        collection_namespace: "shared-tenant-collection",
+        collection_namespace: "shared-tenant-collection" as const,
       },
       1337,
     );
@@ -336,7 +336,7 @@ describe("isNamespaceRoot", () => {
       id: "tenant",
       name: "Shared collections",
       model: "collection" as const,
-      namespace: "shared-tenant-collection",
+      namespace: "shared-tenant-collection" as const,
     };
 
     expect(isNamespaceRoot(item)).toBe(true);
@@ -369,7 +369,7 @@ describe("isNamespaceRoot", () => {
       id: 123,
       name: "Tenant Sub-Collection",
       model: "collection" as const,
-      namespace: "shared-tenant-collection",
+      namespace: "shared-tenant-collection" as const,
       location: "/tenant/",
     };
 
@@ -382,7 +382,7 @@ describe("shouldDisableItemForSavingModel", () => {
     id: "tenant",
     name: "Shared collections",
     model: "collection" as const,
-    namespace: "shared-tenant-collection",
+    namespace: "shared-tenant-collection" as const,
   };
 
   const regularCollection = {
@@ -396,7 +396,7 @@ describe("shouldDisableItemForSavingModel", () => {
     id: 123,
     name: "Tenant Sub-Collection",
     model: "collection" as const,
-    namespace: "shared-tenant-collection",
+    namespace: "shared-tenant-collection" as const,
     location: "/tenant/",
   };
 
@@ -452,7 +452,7 @@ describe("getDisabledReasonForSavingModel", () => {
     id: "tenant",
     name: "Shared collections",
     model: "collection" as const,
-    namespace: "shared-tenant-collection",
+    namespace: "shared-tenant-collection" as const,
   };
 
   const regularCollection = {
@@ -486,7 +486,7 @@ describe("getNamespaceForItem", () => {
   it("should return shared tenant namespace for tenant root", () => {
     const item = {
       id: "tenant",
-      namespace: "shared-tenant-collection",
+      namespace: "shared-tenant-collection" as const,
     };
 
     expect(getNamespaceForItem(item)).toBe(SHARED_TENANT_NAMESPACE);
@@ -495,7 +495,7 @@ describe("getNamespaceForItem", () => {
   it("should return the item namespace for regular collections with namespace", () => {
     const item = {
       id: 123,
-      namespace: "shared-tenant-collection",
+      namespace: "shared-tenant-collection" as const,
     };
 
     expect(getNamespaceForItem(item)).toBe("shared-tenant-collection");
@@ -504,7 +504,7 @@ describe("getNamespaceForItem", () => {
   it("should return the item namespace for snippet collections", () => {
     const item = {
       id: 456,
-      namespace: "snippets",
+      namespace: "snippets" as const,
     };
 
     expect(getNamespaceForItem(item)).toBe("snippets");

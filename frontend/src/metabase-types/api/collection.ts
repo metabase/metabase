@@ -16,7 +16,11 @@ import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
-export type CollectionNamespace = null | "snippets";
+export type CollectionNamespace =
+  | null
+  | "snippets"
+  | "tenant-specific"
+  | "shared-tenant-collection";
 
 // Collection ID can be either a numeric or entity id
 export type RegularCollectionId = number | string;
@@ -132,7 +136,7 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
-  collection_namespace?: string; // namespace of the parent collection
+  collection_namespace?: CollectionNamespace; // namespace of the parent collection
   display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
@@ -169,13 +173,13 @@ export interface CollectionListQuery {
   "exclude-other-user-collections"?: boolean;
   "exclude-archived"?: boolean;
   "personal-only"?: boolean;
-  namespace?: string;
+  namespace?: CollectionNamespace;
   tree?: boolean;
 }
 
 export type getCollectionRequest = {
   id: CollectionId;
-  namespace?: "snippets" | "tenant-specific";
+  namespace?: CollectionNamespace;
   ignore_error?: boolean;
 };
 
@@ -190,7 +194,7 @@ export type ListCollectionItemsRequest = {
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  namespace?: string;
+  namespace?: CollectionNamespace;
   collection_type?: CollectionType;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
@@ -215,14 +219,14 @@ export interface CreateCollectionRequest {
   name: string;
   description?: string | null;
   parent_id?: CollectionId | null;
-  namespace?: string;
+  namespace?: CollectionNamespace;
   authority_level?: CollectionAuthorityLevel;
   is_shared_tenant_collection?: boolean;
 }
 
 export interface ListCollectionsRequest {
   archived?: boolean;
-  namespace?: string;
+  namespace?: CollectionNamespace;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
   collection_type?: CollectionType;
@@ -231,7 +235,7 @@ export interface ListCollectionsTreeRequest {
   "exclude-archived"?: boolean;
   "exclude-other-user-collections"?: boolean;
   "include-library"?: boolean;
-  namespace?: string;
+  namespace?: CollectionNamespace;
   namespaces?: string[];
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;

@@ -17,14 +17,14 @@ describe("CollectionPicker > utils", () => {
     it.each([
       {
         location: "/",
-        namespace: "shared-tenant-collection",
+        namespace: "shared-tenant-collection" as const,
         type: null,
         desc: "shared tenant",
         expected: "tenant",
       },
       {
         location: null,
-        namespace: "shared-tenant-collection",
+        namespace: "shared-tenant-collection" as const,
         type: null,
         desc: "shared tenant",
         expected: "tenant",

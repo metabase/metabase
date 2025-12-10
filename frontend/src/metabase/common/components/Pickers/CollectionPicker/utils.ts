@@ -1,6 +1,7 @@
 import type {
   CollectionId,
   CollectionItemModel,
+  CollectionNamespace,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
@@ -20,7 +21,7 @@ export const isFolderFactory =
 
 export const getParentCollectionId = (
   location?: string | null,
-  namespace?: string | null,
+  namespace?: CollectionNamespace | null,
   type?: string | null,
 ): CollectionId => {
   const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];

@@ -3,6 +3,7 @@ import type {
   CollectionId,
   CollectionItem,
   CollectionItemModel,
+  CollectionNamespace,
   CollectionType,
   DashboardId,
   ListCollectionItemsRequest,
@@ -54,7 +55,7 @@ export type CollectionPickerItem = TypeWithModel<
     here?: CollectionItemModel[];
     below?: CollectionItemModel[];
     type?: CollectionType;
-    namespace?: string;
+    namespace?: CollectionNamespace;
   };
 
 /**
@@ -80,7 +81,7 @@ export type CollectionPickerValueItem =
     });
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
-  namespace?: string;
+  namespace?: CollectionNamespace;
   allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
