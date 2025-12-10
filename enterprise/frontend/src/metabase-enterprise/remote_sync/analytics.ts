@@ -26,7 +26,7 @@ export const trackPullChanges = ({
   triggeredFrom,
   force,
 }: {
-  triggeredFrom: "sidebar" | "admin-settings" | "app-bar";
+  triggeredFrom: "admin-settings" | "app-bar";
   force: boolean;
 }) => {
   trackSimpleEvent({
@@ -40,7 +40,7 @@ export const trackPushChanges = ({
   triggeredFrom,
   force,
 }: {
-  triggeredFrom: "sidebar" | "conflict-modal";
+  triggeredFrom: "app-bar" | "conflict-modal";
   force: boolean;
 }) => {
   trackSimpleEvent({
