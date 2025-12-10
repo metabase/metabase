@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
