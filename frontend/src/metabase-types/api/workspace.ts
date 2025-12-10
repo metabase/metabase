@@ -18,7 +18,6 @@ export type Workspace = {
   created_at: string;
   updated_at: string;
   archived_at?: string | null;
-  contents?: WorkspaceContents["contents"];
 };
 
 export type WorkspaceItem = {
@@ -37,8 +36,6 @@ export type CreateWorkspaceRequest = {
 export type WorkspaceListResponse = {
   items: Workspace[];
 };
-
-export type WorkspaceContentItem = WorkspaceTransformItem;
 
 export type WorkspaceTransformItem = {
   type: "transform";
@@ -69,8 +66,8 @@ export type TransformDownstreamMapping = {
 };
 
 export type WorkspaceMergeResponse = {
-  promoted: WorkspaceContentItem[];
-  errors?: (WorkspaceContentItem & { error: string })[];
+  promoted: WorkspaceTransformItem[];
+  errors?: (WorkspaceTransformItem & { error: string })[];
   workspace: WorkspaceItem;
   archived_at: string | null;
 };

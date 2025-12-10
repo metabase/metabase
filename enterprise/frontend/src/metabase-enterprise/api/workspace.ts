@@ -2,13 +2,13 @@ import type {
   CreateWorkspaceRequest,
   CreateWorkspaceTransformRequest,
   CreateWorkspaceTransformResponse,
+  Transform,
   TransformDownstreamMapping,
   TransformId,
   TransformUpstreamMapping,
   ValidateTableNameRequest,
   ValidateTableNameResponse,
   Workspace,
-  WorkspaceContents,
   WorkspaceExecuteRequest,
   WorkspaceExecuteResponse,
   WorkspaceId,
@@ -25,7 +25,6 @@ import {
   invalidateTags,
   listTag,
   provideWorkspaceContentItemsTags,
-  provideWorkspaceContentsTags,
   provideWorkspaceTags,
   provideWorkspacesTags,
   tag,
@@ -58,23 +57,8 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("workspace"), listTag("transform")]),
     }),
-    getWorkspaceContents: builder.query<WorkspaceContents, WorkspaceId>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/workspace/${id}`,
-      }),
-      transformResponse: (workspace: any) => {
-        return {
-          contents: workspace?.contents ?? { transforms: [] },
-        } as WorkspaceContents;
-      },
-      providesTags: (workspaceContents) =>
-        workspaceContents
-          ? provideWorkspaceContentsTags(workspaceContents)
-          : [],
-    }),
     updateWorkspaceContents: builder.mutation<
-      WorkspaceContents,
+      any,
       WorkspaceUpdateContentsRequest
     >({
       query: ({ id, ...body }) => ({
@@ -166,6 +150,15 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (_, __, id) => [idTag("workspace", id)],
     }),
+    getWorkspaceTransforms: builder.query<Transform[], WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/transform`,
+      }),
+      providesTags: (_, __, id) => [idTag("workspace-transforms", id)],
+      transformResponse: (response: { transforms: Transform[] }) =>
+        response.transforms,
+    }),
     getWorkspaceLog: builder.query<WorkspaceLogResponse, WorkspaceId>({
       query: (id) => ({
         method: "GET",
@@ -191,10 +184,9 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetWorkspacesQuery,
   useGetWorkspaceQuery,
+  useGetWorkspaceTransformsQuery,
   useCreateWorkspaceMutation,
-  useGetWorkspaceContentsQuery,
   useUpdateWorkspaceContentsMutation,
-  useLazyGetWorkspaceContentsQuery,
   useCreateWorkspaceTransformMutation,
   useGetTransformUpstreamMappingQuery,
   useGetTransformDownstreamMappingQuery,

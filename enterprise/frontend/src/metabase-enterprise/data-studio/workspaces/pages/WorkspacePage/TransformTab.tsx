@@ -17,6 +17,7 @@ import {
   useValidateTableNameMutation,
   workspaceApi,
 } from "metabase-enterprise/api";
+import { tag } from "metabase-enterprise/api/tags";
 import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
@@ -40,12 +41,12 @@ import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
   DraftTransformSource,
-  EditedTransform,
   Transform,
   TransformId,
   TransformTarget,
   WorkspaceId,
 } from "metabase-types/api";
+import type { EditedTransform } from "./WorkspaceProvider";
 
 import { WorkspaceRunButton } from "../../components/WorkspaceRunButton/WorkspaceRunButton";
 
@@ -225,9 +226,12 @@ export const TransformTab = ({
       // Remove from unsaved transforms and refresh workspace
       removeUnsavedTransform(transform.id);
 
-      // TODO stasgavrylov 2025-12-10
       // Invalidate workspace transforms after creating new one
-      // dispatch(workspaceApi.util.invalidateTags(["workspace"]));
+      dispatch(
+        workspaceApi.util.invalidateTags([
+          tag("workspace-transforms", workspaceId),
+        ]),
+      );
 
       // Open the newly saved transform
       onOpenTransform(savedTransform.id);
@@ -302,12 +306,14 @@ export const TransformTab = ({
   }, [dispatch, suggestedTransform]);
 
   const handleTargetUpdate = useCallback(
-    (updatedTransform: Transform) => {
-      updateTransformState(updatedTransform);
-      sendSuccessToast(t`Transform target updated`);
+    (updatedTransform?: Transform) => {
+      if (updatedTransform) {
+        updateTransformState(updatedTransform);
+        sendSuccessToast(t`Transform target updated`);
+      }
       closeChangeTargetModal();
     },
-    [closeChangeTargetModal, updateTransformState, sendSuccessToast],
+    [updateTransformState, sendSuccessToast, closeChangeTargetModal],
   );
 
   const isRunning = isTransformRunning(transform);
