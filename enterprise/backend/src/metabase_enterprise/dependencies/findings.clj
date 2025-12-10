@@ -44,16 +44,16 @@
 
 (defn analyze-instances!
   [instances]
-  (lib-be/with-metadata-provider-cache
-    (doseq [instance instances]
-      (try (upsert-analysis! instance)
-           (catch Exception e
-             (log/errorf e "Analyzing entity %s %s failed"
-                         (t2/model instance) (:id instance)))))))
+  (doseq [instance instances]
+    (try (upsert-analysis! instance)
+         (catch Exception e
+           (log/errorf e "Analyzing entity %s %s failed"
+                       (t2/model instance) (:id instance))))))
 
 (mu/defn analyze-batch! :- :int
-  [model :- [:enum :card :transform]
+  [type :- [:enum :card :transform]
    batch-size :- :int]
-  (let [instances (deps.analysis-finding/instances-for-analysis model batch-size)]
-    (analyze-instances! instances)
+  (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
+    (lib-be/with-metadata-provider-cache
+      (analyze-instances! instances))
     (count instances)))
