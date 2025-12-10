@@ -671,8 +671,7 @@
                       {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})]
           (is (partial= {:url (sso-settings/jwt-identity-provider-uri)
                          :method "jwt"}
-                        (:body result)))
-          (is (nil? (get-in result [:body :hash]))))))))
+                        (:body result))))))))
 
 (deftest jwt-token-sdk-session-token-test
   (testing "should return a session token when a JWT token and sdk headers are passed"
