@@ -82,6 +82,139 @@ const groupTablesBySchema = (tables: SearchResult[]) =>
     ),
   );
 
+export interface TablesListProps {
+  database: Database;
+  tables: SearchResult[];
+  onItemClick: (type: string, item: unknown) => void;
+}
+
+const TablesList = ({
+  database,
+  tables,
+  onItemClick,
+}: {
+  database: Database;
+  tables: SearchResult[];
+  onItemClick: (type: string, item: unknown) => void;
+}) => {
+  const hasMultipleSchemas = (database.schemas?.length ?? 0) > 1;
+
+  if (hasMultipleSchemas) {
+    const tablesBySchema = groupTablesBySchema(tables).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+
+    return (
+      <>
+        <NodeListTitle>
+          <NodeListIcon name="folder" />
+          <NodeListTitleText>
+            {ngettext(
+              msgid`${database.schemas?.length ?? 0} schema`,
+              `${database.schemas?.length ?? 0} schemas`,
+              database.schemas?.length ?? 0,
+            )}
+          </NodeListTitleText>
+        </NodeListTitle>
+        <Tree
+          data={tablesBySchema}
+          TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
+            <ResourceTreeNode
+              {...props}
+              onItemClick={() => onItemClick("table", props.item.data)}
+            />
+          )}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <NodeListTitle>
+        <NodeListIcon name="table" />
+        <NodeListTitleText>
+          {ngettext(
+            msgid`${tables.length} table`,
+            `${tables.length} tables`,
+            tables.length,
+          )}
+        </NodeListTitleText>
+      </NodeListTitle>
+      <ul>
+        {tables.map((table) => (
+          <li key={table.id}>
+            <NodeListItemLink
+              disabled={table.initial_sync_status !== "complete"}
+              onClick={() => onItemClick("table", table)}
+            >
+              <NodeListItemIcon
+                disabled={table.initial_sync_status !== "complete"}
+                name="table"
+              />
+              <NodeListItemName
+                data-disabled={table.initial_sync_status !== "complete"}
+              >
+                {table.table_name}
+              </NodeListItemName>
+            </NodeListItemLink>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+};
+
+export interface CollectionsListProps {
+  models: SearchResult[];
+  onItemClick: (type: string, item: unknown) => void;
+}
+
+const CollectionsList = ({
+  models,
+  onItemClick,
+}: {
+  models: SearchResult[];
+  onItemClick: (type: string, item: unknown) => void;
+}) => {
+  if (models.length === 0) {
+    return null;
+  }
+
+  const modelsByCollection = groupModelsByCollection(models).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+
+  return (
+    <>
+      <NodeListTitle mt={16}>
+        <NodeListIcon name="model" />
+        <NodeListTitleText>
+          {t`${models.length} ${ngettext(
+            msgid`model`,
+            `models`,
+            models.length,
+          )} in ${modelsByCollection.length} ${ngettext(
+            msgid`collection`,
+            `collections`,
+            modelsByCollection.length,
+          )}`}
+        </NodeListTitleText>
+      </NodeListTitle>
+      <Tree
+        data={modelsByCollection}
+        TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
+          <ResourceTreeNode
+            {...props}
+            onItemClick={() => onItemClick("question", props.item.data)}
+            displayId
+          />
+        )}
+      />
+    </>
+  );
+};
+
 export interface DatabasePaneProps {
   database: Database;
   searchResults: SearchResult[];
@@ -90,7 +223,7 @@ export interface DatabasePaneProps {
   onItemClick: (type: string, item: unknown) => void;
 }
 
-export const DatabasePane = ({
+const _DatabasePane = ({
   database,
   searchResults,
   onBack,
@@ -100,125 +233,17 @@ export const DatabasePane = ({
   const tables = useMemo(
     () =>
       searchResults
-        .filter((x) => x.model === "table")
+        .filter((searchResult) => searchResult.model === "table")
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
   const models = useMemo(
     () =>
       searchResults
-        .filter((x) => x.model === "dataset")
+        .filter((searchResult) => searchResult.model === "dataset")
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
-
-  const renderTables = () => {
-    const hasMultipleSchemas = (database.schemas?.length ?? 0) > 1;
-
-    if (hasMultipleSchemas) {
-      const tablesBySchema = groupTablesBySchema(tables).sort((a, b) =>
-        a.name.localeCompare(b.name),
-      );
-
-      return (
-        <>
-          <NodeListTitle>
-            <NodeListIcon name="folder" />
-            <NodeListTitleText>
-              {ngettext(
-                msgid`${database.schemas?.length ?? 0} schema`,
-                `${database.schemas?.length ?? 0} schemas`,
-                database.schemas?.length ?? 0,
-              )}
-            </NodeListTitleText>
-          </NodeListTitle>
-          <Tree
-            data={tablesBySchema}
-            TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
-              <ResourceTreeNode
-                {...props}
-                onItemClick={() => onItemClick("table", props.item.data)}
-              />
-            )}
-          />
-        </>
-      );
-    }
-
-    return (
-      <>
-        <NodeListTitle>
-          <NodeListIcon name="table" />
-          <NodeListTitleText>
-            {ngettext(
-              msgid`${tables.length} table`,
-              `${tables.length} tables`,
-              tables.length,
-            )}
-          </NodeListTitleText>
-        </NodeListTitle>
-        <ul>
-          {tables.map((table) => (
-            <li key={table.id}>
-              <NodeListItemLink
-                disabled={table.initial_sync_status !== "complete"}
-                onClick={() => onItemClick("table", table)}
-              >
-                <NodeListItemIcon
-                  disabled={table.initial_sync_status !== "complete"}
-                  name="table"
-                />
-                <NodeListItemName
-                  data-disabled={table.initial_sync_status !== "complete"}
-                >
-                  {table.table_name}
-                </NodeListItemName>
-              </NodeListItemLink>
-            </li>
-          ))}
-        </ul>
-      </>
-    );
-  };
-
-  const renderCollections = () => {
-    if (models.length === 0) {
-      return null;
-    }
-
-    const modelsByCollection = groupModelsByCollection(models).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-
-    return (
-      <>
-        <NodeListTitle mt={16}>
-          <NodeListIcon name="model" />
-          <NodeListTitleText>
-            {t`${models.length} ${ngettext(
-              msgid`model`,
-              `models`,
-              models.length,
-            )} in ${modelsByCollection.length} ${ngettext(
-              msgid`collection`,
-              `collections`,
-              modelsByCollection.length,
-            )}`}
-          </NodeListTitleText>
-        </NodeListTitle>
-        <Tree
-          data={modelsByCollection}
-          TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
-            <ResourceTreeNode
-              {...props}
-              onItemClick={() => onItemClick("question", props.item.data)}
-              displayId
-            />
-          )}
-        />
-      </>
-    );
-  };
 
   return (
     <SidebarContent
@@ -229,8 +254,12 @@ export const DatabasePane = ({
     >
       <SidebarContent.Pane>
         <NodeListContainer>
-          {renderTables()}
-          {renderCollections()}
+          <TablesList
+            database={database}
+            tables={tables}
+            onItemClick={onItemClick}
+          />
+          <CollectionsList models={models} onItemClick={onItemClick} />
         </NodeListContainer>
       </SidebarContent.Pane>
     </SidebarContent>
@@ -238,7 +267,7 @@ export const DatabasePane = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Databases.load({
+export const DatabasePane = Databases.load({
   id: (_state: State, props: DatabasePaneProps) => props.database.id,
 })(
   Schemas.loadList({
@@ -252,6 +281,6 @@ export default Databases.load({
         table_db_id: props.database.id,
       }),
       listName: "searchResults",
-    })(DatabasePane),
+    })(_DatabasePane),
   ),
 );
