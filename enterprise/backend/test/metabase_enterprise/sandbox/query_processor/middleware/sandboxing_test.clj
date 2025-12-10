@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -1374,7 +1375,7 @@
     (testing "Sandboxing with filtering by a column works for all supported drivers"
       (met/with-gtaps! {:gtaps {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}
                                 :checkins {:remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]
-                                                        :venue ["variable" [:field (mt/id :checkins :venue_id) nil]]}}},
+                                                        :venue ["variable" [:field (mt/id :checkins :venue_id) nil]]}}}
                         :attributes {:cat 10
                                      :user 1
                                      :venue 47}}
@@ -1635,7 +1636,7 @@
     ;; There's no remapping need there: the breakout is actually on the title field already.
     ;; TODO: (Braden 2025-11-13) I think remappings and breakouts are pretty janky - the Right Thing is to walk
     ;; backward from all "selected" fields in the last stage to originals, and include any remaps they have.
-    (met/with-gtaps! {:gtaps {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}},
+    (met/with-gtaps! {:gtaps {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}}
                       :attributes {"user_id" 1}}
       (let [mp (lib.tu/remap-metadata-provider
                 (mt/metadata-provider)
@@ -1664,7 +1665,7 @@
 
 (deftest datetime-extraction-to-int-test
   (testing "Downloading CSV/XLSX for query with COUNT grouped by day of month should work for sandboxed users (#UXW-660)"
-    (met/with-gtaps! {:gtaps {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}},
+    (met/with-gtaps! {:gtaps {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}}
                       :attributes {"user_id" 1}}
       (let [query (mt/mbql-query orders
                     {:aggregation [[:count]]
@@ -1772,7 +1773,7 @@
 (deftest long-native-query-names-sandboxed-attribute-test
   (testing "Issue #66405: with attribute-based sandbox (no query, just remappings)"
     (data/dataset long-names-dataset
-      (met/with-gtaps! {:gtaps      {:long_table {:remappings {:col1 ["variable" [:field (data/id :long_table :column_name_with_an_incredibly_verbose_and_exceedingly_detailed_description_that_never_seems_to_end) nil]]}}}
+      (met/with-gtaps! {:gtaps      {:long_table {:remappings {:col1 ["variable" [:field (mt/id :long_table :column_name_with_an_incredibly_verbose_and_exceedingly_detailed_description_that_never_seems_to_end) nil]]}}}
                         :attributes {:col1 "First row, first column"}}
         (let [result (mt/user-http-request :rasta :post 202 "dataset"
                                            (mt/mbql-query long_table))]
@@ -1781,3 +1782,34 @@
                   result))
           (is (= ["First row, first column" "First row, second column"]
                  (->> result :data :rows first (drop 1)))))))))
+
+(deftest test-66781
+  (testing "Handle user attribute filters against implicitly joined tables that are also sandboxed correctly (#66781)"
+    (met/with-gtaps! (let [mp (mt/metadata-provider)]
+                       {:gtaps      {:orders {:query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                              (as-> $query (lib/remove-field $query
+                                                                                             -1
+                                                                                             (lib.tu.notebook/find-col-with-spec
+                                                                                              $query
+                                                                                              (lib/returned-columns $query)
+                                                                                              {:display-name "Orders"}
+                                                                                              {:display-name "Total"}))))
+                                              :remappings {:user_id [:variable [:field
+                                                                                (mt/id :people :id)
+                                                                                {:source-field (mt/id :orders :user_id)}]]}}
+                                     :people {:query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                                         (as-> $query (lib/remove-field $query
+                                                                                        -1
+                                                                                        (lib.tu.notebook/find-col-with-spec
+                                                                                         $query
+                                                                                         (lib/returned-columns $query)
+                                                                                         {:display-name "People"}
+                                                                                         {:display-name "Email"})))
+                                                         (lib/order-by (lib.metadata/field mp (mt/id :people :id))))
+                                              :remappings {:user_id [:variable [:field (mt/id :people :id)]]}}}
+                        :attributes {:user_id 1}})
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity)))))]
+        (is (= [[44]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))))))

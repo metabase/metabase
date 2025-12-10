@@ -284,29 +284,37 @@
                   (merge native-col table-col))))
         original-table-cols))
 
-(mu/defn- apply-sandbox-to-stage :- [:and
-                                     [:sequential {:min 2} ::lib.schema/stage]
-                                     ::lib.schema.util/unique-uuids]
+(mu/defn-  apply-sandbox-to-stage :- [:and
+                                      [:sequential {:min 1} ::lib.schema/stage]
+                                      ::lib.schema.util/unique-uuids]
   "Apply a Sandbox to a `stage`, returning a vector of replacement stages."
   [query                            :- ::lib.schema/query
    {:keys [source-table] :as stage} :- ::lib.schema/stage
    sandbox                          :- ::sandbox]
-  (let [sandbox-query       (sandbox->query query sandbox)
-        sandbox-query       (project-only-columns-from-original-table query sandbox-query source-table)
-        new-source-stages   (mapv (fn [stage]
-                                    (-> stage
-                                        (assoc :query-permissions/sandboxed-table source-table)
-                                        lib/fresh-uuids))
-                                  (:stages sandbox-query))
+  (let [sandbox-query      (sandbox->query query sandbox)
+        sandbox-query      (project-only-columns-from-original-table query sandbox-query source-table)
+        new-source-stages  (mapv (fn [stage]
+                                   (-> stage
+                                       (assoc :query-permissions/sandboxed-table source-table)
+                                       lib/fresh-uuids))
+                                 (:stages sandbox-query))
         ;; merge stage metadata in the last source stage if needed
-        new-source-stages   (m/update-existing-in new-source-stages
-                                                  [(dec (count new-source-stages)) :lib/stage-metadata :columns]
-                                                  (fn [cols]
-                                                    (merge-original-table-metadata
-                                                     cols
-                                                     (lib/returned-columns query (lib.metadata/table query source-table)))))
-        replacement-stages  (conj new-source-stages
-                                  (dissoc stage :source-table))]
+        new-source-stages  (m/update-existing-in new-source-stages
+                                                 [(dec (count new-source-stages)) :lib/stage-metadata :columns]
+                                                 (fn [cols]
+                                                   (merge-original-table-metadata
+                                                    cols
+                                                    (lib/returned-columns query (lib.metadata/table query source-table)))))
+        ;; don't add a new additional stage if it only contains `:fields` and the last of the `new-source-stages`
+        ;; already contains `:fields` anyway... at best this is completely unnecessary and at worst it can cause query
+        ;; failures because the stuff in `:fields` can be wrong if some of those fields have been filtered out by the
+        ;; sandbox (see #66781)
+        skip-final-stage?  (and (:fields (last new-source-stages))
+                                (empty? (->> (keys stage)
+                                             (remove #{:source-table :fields})
+                                             (remove qualified-keyword?))))
+        replacement-stages (cond-> new-source-stages
+                             (not skip-final-stage?) (conj (dissoc stage :source-table)))]
     (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
                 (u/cprint-to-str stage)
                 (u/cprint-to-str replacement-stages))
