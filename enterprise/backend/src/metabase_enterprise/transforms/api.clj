@@ -127,9 +127,19 @@
     [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
   (get-transforms query-params))
 
-(defn create-transform!
+(def create-transform-body-schema
+  "Schema of a body for transform creation."
+  [:map
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:source ::transforms.schema/transform-source]
+   [:target ::transforms.schema/transform-target]
+   [:run_trigger {:optional true} ::run-trigger]
+   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]])
+
+(mu/defn create-transform!
   "Create new transform in the appdb."
-  [body]
+  [body :- create-transform-body-schema]
   (let [transform (t2/with-transaction [_]
                     (let [tag-ids (:tag_ids body)
                           transform (t2/insert-returning-instance!
@@ -148,13 +158,7 @@
   "Create a new transform."
   [_route-params
    _query-params
-   body :- [:map
-            [:name :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source ::transforms.schema/transform-source]
-            [:target ::transforms.schema/transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   body :- create-transform-body-schema]
   (api/check-superuser)
   (check-database-feature body)
   (check-feature-enabled! body)
