@@ -1,7 +1,11 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { assignUserColors } from "metabase/lib/formatting";
+import { useSelector } from "metabase/lib/redux";
+import { getUserId } from "metabase/selectors/user";
 import { Center, Stack, Text, Timeline } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
@@ -14,11 +18,22 @@ type SegmentRevisionHistoryProps = {
 export function SegmentRevisionHistory({
   segment,
 }: SegmentRevisionHistoryProps) {
+  const currentUserId = useSelector(getUserId);
   const {
     data: revisions,
     isLoading,
     error,
   } = useListRevisionsQuery({ entity: "segment", id: segment.id });
+
+  const userColorAssignments = useMemo(() => {
+    if (!revisions || currentUserId == null) {
+      return {};
+    }
+    return assignUserColors(
+      revisions.map((r) => String(r.user.id)),
+      String(currentUserId),
+    );
+  }, [revisions, currentUserId]);
 
   if (isLoading || error != null) {
     return (
@@ -44,6 +59,7 @@ export function SegmentRevisionHistory({
             key={revision.id}
             revision={revision}
             tableId={segment.table_id}
+            userColor={userColorAssignments[String(revision.user.id)]}
           />
         ))}
       </Timeline>
