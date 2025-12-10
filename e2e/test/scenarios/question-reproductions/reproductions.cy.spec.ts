@@ -1392,7 +1392,11 @@ describe("issue 13347", () => {
 
   it("should not display questions in big data picker that cannot be used for new questions (metabase#13347)", () => {
     H.startNewQuestion();
-    cy.findByTestId("data-step-cell").click();
+
+    H.entityPickerModal()
+      .findByText("Collections")
+      .should("be.visible")
+      .click();
 
     H.entityPickerModalLevel(1).within(() => {
       cy.findByText("Orders").should("exist");
