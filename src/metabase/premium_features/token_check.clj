@@ -165,7 +165,6 @@
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
       (http/success? resp) (some-> body json/decode+kw)
-      ;; todo: what happens if there's no response here? probably should or here
       (<= 400 status 499) (or (some-> body json/decode+kw)
                               {:valid false
                                :status "Unable to validate token"
@@ -187,12 +186,29 @@
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
 
+(defn- active-user-count []
+  (t2/count :model/User :is_active true, :type :personal))
+
+(defn- ag-user-info []
+  {:max-users-allowed (max-users-allowed)
+   :active-users-count (active-user-count)})
+
+(defn- illegal-airgap-user-count?
+  "Returns true if the active user count exceeds the max allowed users in an airgap context."
+  []
+  (let [{:keys [max-users-allowed active-users-count]} (ag-user-info)]
+    (if
+     max-users-allowed ;; no max user count -> always legal
+      (> active-users-count max-users-allowed)
+      false)))
+
 (defn airgap-check-user-count
   "Checks that, when in an airgap context, the allowed user count is acceptable."
   []
-  (when-let [max-users (max-users-allowed)]
-    (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
-      (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
+  (when (illegal-airgap-user-count?)
+    (throw (Exception.
+            (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                 max-users-allowed)))))
 
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
@@ -208,7 +224,11 @@
         (mr/validate [:re AirgapToken] token)
         (do
           (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (decode-airgap-token token))
+          (if (illegal-airgap-user-count?)
+            {:valid         false
+             :status        (tru "Unable to validate token")
+             :error-details (tru "The number of active users exceeds the maximum allowed by your plan.")}
+            (decode-airgap-token token)))
 
         :else
         (do
