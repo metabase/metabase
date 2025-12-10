@@ -6,7 +6,6 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
-import { CollectionRemoteSyncToggle } from "./components/CollectionRemoteSyncToggle";
 import { CollectionsNavTree } from "./components/CollectionsNavTree";
 import { GitSyncControls } from "./components/GitSyncControls";
 import { RemoteSyncAdminSettings } from "./components/RemoteSyncAdminSettings/RemoteSyncAdminSettings";
@@ -25,7 +24,6 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
       SyncedCollectionsSidebarSection;
-    PLUGIN_REMOTE_SYNC.CollectionRemoteSyncToggle = CollectionRemoteSyncToggle;
     PLUGIN_REMOTE_SYNC.GitSyncAppBarControls = GitSyncControls;
     PLUGIN_REMOTE_SYNC.CollectionsNavTree = CollectionsNavTree;
     PLUGIN_REMOTE_SYNC.REMOTE_SYNC_INVALIDATION_TAGS =

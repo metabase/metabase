@@ -7,7 +7,6 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type { Collection } from "metabase-types/api";
 
 import type { SyncedCollectionsSidebarSectionProps } from "../types";
 
@@ -17,16 +16,10 @@ export type CollectionsNavTreeProps = {
   onSelect?: (item: ITreeNodeItem) => void;
 };
 
-export type CollectionRemoteSyncToggleProps = {
-  collection: Collection;
-  onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
-};
-
 const getDefaultPluginRemoteSync = () => ({
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
-  CollectionRemoteSyncToggle: PluginPlaceholder,
   GitSyncAppBarControls: PluginPlaceholder,
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
@@ -43,7 +36,6 @@ export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
-  CollectionRemoteSyncToggle: ComponentType<CollectionRemoteSyncToggleProps>;
   GitSyncAppBarControls: ComponentType;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
