@@ -50,6 +50,20 @@ export type WorkspaceTransformsResponse = {
   transforms: WorkspaceTransformItem[];
 };
 
+export type WorkspaceOutputTableRef = {
+  transform_id: number | string | null;
+  schema: string;
+  table: string;
+  table_id: number | null;
+};
+
+export type WorkspaceTransform = Transform & {
+  ref_id: string;
+  stale: boolean;
+  global_id: TransformId | null;
+  target_stale: boolean;
+  target_isolated: WorkspaceOutputTableRef;
+};
 
 export type TransformUpstreamMapping = {
   transform: WorkspaceTransformItem | null;
@@ -108,13 +122,6 @@ export type CreateWorkspaceTransformResponse = Transform;
 
 export type WorkspaceInputTable = {
   db_id: DatabaseId;
-  schema: string;
-  table: string;
-  table_id: number | null;
-};
-
-export type WorkspaceOutputTableRef = {
-  transform_id: number | string | null;
   schema: string;
   table: string;
   table_id: number | null;

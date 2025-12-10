@@ -1,9 +1,14 @@
-import { useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
 import { Stack, Text } from "metabase/ui";
-import type { Transform, WorkspaceId } from "metabase-types/api";
+import { useLazyGetWorkspaceTransformQuery } from "metabase-enterprise/api";
+import type {
+  Transform,
+  WorkspaceId,
+  WorkspaceTransformItem,
+} from "metabase-types/api";
 
 import { useWorkspace } from "../WorkspaceProvider";
 
@@ -14,7 +19,7 @@ type CodeTabProps = {
   activeTransformId?: number;
   transforms: Transform[];
   workspaceId: WorkspaceId;
-  workspaceTransforms: Transform[];
+  workspaceTransforms: WorkspaceTransformItem[];
   onTransformClick: (transform: Transform) => void;
 };
 
@@ -27,23 +32,31 @@ export const CodeTab = ({
 }: CodeTabProps) => {
   const { editedTransforms, hasTransformEdits } = useWorkspace();
 
-  const workspaceTransformsUpstreamIds = useMemo(
-    () => new Set(workspaceTransforms.map((t) => t.upstream_id)),
-    [workspaceTransforms],
-  );
-  const availableTransforms = useMemo(() => {
-    return transforms.filter((transform) => {
-      return !workspaceTransformsUpstreamIds.has(transform.id);
-    });
-  }, [workspaceTransformsUpstreamIds, transforms]);
+  const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
 
-  const handleTransformClick = (transform: Transform) => {
-    const edited = editedTransforms.get(transform.id);
-    const transformToOpen = edited
-      ? ({ ...transform, ...edited } as Transform)
-      : transform;
-    onTransformClick(transformToOpen);
-  };
+  const handleTransformClick = useCallback(
+    (transform: Transform) => {
+      const edited = editedTransforms.get(transform.id);
+      const transformToOpen = edited
+        ? ({ ...transform, ...edited } as Transform)
+        : transform;
+      onTransformClick(transformToOpen);
+    },
+    [editedTransforms, onTransformClick],
+  );
+
+  const handleWorkspaceTransformClick = useCallback(
+    async (workspaceTransform: WorkspaceTransformItem) => {
+      const { data: transform } = await fetchWorkspaceTransform({
+        workspaceId,
+        transformId: workspaceTransform.ref_id,
+      });
+      if (transform) {
+        handleTransformClick(transform);
+      }
+    },
+    [fetchWorkspaceTransform, workspaceId, handleTransformClick],
+  );
 
   return (
     <Stack h="100%" gap={0}>
@@ -62,7 +75,7 @@ export const CodeTab = ({
 
             return (
               <TransformListItem
-                key={transform.id}
+                key={transform.ref_id}
                 name={transform.name}
                 icon="pivot_table"
                 fw={600}
@@ -74,7 +87,7 @@ export const CodeTab = ({
                     workspaceId={workspaceId}
                   />
                 }
-                onClick={() => handleTransformClick(transform)}
+                onClick={() => handleWorkspaceTransformClick(transform)}
               />
             );
           })}
@@ -87,7 +100,7 @@ export const CodeTab = ({
 
       <Stack data-testid="mainland-transforms" py="sm" gap="xs">
         <Text fw={600} mt="sm">{t`Available transforms`}</Text>
-        {availableTransforms.map((transform) => (
+        {transforms.map((transform) => (
           <TransformListItem
             key={transform.id}
             name={transform.name}

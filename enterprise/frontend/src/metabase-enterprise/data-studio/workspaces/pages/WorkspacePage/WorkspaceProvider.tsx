@@ -313,7 +313,7 @@ export const WorkspaceProvider = ({
   );
 
   const addOpenedTransform = useCallback(
-    (transform: Transform) => {
+    (transform: Transform | WorkspaceTransformItem) => {
       const transformTab: TransformTab = {
         id: `transform-${transform.id}`,
         name: transform.name,

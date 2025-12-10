@@ -50,7 +50,11 @@ import {
 } from "metabase-enterprise/metabot/state/reducer";
 import { getMetabot } from "metabase-enterprise/metabot/state/selectors";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  WorkspaceTransformItem,
+} from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
@@ -264,10 +268,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     })();
 
     if (transformIdFromPath != null) {
-      const targetTransform =
-        workspaceTransforms.find(
-          (t: Transform) => t.id === transformIdFromPath,
-        ) || allTransforms.find((t: Transform) => t.id === transformIdFromPath);
+      const targetTransform = allTransforms.find(
+        (t: Transform | WorkspaceTransformItem) =>
+          ("id" in t && t.id === transformIdFromPath) ||
+          ("ref_id" in t && t.ref_id === String(transformIdFromPath)),
+      );
 
       if (targetTransform) {
         addOpenedTransform(targetTransform);

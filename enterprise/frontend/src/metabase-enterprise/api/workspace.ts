@@ -15,6 +15,7 @@ import type {
   WorkspaceLogResponse,
   WorkspaceMergeResponse,
   WorkspaceTablesResponse,
+  WorkspaceTransform,
   WorkspaceTransformItem,
   WorkspaceTransformsResponse,
   WorkspaceUpdateContentsRequest,
@@ -163,6 +164,19 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       transformResponse: (response: WorkspaceTransformsResponse) =>
         response.transforms,
     }),
+    getWorkspaceTransform: builder.query<
+      WorkspaceTransform,
+      { workspaceId: WorkspaceId; transformId: string }
+    >({
+      query: ({ workspaceId, transformId }) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
+      }),
+      providesTags: (_, __, { workspaceId, transformId }) => [
+        // idTag("workspace-transforms", workspaceId),
+        idTag("workspace-transform", transformId),
+      ],
+    }),
     getWorkspaceLog: builder.query<WorkspaceLogResponse, WorkspaceId>({
       query: (id) => ({
         method: "GET",
@@ -189,6 +203,8 @@ export const {
   useGetWorkspacesQuery,
   useGetWorkspaceQuery,
   useGetWorkspaceTransformsQuery,
+  useGetWorkspaceTransformQuery,
+  useLazyGetWorkspaceTransformQuery,
   useCreateWorkspaceMutation,
   useUpdateWorkspaceContentsMutation,
   useCreateWorkspaceTransformMutation,

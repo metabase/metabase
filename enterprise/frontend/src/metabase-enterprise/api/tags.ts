@@ -44,6 +44,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-job-via-tag",
   "transform-run",
   "workspace-transforms",
+  "workspace-transform",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
