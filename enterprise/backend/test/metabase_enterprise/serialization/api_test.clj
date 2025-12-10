@@ -72,10 +72,10 @@
       m)))
 
 (defn extract-and-sanitize-exception-map [log]
-  (->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
-       second
-       read-string
-       (walk/postwalk #(-> % (sanitize-key :id) (sanitize-key :entity_id)))))
+  (some->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
+           second
+           read-string
+           (walk/postwalk #(-> % (sanitize-key :id) (sanitize-key :entity_id)))))
 
 (deftest export-test
   (testing "Serialization API export"
