@@ -6,6 +6,8 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
+  ListBrokenNodesRequest,
+  ListBrokenNodesResponse,
   ListNodeDependentsRequest,
   ListUnreferencedNodesRequest,
   ListUnreferencedNodesResponse,
@@ -15,7 +17,6 @@ import { EnterpriseApi } from "./api";
 import {
   provideDependencyGraphTags,
   provideDependencyNodeListTags,
-  provideUnreferencedNodesTags,
 } from "./tags";
 
 export const dependencyApi = EnterpriseApi.injectEndpoints({
@@ -43,6 +44,18 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       providesTags: (nodes) =>
         nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
+    listBrokenNodes: builder.query<
+      ListBrokenNodesResponse,
+      ListBrokenNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/broken-items",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideDependencyNodeListTags(response.data) : [],
+    }),
     listUnreferencedNodes: builder.query<
       ListUnreferencedNodesResponse,
       ListUnreferencedNodesRequest
@@ -53,7 +66,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         params,
       }),
       providesTags: (response) =>
-        response ? provideUnreferencedNodesTags(response) : [],
+        response ? provideDependencyNodeListTags(response.data) : [],
     }),
     checkCardDependencies: builder.query<
       CheckDependenciesResponse,
@@ -91,6 +104,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
+  useListBrokenNodesQuery,
   useListUnreferencedNodesQuery,
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,

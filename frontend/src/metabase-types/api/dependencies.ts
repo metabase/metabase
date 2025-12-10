@@ -236,6 +236,25 @@ export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type DependencySortDirection =
   (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
 
+export type ListBrokenNodesRequest = {
+  types?: DependencyType[];
+  card_types?: CardType[];
+  query?: string;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
+  limit?: number;
+  offset?: number;
+};
+
+export type ListBrokenNodesResponse = {
+  data: DependencyNode[];
+  sort_column: DependencySortColumn;
+  sort_direction: DependencySortDirection;
+  limit: number;
+  offset: number;
+  total: number;
+};
+
 export type ListUnreferencedNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];

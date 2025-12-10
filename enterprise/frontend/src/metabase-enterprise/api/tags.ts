@@ -16,7 +16,6 @@ import type {
   DependencyGraph,
   DependencyNode,
   DocumentDependencyNode,
-  ListUnreferencedNodesResponse,
   PythonLibrary,
   SandboxDependencyNode,
   SegmentDependencyNode,
@@ -264,6 +263,10 @@ export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
     listTag("table"),
     listTag("transform"),
     listTag("snippet"),
+    listTag("dashboard"),
+    listTag("document"),
+    listTag("sandbox"),
+    listTag("segment"),
     ...nodes.flatMap(provideDependencyNodeTags),
   ];
 }
@@ -305,20 +308,5 @@ export function provideBulkTableSelectionInfoTags({
     ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
     ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
     ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
-  ];
-}
-
-export function provideUnreferencedNodesTags(
-  response: ListUnreferencedNodesResponse,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("card"),
-    listTag("table"),
-    listTag("transform"),
-    listTag("snippet"),
-    listTag("dashboard"),
-    listTag("document"),
-    listTag("sandbox"),
-    ...response.data.flatMap(provideDependencyNodeTags),
   ];
 }
