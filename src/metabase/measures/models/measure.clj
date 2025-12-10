@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.measures.schema :as measures.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -17,7 +18,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (methodical/defmethod t2/table-name :model/Measure [_model] :measure)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :measure] [_original-model _k] :model/Measure)
@@ -106,20 +108,24 @@
       (log/error e "Error upgrading measure definition:" (ex-message e))
       nil)))
 
-(defn- definition-description
+(t2/define-after-select :model/Measure
+  [{:keys [definition] :as measure}]
+  (cond-> measure
+    (some? definition) (assoc :definition (maybe-migrated-measure-definition measure))))
+
+(mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Measure's definition."
-  [{:keys [definition]}]
-  (when (seq definition)
+  [{:keys [definition], :as _measure} :- (ms/InstanceOf :model/Measure)]
+  (when (some? definition)
     (try
       (lib/describe-top-level-key definition :aggregation)
       (catch Throwable e
         (log/error e "Error calculating Measure description:" (ex-message e))
         nil))))
 
-(t2/define-after-select :model/Measure
-  [{:keys [definition] :as measure}]
-  (let [measure (cond-> measure
-                  (some? definition) (assoc :definition (maybe-migrated-measure-definition measure)))]
+(methodical/defmethod t2.hydrate/batched-hydrate [:model/Measure :definition_description]
+  [_model _key measures]
+  (for [measure measures]
     (assoc measure :definition_description (definition-description measure))))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------

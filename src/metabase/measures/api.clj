@@ -50,7 +50,7 @@
   []
   (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
-    (t2/hydrate measures :creator)))
+    (t2/hydrate measures :creator :definition_description)))
 
 (defn- write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate

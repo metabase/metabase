@@ -20,6 +20,7 @@ function parseDependencyType(type: unknown): DependencyType | undefined {
     case "document":
     case "sandbox":
     case "segment":
+    case "measure":
       return type;
     default:
       return undefined;

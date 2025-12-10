@@ -1,18 +1,22 @@
 import type { DatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
+import type { UserInfo } from "./user";
 
 export type MeasureId = number;
 
 export interface Measure {
   id: MeasureId;
   name: string;
-  description: string;
+  description: string | null;
   table_id: TableId;
   table?: Table;
   archived: boolean;
   definition: DatasetQuery;
-  definition_description: string;
+  definition_description?: string;
   revision_message?: string;
+  created_at: string;
+  creator_id: number;
+  creator?: UserInfo;
 }
 
 export interface CreateMeasureRequest {
