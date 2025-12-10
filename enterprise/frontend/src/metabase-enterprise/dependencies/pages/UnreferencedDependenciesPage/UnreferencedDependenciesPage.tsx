@@ -11,17 +11,18 @@ import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
 
-import { UnreferencedItemsTable } from "./UnreferencedDependenciesTable";
 import type {
-  UnreferencedDependenciesRawParams,
-  UnreferencedDependenciesSortOptions,
-} from "./types";
+  DependencyListRawParams,
+  DependencyListSortOptions,
+} from "../../types";
+
+import { UnreferencedItemsTable } from "./UnreferencedDependenciesTable";
 import { getSearchQuery, parseRawParams } from "./utils";
 
 const PAGE_SIZE = 25;
 
 interface UnreferencedDependenciesPageProps {
-  location?: Location<UnreferencedDependenciesRawParams>;
+  location?: Location<DependencyListRawParams>;
 }
 
 export function UnreferencedDependenciesPage({
@@ -74,10 +75,10 @@ export function UnreferencedDependenciesPage({
   );
 
   const handleSortChange = useCallback(
-    (sortOptions: UnreferencedDependenciesSortOptions) => {
+    (sortOptions: DependencyListSortOptions) => {
       dispatch(
         push(
-          Urls.dataStudioTasksUnreferenced({
+          Urls.dataStudioUnreferencedItems({
             ...params,
             sortColumn: sortOptions.column,
             sortDirection: sortOptions.direction,
@@ -92,7 +93,7 @@ export function UnreferencedDependenciesPage({
     (newPageIndex: number) => {
       dispatch(
         push(
-          Urls.dataStudioTasksUnreferenced({ ...params, page: newPageIndex }),
+          Urls.dataStudioUnreferencedItems({ ...params, page: newPageIndex }),
         ),
       );
     },

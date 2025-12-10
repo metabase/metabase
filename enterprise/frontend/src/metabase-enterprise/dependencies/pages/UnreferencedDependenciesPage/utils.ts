@@ -1,10 +1,9 @@
 import type * as Urls from "metabase/lib/urls";
+import type { DependencyListRawParams } from "metabase-enterprise/dependencies/types";
 import type {
   DependencySortColumn,
   DependencySortDirection,
 } from "metabase-types/api";
-
-import type { UnreferencedDependenciesRawParams } from "./types";
 
 function parseNumber(number?: string): number | undefined {
   return number != null ? parseInt(number, 10) : undefined;
@@ -34,8 +33,8 @@ function parseSortDirection(
 }
 
 export function parseRawParams(
-  rawParams?: UnreferencedDependenciesRawParams,
-): Urls.UnreferencedItemsParams {
+  rawParams?: DependencyListRawParams,
+): Urls.DependencyListParams {
   return {
     page: parseNumber(rawParams?.page),
     sortColumn: parseSortColumn(rawParams?.["sort-column"]),

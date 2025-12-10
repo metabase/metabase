@@ -144,17 +144,16 @@ export function dataStudioTasks() {
   return `${ROOT_URL}/tasks`;
 }
 
-export type UnreferencedItemsParams = {
+export type DependencyListParams = {
   page?: number;
   sortColumn?: DependencySortColumn;
   sortDirection?: DependencySortDirection;
 };
 
-export function dataStudioTasksUnreferenced({
-  page,
-  sortColumn,
-  sortDirection,
-}: UnreferencedItemsParams) {
+function dataStudioDependencies(
+  baseUrl: string,
+  { page, sortColumn, sortDirection }: DependencyListParams,
+) {
   const searchParams = new URLSearchParams();
   if (page != null) {
     searchParams.set("page", page.toString());
@@ -166,7 +165,10 @@ export function dataStudioTasksUnreferenced({
     searchParams.set("sort-direction", sortDirection);
   }
 
-  const baseUrl = `${dataStudioTasks()}/unreferenced`;
   const queryString = searchParams.toString();
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
+}
+
+export function dataStudioUnreferencedItems(params: DependencyListParams) {
+  return dataStudioDependencies(`${dataStudioTasks()}/unreferenced`, params);
 }

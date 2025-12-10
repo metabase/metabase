@@ -6,7 +6,7 @@ import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-inst
 import type { ColumnOptions } from "metabase/data-grid/types";
 import { Box } from "metabase/ui";
 
-import type { TablePaginationOptions } from "../../types";
+import type { PaginationOptions } from "../../types";
 
 import S from "./DependenciesTable.module.css";
 import type { TableSortOptions } from "./types";
@@ -18,7 +18,7 @@ export type DependenciesTableProps<TData, TColumn extends string> = {
   data: TData[];
   columns: ColumnOptions<TData, unknown, TColumn>[];
   sortOptions?: TableSortOptions<TColumn>;
-  paginationOptions?: TablePaginationOptions;
+  paginationOptions?: PaginationOptions;
   onSortChange?: (sortColumn: TColumn) => void;
   onPageChange?: (pageIndex: number) => void;
 };

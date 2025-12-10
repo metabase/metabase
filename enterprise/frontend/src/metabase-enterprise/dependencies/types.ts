@@ -1,3 +1,10 @@
+import type {
+  CardType,
+  DependencySortColumn as DependencyListSortColumn,
+  DependencySortDirection as DependencyListSortDirection,
+  DependencyType,
+} from "metabase-types/api";
+
 export type NodeId = string;
 
 export type NodeTypeInfo = {
@@ -10,7 +17,7 @@ export type NodeLink = {
   url: string;
 };
 
-export type TablePaginationOptions = {
+export type PaginationOptions = {
   pageIndex: number;
   pageSize: number;
   total: number;
@@ -19,4 +26,20 @@ export type TablePaginationOptions = {
 export type DependencyGraphRawParams = {
   id?: string;
   type?: string;
+};
+
+export type DependencyListSortOptions = {
+  column: DependencyListSortColumn;
+  direction: DependencyListSortDirection;
+};
+
+export type DependencyListFilterOptions = {
+  types: DependencyType[];
+  cardTypes: CardType[];
+};
+
+export type DependencyListRawParams = {
+  page?: string;
+  "sort-column"?: string;
+  "sort-direction"?: string;
 };
