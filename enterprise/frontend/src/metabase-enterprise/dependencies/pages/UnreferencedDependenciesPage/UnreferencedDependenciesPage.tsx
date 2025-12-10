@@ -16,7 +16,7 @@ import type {
   DependencyListSortOptions,
 } from "../../types";
 
-import { UnreferencedItemsTable } from "./UnreferencedDependenciesTable";
+import { UnreferencedDependenciesTable } from "./UnreferencedDependenciesTable";
 import { getSearchQuery, parseRawParams } from "./utils";
 
 const PAGE_SIZE = 25;
@@ -120,7 +120,7 @@ export function UnreferencedDependenciesPage({
         />
       </Flex>
       <Box flex={1} mih={0}>
-        <UnreferencedItemsTable
+        <UnreferencedDependenciesTable
           items={data.data}
           sortOptions={sortOptions}
           paginationOptions={paginationOptions}

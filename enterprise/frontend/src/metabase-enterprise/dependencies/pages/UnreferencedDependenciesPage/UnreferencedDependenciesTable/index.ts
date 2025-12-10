@@ -1,1 +1,1 @@
-export { UnreferencedDependenciesTable as UnreferencedItemsTable } from "./UnreferencedDependenciesTable";
+export { UnreferencedDependenciesTable } from "./UnreferencedDependenciesTable";
