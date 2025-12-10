@@ -11,7 +11,7 @@
   downstream entities in any order."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.dependencies.native-validation :as deps.native]
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -111,11 +111,8 @@
                   % kvs)))
 
 (defn- get-returned-columns [mp queryable]
-  (let [query (lib/query mp queryable)]
-    (if (lib/native-only-query? query)
-      (deps.native/native-result-metadata (:engine (lib.metadata/database mp))
-                                          query)
-      (lib/returned-columns query))))
+  (deps.analysis/get-returned-columns (:engine (lib.metadata/database mp))
+                                      (lib/query mp queryable)))
 
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
