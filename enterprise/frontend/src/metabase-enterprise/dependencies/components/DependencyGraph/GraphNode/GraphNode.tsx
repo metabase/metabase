@@ -19,7 +19,12 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeIcon, getNodeLabel, getNodeTypeInfo } from "../../../utils";
+import {
+  getDependencyGroupType,
+  getDependencyGroupTypeInfo,
+  getNodeIcon,
+  getNodeLabel,
+} from "../../../utils";
 import { GraphContext } from "../GraphContext";
 import type { GraphSelection, NodeType } from "../types";
 import { isSameNode } from "../utils";
@@ -39,7 +44,7 @@ export const GraphNode = memo(function ItemNode({
 }: GraphNodeProps) {
   const { selection, setSelection } = useContext(GraphContext);
   const label = getNodeLabel(node);
-  const typeInfo = getNodeTypeInfo(node);
+  const typeInfo = getDependencyGroupTypeInfo(getDependencyGroupType(node));
   const groups = getDependentGroups(node);
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });

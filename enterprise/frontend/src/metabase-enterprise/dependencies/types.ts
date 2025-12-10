@@ -6,7 +6,7 @@ import type {
 
 export type NodeId = string;
 
-export type NodeTypeInfo = {
+export type DependencyGroupTypeInfo = {
   label: string;
   color: string;
 };

@@ -13,7 +13,7 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { NodeId, NodeLink, NodeTypeInfo } from "./types";
+import type { DependencyGroupTypeInfo, NodeId, NodeLink } from "./types";
 
 export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${id}-${type}`;
@@ -224,9 +224,9 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
 export function getNodeLastEditInfo(node: DependencyNode): LastEditInfo | null {
   switch (node.type) {
     case "card":
+    case "dashboard":
       return node.data["last-edit-info"] ?? null;
     case "table":
-    case "dashboard":
     case "document":
     case "segment":
     case "transform":
@@ -280,18 +280,39 @@ export function getDependencyType(
   }
 }
 
-export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
+export function getDependencyGroupType(
+  node: DependencyNode,
+): DependencyGroupType {
   switch (node.type) {
     case "card":
-      switch (node.data.type) {
-        case "question":
-          return { label: t`Question`, color: "text-secondary" };
-        case "model":
-          return { label: t`Model`, color: "brand" };
-        case "metric":
-          return { label: t`Metric`, color: "summarize" };
-      }
-      break;
+      return node.data.type;
+    case "table":
+      return "table";
+    case "transform":
+      return "transform";
+    case "dashboard":
+      return "dashboard";
+    case "document":
+      return "document";
+    case "sandbox":
+      return "sandbox";
+    case "segment":
+      return "segment";
+    case "snippet":
+      return "snippet";
+  }
+}
+
+export function getDependencyGroupTypeInfo(
+  groupType: DependencyGroupType,
+): DependencyGroupTypeInfo {
+  switch (groupType) {
+    case "question":
+      return { label: t`Question`, color: "text-secondary" };
+    case "model":
+      return { label: t`Model`, color: "brand" };
+    case "metric":
+      return { label: t`Metric`, color: "summarize" };
     case "table":
       return { label: t`Table`, color: "brand" };
     case "transform":

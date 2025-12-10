@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Checkbox, Stack } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
 
-import { getDependencyGroupOptions } from "./utils";
+import { getDependencyGroupTypeInfo } from "../../../../utils";
 
 type TypeFilterPickerProps = {
   groupTypes: DependencyGroupType[];
@@ -18,7 +18,11 @@ export function TypeFilterPicker({
   onChange,
 }: TypeFilterPickerProps) {
   const groupOptions = useMemo(
-    () => getDependencyGroupOptions(availableGroupTypes),
+    () =>
+      availableGroupTypes.map((groupType) => ({
+        value: groupType,
+        label: getDependencyGroupTypeInfo(groupType).label,
+      })),
     [availableGroupTypes],
   );
 
