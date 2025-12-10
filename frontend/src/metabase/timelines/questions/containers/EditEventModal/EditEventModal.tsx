@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import TimelineEvents from "metabase/entities/timeline-events";
-import { useToast } from "metabase/common/hooks/use-toast";
+import { useToast, type ToastArgs } from "metabase/common/hooks/use-toast";
 import { connect } from "metabase/lib/redux";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import type { TimelineEvent } from "metabase-types/api";
@@ -11,7 +11,7 @@ import type { State } from "metabase-types/store";
 interface EditEventModalProps {
   eventId: number;
   onClose?: () => void;
-  sendToast?: (args: any) => void;
+  sendToast?: (args: ToastArgs) => void;
 }
 
 const timelineEventProps = {

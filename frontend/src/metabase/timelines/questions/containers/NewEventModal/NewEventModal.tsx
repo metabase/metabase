@@ -4,7 +4,7 @@ import _ from "underscore";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import TimelineEvents from "metabase/entities/timeline-events";
 import Timelines from "metabase/entities/timelines";
-import { useToast } from "metabase/common/hooks/use-toast";
+import { useToast, type ToastArgs } from "metabase/common/hooks/use-toast";
 import { connect } from "metabase/lib/redux";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import type { Collection, TimelineEvent } from "metabase-types/api";
@@ -14,7 +14,7 @@ interface NewEventModalProps {
   cardId?: number;
   collectionId?: number;
   onClose?: () => void;
-  sendToast?: (args: any) => void;
+  sendToast?: (args: ToastArgs) => void;
 }
 
 const timelineProps = {
