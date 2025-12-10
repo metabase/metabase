@@ -113,14 +113,6 @@ export function dataStudioTableSegments(tableId: TableId) {
   return `${dataStudioTable(tableId)}/segments`;
 }
 
-export function dataStudioSegment(segmentId: SegmentId) {
-  return `${dataStudioLibrary()}/segments/${segmentId}`;
-}
-
-export function newDataStudioSegment(tableId: TableId) {
-  return `${dataStudioLibrary()}/segments/new?tableId=${tableId}`;
-}
-
 export type NewDataStudioQueryModelParams = {
   collectionId?: CollectionId;
 };
@@ -182,11 +174,11 @@ export function newDataStudioSnippet() {
 }
 
 export function dataStudioSegment(segmentId: SegmentId) {
-  return `${dataStudioModeling()}/segments/${segmentId}`;
+  return `${dataStudioLibrary()}/segments/${segmentId}`;
 }
 
 export function newDataStudioSegment(tableId: TableId) {
-  return `${dataStudioModeling()}/segments/new?tableId=${tableId}`;
+  return `${dataStudioLibrary()}/segments/new?tableId=${tableId}`;
 }
 
 export function dataStudioSegmentDependencies(segmentId: SegmentId) {
