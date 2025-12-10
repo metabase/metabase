@@ -79,7 +79,6 @@ export const DataModel = {
     getNameInput: getSegmentEditorNameInput,
     getDescriptionInput: getSegmentEditorDescriptionInput,
     getFilterPlaceholder: getSegmentEditorFilterPlaceholder,
-    getRowCount: getSegmentEditorRowCount,
     getPreviewLink: getSegmentEditorPreviewLink,
     getSaveButton: getSegmentEditorSaveButton,
     getCancelButton: getSegmentEditorCancelButton,
@@ -452,7 +451,7 @@ function visitDataStudioSegments(options: {
 }
 
 function getSegmentList() {
-  return cy.findByRole("tabpanel");
+  return cy.findByTestId("table-segments-page");
 }
 
 function getSegmentListEmptyState() {
@@ -475,7 +474,7 @@ function getSegmentListItems() {
 
 function getSegmentEditor() {
   return cy.get(
-    "[data-testid='new-segment-page'], [data-testid='edit-segment-page']",
+    "[data-testid='new-segment-page'], [data-testid='segment-detail-page']",
   );
 }
 
@@ -489,10 +488,6 @@ function getSegmentEditorDescriptionInput() {
 
 function getSegmentEditorFilterPlaceholder() {
   return getSegmentEditor().findByText("Add filters to narrow your answer");
-}
-
-function getSegmentEditorRowCount() {
-  return getSegmentEditor().findByText(/\d+ rows/);
 }
 
 function getSegmentEditorPreviewLink() {
@@ -512,19 +507,19 @@ function getSegmentEditorActionsButton() {
 }
 
 function getSegmentEditorBreadcrumb(tableName: string) {
-  return getSegmentEditor().findByText(`${tableName} segments`);
+  return cy.findByText(tableName);
 }
 
 function getSegmentEditorDefinitionTab() {
-  return getSegmentEditor().findByRole("tab", { name: /Definition/i });
+  return cy.findByTestId("segment-pane-header").findByText("Definition");
 }
 
 function getSegmentEditorRevisionHistoryTab() {
-  return getSegmentEditor().findByRole("tab", { name: /Revision history/i });
+  return cy.findByTestId("segment-pane-header").findByText("Revision history");
 }
 
 function getSegmentEditorDependenciesTab() {
-  return getSegmentEditor().findByRole("tab", { name: /Dependencies/i });
+  return cy.findByTestId("segment-pane-header").findByText("Dependencies");
 }
 
 function visitPublishedTableSegments(tableId: TableId) {

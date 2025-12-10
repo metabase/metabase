@@ -102,8 +102,10 @@ describe("scenarios > data studio > modeling > tables > segments", () => {
         cy.button("Add filter").click();
       });
 
-      cy.log("verify row count and save");
-      SegmentEditor.getRowCount().should("be.visible");
+      cy.log("verify filter was added and save");
+      SegmentEditor.get()
+        .findByText(/Total is greater than 100/i)
+        .should("exist");
       SegmentEditor.getSaveButton().click();
       cy.wait("@createSegment");
 

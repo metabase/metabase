@@ -15,7 +15,7 @@ type SegmentListProps = {
 
 export function SegmentList({ segments, tableId }: SegmentListProps) {
   return (
-    <Stack gap="md">
+    <Stack gap="md" data-testid="table-segments-page">
       <Group gap="md" justify="flex-start" wrap="nowrap">
         <Button
           component={ForwardRefLink}

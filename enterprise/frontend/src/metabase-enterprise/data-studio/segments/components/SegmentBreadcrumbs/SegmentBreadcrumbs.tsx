@@ -51,7 +51,7 @@ export function PublishedTableSegmentBreadcrumbs({
       )}
 
       <Separator />
-      <BreadcrumbLink to={Urls.dataStudioTable(table.id)}>
+      <BreadcrumbLink to={Urls.dataStudioTableSegments(table.id)}>
         <Ellipsified>{table.display_name}</Ellipsified>
       </BreadcrumbLink>
 
@@ -101,6 +101,7 @@ export function DataModelSegmentBreadcrumbs({
           databaseId: table.db_id,
           schemaName: table.schema,
           tableId: table.id,
+          tab: "segments",
         })}
       >
         <Ellipsified>{table.display_name}</Ellipsified>

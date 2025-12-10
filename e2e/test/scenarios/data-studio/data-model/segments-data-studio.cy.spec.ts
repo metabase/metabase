@@ -109,8 +109,10 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.button("Add filter").click();
       });
 
-      cy.log("verify row count preview");
-      SegmentEditor.getRowCount().should("be.visible");
+      cy.log("verify filter was added");
+      SegmentEditor.get()
+        .findByText(/Total is greater than 100/i)
+        .should("exist");
 
       cy.log("save segment");
       SegmentEditor.getSaveButton().click();
@@ -124,7 +126,7 @@ describe("scenarios > data studio > data model > segments", () => {
       verifySegmentInQueryBuilder("Premium Orders");
     });
 
-    it("should show row count when filters are added", () => {
+    it("should add filter and show preview in menu", () => {
       visitDataStudioSegments(PRODUCTS_ID);
 
       SegmentList.getNewSegmentLink().scrollIntoView().click();
@@ -137,7 +139,14 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.button("Add filter").click();
       });
 
-      SegmentEditor.getRowCount().should("be.visible");
+      cy.log("verify filter was added");
+      SegmentEditor.get()
+        .findByText(/Price is less than 50/i)
+        .should("exist");
+
+      cy.log("verify preview is available in menu");
+      SegmentEditor.getActionsButton().click();
+      H.popover().findByText("Preview").should("be.visible");
     });
   });
 
@@ -160,16 +169,20 @@ describe("scenarios > data studio > data model > segments", () => {
         "Test description",
       );
 
-      cy.log("update segment name");
+      cy.log("update segment name (saves immediately on blur/enter)");
       SegmentEditor.get()
         .findByDisplayValue("Test Segment")
         .click()
         .type(" Updated{enter}");
-      SegmentEditor.getSaveButton().click();
       cy.wait("@updateSegment");
 
-      cy.log("verify toast (stays on edit page)");
-      H.undoToast().should("contain.text", "Segment updated");
+      cy.log("verify toast for name update");
+      H.undoToast().should("contain.text", "Segment name updated");
+
+      cy.log("update description");
+      SegmentEditor.getDescriptionInput().clear().type("Updated description");
+      SegmentEditor.getSaveButton().click();
+      cy.wait("@updateSegment");
 
       cy.log("verify updated segment in query builder");
       verifySegmentInQueryBuilder("Test Segment Updated");
@@ -261,8 +274,10 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.button("Add filter").click();
       });
 
-      cy.log("verify row count and save");
-      SegmentEditor.getRowCount().should("be.visible");
+      cy.log("verify filter was added and save");
+      SegmentEditor.get()
+        .findByText(/Product → Category is Widget/i)
+        .should("exist");
       SegmentEditor.getSaveButton().click();
       cy.wait("@createSegment");
 
@@ -351,8 +366,10 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.button("Add filter").click();
       });
 
-      cy.log("save segment");
-      SegmentEditor.getRowCount().should("be.visible");
+      cy.log("verify filter was added and save segment");
+      SegmentEditor.get()
+        .findByText(/Product → Category is Gadget/i)
+        .should("exist");
       SegmentEditor.getSaveButton().click();
       cy.wait("@createSegment");
 

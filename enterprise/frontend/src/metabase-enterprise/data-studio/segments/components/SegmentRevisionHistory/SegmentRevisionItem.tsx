@@ -2,10 +2,9 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { t } from "ttag";
 
-import UserAvatar from "metabase/common/components/UserAvatar";
 import { useSelector } from "metabase/lib/redux";
 import { getUserId } from "metabase/selectors/user";
-import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
+import { Avatar, Box, Flex, Stack, Text, Timeline } from "metabase/ui";
 import type { Revision, TableId } from "metabase-types/api";
 
 import { SegmentRevisionDiff } from "./SegmentRevisionDiff";
@@ -34,7 +33,9 @@ export function SegmentRevisionItem({
   const diffKeys = getDiffKeys(revision);
 
   return (
-    <Timeline.Item bullet={<UserAvatar user={revision.user} size="md" />}>
+    <Timeline.Item
+      bullet={<Avatar name={revision.user.common_name} size="md" />}
+    >
       <Stack gap="sm" ml="md">
         <Flex justify="space-between" align="flex-start" gap="md">
           <Stack gap={2}>
