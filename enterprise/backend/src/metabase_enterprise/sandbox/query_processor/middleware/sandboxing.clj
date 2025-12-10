@@ -292,7 +292,6 @@
    path                             :- ::lib.walk/path
    {:keys [source-table] :as stage} :- ::lib.schema/stage
    sandbox                          :- ::sandbox]
-  (println "(pr-str path):" (pr-str path)) ; NOCOMMIT
   (let [sandbox-query      (sandbox->query query sandbox)
         sandbox-query      (project-only-columns-from-original-table query sandbox-query source-table)
         new-source-stages  (mapv (fn [stage]
