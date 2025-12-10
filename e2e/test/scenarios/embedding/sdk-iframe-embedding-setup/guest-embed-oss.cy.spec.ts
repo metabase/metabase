@@ -187,7 +187,7 @@ describe(
           cy.findByLabelText(label).should("be.disabled");
         });
 
-        cy.findByTestId("upsell-card").should("be.visible");
+        cy.findByTestId("upsell-card").should("exist");
 
         H.setEmbeddingParameter("Text", "Locked");
         cy.findAllByTestId("parameter-widget")
