@@ -125,7 +125,7 @@ function MetricModal({ card, modalType, onClose }: MetricModalProps) {
   };
 
   const handleArchive = () => {
-    dispatch(push(Urls.dataStudioModeling()));
+    dispatch(push(Urls.dataStudioLibrary()));
   };
 
   const handleUnarchive = () => {

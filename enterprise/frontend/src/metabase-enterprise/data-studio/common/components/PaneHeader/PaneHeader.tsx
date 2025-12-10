@@ -18,6 +18,7 @@ interface PaneHeaderProps extends Omit<GroupProps, "title"> {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
+  breadcrumbs?: ReactNode;
 }
 
 export const PaneHeader = ({
@@ -27,6 +28,7 @@ export const PaneHeader = ({
   menu,
   tabs,
   actions,
+  breadcrumbs,
   ...rest
 }: PaneHeaderProps) => {
   return (
@@ -40,6 +42,11 @@ export const PaneHeader = ({
       {...rest}
     >
       <Stack gap="sm">
+        {breadcrumbs && (
+          <Box mb="lg" mt="sm">
+            {breadcrumbs}
+          </Box>
+        )}
         <Group align="center" gap="xs" wrap="nowrap">
           {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
           {title}
