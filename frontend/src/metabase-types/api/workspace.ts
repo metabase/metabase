@@ -140,22 +140,88 @@ export type WorkspaceTransformRef = {
 export type CreateWorkspaceTransformResponse = Transform;
 
 export type WorkspaceInputTable = {
+  id: number | null;
   db_id: DatabaseId;
   schema: string;
   table: string;
-  table_id: number | null;
+};
+
+export type WorkspaceOutputTableEntry = {
+  id: number | null;
+  db_id: DatabaseId;
+  schema: string;
+  table: string;
 };
 
 export type WorkspaceOutputTable = {
-  db_id: DatabaseId;
-  global: WorkspaceOutputTableRef;
-  isolated: WorkspaceOutputTableRef;
+  external: WorkspaceOutputTableEntry;
+  isolated: WorkspaceOutputTableEntry;
 };
 
 export type WorkspaceTablesResponse = {
   inputs: WorkspaceInputTable[];
   outputs: WorkspaceOutputTable[];
 };
+
+// Graph types for React Flow dependency diagram
+export type WorkspaceGraphNode = {
+  id: string;
+  type?: string;
+  data?: Record<string, unknown>;
+  position?: { x: number; y: number };
+};
+
+export type WorkspaceGraphEdge = {
+  id: string;
+  source: string;
+  target: string;
+  type?: string;
+};
+
+export type WorkspaceGraphResponse = {
+  nodes: WorkspaceGraphNode[];
+  edges: WorkspaceGraphEdge[];
+};
+
+// Problem types for workspace validation
+export type WorkspaceEntityRef =
+  | { "entity-type": "workspace-transform"; "entity-id": string }
+  | { "entity-type": "global-transform"; "entity-id": number };
+
+export type WorkspaceTableRef = {
+  db_id: DatabaseId;
+  schema: string;
+  table: string;
+};
+
+export type WorkspaceProblemMissingInputTable = {
+  type: "missing-input-table";
+  data: {
+    "entity-type": "workspace-transform";
+    "entity-id": string;
+    table: WorkspaceTableRef;
+  };
+};
+
+export type WorkspaceProblemTargetConflict = {
+  type: "target-conflict";
+  data: {
+    table: WorkspaceTableRef;
+    entities: WorkspaceEntityRef[];
+  };
+};
+
+export type WorkspaceProblemCycle = {
+  type: "cycle";
+  data: {
+    path: WorkspaceEntityRef[];
+  };
+};
+
+export type WorkspaceProblem =
+  | WorkspaceProblemMissingInputTable
+  | WorkspaceProblemTargetConflict
+  | WorkspaceProblemCycle;
 
 export type WorkspaceLogEntryId = number;
 

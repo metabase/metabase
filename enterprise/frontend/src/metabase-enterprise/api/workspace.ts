@@ -11,10 +11,12 @@ import type {
   Workspace,
   WorkspaceExecuteRequest,
   WorkspaceExecuteResponse,
+  WorkspaceGraphResponse,
   WorkspaceId,
   WorkspaceListResponse,
   WorkspaceLogResponse,
   WorkspaceMergeResponse,
+  WorkspaceProblem,
   WorkspaceTablesResponse,
   WorkspaceTransform,
   WorkspaceTransformItem,
@@ -170,6 +172,20 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (_, __, id) => [idTag("workspace", id)],
     }),
+    getWorkspaceGraph: builder.query<WorkspaceGraphResponse, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/graph`,
+      }),
+      providesTags: (_, __, id) => [idTag("workspace", id)],
+    }),
+    getWorkspaceProblems: builder.query<WorkspaceProblem[], WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/problem`,
+      }),
+      providesTags: (_, __, id) => [idTag("workspace", id)],
+    }),
     getWorkspaceTransforms: builder.query<
       WorkspaceTransformItem[],
       WorkspaceId
@@ -299,6 +315,8 @@ export const {
   useValidateTableNameMutation,
   useUpdateWorkspaceMutation,
   useGetWorkspaceTablesQuery,
+  useGetWorkspaceGraphQuery,
+  useGetWorkspaceProblemsQuery,
   useGetWorkspaceLogQuery,
   useExecuteWorkspaceMutation,
 } = workspaceApi;
