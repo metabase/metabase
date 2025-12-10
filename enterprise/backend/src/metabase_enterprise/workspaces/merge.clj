@@ -6,10 +6,10 @@
    [toucan2.core :as t2]))
 
 ;; TODO we need to implement the route that calls this, see API reference.
+;; TODO (crisptrutski 2025-12-10): When there are more entity types support, this should update those too.
 (defn merge-transform!
   "Make the given transform in the Changeset public, i.e. create or update the relevant model/Transform entities.
-   This should also clear it out from the Changset, as it no longer has any changes.
-   When there are more entity types support, this should update those too."
+   This should also clear it out from the Changset, as it no longer has any changes."
   [{:keys [ref_id] :as ws-transform}]
   ;; Problems this may run into:
   ;; It will recalculate and validate the dag greedily as it inserts each items, and this might fail of temporary conflicts.
