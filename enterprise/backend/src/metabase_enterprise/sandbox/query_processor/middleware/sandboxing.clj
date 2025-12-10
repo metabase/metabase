@@ -284,13 +284,15 @@
                   (merge native-col table-col))))
         original-table-cols))
 
-(mu/defn-  apply-sandbox-to-stage :- [:and
-                                      [:sequential {:min 1} ::lib.schema/stage]
-                                      ::lib.schema.util/unique-uuids]
+(mu/defn- apply-sandbox-to-stage :- [:and
+                                     [:sequential {:min 1} ::lib.schema/stage]
+                                     ::lib.schema.util/unique-uuids]
   "Apply a Sandbox to a `stage`, returning a vector of replacement stages."
   [query                            :- ::lib.schema/query
+   path                             :- ::lib.walk/path
    {:keys [source-table] :as stage} :- ::lib.schema/stage
    sandbox                          :- ::sandbox]
+  (println "(pr-str path):" (pr-str path)) ; NOCOMMIT
   (let [sandbox-query      (sandbox->query query sandbox)
         sandbox-query      (project-only-columns-from-original-table query sandbox-query source-table)
         new-source-stages  (mapv (fn [stage]
@@ -305,11 +307,17 @@
                                                    (merge-original-table-metadata
                                                     cols
                                                     (lib/returned-columns query (lib.metadata/table query source-table)))))
-        ;; don't add a new additional stage if it only contains `:fields` and the last of the `new-source-stages`
-        ;; already contains `:fields` anyway... at best this is completely unnecessary and at worst it can cause query
-        ;; failures because the stuff in `:fields` can be wrong if some of those fields have been filtered out by the
+        is-stage-in-join?  (->> path          ; [:stages 0 :joins 0 :stages 0]
+                                (drop-last 3) ; [:stages 0 :joins]
+                                last
+                                (= :joins))
+        ;; don't add a new additional stage IF WE'RE RECURSING INTO A JOIN and it only contains `:fields` and the last
+        ;; of the `new-source-stages` already contains `:fields` anyway... the `:fields` for the join will just
+        ;; basically be `SELECT *`, so at best this is completely unnecessary and at worst it can cause query failures
+        ;; because the stuff in `:fields` can be wrong if some of those fields have been filtered out by the
         ;; sandbox (see #66781)
-        skip-final-stage?  (and (:fields (last new-source-stages))
+        skip-final-stage?  (and is-stage-in-join?
+                                (:fields (last new-source-stages))
                                 (empty? (->> (keys stage)
                                              (remove #{:source-table :fields})
                                              (remove qualified-keyword?))))
@@ -329,7 +337,7 @@
   ;; `::sandbox?` key
   (lib.walk/walk-stages
    query
-   (fn [query _path stage]
+   (fn [query path stage]
      (when (and (= (:lib/type stage) :mbql.stage/mbql)
                 (:source-table stage)
                 (not (::sandbox? stage)))
@@ -339,7 +347,7 @@
          (mapv (fn [stage]
                  (cond-> stage
                    (:source-table stage) (assoc ::sandbox? true)))
-               (apply-sandbox-to-stage query stage sandbox)))))))
+               (apply-sandbox-to-stage query path stage sandbox)))))))
 
 (mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
   [query :- ::lib.schema/query]
