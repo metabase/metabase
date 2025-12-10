@@ -13,7 +13,7 @@ import type { State } from "metabase-types/store";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
-import { ModelingLandingPage } from "./app/pages/ModelingSection/";
+import { LibrarySectionLayout } from "./app/pages/LibrarySectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
@@ -49,8 +49,8 @@ export function getDataStudioRoutes(
           </Route>
         )}
         {getDataStudioGlossaryRoutes()}
-        <Route path="modeling">
-          <IndexRoute component={ModelingLandingPage} />
+        <Route path="library">
+          <IndexRoute component={LibrarySectionLayout} />
           {getDataStudioTableRoutes()}
           {getDataStudioMetricRoutes()}
           {getDataStudioSegmentRoutes()}
@@ -73,5 +73,5 @@ function getIndexPath(state: State) {
   if (PLUGIN_TRANSFORMS.canAccessTransforms(state)) {
     return Urls.transformList();
   }
-  return Urls.dataStudioModeling();
+  return Urls.dataStudioLibrary();
 }

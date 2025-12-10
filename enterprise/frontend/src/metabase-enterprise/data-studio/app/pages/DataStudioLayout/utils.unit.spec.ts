@@ -10,9 +10,9 @@ describe("getCurrentTab", () => {
     ${"/data-studio/transforms/jobs/new"}         | ${"jobs"}
     ${"/data-studio/dependencies"}                | ${"dependencies"}
     ${"/data-studio/dependencies?id=1&type=card"} | ${"dependencies"}
-    ${"/data-studio/modeling"}                    | ${"modeling"}
-    ${"/data-studio/modeling/collections/123"}    | ${"modeling"}
-    ${"/data-studio/modeling/metrics/456"}        | ${"modeling"}
+    ${"/data-studio/library"}                     | ${"library"}
+    ${"/data-studio/library/collections/123"}     | ${"library"}
+    ${"/data-studio/library/metrics/456"}         | ${"library"}
     ${"/data-studio/transforms/runs"}             | ${"runs"}
     ${"/data-studio/transforms/runs?page=2"}      | ${"runs"}
     ${"/data-studio/transforms"}                  | ${"transforms"}

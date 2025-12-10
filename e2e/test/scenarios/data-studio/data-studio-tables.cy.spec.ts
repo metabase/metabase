@@ -4,7 +4,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > data studio > modeling > tables", () => {
+describe("scenarios > data studio > library > tables", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -45,7 +45,7 @@ describe("scenarios > data studio > modeling > tables", () => {
       H.DataStudio.Tables.moreMenu().click();
       H.popover().findByText("Unpublish").click();
       H.modal().findByText("Unpublish this table").click();
-      H.DataStudio.Modeling.emptyPage().should("be.visible");
+      H.DataStudio.Library.emptyPage().should("be.visible");
     });
   });
 

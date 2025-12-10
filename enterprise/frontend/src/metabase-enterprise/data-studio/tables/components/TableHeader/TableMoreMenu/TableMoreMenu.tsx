@@ -21,7 +21,7 @@ export function TableMoreMenu({ table }: TableMoreMenuProps) {
 
   const handleUnpublish = () => {
     setModalType(undefined);
-    dispatch(push(Urls.dataStudioModeling()));
+    dispatch(push(Urls.dataStudioLibrary()));
   };
 
   return (

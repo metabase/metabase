@@ -43,7 +43,7 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
           {path?.map((collection, i) => (
             <Link
               key={collection.id}
-              to={Urls.dataStudioModeling({
+              to={Urls.dataStudioLibrary({
                 expandedIds: path.slice(1, i + 1).map((c) => c.id),
               })}
             >

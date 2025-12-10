@@ -1,7 +1,7 @@
 const { H } = cy;
 import { createLibraryWithItems } from "e2e/support/test-library-data";
 
-describe("scenarios > data studio > modeling > metrics", () => {
+describe("scenarios > data studio > library > metrics", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -17,10 +17,10 @@ describe("scenarios > data studio > modeling > metrics", () => {
   });
 
   it("should create a new metric with proper validation and save to collection", () => {
-    visitModelingPage();
+    visitLibraryPage();
 
     cy.log("Create a new metric");
-    H.DataStudio.Modeling.newButton().click();
+    H.DataStudio.Library.newButton().click();
     H.popover().findByText("Metric").click();
 
     H.DataStudio.Metrics.queryEditor().should("be.visible");
@@ -53,7 +53,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.wait("@createCard");
 
     cy.log("Verify metric overview page");
-    cy.url().should("match", /\/data-studio\/modeling\/metrics\/\d+$/);
+    cy.url().should("match", /\/data-studio\/library\/metrics\/\d+$/);
 
     H.DataStudio.Metrics.overviewPage().within(() => {
       cy.findAllByText("Total Revenue").should("have.length", 2); // breadcrumbs + header
@@ -93,8 +93,8 @@ describe("scenarios > data studio > modeling > metrics", () => {
   });
 
   it("should edit metric definition and save changes", function () {
-    cy.log("Navigate to Data Studio Modeling");
-    cy.visit("/data-studio/modeling");
+    cy.log("Navigate to Data Studio Library");
+    cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
@@ -118,15 +118,15 @@ describe("scenarios > data studio > modeling > metrics", () => {
       .should("be.visible");
 
     cy.log("Verify updated name appears in collection view");
-    cy.visit("/data-studio/modeling");
-    H.DataStudio.Modeling.metricItem("Updated Orders Metric").should(
+    cy.visit("/data-studio/library");
+    H.DataStudio.Library.metricItem("Updated Orders Metric").should(
       "be.visible",
     );
   });
 
   it("should cancel editing and revert changes", () => {
-    cy.log("Navigate to Data Studio Modeling");
-    cy.visit("/data-studio/modeling");
+    cy.log("Navigate to Data Studio Library");
+    cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
@@ -148,8 +148,8 @@ describe("scenarios > data studio > modeling > metrics", () => {
   });
 
   it("should show unsaved changes warning when navigating away", () => {
-    cy.log("Navigate to Data Studio Modeling");
-    cy.visit("/data-studio/modeling");
+    cy.log("Navigate to Data Studio Library");
+    cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
@@ -177,8 +177,8 @@ describe("scenarios > data studio > modeling > metrics", () => {
   });
 
   it("should archive and restore a metric", () => {
-    cy.log("Navigate to Data Studio Modeling");
-    cy.visit("/data-studio/modeling");
+    cy.log("Navigate to Data Studio Library");
+    cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
@@ -197,11 +197,11 @@ describe("scenarios > data studio > modeling > metrics", () => {
 
     cy.wait("@updateCard");
 
-    cy.log("Verify redirected to modeling page");
-    cy.url().should("include", "/data-studio/modeling");
+    cy.log("Verify redirected to library page");
+    cy.url().should("include", "/data-studio/library");
 
     cy.log("Verify metric is removed from collection view");
-    cy.visit("/data-studio/modeling");
+    cy.visit("/data-studio/library");
     cy.findByRole("table")
       .findByText("Trusted Orders Metric")
       .should("not.exist");
@@ -221,15 +221,15 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.wait("@updateCard");
 
     cy.log("Verify metric is restored in collection view");
-    cy.visit("/data-studio/modeling");
+    cy.visit("/data-studio/library");
     cy.findByRole("table")
       .findByText("Trusted Orders Metric")
       .should("be.visible");
   });
 
   it("should view metric in question view via more menu", () => {
-    cy.log("Navigate to Data Studio Modeling");
-    cy.visit("/data-studio/modeling");
+    cy.log("Navigate to Data Studio Library");
+    cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
@@ -250,8 +250,8 @@ describe("scenarios > data studio > modeling > metrics", () => {
   });
 
   it("should duplicate metric via more menu", () => {
-    cy.log("Navigate to Data Studio Modeling");
-    cy.visit("/data-studio/modeling");
+    cy.log("Navigate to Data Studio Library");
+    cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
@@ -301,8 +301,8 @@ describe("scenarios > data studio > modeling > metrics", () => {
   });
 
   it("should move metric to different collection via more menu", () => {
-    cy.log("Navigate to Data Studio Modeling");
-    cy.visit("/data-studio/modeling");
+    cy.log("Navigate to Data Studio Library");
+    cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
@@ -326,14 +326,14 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.findByTestId("move-card-toast").findByText("First collection").click();
 
     cy.log("Verify metric is no longer in Metrics collection");
-    cy.visit("/data-studio/modeling");
+    cy.visit("/data-studio/library");
     cy.findByRole("table")
       .findByText("Trusted Orders Metric")
       .should("not.exist");
   });
 });
 
-function visitModelingPage() {
-  cy.visit("/data-studio/modeling");
-  H.DataStudio.Modeling.modelingPage().should("be.visible");
+function visitLibraryPage() {
+  cy.visit("/data-studio/library");
+  H.DataStudio.Library.libraryPage().should("be.visible");
 }

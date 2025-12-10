@@ -38,8 +38,8 @@ import {
 import { type TreeItem, isCollection } from "./types";
 import { getWritableCollection } from "./utils";
 
-export function ModelingLandingPage() {
-  usePageTitle(t`Modeling`);
+export function LibrarySectionLayout() {
+  usePageTitle(t`Library`);
   const dispatch = useDispatch();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,
@@ -118,7 +118,7 @@ export function ModelingLandingPage() {
           pt="4rem"
           bg="background-light"
           mih="100%"
-          data-testid="modeling-page"
+          data-testid="library-page"
         >
           <Flex gap="0.5rem">
             <TextInput

@@ -6,7 +6,7 @@ import {
   createLibraryWithTable,
 } from "e2e/support/test-library-data";
 
-describe("scenarios > data studio > modeling > library", () => {
+describe("scenarios > data studio > library", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -18,7 +18,7 @@ describe("scenarios > data studio > modeling > library", () => {
     cy.intercept("POST", "/api/ee/library").as("createLibrary");
     cy.intercept("GET", "/api/collection/tree*").as("getCollectionTree");
 
-    cy.log("Navigate to Data Studio Modeling");
+    cy.log("Navigate to Data Studio Library");
     H.DataModel.visitDataStudio();
     H.DataStudio.nav().findByLabelText("Library").click();
 
@@ -42,19 +42,19 @@ describe("scenarios > data studio > modeling > library", () => {
     });
 
     cy.log("Verify empty state shows on library root");
-    H.DataStudio.Modeling.emptyPage().should("be.visible");
+    H.DataStudio.Library.emptyPage().should("be.visible");
 
-    H.DataStudio.Modeling.modelingPage().button(/New/).click();
+    H.DataStudio.Library.libraryPage().button(/New/).click();
     H.popover().findByText("New snippet folder").click();
     H.modal().within(() => {
       cy.findByLabelText("Give your folder a name").type("My Snippets");
       cy.button("Create").click();
     });
 
-    cy.log("Verify library collections appear in the modeling table");
-    H.DataStudio.Modeling.collectionItem("Data").should("be.visible");
-    H.DataStudio.Modeling.collectionItem("Metrics").should("be.visible");
-    H.DataStudio.Modeling.collectionItem("SQL snippets").should("be.visible");
+    cy.log("Verify library collections appear in the library table");
+    H.DataStudio.Library.collectionItem("Data").should("be.visible");
+    H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
+    H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
   });
 
   it("should be available in the data picker", () => {
