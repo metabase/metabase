@@ -35,7 +35,6 @@ import {
   StyledRecentsList,
 } from "./LinkViz.styled";
 import { settings } from "./LinkVizSettings";
-import type { WrappedUnrestrictedLinkEntity } from "./types";
 import { isUrlString } from "./utils";
 
 const MODELS_TO_SEARCH: SearchModel[] = [
@@ -124,7 +123,7 @@ function LinkVizInner({
       );
     }
 
-    const wrappedEntity: WrappedUnrestrictedLinkEntity = Search.wrapEntity({
+    const wrappedEntity: UnrestrictedLinkEntity = Search.wrapEntity({
       ...entity,
       database_id: entity.db_id ?? entity.database_id,
       table_id: entity.model === "table" ? entity.id : undefined,

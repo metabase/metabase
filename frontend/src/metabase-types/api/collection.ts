@@ -1,5 +1,5 @@
 import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconName } from "metabase/ui";
 import type {
   BaseEntityId,
   CollectionEssentials,
@@ -141,8 +141,6 @@ export interface CollectionItem {
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  getIcon: () => IconProps;
-  getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (
     isArchived: boolean,
     opts?: Record<string, unknown>,
