@@ -10,12 +10,12 @@
   (= (get-in request [:headers "x-metabase-client"]) embedding-sdk-client))
 
 (defn has-embedded-analytics-js-header?
-  "Check if the client has indicated it is from Embedded Analytics JS"
+  "Check if the client has indicated it is from Modular embedding"
   [request]
   (= (get-in request [:headers "x-metabase-client"]) embedded-analytics-js-client))
 
 (defn is-modular-embedding-request?
-  "Check if the request is either from Embedding SDK for React or from Embedded Analytics JS"
+  "Check if the request is either from Embedding SDK for React or from Modular embedding"
   [request]
   (or (has-react-sdk-header? request)
       (has-embedded-analytics-js-header? request)))

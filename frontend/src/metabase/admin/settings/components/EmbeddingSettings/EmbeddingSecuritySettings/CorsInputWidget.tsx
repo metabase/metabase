@@ -25,7 +25,7 @@ export const CorsInputWidget = () => {
       description={
         <Group align="center" gap="sm">
           <Text c="text-medium" fz="md">
-            {jt`Add the website domains where you want to allow Embedded Analytics JS and SDK. SDK using API keys can only run on localhost.. ${(
+            {jt`Add the website domains where you want to allow Modular embedding and Modular embedding SDK. SDK using API keys can only run on localhost.. ${(
               <HoverCard key="embedding-cors-hint" position="bottom">
                 <HoverCard.Target>
                   <Icon

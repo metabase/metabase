@@ -252,7 +252,7 @@
 
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
-  "Should we enable Embedded Analytics JS?"
+  "Should we enable Modular embedding?"
   :embedding-simple)
 
 (define-premium-feature ^{:added "0.57.0"} enable-embedding-hub?

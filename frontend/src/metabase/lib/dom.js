@@ -363,7 +363,7 @@ export function shouldOpenInBlankWindow(
   } = {},
 ) {
   if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + EAJS)
+    // always open in new window in modular embedding (react SDK + Modular embedding)
     return true;
   }
   const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
@@ -443,7 +443,7 @@ export function isSameOrSiteUrlOrigin(url) {
 
 export function getUrlTarget(url) {
   if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + EAJS)
+    // always open in new window in modular embedding (react SDK + Modular embedding)
     return "_blank";
   }
   return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
