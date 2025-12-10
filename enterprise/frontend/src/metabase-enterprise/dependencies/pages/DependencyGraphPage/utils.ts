@@ -1,5 +1,7 @@
 import * as Urls from "metabase/lib/urls";
-import type { DependencyEntry, DependencyType } from "metabase-types/api";
+import type { DependencyEntry } from "metabase-types/api";
+
+import { parseDependencyType } from "../../utils";
 
 export function parseDependencyEntry(
   rawId?: string,
@@ -8,20 +10,4 @@ export function parseDependencyEntry(
   const id = Urls.extractEntityId(rawId);
   const type = parseDependencyType(rawType);
   return id != null && type != null ? { id, type } : undefined;
-}
-
-function parseDependencyType(type: unknown): DependencyType | undefined {
-  switch (type) {
-    case "card":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "dashboard":
-    case "document":
-    case "sandbox":
-    case "segment":
-      return type;
-    default:
-      return undefined;
-  }
 }

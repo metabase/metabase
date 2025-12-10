@@ -166,7 +166,6 @@ export function newDataStudioSnippet() {
   return `${dataStudioModeling()}/snippets/new`;
 }
 
-
 export function dataStudioSegment(segmentId: SegmentId) {
   return `${dataStudioModeling()}/segments/${segmentId}`;
 }
@@ -194,17 +193,34 @@ export type DependencyListParams = {
 
 function dataStudioDependencies(
   baseUrl: string,
-  { page, sortColumn, sortDirection }: DependencyListParams,
+  {
+    query,
+    types,
+    cardTypes,
+    sortColumn,
+    sortDirection,
+    page,
+  }: DependencyListParams,
 ) {
   const searchParams = new URLSearchParams();
-  if (page != null) {
-    searchParams.set("page", page.toString());
+
+  if (query != null) {
+    searchParams.set("query", query);
+  }
+  if (types != null) {
+    types.forEach((type) => searchParams.append("types", type));
+  }
+  if (cardTypes != null) {
+    cardTypes.forEach((cardType) => searchParams.append("cardTypes", cardType));
   }
   if (sortColumn != null) {
-    searchParams.set("sort-column", sortColumn);
+    searchParams.set("sortColumn", sortColumn);
   }
   if (sortDirection != null) {
-    searchParams.set("sort-direction", sortDirection);
+    searchParams.set("sortDirection", sortDirection);
+  }
+  if (page != null) {
+    searchParams.set("page", page.toString());
   }
 
   const queryString = searchParams.toString();

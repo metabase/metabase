@@ -10,17 +10,24 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
-import { DependencyFilterPicker } from "metabase-enterprise/dependencies/components/DependencyFilterPicker";
 
+import { DependencyFilterPicker } from "../../components/DependencyFilterPicker";
 import type {
+  DependencyListFilterOptions,
   DependencyListRawParams,
   DependencyListSortOptions,
 } from "../../types";
 
 import { UnreferencedDependencyList } from "./UnreferencedDependencyList";
+import {
+  AVAILABLE_GROUP_TYPES,
+  DEFAULT_CARD_TYPES,
+  DEFAULT_SORT_COLUMN,
+  DEFAULT_SORT_DIRECTION,
+  DEFAULT_TYPES,
+  PAGE_SIZE,
+} from "./constants";
 import { getSearchQuery, parseRawParams } from "./utils";
-
-const PAGE_SIZE = 25;
 
 interface UnreferencedDependencyListPageProps {
   location?: Location<DependencyListRawParams>;
@@ -33,7 +40,13 @@ export function UnreferencedDependencyListPage({
     () => parseRawParams(location?.query),
     [location?.query],
   );
-  const { page = 0, sortColumn = "name", sortDirection = "asc" } = params;
+  const {
+    types = DEFAULT_TYPES,
+    cardTypes = DEFAULT_CARD_TYPES,
+    sortColumn = DEFAULT_SORT_COLUMN,
+    sortDirection = DEFAULT_SORT_DIRECTION,
+    page = 0,
+  } = params;
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery] = useDebouncedValue(
     getSearchQuery(searchValue),
@@ -42,14 +55,22 @@ export function UnreferencedDependencyListPage({
   const dispatch = useDispatch();
 
   const { data, isLoading, error } = useListUnreferencedNodesQuery({
-    types: ["table", "card", "snippet"],
-    card_types: ["question", "model", "metric"],
+    types,
+    card_types: cardTypes,
     query: searchQuery,
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
     sort_column: sortColumn,
     sort_direction: sortDirection,
   });
+
+  const filterOptions = useMemo(
+    () => ({
+      types,
+      cardTypes,
+    }),
+    [types, cardTypes],
+  );
 
   const sortOptions = useMemo(
     () => ({
@@ -73,6 +94,21 @@ export function UnreferencedDependencyListPage({
       setSearchValue(event.target.value);
     },
     [],
+  );
+
+  const handleFilterOptionsChange = useCallback(
+    (filterOptions: DependencyListFilterOptions) => {
+      dispatch(
+        push(
+          Urls.dataStudioUnreferencedItems({
+            ...params,
+            types: filterOptions.types,
+            cardTypes: filterOptions.cardTypes,
+          }),
+        ),
+      );
+    },
+    [params, dispatch],
   );
 
   const handleSortChange = useCallback(
@@ -121,7 +157,7 @@ export function UnreferencedDependencyListPage({
         />
         <DependencyFilterPicker
           filterOptions={filterOptions}
-          availableGroupTypes={availableGroupTypes}
+          availableGroupTypes={AVAILABLE_GROUP_TYPES}
           onFilterOptionsChange={handleFilterOptionsChange}
         />
       </Flex>

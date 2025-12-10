@@ -181,7 +181,10 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
           },
           {
             label: node.data.schema,
-            url: Urls.dataModel({ databaseId: node.data.db_id, schemaName: node.data.schema }),
+            url: Urls.dataModel({
+              databaseId: node.data.db_id,
+              schemaName: node.data.schema,
+            }),
           },
         ];
       }
@@ -206,7 +209,7 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
               databaseId: node.data.table.db_id,
               schemaName: node.data.table.schema,
               tableId: node.data.table.id,
-            })
+            }),
           },
         ];
       }
@@ -303,5 +306,32 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Row and column security rule`, color: "error" };
     case "segment":
       return { label: t`Segment`, color: "accent2" };
+  }
+}
+
+export function parseDependencyType(type: unknown): DependencyType | undefined {
+  switch (type) {
+    case "card":
+    case "table":
+    case "transform":
+    case "snippet":
+    case "dashboard":
+    case "document":
+    case "sandbox":
+    case "segment":
+      return type;
+    default:
+      return undefined;
+  }
+}
+
+export function parseCardType(type: unknown): CardType | undefined {
+  switch (type) {
+    case "question":
+    case "model":
+    case "metric":
+      return type;
+    default:
+      return undefined;
   }
 }

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { MultiSelect } from "metabase/ui";
+import { Checkbox, Stack } from "metabase/ui";
 import type {
   CardType,
   DependencyGroupType,
@@ -47,12 +47,20 @@ export function TypeFilterPicker({
   };
 
   return (
-    <MultiSelect
-      label={t`Type`}
-      placeholder={t`Pick one or more types`}
+    <Checkbox.Group
+      label={t`Entity type`}
       value={groupTypes}
-      data={groupOptions}
       onChange={handleChange}
-    />
+    >
+      <Stack gap="sm" mt="sm">
+        {groupOptions.map((groupOption) => (
+          <Checkbox
+            key={groupOption.value}
+            value={groupOption.value}
+            label={groupOption.label}
+          />
+        ))}
+      </Stack>
+    </Checkbox.Group>
   );
 }

@@ -39,7 +39,9 @@ export type DependencyListFilterOptions = {
 };
 
 export type DependencyListRawParams = {
+  types?: string | string[];
+  cardTypes?: string | string[];
   page?: string;
-  "sort-column"?: string;
-  "sort-direction"?: string;
+  sortColumn?: string;
+  sortDirection?: string;
 };

@@ -1,8 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, FixedSizeIcon, Group, Popover, Stack } from "metabase/ui";
+import { Box, Button, FixedSizeIcon, Popover, Stack } from "metabase/ui";
 import type {
   CardType,
   DependencyGroupType,
@@ -54,26 +53,19 @@ type DependencyFilterPickerPopoverProps = {
 };
 
 function DependencyFilterPickerPopover({
-  filterOptions: initialFilterOptions,
+  filterOptions,
   availableGroupTypes,
   onFilterOptionsChange,
 }: DependencyFilterPickerPopoverProps) {
-  const [filterOptions, setFilterOptions] = useState(initialFilterOptions);
-
   const handleTypesChange = (
     types: DependencyType[],
     cardTypes: CardType[],
   ) => {
-    setFilterOptions({ ...filterOptions, types, cardTypes });
-  };
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    onFilterOptionsChange(filterOptions);
+    onFilterOptionsChange({ ...filterOptions, types, cardTypes });
   };
 
   return (
-    <Box component="form" w="15rem" p="md" onSubmit={handleSubmit}>
+    <Box w="20rem" p="md">
       <Stack>
         <TypeFilterPicker
           types={filterOptions.types}
@@ -81,9 +73,6 @@ function DependencyFilterPickerPopover({
           availableGroupTypes={availableGroupTypes}
           onChange={handleTypesChange}
         />
-        <Group justify="end">
-          <Button variant="filled">{t`Apply`}</Button>
-        </Group>
       </Stack>
     </Box>
   );
