@@ -14,6 +14,7 @@ import type {
   TableId,
   Transform,
   TransformTargetType,
+  WorkspaceTransform,
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
@@ -40,7 +41,7 @@ export interface Tab {
 
 export interface TransformTab extends Tab {
   type: "transform";
-  transform: Transform;
+  transform: Transform | WorkspaceTransform;
 }
 
 export interface TableTab extends Tab {
@@ -266,11 +267,12 @@ export const WorkspaceProvider = ({
   );
 
   const setActiveTransform = useCallback(
-    (transform: Transform | undefined) => {
+    (transform?: Transform | WorkspaceTransform) => {
       updateWorkspaceState((state) => {
         if (transform) {
           const existingTab = state.openedTabs.find(
             (tab) =>
+              // TODO: Add ref_id handling
               tab.type === "transform" && tab.transform.id === transform.id,
           );
 
@@ -313,7 +315,7 @@ export const WorkspaceProvider = ({
   );
 
   const addOpenedTransform = useCallback(
-    (transform: Transform | WorkspaceTransformItem) => {
+    (transform: Transform | WorkspaceTransform) => {
       const transformTab: TransformTab = {
         id: `transform-${transform.id}`,
         name: transform.name,

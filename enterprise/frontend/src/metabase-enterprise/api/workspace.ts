@@ -176,6 +176,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         // idTag("workspace-transforms", workspaceId),
         idTag("workspace-transform", transformId),
       ],
+      transformResponse: (response: WorkspaceTransform) => ({
+        ...response,
+        id: response.ref_id,
+      }),
     }),
     getWorkspaceLog: builder.query<WorkspaceLogResponse, WorkspaceId>({
       query: (id) => ({
