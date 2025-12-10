@@ -227,6 +227,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Docker has been running out of space on ubuntu runners recently, this is a workaround to free some space
+      # removes dotnet which is not needed for our tests, for more comprehensive space cleanup see jlumbroso/free-disk-space@main
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet
+
       # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
       - name: Set up Docker Compose
         uses: docker/setup-compose-action@v1
