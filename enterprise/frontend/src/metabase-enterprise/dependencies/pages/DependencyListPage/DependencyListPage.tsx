@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
+import { Box, Center, Flex, Icon, Loader, Stack, TextInput } from "metabase/ui";
 import {
   useListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
@@ -62,7 +62,8 @@ type ListNodesResponse = {
 
 type ListNodesResult = {
   data?: ListNodesResponse;
-  isLoading: boolean;
+  isFetching?: boolean;
+  isLoading?: boolean;
   error?: unknown;
 };
 
@@ -97,7 +98,7 @@ function DependencyListPage({
   const [searchValue, setSearchValue] = useState("");
   const dispatch = useDispatch();
 
-  const { data, isLoading, error } = useListNodesQuery({
+  const { data, isFetching, isLoading, error } = useListNodesQuery({
     query,
     types: getDependencyTypes(types ?? availableGroupTypes),
     card_types: getCardTypes(types ?? availableGroupTypes),
@@ -201,6 +202,7 @@ function DependencyListPage({
           placeholder={t`Search…`}
           flex={1}
           leftSection={<Icon name="search" />}
+          rightSection={isFetching ? <Loader size="sm" /> : undefined}
           onChange={handleSearchChange}
         />
         <FilterOptionsPicker

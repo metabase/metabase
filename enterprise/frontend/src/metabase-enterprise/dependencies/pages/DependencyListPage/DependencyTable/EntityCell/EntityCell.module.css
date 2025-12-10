@@ -3,7 +3,13 @@
 }
 
 .link {
+  color: var(--mb-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  &:hover {
+    color: var(--mb-color-brand);
+    text-decoration: none;
+  }
 }
