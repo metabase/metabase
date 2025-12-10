@@ -78,7 +78,6 @@ function setup({ table = TEST_TABLE, hasError = false }: SetupOpts = {}) {
       component={() => (
         <NewSegmentPage
           tableId={table.id}
-          cancelUrl="/data-studio/library"
           getSuccessUrl={mockGetSuccessUrl}
           renderBreadcrumbs={(t) => (
             <div data-testid="breadcrumbs">Table: {t.display_name}</div>
@@ -122,7 +121,7 @@ describe("NewSegmentPage", () => {
     expect(screen.getByText("Server error")).toBeInTheDocument();
   });
 
-  it("renders page with empty form, breadcrumbs, and no Save/Cancel buttons", async () => {
+  it("renders page with empty form, breadcrumbs, and no Save button", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
@@ -135,9 +134,6 @@ describe("NewSegmentPage", () => {
     expect(
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Cancel" }),
-    ).not.toBeInTheDocument();
   });
 
   it("renders filter placeholder prompting user to add filters", async () => {
@@ -149,7 +145,7 @@ describe("NewSegmentPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows Save/Cancel buttons when name is entered", async () => {
+  it("shows Save button when name is entered", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
@@ -159,10 +155,9 @@ describe("NewSegmentPage", () => {
     );
 
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
-  it("shows Save/Cancel buttons when description is entered", async () => {
+  it("shows Save button when description is entered", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
@@ -172,10 +167,9 @@ describe("NewSegmentPage", () => {
     );
 
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
-  it("hides Save/Cancel buttons when form is cleared back to empty", async () => {
+  it("hides Save button when form is cleared back to empty", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
@@ -205,7 +199,7 @@ describe("NewSegmentPage", () => {
     expect(saveButton).toBeDisabled();
   });
 
-  it("does not show Save/Cancel when name is whitespace only", async () => {
+  it("does not show Save when name is whitespace only", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
@@ -215,23 +209,6 @@ describe("NewSegmentPage", () => {
       expect(
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument();
-    });
-  });
-
-  it("cancel navigates to cancelUrl", async () => {
-    const { history } = setup();
-    await waitForLoaderToBeRemoved();
-
-    await userEvent.type(
-      screen.getByPlaceholderText("New segment"),
-      "Test Segment",
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-    await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/data-studio/library",
-      );
     });
   });
 
