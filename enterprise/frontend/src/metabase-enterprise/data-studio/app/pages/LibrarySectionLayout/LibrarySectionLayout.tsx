@@ -109,6 +109,8 @@ export function LibrarySectionLayout() {
   useErrorHandling(tablesError || metricsError || snippetsError);
   const filterReturnedEmpty =
     !!searchQuery && filteredTree.length === 0 && libraryHasContent;
+  const showEmptyState =
+    !isLoading && (!libraryHasContent || filterReturnedEmpty);
 
   return (
     <>
@@ -133,9 +135,8 @@ export function LibrarySectionLayout() {
             <CreateMenu metricCollectionId={metricCollection?.id} />
           </Flex>
           <Card withBorder p={0}>
-            {isLoading ? (
-              <ListLoadingState />
-            ) : !libraryHasContent || filterReturnedEmpty ? (
+            {isLoading && <ListLoadingState />}
+            {showEmptyState && (
               <ListEmptyState
                 label={
                   filterReturnedEmpty
@@ -143,7 +144,8 @@ export function LibrarySectionLayout() {
                     : t`No tables, metrics, or snippets yet`
                 }
               />
-            ) : (
+            )}
+            {!isLoading && !showEmptyState && (
               <Table
                 data={filteredTree}
                 columns={[
