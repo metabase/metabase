@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import PropTypes from "prop-types";
 import { Fragment, memo, useState } from "react";
 
@@ -50,7 +49,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   isHighlighted,
 }) {
   const [toggleState, setToggleState] = useState(null);
-  const [opened, { close, toggle }] = useDisclosure(false);
+  const [opened, setOpened] = useState(false);
   const selectedOption = options.find((option) => option.value === value);
   const selectableOptions = hasChildren
     ? options
@@ -64,14 +63,14 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const hasActions = actionsForCurrentValue.length > 0;
 
   return (
-    <Popover opened={opened} onClose={close} disabled={isDisabled}>
+    <Popover opened={opened} onChange={setOpened} disabled={isDisabled}>
       <Popover.Target>
         <PermissionsSelectRoot
           isDisabled={isDisabled}
           aria-haspopup="listbox"
           data-testid="permissions-select"
           aria-disabled={isDisabled}
-          onClick={isDisabled ? undefined : toggle}
+          onClick={isDisabled ? undefined : () => setOpened((o) => !o)}
         >
           {isDisabled ? (
             <DisabledPermissionOption
@@ -106,7 +105,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                 role="option"
                 key={option.value}
                 onClick={() => {
-                  close();
+                  setOpened(false);
                   onChange(option.value, toggleLabel ? toggleState : null);
                 }}
               >
@@ -121,7 +120,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                   key={index}
                   role="option"
                   onClick={() => {
-                    close();
+                    setOpened(false);
                     onAction(action);
                   }}
                 >
