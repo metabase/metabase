@@ -13,7 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
+   [metabase.query-processor.alternative-date-test :as qp.alternative-date-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -33,7 +33,7 @@
 (defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields]
   [_driver _feature _db] false)
 
-(defmethod driver/database-supports? [:clickhouse :metabase.query-processor-test.parameters-test/get-parameter-count]
+(defmethod driver/database-supports? [:clickhouse :metabase.query-processor.parameters-test/get-parameter-count]
   [_driver _feature _db] false)
 
 (defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse
@@ -143,20 +143,22 @@
 
 (defn- field->clickhouse-column
   [field]
-  (let [{:keys [field-name base-type pk?]} field
-        ch-type  (if (map? base-type)
-                   (:native base-type)
-                   (sql.tx/field-base-type->sql-type :clickhouse base-type))
-        col-name (quote-name field-name)
-        ch-col   (cond
-                   (or pk? (disallowed-as-nullable? ch-type) (map? base-type))
-                   (format "%s %s" col-name ch-type)
+  (let [{:keys [field-name base-type pk? not-null? default-expr generated-expr]} field
+        ch-type   (if (map? base-type)
+                    (:native base-type)
+                    (sql.tx/field-base-type->sql-type :clickhouse base-type))
+        col-name  (quote-name field-name)
+        ch-col    (cond
+                    (or pk? (disallowed-as-nullable? ch-type) (map? base-type) not-null?)
+                    (format "%s %s" col-name ch-type)
 
-                   (= ch-type "Time")
-                   (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
+                    (= ch-type "Time")
+                    (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
 
-                   :else (format "%s Nullable(%s)" col-name ch-type))]
-    ch-col))
+                    :else (format "%s Nullable(%s)" col-name ch-type))
+        default   (when default-expr (format "DEFAULT (%s)" default-expr))
+        generated (when generated-expr (format "ALIAS (%s)" generated-expr))]
+    (str/join " " (filter some? [ch-col default generated]))))
 
 (defn- ->comma-separated-str
   [coll]
@@ -190,6 +192,9 @@
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
+
+(defmethod sql.tx/generated-column-sql :clickhouse [_ expr]
+  (format "ALIAS (%s)" expr))
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"

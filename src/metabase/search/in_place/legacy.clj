@@ -31,6 +31,11 @@
 (defmethod search.engine/supported-engine? :search.engine/in-place [_]
   true)
 
+(defmethod search.engine/disjunction :search.engine/in-place [_ terms]
+  ;; The default composition is disjunction with this engine.
+  (when (seq terms)
+    [(str/join " " terms)]))
+
 (defn search-model->revision-model
   "Return the appropriate revision model given a search model."
   [model]
@@ -310,6 +315,13 @@
    :display_name
    :description])
 
+(defmethod searchable-columns "transform"
+  [_ search-native-query]
+  (cond-> [:name
+           :description]
+    search-native-query
+    (conj :source)))
+
 (defmethod searchable-columns "indexed-entity"
   [_ _]
   [:name])
@@ -371,6 +383,10 @@
   [_]
   [:id :name :archived :created_at :updated_at :collection_id :creator_id])
 
+(defmethod columns-for-model "transform"
+  [_]
+  [:id :name :created_at :updated_at])
+
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
    [:model-index-value.model_pk :id]
@@ -427,7 +443,18 @@
    [:table.schema :table_schema]
    [:table.name :table_name]
    [:table.description :table_description]
+   [:table.collection_id :collection_id]
+   [[:case [:and [:= :table.collection_id nil] [:= :table.is_published true]]
+     [:inline "Our analytics"]
+     :else
+     :collection.name] :collection_name]
+   [:collection.authority_level :collection_authority_level]
+   [:collection.type :collection_type]
    [:metabase_database.name :database_name]])
+
+(defmethod columns-for-model "transform"
+  [_]
+  [:id :name :description :created_at :updated_at])
 
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
@@ -525,10 +552,18 @@
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
 
+(defmethod search-query-for-model "transform"
+  [_model search-ctx]
+  (base-query-for-model "transform" search-ctx))
+
 (defmethod search-query-for-model "database"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/where [:= :router_database_id nil])))
+
+(defmethod search-query-for-model "transform"
+  [model search-ctx]
+  (base-query-for-model model search-ctx))
 
 (defmethod search-query-for-model "dashboard"
   [model search-ctx]
@@ -571,6 +606,7 @@
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
         (add-table-where-clauses model search-ctx)
+        (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defmethod search.engine/model-set :search.engine/in-place

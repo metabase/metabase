@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import type { ColorName } from "metabase/lib/colors/types";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import type { IconName } from "metabase/ui";
@@ -14,7 +15,7 @@ interface PermissionHelpDescriptionProps {
   name: ReactNode;
   description?: ReactNode;
   icon: IconName;
-  iconColor: string;
+  iconColor: ColorName;
   hasUpgradeNotice?: boolean;
 }
 

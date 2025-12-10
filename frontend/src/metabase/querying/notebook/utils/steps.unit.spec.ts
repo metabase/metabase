@@ -291,12 +291,10 @@ describe("aggregated query without breakout", () => {
       aggregations: [{ operatorName: "count" }],
     });
 
-    const baseQuestion = Question.create({
-      databaseId: SAMPLE_DB_ID,
+    const question = Question.create({
+      dataset_query: Lib.toJsQuery(query),
       metadata,
     });
-
-    const question = baseQuestion.setQuery(query);
 
     const steps = getQuestionSteps(question, metadata, {});
 

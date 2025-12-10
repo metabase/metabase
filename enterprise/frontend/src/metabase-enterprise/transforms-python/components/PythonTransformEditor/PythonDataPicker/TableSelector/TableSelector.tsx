@@ -6,6 +6,7 @@ import {
   type DataPickerItem,
   DataPickerModal,
 } from "metabase/common/components/Pickers/DataPicker";
+import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
 import {
   ActionIcon,
   Box,
@@ -63,6 +64,9 @@ export function TableSelector({
     if (item.model === "database") {
       return item.id !== database;
     }
+    if (item.model === "collection" && item.id === "databases") {
+      return false;
+    }
     return true;
   }
 
@@ -110,18 +114,26 @@ export function TableSelector({
           onChange={handleChange}
           onClose={close}
           shouldDisableItem={shouldDisableItem}
+          models={["table"]}
+          options={{
+            showLibrary: false,
+            showRootCollection: false,
+            showPersonalCollections: false,
+          }}
         />
       )}
     </>
   );
 }
 
-function getDataPickerValue(table: Table | undefined) {
+function getDataPickerValue(
+  table: Table | undefined,
+): TablePickerValue | undefined {
   if (!table) {
-    return undefined;
+    return;
   }
   return {
-    model: "table" as const,
+    model: "table",
     id: table.id,
     name: table.display_name,
     db_id: table.db_id,

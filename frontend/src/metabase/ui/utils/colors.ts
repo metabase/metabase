@@ -1,7 +1,10 @@
 import type { MantineTheme } from "@mantine/core";
 
-import { color as legacyColor } from "metabase/lib/colors";
+import { colorConfig } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 type ColorShades = MantineTheme["colors"]["dark"];
+
+const allColorNames = Object.keys(colorConfig);
 
 const ORIGINAL_COLORS = [
   "dark",
@@ -20,44 +23,6 @@ const ORIGINAL_COLORS = [
   "teal",
 ] as const;
 
-// these should only include semantic colors
-// for use in the UI
-const CUSTOM_COLORS = [
-  "bg-black",
-  "bg-dark",
-  "bg-light",
-  "bg-medium",
-  "bg-white",
-  "border",
-  "brand",
-  "brand-light",
-  "brand-lighter",
-  "danger",
-  "error",
-  "filter",
-  "focus",
-  "shadow",
-  "success",
-  "summarize",
-  "text-dark",
-  "text-light",
-  "text-medium",
-  "text-white",
-  "warning",
-  "white",
-  // TODO: Check with an adult and make sure this is okay
-  "text-primary",
-  "text-secondary",
-  "text-secondary-inverse",
-  "text-tertiary",
-  "background",
-  "background-hover",
-  "background-disabled",
-  "background-light",
-  "accent-gray",
-  "accent-gray-light",
-] as const;
-
 export function getColorShades(colorName: string): ColorShades {
   // yes this is silly, but it makes typescript so happy
   return [
@@ -74,13 +39,18 @@ export function getColorShades(colorName: string): ColorShades {
   ];
 }
 
-export function getThemeColors(): Record<string, ColorShades> {
+export function getThemeColors(
+  colorScheme: "light" | "dark",
+): Record<string, ColorShades> {
   return {
     ...Object.fromEntries(
       ORIGINAL_COLORS.map((name) => [name, getColorShades("transparent")]),
     ),
     ...Object.fromEntries(
-      CUSTOM_COLORS.map((name) => [name, getColorShades(legacyColor(name))]),
+      Object.entries(colorConfig).map(([name, colors]) => [
+        name,
+        getColorShades(colors[colorScheme] || colors.light),
+      ]),
     ),
   };
 }
@@ -90,6 +60,13 @@ export function getThemeColors(): Record<string, ColorShades> {
  * @param colorName
  * @returns string referencing a css variable
  */
-export function color(colorName: (typeof CUSTOM_COLORS)[number]): string {
-  return `var(--mb-color-${colorName})`;
+export function color(colorName: ColorName | string): string {
+  if (isColorName(colorName)) {
+    return `var(--mb-color-${colorName})`;
+  }
+  return colorName;
 }
+
+export const isColorName = (name?: string | null): name is ColorName => {
+  return !!name && allColorNames.includes(name);
+};

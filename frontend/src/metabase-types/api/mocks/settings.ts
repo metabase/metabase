@@ -134,13 +134,16 @@ export const createMockTokenFeatures = (
   ai_sql_fixer: false,
   ai_sql_generation: false,
   offer_metabase_ai: false,
+  offer_metabase_ai_tiered: false,
   database_routing: false,
   development_mode: false,
   table_data_editing: false,
-  documents: false,
   semantic_search: false,
   transforms: false,
+  remote_sync: false,
   "transforms-python": false,
+  data_studio: false,
+  "support-users": false,
   ...opts,
 });
 

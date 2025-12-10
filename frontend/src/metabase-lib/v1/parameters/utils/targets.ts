@@ -42,6 +42,14 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
   return type === "template-tag" ? tag : null;
 }
 
+export function getTextTagFromTarget(target: ParameterTarget) {
+  if (!target?.[1] || target?.[0] !== "text-tag") {
+    return null;
+  }
+
+  return target[1];
+}
+
 /**
  * Returns only real DB fields and not all mapped columns.
  * Use getMappingOptionByTarget for columns.

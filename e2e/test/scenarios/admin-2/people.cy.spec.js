@@ -336,12 +336,23 @@ describe("scenarios > admin > people", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`Reset ${normalUserName}'s password?`);
         clickButton("Reset password");
+
+        H.undoToast().within(() => {
+          cy.findByText(
+            `Password reset email sent to ${normalUserName}`,
+          ).should("be.visible");
+        });
+
+        cy.log("Should not show temporary password modal");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${normalUserName}'s password has been reset`).should(
           "not.exist",
         );
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(/^temporary password$/i).should("not.exist");
+
+        cy.log("Should close the modal");
+        H.modal().should("not.exist");
       },
     );
 
@@ -767,7 +778,7 @@ describe("scenarios > admin > people > group managers", () => {
       cy.url().should("match", /\/$/);
     });
 
-    it("can manage members from the people page", { tags: "@flaky" }, () => {
+    it("can manage members from the people page", () => {
       // Open membership select for a user
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName)
@@ -808,19 +819,16 @@ describe("scenarios > admin > people > group managers", () => {
         });
 
       // Demote myself from being manager
-      H.popover().within(() => {
-        cy.icon("arrow_down").eq(0).click();
-      });
+      H.popover().findByLabelText("collection").click();
       confirmLosingAbilityToManageGroup();
+      H.popover().findByLabelText("collection").should("not.exist");
 
       // Remove myself from another group
-      H.popover().within(() => {
-        cy.findByText("data").click();
-      });
+      H.popover().findByLabelText("data").click();
       confirmLosingAbilityToManageGroup();
 
       // Redirected to the home page
-      cy.url().should("match", /\/$/);
+      cy.location("pathname").should("eq", "/");
     });
   });
 

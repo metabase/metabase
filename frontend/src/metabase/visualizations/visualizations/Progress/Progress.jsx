@@ -221,12 +221,12 @@ export default class Progress extends Component {
 
     const barMessage = getProgressMessage(metrics);
 
-    const clicked = { value, column, settings };
     const isClickable = onVisualizationClick != null;
 
     const handleClick = (e) => {
-      if (onVisualizationClick && visualizationIsClickable(clicked)) {
-        onVisualizationClick({ ...clicked, event: e.nativeEvent });
+      const clickData = { value, column, settings, event: e.nativeEvent };
+      if (onVisualizationClick && visualizationIsClickable(clickData)) {
+        onVisualizationClick(clickData);
       }
     };
 

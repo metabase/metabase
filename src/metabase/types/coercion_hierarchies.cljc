@@ -1,5 +1,7 @@
 (ns metabase.types.coercion-hierarchies
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.set :as set]))
 
 ;; these need to be defonce so we don't drop our hierarchies, but defonce doesn't support docstrings:

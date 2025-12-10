@@ -7,9 +7,10 @@ export const useMetadataToasts = () => {
   const [sendToast] = useToast();
 
   const sendSuccessToast = useCallback(
-    (message: string, undo?: () => void) => {
+    (message: string, undo?: () => void, actionLabel?: string) => {
       sendToast({
         action: undo,
+        actionLabel,
         icon: "check",
         message,
       });

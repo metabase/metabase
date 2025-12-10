@@ -7,7 +7,7 @@
    SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
    these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
    [[metabase.driver.sql-jdbc]] for more details."
-  (:refer-clojure :exclude [some mapv])
+  (:refer-clojure :exclude [some mapv empty?])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.java.io :as io]
@@ -22,7 +22,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv empty?]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -697,6 +698,9 @@
     ;; Does this driver support splitting strings and extracting a part?
     :split-part
 
+    ;; Does this driver support collation settings on text fields?
+    :collate
+
     ;; True if this driver requires `:temporal-unit :default` on all temporal field refs, even if no temporal
     ;; bucketing was specified in the query.
     ;; Generally false, but a few time-series based analytics databases (eg. Druid) require it.
@@ -739,6 +743,9 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
+    ;; Does this driver support creating tables on their own without adding data?
+    :test/create-table-without-data
+
     ;; Does this driver support transforms with a table as the target?
     :transforms/table
 
@@ -777,7 +784,16 @@
     :metadata/table-writable-check
 
     ;; Does this driver support creating a java.sql.Statement via a Connection?
-    :jdbc/statements})
+    :jdbc/statements
+
+    ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
+    :describe-default-expr
+
+    ;; Does this driver provide :database-is-nullable on (describe-fields) or (describe-table)
+    :describe-is-nullable
+
+    ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
+    :describe-is-generated})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -785,7 +801,7 @@
   Note that it's the same set of `driver-features` with respect to
   both database-supports? and [[supports?]])
 
-  Database is guaranteed to be a Database instance.
+  Database is guaranteed to be a `:metabase.lib.schema.metadata/database` instance.
 
   Most drivers can always return true or always return false for a given feature
   (e.g., :left-join is not supported by any version of Mongo DB).
@@ -819,6 +835,7 @@
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
+                              :test/create-table-without-data         true
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true
                               :metadata/table-existence-check         false
@@ -1028,7 +1045,7 @@
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
-  [[metabase.query-processor-test.parameters-test]] and other namespaces."
+  [[metabase.query-processor.parameters-test]] and other namespaces."
   {:added "0.34.0" :arglists '([driver inner-native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1150,8 +1167,14 @@
   :hierarchy #'hierarchy)
 
 (defmulti compile-transform
-  "Compiles the sql for a transform statement, given an inner sql query and a destination."
+  "Compiles the sql for a transform statement (CREATE TABLE AS), given a compiled inner sql query and a destination."
   {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-insert
+  "Compiles the sql for an insert statement (INSERT INTO ... SELECT), given a compiled inner sql query and a destination."
+  {:added "0.58.0", :arglists '([driver {:keys [query output-table]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1194,24 +1217,65 @@
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
 
+(defmethod drop-transform-target! [::driver :table-incremental]
+  [driver database target]
+  ((get-method drop-transform-target! [driver :table]) driver database target))
+
+(mr/def ::native-query-deps.table-dep
+  [:map
+   {:closed true}
+   [:schema {:optional true} :string]
+   [:table  [:or
+             ;; not really clear how a driver would be able to work out the ID of a Table
+             ;; but [[metabase-enterprise.dependencies.native-validation-test/basic-deps-test]] says they can.
+             :metabase.lib.schema.id/table
+             :string]]])
+
+(mr/def ::native-query-deps.transform-dep
+  [:map
+   {:closed true}
+   [:transform :metabase.lib.schema.id/transform]])
+
+(mr/def ::native-query-deps
+  [:set [:or
+         ::native-query-deps.table-dep
+         ::native-query-deps.transform-dep]])
+
 (defmulti native-query-deps
   "Gets the table dependencies of a given sql string (or equivalent).
 
-  Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver query] [driver query metadata-provider transforms])}
+  Drivers that support any of the `:transforms/...` features must implement this method.
+
+  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use [[metabase.driver-api.core/raw-native-query]]
+  to get the raw native query as needed.
+
+  The return value should match the `:metabase.driver/native-query-deps` schema."
+  {:added "0.57.0" :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmethod native-query-deps :default
+  [driver & args]
+  (if (database-supports? driver :dependencies/native nil)
+    (throw (ex-info "Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
+                    {:driver driver
+                     :args args}))
+    #{}))
+
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
-  going to the database)."
-  {:added "0.57.0" :arglists '([driver metadata-provider native-query])}
+  going to the database).
+
+  `native-query` is a `:metabase.lib.schema/native-only-query`."
+  {:added "0.57.0" :arglists '([driver native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti validate-native-query-fields
-  "Validates a native query and returns a list of all 'bad' field references."
-  {:added "0.57.0" :arglists '([driver metadata-provider native-query])}
+  "Validates a native query and returns a list of all 'bad' field references.
+
+  `native-query` is a Lib `:metabase.lib.schema/native-only-query`."
+  {:added "0.57.0" :arglists '([driver native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1399,14 +1463,14 @@
 (defmethod insert-from-source! [::driver :jsonl-file]
   [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
   (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)
+    (let [lines     (line-seq rdr)
           data-rows (map (fn [line]
                            (let [m (json/decode line)]
                              (mapv (fn [column]
                                      (let [raw-val (get m (:name column))]
                                        (insert-col->val driver :jsonl-file column raw-val)))
                                    columns)))
-                         lines)]
+                         (filter (comp not empty?) lines))]
       (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmulti add-columns!

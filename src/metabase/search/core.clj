@@ -3,13 +3,10 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
-   [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.semantic.core :as search.engines.semantic]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
@@ -19,14 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
-  ;;
-  ;; TODO -- maybe engine loading should be moved to [[metabase.search.init]] instead
   search.engine/keep-me
-  search.engines.appdb/keep-me
-  search.engines.semantic/keep-me
-  search.legacy/keep-me
-
   search.config/keep-me
   search.impl/keep-me)
 
@@ -80,7 +70,7 @@
 
 (defmethod analytics/initial-value :metabase-search/engine-default
   [_ {:keys [engine]}]
-  (if (= engine (name (search.impl/default-engine))) 1 0))
+  (if (= engine (name (search.engine/default-engine))) 1 0))
 
 (defmethod analytics/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
@@ -143,7 +133,13 @@
   Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
   Alternately, if `:async?` is false, it will also run synchronously."
   [& {:keys [async?] :or {async? true} :as opts}]
-  (let [f #(reindex-logic! opts)]
+  (let [f (fn []
+            (try
+              (reindex-logic! opts)
+              (catch Exception e
+                (log/error e "Reindex failed")
+                (analytics/inc! :metabase-search/index-error)
+                (throw e))))]
     (if (or search.ingestion/*force-sync* (not async?))
       (doto (promise) (deliver (f)))
       (future (f)))))

@@ -173,7 +173,7 @@
             remove-scores  (fn [rows] (mapv #(dissoc % :score :all-scores) rows)) ; scores have time-sensitives components
             sut*           semantic.pgvector-api/query
             sut            #(remove-scores (:results (mt/as-admin (apply sut* %&)))) ; see notes below about perms
-            search-string  "insect patterns" ; specifics of search will be handled under index tests
+            search-string  "puppy" ; specifics of search will be handled under index tests
             _              (assert (semantic.tu/mock-embeddings search-string)
                                    "search string should have test embedding")
             search         {:search-string search-string}]

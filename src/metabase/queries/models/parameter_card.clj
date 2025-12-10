@@ -20,8 +20,9 @@
 (t2/deftransforms :model/ParameterCard
   {:parameterized_object_type mi/transform-keyword})
 
-(defonce ^{:doc "Set of valid parameterized_object_type for a ParameterCard"}
-  valid-parameterized-object-type #{"dashboard" "card"})
+(def valid-parameterized-object-type
+  "Set of valid parameterized_object_type for a ParameterCard"
+  #{"dashboard" "card"})
 
 (defn- validate-parameterized-object-type
   [{:keys [parameterized_object_type] :as _parameter-card}]
@@ -69,12 +70,12 @@
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
-  [parameterized-object-type :- ms/NonBlankString
+  [parameterized-object-type :- ms/NonBlankString ; TODO (Cam 9/25/25) -- change this to take `:model/Dashboard` or `:model/Card` instead of ANY STRING
    parameterized-object-id   :- ms/PositiveInt
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)
-                                     (= values_source_type "card")))
+                                     (= values_source_type :card)))
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))

@@ -1,4 +1,4 @@
-import BookmarkToggle from "metabase/common/components/BookmarkToggle";
+import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { useBookmarkListQuery } from "metabase/common/hooks";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import Bookmark from "metabase/entities/bookmarks";

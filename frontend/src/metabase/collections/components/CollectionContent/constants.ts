@@ -2,12 +2,13 @@ import type { CollectionItemModel } from "metabase-types/api";
 
 export const COLLECTION_PAGE_SIZE = 25;
 
-export const COLLECTION_CONTENT_COLUMNS = [
+const COLLECTION_CONTENT_COLUMNS = [
   "type",
   "name",
   "lastEditedBy",
   "lastEditedAt",
   "actionMenu",
+  "archive",
 ] as const;
 
 export type CollectionContentTableColumn =
@@ -33,4 +34,5 @@ export const ALL_MODELS: CollectionItemModel[] = [
   "snippet",
   "collection",
   "document",
+  "table",
 ];

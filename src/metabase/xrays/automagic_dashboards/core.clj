@@ -64,12 +64,12 @@
 
   ## The Dynamic Binding and Dashboard Generation Process ##
 
-  Once data has been accreted in `automagic-analysis`, `automagic-dashboard` will first select a template as described
-  above. It then calls `metabase.xrays.automagic-dashboards.interesting/identify` which takes the actual column data and
+  Once data has been accreted in [[automagic-analysis]], [[automagic-dashboard]] will first select a template as described
+  above. It then calls [[metabase.xrays.automagic-dashboards.interesting/identify]] which takes the actual column data and
   dimension, metric, and filter definitions from the template and matches all potential columns to potential dimensions,
-  metrics, and filters. The resulting \"grounded-values\" are now passed into `generate-dashboard`, which matches all
+  metrics, and filters. The resulting \"grounded-values\" are now passed into [[generate-dashboard]], which matches all
   of these values to card templates to produce a dashboard. The majority of the card generation work is done in
-  `metabase.xrays.automagic-dashboards.combination/grounded-metrics->dashcards`.
+  [[metabase.xrays.automagic-dashboards.combination/grounded-metrics->dashcards]].
 
   Note that if a card template's dimensions, metrics, and filters are not matched to grounded values the card will not
   be generated. Conversely, if a card template can be matched by multiple combinations of dimensions, multiple cards
@@ -148,17 +148,18 @@
    [kixi.stats.math :as math]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
+   [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.combination :as combination]
@@ -195,7 +196,7 @@
    :dashboard-templates-prefix ["table"]})
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
-  [segment]
+  [segment :- [:map [:definition ::segments.schema/segment]]]
   (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
@@ -203,13 +204,13 @@
      :comparison-name            (tru "{0} segment" (:name segment))
      :source                     table
      :database                   (:db_id table)
-     :query-filter               [:segment (u/the-id segment)]
+     :query-filter               [(lib/segment (u/the-id segment))]
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))
 
 (mu/defmethod ->root :xrays/Metric :- ::ads/root
-  [metric :- ::ads/metric]
-  (let [table (some->> metric :table_id (t2/select-one :model/Table :id))]
+  [{:keys [table-id], :as metric} :- ::ads/metric]
+  (let [table (some->> table-id (t2/select-one :model/Table :id))]
     {:entity                     metric
      :full-name                  (if (:id metric)
                                    (trun "{0} metric" "{0} metrics" (:name metric))
@@ -236,29 +237,34 @@
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(defn- source-card-id [card-or-question]
-  (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
-    (some-> card-or-question :dataset_query not-empty lib-be/normalize-query lib/source-card-id)))
+(mu/defn- source-card-id [card-or-question :- [:map
+                                               [:dataset_query ::ads/query]]]
+  (lib/source-card-id (:dataset_query card-or-question)))
 
-(defn- nested-query?
+(mu/defn- nested-query?
   "Is this card or question derived from another model or question?"
-  [card-or-question]
+  [card-or-question :- [:map
+                        [:dataset_query ::ads/query]]]
   (some? (source-card-id card-or-question)))
 
-(def ^:private ^{:arglists '([card-or-question])} native-query?
+(mu/defn- native-query?
   "Is this card or question native (SQL)?"
-  (comp some? #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
+  [{query :dataset_query, :as _card-or-question} :- [:map
+                                                     [:dataset_query ::ads/query]]]
+  (lib/native-only-query? query))
 
-(defn- source-question
-  [card-or-question]
+(mu/defn- source-question :- [:maybe (ms/InstanceOf :model/Card)]
+  [card-or-question :- [:map
+                        [:dataset_query ::ads/query]]]
   (when-let [source-card-id (source-card-id card-or-question)]
     (t2/select-one :model/Card :id source-card-id)))
 
-(defn- table-like?
-  [card-or-question]
+(mu/defn- table-like?
+  [{query :dataset_query, :as _card-or-question} :- [:map
+                                                     [:dataset_query ::ads/query]]]
   (and
-   (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
-   (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
+   (empty? (lib/aggregations query))
+   (empty? (lib/breakouts query))))
 
 (defn- table-id
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
@@ -267,11 +273,11 @@
   ;; TODO - probably better if we just changed `adhoc-query` to use the same keys as Cards (e.g. `:table_id`) so we
   ;; didn't need this function, seems like something that would be too easy to forget
   [card-or-question]
-  (or (:table_id card-or-question)
-      (:table-id card-or-question)))
+  ((some-fn :table-id :table_id) card-or-question))
 
-(defn- source
-  [card]
+(mu/defn- source
+  [card :- [:map
+            [:dataset_query ::ads/query]]]
   (cond
     ;; This is a model
     (= (:type card) :model) (assoc card :entity_type :entity/GenericTable)
@@ -284,12 +290,13 @@
     :else                   (->> card table-id (t2/select-one :model/Table :id))))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
-  [card]
+  [card :- [:map
+            [:dataset_query ::ads/query]]]
   (let [source (source card)]
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
-     :query-filter               (get-in card [:dataset_query :query :filter])
+     :query-filter               (lib/filters (:dataset_query card))
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
      :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
@@ -305,7 +312,7 @@
     {:entity                     query
      :source                     source
      :database                   (:database-id query)
-     :query-filter               (get-in query [:dataset_query :query :filter])
+     :query-filter               (lib/filters (:dataset_query query))
      :full-name                  (cond
                                    (native-query? query) (tru "Native query")
                                    (table-like? query)   (-> source ->root :full-name)
@@ -364,18 +371,19 @@
        x)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
-(defn- singular-cell-dimension-field-ids
+(mu/defn- singular-cell-dimension-field-ids :- [:maybe [:set [:or :string ::lib.schema.id/field]]]
   "Return the set of ids referenced in a cell query"
-  [{:keys [cell-query]}]
-  (letfn [(collect-dimensions [[op & args]]
-            (case (some-> op qp.util/normalize-token)
-              :and (mapcat collect-dimensions args)
-              :=   (magic.util/collect-field-references args)
+  [{:keys [cell-query], :as _root} :- ::ads/root]
+  (letfn [(collect-dimensions [[tag _opts & args]]
+            ;; TODO (Cam 10/21/25) -- piccing apart MBQL clauses like this is a little icky and unidiomatic, we really
+            ;; don't discourage digging around in MBQL outside of Lib -- FIXME
+            (case (some-> tag keyword)
+              :and          (mapcat collect-dimensions args)
+              (:between :=) (magic.util/collect-field-references args)
               nil))]
-    (->> cell-query
-         collect-dimensions
-         (map magic.util/field-reference->id)
-         set)))
+    (into #{}
+          (map magic.util/field-reference->id)
+          (collect-dimensions cell-query))))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
@@ -451,8 +459,7 @@
     {:source       (assoc source :fields (table->fields source))
      :root         root
      :tables       (map #(assoc % :fields (table->fields %)) tables)
-     :query-filter (filters/inject-refinement (:query-filter root)
-                                              (:cell-query root))}))
+     :query-filter (filters/inject-refinement (:query-filter root) (:cell-query root))}))
 
 (defn- make-dashboard
   ([root dashboard-template]
@@ -466,7 +473,7 @@
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
-(mu/defn- generate-base-dashboard
+(mu/defn- generate-base-dashboard :- ::ads/dashboard-template
   "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
   This includes dashcards and global filters, but does not include related items and is not yet populated.
   Repeated calls of this might be generated (e.g. the main dashboard and related) then combined once using
@@ -477,7 +484,7 @@
     :as                 dashboard-template}
    {grounded-dimensions :dimensions
     grounded-metrics    :metrics
-    grounded-filters    :filters}]
+    grounded-filters    :filters} :- ::ads/grounded-values]
   (let [card-templates  (interesting/normalize-seq-of-maps :card template-cards)
         dashcards       (combination/grounded-metrics->dashcards
                          base-context
@@ -679,7 +686,7 @@
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
   [{{:keys [show url query-filter] :as root} :root :as base-context} :- ::ads/context
    {:as dashboard-template}
-   {grounded-dimensions :dimensions :as grounded-values}]
+   {grounded-dimensions :dimensions :as grounded-values} :- ::ads/grounded-values]
   (let [show      (or show max-cards)
         dashboard (generate-base-dashboard base-context dashboard-template grounded-values)]
     (-> dashboard
@@ -715,7 +722,33 @@
                           :filter-specs    template-filters})]
     (generate-dashboard base-context template grounded-values)))
 
-(defmulti automagic-analysis
+(mr/def ::automagic-analysis.opts
+  [:maybe
+   [:map
+    {:closed true}
+    [:cell-query         {:optional true} [:maybe ::ads/root.cell-query]]
+    [:show               {:optional true} [:maybe [:or pos-int? [:= :all]]]]
+    [:source             {:optional true} ::ads/source]
+    [:query-filter       {:optional true} [:maybe
+                                           [:schema
+                                            {:decode/normalize (fn [filters]
+                                                                 (when (seq filters)
+                                                                   (if (sequential? (first filters))
+                                                                     filters
+                                                                     [filters])))}
+                                            [:sequential ::ads/filter-clause]]]]
+    [:database           {:optional true} ::lib.schema.id/database]
+    [:comparison?        {:optional true} [:maybe :boolean]]
+    [:rules-prefix       {:optional true} [:maybe [:sequential :string]]]
+    ;; TODO -- use [[metabase.xrays.api.automagic-dashboards/DashboardTemplate]] (move it somewhere first)
+    [:dashboard-template {:optional true} [:maybe [:sequential :string]]]]])
+
+(defmulti ^:private automagic-analysis-method
+  {:arglists '([entity opts])}
+  (fn [entity _]
+    (mi/model entity)))
+
+(defn automagic-analysis
   "Create a transient dashboard analyzing given entity.
 
   This function eventually calls out to `automagic-dashboard` with two primary arguments:
@@ -723,42 +756,47 @@
     passed through the `->root` function, which is an aggregate including the original entity, its
     source, what dashboard template categories to apply, etc.
   - Additional options such as how many cards to show, a cell query (a drill through), etc."
-  {:arglists '([entity opts])}
-  (fn [entity _]
-    (mi/model entity)))
+  [entity opts]
+  (automagic-analysis-method
+   (lib/normalize ::ads/root.entity entity)
+   (lib/normalize ::automagic-analysis.opts opts)))
 
-(defmethod automagic-analysis :model/Table
+(defmethod automagic-analysis-method :model/Table
   [table opts]
   (automagic-dashboard (merge (->root table) opts)))
 
-(defmethod automagic-analysis :model/Segment
-  [segment opts]
+(mu/defmethod automagic-analysis-method :model/Segment
+  [segment :- [:map [:definition ::segments.schema/segment]]
+   opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
-(mu/defmethod automagic-analysis :xrays/Metric
+(mu/defmethod automagic-analysis-method :xrays/Metric
   [metric :- ::ads/metric
    opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(mu/defn- collect-metrics :- [:maybe [:sequential (ms/InstanceOf :xrays/Metric)]]
-  [root question]
-  (map (fn [aggregation-clause]
-         (if (-> aggregation-clause
-                 first
-                 qp.util/normalize-token
-                 (= :metric))
+(mu/defn- collect-metrics :- [:maybe [:sequential [:and
+                                                   (ms/InstanceOf :xrays/Metric)
+                                                   ::ads/metric]]]
+  [root     :- ::ads/root
+   question :- [:map
+                [:dataset_query ::ads/query]]]
+  (map (mu/fn [aggregation-clause :- ::lib.schema.aggregation/aggregation]
+         (if (lib/clause-of-type? aggregation-clause :metric)
            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
            (log/error "X-Rays do not support V2 Metrics.")
            (let [table-id (table-id question)]
-             (mi/instance :xrays/Metric {:definition {:aggregation  [aggregation-clause]
-                                                      :source-table table-id}
-                                         :name       (names/metric->description root aggregation-clause)
-                                         :table_id   table-id}))))
-       (get-in question [:dataset_query :query :aggregation])))
+             (mi/instance :xrays/Metric {:xrays/aggregation aggregation-clause
+                                         :name              (names/metric->description root aggregation-clause)
+                                         :table-id          table-id
+                                         :xrays/database-id ((some-fn :database-id :database_id) question)}))))
+       (lib/aggregations (:dataset_query question))))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
-  [root question]
-  (for [breakout     (get-in question [:dataset_query :query :breakout])
+  [root     :- ::ads/root
+   question :- [:map
+                [:dataset_query ::ads/query]]]
+  (for [breakout     (lib/breakouts (:dataset_query question))
         field-clause (take 1 (magic.util/collect-field-references breakout))
         :let         [field (magic.util/->field root field-clause)]
         :when        (and field
@@ -766,8 +804,9 @@
     field))
 
 (mu/defn- decompose-question
-  [root :- ::ads/root
-   question
+  [root     :- ::ads/root
+   question :- [:map
+                [:dataset_query ::ads/query]]
    opts]
   (letfn [(analyze [x]
             (try
@@ -786,21 +825,45 @@
           [(collect-metrics root question)
            (collect-breakout-fields root question)])))
 
-(defn- preserve-entity-element
+(mu/defn- preserve-entity-element
   "Ensure that elements of an original dataset query are preserved in dashcard queries."
-  [dashboard entity entity-element]
-  (if-let [element-value (get-in entity [:dataset_query :query entity-element])]
-    (letfn [(splice-element [dashcard]
-              (cond-> dashcard
-                (get-in dashcard [:card :dataset_query :query])
-                (update-in [:card :dataset_query :query entity-element]
-                           (fnil into (empty element-value))
-                           element-value)))]
-      (update dashboard :dashcards (partial map splice-element)))
-    dashboard))
+  [dashboard
+   entity
+   getter-fn
+   setter-fn]
+  ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
+  ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
+  ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework
+  ;; this code to be saner
+  (binding [lib.schema/*HACK-disable-ref-validation* true]
+    (if-let [element-value (some-> entity :dataset_query not-empty getter-fn)]
+      (letfn [(splice-element [dashcard]
+                (m/update-existing-in dashcard [:card :dataset_query] setter-fn element-value))]
+        (update dashboard :dashcards (partial mapv splice-element)))
+      dashboard)))
 
-(defn- query-based-analysis
-  [{:keys [entity] :as root} opts {:keys [cell-query cell-url]}]
+(defn- preserve-joins [dashboard entity]
+  (preserve-entity-element dashboard entity lib/joins (fn [query joins]
+                                                        (reduce lib/join query joins))))
+
+(defn- preserve-expressions [dashboard entity]
+  (preserve-entity-element dashboard entity lib/expressions (fn [query expressions]
+                                                              (reduce
+                                                               (fn [query expression]
+                                                                 (lib/expression query
+                                                                                 (:lib/expression-name (lib/options expression))
+                                                                                 expression))
+                                                               query
+                                                               expressions))))
+
+(mu/defn- query-based-analysis
+  [{:keys [entity] :as root}     :- ::ads/root
+   opts                          :- ::automagic-analysis.opts
+   {:keys [cell-query cell-url]} :- [:maybe
+                                     [:map
+                                      {:closed true}
+                                      [:cell-query {:optional true} [:maybe ::ads/root.cell-query]]
+                                      [:cell-url   :string]]]]
   (let [transient-dash (if (table-like? entity)
                          (let [root' (merge root
                                             (when cell-query
@@ -824,11 +887,12 @@
                                       {:transient_name title
                                        :name           title})))))]
     (-> transient-dash
-        (preserve-entity-element (:entity root) :joins)
-        (preserve-entity-element (:entity root) :expressions))))
+        (preserve-joins (:entity root))
+        (preserve-expressions (:entity root)))))
 
-(defmethod automagic-analysis :model/Card
-  [card {:keys [cell-query] :as opts}]
+(mu/defmethod automagic-analysis-method :model/Card
+  [card
+   {:keys [cell-query] :as opts} :- ::automagic-analysis.opts]
   (let [root     (->root card)
         cell-url (format "%squestion/%s/cell/%s" public-endpoint
                          (u/the-id card)
@@ -838,23 +902,26 @@
                             {:cell-query cell-query
                              :cell-url   cell-url}))))
 
-(defmethod automagic-analysis :model/Query
-  [query {:keys [cell-query] :as opts}]
-  (let [root       (->root query)
-        cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))
-        opts       (cond-> opts
-                     cell-query (assoc :cell-query cell-query))
-        cell-url   (format "%sadhoc/%s/cell/%s" public-endpoint
-                           (magic.util/encode-base64-json (:dataset_query query))
-                           (magic.util/encode-base64-json cell-query))]
-    (query-based-analysis root opts
-                          (when cell-query
-                            {:cell-query cell-query
-                             :cell-url   cell-url}))))
+(mu/defmethod automagic-analysis-method :model/Query
+  [query
+   {:keys [cell-query] :as opts} :- ::automagic-analysis.opts]
+  (let [root     (->root query)
+        cell-url (format "%sadhoc/%s/cell/%s" public-endpoint
+                         (magic.util/encode-base64-json (:dataset_query query))
+                         (magic.util/encode-base64-json cell-query))]
+    ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever
+    ;; that use columns from joins before adding the joins themselves (same with expressions), which is technically
+    ;; invalid at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we
+    ;; can rework this code to be saner
+    (binding [lib.schema/*HACK-disable-ref-validation* true]
+      (query-based-analysis root opts
+                            (when cell-query
+                              {:cell-query cell-query
+                               :cell-url   cell-url})))))
 
-(mu/defmethod automagic-analysis :model/Field
+(mu/defmethod automagic-analysis-method :model/Field
   [field :- ::ads/field
-   opts]
+   opts  :- ::automagic-analysis.opts]
   (automagic-dashboard (merge (->root field) opts)))
 
 (defn- load-tables-with-enhanced-table-stats

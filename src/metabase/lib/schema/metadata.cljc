@@ -1,9 +1,8 @@
 (ns metabase.lib.schema.metadata
-  (:refer-clojure :exclude [every?])
+  (:refer-clojure :exclude [get-in])
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -12,24 +11,7 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every?]]))
-
-(defn- kebab-cased-key? [k]
-  (and (keyword? k)
-       (not (str/includes? (str k) "_"))))
-
-(defn- kebab-cased-map? [m]
-  (and (map? m)
-       (every? kebab-cased-key? (keys m))))
-
-(mr/def ::kebab-cased-map
-  [:fn
-   {:error/message "map with all kebab-cased keys"
-    :error/fn      (fn [{:keys [value]} _]
-                     (if-not (map? value)
-                       "map with all kebab-cased keys"
-                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
-   kebab-cased-map?])
+   [metabase.util.performance :refer [get-in]]))
 
 ;;; Column vs Field?
 ;;;
@@ -346,7 +328,7 @@
     ;; came from. Prefer one of the other name keys instead, only falling back to `:name` if they are not present.
     [:name      :string]
     ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
-    [:base-type ::lib.schema.common/base-type]
+    [:base-type {:default :type/*} ::lib.schema.common/base-type]
     ;; This is nillable because internal remap columns have `:id nil`.
     [:id             {:optional true} [:maybe ::lib.schema.id/field]]
     [:display-name   {:optional true} [:maybe :string]]
@@ -506,7 +488,11 @@
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.
-    [:field-ref {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Reference]]]
+    [:field-ref {:optional true} [:maybe #?(:cljs [:or
+                                                   [:ref :metabase.legacy-mbql.schema/Reference]
+                                                   [:fn {:error/message "JS array"}
+                                                    array?]]
+                                            :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
     ;;
     [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
     ;;
@@ -528,8 +514,7 @@
    ;;
    ;; Additional constraints
    ;;
-   ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map
+   ::lib.schema.common/kebab-cased-map
    [:ref ::column.validate-for-source]])
 
 (mr/def ::persisted-info.definition
@@ -588,10 +573,9 @@
                 ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
                 ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
                 ;; styles so look at that.
-                (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
-                  (if ((some-fn :lib/type :base-type) col)
-                    :lib
-                    :legacy)))}
+                (if ((some-fn :lib/type #(get % "lib/type") :base-type #(get % "base-type")) col)
+                  :lib
+                  :legacy))}
    [:lib
     [:merge
      [:ref ::column]
@@ -773,3 +757,10 @@
    {:decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])
+
+(mr/def ::transform
+  "TODO (Cam 10/1/25) -- I'm putting this here as a placeholder until you guys go fill it out a little more."
+  [:map
+   [:id     ::lib.schema.id/transform]
+   [:source {:optional true} [:map
+                              [:query {:optional true} [:ref :metabase.lib.schema/query]]]]])

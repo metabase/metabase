@@ -9,11 +9,13 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.json :as mw.json]
    [metabase.server.middleware.log :as mw.log]
+   [metabase.server.middleware.metadata-provider-cache :as mw.mp-cache]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.request-id :as mw.request-id]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.server.middleware.settings-cache :as mw.settings-cache]
    [metabase.server.middleware.ssl :as mw.ssl]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -60,7 +62,12 @@
     (catch Exception _ nil)))
 
 (def ^:private middleware
-  ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
+  "Ring async middleware has the form
+
+    (defn middleware-fn [handler]
+      (fn handler' [request respond raise]
+        (handler request respond raise)))"
+  ;; ▼▼▼ Middleware is APPLIED from TOP-TO-BOTTOM, but the returned `handlers` will see the requests in order from BOTTOM-TO-TOP. ▼▼▼
   (->> [#'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
         #'mw.exceptions/catch-api-exceptions         ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
@@ -69,12 +76,14 @@
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
+        #'mw.mp-cache/wrap-metadata-provider-cache   ; initializes the Lib-BE metadata provider cache
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
         #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
         #'mw.session/wrap-current-user-info          ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
+        #'mw.settings-cache/wrap-settings-cache-check ; check cookie to refresh settings cache if needed
         #'analytics/embedding-mw                     ; reads sdk client headers, binds them to *client* and *version*, and tracks sdk-response metrics
         #'mw.session/wrap-session-key                ; looks for a Metabase Session ID and assoc as :metabase-session-key
         #'mw.auth/wrap-static-api-key                ; looks for a static Metabase API Key on the request and assocs as :metabase-api-key
@@ -89,7 +98,6 @@
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
         ]
        (remove nil?)))
-;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
 (mu/defn- apply-middleware :- ::api.macros/handler
   [handler :- ::api.macros/handler]
@@ -104,7 +112,7 @@
 (mu/defn- dev-handler :- ::api.macros/handler
   [server-routes :- ::api.macros/handler]
   (let [handler (atom (apply-middleware server-routes))]
-    (doseq [varr  middleware
+    (doseq [varr  (cons #'middleware middleware)
             :when (instance? clojure.lang.IRef varr)]
       (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
                                  (log/infof "%s changed, rebuilding handler" varr)

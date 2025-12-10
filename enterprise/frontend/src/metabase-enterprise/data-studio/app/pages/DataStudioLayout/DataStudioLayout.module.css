@@ -1,0 +1,66 @@
+.nav {
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.opened {
+  width: 300px;
+}
+
+.icon {
+  color: var(--mb-color-text-secondary);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover,
+  &.selected {
+    background-color: var(--mb-color-brand-light);
+  }
+}
+
+.tab,
+.toggle {
+  position: relative;
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &.selected {
+    color: var(--mb-color-brand);
+
+    .icon {
+      color: inherit;
+    }
+  }
+}
+
+.hoverButton {
+  &:hover {
+    .showOnHover {
+      opacity: 1;
+    }
+
+    .hideOnHover {
+      opacity: 0;
+    }
+  }
+}
+
+.showOnHover {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.75rem;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.hideOnHover {
+  opacity: 1;
+  transition: opacity 400ms ease;
+}
+
+.disablePointer {
+  cursor: default;
+}

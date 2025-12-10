@@ -89,11 +89,13 @@ export type {
   ChartColor,
   CreateDashboardValues,
   EntityTypeFilterKeys,
+  InitializationStatus,
   LoginStatus,
   MetabaseAuthConfig,
   MetabaseAuthConfigWithApiKey,
   MetabaseAuthConfigWithJwt,
   MetabaseAuthConfigWithSaml,
+  MetabaseIsGuestAuthConfig,
   MetabaseClickActionPluginsConfig,
   MetabaseColors,
   MetabaseClickAction,
@@ -104,30 +106,34 @@ export type {
   MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
   MetabaseFontFamily,
+  MetabaseGlobalPluginsConfig,
   MetabasePluginsConfig,
   MetabaseQuestion,
   MetabaseTheme,
+  MetabaseThemePreset,
   MetabaseUser,
+  SdkEntityToken,
   SdkCollectionId,
   SdkDashboardId,
+  SdkDashboardEntityPublicProps,
   SdkDashboardLoadEvent,
   SdkEntityId,
   SdkErrorComponent,
   SdkErrorComponentProps,
   SdkEventHandlersConfig,
   SdkQuestionId,
+  SdkQuestionEntityPublicProps,
   SdkQuestionTitleProps,
   SdkUserId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 
-export type {
-  UserBackendJwtResponse,
-  MetabaseFetchRequestTokenFn,
-  MetabaseEmbeddingSessionToken,
-} from "embedding-sdk-bundle/types/refresh-token";
-
 export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 export type { IconName } from "metabase/embedding-sdk/types/icon";
+
+export type {
+  UserBackendJwtResponse,
+  MetabaseFetchRequestTokenFn,
+} from "metabase/embedding-sdk/types/refresh-token";

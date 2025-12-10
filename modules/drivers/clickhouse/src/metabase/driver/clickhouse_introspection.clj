@@ -1,4 +1,5 @@
 (ns metabase.driver.clickhouse-introspection
+  (:refer-clojure :exclude [empty? get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -8,7 +9,8 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.performance :refer [empty? get-in]])
   (:import
    (java.sql Connection DatabaseMetaData)))
 
@@ -156,7 +158,6 @@
                 jdbc/metadata-result))))
        (filter not-inner-mv-table?)
        (tables-set)
-       (map #(assoc % :schema nil))
        (set)))
 
 (defmethod driver/describe-database* :clickhouse

@@ -5,6 +5,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -12,6 +14,7 @@
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
+   [metabase.search.util :as u.search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -55,6 +58,9 @@
                         :model/Card       {}            {:name "Projected Revenue"              :collection_id col-id#}
                         :model/Card       {}            {:name "Employee Satisfaction"          :collection_id col-id#}
                         :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
+                        :model/Card       {}            {:name "Organization Reference"         :collection_id col-id#}
+                        ;; this is to show off that our storage can give false positives (stemming etc)
+                        :model/Card       {}            {:name "Nobody Expects Organi"          :collection_id col-id#}
                         :model/Database   {db-id# :id}  {:name "Indexed Database"}
                         :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
            (search.engine/reindex! :search.engine/appdb {:in-place? true})
@@ -145,14 +151,22 @@
         (is (= 2 (index-hits "satisfaction -customer")))))))
 
 (deftest phrase-test
-  (with-index
-    (with-fulltext-filtering
-      ;; Less matches without an english dictionary
-      (is (= #_2 3 (index-hits "projected")))
-      (is (= 2 (index-hits "revenue")))
-      (is (= #_1 2 (index-hits "projected revenue")))
-      (testing "only sometimes do these occur sequentially in a phrase"
-        (is (= 1 (index-hits "\"projected revenue\"")))))))
+  (mt/with-dynamic-fn-redefs [u.search/tsv-language (constantly "english")]
+    (with-index
+      (with-fulltext-filtering
+        ;; Less matches without an english dictionary
+        (is (= #_2 3 (index-hits "projected")))
+        (is (= 2 (index-hits "revenue")))
+        (is (= #_1 2 (index-hits "projected revenue")))
+        (testing "Simple dictionary allows searching for unstemmed words #60649"
+          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
+          (is (= 2 (index-hits "organ")))
+          (is (= 2 (index-hits "organi"))))
+        (testing "We get false-positive for 'Organi' here"
+          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
+          (is (= 2 (index-hits "organization"))))
+        (testing "only sometimes do these occur sequentially in a phrase"
+          (is (= 1 (index-hits "\"projected revenue\""))))))))
 
 (defn ingest!
   [model where-clause]
@@ -172,7 +186,7 @@
   (ingest! model [:= :this.name entity-name])
   (fetch-one model :name entity-name))
 
-(def default-index-entity
+(def ^:parallel default-index-entity
   {:model               nil
    :model_id            nil
    :name                nil
@@ -464,9 +478,10 @@
                        :collection_id coll-id})]
                     (fetch "indexed-entity" :name (:name miv)))))
           (testing "Changing values syncs the index"
-            (t2/update! :model/Card (:id model) (assoc-in model
-                                                          [:dataset_query :query :filter]
-                                                          [:!= (mt/$ids :products $id) (:model_pk miv)]))
+            (t2/update! :model/Card (:id model) (update model :dataset_query (fn [query]
+                                                                               (let [products-id (lib.metadata/field query (mt/id :products :id))]
+                                                                                 (-> query
+                                                                                     (lib/filter (lib/!= products-id (:model_pk miv))))))))
             (model-index/add-values! model-index)
             (let [miv2 (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
               (is (=? [(index-entity
@@ -527,8 +542,8 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"core_user"         (cond-> #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
-                         config/ee-available? (conj "document"))
+  {"core_user"         (cond-> #{"action" "collection" "document" "model_index_value" "report_card" "report_dashboard" "segment"}
+                         config/ee-available? (conj "transform"))
    "model_index"       #{"model_index_value"}
    "metabase_database" #{"action" "metabase_table" "model_index_value" "report_card" "segment"}
    "metabase_table"    #{"action" "model_index_value" "report_card" "segment"}

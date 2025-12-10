@@ -239,6 +239,29 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       );
     });
   });
+
+  it("should fallback to sidebar layout when invalid layout prop is provided and show a warning", () => {
+    setup(metabotResponse);
+
+    cy.window().then((win) => {
+      cy.spy(win.console, "warn").as("consoleWarn");
+    });
+
+    mountSdkContent(<MetabotQuestion layout="foobar" />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+    });
+
+    cy.get("@consoleWarn").should(
+      "have.been.calledWith",
+      'Invalid layout for MetabotQuestion: foobar. Valid values are "stacked", "sidebar", or "auto"',
+    );
+  });
 });
 
 const mockSuggestedPrompts = () => {

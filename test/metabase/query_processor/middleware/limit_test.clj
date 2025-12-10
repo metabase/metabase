@@ -29,7 +29,7 @@
 (deftest limit-results-rows-test
   (testing "Apply to an infinite sequence and make sure it gets capped at `qp.settings/absolute-max-results`"
     (is (= test-max-results
-           (-> (limit! {:type :native}) mt/rows count)))))
+           (-> (limit! {:type :native, :native {:query "SELECT 1;"}}) mt/rows count)))))
 
 (deftest ^:parallel disable-max-results-test
   (testing "Apply `absolute-max-results` limit in the default case"
@@ -63,7 +63,7 @@
   (testing "Apply a max-results-bare-rows limit specifically on no-aggregation query"
     (let [query  {:constraints {:max-results 46}
                   :type        :query
-                  :query       {}}
+                  :query       {:source-table 1}}
           result (limit! query)]
       (is (= 46
              (-> result mt/rows count))
@@ -80,11 +80,11 @@
 (deftest ^:parallel download-row-max-results-test
   (testing "Apply `absolute-max-results` when `download-row-limit` is not set."
     (let [query {:type  :query
-                 :query {}
+                 :query {:source-table (meta/id :venues)}
                  :info  {:context :csv-download}}]
-      (is (=? {:type  :query
-               :query {:limit qp.settings/absolute-max-results}
-               :info  {:context :csv-download}}
+      (is (=? {:type     :query
+               :query    {:limit qp.settings/absolute-max-results}
+               :info     {:context :csv-download}}
               (add-default-limit query))))))
 
 (deftest download-row-limit-test
@@ -104,7 +104,7 @@
           (is (= expected
                  (get-in (add-default-limit
                           {:type  :query
-                           :query {}
+                           :query {:source-table (meta/id :venues)}
                            :info  {:context context}})
                          [:query :limit]))))))))
 
@@ -124,7 +124,7 @@
         (is (= expected
                (get-in (add-default-limit
                         {:type        :query
-                         :query       {}
+                         :query       {:source-table (meta/id :venues)}
                            ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
                            ;; so we can use this to check the behaviour of `add-default-limit` when download-row-limit is unset
                          :constraints (when limit {:max-results-bare-rows limit})

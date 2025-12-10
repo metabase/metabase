@@ -1,5 +1,5 @@
 .errors {
-  background-color: var(--mb-color-bg-error);
+  background-color: var(--mb-color-background-error);
   color: var(--mb-color-text-primary);
   line-height: 1em;
 }

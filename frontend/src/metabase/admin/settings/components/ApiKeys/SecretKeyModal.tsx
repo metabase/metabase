@@ -4,6 +4,7 @@ import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import CS from "metabase/css/core/index.css";
 import { Button, Flex, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
+import { color } from "metabase/ui/utils/colors";
 const { fontFamilyMonospace } = getThemeOverrides();
 
 export const SecretKeyModal = ({
@@ -29,7 +30,8 @@ export const SecretKeyModal = ({
         disabled
         styles={{
           input: {
-            color: `black`,
+            // This color prop is needed to override disabled input color styles
+            color: color("text-primary"),
             fontFamily: fontFamilyMonospace as string,
           },
         }}

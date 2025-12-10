@@ -7,30 +7,29 @@ import { getEmbedSidebar } from "../embedding/sdk-iframe-embedding-setup/helpers
 
 const { H } = cy;
 
-describe("embed flow pre-selection from sharing modal", () => {
+const suiteTitle = "scenarios > sharing > embed flow pre-selection";
+
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
+    H.activateToken("bleeding-edge");
+    H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("pre-selects dashboard in embed flow when opened from dashboard sharing modal", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openSharingMenu("Embed");
+    H.embedModalEnableEmbedding();
 
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("link", { name: "Embedded Analytics JS" }).click();
-    });
+    H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
-    cy.location("search").should((search) => {
-      const params = new URLSearchParams(search);
-
-      expect(params.get("resource_type")).to.equal("dashboard");
-      expect(params.get("resource_id")).to.equal(String(ORDERS_DASHBOARD_ID));
-    });
-
-    cy.log("should navigate to embed options step");
     getEmbedSidebar().within(() => {
       cy.findByText("Behavior").should("be.visible");
       cy.findByText("Appearance").should("be.visible");
@@ -41,24 +40,23 @@ describe("embed flow pre-selection from sharing modal", () => {
     H.getSimpleEmbedIframeContent()
       .findByText("Orders in a dashboard", { timeout: 10_000 })
       .should("be.visible");
+
+    getEmbedSidebar().findByText("Back").should("not.exist");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
   });
 
   it("pre-selects question in embed flow when opened from question sharing modal", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openSharingMenu("Embed");
+    H.embedModalEnableEmbedding();
 
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("link", { name: "Embedded Analytics JS" }).click();
-    });
+    H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
-    cy.location("search").should((search) => {
-      const params = new URLSearchParams(search);
-
-      expect(params.get("resource_type")).to.equal("question");
-      expect(params.get("resource_id")).to.equal(String(ORDERS_QUESTION_ID));
-    });
-
-    cy.log("should navigate to embed options step");
     getEmbedSidebar().within(() => {
       cy.findByText("Behavior").should("be.visible");
       cy.findByText("Appearance").should("be.visible");
@@ -69,5 +67,13 @@ describe("embed flow pre-selection from sharing modal", () => {
     H.getSimpleEmbedIframeContent()
       .findByText("Orders", { timeout: 10_000 })
       .should("be.visible");
+
+    getEmbedSidebar().findByText("Back").should("not.exist");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
   });
 });

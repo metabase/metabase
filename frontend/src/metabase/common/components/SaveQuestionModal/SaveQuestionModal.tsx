@@ -30,9 +30,6 @@ export const SaveQuestionModal = ({
     handleSaveAfterConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     onSave,
-    onError: (error) => {
-      throw error;
-    },
   });
   useEscapeToCloseModal(onClose);
 

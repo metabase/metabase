@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
@@ -46,6 +46,10 @@ export function PythonDataPicker({
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),
   );
+
+  useEffect(() => {
+    setTableSelections(getInitialTableSelections(tables));
+  }, [tables]);
 
   const {
     data: databases,

@@ -65,10 +65,14 @@ export const setup = async ({
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
-    collections: [personalCollection],
+    collections: [personalCollection, rootCollection],
   });
   setupCollectionItemsEndpoint({
     collection: personalCollection,
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: rootCollection,
     collectionItems: [],
   });
 
@@ -79,7 +83,7 @@ export const setup = async ({
       setupTableQueryMetadataEndpoint(
         createMockTable({
           id: `card__${card.id}`,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ),
     );

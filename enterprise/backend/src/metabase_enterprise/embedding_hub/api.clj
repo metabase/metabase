@@ -45,9 +45,11 @@
                                    [:= :type "model"]
                                    [:= :archived false]
                                    [:or
-                                    [:not-in :collection_id [(:id (audit/default-audit-collection)) {:select :id
-                                                                                                     :from   [(t2/table-name :model/Collection)]
-                                                                                                     :where  [:= :is_sample true]}]]
+                                    [:and
+                                     [:!= :collection_id (:id (audit/default-audit-collection))]
+                                     [:not-in :collection_id {:select :id
+                                                              :from   [(t2/table-name :model/Collection)]
+                                                              :where  [:= :is_sample true]}]]
                                     [:is :collection_id nil]]]}))
 
 (defn- embedding-hub-checklist []
@@ -59,6 +61,10 @@
    "embed-production"              (embedding.settings/embedding-hub-production-embed-snippet-created)
    "secure-embeds"                 (has-configured-sso?)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/checklist"
   "Get the embedding hub checklist status, indicating which setup steps have been completed."
   []

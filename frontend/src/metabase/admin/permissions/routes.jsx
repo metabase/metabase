@@ -1,7 +1,5 @@
-import { IndexRedirect } from "react-router";
-import { t } from "ttag";
+import { IndexRedirect, Route } from "react-router";
 
-import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
@@ -16,7 +14,7 @@ import DatabasesPermissionsPage from "./pages/DatabasePermissionsPage/DatabasesP
 import GroupsPermissionsPage from "./pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 
 const getRoutes = () => (
-  <Route title={t`Permissions`}>
+  <Route>
     <IndexRedirect to="data" />
 
     <Route path="data" component={DataPermissionsPage}>

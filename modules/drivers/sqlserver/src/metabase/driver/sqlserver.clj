@@ -1,11 +1,11 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv get-in])
   (:require
-   [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [clojure.xml :as xml]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -21,12 +21,15 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf :refer [mapv]])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [mapv get-in]])
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -55,12 +58,15 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
-                              :jdbc/statements                        false}]
+                              :jdbc/statements                        false
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
-(defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
-  [_ _ db]
-  (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
+(mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
+  [_ _ db :- ::lib.schema.metadata/database]
+  (let [major-version (get-in db [:dbms-version :semantic-version 0] 0)]
     (when (zero? major-version)
       (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))
@@ -414,7 +420,7 @@
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
   (let [parsed (-> (io/resource "timezones/windowsZones.xml")
-                   io/reader
+                   io/input-stream
                    xml/parse)
         sanitized (sanitize-contents parsed)
         data (-> sanitized :content second :content first :content)]
@@ -428,7 +434,8 @@
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
-        datetimeoffset? (h2x/is-of-type? expr "datetimeoffset")]
+        datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
+                            (h2x/is-of-type? expr "datetimeoffset"))]
     (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
     (-> (if datetimeoffset?
           expr
@@ -1017,11 +1024,18 @@
 
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
-  (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (macaw/parsed-query query)
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        ^Select parsed-query (macaw/parsed-query sql-query)
         ^PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(Table. table-name)])
-    [(str parsed-query)]))
+    [(str parsed-query) sql-params]))
+
+(defmethod driver/compile-insert :sqlserver
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
+    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
 
 (defmethod driver/table-exists? :sqlserver
   [driver database {:keys [schema name] :as _table}]

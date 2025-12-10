@@ -8,6 +8,7 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -42,8 +43,8 @@ describe("issue 48754", () => {
       cy.findByText("Category").click();
     });
     H.getNotebookStep("summarize").button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Q1").click();
     });
     H.popover()
@@ -118,11 +119,9 @@ describe("issue 39487", () => {
     },
   );
 
-  // broken after migration away from filter modal
-  // see https://github.com/metabase/metabase/issues/55688
   it(
-    "calendar has constant size when using date range picker filter (metabase#39487)",
-    { viewportHeight: 1000, tags: "@skip" },
+    "calendar has constant size when using date range picker filter, and text inputs are in sync with the calendar inputs (metabase#39487, metabase#64602)",
+    { viewportHeight: 1000 },
     () => {
       createTimeSeriesQuestionWithFilter([
         "between",
@@ -140,11 +139,35 @@ describe("issue 39487", () => {
       cy.findByTestId("filter-pill").click();
       checkDateRangeFilter();
 
-      cy.log("filter modal");
+      cy.log("filter dropdown");
       cy.button(/Filter/).click();
-      H.modal().findByText("May 1 – Jun 1, 2024").click();
+      H.popover().findByText("Created At").click();
+      H.popover().findByText("Fixed date range…").click();
+      H.popover().within(() => {
+        cy.log(
+          "changing text input values should navigate the calendars (metabase#64602)",
+        );
+        cy.findAllByRole("textbox").first().clear().type("2024/05/01");
+        cy.findByText("May 2024").should("be.visible");
+        cy.findByLabelText("1 May 2024").should(
+          "have.attr",
+          "data-first-in-range",
+          "true",
+        );
+
+        cy.findAllByRole("textbox")
+          .should("have.length", 2)
+          .last()
+          .clear()
+          .type("2024/06/01");
+        cy.findAllByLabelText("1 June 2024")
+          .filter(":visible")
+          .should("have.length", 1)
+          .and("have.attr", "data-last-in-range", "true");
+      });
+      previousButton().click();
       checkDateRangeFilter();
-      H.modal().button("Close").click();
+      cy.realPress("Escape");
 
       cy.log("filter drill");
       cy.findByLabelText("Switch to data").click();
@@ -152,8 +175,12 @@ describe("issue 39487", () => {
       H.popover().findByText("Filter by this column").click();
       H.popover().findByText("Fixed date range…").click();
       H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
-      // eslint-disable-next-line no-unsafe-element-filtering
-      H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
+      H.popover()
+        .findAllByRole("textbox")
+        .should("have.length", 2)
+        .last()
+        .clear()
+        .type("2024/06/01");
       previousButton().click();
       checkDateRangeFilter();
 
@@ -536,8 +563,8 @@ describe("issue 53404", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openNotebook();
     H.getNotebookStep("data").button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders").click();
     });
     H.popover().findByText("ID").click();
@@ -640,8 +667,8 @@ describe("issue 46845", () => {
 
     cy.log("add a self-join");
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.popover().findByText("Product ID").click();
@@ -766,8 +793,8 @@ describe("issue 58829", () => {
     cy.log("verify it can be joined");
     H.openProductsTable({ mode: "notebook" });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("M1").click();
     });
     H.popover().findByText("ID").click();
@@ -879,8 +906,8 @@ describe("issue 54920", () => {
 
     cy.log("create a derived question and verify that it can be run");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Base question").click();
     });
     H.getNotebookStep("filter")
@@ -921,8 +948,8 @@ describe("issue 55631", () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.intercept("POST", "/api/card").as("cardCreate");
@@ -989,13 +1016,13 @@ describe("issue 39033", () => {
     H.createNativeQuestion(question1Details);
     H.createNativeQuestion(question2Details);
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question1Name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question2Name).click();
     });
     H.popover().findByText("PRODUCT_ID").click();
@@ -1034,13 +1061,13 @@ describe("issue 56416", () => {
   it("should be able to use a column from a joined question with a long name (metabase#56416)", () => {
     cy.log("create the joined question");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.getNotebookStep("summarize")
@@ -1063,13 +1090,13 @@ describe("issue 56416", () => {
 
     cy.log("create the main question");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(joinedQuestionName).click();
     });
     H.popover().findByText("Product ID").click();
@@ -1287,6 +1314,103 @@ SELECT 2 AS ID, 3 AS USER_ID
             cy.get("[data-testid=cell-data]").should("have.text", "3");
           });
         });
+    });
+  });
+});
+
+describe("issue 64293", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to run a query for a empty required parameter without a default value (metabase#64293)", () => {
+    const questionDetails: NativeQuestionDetails = {
+      name: "Question 1",
+      native: {
+        query: "SELECT * FROM PEOPLE WHERE state = {{State}}",
+        "template-tags": {
+          State: {
+            type: "text",
+            name: "State",
+            id: "1",
+            "display-name": "State",
+          },
+        },
+      },
+      parameters: [
+        createMockParameter({
+          id: "1",
+          slug: "State",
+          required: true,
+          name: "State",
+        }),
+      ],
+    };
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByPlaceholderText("State").should("exist");
+    cy.findByPlaceholderText("State").type("NY{enter}");
+
+    H.runButtonOverlay().should("exist");
+    H.runButtonOverlay().click();
+
+    H.ensureParameterColumnValue({
+      columnName: "STATE",
+      columnValue: "NY",
+    });
+  });
+});
+
+describe("issue 13347", () => {
+  beforeEach(() => {
+    H.restore();
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.createQuestion({
+      name: "13347 structured",
+      database: WRITABLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    });
+
+    H.createNativeQuestion({
+      name: "13347 native",
+      database: WRITABLE_DB_ID,
+      native: {
+        query: "SELECT * FROM ORDERS",
+      },
+    });
+
+    cy.signInAsNormalUser();
+
+    cy.visit("/");
+  });
+
+  it("should not display questions in mini data picker that cannot be used for new questions (metabase#13347)", () => {
+    H.startNewQuestion();
+    H.miniPickerOurAnalytics().click();
+
+    H.miniPicker().within(() => {
+      cy.findByText("Orders").should("exist");
+
+      cy.findByText("13347 structured").should("not.exist");
+      cy.findByText("13347 native").should("not.exist");
+    });
+  });
+
+  it("should not display questions in big data picker that cannot be used for new questions (metabase#13347)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+
+    H.entityPickerModalLevel(1).within(() => {
+      cy.findByText("Orders").should("exist");
+
+      cy.findByText("13347 structured").should("not.exist");
+      cy.findByText("13347 native").should("not.exist");
     });
   });
 });

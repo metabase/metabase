@@ -1,7 +1,6 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -10,6 +9,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { cancelConfirmationModal } from "e2e/test/scenarios/admin/performance/helpers/modals-helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
   createMockVirtualCard,
@@ -19,11 +19,20 @@ import {
 import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
+  cacheStrategySidesheet,
   durationRadioButton,
   openSidebarCacheStrategyForm,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
+const { H } = cy;
+
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+
+// There's a race condition when saving a dashboard
+// and then immediately editing it again. After saving,
+// we exit the edit mode and that can happen after
+// `H.editDashboard` is called for some reason
+const DASHBOARD_SAVE_WAIT_TIME = 450;
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
@@ -48,7 +57,6 @@ describe("scenarios > dashboard", () => {
         "pressing escape should only close the entity picker modal, not the new dashboard modal",
       );
       H.modal().findByTestId("collection-picker-button").click();
-      H.entityPickerModal().findByText("Select a collection");
       cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
@@ -82,12 +90,12 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("dashboard-empty-state").button("Add a chart").click();
       cy.findByTestId("new-button-bar").findByText("New Question").click();
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+        cy.findByText("Databases").click();
+        cy.findByPlaceholderText("Search this database or everywhere…").type(
           "Pro",
         );
-        cy.findByText("Everywhere").click();
         cy.findByText("Products").click();
       });
 
@@ -194,10 +202,8 @@ describe("scenarios > dashboard", () => {
       cy.wait("@saveQuestion");
 
       cy.log("Add this new question to a dashboard created on the fly");
-      H.modal().within(() => {
-        cy.findByText("Saved! Add this to a dashboard?");
-        cy.button("Yes please!").click();
-      });
+
+      H.checkSavedToCollectionQuestionToast(true);
 
       H.entityPickerModal()
         .findByRole("tab", { name: /Dashboards/ })
@@ -218,7 +224,7 @@ describe("scenarios > dashboard", () => {
 
       H.commandPaletteButton().click();
       H.commandPalette().within(() => {
-        cy.findByText("Recent items").should("exist");
+        cy.findByText("Recents").should("exist");
         cy.findByRole("option", { name: "Orders in a dashboard" }).click();
       });
 
@@ -1123,7 +1129,10 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
 
-    H.openSharingMenu("Embed");
+    H.openLegacyStaticEmbeddingModal({
+      resource: "dashboard",
+      resourceId: ORDERS_DASHBOARD_ID,
+    });
 
     H.modal().within(() => {
       cy.icon("close").click();
@@ -1238,13 +1247,14 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").findByText("Orders");
   });
 
-  describe("warn before leave", { tags: "@flaky" }, () => {
+  describe("warn before leave", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
 
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
       cy.visit("/");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByTestId("home-page").should(
         "contain",
@@ -1267,7 +1277,7 @@ describe("scenarios > dashboard", () => {
           .eq(0);
       dragOnXAxis(card(), 100);
       assertPreventLeave();
-      H.saveDashboard();
+      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
       // remove
       H.editDashboard();
@@ -1275,8 +1285,9 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
     });
 
-    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
+    it("should warn a user before leaving after adding, removing, moving, or duplicating a tab", () => {
       cy.visit("/");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       // add tab
       createNewDashboard();
@@ -1314,7 +1325,7 @@ describe("scenarios > dashboard", () => {
       // can be a side effect
       cy.url().should("include", "tab-1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: 100 });
+      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
       // rename tab
       H.editDashboard();
@@ -1353,7 +1364,7 @@ describe("scenarios > dashboard", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard", () => {
+describe("scenarios > dashboard", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     H.resetSnowplow();
@@ -1681,6 +1692,46 @@ describe("scenarios > dashboard > caching", () => {
         "Adaptive",
       );
     });
+  });
+
+  /**
+   * @note There is a similar test for closing the cache form when it's dirty
+   * It's in the Cypress describe block labeled "scenarios > question > caching"
+   */
+  it("should guard closing caching form if it's dirty on different actions", () => {
+    interceptPerformanceRoutes();
+    /**
+     * we need to populate the history via react router by clicking route's links
+     * in order to imitate a user who clicks "back" and "forward" button
+     */
+    cy.visit("/");
+    cy.findByTestId("main-navbar-root").findByText("Our analytics").click();
+    cy.findByTestId("collection-table")
+      .findByText("Orders in a dashboard")
+      .click();
+
+    openSidebarCacheStrategyForm("dashboard");
+
+    cacheStrategySidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
+      durationRadioButton().click();
+    });
+    // Action 1: clicking on cross button
+    cacheStrategySidesheet().findByRole("button", { name: /Close/ }).click();
+    cancelConfirmationModal();
+    // Action 2: ESC button
+    cy.get("body").type("{esc}");
+    cancelConfirmationModal();
+    // Action 3: click outside
+    // When a user clicks somewhere outside he basically clicks on the top one
+    cy.findAllByTestId("modal-overlay")
+      .should("have.length.gte", 1)
+      .last()
+      .click();
+    cancelConfirmationModal();
+    // Action 4: browser's Back action
+    cy.go("back");
+    cancelConfirmationModal();
   });
 
   it("can click 'Clear cache' for a dashboard", () => {

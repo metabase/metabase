@@ -25,7 +25,7 @@ export const EmbeddingHubHomePage = (): ReactNode => {
     dispatch(dismissEmbeddingHomepage("dismissed-done"));
 
   return (
-    <Stack mx="auto" py="xl" maw={800}>
+    <Stack mx="auto" p="xl" maw={850}>
       <Group gap="sm" justify="space-between" mb="xl">
         <Group gap="sm">
           <MetabotGreeting />

@@ -84,6 +84,70 @@
         (is (= [{:one 1}]
                (jdbc/query {:connection conn} "SELECT 1 AS one;")))))))
 
+(deftest ^:parallel broken-out-details-test-6
+  (testing :aws-iam
+    (testing "Postgres with AWS IAM"
+      (is (= (->DataSource
+              "jdbc:aws-wrapper:postgresql://localhost:5432/metabase"
+              {"ApplicationName" config/mb-version-and-process-identifier
+               "OpenSourceSubProtocolOverride" "true"
+               "user" "cam"
+               "useSSL" true
+               "wrapperPlugins" "iam"})
+             (mdb.data-source/broken-out-details->DataSource :postgres {:host "localhost"
+                                                                        :port 5432
+                                                                        :user "cam"
+                                                                        :aws-iam true
+                                                                        :db "metabase"}))))))
+
+(deftest ^:parallel broken-out-details-test-7
+  (testing :aws-iam
+    (testing "MySQL with AWS IAM"
+      (is (= (->DataSource
+              "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
+              {"user" "root"
+               "wrapperPlugins" "iam"
+               "useSSL" true
+               "sslMode" "VERIFY_CA"})
+             (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
+                                                                     :port 3306
+                                                                     :user "root"
+                                                                     :aws-iam true
+                                                                     :db "metabase"}))))))
+
+(deftest ^:parallel broken-out-details-test-8
+  (testing :aws-iam
+    (testing "MySQL with AWS IAM and ssl-cert=trust"
+      (is (= (->DataSource
+              "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
+              {"user" "root"
+               "wrapperPlugins" "iam"
+               "useSSL" true
+               "trustServerCertificate" "true"})
+             (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
+                                                                     :port 3306
+                                                                     :user "root"
+                                                                     :aws-iam true
+                                                                     :ssl-cert "trust"
+                                                                     :db "metabase"}))))))
+
+(deftest ^:parallel broken-out-details-test-9
+  (testing :aws-iam
+    (testing "MySQL with AWS IAM and ssl-cert path"
+      (is (= (->DataSource
+              "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
+              {"user" "root"
+               "wrapperPlugins" "iam"
+               "sslMode" "VERIFY_CA"
+               "useSSL" true
+               "serverSslCert" "/path/to/certificate.pem"})
+             (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
+                                                                     :port 3306
+                                                                     :user "root"
+                                                                     :aws-iam true
+                                                                     :ssl-cert "/path/to/certificate.pem"
+                                                                     :db "metabase"}))))))
+
 (deftest ^:parallel connection-string-test
   (let [data-source (mdb.data-source/raw-connection-string->DataSource
                      (format "jdbc:h2:mem:%s" (mt/random-name)))]
@@ -168,6 +232,24 @@
              (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" nil "1234" nil)
              (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "" "1234" nil)
              (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "" "1234" "client ID"))))))
+
+(deftest ^:parallel raw-connection-string-with-aws-iam-test
+  (testing "Raw connection string with AWS IAM enabled for Postgres"
+    (is (= (->DataSource
+            "jdbc:aws-wrapper:postgresql://metabase"
+            {"user" "cam"
+             "useSSL" true
+             "wrapperPlugins" "iam"})
+           (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil nil true)))))
+
+(deftest ^:parallel raw-connection-string-with-aws-iam-test-2
+  (testing "Raw connection string with AWS IAM enabled for MySQL"
+    (is (= (->DataSource
+            "jdbc:aws-wrapper:mysql://metabase"
+            {"user" "cam"
+             "useSSL" true
+             "wrapperPlugins" "iam"})
+           (mdb.data-source/raw-connection-string->DataSource "mysql://metabase" "cam" nil nil true)))))
 
 (deftest ^:parallel equality-test
   (testing "Two DataSources with the same URL should be equal"

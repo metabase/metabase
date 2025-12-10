@@ -112,11 +112,10 @@
 
 (defn- get-returned-columns [mp queryable]
   (let [query (lib/query mp queryable)]
-    (if (= (:lib/type (lib/query-stage query 0))
-           :mbql.stage/mbql)
-      (lib/returned-columns query)
+    (if (lib/native-only-query? query)
       (deps.native/native-result-metadata (:engine (lib.metadata/database mp))
-                                          mp query))))
+                                          query)
+      (lib/returned-columns query))))
 
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
@@ -236,6 +235,20 @@
     {[:metadata/native-query-snippet id] (delay (merge (when id
                                                          (lib.metadata/native-query-snippet (inner-mp mp) id))
                                                        (u/normalize-map updates)))}))
+
+(defmethod add-override :dashboard [^OverridingMetadataProvider mp _entity-type _id _updates]
+  mp)
+
+(defmethod add-override :document [^OverridingMetadataProvider mp _entity-type _id _updates]
+  mp)
+
+(defmethod add-override :sandbox [^OverridingMetadataProvider mp _entity-type _id _updates]
+  mp)
+
+(defmethod add-override :segment [^OverridingMetadataProvider mp _entity-type id updates]
+  {[:metadata/segment id] (delay (merge (when id
+                                          (lib.metadata/segment (inner-mp mp) id))
+                                        updates))})
 
 (defn all-overrides
   "Returns all the overrides by ID, in the same form as the map input to [[with-deps]]:

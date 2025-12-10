@@ -1,5 +1,5 @@
 import { pickEntity } from "./e2e-collection-helpers";
-import { modal } from "./e2e-ui-elements-helpers";
+import { modal, undoToast } from "./e2e-ui-elements-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
@@ -30,6 +30,10 @@ export function runNativeQuery({ wait = true } = {}) {
 
 export function runButtonOverlay() {
   return cy.findByTestId("run-button-overlay");
+}
+
+export function runButtonInOverlay() {
+  return runButtonOverlay().findByTestId("run-button");
 }
 
 /**
@@ -101,11 +105,11 @@ export const cypressWaitAll = function (commands) {
  */
 export function visitQuestion(questionIdOrAlias) {
   if (typeof questionIdOrAlias === "number") {
-    visitQuestionById(questionIdOrAlias);
+    return visitQuestionById(questionIdOrAlias);
   }
 
   if (typeof questionIdOrAlias === "string") {
-    cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
+    return cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
   }
 }
 
@@ -122,6 +126,8 @@ function visitQuestionById(id) {
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
+
+  return cy.wrap(id);
 }
 
 /**
@@ -336,15 +342,17 @@ export function saveQuestion(
     const wasSavedToCollection = !body.dashboard_id;
 
     if (wasSavedToCollection) {
-      cy.get("#QuestionSavedModal").within(() => {
-        cy.findByText(/add this to a dashboard/i).should("be.visible");
+      checkSavedToCollectionQuestionToast(addToDashboard);
+    }
+  });
+}
 
-        if (addToDashboard) {
-          cy.button("Yes please!").click();
-        } else {
-          cy.button("Not now").click();
-        }
-      });
+export function checkSavedToCollectionQuestionToast(addToDashboard) {
+  undoToast().within(() => {
+    cy.findByText(/Saved/i).should("be.visible");
+
+    if (addToDashboard) {
+      cy.button(/Add this to a dashboard/i).click();
     }
   });
 }

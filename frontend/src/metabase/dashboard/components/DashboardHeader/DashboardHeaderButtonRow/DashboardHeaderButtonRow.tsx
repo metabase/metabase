@@ -39,9 +39,8 @@ export const DashboardHeaderButtonRow = ({
   const {
     isFullscreen,
     onFullscreenChange,
-    hasNightModeToggle,
-    onNightModeChange,
     downloadsEnabled,
+    withSubscriptions,
     dashboardActions,
   } = useDashboardContext();
 
@@ -79,9 +78,8 @@ export const DashboardHeaderButtonRow = ({
             config.enabled({
               isFullscreen,
               onFullscreenChange,
-              hasNightModeToggle,
-              onNightModeChange,
               downloadsEnabled,
+              withSubscriptions,
               ...buttonComponentProps,
             })
           ) {

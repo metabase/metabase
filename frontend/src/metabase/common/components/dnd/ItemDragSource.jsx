@@ -3,6 +3,8 @@ import { Component } from "react";
 import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
+import { isRootTrashCollection } from "metabase/collections/utils";
+
 import { dragTypeForItem } from ".";
 
 class ItemDragSource extends Component {
@@ -33,7 +35,11 @@ export default DragSource(
   {
     canDrag({ isSelected, selected, collection, item }, monitor) {
       // can't drag if can't write the parent collection
-      if (collection && collection.can_write === false) {
+      if (
+        collection &&
+        !isRootTrashCollection(collection) &&
+        collection.can_write === false
+      ) {
         return false;
       }
 

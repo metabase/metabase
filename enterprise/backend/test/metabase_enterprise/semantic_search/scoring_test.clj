@@ -19,6 +19,7 @@
   [doc]
   (merge {:id 123
           :searchable_text (:name doc)
+          :embeddable_text (:name doc)
           :created_at #t "2025-01-01T12:00:00Z"
           :creator_id (mt/user->id :rasta)
           :archived false
@@ -70,9 +71,9 @@
     (with-index-contents!
       [{:model "card" :id 1 :name "orders"}
        {:model "card" :id 2 :name "unrelated"}
-       {:model "card" :id 3 :name "classified" :searchable_text "available only by court order"}
+       {:model "card" :id 3 :name "classified" :searchable_text "available only by court order" :embeddable_text "available only by court order"}
        {:model "card" :id 4 :name "order"}
-       {:model "card" :id 5 :name "orders, invoices, other stuff", :searchable_text "a verbose description"}
+       {:model "card" :id 5 :name "orders, invoices, other stuff", :searchable_text "a verbose description" :embeddable_text "a verbose description"}
        {:model "card" :id 6 :name "ordering"}]
       (with-redefs [semantic.tu/mock-embeddings {"order"      [0.11 -0.33  0.56 -0.77]
                                                  "orders"     [0.12 -0.34  0.57 -0.78]
@@ -182,10 +183,10 @@
         [{:model "card"      :id 1 :name "view card"      :view_count 0}
          {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
          {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
-        ;; fix some test flakes where dataset 3 exists and has some sort of recent views
-        (semantic.tu/with-weights (assoc (search.config/weights :default)
-                                         :user-recency 0
-                                         :rrf 0)
+        (semantic.tu/with-weights (search.config/weights {:context :default
+                                                          ;; fix some test flakes where dataset 3 exists and has some
+                                                          ;; sort of recent views
+                                                          :weights {:user-recency 0, :rrf 0}})
           (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
                    {:model "card",      :id 1, :name "view card"}
                    {:model "dataset",   :id 3, :name "view dataset"}]
@@ -324,3 +325,21 @@
                     ["card"    c1 "card ancient"]
                     ["dataset" c3 "card unseen"]]
                    (search-results :user-recency "card" {:current-user-id user-id})))))))))
+
+(deftest transform-user-recency-test
+  (testing "Transforms get a hard-coded intermediate user-recency score since view events are not tracked"
+    (let [user-id (mt/user->id :crowberto)
+          right-now (Instant/now)]
+      (mt/with-temp [:model/Card {c1 :id} {}
+                     :model/RecentViews _ {:model "card" :model_id c1 :user_id user-id :timestamp right-now}]
+        (with-index-contents!
+          [{:model "card" :id c1 :name "recently viewed card"}
+           {:model "transform" :id 1 :name "transform no views"}
+           {:model "card" :id 2 :name "never viewed card"}]
+          (testing "Transform ranks between recently viewed and never viewed cards"
+            (let [results (search-results :user-recency "card" {:current-user-id user-id})]
+              (def results results)
+              (is (= [["card" c1 "recently viewed card"]
+                      ["transform" 1 "transform no views"]
+                      ["card" 2 "never viewed card"]]
+                     results)))))))))

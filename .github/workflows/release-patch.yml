@@ -8,6 +8,11 @@ on:
         description: 'Major Metabase version (e.g. 45, 52, 68)'
         type: number
         required: true
+      override_sha:
+        description: DANGEROUSLY allow releasing from this commit sha, regardless of the state of CI (can be empty)
+        type: string
+        required: false
+        default: ''
   schedule:
     - cron: '0 21 * * 1-5' # every weekday at 4 pm EST/5 pm EDT
 
@@ -37,7 +42,7 @@ jobs:
             const lastRelease = currentRelease - 1;
             const AUTO_RELEASE_VERSIONS = [lastRelease, currentRelease];
 
-            async function releasePatchFor(majorVersion) {
+            async function releasePatchFor(majorVersion, overrideSha) {
               const nextPatch = await getNextPatchVersion({
                 github,
                 owner: context.repo.owner,
@@ -45,7 +50,7 @@ jobs:
                 majorVersion,
               });
 
-              const goodCommit = await getLatestGreenCommit({
+              const releaseCommit = overrideSha || await getLatestGreenCommit({
                 github,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -56,26 +61,27 @@ jobs:
                 github,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: goodCommit,
+                ref: releaseCommit,
                 majorVersion: Number(majorVersion),
               });
 
-              if (nextPatch && goodCommit && !hasBeenReleased) {
+              console.log(
+                { nextPatch, releaseCommit, hasBeenReleased }
+              );
+
+              if (nextPatch && releaseCommit && !hasBeenReleased) {
                 await github.rest.actions.createWorkflowDispatch({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   workflow_id: 'tag-for-release.yml',
                   ref: 'refs/heads/master',
                   inputs: {
-                    commit: goodCommit,
+                    commit: releaseCommit,
                     version: nextPatch,
                     auto: true,
                   }
-                });
+                }).catch(console.error);
               } else {
-                console.log(
-                  { nextPatch, goodCommit, hasBeenReleased }
-                );
                 console.error(`No new patch version or no green commit found for v${majorVersion}`);
               }
             }
@@ -88,7 +94,15 @@ jobs:
                 throw new Error(`Invalid version number: ${inputVersion}`);
               }
 
-              await releasePatchFor(inputVersion);
+              // only allow overriding the commit SHA for workflow_dispatch events with a provided sha
+              const overrideSha = String(context.payload?.inputs?.override_sha ?? '').trim();
+              const isValidOverride = overrideSha.length === 40;
+
+              if (!isValidOverride && overrideSha.length > 0) {
+                throw new Error(`Invalid override SHA provided: ${overrideSha}`);
+              }
+
+              await releasePatchFor(inputVersion, isValidOverride ? overrideSha : undefined);
             } else { // scheduled release of AUTO_RELEASE_VERSIONS
-              await Promise.all(AUTO_RELEASE_VERSIONS.map(releasePatchFor));
+              await Promise.all(AUTO_RELEASE_VERSIONS.map(version => releasePatchFor(version)));
             }

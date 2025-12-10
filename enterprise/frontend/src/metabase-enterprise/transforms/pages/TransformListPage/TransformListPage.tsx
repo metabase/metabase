@@ -1,38 +1,120 @@
-import type { Location } from "history";
+import { useDebouncedValue } from "@mantine/hooks";
+import dayjs from "dayjs";
+import { useMemo, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Group, Stack, Title } from "metabase/ui";
-import { useListTransformTagsQuery } from "metabase-enterprise/api";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
+import { useListTransformsQuery } from "metabase-enterprise/api";
+import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table";
+import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
+import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
+import type { Transform } from "metabase-types/api";
 
-import { CreateTransformMenu } from "./CreateTransformMenu";
-import { TransformFilterList } from "./TransformFilterList";
-import { TransformList } from "./TransformList";
-import { getParsedParams } from "./utils";
+export const TransformListPage = () => {
+  const dispatch = useDispatch();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
 
-type TransformListPageProps = {
-  location: Location;
-};
+  const { data: transforms, error, isLoading } = useListTransformsQuery({});
 
-export function TransformListPage({ location }: TransformListPageProps) {
-  const params = getParsedParams(location);
-  const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
+  const filteredTransforms = useMemo(() => {
+    if (!transforms) {
+      return [];
+    }
 
-  if (!tags || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    if (!debouncedSearchQuery) {
+      return transforms;
+    }
+
+    const query = debouncedSearchQuery.toLowerCase();
+    return transforms.filter(
+      (transform) =>
+        transform.name.toLowerCase().includes(query) ||
+        transform.target.name.toLowerCase().includes(query),
+    );
+  }, [transforms, debouncedSearchQuery]);
+
+  if (error) {
+    return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
+  const handleSelect = (item: Transform) => {
+    if (typeof item.id === "number") {
+      dispatch(push(Urls.transform(item.id)));
+    }
+  };
+
   return (
-    <Stack gap="xl" data-testid="transform-list-page">
-      <Group justify="space-between" align="start">
-        <Stack gap="sm" flex={1}>
-          <Title order={1}>{t`Transforms`}</Title>
-          <Box>{t`Create custom tables with transforms, and run them on a schedule.`}</Box>
-        </Stack>
-        <CreateTransformMenu />
-      </Group>
-      <TransformFilterList params={params} tags={tags} />
-      <TransformList params={params} />
-    </Stack>
+    <>
+      <TransformsSectionHeader
+        leftSection={
+          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
+        }
+      />
+      <Stack px="3.5rem" data-testid="transforms-list">
+        <Flex gap="md">
+          <TextInput
+            placeholder={t`Search...`}
+            leftSection={<Icon name="search" />}
+            bdrs="md"
+            flex="1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <CreateTransformMenu />
+        </Flex>
+
+        <Card withBorder p={0}>
+          {isLoading ? (
+            <ListLoadingState />
+          ) : filteredTransforms.length === 0 ? (
+            <ListEmptyState
+              label={
+                debouncedSearchQuery
+                  ? t`No transforms found`
+                  : t`No transforms yet`
+              }
+            />
+          ) : (
+            <Table
+              data={filteredTransforms.map((t) => ({
+                ...t,
+                out_table: t.target.name,
+                last_modified: new Date(t.updated_at).toDateString(),
+              }))}
+              columns={[
+                {
+                  accessorKey: "name",
+                  meta: {
+                    width: "auto",
+                  },
+                  header: t`Name`,
+                },
+                {
+                  accessorKey: "updated_at",
+                  cell: ({ getValue }) => {
+                    const value = getValue() as string;
+                    return value && dayjs(value).format("lll");
+                  },
+                  header: t`Last Modified`,
+                },
+                {
+                  accessorFn: (transform) => transform.target.name,
+                  header: t`Output table`,
+                },
+              ]}
+              onSelect={handleSelect}
+            />
+          )}
+        </Card>
+      </Stack>
+    </>
   );
-}
+};

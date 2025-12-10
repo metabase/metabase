@@ -12,13 +12,11 @@ import { useCheckDependencies } from "../use-check-dependencies";
 
 export function useCheckTransformDependencies({
   onSave,
-  onError,
 }: UseCheckDependenciesProps<UpdateTransformRequest>): UseCheckDependenciesResult<UpdateTransformRequest> {
   return useCheckDependencies({
     getCheckDependenciesRequest,
     useLazyCheckDependenciesQuery: useLazyCheckTransformDependenciesQuery,
     onSave,
-    onError,
   });
 }
 

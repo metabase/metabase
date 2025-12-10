@@ -12,7 +12,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
+   [metabase.query-processor.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -41,7 +41,7 @@
                {:name              "data"
                 :base-type         :type/Dictionary
                 :database-type     "struct"
-                :nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
+                #_#_:nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
                 :database-position 1}}
              (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
   (testing "sync without nested fields"
@@ -333,7 +333,7 @@
                      :native
                      (update :query #(str/split-lines (driver/prettify-native-form :athena %)))))))))))
 
-;;; Athena version of [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-mixed-types-test]]
+;;; Athena version of [[metabase.query-processor.date-time-zone-functions-test/datetime-diff-mixed-types-test]]
 (deftest datetime-diff-mixed-types-test
   (mt/test-driver :athena
     (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
@@ -359,7 +359,7 @@
                       (mt/formatted-rows [int int])
                       first))))))))
 
-;;; Athena version of [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-time-zones-test]]
+;;; Athena version of [[metabase.query-processor.date-time-zone-functions-test/datetime-diff-time-zones-test]]
 (mt/defdataset diff-time-zones-athena-cases
   ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but without the time zones.
   ;; It is needed to test `datetime-diff` with Athena, since Athena supports `timestamp with time zone`

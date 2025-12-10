@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { CurrencyStyle } from "metabase/lib/formatting";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
@@ -27,7 +28,7 @@ export interface NumberFormattingSettings {
 
 export interface CurrencyFormattingSettings {
   currency?: string;
-  currency_style?: string;
+  currency_style?: CurrencyStyle;
   currency_in_header?: boolean;
 }
 
@@ -238,6 +239,7 @@ const tokenStatusFeatures = [
   "metabot-v3",
   "no-upsell",
   "offer-metabase-ai",
+  "offer-metabase-ai-tiered",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -313,6 +315,7 @@ export const tokenFeatures = [
   "cache_preemptive",
   "metabot_v3",
   "offer_metabase_ai",
+  "offer_metabase_ai_tiered",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -321,11 +324,13 @@ export const tokenFeatures = [
   "etl_connections",
   "etl_connections_pg",
   "table_data_editing",
+  "remote_sync",
   "dependencies",
-  "documents",
   "semantic_search",
   "transforms",
   "transforms-python",
+  "data_studio",
+  "support-users",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -568,6 +573,8 @@ export type UserSettings = {
   "notebook-native-preview-sidebar-width"?: number | null;
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
+  "expand-collections-in-nav"?: boolean;
+  "expand-library-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
@@ -577,6 +584,7 @@ export type UserSettings = {
     SdkIframeEmbedSetupSettings,
     "theme" | "useExistingUserSession"
   > | null;
+  "color-scheme"?: string;
 };
 
 /**
@@ -629,9 +637,24 @@ export type DatabaseReplicationConnections = Record<
   { connection_id: string }
 >;
 
+export type SyncableEntity =
+  | "transform"
+  | "snippet"
+  | "dataset"
+  | "metric"
+  | "segment"
+  | "dashboard"
+  | "question";
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
+  "remote-sync-enabled"?: boolean | null;
+  "remote-sync-token"?: string | null;
+  "remote-sync-url"?: string | null;
+  "remote-sync-branch"?: string | null;
+  "remote-sync-type"?: "read-only" | "read-write" | null;
+  "remote-sync-auto-import"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
@@ -689,6 +712,7 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-container-endpoint"?: string | null;
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
+  "python-runner-test-run-timeout-seconds"?: number | null;
   /**
    * @deprecated
    */

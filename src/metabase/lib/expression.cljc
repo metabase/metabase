@@ -1,9 +1,12 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys not-empty get-in
+                            #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -27,7 +30,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [mapv some select-keys]]))
+   [metabase.util.performance :refer [mapv some select-keys not-empty get-in #?(:clj doseq) #?(:clj for)]]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
@@ -70,10 +73,7 @@
        (when (lib.util/first-stage? query stage-number)
          (when-let [source-card-id (lib.util/source-card-id query)]
            (when-let [source-card (lib.metadata/card query source-card-id)]
-             (u/prog1 (resolve-expression ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.query/query)
-                                           (lib.metadata/->metadata-provider query)
-                                           (:dataset-query source-card))
-                                          expression-name)
+             (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
                (when <>
                  (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
                             (pr-str expression-name) source-card-id))))))
@@ -89,21 +89,24 @@
 
 (mu/defmethod lib.metadata.calculation/metadata-method :expression :- ::lib.metadata.calculation/visible-column
   [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
-  (merge {:lib/type                :metadata/column
-          ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
-          ;; of the expression definition??
-          :lib/source-uuid         (:lib/uuid opts)
-          :name                    expression-name
-          :lib/expression-name     expression-name
-          :lib/source-column-alias expression-name
-          :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
-          :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
-          :lib/source              :source/expressions}
-         (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-           {:metabase.lib.field/temporal-unit unit})
-         (when lib.metadata.calculation/*propagate-binning-and-bucketing*
-           (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-             {:inherited-temporal-unit unit}))))
+  (lib.computed/with-cache-ephemeral* query [:expression-metadata/by-ref stage-number expression-ref-clause
+                                             (lib.metadata.calculation/cacheable-options {})]
+    (fn []
+      (merge {:lib/type                :metadata/column
+              ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
+              ;; of the expression definition??
+              :lib/source-uuid         (:lib/uuid opts)
+              :name                    expression-name
+              :lib/expression-name     expression-name
+              :lib/source-column-alias expression-name
+              :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+              :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
+              :lib/source              :source/expressions}
+             (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+               {:metabase.lib.field/temporal-unit unit})
+             (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+               (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+                 {:inherited-temporal-unit unit}))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
@@ -241,8 +244,8 @@
 
 (defmethod lib.metadata.calculation/type-of-method :coalesce
   [query stage-number [_coalesce _opts expr null-expr]]
-  (let [expr-type      (lib.metadata.calculation/type-of-method query stage-number expr)
-        null-expr-type (lib.metadata.calculation/type-of-method query stage-number null-expr)]
+  (let [expr-type      (lib.metadata.calculation/type-of query stage-number expr)
+        null-expr-type (lib.metadata.calculation/type-of query stage-number null-expr)]
     (lib.schema.expression.conditional/case-coalesce-return-type [expr-type null-expr-type])))
 
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
@@ -256,7 +259,7 @@
         exprs      (cond-> case-exprs
                      fallback
                      (clojure.core/concat [fallback]))
-        types      (map #(lib.metadata.calculation/type-of-method query stage-number %)
+        types      (map #(lib.metadata.calculation/type-of query stage-number %)
                         exprs)]
     (lib.schema.expression.conditional/case-coalesce-return-type types)))
 
@@ -358,6 +361,7 @@
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])
 (lib.common/defop split-part [s delimiter index])
+(lib.common/defop collate [s collation])
 (lib.common/defop replace [s search replacement])
 (lib.common/defop regex-match-first [s regex])
 (lib.common/defop length [s])
@@ -517,6 +521,9 @@
 (def ^:private expression-validator
   (mr/validator ::lib.schema.expression/expression))
 
+(def ^:private expression-explainer
+  (mr/explainer ::lib.schema.expression/expression))
+
 (defn expression-clause?
   "Returns true if `expression-clause` is indeed an expression clause, false otherwise."
   [expression-clause]
@@ -545,11 +552,11 @@
              (assoc :lib/expression-name new-name))
          (assoc opts :name new-name :display-name new-name))))))
 
-(def ^:private aggregation-validator
-  (mr/validator ::lib.schema.aggregation/aggregation))
+(def ^:private aggregation-explainer
+  (mr/explainer ::lib.schema.aggregation/aggregation))
 
-(def ^:private filter-validator
-  (mr/validator ::lib.schema.expression/boolean))
+(def ^:private filter-explainer
+  (mr/explainer ::lib.schema.expression/boolean))
 
 (defn- expression->name
   [expr]
@@ -635,13 +642,22 @@
    expr                :- :any
    expression-position :- [:maybe :int]]
   (binding [lib.schema.expression/*suppress-expression-type-check?* false]
-    (let [validator (clojure.core/case expression-mode
-                      :expression expression-validator
-                      :aggregation aggregation-validator
-                      :filter filter-validator)]
-      (or (when-not (validator expr)
-            {:message  (i18n/tru "Types are incompatible.")
-             :friendly true})
+    (let [explainer (clojure.core/case expression-mode
+                      :expression expression-explainer
+                      :aggregation aggregation-explainer
+                      :filter filter-explainer)]
+      (or (when-let [explanation (explainer expr)]
+            (let [error (first (:errors explanation))
+                  schema (:schema error)
+                  props (or (mc/properties schema)
+                            (mc/type-properties schema))
+                  error-friendly? (:error/friendly props)
+                  error-message-or-fn (:error/message props)
+                  error-message (if (fn? error-message-or-fn) (str (error-message-or-fn)) (str error-message-or-fn))
+                  fallback-message (i18n/tru "Types are incompatible.")
+                  message (if error-friendly? error-message fallback-message)]
+              {:message message
+               :friendly true}))
           (when-let [dependency-path
                      (when expression-position
                        (clojure.core/case expression-mode

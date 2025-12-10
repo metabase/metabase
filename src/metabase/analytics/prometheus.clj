@@ -255,6 +255,30 @@
    (prometheus/counter :metabase-query-processor/query
                        {:description "Did a query run by a specific driver succeed or fail"
                         :labels [:driver :status]})
+
+   (prometheus/histogram :metabase-remote-sync/export-duration-ms
+                         {:description "Duration in milliseconds that remote-sync exports took."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-remote-sync/exports
+                       {:description "Number of remote-sync export calls"})
+   (prometheus/counter :metabase-remote-sync/exports-failed
+                       {:description "Number of failed remote-sync export calls"})
+   (prometheus/histogram :metabase-remote-sync/import-duration-ms
+                         {:description "Duration in milliseconds that remote-sync imports took."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-remote-sync/imports
+                       {:description "Number of remote-sync import calls"})
+   (prometheus/counter :metabase-remote-sync/imports-failed
+                       {:description "Number of failed remote-sync import calls"})
+   (prometheus/counter :metabase-remote-sync/git-operations
+                       {:description "Number of git operations"
+                        :labels [:operation :remote]})
+   (prometheus/counter :metabase-remote-sync/git-operations-failed
+                       {:description "Number of failed git operations"
+                        :labels [:operation :remote]})
+
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})
@@ -303,6 +327,8 @@
                        {:description "Total number of ms spent filtering readable docs"})
    (prometheus/counter :metabase-search/semantic-collection-filter-ms
                        {:description "Total number of ms spent filtering search results by collection"})
+   (prometheus/counter :metabase-search/semantic-collection-id-filter-ms
+                       {:description "Total number of ms spent filtering search results by collection id"})
    (prometheus/counter :metabase-search/semantic-search-ms
                        {:description "Total number of ms spent performing a semantic search"
                         :labels [:embedding-model]})
@@ -364,6 +390,10 @@
    (prometheus/counter :metabase-notification/send-error
                        {:description "Number of errors when sending notifications."
                         :labels [:payload-type]})
+   (prometheus/counter :metabase-notification/temp-storage
+                       {:description "Number and type of temporary storage uses"
+                        ;; memory, disk, above-threshold, truncated, not-limited
+                        :labels [:storage]})
    (prometheus/histogram :metabase-notification/wait-duration-ms
                          {:description "Duration in milliseconds that notifications wait in the processing queue before being picked up for delivery."
                           :labels [:payload-type]
@@ -406,51 +436,51 @@
    ;; transform metrics
    (prometheus/counter :metabase-transforms/job-runs-total
                        {:description "Total number of transform job runs started."
-                        :labels [:job-id :run-method]})
+                        :labels [:run-method]})
    (prometheus/counter :metabase-transforms/job-runs-completed
                        {:description "Number of transform job runs that completed successfully."
-                        :labels [:job-id :run-method]})
+                        :labels [:run-method]})
    (prometheus/counter :metabase-transforms/job-runs-failed
                        {:description "Number of transform job runs that failed."
-                        :labels [:job-id :run-method]})
+                        :labels [:run-method]})
    (prometheus/histogram :metabase-transforms/job-run-duration-ms
                          {:description "Duration in milliseconds of transform job runs."
-                          :labels [:job-id :run-method]
+                          :labels [:run-method]
                           ;; 100ms -> 6 hours
                           :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
    (prometheus/counter :metabase-transforms/stage-started
                        {:description "Number of transform stages started."
-                        :labels [:job-run-id :stage-type :stage-label]})
+                        :labels [:stage-type :stage-label]})
    (prometheus/counter :metabase-transforms/stage-completed
                        {:description "Number of transform stages completed successfully."
-                        :labels [:job-run-id :stage-type :stage-label]})
+                        :labels [:stage-type :stage-label]})
    (prometheus/counter :metabase-transforms/stage-failed
                        {:description "Number of transform stages that failed."
-                        :labels [:job-run-id :stage-type :stage-label]})
+                        :labels [:stage-type :stage-label]})
    (prometheus/histogram :metabase-transforms/stage-duration-ms
                          {:description "Duration in milliseconds of individual transform stages."
-                          :labels [:job-run-id :stage-type :stage-label]
+                          :labels [:stage-type :stage-label]
                           ;; 10ms -> 10 minutes
                           :buckets [10 100 500 1000 5000 10000 30000 60000 300000 600000]})
    (prometheus/histogram :metabase-transforms/data-transfer-bytes
                          {:description "Size in bytes of data transferred during transform stages."
-                          :labels [:job-run-id :stage-label]
+                          :labels [:stage-label]
                           ;; 1KB -> 10GB
                           :buckets [1000 10000 100000 1000000 10000000 100000000 1000000000 10000000000]})
    (prometheus/histogram :metabase-transforms/data-transfer-rows
                          {:description "Number of rows transferred during transform stages."
-                          :labels [:job-run-id :stage-label]
+                          :labels [:stage-label]
                           ;; 10 -> 10M rows
                           :buckets [10 100 1000 10000 100000 1000000 10000000]})
    ;; Python-transform specific metrics
    (prometheus/histogram :metabase-transforms/python-api-call-duration-ms
                          {:description "Duration of Python runner API calls."
-                          :labels [:job-run-id]
+                          :labels []
                           ;; 100ms -> 6 hours
                           :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
-                        :labels [:job-run-id :status]})])
+                        :labels [:status]})])
 
 (defn- quartz-collectors
   []

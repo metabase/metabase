@@ -1,5 +1,5 @@
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Icon, Tooltip } from "metabase/ui";
 import {
   type ClickAction,
   isCustomClickAction,
@@ -8,15 +8,6 @@ import {
 import { isRegularClickAction } from "metabase/visualizations/types";
 
 import S from "./ClickActionControl.module.css";
-import {
-  ClickActionButtonTextIcon,
-  FormattingControl,
-  InfoControl,
-  SortControl,
-  Subtitle,
-  TokenActionButton,
-  TokenFilterActionButton,
-} from "./ClickActionControl.styled";
 
 interface Props {
   action: ClickAction;
@@ -57,49 +48,65 @@ export const ClickActionControl = ({
   switch (buttonType) {
     case "token-filter":
       return (
-        <TokenFilterActionButton
-          small
-          icon={
+        <Button
+          variant="outline"
+          fz="xl"
+          size="xs"
+          onClick={handleClick}
+          className={S.tokenFilterActionButton}
+          leftSection={
             typeof action.icon === "string" && (
-              <Icon className={S.ClickActionButtonIcon} name={action.icon} />
+              <Icon
+                className={S.clickActionButtonIcon}
+                name={action.icon}
+                m={0}
+              />
             )
           }
-          onClick={handleClick}
         >
           {action.title}
-        </TokenFilterActionButton>
+        </Button>
       );
 
     case "token":
       return (
-        <TokenActionButton small onClick={handleClick}>
+        <Button
+          variant="outline"
+          size="xs"
+          fz="sm"
+          className={S.tokenFilterActionTokenButton}
+          onClick={handleClick}
+        >
           {action.title}
-        </TokenActionButton>
+        </Button>
       );
 
     case "sort":
       return (
         <Tooltip label={action.tooltip}>
-          <SortControl
-            onlyIcon
-            onClick={handleClick}
+          <Button
+            variant="outline"
+            fz="xl"
+            size="xs"
+            className={S.tokenFilterActionButton}
             data-testid={`click-actions-sort-control-${action.name}`}
+            onClick={handleClick}
           >
             {typeof action.icon === "string" && (
               <Icon size={14} name={action.icon} />
             )}
-          </SortControl>
+          </Button>
         </Tooltip>
       );
 
     case "formatting":
       return (
         <Tooltip label={action.tooltip}>
-          <FormattingControl onlyIcon onClick={handleClick}>
+          <Button variant="outline" fz="xl" size="xs" onClick={handleClick}>
             {typeof action.icon === "string" && (
               <Icon size={16} name={action.icon} />
             )}
-          </FormattingControl>
+          </Button>
         </Tooltip>
       );
 
@@ -117,23 +124,25 @@ export const ClickActionControl = ({
           }}
           leftSection={
             action.iconText ? (
-              <ClickActionButtonTextIcon>
+              <Box className={S.clickActionButtonTextIcon}>
                 {action.iconText}
-              </ClickActionButtonTextIcon>
+              </Box>
             ) : action.icon ? (
-              <Icon className={S.ClickActionButtonIcon} name={action.icon} />
+              <Icon
+                className={S.clickActionButtonIcon}
+                name={action.icon}
+                m={0}
+              />
             ) : null
           }
           onClick={handleClick}
         >
           {action.title}
-          {action.subTitle && (
-            <Subtitle className={S.nested}>{action.subTitle}</Subtitle>
-          )}
+          {action.subTitle && <Box>{action.subTitle}</Box>}
         </Button>
       );
 
     case "info":
-      return <InfoControl>{action.title}</InfoControl>;
+      return <Box className={S.infoControl}>{action.title}</Box>;
   }
 };

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli.registry :as mr]))
@@ -50,3 +51,21 @@
         (are [schema] (not (me/humanize (mr/explain schema field-ref)))
           :mbql.clause/field
           ::lib.schema.ref/ref)))))
+
+(deftest ^:parallel normalize-original-binning-test
+  (is (= [:field
+          {:base-type            :type/Float
+           :effective-type       :type/Float
+           :lib/original-binning {:num-bins 50, :strategy :num-bins}
+           :lib/uuid             "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"}
+          "TOTAL_2"]
+         (lib/normalize ["field"
+                         {"base-type"            "type/Float"
+                          "lib/uuid"             "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"
+                          "effective-type"       "type/Float"
+                          "lib/original-binning" {"strategy" "num-bins", "num-bins" 50}}
+                         "TOTAL_2"]))))
+
+(deftest ^:parallel normalize-field-ref-remove-nil-values-test
+  (is (= [:field {:lib/uuid "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} 100]
+         (lib/normalize ["field" {"temporal-unit" nil, "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} 100]))))

@@ -19,7 +19,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
@@ -771,3 +771,14 @@
       :type/Text               [:text]
       :type/Time               [:time]
       :type/UUID               [:uniqueidentifier])))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :sqlserver
+    (testing "compile-transform creates SELECT INTO"
+      (is (= ["SELECT * INTO \"PRODUCTS_COPY\" FROM products" nil]
+             (driver/compile-transform :sqlserver {:query {:query "SELECT * FROM products"}
+                                                   :output-table "PRODUCTS_COPY"}))))
+    (testing "compile-insert generates INSERT INTO"
+      (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
+             (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
+                                                :output-table "PRODUCTS_COPY"}))))))

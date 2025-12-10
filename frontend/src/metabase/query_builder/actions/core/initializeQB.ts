@@ -2,7 +2,6 @@ import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
 import { replace } from "react-router-redux";
 
-import { databaseApi } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
@@ -15,9 +14,8 @@ import {
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser } from "metabase/selectors/user";
+import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -79,7 +77,11 @@ function getCardForBlankQuestion(
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
 
-  let question = Question.create({ databaseId, tableId, metadata });
+  let question = Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    DEPRECATED_RAW_MBQL_tableId: tableId,
+    metadata,
+  });
 
   if (databaseId && tableId) {
     if (typeof segmentId === "number") {
@@ -113,11 +115,17 @@ export function deserializeCard(serializedCard: string) {
 }
 
 async function fetchAndPrepareSavedQuestionCards(
-  cardId: string | number,
+  {
+    cardId,
+    token,
+  }: {
+    cardId: string | number;
+    token?: string | null;
+  },
   dispatch: Dispatch,
   getState: GetState,
 ) {
-  const card = await loadCard(cardId, { dispatch, getState });
+  const card = await loadCard({ cardId, token }, { dispatch, getState });
   const originalCard = { ...card };
 
   // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
@@ -137,10 +145,13 @@ async function fetchAndPrepareAdHocQuestionCards(
     };
   }
 
-  const originalCard = await loadCard(deserializedCard.original_card_id, {
-    dispatch,
-    getState,
-  });
+  const originalCard = await loadCard(
+    { cardId: deserializedCard.original_card_id },
+    {
+      dispatch,
+      getState,
+    },
+  );
 
   if (cardIsEquivalent(deserializedCard, originalCard)) {
     return {
@@ -162,12 +173,14 @@ type ResolveCardsResult = {
 
 export async function resolveCards({
   cardId,
+  token,
   deserializedCard,
   options,
   dispatch,
   getState,
 }: {
   cardId?: string | number;
+  token?: string | null;
   deserializedCard?: Card;
   options: BlankQueryOptions;
   dispatch: Dispatch;
@@ -181,23 +194,12 @@ export async function resolveCards({
     };
   }
   return cardId
-    ? fetchAndPrepareSavedQuestionCards(cardId, dispatch, getState)
+    ? fetchAndPrepareSavedQuestionCards({ cardId, token }, dispatch, getState)
     : fetchAndPrepareAdHocQuestionCards(
         deserializedCard as Card,
         dispatch,
         getState,
       );
-}
-
-async function loadDatabases(dispatch: any) {
-  const action = databaseApi.endpoints.listDatabases.initiate();
-  try {
-    const { data } = await dispatch(action).unwrap();
-    return data;
-  } catch (error) {
-    console.error("error loading databases", error);
-    return [];
-  }
 }
 
 export function parseHash(hash?: string) {
@@ -272,9 +274,8 @@ async function handleQBInit(
   const currentUser = getUser(getState());
 
   if (uiControls.queryBuilderMode === "notebook") {
-    const databases = await loadDatabases(dispatch);
-    if (!getHasDataAccess(databases)) {
-      dispatch(replace("/unauthorized"));
+    if (!canUserCreateQueries(getState())) {
+      dispatch(replace(Urls.unauthorized()));
       return;
     }
   }

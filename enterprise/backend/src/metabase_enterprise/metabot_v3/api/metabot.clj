@@ -15,18 +15,31 @@
 
 ;; TODO: Eventually this should be paged but since we are just going to hardcode two models for now
 ;; lets not
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "List configured metabot instances"
   []
   (api/check-superuser)
   {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Retrieve one metabot instance"
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Metabot :id id)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a metabot instance"
   [{:keys [id]} :- [:map [:id pos-int?]]
@@ -52,6 +65,10 @@
         (metabot-v3.suggested-prompts/generate-sample-prompts id))
       (t2/select-one :model/Metabot :id id))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones."
   [{:keys [id]} :- [:map [:id pos-int?]]]
@@ -62,6 +79,14 @@
     (metabot-v3.suggested-prompts/generate-sample-prompts id))
   api/generic-204-no-content)
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
   "Return the prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map [:id pos-int?]]
@@ -105,6 +130,10 @@
      :offset  offset
      :total   total}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/prompt-suggestions"
   "Delete all prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map [:id pos-int?]]]
@@ -112,6 +141,10 @@
   (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
   api/generic-204-no-content)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"
   "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`."
   [{:keys [id prompt-id]} :- [:map

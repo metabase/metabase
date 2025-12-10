@@ -38,7 +38,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
         <Text c="text-white">{jt`Add a primary key in your database or set an ${(
           <Anchor
             component={Link}
-            to={`/admin/datamodel/database/${table?.db_id}/schema/${table?.schema}/table/${table?.id}`}
+            to={`/data-studio/data/database/${table?.db_id}/schema/${table?.schema}/table/${table?.id}`}
             disabled={!table}
             key="entity-key-link"
             target="_blank"
@@ -69,7 +69,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
 
       <Button
         size="compact-lg"
-        color="var(--mb-base-color-orion-80)"
+        color="bg-darker"
         variant="filled"
         autoContrast
         radius="0.5rem"

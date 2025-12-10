@@ -36,10 +36,10 @@
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             native-query (mt/native-query
                           (assoc base-query
-                                 :template-tags {"time-unit" {:name         "id"
+                                 :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at)]}}))
+                                                              :dimension    [:field (mt/id :orders :created_at) nil]}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
                                                      :name   "time-unit"
@@ -84,10 +84,10 @@
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             native-query (mt/native-query
                           (assoc base-query
-                                 :template-tags {"time-unit" {:name         "id"
+                                 :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at)]
+                                                              :dimension    [:field (mt/id :orders :created_at) nil]
                                                               :alias        (mt/make-alias driver/*driver* "created_at")}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
@@ -133,10 +133,10 @@
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             query (assoc (mt/native-query
                           (assoc base-query
-                                 :template-tags {"time-unit" {:name         "id"
+                                 :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field 1000000000]}}))
+                                                              :dimension    [:field 1000000000 nil]}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:variable [:template-tag "time-unit"]]
@@ -152,10 +152,10 @@
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             query (assoc (mt/native-query
                           (assoc base-query
-                                 :template-tags {"time-unit" {:name         "id"
+                                 :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at)]}}))
+                                                              :dimension    [:field (mt/id :orders :created_at) nil]}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:dimension [:template-tag "time-unit"]]

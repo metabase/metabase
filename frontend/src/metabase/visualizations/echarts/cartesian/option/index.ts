@@ -1,4 +1,5 @@
 import type { EChartsCoreOption } from "echarts/core";
+import type { YAXisOption } from "echarts/types/dist/shared";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import {
@@ -44,6 +45,11 @@ export const getSharedEChartsOptions = (isAnimated: boolean) => ({
 
 type Axes = ReturnType<typeof buildAxes>;
 
+type NonCategoryYAxisOption = Exclude<YAXisOption, { type?: "category" }>;
+const isNonCategoryYAxisOption = (
+  axis: YAXisOption,
+): axis is NonCategoryYAxisOption => axis.type !== "category";
+
 export const ensureRoomForLabels = (
   axes: Axes,
   { leftAxisModel, rightAxisModel }: CartesianChartModel,
@@ -68,6 +74,12 @@ export const ensureRoomForLabels = (
       const innerHeight = Math.abs(bounds.bottom - bounds.top);
       const labelPct = CHART_STYLE.seriesLabels.size / innerHeight;
       const lowerBoundaryGap = labelPct / 2; // `/ 2` because it's okay if the bar label overlaps the axis *line*, we just don't want it to overlap the axis *labels*
+
+      // Only apply numeric boundaryGap to non-category axes
+      if (!isNonCategoryYAxisOption(axis)) {
+        return axis;
+      }
+
       return { ...axis, boundaryGap: [lowerBoundaryGap, 0] };
     }
     return axis;
@@ -154,6 +166,7 @@ export const getCartesianChartOption = (
     ...getSharedEChartsOptions(isAnimated),
     grid: {
       ...chartMeasurements.padding,
+      outerBoundsMode: "none",
     },
     dataset: echartsDataset,
     series: seriesOption,

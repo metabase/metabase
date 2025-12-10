@@ -829,9 +829,6 @@
     :enabled   (if (premium-features/enable-database-routing?)
                  (t2/exists? :model/DatabaseRouter)
                  false)}
-   {:name      :documents
-    :available (premium-features/enable-documents?)
-    :enabled   (premium-features/enable-documents?)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
@@ -871,6 +868,9 @@
    {:name      :ai-sql-generation
     :available (premium-features/enable-ai-sql-generation?)
     :enabled   (premium-features/enable-ai-sql-generation?)}
+   {:name      :remote-sync
+    :available (premium-features/enable-remote-sync?)
+    :enabled   (premium-features/enable-remote-sync?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
@@ -890,7 +890,10 @@
     :enabled   (premium-features/enable-python-transforms?)}
    {:name      :dependencies
     :available (premium-features/enable-dependencies?)
-    :enabled   (premium-features/enable-dependencies?)}])
+    :enabled   (premium-features/enable-dependencies?)}
+   {:name      :support-users
+    :available (premium-features/enable-support-users?)
+    :enabled   (premium-features/enable-support-users?)}])
 
 (defn- snowplow-features
   []

@@ -141,7 +141,7 @@ describe("scenarios > collections > clean up", () => {
       });
     });
 
-    H.describeWithSnowplowEE("clean up collection modal", () => {
+    describe("clean up collection modal", () => {
       beforeEach(() => {
         H.resetSnowplow();
         cy.signInAsAdmin();

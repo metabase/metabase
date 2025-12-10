@@ -8,7 +8,7 @@ title: "Embedded analytics SDK - dashboards"
 
 You can embed an interactive, editable, or static dashboard.
 
-**Please keep in mind - embedding multiple instances of dashboards on the same page is not yet supported.**
+**Keep in mind that embedding multiple instances of dashboards on the same page is not yet supported.**
 
 ## Embedding a dashboard
 
@@ -129,6 +129,10 @@ If you want to replace the existing menu with your own component, you can do so 
 {% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
 ```
 
+### `mapQuestionClickActions`
+
+You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](./questions.md#mapquestionclickactions).
+
 ## Creating dashboards
 
 Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
@@ -156,7 +160,7 @@ Until the Embedded analytics SDK is fully loaded and initialized, the hook retur
 
 ### `CreateDashboardModal`
 
-#### API Refernce
+#### API Reference
 
 - [Component](./api/CreateDashboardModal.html)
 - [Props](./api/CreateDashboardModalProps.html)

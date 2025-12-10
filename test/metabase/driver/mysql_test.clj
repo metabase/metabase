@@ -23,9 +23,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.string-extracts-test :as string-extracts-test]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -46,7 +46,7 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (thunk))))
+                        (mt/with-test-user :rasta (thunk)))))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -89,7 +89,7 @@
 
 (deftest date-test
   ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
-  ;; See [[metabase.query-processor-test.date-time-zone-functions-test/extract-week-tests]] for something that tests
+  ;; See [[metabase.query-processor.date-time-zone-functions-test/extract-week-tests]] for something that tests
   ;; that this actually returns correct results.
   (testing :week-of-year-instance
     (doseq [[start-of-week expected] {:sunday
@@ -473,16 +473,38 @@
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
       (let [boop-field {:nfc-path [:bleh :meh] :database-type "bigint"}]
-        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\""]
+        (is (= ["CONVERT(JSON_UNQUOTE(JSON_EXTRACT(`boop`.`bleh`, ?)), UNSIGNED)" "$.\"meh\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
-        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
+        (is (= ["CONVERT(JSON_UNQUOTE(JSON_EXTRACT(`boop`.`bleh`, ?)), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database-type "boolean" :nfc-path [:bleh "boop" :foobar 1234]}]
-        (is (= ["JSON_EXTRACT(`boop`.`bleh`, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+        (is (= ["JSON_UNQUOTE(JSON_EXTRACT(`boop`.`bleh`, ?))" "$.\"boop\".\"foobar\".\"1234\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
+
+(tx/defdataset json-unquote-test
+  [["json_test"
+    [{:field-name "data", :base-type :type/JSON}]
+    [["{\"int_val\": 42, \"str_val\": \"hello\"}"]
+     ["{\"int_val\": 123, \"str_val\": \"world\"}"]]]])
+
+(deftest json-unfolding-returns-unquoted-values-test
+  (testing "JSON unfolding should return values without JSON quotes (#61408)"
+    (mt/test-driver :mysql
+      (when-not (mysql/mariadb? (mt/db))
+        (mt/dataset json-unquote-test
+          (let [mp        (mt/metadata-provider)
+                json-table (lib.metadata/table mp (mt/id :json_test))
+                int-field (lib.metadata/field mp (mt/id :json_test "data → int_val"))
+                str-field (lib.metadata/field mp (mt/id :json_test "data → str_val"))]
+            (is (= [[42.0 "hello"]
+                    [123.0 "world"]]
+                   (-> (lib/query mp json-table)
+                       (lib/with-fields [int-field str-field])
+                       (qp/process-query)
+                       (mt/rows))))))))))
 
 ;; MariaDB doesn't have support for explicit JSON columns, it does it in a more SQL Server-ish way
 ;; where LONGTEXT columns are the actual JSON columns and there's JSON functions that just work on them,
@@ -537,14 +559,20 @@
                                   :aggregation  [[:count]]
                                   :breakout     [[:field (u/the-id field) nil]]}))]
               (is (= ["SELECT"
-                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) AS `json_bit → 1234`,"
+                      "  ("
+                      "    JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0"
+                      "  ) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
                       "FROM"
                       "  `json`"
                       "GROUP BY"
-                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0)"
+                      "  ("
+                      "    JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0"
+                      "  )"
                       "ORDER BY"
-                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) ASC"]
+                      "  ("
+                      "    JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0"
+                      "  ) ASC"]
                      (str/split-lines (driver/prettify-native-form :mysql (:query compile-res)))))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -564,7 +592,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((FLOOR((((JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
+                  (is (= ["((FLOOR((((JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
@@ -589,7 +617,7 @@
 
 ;;; ------------------------------------------------ Actions related ------------------------------------------------
 
-;; API tests are in [[metabase.actions.api-test]]
+;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (=? {:type :metabase.actions.error/violate-not-null-constraint

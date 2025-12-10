@@ -10,8 +10,8 @@ Here's a basic overview of the steps you'll want to take when upgrading your SDK
 ## 1. Read the release post and changelog for Metabase and the Embedded analytics SDK
 
 - [Release posts](https://www.metabase.com/releases) give a good overview of what's in each release, and call out breaking changes (which are rare).
-- [Metabase + Embedding analytics SDK changelogs](https://www.metabase.com/changelog) list Metabase and Embedding analytics SDK changes.
-- [Embedded analytics SDK package changelog](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md) list changes specific to the SDK lightweight `@metabase/embedding-sdk-react` package.
+- [Metabase changelog](https://www.metabase.com/changelog) lists all Metabase and Embedded analytics SDK changes.
+- [Embedded analytics SDK changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-package/CHANGELOG.md) lists changes specific to the SDK's `@metabase/embedding-sdk-react` package.
 
 Check for any relevant changes, especially deprecations or breaking changes that require you to update your application's code. If there are deprecation changes, we'll have docs that'll walk you through what changes you'll need to make and why.
 
@@ -51,7 +51,7 @@ yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
 
 See more on [SDK versions](./version.md).
 
-### If there are deprecations or breaking changes changes, make the necessary changes to your application code
+### If there are deprecations or breaking changes, make the necessary changes to your application code
 
 Deprecations or breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
 

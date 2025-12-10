@@ -3,8 +3,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -44,21 +45,21 @@
 (defn table-field-id-prefix
   "Return the field ID prefix for `table-id`."
   [table-id]
-  (str "t" table-id "/"))
+  (str "t" table-id "-"))
 
 (defn card-field-id-prefix
   "Return the field ID prefix for a model or a metric with ID `card-id`."
   [card-id]
-  (str "c" card-id "/"))
+  (str "c" card-id "-"))
 
 (defn query-field-id-prefix
   "Return the field ID prefix for `query-id`."
   [query-id]
-  (str "q" query-id "/"))
+  (str "q" query-id "-"))
 
 (def any-prefix-pattern
   "A prefix pattern accepting columns from any entity."
-  #"^.*/(\d+)")
+  #"^.*-(\d+)")
 
 (defn ->result-column
   "Return tool result columns for `column` of `query`. The position of `column` is determined by `index`.
@@ -72,33 +73,76 @@
          :display_name (lib/display-name query column)
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
+                      :database_type (:database-type column)
                       :semantic_type semantic-type
                       :field_values (:field-values column)
                       :table_reference (:table-reference column)))))
 
-(defn resolve-column-index
-  "Resolve the reference `field_id` to the index of the result columns in the entity with `field-id-prefix`."
-  [field-id field-id-prefix]
-  (if (string? field-id-prefix)
-    (if (str/starts-with? field-id field-id-prefix)
-      (-> field-id (subs (count field-id-prefix)) parse-long)
-      (throw (ex-info (str "field " field-id " not found") {:agent-error? true
-                                                            :expected-prefix field-id-prefix})))
-    (if-let [id-str (when (instance? java.util.regex.Pattern field-id-prefix)
-                      (-> (re-matches field-id-prefix field-id)
-                          second))]
-      (parse-long id-str)
-      (throw (ex-info (str "invalid field_id " field-id " for prefix " field-id-prefix)
-                      {:agent-error? true
-                       :expected-prefix (str field-id-prefix)
-                       :field-id field-id})))))
+(defn parse-field-id
+  "Parse a field-id string into its components.
+
+  The field-id format is '<model-tag><model-id>-<field-index>' where:
+  - model-tag is 't' for tables, 'c' for cards/models/metrics, or 'q' for ad-hoc queries
+  - model-id is the numeric ID (for tables/cards) or nano-id (for queries)
+  - field-index is the index within that model's visible columns
+
+  Returns a map with :model-tag, :model-id, and :field-index keys, or nil if the format is invalid.
+
+  Examples:
+    (parse-field-id \"t154-1\") => {:model-tag \"t\", :model-id 154, :field-index 1}
+    (parse-field-id \"qpuL95JSvym3k23W1UUuog-0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}"
+  [field-id]
+  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
+    {:model-tag model-tag
+     ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
+     :model-id (if (= model-tag "q")
+                 model-id
+                 (parse-long model-id))
+     :field-index (parse-long field-index)}))
 
 (defn resolve-column
   "Resolve the reference `field-id` in filter `item` by finding the column in `columns` specified by `field-id`.
-  `field-id-prefix` is used to check if the filter refers to a column from the right entity."
-  [{:keys [field-id] :as item} field-id-prefix columns]
-  (let [index (resolve-column-index field-id field-id-prefix)]
-    (assoc item :column (nth columns index))))
+
+  The field-id format is '<model-tag><model-id>-<field-index>' where:
+  - model-tag is 't' for tables, 'c' for cards/models/metrics, or 'q' for ad-hoc queries
+  - model-id is the numeric ID (for tables/cards) or nano-id (for queries)
+  - field-index is the index within the columns array (using wide field IDs across all visible columns)
+
+  The `expected-prefix` parameter validates that the field-id starts with the expected prefix (e.g., 't154-' for table 154).
+  This prevents accidentally using a field-id from a different entity.
+
+  For example, 't154-1' refers to the column at index 1 in the columns array,
+  and 'qpuL95JSvym3k23W1UUuog-0' refers to the column at index 0."
+  [{:keys [field-id] :as item} expected-prefix columns]
+  (if-let [{:keys [model-tag model-id field-index]} (parse-field-id field-id)]
+    (do
+      ;; Validate that the field-id matches the expected prefix
+      ;; Supports both string prefixes (e.g., "t154-") and regex patterns (e.g., #"^.*-(\d+)")
+      (when-not (if (string? expected-prefix)
+                  (str/starts-with? field-id expected-prefix)
+                  (re-matches expected-prefix field-id))
+        (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
+                        {:agent-error? true
+                         :field-id field-id
+                         :expected-prefix expected-prefix})))
+      (if-let [column (get columns field-index)]
+        (assoc item :column column)
+        (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
+                        {:agent-error? true
+                         :field-id field-id
+                         :model-tag model-tag
+                         :model-id model-id
+                         :field-index field-index
+                         :available-columns-count (count columns)}))))
+    (throw (ex-info (str "invalid field_id format: " field-id)
+                    {:agent-error? true
+                     :field-id field-id}))))
+
+(defn get-database
+  "Get the `fields` of the database with ID `id`."
+  [id & fields]
+  (-> (t2/select-one (into [:model/Database :id] fields) id)
+      api/read-check))
 
 (defn get-table
   "Get the `fields` of the table with ID `id`."
@@ -116,7 +160,7 @@
   "Return a query based on the model with ID `model-id`."
   [card-id]
   (when-let [card (get-card card-id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (cond-> (lib.metadata/card mp card-id)
                       ;; pivot questions have strange result-columns so we work with the dataset-query
                       (#{:question} (:type card)) (get :dataset-query))))))
@@ -125,14 +169,14 @@
   "Return a query based on the model with ID `model-id`."
   [metric-id]
   (when-let [card (get-card metric-id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (lib.metadata/metric mp metric-id)))))
 
 (defn table-query
   "Return a query based on the table with ID `table-id`."
   [table-id]
   (when-let [table (get-table table-id :db_id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+    (let [mp (lib-be/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 
 (defn metabot-metrics-and-models-query
@@ -140,7 +184,9 @@
 
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
   and its subcollections. If the metabot has use_verified_content enabled, only verified
-  content is returned."
+  content is returned.
+
+  Ignores analytics content."
   [metabot-id & {:keys [limit] :as _opts}]
   (let [metabot (t2/select-one :model/Metabot :id metabot-id)
         metabot-collection-id (:collection_id metabot)
@@ -153,6 +199,7 @@
         base-query {:select [:report_card.*]
                     :from   [[:report_card]]
                     :where [:and
+                            [:!= :report_card.database_id audit-app/audit-db-id]
                             collection-filter
                             [:in :type [:inline ["metric" "model"]]]
                             [:= :archived false]

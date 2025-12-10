@@ -12,13 +12,11 @@ import { useCheckDependencies } from "../use-check-dependencies";
 
 export function useCheckSnippetDependencies({
   onSave,
-  onError,
 }: UseCheckDependenciesProps<UpdateSnippetRequest>): UseCheckDependenciesResult<UpdateSnippetRequest> {
   return useCheckDependencies({
     getCheckDependenciesRequest,
     useLazyCheckDependenciesQuery: useLazyCheckSnippetDependenciesQuery,
     onSave,
-    onError,
   });
 }
 

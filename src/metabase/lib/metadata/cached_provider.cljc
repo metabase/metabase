@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata.cached-provider
-  (:refer-clojure :exclude [update-keys])
+  (:refer-clojure :exclude [update-keys get-in #?(:clj doseq)])
   (:require
    #?@(:clj ([metabase.util.json :as json]
              [pretty.core :as pretty]))
@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [update-keys]]))
+   [metabase.util.performance :refer [update-keys get-in #?(:clj doseq)]]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -112,7 +112,7 @@
                              (u/prog1 (lib.metadata.protocols/metadatas uncached-provider metadata-spec)
                                (doseq [metadata <>
                                        k        [:id :name]]
-                                 (store-in-cache! cache [metadata-type (k metadata)] metadata)))))))
+                                 (store-in-cache! cache [metadata-type k (k metadata)] metadata)))))))
 
 (defn- cached-metadatas [cache metadata-type metadata-ids]
   (into []

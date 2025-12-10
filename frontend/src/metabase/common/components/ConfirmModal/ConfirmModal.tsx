@@ -48,7 +48,7 @@ export const ConfirmModal = ({
 
   return (
     <Modal title={title} onClose={onClose} size="lg" {...props}>
-      <Flex direction="column" gap="lg" mt="lg">
+      <Flex direction="column" gap="lg" mt="md">
         {content ? <Text>{content}</Text> : null}
         <Text>{message}</Text>
         <Flex align="center" justify="space-between" gap="md">

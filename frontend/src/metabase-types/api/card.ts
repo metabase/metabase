@@ -1,4 +1,8 @@
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingType,
+} from "metabase/public/lib/types";
+import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
@@ -9,7 +13,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
-import type { DocumentId } from "./document";
+import type { Document, DocumentId } from "./document";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -27,10 +31,8 @@ import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 export type CardType = "model" | "question" | "metric";
 
-type CreatorInfo = Pick<
-  UserInfo,
-  "first_name" | "last_name" | "email" | "id" | "common_name"
->;
+export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
+export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -45,6 +47,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;
+  embedding_type?: EmbeddingType | null;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
   can_restore: boolean;
@@ -54,14 +57,16 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   database_id?: DatabaseId;
   collection?: Collection | null;
-  collection_id: number | null;
+  collection_id: CollectionId | null;
   collection_position: number | null;
-  dashboard: Pick<Dashboard, "id" | "name"> | null;
+  dashboard: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
-  document_id?: DocumentId;
+  document_id?: DocumentId | null;
+  document?: CardDocumentInfo | null;
   dashboard_count: number | null;
+  parameter_usage_count?: number | null;
 
-  result_metadata: Field[];
+  result_metadata: Field[] | null;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 
@@ -72,8 +77,9 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   based_on_upload?: TableId | null; // table id of upload table, if any
 
   archived: boolean;
+  is_remote_synced?: boolean;
 
-  creator?: CreatorInfo;
+  creator?: UserInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
 }
@@ -277,7 +283,7 @@ export type VisualizationSettings = {
   "graph.metrics"?: string[];
 
   // Series settings
-  series_settings?: Record<string, SeriesSettings>;
+  series_settings?: Record<string, SeriesSettings | undefined>;
 
   "graph.series_order"?: SeriesOrderSetting[];
 
@@ -327,8 +333,11 @@ export type VisualizationSettings = {
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
 
   // List view settings
-  "list.columns"?: ListViewColumns;
-  "list.entity_icon"?: string;
+  "list.columns"?: ListViewColumns; // set of columns selected for custom list view
+  "list.entity_icon_enabled"?: boolean; // display/hide first list item column rendering image/icon
+  "list.use_image_column"?: boolean; // render image from image/avatar url column instead of icon
+  "list.entity_icon"?: IconName | null;
+  "list.entity_icon_color"?: string;
 
   [key: string]: any;
 } & EmbedVisualizationSettings;
@@ -378,14 +387,14 @@ export interface CreateCardRequest {
   type?: CardType;
   parameters?: Parameter[];
   parameter_mappings?: unknown;
-  description?: string;
-  collection_id?: CollectionId;
-  dashboard_id?: DashboardId;
+  description?: string | null;
+  collection_id?: CollectionId | null;
+  dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
-  collection_position?: number;
-  result_metadata?: Field[];
-  cache_ttl?: number;
+  collection_position?: number | null;
+  result_metadata?: Field[] | null;
+  cache_ttl?: number | null;
 }
 
 export interface CreateCardFromCsvRequest {
@@ -400,16 +409,17 @@ export interface UpdateCardRequest {
   dataset_query?: DatasetQuery;
   type?: CardType;
   display?: string;
-  description?: string;
+  description?: string | null;
   visualization_settings?: VisualizationSettings;
   archived?: boolean;
   enable_embedding?: boolean;
+  embedding_type?: EmbeddingType | null;
   embedding_params?: EmbeddingParameters;
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   collection_position?: number;
-  result_metadata?: Field[];
+  result_metadata?: Field[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;
   delete_old_dashcards?: boolean;

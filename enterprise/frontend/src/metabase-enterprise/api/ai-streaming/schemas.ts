@@ -1,16 +1,25 @@
 import * as Yup from "yup";
 
+import type { MetabotTodoItem, SuggestedTransform } from "metabase-types/api";
+
 export const dataPartSchema = Yup.object({
   type: Yup.string().required(),
   version: Yup.number().required(),
   value: Yup.mixed(),
 });
 
-export const knownDataPartTypes = ["state", "navigate_to"];
+export const knownDataPartTypes = [
+  "navigate_to",
+  "state",
+  "todo_list",
+  "transform_suggestion",
+];
 
 export type KnownDataPart =
+  | { type: "navigate_to"; version: 1; value: string }
   | { type: "state"; version: 1; value: Record<string, any> }
-  | { type: "navigate_to"; version: 1; value: string };
+  | { type: "todo_list"; version: 1; value: MetabotTodoItem[] }
+  | { type: "transform_suggestion"; version: 1; value: SuggestedTransform };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),

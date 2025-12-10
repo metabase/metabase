@@ -24,29 +24,75 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
+export type SuggestedTransform = Partial<Pick<Transform, "id">> &
+  Pick<Transform, "name" | "description" | "source" | "target">;
+
 export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
+
+export type TransformSourceCheckpointStrategy = {
+  type: "checkpoint";
+  // For native queries
+  "checkpoint-filter"?: string;
+  // For MBQL and Python queries
+  "checkpoint-filter-unique-key"?: string;
+};
+
+export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;
+
+export type PythonTransformSourceDraft = {
+  type: "python";
+  body: string;
+  "source-database": DatabaseId | undefined;
+  "source-tables": PythonTransformTableAliases;
+};
 
 export type PythonTransformSource = {
   type: "python";
   body: string;
   "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
+  "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
+
 export type QueryTransformSource = {
   type: "query";
   query: DatasetQuery;
+  "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
 
 export type TransformSource = QueryTransformSource | PythonTransformSource;
 
-export type TransformTargetType = "table";
+export type TransformTargetAppendStrategy = {
+  type: "append";
+};
+export type DraftTransformSource =
+  | Transform["source"]
+  | PythonTransformSourceDraft;
 
-export type TransformTarget = {
-  type: TransformTargetType;
+export type DraftTransform = Partial<
+  Pick<Transform, "id" | "name" | "description" | "target">
+> & { source: DraftTransformSource };
+
+export type TargetIncrementalStrategy = TransformTargetAppendStrategy;
+
+export type TransformTargetType = "table" | "table-incremental";
+
+export type TableTarget = {
+  type: "table";
   name: string;
   schema: string | null;
   database: number;
 };
+
+export type TableIncrementalTarget = {
+  type: "table-incremental";
+  name: string;
+  schema: string | null;
+  database: number;
+  "target-incremental-strategy": TargetIncrementalStrategy;
+};
+
+export type TransformTarget = TableTarget | TableIncrementalTarget;
 
 export type TransformRun = {
   id: TransformRunId;
@@ -192,4 +238,19 @@ export type GetPythonLibraryRequest = {
 export type UpdatePythonLibraryRequest = {
   path: string;
   source: string;
+};
+
+export type ExtractColumnsFromQueryRequest = {
+  query: DatasetQuery;
+};
+
+export type ExtractColumnsFromQueryResponse = {
+  columns: string[];
+};
+
+export type CheckQueryComplexityRequest = string;
+
+export type CheckQueryComplexityResponse = {
+  is_simple: boolean;
+  reason: string;
 };

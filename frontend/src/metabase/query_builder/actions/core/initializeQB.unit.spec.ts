@@ -22,7 +22,11 @@ import type {
   UnsavedCard,
   User,
 } from "metabase-types/api";
-import { createMockSegment, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSegment,
+  createMockUser,
+  createMockUserPermissions,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
@@ -61,23 +65,25 @@ async function baseSetup({
   hasDataPermissions = true,
 }: BaseSetupOpts) {
   jest.useFakeTimers();
-
-  const databases = hasDataPermissions ? [createSampleDatabase()] : [];
-  const dispatch = jest
-    .fn()
-    .mockReturnValue({ unwrap: () => ({ data: databases }) });
-
   const state = createMockState({
     entities: createMockEntitiesState({
-      databases,
+      databases: hasDataPermissions ? [createSampleDatabase()] : [],
       segments: [SEGMENT],
     }),
-    currentUser: user === undefined ? createMockUser() : user,
+    currentUser:
+      user === undefined
+        ? createMockUser({
+            permissions: createMockUserPermissions({
+              can_create_queries: hasDataPermissions,
+            }),
+          })
+        : user,
   });
 
   const metadata = getMetadata(state);
   const getState = () => state;
 
+  const dispatch = jest.fn();
   await initializeQB(location, params)(dispatch, getState);
   jest.runAllTimers();
 
@@ -711,7 +717,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
-        databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
       }).card();
 
       const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });

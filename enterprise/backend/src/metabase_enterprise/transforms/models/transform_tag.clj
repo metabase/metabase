@@ -53,8 +53,7 @@
   [_model-name _opts]
   {:copy [:entity_id :built_in_type]
    :transform {:name {:export str :import identity}
-               :created_at (serdes/date)
-               :updated_at (serdes/date)}})
+               :created_at (serdes/date)}})
 
 (defmethod serdes/storage-path "TransformTag" [tt _ctx]
   (let [{:keys [id label]} (-> tt serdes/path last)]

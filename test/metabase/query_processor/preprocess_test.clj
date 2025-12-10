@@ -17,7 +17,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -543,7 +543,7 @@
               (map #(select-keys % [:lib/desired-column-alias :field_ref])
                    expected-cols))))))
 
-;;; adapted from [[metabase.query-processor-test.explicit-joins-test/test-31769]]
+;;; adapted from [[metabase.query-processor.explicit-joins-test/test-31769]]
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [mp    (lib.tu.mocks-31769/mock-metadata-provider meta/metadata-provider meta/id)

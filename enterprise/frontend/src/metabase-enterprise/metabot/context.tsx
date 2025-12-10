@@ -3,13 +3,17 @@ import type React from "react";
 import { createContext, useCallback, useRef, useState } from "react";
 import _ from "underscore";
 
-import { useLazyListDatabasesQuery } from "metabase/api";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
+  MetabotChatInputRef,
   MetabotContext as MetabotCtx,
 } from "metabase/metabot";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 
 export const defaultContext = {
   prompt: "",
@@ -26,6 +30,8 @@ export const defaultContext = {
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
 
+export type MetabotPromptInputRef = { focus: () => void };
+
 export const MetabotProvider = ({
   children,
 }: {
@@ -33,22 +39,19 @@ export const MetabotProvider = ({
 }) => {
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
-  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const promptInputRef = useRef<MetabotChatInputRef>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
   const store = useStore();
 
-  const [listDbs] = useLazyListDatabasesQuery();
-
   const getChatContext = useCallback(async () => {
     const state = store.getState();
     const providerFns = [...providerFnsRef.current];
 
-    const { data: dbData } = await listDbs(undefined, true);
-    const databases = dbData?.data ?? [];
-    const hasDataAccess = getHasDataAccess(databases);
-    const hasNativeWrite = getHasNativeWrite(databases);
+    const isAdmin = getUserIsAdmin(state);
+    const hasDataAccess = canUserCreateQueries(state);
+    const hasNativeWrite = canUserCreateNativeQueries(state);
 
     const ctx = {
       user_is_viewing: [],
@@ -57,6 +60,7 @@ export const MetabotProvider = ({
         "frontend:navigate_user_v1",
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
+        isAdmin && "permission:write_transforms",
       ]),
     };
 
@@ -70,7 +74,7 @@ export const MetabotProvider = ({
     }
 
     return ctx;
-  }, [store, listDbs]);
+  }, [store]);
 
   const registerChatContextProvider = useCallback(
     (providerFn: ChatContextProviderFn) => {

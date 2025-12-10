@@ -22,7 +22,6 @@ import {
   Text,
 } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import { getTransformUrl } from "metabase-enterprise/transforms/urls";
 import type {
   Card as ApiCard,
   CheckDependenciesResponse,
@@ -135,7 +134,7 @@ function getItemIcon(item: DependencyItem): IconName {
   }
 
   if (item.type === "transform") {
-    return "refresh_downstream";
+    return "transform";
   }
 
   return "unknown";
@@ -157,38 +156,22 @@ function getItemLink(item: DependencyItem) {
     case "card":
       return Urls.question(item.card);
     default:
-      return getTransformUrl(item.transform.id);
+      return Urls.transform(item.transform.id);
   }
 }
 
 function getItemDescription(item: DependencyItem) {
   if (item.type === "card") {
-    const { collection, dashboard } = item.card;
-
-    if (collection != null) {
-      const ancestors = collection.effective_ancestors ?? [];
-      const breadcrumbs = [
-        ...ancestors.map((ancestor) => ({
-          title: ancestor.name,
-          to: Urls.collection(ancestor),
-        })),
-        { title: collection.name, to: Urls.collection(collection) },
-        ...(dashboard != null
-          ? [{ title: dashboard.name, to: Urls.dashboard(dashboard) }]
-          : []),
-      ];
-
-      return (
-        <Group gap="sm" wrap="nowrap">
-          <FixedSizeIcon
-            c="text-secondary"
-            name={dashboard != null ? "dashboard" : "collection"}
-            flex="0 0 auto"
-          />
-          <BreadcrumbList items={breadcrumbs} />
-        </Group>
-      );
-    }
+    return (
+      <Group gap="sm" wrap="nowrap">
+        <FixedSizeIcon
+          c="text-secondary"
+          name={getCardLinkIcon(item)}
+          flex="0 0 auto"
+        />
+        <BreadcrumbList items={getCardBreadcrumbs(item)} />
+      </Group>
+    );
   }
 
   if (item.type === "transform") {
@@ -200,6 +183,38 @@ function getItemDescription(item: DependencyItem) {
   }
 
   return null;
+}
+
+function getCardBreadcrumbs(item: CardDependencyItem) {
+  const { collection, dashboard, document } = item.card;
+  if (collection == null) {
+    return [];
+  }
+
+  const ancestors = collection.effective_ancestors ?? [];
+  const breadcrumbs = ancestors.map((ancestor) => ({
+    title: ancestor.name,
+    to: Urls.collection(ancestor),
+  }));
+  breadcrumbs.push({ title: collection.name, to: Urls.collection(collection) });
+  if (dashboard != null) {
+    breadcrumbs.push({ title: dashboard.name, to: Urls.dashboard(dashboard) });
+  } else if (document != null) {
+    breadcrumbs.push({ title: document.name, to: Urls.document(document) });
+  }
+
+  return breadcrumbs;
+}
+
+function getCardLinkIcon(item: CardDependencyItem): IconName {
+  const { dashboard, document } = item.card;
+  if (dashboard != null) {
+    return "dashboard";
+  }
+  if (document != null) {
+    return "document";
+  }
+  return "collection";
 }
 
 type BreadcrumbItem = {

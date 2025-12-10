@@ -37,6 +37,16 @@ describe("scenarios > models list view", () => {
       cy.log("Ensure List view is enabled");
       cy.findByTestId("list-view").should("be.visible");
 
+      cy.log(
+        "Ensure that List View setting stays applied after switching between tabs",
+      );
+      cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
+      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
+      cy.findByTestId("list-view").should("be.visible");
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByLabelText("List").should("be.checked");
+      });
+
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
       cy.wait("@dataset");
 
@@ -87,15 +97,19 @@ describe("scenarios > models list view", () => {
       cy.get("@listPreview").should("be.visible");
       cy.get("@listPreview").within(() => {
         // Verify preview shows sample data values
-        cy.findByRole("img").should("have.attr", "aria-label", "document icon");
+        cy.findAllByRole("img").should(
+          "have.attr",
+          "aria-label",
+          "document icon",
+        );
         cy.findAllByText("1").should("have.length", 2);
         cy.findByText("14").should("be.visible");
         cy.findByText("37.65").should("be.visible");
         cy.findByText("2.07").should("be.visible");
       });
 
-      cy.log("Add CREATED_AT column to left columns");
-      cy.get("@leftColumns").within(() => {
+      cy.log("Add CREATED_AT column to right columns");
+      cy.get("@rightColumns").within(() => {
         cy.get("input").type("CR");
       });
 
@@ -131,20 +145,36 @@ describe("scenarios > models list view", () => {
         cy.findByText("DISCOUNT").click();
       });
       cy.get("@listPreview").within(() => {
-        cy.findByText("$123.46").should("be.visible");
+        cy.findByText("123.46").should("be.visible");
       });
 
       cy.log("Update list item icon");
       cy.get("@listPreview").within(() => {
-        cy.findByRole("img").should("have.attr", "aria-label", "document icon");
+        cy.findAllByRole("img").should(
+          "have.attr",
+          "aria-label",
+          "document icon",
+        );
       });
 
       cy.findByTestId("list-view-icon").click();
       H.popover().within(() => {
-        cy.findByText("Company").should("be.visible").click();
+        cy.findByRole("img", { name: "factory icon" })
+          .should("have.attr", "aria-label", "factory icon")
+          .click();
+        cy.findByTestId("list-view-icon-colors").then(($list) => {
+          const $button = Cypress.$($list).find("button").eq(2);
+          expect($button.attr("style")).to.include(
+            "background: var(--mb-color-accent1)",
+          );
+          $button.click();
+        });
       });
       cy.get("@listPreview").within(() => {
-        cy.findByRole("img").should("have.attr", "aria-label", "company icon");
+        cy.findAllByRole("img")
+          .first()
+          .should("have.attr", "style", "color: var(--mb-color-accent1);")
+          .and("have.attr", "aria-label", "factory icon");
       });
 
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
@@ -152,7 +182,7 @@ describe("scenarios > models list view", () => {
 
       cy.log("Verify that custom column set is correct");
       cy.findByTestId("visualization-root").within(() => {
-        cy.findByText("ID and CREATED_AT").should("be.visible");
+        cy.findByText("ID").should("be.visible");
         cy.findByText("USER_ID").should("be.visible");
         cy.findByText("PRODUCT_ID").should("be.visible");
         cy.findByText("SUBTOTAL").should("be.visible");
@@ -160,7 +190,7 @@ describe("scenarios > models list view", () => {
 
         cy.findAllByRole("img")
           .first()
-          .should("have.attr", "aria-label", "company icon");
+          .should("have.attr", "aria-label", "factory icon");
         cy.findByText("February 11, 2025, 9:40 PM").should("be.visible");
         cy.findByText("14").should("be.visible");
         cy.findByText("37.65").should("be.visible");
@@ -186,6 +216,9 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("list-view-preview").as("listPreview");
       cy.findByTestId("sidebar-right").as("sidebarRight");
 
+      cy.log("Check that used column is not present in unused columns list.");
+      cy.get("@sidebarRight").findByText("PRODUCT_ID").should("not.exist");
+
       cy.get("@rightColumns").within(() => {
         cy.get("input").type("{Backspace}{Backspace}");
       });
@@ -193,6 +226,7 @@ describe("scenarios > models list view", () => {
       cy.log(
         "Find a draggable element with 'SUBTOTAL' text in sidebarRight panel and drag it into @rightColumns input",
       );
+
       cy.get("@sidebarRight").within(() => {
         cy.findByText("SUBTOTAL").should("be.visible");
       });
@@ -234,7 +268,6 @@ describe("scenarios > models list view", () => {
         {
           name: "Native Model",
           type: "model",
-          display: "list",
           native: {
             query: "SELECT * FROM ORDERS LIMIT 5",
           },
@@ -280,7 +313,6 @@ describe("scenarios > models list view", () => {
         {
           name: "Native Model",
           type: "model",
-          display: "list",
           native: {
             query: "SELECT * FROM ORDERS LIMIT 5",
           },
@@ -311,6 +343,60 @@ describe("scenarios > models list view", () => {
       cy.wait("@dataset");
       H.undoToast().should("contain.text", "This is a question now");
       cy.findByTestId("list-view").should("not.exist");
+    });
+
+    it("should consider mini bar chart setting for quantity/score columns", () => {
+      H.restore();
+      cy.signInAsAdmin();
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      H.createNativeQuestion({
+        name: "Native Model",
+        type: "model",
+        native: {
+          query: "SELECT * FROM ORDERS LIMIT 5",
+        },
+      }).then(({ body: { id: nativeModelId } }) => {
+        cy.request("PUT", `/api/card/${nativeModelId}`, {
+          display: "list",
+        });
+        H.setModelMetadata(nativeModelId, (field) => {
+          if (field.display_name === "SUBTOTAL") {
+            return {
+              ...field,
+              semantic_type: "type/Quantity",
+              settings: {
+                show_mini_bar: true,
+              },
+            };
+          }
+          return field;
+        });
+        H.visitModel(nativeModelId);
+      });
+
+      cy.findByTestId("list-view").within(() => {
+        cy.findAllByTestId("mini-bar-container").should("be.visible");
+      });
+
+      H.openQuestionActions();
+
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
+
+      cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
+
+      H.tableHeaderClick(/Subtotal/i);
+
+      H.sidebar().findByRole("tab", { name: "Formatting" }).click();
+
+      H.sidebar()
+        .findByLabelText("Show a mini bar chart")
+        .click({ force: true });
+
+      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("mini-bar-container").should("not.exist");
     });
   });
 });

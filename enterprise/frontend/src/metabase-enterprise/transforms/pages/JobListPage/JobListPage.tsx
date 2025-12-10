@@ -1,47 +1,111 @@
-import type { Location } from "history";
-import { Link } from "react-router";
+import { useDebouncedValue } from "@mantine/hooks";
+import dayjs from "dayjs";
+import { useMemo, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
-import { useListTransformTagsQuery } from "metabase-enterprise/api";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { Button, Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
+import { useListTransformJobsQuery } from "metabase-enterprise/api";
+import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table";
+import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
+import type { TransformJob } from "metabase-types/api";
 
-import { getNewJobUrl } from "../../urls";
+export const JobListPage = () => {
+  const dispatch = useDispatch();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
 
-import { JobFilterList } from "./JobFilterList";
-import { JobList } from "./JobList";
-import { getParsedParams } from "./utils";
+  const { data: jobs, error, isLoading } = useListTransformJobsQuery({});
 
-type JobListPageProps = {
-  location: Location;
-};
+  const filteredJobs = useMemo(() => {
+    if (!jobs) {
+      return [];
+    }
 
-export function JobListPage({ location }: JobListPageProps) {
-  const params = getParsedParams(location);
-  const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
+    if (!debouncedSearchQuery) {
+      return jobs;
+    }
 
-  if (!tags || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    const query = debouncedSearchQuery.toLowerCase();
+    return jobs.filter((job) => job.name.toLowerCase().includes(query));
+  }, [jobs, debouncedSearchQuery]);
+
+  const handleSelect = (item: TransformJob) => {
+    dispatch(push(Urls.transformJob(item.id)));
+  };
+
+  if (error) {
+    return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
   return (
-    <Stack gap="xl" data-testid="job-list-page">
-      <Group justify="space-between" align="start">
-        <Stack gap="sm">
-          <Title order={1}>{t`Jobs`}</Title>
-          <Box>{t`Jobs let you run groups of transforms on a schedule.`}</Box>
-        </Stack>
-        <Button
-          component={Link}
-          to={getNewJobUrl()}
-          variant="filled"
-          leftSection={<Icon name="add" aria-hidden />}
-        >
-          {t`Create a job`}
-        </Button>
-      </Group>
-      <JobFilterList params={params} tags={tags} />
-      <JobList params={params} />
-    </Stack>
+    <>
+      <TransformsSectionHeader
+        leftSection={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
+      />
+      <Stack px="3.5rem" data-testid="transforms-job-list">
+        <Flex gap="0.5rem">
+          <TextInput
+            placeholder={t`Search...`}
+            leftSection={<Icon name="search" />}
+            bdrs="md"
+            flex="1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Button
+            leftSection={<Icon name="add" />}
+            component={ForwardRefLink}
+            to={Urls.newTransformJob()}
+          >{t`New`}</Button>
+        </Flex>
+
+        <Flex direction="column" flex={1} mih={0}>
+          {isLoading ? (
+            <ListLoadingState />
+          ) : filteredJobs.length === 0 ? (
+            <ListEmptyState
+              label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
+            />
+          ) : (
+            <Card withBorder p={0}>
+              <Table
+                data={filteredJobs}
+                columns={[
+                  {
+                    accessorKey: "name",
+                    header: t`Name`,
+                    meta: {
+                      width: "auto",
+                    },
+                  },
+                  {
+                    accessorFn: (job) => job.last_run?.start_time,
+                    header: t`Last Run`,
+                    size: 200,
+                    cell: ({ row: { original: job } }) => {
+                      if (job.last_run) {
+                        const formattedDate = dayjs(
+                          job.last_run.start_time,
+                        ).format("lll");
+                        return `${job.last_run.status === "failed" ? t`Failed` : t`Last run`} ${formattedDate}`;
+                      }
+                    },
+                  },
+                ]}
+                onSelect={handleSelect}
+              />
+            </Card>
+          )}
+        </Flex>
+      </Stack>
+    </>
   );
-}
+};

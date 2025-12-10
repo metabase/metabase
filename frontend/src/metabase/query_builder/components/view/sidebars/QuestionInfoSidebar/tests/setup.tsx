@@ -4,6 +4,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
   setupCardEndpoints,
+  setupCardsUsingModelEndpoint,
   setupRevisionsEndpoints,
   setupTokenStatusEndpoint,
   setupUsersEndpoints,
@@ -43,6 +44,7 @@ export const setup = async ({
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
+  setupCardsUsingModelEndpoint(card);
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);

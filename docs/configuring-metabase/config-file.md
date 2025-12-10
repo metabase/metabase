@@ -215,7 +215,7 @@ Metabase doesn't support recursive expansion, so if one of your environment vari
 
 ## Values with special characters in the `config.yml`
 
-If a value contains double braces (`{%raw %}}}{% endraw %}` or `{%raw %}{{{% endraw %}`), you must use triple backticks to tell the config parser to use the literal value. For example, if your password was `{% raw %}MetaPa$$123{{>{% endraw %}`, you'd need to wrap the value in triple braces, like so:
+If a value contains double braces (`{%raw %}}}{% endraw %}` or `{%raw %}{{{% endraw %}`), you must use triple braces to tell the config parser to use the literal value. For example, if your password was `{% raw %}MetaPa$$123{{>{% endraw %}`, you'd need to wrap the value in triple braces, like so:
 
 ```
 {% raw %}

@@ -661,7 +661,6 @@ function genericPandasCompletions(context: CompletionContext) {
       }));
 
     return {
-      filter: false,
       from: word.from + text.length - partial.length,
       options,
     };

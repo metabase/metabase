@@ -5,25 +5,24 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Card, Flex, Group, Stack } from "metabase/ui";
-import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
-import { TagList } from "../../../components/TagList";
-import type { RunListParams } from "../../../types";
-import { getRunListUrl, getTransformUrl } from "../../../urls";
 import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
 import { hasFilterParams } from "../utils";
 
 import S from "./RunList.module.css";
+import { TagList } from "./TagList";
+import { TimezoneIndicator } from "./TimezoneIndicator";
 
 type RunListProps = {
   runs: TransformRun[];
   totalCount: number;
-  params: RunListParams;
+  params: Urls.TransformRunListParams;
   tags: TransformTag[];
 };
 
@@ -34,7 +33,11 @@ export function RunList({ runs, totalCount, params, tags }: RunListProps) {
   if (runs.length === 0) {
     const hasFilters = hasFilterParams(params);
     return (
-      <ListEmptyState label={hasFilters ? t`No runs found` : t`No runs yet`} />
+      <Card p={0} shadow="none" withBorder>
+        <ListEmptyState
+          label={hasFilters ? t`No runs found` : t`No runs yet`}
+        />
+      </Card>
     );
   }
 
@@ -66,7 +69,7 @@ function RunTable({ runs, tags }: RunTableProps) {
 
   const handleRowClick = (run: TransformRun) => {
     if (run.transform) {
-      dispatch(push(getTransformUrl(run.transform.id)));
+      dispatch(push(Urls.transform(run.transform.id)));
     }
   };
 
@@ -139,7 +142,7 @@ type RunTablePaginationControlsProps = {
   page: number;
   itemCount: number;
   totalCount: number;
-  params: RunListParams;
+  params: Urls.TransformRunListParams;
 };
 
 function RunTablePaginationControls({
@@ -151,11 +154,11 @@ function RunTablePaginationControls({
   const dispatch = useDispatch();
 
   const handlePreviousPage = () => {
-    dispatch(push(getRunListUrl({ ...params, page: page - 1 })));
+    dispatch(push(Urls.transformRunList({ ...params, page: page - 1 })));
   };
 
   const handleNextPage = () => {
-    dispatch(push(getRunListUrl({ ...params, page: page + 1 })));
+    dispatch(push(Urls.transformRunList({ ...params, page: page + 1 })));
   };
 
   return (

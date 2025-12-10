@@ -7,6 +7,7 @@ import {
   useCallback,
 } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
+import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
@@ -22,7 +23,7 @@ import {
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -31,6 +32,7 @@ import type {
   CardId,
   Collection,
   DatabaseId,
+  DatasetQuery,
   NativeQuerySnippet,
   ParameterId,
 } from "metabase-types/api";
@@ -58,6 +60,10 @@ import {
 type OwnProps = {
   question: Question;
   query: NativeQuery;
+
+  proposedQuestion?: Question | undefined;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: DatasetQuery) => void;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
@@ -239,6 +245,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       resizableBoxProps = {},
       snippetCollections = [],
       question,
+      proposedQuestion,
+      onRejectProposed,
+      onAcceptProposed,
       query,
       readOnly,
       isNativeEditorOpen,
@@ -336,6 +345,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               <CodeMirrorEditor
                 ref={this.editor}
                 query={question.query()}
+                proposedQuery={proposedQuestion?.query()}
                 readOnly={readOnly}
                 placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
@@ -349,16 +359,55 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 }
               />
 
-              {hasRunButton && !readOnly && (
-                <NativeQueryEditorRunButton
-                  cancelQuery={this.props.cancelQuery}
-                  isResultDirty={this.props.isResultDirty}
-                  isRunnable={this.props.isRunnable}
-                  isRunning={this.props.isRunning}
-                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
-                  runQuery={this.props.runQuery}
-                />
-              )}
+              <Stack m="1rem" gap="md" mt="auto">
+                {proposedQuestion && onRejectProposed && onAcceptProposed && (
+                  <>
+                    <Tooltip label={t`Accept proposed changes`} position="top">
+                      <Button
+                        data-testid="accept-proposed-changes-button"
+                        variant="filled"
+                        bg="success"
+                        px="0"
+                        w="2.5rem"
+                        onClick={() => {
+                          const proposedQuery =
+                            proposedQuestion.legacyNativeQuery();
+                          if (proposedQuery) {
+                            this.onChange(proposedQuery.queryText());
+                            onAcceptProposed(proposedQuery.datasetQuery());
+                          }
+                        }}
+                      >
+                        <Icon name="check" />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip label={t`Reject proposed changes`} position="top">
+                      <Button
+                        data-testid="reject-proposed-changes-button"
+                        w="2.5rem"
+                        px="0"
+                        variant="filled"
+                        bg="danger"
+                        onClick={onRejectProposed}
+                      >
+                        <Icon name="close" />
+                      </Button>
+                    </Tooltip>
+                  </>
+                )}
+                {hasRunButton && !readOnly && (
+                  <NativeQueryEditorRunButton
+                    cancelQuery={this.props.cancelQuery}
+                    isResultDirty={this.props.isResultDirty}
+                    isRunnable={this.props.isRunnable}
+                    isRunning={this.props.isRunning}
+                    nativeEditorSelectedText={
+                      this.props.nativeEditorSelectedText
+                    }
+                    runQuery={this.props.runQuery}
+                  />
+                )}
+              </Stack>
             </Flex>
           </ResizableBox>
         </div>

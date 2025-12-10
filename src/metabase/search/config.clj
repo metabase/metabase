@@ -2,10 +2,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -42,7 +43,7 @@
 (def model->db-model
   "Mapping of model name to :db_model and :alias"
   (cond-> api/model->db-model
-    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document})))
+    config/ee-available? (assoc "transform" {:db-model :model/Transform :alias :transform})))
 
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
@@ -72,8 +73,8 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
-    config/ee-available? (conj "document")
+  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "document"]
+    config/ee-available? (concat ["transform"])
     :always (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
@@ -153,6 +154,7 @@
   "Specifications for the optional search filters."
   (build-filters
    {:archived                {:type :single-value, :context-key :archived?}
+    :collection-id           {:type :collection-hierarchy, :context-key :collection}
     ;; TODO dry this alias up with the index hydration code
     :created-at              {:type :date-range, :field "model_created_at"}
     :creator-id              {:type :list, :context-key :created-by}
@@ -186,27 +188,30 @@
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
-  [context]
-  (let [context   (or context :default)
-        overrides (search.settings/experimental-search-weight-overrides)]
-    (if (= :all context)
-      (merge-with merge static-weights overrides)
-      (merge (get static-weights :default)
-             ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
-             (get overrides :default)
-             (get static-weights context)
-             (get overrides context)))))
+  ([]
+   (weights {}))
+  ([{request-overrides :weights, :keys [context]}]
+   (let [context          (or context :default)
+         system-overrides (search.settings/experimental-search-weight-overrides)]
+     (if (= :all context)
+       (merge-with merge static-weights system-overrides)
+       (merge (get static-weights :default)
+              ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
+              (get system-overrides :default)
+              (get static-weights context)
+              (get system-overrides context)
+              request-overrides)))))
 
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."
-  [context scorer-key]
-  (get (weights context) scorer-key (when-not (namespace scorer-key) 0)))
+  [search-ctx scorer-key]
+  (get (weights search-ctx) scorer-key (when-not (namespace scorer-key) 0)))
 
 (defn scorer-param
   "Get a nested parameter scoped to the given scorer"
-  [context scorer-key param-key]
+  [search-ctx scorer-key param-key]
   (let [flat-key (keyword (name scorer-key) (name param-key))]
-    (weight context flat-key)))
+    (weight search-ctx flat-key)))
 
 (defn model->alias
   "Given a model string returns the model alias"
@@ -247,9 +252,11 @@
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
+   [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;
    ;; optional
    ;;
+   [:collection                          {:optional true} [:maybe ms/PositiveInt]]
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]
@@ -258,7 +265,7 @@
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
    [:offset-int                          {:optional true} ms/Int]
-   [:search-native-query                 {:optional true} true?]
+   [:search-native-query                 {:optional true} :boolean]
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
@@ -280,7 +287,7 @@
 
 (defmethod column->string [:card :dataset_query]
   [value _ _]
-  (let [query (json/decode+kw value)]
-    (if (= "native" (:type query))
-      (-> query :native :query)
-      "")))
+  (or (when-let [query (not-empty ((lib-be/transform-query :out) value))]
+        (when (lib/native-only-query? query)
+          (lib/raw-native-query query)))
+      ""))

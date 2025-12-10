@@ -33,9 +33,8 @@ Like with all generative AI, you'll always need to double-check results.
 
 There are multiple ways to start a chat with Metabot:
 
-- Type cmd+b on Mac, ctrl+b on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
-- Click the Metabot icon in the search bar.
-- Type cmd+k on Mac, or ctrl+k on Windows, to open the [command palette](../exploration-and-organization/exploration.md#command-palette). Select the Metabot option to **Ask me to do something, or ask a question**.
+- Type cmd+e on Mac, ctrl+e on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
+- Click the Metabot icon in top right.
 
 You can chat with Metabot (though predictably, it's only interested in helping you answer questions about your data).
 
@@ -47,6 +46,7 @@ Some tips:
 - Whenever you want Metabot to do something completely different, you should reset the conversation, as Metabot might find that irrelevant historical context to be confusing.
 - Once Metabot creates a question for you, you can follow up with more questions or take over yourself. You can drill through the chart or step into the editor to tweak the query (both in the query builder and the SQL editor).
 - Metabot works best with English prompts. While it might understand other languages, you'll get the most reliable results by asking your questions in English.
+- Define domain-specific terms in the [glossary](../exploration-and-organization/data-model-reference.md#glossary) to help Metabot understand your organization's terminology.
 
 ### Metabot response menu
 
@@ -80,7 +80,7 @@ To have Metabot generate SQL for you:
 
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
 2. Select the database you want to query.
-3. Type cmd+b on Mac, ctrl+b on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
+3. Type cmd+e on Mac, ctrl+e on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
 4. Ask it to "Write a SQL query that..." and type your prompt.
 
 Metabot will generate the SQL for you, but it won't run the query. This gives you a chance to inspect the code before running it.

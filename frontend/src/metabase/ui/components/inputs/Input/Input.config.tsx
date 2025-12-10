@@ -17,7 +17,10 @@ export const inputOverrides = {
       input: Styles.input,
       section: Styles.section,
     },
-    vars: (theme, { radius, leftSection, rightSection, variant }) => ({
+    vars: (
+      theme,
+      { radius, leftSection, rightSection, rightSectionWidth, variant },
+    ) => ({
       wrapper: {
         "--input-border-radius": radius ?? theme.radius.xs,
         "--input-padding-inline-start": leftSection
@@ -27,9 +30,11 @@ export const inputOverrides = {
           ? rem(DEFAULT_ICON_WIDTH - BORDER_WIDTH)
           : rem(PADDING - BORDER_WIDTH),
         "--input-right-section-width":
-          variant === "unstyled"
-            ? rem(UNSTYLED_ICON_WIDTH)
-            : rem(DEFAULT_ICON_WIDTH),
+          typeof rightSectionWidth === "string"
+            ? rightSectionWidth
+            : variant === "unstyled"
+              ? rem(UNSTYLED_ICON_WIDTH)
+              : rem(DEFAULT_ICON_WIDTH),
       },
     }),
   }),

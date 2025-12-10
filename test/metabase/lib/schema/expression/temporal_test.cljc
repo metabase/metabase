@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.temporal :as temporal]
@@ -149,3 +150,16 @@
     ;; mode is not allowed to be nil
     [:get-week default-options "2023-05-25" nil]
     [nil nil nil ["should be either :iso, :us or :instance" "Valid :get-week clause"]]))
+
+(deftest ^:parallel normalize-datetime-test
+  (is (= [:datetime
+          {:lib/uuid "8b343e3b-a549-4d22-87a3-d5888793209b", :mode :simple-bytes, :lib/expression-name "parsed_date"}
+          [:field
+           {:lib/uuid "9da67f88-9c46-4917-b964-07806f60870c", :effective-type :type/*, :base-type :type/*}
+           "DATE_TIME"]]
+         (lib/normalize
+          ["datetime"
+           {:lib/uuid "8b343e3b-a549-4d22-87a3-d5888793209b", :mode "simple-bytes", :lib/expression-name "parsed_date"}
+           ["field"
+            {:lib/uuid "9da67f88-9c46-4917-b964-07806f60870c", :effective-type "type/*", :base-type "type/*"}
+            "DATE_TIME"]]))))

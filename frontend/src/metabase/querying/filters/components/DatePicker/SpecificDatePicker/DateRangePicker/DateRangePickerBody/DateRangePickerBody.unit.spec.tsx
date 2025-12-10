@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
+import { setLocalization } from "metabase/lib/i18n";
 
 import { DateRangePickerBody } from "./DateRangePickerBody";
 
@@ -51,5 +52,72 @@ describe("DateRangePickerBody", () => {
       new Date(2020, 0, 10),
       new Date(2020, 1, 8),
     ]);
+  });
+
+  describe("text input synchronization with calendar navigation", () => {
+    it("should navigate calendar with start date input (metabase#64602)", async () => {
+      setup({
+        value: [new Date(2020, 0, 5), new Date(2020, 1, 20)], // Jan 5 - Feb 20
+      });
+
+      expect(screen.getByText("January 2020")).toBeInTheDocument();
+
+      const dateInput = screen.getByLabelText("Start date");
+      await userEvent.clear(dateInput);
+      await userEvent.type(dateInput, "03/15/2020");
+
+      expect(screen.getByText("March 2020")).toBeInTheDocument();
+      expect(screen.queryByText("January 2020")).not.toBeInTheDocument();
+    });
+
+    it("should navigate calendar with end date input (metabase#64602)", async () => {
+      setup({
+        value: [new Date(2020, 0, 5), new Date(2020, 1, 20)], // Jan 5 - Feb 20
+      });
+
+      expect(screen.getByText("January 2020")).toBeInTheDocument();
+
+      const dateInput = screen.getByLabelText("End date");
+      await userEvent.clear(dateInput);
+      await userEvent.type(dateInput, "01/15/2019");
+
+      expect(screen.getByText("January 2019")).toBeInTheDocument();
+      expect(screen.queryByText("January 2020")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("locale-dependent formatting", () => {
+    afterAll(() => jest.resetModules());
+
+    it.each([
+      {
+        locale: "en",
+        expectedStart: "January 2, 2025",
+        expectedEnd: "February 3, 2025",
+      },
+      {
+        locale: "de",
+        expectedStart: "2. Januar 2025",
+        expectedEnd: "3. Februar 2025",
+      },
+    ])(
+      "should display localized start/end date inputs for $locale",
+      ({ locale, expectedStart, expectedEnd }) => {
+        setLocalization({
+          headers: {
+            language: locale,
+            "plural-forms": "nplurals=2; plural=(n != 1);",
+          },
+          translations: { "": {} },
+        });
+
+        setup({
+          value: [new Date(2025, 0, 2), new Date(2025, 1, 3)],
+        });
+
+        expect(screen.getByLabelText("Start date")).toHaveValue(expectedStart);
+        expect(screen.getByLabelText("End date")).toHaveValue(expectedEnd);
+      },
+    );
   });
 });

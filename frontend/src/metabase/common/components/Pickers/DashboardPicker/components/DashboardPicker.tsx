@@ -134,6 +134,7 @@ const DashboardPickerInner = (
             id: currentCollection.id,
             location: currentCollection.effective_location,
             is_personal: currentCollection.is_personal,
+            type: currentCollection.type,
             model: "collection",
           },
           userPersonalCollectionId,

@@ -8,6 +8,10 @@ export function setupCheckCardDependenciesEndpoint(
   fetchMock.post("path:/api/ee/dependencies/check_card", response);
 }
 
+export function setupCheckCardDependenciesEndpointError() {
+  fetchMock.post("path:/api/ee/dependencies/check_card", { status: 500 });
+}
+
 export function setupCheckSnippetDependenciesEndpoint(
   response: CheckDependenciesResponse,
 ) {

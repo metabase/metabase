@@ -27,6 +27,14 @@ import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
 const MIN_SNIPPETS_FOR_SEARCH = 1;
 
+/**
+ * @typedef {import("metabase/plugins").SnippetSidebarProps} SnippetSidebarProps
+ * @typedef {import("metabase/plugins").SnippetSidebarState} SnippetSidebarState
+ */
+
+/**
+ * @extends {React.Component<SnippetSidebarProps, SnippetSidebarState>}
+ */
 class SnippetSidebarInner extends React.Component {
   state = {
     showSearch: false,

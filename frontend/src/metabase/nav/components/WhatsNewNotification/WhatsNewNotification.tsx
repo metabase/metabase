@@ -4,11 +4,11 @@ import { t } from "ttag";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
 import Sparkles from "./sparkles.svg?component";

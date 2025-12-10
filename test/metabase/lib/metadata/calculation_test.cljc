@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
@@ -376,7 +377,7 @@
         (is (= :quarter (-> (lib/expression-ref query 0 expression-name)
                             (lib/find-matching-column (cols-fn query))
                             :inherited-temporal-unit)))))
-    (testing "orderable columns do not contain inherited-temporal-unit for expression"
+    (testing "orderable columns on stage 0 does not contain inherited-temporal-unit for expression"
       (is (not (contains? (lib/find-matching-column (lib/expression-ref query 0 expression-name)
                                                     (lib/orderable-columns query 0))
                           :inherited-temporal-unit))))))
@@ -431,6 +432,23 @@
                {:name  "price10"}
                {:name  "NAME"}
                {:name  "SUBTOTAL"}]
+              (lib/returned-columns query -1 -1 {:include-remaps? true}))))))
+
+(deftest ^:parallel skip-hidden-remapped-columns-test
+  (testing "remaps to hidden (`:visibility-type :sensitive`) columns are ignored"
+    (let [mp (-> meta/metadata-provider
+                 (lib.tu/merged-mock-metadata-provider
+                  {:fields [{:id              (meta/id :categories :name)
+                             :visibility-type :sensitive}]})
+                 (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)))
+          query (-> (lib/query mp (meta/table-metadata :venues))
+                    (lib/with-fields [(meta/field-metadata :venues :id)
+                                      (meta/field-metadata :venues :category-id)]))]
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}]
+              (lib/returned-columns query)))
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}]
               (lib/returned-columns query -1 -1 {:include-remaps? true}))))))
 
 (deftest ^:parallel remapped-columns-test-2-remapping-in-joins
@@ -819,24 +837,28 @@
 (deftest ^:parallel caching-test
   (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                        (lib/join (meta/table-metadata :categories)))
-        call-count (atom {:hits 0, :misses 0})]
-    (doseq [f [#'lib/returned-columns
-               #'lib/visible-columns]]
-      (testing f
-        (binding [lib.metadata.cache/*cache-hit-hook*  (fn [_v]
-                                                         (swap! call-count update :hits inc))
-                  lib.metadata.cache/*cache-miss-hook* (fn [_v]
-                                                         (swap! call-count update :misses inc))]
-          (is (seq (f query)))
-          (let [num-misses (:misses @call-count)]
-            (is (pos-int? num-misses)
-                "The first call should result in some cache misses")
-            (is (pos-int? (:hits @call-count))
-                "The first call should result in some cache hits for recursive metadata calculation")
-            (is (seq (f query)))
-            (is (= num-misses
-                   (:misses @call-count))
-                "Another call should result in ZERO additional cache misses -- we should be returning the cached value")))))))
+        call-count (atom {:hits 0, :misses 0})
+        test-fn    (fn [f]
+                     (is (seq (f query)))
+                     (let [num-misses (:misses @call-count)]
+                       (is (pos-int? num-misses)
+                           "The first call should result in some cache misses")
+                       (is (seq (f query)))
+                       (is (= num-misses
+                              (:misses @call-count))
+                           "Another call should result in ZERO additional cache misses -- the value is cached now")))]
+    (testing "lib/returned-columns"
+      (binding [lib.computed/*cache-hit-hook*  (fn [_v]
+                                                 (swap! call-count update :hits inc))
+                lib.computed/*cache-miss-hook* (fn [_v]
+                                                 (swap! call-count update :misses inc))]
+        (test-fn lib/returned-columns)))
+    (testing "lib/visible-columns"
+      (binding [lib.metadata.cache/*cache-hit-hook*  (fn [_v]
+                                                       (swap! call-count update :hits inc))
+                lib.metadata.cache/*cache-miss-hook* (fn [_v]
+                                                       (swap! call-count update :misses inc))]
+        (test-fn lib/visible-columns)))))
 
 (deftest ^:parallel returned-columns-no-duplicates-test
   (testing "Don't return columns from a join twice (QUE-1607)"

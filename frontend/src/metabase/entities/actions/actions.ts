@@ -12,7 +12,6 @@ import {
   undo,
 } from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { ActionSchema } from "metabase/schema";
 import type {
   CreateActionRequest,
@@ -65,7 +64,7 @@ const defaultImplicitActionCreateOptions = {
 };
 
 const enableImplicitActionsForModel =
-  async (modelId: number, options = defaultImplicitActionCreateOptions) =>
+  (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
     // We're ordering actions that's most recently created first.
     // So if we want to show Create, Update, Delete, then we need
@@ -225,11 +224,6 @@ const Actions = createEntity({
         return state;
       }
     }
-  },
-  objectSelectors: {
-    getUrl: (action: WritebackAction) =>
-      Urls.action({ id: action.model_id }, action.id),
-    getIcon: () => ({ name: "bolt" }),
   },
 });
 

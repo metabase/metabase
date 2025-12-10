@@ -1,13 +1,18 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { push } from "react-router-redux";
 
 import {
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupDatabaseListEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
+  createMockCollection,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
   createMockUser,
@@ -48,6 +53,29 @@ const setup = ({ isAdmin = true } = {}) => {
   );
 
   setupSearchEndpoints([]);
+  setupDatabaseListEndpoint([]);
+  setupCollectionByIdEndpoint({
+    collections: [
+      createMockCollection({ id: "root" }),
+      createMockCollection({ id: 1 }),
+    ],
+  });
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection({ id: "root" }),
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection({ id: 1 }),
+    collectionItems: [],
+  });
+
+  // Additional query param variant for uploadable databases
+  fetchMock.get({
+    url: "path:/api/database",
+    query: { include_only_uploadable: true },
+    response: { data: [], total: 0 },
+  });
+  fetchMock.get("path:/api/ee/embedding-hub/checklist", {});
 
   return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
 };
@@ -57,10 +85,10 @@ describe("EmbeddingHub", () => {
     mockPush.mockClear();
   });
 
-  it("opens AddDataModal when 'Add data' is clicked", async () => {
+  it("opens AddDataModal when 'Connect a database' is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByText("Add data"));
+    await userEvent.click(screen.getByText("Connect a database"));
 
     await waitFor(() => {
       const dialog = within(screen.getByRole("dialog"));
@@ -70,10 +98,10 @@ describe("EmbeddingHub", () => {
     });
   });
 
-  it("opens DataPickerModal when 'Generate a dashboard' is clicked", async () => {
+  it("opens table picker when 'Create a dashboard' is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByText("Generate a dashboard"));
+    await userEvent.click(screen.getByText("Create a dashboard"));
 
     const dialog = await screen.findByTestId("entity-picker-modal");
     expect(dialog).toBeInTheDocument();
@@ -82,6 +110,8 @@ describe("EmbeddingHub", () => {
       await within(dialog).findByText("Choose a table to generate a dashboard"),
     ).toBeInTheDocument();
 
+    await userEvent.click(await screen.findByText("Recents"));
+
     expect(
       await within(dialog).findByText("Foo Bar Table"),
     ).toBeInTheDocument();
@@ -89,5 +119,33 @@ describe("EmbeddingHub", () => {
     await userEvent.click(within(dialog).getByText("Foo Bar Table"));
 
     expect(mockPush).toHaveBeenCalledWith("/auto/dashboard/table/10");
+  });
+
+  it("has correct href link for Configure SSO card", async () => {
+    setup();
+
+    const configureSsoLink = screen.getByRole("link", {
+      name: /configure sso/i,
+    });
+    expect(configureSsoLink).toBeInTheDocument();
+
+    expect(configureSsoLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=secure-embeds&source_plan=oss#set-up-sso",
+    );
+  });
+
+  it("has correct href link for Configure data permissions card", async () => {
+    setup();
+
+    const configureDataPermissionsLink = screen.getByRole("link", {
+      name: /configure data permissions/i,
+    });
+    expect(configureDataPermissionsLink).toBeInTheDocument();
+
+    expect(configureDataPermissionsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/permissions/embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=configure-row-column-security&source_plan=oss#one-database-for-all-customers-commingled-setups",
+    );
   });
 });

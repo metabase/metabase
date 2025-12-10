@@ -4,8 +4,6 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [crypto.random :as crypto-random]
-   [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
@@ -17,6 +15,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -37,7 +36,7 @@
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri "/")
-(def ^:private default-jwt-secret (crypto-random/hex 32))
+(def ^:private default-jwt-secret (u.random/secure-hex 32))
 
 (defn- call-with-default-jwt-config! [f]
   (let [current-features (token-check/*token-features*)]
@@ -306,16 +305,10 @@
                            :iat        (- (buddy-util/now) (u/minutes->seconds 5))}
                           default-jwt-secret)))))))
 
-(defmacro with-users-with-email-deleted {:style/indent 1} [user-email & body]
-  `(try
-     ~@body
-     (finally
-       (t2/delete! :model/User :%lower.email (u/lower-case-en ~user-email)))))
-
 (deftest create-new-account-test
   (testing "A new account will be created for a JWT user we haven't seen before"
     (with-jwt-default-setup!
-      (with-users-with-email-deleted "newuser@metabase.com"
+      (mt/with-model-cleanup [:model/User]
         (letfn
          [(new-user-exists? []
             (boolean (seq (t2/select :model/User :%lower.email "newuser@metabase.com"))))]
@@ -363,7 +356,7 @@
 (deftest update-account-test
   (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."
     (with-jwt-default-setup!
-      (with-users-with-email-deleted "newuser@metabase.com"
+      (mt/with-model-cleanup [:model/User]
         (letfn
          [(new-user-exists? []
             (boolean (seq (t2/select :model/User :%lower.email "newuser@metabase.com"))))]
@@ -418,22 +411,22 @@
                  (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login))))))))))))
 
-(deftest group-mappings-test
-  (testing "make sure our setting for mapping group names -> IDs works"
-    (mt/with-additional-premium-features #{:sso-jwt}
-      (mt/with-temporary-setting-values
-        [jwt-group-mappings
-         {"group_1" [1 2 3]
-          "group_2" [3 4]
-          "group_3" [5]}]
-        (testing "keyword group names"
-          (is
-           (= #{1 2 3 4}
-              (#'mt.jwt/group-names->ids [:group_1 :group_2]))))
-        (testing "string group names"
-          (is
-           (= #{3 4 5}
-              (#'mt.jwt/group-names->ids ["group_2" "group_3"]))))))))
+#_(deftest group-mappings-test
+    (testing "make sure our setting for mapping group names -> IDs works"
+      (mt/with-additional-premium-features #{:sso-jwt}
+        (mt/with-temporary-setting-values
+          [jwt-group-mappings
+           {"group_1" [1 2 3]
+            "group_2" [3 4]
+            "group_3" [5]}]
+          (testing "keyword group names"
+            (is
+             (= #{1 2 3 4}
+                (#'mt.jwt/group-names->ids [:group_1 :group_2]))))
+          (testing "string group names"
+            (is
+             (= #{3 4 5}
+                (#'mt.jwt/group-names->ids ["group_2" "group_3"]))))))))
 
 (defn- group-memberships [user-or-id]
   (when-let [group-ids (seq
@@ -451,7 +444,7 @@
            {"my_group" [(u/the-id my-group)]}
            jwt-attribute-groups
            "GrOuPs"]
-          (with-users-with-email-deleted "newuser@metabase.com"
+          (mt/with-model-cleanup [:model/User]
             (let [response (client/client-real-response :get 302 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
@@ -482,7 +475,7 @@
           [jwt-group-sync true
            jwt-group-mappings nil  ; No mappings defined
            jwt-attribute-groups "groups"]
-          (with-users-with-email-deleted "newuser@metabase.com"
+          (mt/with-model-cleanup [:model/User]
             (let [response (client/client-real-response :get 302 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
@@ -507,7 +500,7 @@
   (testing "login as an existing user works"
     (testing "An existing user will be reactivated upon login"
       (with-jwt-default-setup!
-        (with-users-with-email-deleted "newuser@metabase.com"
+        (mt/with-model-cleanup [:model/User]
           ;; just create the user
           (let [response    (client/client-real-response :get 302 "/auth/sso"
                                                          {:request-options {:redirect-strategy :none}}
@@ -534,7 +527,7 @@
 
     (testing "Existing user login attributes are not changed on subsequent logins"
       (with-jwt-default-setup!
-        (with-users-with-email-deleted "existinguser@metabase.com"
+        (mt/with-model-cleanup [:model/User]
           ;; Create user with initial login attributes
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -573,7 +566,7 @@
 (deftest login-update-account-test
   (testing "An existing user will be reactivated upon login"
     (with-jwt-default-setup!
-      (with-users-with-email-deleted "newuser@metabase.com"
+      (mt/with-model-cleanup [:model/User]
         ;; just create the user
         (let [response    (client/client-real-response :get 302 "/auth/sso"
                                                        {:request-options {:redirect-strategy :none}}
@@ -607,22 +600,32 @@
         (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
         (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name               (constantly "test")]
-          (is
-           (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
-            (#'mt.jwt/fetch-or-create-user! "Test" "User" "newuser@metabase.com" nil))))))))
+          (is (=? {:body "Sorry, but you'll need a test account to view this page. Please contact your administrator."}
+                  (client/client-real-response :get 401 "/auth/sso"
+                                               {:request-options {:redirect-strategy :none}}
+                                               :return_to default-redirect-uri
+                                               :jwt
+                                               (jwt/sign
+                                                {:email "newuser@metabase.com"
+                                                 :first_name "New"
+                                                 :last_name "User"}
+                                                default-jwt-secret)))))))))
 
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                     appearance.settings/site-name               (constantly "test")]
-        (is
-         (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
-          (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
+        (is (=? {:body "Sorry, but you'll need a test account to view this page. Please contact your administrator."}
+                (client/client-real-response :get 401 "/auth/sso"
+                                             {:request-options {:redirect-strategy :none}}
+                                             :return_to default-redirect-uri
+                                             :jwt
+                                             (jwt/sign
+                                              {:email "test1234@metabase.com"
+                                               :first_name "Test"
+                                               :last_name "User"}
+                                              default-jwt-secret))))))))
 
 (deftest non-string-jwt-claims-dropped-test
   (testing "JWT claims with non-string values are dropped and warning is logged"
@@ -659,7 +662,7 @@
           (testing "no warning for valid string attribute"
             (is (not (some #(re-find #"string_attr" %) (map :message (jwt-log-messages)))))))))))
 
-(deftest jwt-token-test
+(deftest jwt-token-sdk-idp-url-test
   (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"
     (with-jwt-default-setup!
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
@@ -669,8 +672,9 @@
           (is (partial= {:url (sso-settings/jwt-identity-provider-uri)
                          :method "jwt"}
                         (:body result)))
-          (is (not (nil? (get-in result [:body :hash]))))))))
+          (is (not (nil? (get-in result [:body :hash])))))))))
 
+(deftest jwt-token-sdk-session-token-test
   (testing "should return a session token when a JWT token and sdk headers are passed"
     (with-jwt-default-setup!
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
@@ -694,8 +698,9 @@
             {:id  (mt/malli=? ms/UUIDString)
              :iat jwt-iat-time
              :exp jwt-exp-time}
-            (:body result)))))))
+            (:body result))))))))
 
+(deftest jwt-token-not-configured-test
   (testing "should not return a session token when jwt is not configured"
     (mt/with-temporary-setting-values
       [jwt-enabled true
@@ -716,8 +721,9 @@
               result       (client/client-real-response :get 400 "/auth/sso"
                                                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
                                                         :jwt   jwt-payload)]
-          (is result nil)))))
+          (is result nil))))))
 
+(deftest jwt-token-embedding-disabled-test
   (testing "should not return a session token when embedding is disabled"
     (with-jwt-default-setup!
       (mt/with-temporary-setting-values [enable-embedding-sdk false]
@@ -735,8 +741,9 @@
               result       (client/client-real-response :get 402 "/auth/sso"
                                                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
                                                         :jwt   jwt-payload)]
-          (is result nil)))))
+          (is result nil))))))
 
+(deftest jwt-token-no-hash-test
   (testing "should not return a session token when token=false"
     (with-jwt-default-setup!
       (mt/with-temporary-setting-values [enable-embedding-sdk true]

@@ -775,6 +775,21 @@
         (is (= (get-in q3 [:stages 0 :breakout 0 1 :metabase.lib.field/original-temporal-unit])
                (get-in q3 [:stages 0 :order-by 0 2 1 :metabase.lib.field/original-temporal-unit])))))))
 
+(deftest ^:parallel empty-first-stage-gets-merged-test
+  (testing "issue #45041"
+    (testing "Emptying a stage via remove-replace should merge that stage into the next stage"
+      (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))
+            q2 (-> query
+                   (lib/aggregate (lib/count))
+                   lib/append-stage
+                   (lib/aggregate (lib/count)))
+            to-remove (-> (lib/query-stage q2 0)
+                          :aggregation
+                          first)
+            q3 (lib/remove-clause q2 0 to-remove)]
+        (is (=? {:aggregation [[:count {}]]}
+                (lib/query-stage q3 0)))))))
+
 (deftest ^:parallel rename-join-test
   (let [joined-column (-> (meta/field-metadata :venues :id)
                           (lib/with-join-alias "alias"))

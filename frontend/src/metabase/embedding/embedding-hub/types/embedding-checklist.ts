@@ -43,8 +43,16 @@ interface EmbeddingHubAction {
   /** Internal link to a Metabase route. */
   to?: string;
 
+  /**
+   * Click handler
+   */
+  onClick?: () => void;
+
   /** Path of the documentation page, e.g. `embedding/embedded-analytics-js` */
   docsPath?: string;
+
+  /** Anchor on the documentation page, e.g. `set-up-sso` */
+  anchor?: string;
 
   /** CTA button variant. */
   variant?: "outline" | "subtle" | "filled";

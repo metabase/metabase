@@ -1,11 +1,8 @@
 (ns metabase-enterprise.dependencies.models.dependency
   (:require
    [clojure.set :as set]
-   [metabase-enterprise.dependencies.calculation :as deps.calculation]
-   [metabase.events.core :as events]
    [metabase.graph.core :as graph]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -14,7 +11,7 @@
 (def current-dependency-analysis-version
   "Current version of the dependency analysis logic.
   This should be incremented when the dependency analysis logic changes."
-  1)
+  3)
 
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 
@@ -22,35 +19,102 @@
 
 (t2/deftransforms :model/Dependency
   {:from_entity_type mi/transform-keyword
-   :to_entity_type   mi/transform-keyword})
+   :to_entity_type mi/transform-keyword})
 
-(defn- deps-children [src-type src-id dst-type dst-id key-seq]
-  ;; Group all keys with the same type together, so we make O(types) indexed [[t2/select]] calls, not O(n).
-  (transduce (map (fn [[entity-type entity-keys]]
-                    (let [deps (t2/select :model/Dependency
-                                          src-type entity-type
-                                          src-id   [:in entity-keys])]
-                      (u/group-by (juxt src-type src-id)
-                                  (juxt dst-type dst-id)
-                                  conj #{}
-                                  deps))))
-             merge {}
-             (u/group-by first second key-seq)))
+(defn- deps-children
+  "Get dependency children with optional database-level filtering.
+
+  Returns a map from [src-type src-id] tuples to sets of [dst-type dst-id] tuples representing dependencies.
+
+  When `destination-filter-fn` is provided, it should be a function accepting two arguments
+  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering destination entities."
+  ([src-type src-id dst-type dst-id key-seq]
+   (deps-children src-type src-id dst-type dst-id key-seq nil))
+  ([src-type src-id dst-type dst-id key-seq destination-filter-fn]
+   (let [base-filter (cond-> [:and]
+                       destination-filter-fn (conj (destination-filter-fn dst-type dst-id)))]
+     (transduce (map (fn [[entity-type entity-keys]]
+                       (let [full-filter (conj base-filter
+                                               [:= src-type (name entity-type)]
+                                               [:in src-id entity-keys])
+                             deps (t2/select :model/Dependency {:where full-filter})]
+                         (u/group-by (juxt src-type src-id)
+                                     (juxt dst-type dst-id)
+                                     conj #{}
+                                     deps))))
+                merge {}
+                (u/group-by first second key-seq)))))
 
 (defn- key-dependents
-  "Get the dependent entity keys for the entity keys in `entity-keys`.
-  Entity keys are [entity-type, entity-id] pairs. See [[entity-type->model]]."
-  [key-seq]
-  (deps-children :to_entity_type :to_entity_id :from_entity_type :from_entity_id key-seq))
+  "Get the dependent entity keys for the entity keys in `key-seq`.
+
+  Entity keys are [entity-type entity-id] tuples. Returns a map from source entity keys
+  to sets of dependent (downstream) entity keys.
+
+  When `destination-filter-fn` is provided, it should be a function accepting two arguments
+  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering."
+  ([key-seq]
+   (key-dependents key-seq nil))
+  ([key-seq destination-filter-fn]
+   (deps-children :to_entity_type :to_entity_id :from_entity_type :from_entity_id key-seq destination-filter-fn)))
+
+(defn- key-dependencies
+  "Get the dependency entity keys for the entity keys in `key-seq`.
+
+  Entity keys are [entity-type entity-id] tuples. Returns a map from source entity keys
+  to sets of dependency (upstream) entity keys.
+
+  When `destination-filter-fn` is provided, it should be a function accepting two arguments
+  (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering."
+  ([key-seq]
+   (key-dependencies key-seq nil))
+  ([key-seq destination-filter-fn]
+   (deps-children :from_entity_type :from_entity_id :to_entity_type :to_entity_id key-seq destination-filter-fn)))
 
 (p/deftype+ DependencyGraph [children-fn]
   graph/Graph
   (children-of [_this key-seq]
     (children-fn key-seq)))
 
-;; NOTE: We can easily construct a graph of upstream dependencies too, if it's useful.
-(defn- graph-dependents []
+(defn graph-dependents
+  "Return a dependency graph for finding dependents (downstream entities)."
+  []
   (->DependencyGraph key-dependents))
+
+(defn graph-dependencies
+  "Return a dependency graph for finding dependencies (upstream entities)."
+  []
+  (->DependencyGraph key-dependencies))
+
+(defn- filtered-graph
+  "Create a dependency graph with database-level filtering.
+
+  Arguments:
+  - `key-fn`: Either key-dependencies or key-dependents, determining graph direction
+  - `destination-filter-fn`: Function accepting (entity-type-field, entity-id-field)
+    and returning a HoneySQL WHERE clause"
+  [key-fn destination-filter-fn]
+  (->DependencyGraph
+   (fn [key-seq]
+     (key-fn key-seq destination-filter-fn))))
+
+(defn filtered-graph-dependencies
+  "Create a permission-aware dependency graph for finding upstream dependencies.
+
+  Arguments:
+  - `destination-filter-fn`: Function accepting (entity-type-field, entity-id-field)
+    and returning a HoneySQL WHERE clause for filtering destination entities"
+  [destination-filter-fn]
+  (filtered-graph key-dependencies destination-filter-fn))
+
+(defn filtered-graph-dependents
+  "Create a permission-aware dependency graph for finding downstream dependents.
+
+  Arguments:
+  - `destination-filter-fn`: Function accepting (entity-type-field, entity-id-field)
+    and returning a HoneySQL WHERE clause for filtering destination entities"
+  [destination-filter-fn]
+  (filtered-graph key-dependents destination-filter-fn))
 
 (defn transitive-dependents
   "Given a map of updated entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents
@@ -64,15 +128,15 @@
   **Excludes** the input entities from the list of dependents!"
   ([updated-entities] (transitive-dependents nil updated-entities))
   ([graph updated-entities]
-   (let [graph    (or graph (graph-dependents))
+   (let [graph (or graph (graph-dependents))
          starters (for [[entity-type updates] updated-entities
-                        entity                updates
+                        entity updates
                         :when (:id entity)]
                     [entity-type (:id entity)])]
      (->> (graph/transitive graph starters) ; This returns a flat list.
           (u/group-by first second conj #{})))))
 
-(defn replace-dependencies
+(defn replace-dependencies!
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
   the ones specified in `dependencies-by-type`. "
   [entity-type entity-id dependencies-by-type]
@@ -88,125 +152,11 @@
         to-add (for [[to-entity-type ids] dependencies-by-type
                      to-entity-id (set/difference ids (current-by-type to-entity-type))]
                  {:from_entity_type entity-type
-                  :from_entity_id   entity-id
-                  :to_entity_type   to-entity-type
-                  :to_entity_id     to-entity-id})]
+                  :from_entity_id entity-id
+                  :to_entity_type to-entity-type
+                  :to_entity_id to-entity-id})]
     (t2/with-transaction [_conn]
       (when (seq to-remove)
         (t2/delete! :model/Dependency :id [:in to-remove]))
       (when (seq to-add)
         (t2/insert! :model/Dependency to-add)))))
-
-;; ## Maintaining the dependency graph
-;; The below listens for inserts, updates and deletes of cards, snippets and transforms in order to keep the
-;; dependency graph up to date. Transform *runs* are also a trigger, since the transform's output table may be created
-;; or changed at that point.
-
-;; ### Cards
-(derive ::card-deps :metabase/event)
-(derive :event/card-create ::card-deps)
-(derive :event/card-update ::card-deps)
-
-(methodical/defmethod events/publish-event! ::card-deps
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (t2/with-transaction [_conn]
-      (replace-dependencies :card (:id object) (deps.calculation/upstream-deps:card object))
-      (when (not= (:dependency_analysis_version object) current-dependency-analysis-version)
-        (t2/update! :model/Card (:id object)
-                    {:dependency_analysis_version current-dependency-analysis-version})))))
-
-(derive ::card-delete :metabase/event)
-(derive :event/card-delete ::card-delete)
-
-(methodical/defmethod events/publish-event! ::card-delete
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))))
-
-;; ### Snippets
-(derive ::snippet-deps :metabase/event)
-(derive :event/snippet-create ::snippet-deps)
-(derive :event/snippet-update ::snippet-deps)
-
-(methodical/defmethod events/publish-event! ::snippet-deps
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (t2/with-transaction [_conn]
-      (replace-dependencies :snippet (:id object) (deps.calculation/upstream-deps:snippet object))
-      (when (not= (:dependency_analysis_version object) current-dependency-analysis-version)
-        (t2/update! :model/NativeQuerySnippet (:id object)
-                    {:dependency_analysis_version current-dependency-analysis-version})))))
-
-(derive ::snippet-delete :metabase/event)
-(derive :event/snippet-delete ::snippet-delete)
-
-(methodical/defmethod events/publish-event! ::snippet-delete
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))))
-
-;; ### Transforms
-(derive ::transform-deps :metabase/event)
-(derive :event/create-transform ::transform-deps)
-(derive :event/update-transform ::transform-deps)
-
-;; On *saving* a transform, the upstream deps of its query are computed and saved.
-(defn- drop-outdated-target-dep! [{:keys [id source target] :as _transform}]
-  (let [db-id                (some-> source :query :database)
-        downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
-                                               :from_entity_type :table
-                                               :to_entity_type   :transform
-                                               :to_entity_id     id)
-        downstream-tables    (when (seq downstream-table-ids)
-                               (t2/select :model/Table :id [:in downstream-table-ids]))
-        outdated-tables      (remove (fn [table]
-                                       (and (= (:schema table) (:schema target))
-                                            (= (:name   table) (:name   target))
-                                            (or (not db-id)
-                                                (= db-id (:db_id table)))))
-                                     downstream-tables)
-        not-found-table-ids  (remove (into #{} (map :id) downstream-tables)
-                                     downstream-table-ids)]
-    (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
-                                                        (map :id) outdated-tables))]
-      (t2/delete! :model/Dependency
-                  :from_entity_type :table
-                  :from_entity_id   [:in outdated-downstream-table-ids]
-                  :to_entity_type   :transform
-                  :to_entity_id     id))))
-
-(methodical/defmethod events/publish-event! ::transform-deps
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (t2/with-transaction [_conn]
-      (replace-dependencies :transform (:id object) (deps.calculation/upstream-deps:transform object))
-      (when (not= (:dependency_analysis_version object) current-dependency-analysis-version)
-        (t2/update! :model/Transform (:id object) {:dependency_analysis_version current-dependency-analysis-version}))
-      (drop-outdated-target-dep! object))))
-
-(derive ::transform-delete :metabase/event)
-(derive :event/delete-transform ::transform-delete)
-
-(methodical/defmethod events/publish-event! ::transform-delete
-  [_ {:keys [id]}]
-  (when (premium-features/has-feature? :dependencies)
-    ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
-    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)))
-
-;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
-;; (And if the target has changed, the old table's dep on the transform is dropped.)
-;; The upstream deps of the transform are not touched - those change only when the transform is edited.
-(derive ::transform-run :metabase/event)
-(derive :event/transform-run-complete ::transform-run)
-
-(defn- transform-table-deps! [{:keys [db-id output-schema output-table transform-id] :as _details}]
-  (let [;; output-table is a keyword like :my_schema/my_table
-        table-name (name output-table)]
-    (when-let [table-id (t2/select-one-fn :id :model/Table :db_id db-id :schema output-schema :name table-name)]
-      (replace-dependencies :table table-id {:transform #{transform-id}}))))
-
-(methodical/defmethod events/publish-event! ::transform-run
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (transform-table-deps! object)))

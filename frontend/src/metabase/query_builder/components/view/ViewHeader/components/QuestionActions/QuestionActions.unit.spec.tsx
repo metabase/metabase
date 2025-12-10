@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -68,6 +69,8 @@ function setup({
     key: "turn_into_model_modal",
     value: hasAcknowledgedModelModal,
   });
+
+  setupListNotificationEndpoints({ card_id: card.id }, []);
 
   const state = createMockState({
     entities: createMockEntitiesState({

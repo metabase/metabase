@@ -18,8 +18,9 @@
 (set! *warn-on-reflection* true)
 
 #_{:clj-kondo/ignore [:unused-private-var]}
-(def ^:private refreshable-states
-  "States of a model index that are refreshable."
+;; Possible values for the :state field on model index records.
+;; Unused, but kept here for reference.
+(def ^:private model-index-states
   #{"indexed" "initial" "error" "overflow"})
 
 (defn- should-deindex?
@@ -99,9 +100,36 @@
   (let [trigger-key (model-index-trigger-key (:id model-index))]
     (task/delete-trigger! trigger-key)))
 
+(defn- recreate-missing-triggers!
+  "Ensure all model indexes in the database have triggers in Quartz."
+  []
+  (try
+    (let [existing-trigger-model-index-ids (try
+                                             (->> (task/job-info refresh-model-index-key)
+                                                  :triggers
+                                                  (keep #(get-in % [:data "model-index-id"]))
+                                                  set)
+                                             (catch Exception e
+                                               (log/warn e "Error fetching existing triggers from Quartz, will recreate all triggers")
+                                               #{}))
+          missing-trigger-model-indexes (if (seq existing-trigger-model-index-ids)
+                                          (t2/select :model/ModelIndex :id [:not-in existing-trigger-model-index-ids])
+                                          (t2/select :model/ModelIndex))]
+      (when (seq missing-trigger-model-indexes)
+        (log/infof "Found %d model index(es) without triggers, recreating..."
+                   (count missing-trigger-model-indexes))
+        (doseq [model-index missing-trigger-model-indexes]
+          (try
+            (add-indexing-job model-index)
+            (catch Exception e
+              (log/errorf e "Error re-adding indexing job for model-index: %d" (:id model-index)))))))
+    (catch Exception e
+      (log/error e "Error during model index trigger recreation"))))
+
 (defn- job-init!
   []
-  (task/add-job! refresh-job))
+  (task/add-job! refresh-job)
+  (recreate-missing-triggers!))
 
 (defmethod task/init! ::ModelIndexValues
   [_]

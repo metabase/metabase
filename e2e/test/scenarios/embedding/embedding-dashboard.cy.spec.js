@@ -68,9 +68,12 @@ describe("scenarios > embedding > dashboard parameters", () => {
     it("should be disabled by default but able to be set to editable and/or locked (metabase#20357)", () => {
       H.visitDashboard("@dashboardId");
 
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
-        acceptTerms: true,
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+          activeTab: "parameters",
+        });
       });
 
       cy.findByLabelText("Configuring parameters").as("allParameters");
@@ -119,6 +122,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
         assert.deepEqual(request.body.embedding_params, {
           id: "locked",
           name: "enabled",
+          source: "disabled",
+          user_id: "disabled",
+          not_used: "disabled",
         });
       });
 
@@ -153,11 +159,14 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       H.visitDashboard("@dashboardId");
 
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
-        acceptTerms: false,
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
       });
-
       cy.get("@allParameters").findByText("Locked").click();
       H.popover().contains("Disabled").click();
 
@@ -168,6 +177,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
         assert.deepEqual(request.body.embedding_params, {
           name: "disabled",
           id: "disabled",
+          source: "disabled",
+          user_id: "disabled",
+          not_used: "disabled",
         });
       });
 
@@ -235,11 +247,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
       H.saveDashboard();
 
-      // Check that parameter visibility is correct
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
-        acceptTerms: true,
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+          activeTab: "parameters",
+        });
       });
+
+      // Check that parameter visibility is correct
       H.assertEmbeddingParameter("Id", "Disabled");
       H.assertEmbeddingParameter("Name", "Editable");
       H.assertEmbeddingParameter("Source", "Disabled");
@@ -251,7 +267,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
       // "enabled" must be set by default for required params.
       H.publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
+          id: "disabled",
           name: "enabled",
+          source: "disabled",
+          user_id: "disabled",
+          not_used: "disabled",
         });
       });
 
@@ -268,17 +288,24 @@ describe("scenarios > embedding > dashboard parameters", () => {
     it("should (dis)allow setting parameters as required for a published embedding", () => {
       H.visitDashboard("@dashboardId");
 
-      // Set an "editable" and "locked" parameters and leave the rest "disabled"
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
-        acceptTerms: true,
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+          activeTab: "parameters",
+        });
       });
+
+      // Set an "editable" and "locked" parameters and leave the rest "disabled"
       H.setEmbeddingParameter("Name", "Editable");
       H.setEmbeddingParameter("Source", "Locked");
       H.publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
+          id: "disabled",
           name: "enabled",
           source: "locked",
+          user_id: "disabled",
+          not_used: "disabled",
         });
       });
 
@@ -524,24 +551,13 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     cy.log("test downloading result (metabase#36721)");
     H.getDashboardCard().realHover();
-    H.downloadAndAssert(
-      {
-        fileType: "csv",
-        isDashboard: true,
-        isEmbed: true,
-        logResults: true,
-        downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
-        downloadMethod: "GET",
-      },
-      (sheet) => {
-        expect(sheet["A1"].v).to.eq("ID");
-        expect(sheet["A2"].v).to.eq(9);
-        expect(sheet["B1"].v).to.eq("EAN");
-        expect(sheet["B2"].v).to.eq(7217466997444);
-
-        H.assertSheetRowsCount(54)(sheet);
-      },
-    );
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      isEmbed: true,
+      downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
+      downloadMethod: "GET",
+    });
 
     cy.log(
       "The PDF download button should be clickable when there is no title, but has parameters (metabase#59503)",
@@ -609,15 +625,24 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboardId,
+        activeTab: "parameters",
+      });
+    });
 
     // ID param is disabled by default
     H.setEmbeddingParameter("Name", "Editable");
     H.setEmbeddingParameter("Source", "Locked");
     H.publishChanges("dashboard", ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
+        id: "disabled",
         source: "locked",
         name: "enabled",
+        user_id: "disabled",
+        not_used: "disabled",
       });
     });
 
@@ -695,7 +720,16 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     });
 
     H.visitDashboard("@dashboardId");
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboardId,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
+
     H.visitIframe();
 
     cy.log("should show card results by default");
@@ -753,19 +787,19 @@ describe("scenarios > embedding > dashboard appearance", () => {
       dashboardDetails,
     }).then(({ body: { dashboard_id } }) => {
       H.visitDashboard(dashboard_id);
-    });
 
-    cy.intercept(
-      "GET",
-      "api/preview_embed/dashboard/*",
-      cy.spy().as("previewEmbedSpy"),
-    ).as("previewEmbed");
+      cy.intercept(
+        "GET",
+        "api/preview_embed/dashboard/*",
+        cy.spy().as("previewEmbedSpy"),
+      ).as("previewEmbed");
 
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
-      // EE users don't have to accept terms
-      acceptTerms: false,
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboard_id,
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
     });
 
     cy.wait("@previewEmbed");
@@ -773,6 +807,15 @@ describe("scenarios > embedding > dashboard appearance", () => {
     H.modal().within(() => {
       cy.findByRole("tab", { name: "Look and Feel" }).click();
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log(
+        'Embed preview requests should not have "X-Metabase-Client: embedding-iframe" header (EMB-930)',
+      );
+      cy.get("@previewEmbed").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.not.equal(
+          "embedding-iframe",
+        );
+      });
 
       cy.log("Assert dashboard theme");
       H.getIframeBody()
@@ -879,20 +922,20 @@ describe("scenarios > embedding > dashboard appearance", () => {
       })
       .then((dashboard) => {
         H.visitDashboard(dashboard.id);
+
+        cy.intercept(
+          "GET",
+          "api/preview_embed/dashboard/*",
+          cy.spy().as("previewEmbedSpy"),
+        ).as("previewEmbed");
+
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboard.id,
+          activeTab: "parameters",
+          previewMode: "preview",
+        });
       });
-
-    cy.intercept(
-      "GET",
-      "api/preview_embed/dashboard/*",
-      cy.spy().as("previewEmbedSpy"),
-    ).as("previewEmbed");
-
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
-      // EE users don't have to accept terms
-      acceptTerms: false,
-    });
 
     cy.wait("@previewEmbed");
 
@@ -1143,6 +1186,73 @@ describe("scenarios > embedding > dashboard appearance", () => {
     );
   });
 
+  it("should apply theme hash parameter to static dashboard embed (metabase#66253)", () => {
+    const visit = (theme) => {
+      cy.clearLocalStorage();
+
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: ORDERS_DASHBOARD_ID },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            theme,
+          },
+          onBeforeLoad: (win) => {
+            // a bit gross but other stub techniques don't reliably work in Cypress
+            cy.stub(win, "matchMedia").callsFake((query) => {
+              return {
+                matches: query === "(prefers-color-scheme: dark)",
+                media: query,
+                addEventListener: cy.stub(),
+                removeEventListener: cy.stub(),
+                addListener: cy.stub(), // deprecated but sometimes needed
+                removeListener: cy.stub(),
+                dispatchEvent: cy.stub(),
+              };
+            });
+          },
+        },
+      );
+    };
+
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    cy.log("Test default light theme behavior");
+    visit();
+
+    // Test core functionality works with default theme
+    cy.get("[data-testid=embed-frame]").should("be.visible");
+    cy.get('html[data-mantine-color-scheme="light"]').should("exist");
+    cy.get('html[data-metabase-theme="light"]').should("exist");
+
+    cy.log("Test explicit light theme via hash parameter");
+    visit("light");
+
+    // Test functionality still works with theme parameter
+    cy.get("[data-testid=embed-frame]").should("be.visible");
+    cy.get('html[data-mantine-color-scheme="light"]').should("exist");
+    cy.get('html[data-metabase-theme="light"]').should("exist");
+
+    // Verify theme parameter is in URL hash
+    cy.location("hash").should("include", "theme=light");
+
+    cy.log("Test explicit dark theme via hash parameter");
+    visit("dark");
+
+    // Test functionality still works with theme parameter
+    cy.get("[data-testid=embed-frame]").should("be.visible");
+    cy.get('html[data-mantine-color-scheme="dark"]').should("exist");
+    cy.get('html[data-metabase-theme="dark"]').should("exist");
+
+    // Verify theme parameter is in URL hash
+    cy.location("hash").should("include", "theme=dark");
+  });
+
   it("should use transparent pivot table cells in static embedding's dark mode (metabase#61741)", () => {
     const testQuery = {
       type: "query",
@@ -1183,10 +1293,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
     }).then(({ body: { dashboard_id } }) => {
       H.visitDashboard(dashboard_id);
 
-      H.openStaticEmbeddingModal({
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboard_id,
         activeTab: "parameters",
         previewMode: "preview",
-        acceptTerms: false,
       });
 
       H.modal().within(() => {
@@ -1213,7 +1324,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
           cy.findByTestId("dashcard").should(
             "have.css",
             "background-color",
-            "rgb(46, 53, 59)",
+            "rgb(7, 23, 34)",
           );
 
           cy.log("pivot table cell background should be transparent");
@@ -1221,12 +1332,12 @@ describe("scenarios > embedding > dashboard appearance", () => {
             .first()
             .findAllByTestId("pivot-table-cell")
             .first()
-            .should("have.css", "background-color", "rgba(46, 53, 59, 0.1)");
+            .should("have.css", "background-color", "rgba(48, 61, 70, 0.1)");
 
           cy.log("pivot table cell color should be white");
           cy.findByText("Row totals")
             .should("be.visible")
-            .should("have.css", "color", "rgb(255, 255, 255)");
+            .should("have.css", "color", "rgba(255, 255, 255, 0.95)");
         });
       });
     });

@@ -5,12 +5,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -20,7 +20,6 @@
   (is (=? [:field
            (meta/id :venues :id)
            {:base-type                                                           :type/BigInteger
-            :temporal-unit                                                       nil
             :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues)
             :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}]
           (#'sql.params.substitution/field->field-filter-clause

@@ -1,0 +1,8 @@
+built_in_type: daily
+created_at: '2025-10-06T20:36:56.683879Z'
+entity_id: dailydailydailydailyx
+name: daily
+serdes/meta:
+- id: dailydailydailydailyx
+  label: daily
+  model: TransformTag

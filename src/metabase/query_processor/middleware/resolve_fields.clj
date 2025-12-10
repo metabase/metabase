@@ -1,11 +1,13 @@
 (ns metabase.query-processor.middleware.resolve-fields
   "Middleware that resolves the Fields referenced by a query."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- resolve-fields-with-ids!
   [metadata-providerable field-ids]

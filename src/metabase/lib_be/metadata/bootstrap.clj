@@ -1,19 +1,15 @@
 (ns metabase.lib-be.metadata.bootstrap
   (:require
    [clojure.set :as set]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
-
-(mu/defn- query-type :- [:enum :query :native :internal :mbql/query]
-  [query :- :map]
-  (or (some-> ((some-fn :lib/type :type) query) keyword)
-      (throw (ex-info (i18n/tru "Invalid query: missing or invalid query type (:lib/type or :type)")
-                      {:query query, :type :invalid-query}))))
 
 (mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
   [query :- :map]
@@ -59,7 +55,9 @@
 
   Once the *actual* Database ID is resolved, we will create a
   real [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]]. (The App DB provider needs to be
-  initialized with an actual Database ID)."
+  initialized with an actual Database ID).
+
+  Note that the virtual DB ID is only allowed in legacy MBQL queries, and MBQL 5 queries do not use it."
   []
   (->BootstrapMetadataProvider))
 
@@ -73,7 +71,7 @@
 
 (mu/defn- source-card-id :- ::lib.schema.id/card
   [query :- :map]
-  (case (query-type query)
+  (case (lib/normalized-query-type query)
     :mbql/query
     (source-card-id-for-mbql5-query query)
 
@@ -87,25 +85,31 @@
 (mu/defn- resolved-database-id :- [:maybe ::lib.schema.id/database]
   [metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
    query             :- :map]
-  (when-not (= (query-type query) :internal)
-    (let [database-id (:database query)]
-      (cond
-        (pos-int? database-id)
-        database-id
+  (let [database-id (:database query)]
+    (cond
+      (pos-int? database-id)
+      database-id
 
-        (= database-id lib.schema.id/saved-questions-virtual-database-id)
-        (resolve-database-id-for-source-card metadata-provider (source-card-id query))
+      (= database-id lib.schema.id/saved-questions-virtual-database-id)
+      (resolve-database-id-for-source-card metadata-provider (source-card-id query))
 
-        :else
-        (throw (ex-info (i18n/tru "Invalid query: missing or invalid Database ID (:database)")
-                        {:query query, :type :invalid-query}))))))
+      :else
+      (throw (ex-info (i18n/tru "Invalid query: missing or invalid Database ID (:database)")
+                      {:query query, :type :invalid-query})))))
+
+(mr/def ::empty-map
+  [:= {:description "empty map"} {}])
+
+(mr/def ::maybe-unresolved-database-id
+  [:or
+   ::lib.schema.id/database
+   ::lib.schema.id/saved-questions-virtual-database])
 
 (mu/defn resolve-database :- [:maybe
                               [:or
+                               ::empty-map
                                [:map
-                                [:database ::lib.schema.id/database]]
-                               [:map
-                                [:type [:= :internal]]]]]
+                                [:database ::lib.schema.id/database]]]]
   "If query has `:database` `-1337` (the legacy database ID for queries using a source Card that had an unknown
   database), resolve the correct database ID and assoc it into the query."
   ([query]
@@ -113,16 +117,16 @@
 
   ([metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
     query             :- [:maybe
-                          [:and
-                           :map
-                           [:multi {:dispatch (comp boolean empty?)}
-                            [true  [:= {:description "empty map"} {}]]
-                            [false [:map
-                                    [:database [:or
-                                                ::lib.schema.id/database
-                                                ::lib.schema.id/saved-questions-virtual-database]]]]]]]]
+                          [:or
+                           ::empty-map
+                           [:map
+                            [:database ::maybe-unresolved-database-id]]
+                           [:map
+                            ["database" ::maybe-unresolved-database-id]]]]]
    (when (seq query)
-     (let [query       (set/rename-keys query {"database" :database})
-           database-id (resolved-database-id metadata-provider query)]
-       (cond-> query
-         database-id (assoc :database database-id))))))
+     (if (pos-int? (:database query))
+       query
+       (let [query       (set/rename-keys query {"database" :database})
+             database-id (resolved-database-id metadata-provider query)]
+         (cond-> query
+           database-id (assoc :database database-id)))))))

@@ -1,6 +1,6 @@
 (ns metabase.lib.walk
   "Tools for walking and transforming a query."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv empty? get-in])
   (:require
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -14,11 +14,20 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.performance :refer [mapv empty? get-in]]))
 
 (declare walk-stages*)
 
-(defn- walk-items* [query path-to-items walk-item-fn f]
+(defn- walk-items-backward* [query path-to-items walk-item-fn f]
+  (u/reduce-preserving-reduced
+   (fn [query absolute-item-number]
+     (let [path-to-item (conj (vec path-to-items) absolute-item-number)]
+       (walk-item-fn query path-to-item f)))
+   query
+    ;; With 3 items, we want (2 1 0), so (range 2 -1 -1).
+   (range (dec (count (get-in query path-to-items []))) -1 -1)))
+
+(defn- walk-items-forward* [query path-to-items walk-item-fn f]
   ;; negative-item-offset below is a negative index e.g. [-3 -2 -1] rather than normal positive index e.g. [0 1 2] to
   ;; handle splicing in additional stages/joins if the walk function `f` returns more than one stage/join. The total
   ;; number of stages/joins might change, but for walking purposes the negative indexes will refer to the same things
@@ -34,34 +43,39 @@
    query
    (range (- (count (get-in query path-to-items []))) 0 1)))
 
-(defn- walk-join* [query path-to-join f]
+(defn- walk-items* [query path-to-items walk-item-fn f {:keys [reversed?] :as _opts}]
+  (if reversed?
+    (walk-items-backward* query path-to-items walk-item-fn f)
+    (walk-items-forward*  query path-to-items walk-item-fn f)))
+
+(defn- walk-join* [query path-to-join f opts]
   (let [path-to-join-stages (conj (vec path-to-join) :stages)
-        query'              (walk-stages* query path-to-join-stages f)]
+        query'              (walk-stages* query path-to-join-stages f opts)]
     (if (reduced? query')
       query'
       (f query' :lib.walk/join path-to-join))))
 
-(defn- walk-joins* [query path-to-joins f]
-  (walk-items* query path-to-joins walk-join* f))
+(defn- walk-joins* [query path-to-joins f opts]
+  (walk-items* query path-to-joins #(walk-join* %1 %2 %3 opts) f opts))
 
-(defn- walk-stage* [query path-to-stage f]
+(defn- walk-stage* [query path-to-stage f opts]
   (let [stage         (get-in query path-to-stage)
         path-to-joins (conj (vec path-to-stage) :joins)
         ;; only walk joins in MBQL stages, if someone tries to put them in a native stage ignore them since they're
         ;; not allowed there anyway.
         query'        (if (and (= (:lib/type stage :mbql.stage/mbql) :mbql.stage/mbql)
                                (seq (get-in query path-to-joins)))
-                        (walk-joins* query path-to-joins f)
+                        (walk-joins* query path-to-joins f opts)
                         query)]
     (if (reduced? query')
       query'
       (f query' :lib.walk/stage path-to-stage))))
 
-(defn- walk-stages* [query path-to-stages f]
-  (walk-items* query path-to-stages walk-stage* f))
+(defn- walk-stages* [query path-to-stages f opts]
+  (walk-items* query path-to-stages #(walk-stage* %1 %2 %3 opts) f opts))
 
-(defn- walk-query* [query f]
-  (walk-stages* query [:stages] f))
+(defn- walk-query* [query f opts]
+  (walk-stages* query [:stages] f opts))
 
 (defn- splice-at-point
   "Splice multiple `new-items` into `m` at `path`.
@@ -104,6 +118,10 @@
     ::walk-stages-fn-result
     ::lib.schema.join/join]])
 
+(mr/def ::walk-opts
+  "Schema for options to [[walk]], [[walk-stages]], etc."
+  [:map [:reversed? {:optional true} :boolean]])
+
 (mu/defn walk :- ::lib.schema/query
   "Depth-first recursive walk and replace for a `query`; call
 
@@ -134,40 +152,46 @@
               (fn [_query _path-type _path stage-or-join]
                 (when (:source-card stage-or-join)
                   (reduced true))))))"
-  [query :- ::lib.schema/query
-   f     :- [:=>
-             [:cat :map ::path-type ::path ::stage-or-join]
-             ::walk-fn-result]]
-  (unreduced
-   (walk-query*
-    query
-    (mu/fn [query     :- :map ; query can be invalid during the walk process, only needs to be valid again at the end.
-            path-type :- ::path-type
-            path      :- ::path]
-      (let [stage-or-join  (get-in query path)
-            stage-or-join' (or (f query path-type path stage-or-join)
-                               stage-or-join)]
-        (cond
-          (reduced? stage-or-join')                 stage-or-join'
-          (identical? stage-or-join' stage-or-join) query
-          (sequential? stage-or-join')              (splice-at-point query path stage-or-join')
-          :else                                     (assoc-in query path stage-or-join')))))))
+  ([query f] (walk query f nil))
+  ([query :- ::lib.schema/query
+    f     :- [:=>
+              [:cat :map ::path-type ::path ::stage-or-join]
+              ::walk-fn-result]
+    opts  :- [:maybe ::walk-opts]]
+   (unreduced
+    (walk-query*
+     query
+     (mu/fn [query     :- :map ; query can be invalid during the walk process, only needs to be valid again at the end.
+             path-type :- ::path-type
+             path      :- ::path]
+       (let [stage-or-join  (get-in query path)
+             stage-or-join' (or (f query path-type path stage-or-join)
+                                stage-or-join)]
+         (cond
+           (reduced? stage-or-join')                 stage-or-join'
+           (identical? stage-or-join' stage-or-join) query
+           (sequential? stage-or-join')              (splice-at-point query path stage-or-join')
+           :else                                     (assoc-in query path stage-or-join'))))
+     opts))))
 
 (mu/defn walk-stages :- ::lib.schema/query
   "Like [[walk]], but only walks the stages in a query. `f` is invoked like
 
     (f query path stage) => updated-stage-or-nil"
-  [query :- ::lib.schema/query
-   f     :- [:=> [:cat :map ::path ::lib.schema/stage] ::walk-stages-fn-result]]
-  (walk
-   query
-   (mu/fn :- ::walk-stages-fn-result
-     [query         :- :map ; don't re-validate query at every step in case we make edits that make it temporarily invalid
-      path-type     :- ::path-type
-      path          :- ::path
-      stage-or-join :- ::stage-or-join]
-     (when (= path-type :lib.walk/stage)
-       (f query path stage-or-join)))))
+  ([query f] (walk-stages query f nil))
+  ([query :- ::lib.schema/query
+    f     :- [:=> [:cat :map ::path ::lib.schema/stage] ::walk-stages-fn-result]
+    opts  :- [:maybe ::walk-opts]]
+   (walk
+    query
+    (mu/fn :- ::walk-stages-fn-result
+      [query         :- :map ; don't re-validate query at every step in case we make edits that make it temporarily invalid
+       path-type     :- ::path-type
+       path          :- ::path
+       stage-or-join :- ::stage-or-join]
+      (when (= path-type :lib.walk/stage)
+        (f query path stage-or-join)))
+    opts)))
 
 (mr/def ::path.stages-part
   [:cat
@@ -361,6 +385,21 @@
      clauses
      (range (count clauses)))))
 
+(mu/defn walk-clauses-in-stage :- [:maybe ::lib.schema/stage.mbql]
+  "Walk all the clauses in a stage. Calls
+
+    (f clause)
+
+  for every clause in the stage."
+  [stage :- ::lib.schema/stage
+   f     :- [:=> [:cat :any] :any]]
+  (when (lib.util/mbql-stage? stage)
+    (reduce
+     (fn [stage k]
+       (m/update-existing stage k walk-clauses* f))
+     stage
+     [:aggregation :breakout :expressions :fields :filters :order-by])))
+
 (mu/defn walk-clauses :- ::lib.schema/query
   "Walk all the MBQL clauses in a query in a depth-first manner.
 
@@ -396,9 +435,4 @@
                                             (walk-clauses* f)))))
 
          :lib.walk/stage
-         (when (lib.util/mbql-stage? stage-or-join)
-           (reduce
-            (fn [stage k]
-              (m/update-existing stage k walk-clauses* f))
-            stage-or-join
-            [:aggregation :breakout :expressions :fields :filters :order-by])))))))
+         (walk-clauses-in-stage stage-or-join f))))))

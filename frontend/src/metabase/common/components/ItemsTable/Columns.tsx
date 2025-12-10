@@ -8,7 +8,9 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import EntityItem from "metabase/common/components/EntityItem";
 import Markdown from "metabase/common/components/Markdown";
+import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { modelToUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
@@ -50,8 +52,9 @@ const ItemLinkComponent = ({
   if (isEmbeddingSdk()) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
+
   return (
-    <ItemLink to={item.getUrl()} onClick={() => onClick?.(item)}>
+    <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
       {children}
     </ItemLink>
   );
@@ -311,6 +314,19 @@ export const Columns = {
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
+          </RowActionsContainer>
+        </ItemCell>
+      );
+    },
+  },
+  Archive: {
+    Header: () => <th></th>,
+    Col: () => <col style={{ width: "100px" }} />,
+    Cell: ({ item }: { item: CollectionItem }) => {
+      return (
+        <ItemCell>
+          <RowActionsContainer>
+            <ArchiveButton item={item} />
           </RowActionsContainer>
         </ItemCell>
       );

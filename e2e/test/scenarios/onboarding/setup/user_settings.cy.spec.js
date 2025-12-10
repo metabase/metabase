@@ -120,8 +120,8 @@ describe("user > settings", () => {
 
     cy.visit("/account/profile");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Use site default").click();
+    cy.findByTestId("user-locale-select").findByRole("textbox").click();
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("Indonesian").click());
 
@@ -153,7 +153,7 @@ describe("user > settings", () => {
     });
   });
 
-  it("Should show correct translations when a user logs in with a locale that is different from the site locale", () => {
+  it("should show correct translations when a user logs in with a locale that is different from the site locale", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
     cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, { locale: "fr" });
     cy.signOut();
@@ -165,7 +165,7 @@ describe("user > settings", () => {
 
     // should be redirected to new question page
     cy.wait("@getUser");
-    H.entityPickerModalTab("Collections").click();
+    H.miniPicker().findByText("Parcourir tout").click();
     H.entityPickerModal().findByText("Orders Model").click();
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")
@@ -245,7 +245,127 @@ describe("user > settings", () => {
       cy.findByLabelText("Email").should("not.exist");
     });
   });
+
+  describe("dark mode", () => {
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    it("should toggle through light and dark mode when clicking on the label or icon", () => {
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Dark").click();
+      assertDarkMode();
+
+      cy.findByDisplayValue("Dark").click();
+      H.popover().findByText("Light").click();
+      assertLightMode();
+
+      //Need to take focus off the inpout
+      H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
+      cy.realPress([metaKey, "Shift", "L"]);
+      assertDarkMode();
+    });
+
+    it("should persist theme selection on browser change", () => {
+      cy.intercept("PUT", "/api/setting/color-scheme").as("saveSetting");
+
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Dark").click();
+      assertDarkMode();
+
+      cy.wait("@saveSetting");
+
+      // emulate browser change by deleting localStorage values
+      cy.window().then((win) => {
+        win.sessionStorage.clear();
+        win.localStorage.clear();
+      });
+
+      cy.visit("/account/profile");
+      assertDarkMode();
+    });
+
+    it("should apply user's selected theme instead of browser's OS theme preference", () => {
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Light").click();
+
+      assertLightMode();
+
+      H.navigationSidebar().findByText("Our analytics").click();
+      H.collectionTable().findByText("Orders").should("exist").click();
+
+      cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
+
+      cy.window().then((win) => {
+        H.appBar()
+          .findByLabelText("Settings")
+          .should("exist")
+          .then(($button) => {
+            cy.wrap(win.getComputedStyle($button[0]).color).should(
+              "eq",
+              "rgba(7, 23, 34, 0.84)", // text-dark
+            );
+          });
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-left")
+          .findByText("Other charts")
+          .then(($text) => {
+            cy.wrap(win.getComputedStyle($text[0]).color).should(
+              "eq",
+              "rgba(7, 23, 34, 0.62)", // text-medium
+            );
+          });
+      });
+
+      H.appBar().findByLabelText("Settings").click();
+      H.popover().findByText("Account settings").click();
+      cy.findByDisplayValue("Light").click();
+      H.popover().findByText("Dark").click();
+
+      H.openNavigationSidebar();
+      H.navigationSidebar().findByText("Our analytics").click();
+      H.collectionTable().findByText("Orders").should("exist").click();
+
+      cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
+
+      cy.window().then((win) => {
+        H.appBar()
+          .findByLabelText("Settings")
+          .should("exist")
+          .then(($button) => {
+            cy.wrap(win.getComputedStyle($button[0]).color).should(
+              "eq",
+              "rgba(255, 255, 255, 0.95)", // text-dark
+            );
+          });
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-left")
+          .findByText("Other charts")
+          .then(($text) => {
+            cy.wrap(win.getComputedStyle($text[0]).color).should(
+              "eq",
+              "rgba(255, 255, 255, 0.69)", // text-medium
+            );
+          });
+      });
+    });
+  });
 });
+
+// I wanted to examine the value of a color vairable, but it's hard to inspect hsla colors between local and CI.
+// sometimes the alpha is a decimal value, sometimes it isnt...
+const assertLightMode = () =>
+  cy.get("body").should("have.css", "background-color", "rgb(249, 249, 250)");
+
+const assertDarkMode = () =>
+  cy.get("body").should("have.css", "background-color", "rgb(5, 14, 21)");
 
 /**
  * Stub the current user authentication method

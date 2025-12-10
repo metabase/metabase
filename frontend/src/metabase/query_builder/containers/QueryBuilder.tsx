@@ -16,8 +16,8 @@ import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
-import title from "metabase/hoc/Title";
-import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
+import { isWithinIframe } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -31,7 +31,6 @@ import {
 import type {
   BookmarkId,
   Bookmark as BookmarkType,
-  Card,
   Series,
   Timeline,
 } from "metabase-types/api";
@@ -248,7 +247,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
+    documentTitle,
+    queryStartTime,
   } = props;
+
+  usePageTitleWithLoadingTime(documentTitle || card?.name || t`Question`, {
+    titleIndex: 1,
+    startTime: queryStartTime,
+    isRunning: uiControls.isRunning,
+  });
 
   const didTrackFirstNonTableChartGeneratedRef = useRef(
     didFirstNonTableChartGenerated,
@@ -324,6 +331,10 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const handleSave = useSaveQuestion({ scheduleCallback });
 
   useMount(() => {
+    const isRouteInSync = window.location.pathname === location.pathname;
+    if (isWithinIframe() && !isRouteInSync) {
+      return null; // Don't initialize query builder until route syncs (metabase#65500)
+    }
     initializeQB(location, params);
   });
 
@@ -482,9 +493,4 @@ export const QueryBuilder = _.compose(
   Bookmark.loadList(),
   Timelines.loadList(timelineProps),
   connector,
-  title(({ card, documentTitle }: { card: Card; documentTitle: string }) => ({
-    title: documentTitle || card?.name || t`Question`,
-    titleIndex: 1,
-  })),
-  titleWithLoadingTime("queryStartTime"),
 )(QueryBuilderInner);

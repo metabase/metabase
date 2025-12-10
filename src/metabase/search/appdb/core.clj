@@ -1,5 +1,6 @@
 (ns metabase.search.appdb.core
   (:require
+   [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -42,10 +43,19 @@
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or config/is-dev?
-           ;; if the default engine is semantic we want appdb to be available,
-           ;; as we want to mix results
+           ;; TODO (Chris 2025-11-07) This backwards dependency is unfortunate, we should find a better solution.
+           ;;                         Perhaps just an explicit setting for enabling it.
+           ;;                         This also opens us up to swapping out the fallback, e.g. to elastic search.
+           ;; if the default engine is semantic we want appdb to be available, as we want to mix results
            (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
+
+(defmethod search.engine/disjunction :search.engine/appdb [_ terms]
+  (when (seq terms)
+    (if (or (= (mdb/db-type) :h2)
+            (= 1 (count terms)))
+      terms
+      [(str/join " OR " (map #(str "(" % ")") terms))])))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
@@ -101,7 +111,7 @@
           ;; Sync, in case we're just out of sync with the database.
           found-active (:active (#'search.index/sync-tracking-atoms!))
           ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
-          init-now? (and (not found-active) config/is-prod?)]
+          init-now?    (and (not found-active) config/is-prod?)]
       (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
@@ -131,13 +141,13 @@
           (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
 
     (let [weights (search.config/weights search-ctx)
-          scorers (search.scoring/scorers search-ctx)]
-      (->> (search.index/search-query search-string search-ctx [:legacy_input])
-           (add-collection-join-and-where-clauses search-ctx)
-           (add-table-where-clauses search-ctx)
-           (search.scoring/with-scores search-ctx scorers)
-           (search.filter/with-filters search-ctx)
-           t2/query
+          scorers (search.scoring/scorers search-ctx)
+          query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
+                       (add-collection-join-and-where-clauses search-ctx)
+                       (add-table-where-clauses search-ctx)
+                       (search.scoring/with-scores search-ctx scorers)
+                       (search.filter/with-filters search-ctx))]
+      (->> (t2/query query)
            (map (partial rehydrate weights (keys scorers)))))
     (catch Exception e
       ;; Rule out the error coming from stale index metadata.
@@ -178,14 +188,18 @@
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
-  (search.index/ensure-ready!)
-  (if in-place?
-    (when-let [table (search.index/active-table)]
-      ;; keep the current table, just delete its contents
-      (t2/delete! table))
-    (search.index/maybe-create-pending!))
-  (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-    (search.index/activate-table!)))
+  (try
+    (search.index/ensure-ready!)
+    (if in-place?
+      (when-let [table (search.index/active-table)]
+        ;; keep the current table, just delete its contents
+        (t2/delete! table))
+      (search.index/maybe-create-pending!))
+    (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
+      (search.index/activate-table!))
+    (catch Throwable e
+      (log/error e "Error during reindexing")
+      (throw e))))
 
 (derive :event/setting-update ::settings-changed-event)
 

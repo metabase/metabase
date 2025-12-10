@@ -49,6 +49,23 @@
                               :model    :model/Dashboard
                               :model-id (u/id object)})))
 
+(derive ::publicize ::event)
+(derive ::publicize-card ::publicize)
+(derive ::publicize-dashboard ::publicize)
+(derive :event/card-public-link-created ::publicize-card)
+(derive :event/card-public-link-deleted ::publicize-card)
+(derive :event/dashboard-public-link-created ::publicize-dashboard)
+(derive :event/dashboard-public-link-deleted ::publicize-dashboard)
+
+(methodical/defmethod events/publish-event! ::publicize
+  [topic {:keys [user-id object-id] :as _event}]
+  (audit-log/record-event! topic
+                           {:user-id  user-id
+                            :model    (if (isa? topic ::publicize-dashboard)
+                                        :model/Dashboard
+                                        :model/Card)
+                            :model-id object-id}))
+
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 (derive :event/table-manual-sync ::table-event)
@@ -274,3 +291,67 @@
 (methodical/defmethod events/publish-event! ::cloud-add-on-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::document-event ::event)
+(derive :event/document-create ::document-event)
+(derive :event/document-update ::document-event)
+(derive :event/document-delete ::document-event)
+
+(methodical/defmethod events/publish-event! ::document-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::comment-event ::event)
+(derive :event/comment-create ::comment-event)
+(derive :event/comment-update ::comment-event)
+(derive :event/comment-delete ::comment-event)
+
+(methodical/defmethod events/publish-event! ::comment-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::transform-event ::event)
+(derive :event/transform-create ::transform-event)
+(derive :event/update-transform ::transform-event)
+(derive :event/transform-delete ::transform-event)
+(derive :event/transform-run-start ::transform-event)
+
+(methodical/defmethod events/publish-event! ::transform-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::glossary-event ::event)
+(derive :event/glossary-create ::glossary-event)
+(derive :event/glossary-update ::glossary-event)
+(derive :event/glossary-delete ::glossary-event)
+
+(methodical/defmethod events/publish-event! ::glossary-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::remote-sync-event ::event)
+(derive :event/remote-sync-import ::remote-sync-event)
+(derive :event/remote-sync-export ::remote-sync-event)
+(derive :event/remote-sync-settings-update ::remote-sync-event)
+(derive :event/remote-sync-create-branch ::remote-sync-event)
+(derive :event/remote-sync-stash ::remote-sync-event)
+
+(methodical/defmethod events/publish-event! ::remote-sync-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::action-v2-event ::event)
+(derive :event/action-v2-execute ::action-v2-event)
+(derive :event/table-data-edit :event/action-v2-execute)
+
+(methodical/defmethod events/publish-event! ::action-v2-event
+  [topic event]
+  (let [table-data-edit-events #{:data-grid.row/create :data-grid.row/update :data-grid.row/delete :data-editing/undo :data-editing/redo}]
+    (if-let [table-id
+             (and (contains? table-data-edit-events
+                             (when-let [event (get-in event [:details :action])]
+                               (when (or (string? event) (keyword? event))
+                                 (keyword event))))
+                  (get-in event [:details :scope :table_id]))]
+      (audit-log/record-event! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))
+      (audit-log/record-event! topic event))))

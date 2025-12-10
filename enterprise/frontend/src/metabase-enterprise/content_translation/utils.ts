@@ -1,9 +1,10 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type {
   DictionaryArray,
@@ -135,6 +136,10 @@ export const translateFieldValuesInSeries = (
     }
     const untranslatedRows = singleSeries.data.rows.concat();
 
+    const defaultFn = () => {
+      return singleSeries.data.rows.map((row) => row.map((value) => tc(value)));
+    };
+
     const translatedRows: RowValue[][] = match(singleSeries.card?.display)
       .with("pie", () => {
         const pieRows =
@@ -164,11 +169,25 @@ export const translateFieldValuesInSeries = (
           }),
         );
       })
-      .otherwise(() => {
+      .with(P.when(isCartesianChart), () => {
+        // cartesian charts have series settings that can provide display names
+        // for fields, which we should translate if available
+        const seriesSettings =
+          singleSeries.card.visualization_settings?.series_settings ?? {};
+
         return singleSeries.data.rows.map((row) =>
-          row.map((value) => tc(value)),
+          row.map((value) => {
+            if (
+              typeof value === "string" &&
+              seriesSettings[value]?.title !== undefined
+            ) {
+              return tc(seriesSettings[value].title);
+            }
+            return tc(value);
+          }),
         );
-      });
+      })
+      .otherwise(defaultFn);
 
     return {
       ...singleSeries,

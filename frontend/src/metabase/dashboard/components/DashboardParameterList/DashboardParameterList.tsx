@@ -46,13 +46,13 @@ export const DashboardParameterList = forwardRef<
 
   const {
     editingParameter,
-    shouldRenderAsNightMode,
     isFullscreen,
     isEditing,
     dashboard,
     hideParameters,
     parameters: dashboardParameters,
     parameterValues,
+    token,
   } = useDashboardContext();
 
   const linkedFilterParameters = useMemo(
@@ -73,9 +73,9 @@ export const DashboardParameterList = forwardRef<
       editingParameter={editingParameter}
       hideParameters={hideParameters}
       dashboardId={dashboard?.id}
+      token={token}
       isSortable={isSortable}
       isFullscreen={isFullscreen}
-      isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}
       setParameterValue={(id, value) => dispatch(setParameterValue(id, value))}
       setParameterIndex={(id, index) => dispatch(setParameterIndex(id, index))}

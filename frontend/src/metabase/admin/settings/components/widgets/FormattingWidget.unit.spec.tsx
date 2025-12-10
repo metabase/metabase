@@ -81,9 +81,9 @@ describe("FormattingWidget", () => {
     const dateAbbreviateToggle = await screen.findByRole("switch");
     expect(dateAbbreviateToggle).not.toBeChecked();
 
-    const symbolRadio = within(currencyStyleWidget).getByLabelText(/symbol/i);
-    const codeRadio = within(currencyStyleWidget).getByLabelText(/code/i);
-    const nameRadio = within(currencyStyleWidget).getByLabelText(/name/i);
+    const symbolRadio = within(currencyStyleWidget).getByLabelText(/Symbol/);
+    const codeRadio = within(currencyStyleWidget).getByLabelText(/Code/);
+    const nameRadio = within(currencyStyleWidget).getByLabelText(/Name/);
 
     // eslint-disable-next-line jest-dom/prefer-to-have-value
     expect(symbolRadio).toHaveAttribute("value", "symbol");
@@ -96,6 +96,10 @@ describe("FormattingWidget", () => {
     // eslint-disable-next-line jest-dom/prefer-to-have-value
     expect(nameRadio).toHaveAttribute("value", "name");
     expect(nameRadio).not.toBeChecked();
+
+    expect(
+      within(currencyStyleWidget).queryByLabelText(/Local symbol/),
+    ).not.toBeInTheDocument();
   });
 
   it("should update multiple settings", async () => {
@@ -163,5 +167,22 @@ describe("FormattingWidget", () => {
       const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(6);
     });
+  });
+
+  it("should provide expected number separators (#61854)", async () => {
+    await setup();
+
+    const seperatorStyleInput = await screen.findByLabelText("Separator style");
+    await userEvent.click(seperatorStyleInput);
+
+    const [dropdown] = screen.getAllByRole("listbox");
+    const children = within(dropdown).getAllByRole("option");
+    expect(children.length).toBe(5);
+
+    expect(within(dropdown).getByText("100,000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100 000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100.000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100’000.00")).toBeInTheDocument();
   });
 });

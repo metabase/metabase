@@ -2,6 +2,7 @@ interface Window {
   MetabaseBootstrap: any;
   MetabaseRoot?: string;
   MetabaseNonce?: string;
+  MetabaseUserColorScheme?: string;
 }
 
 // This allows importing static SVGs from TypeScript files

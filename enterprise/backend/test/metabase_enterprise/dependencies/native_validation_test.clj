@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]))
 
@@ -10,66 +12,70 @@
   ([mp query]
    (fake-query mp query {}))
   ([mp query template-tags]
-   {:database (:id (lib.metadata/database mp))
-    :type     :native
-    :native   {:query query
-               :template-tags template-tags}}))
+   (-> (lib/native-query mp query)
+       (lib/with-template-tags template-tags))))
 
 (defn- validates?
   [mp driver card-id expected]
   (is (=? expected
-          (->> (lib.metadata/card mp card-id)
-               :dataset-query
-               (deps.native-validation/validate-native-query driver mp)))))
+          (-> (lib.metadata/card mp card-id)
+              :dataset-query
+              (assoc :lib/metadata mp)
+              (->> (deps.native-validation/validate-native-query driver))))))
 
-(deftest basic-deps-test
+(deftest ^:parallel basic-deps-test
   (let [mp     (deps.tu/default-metadata-provider)
         driver (:engine (lib.metadata/database mp))]
-    (is (= #{{:table (meta/id :products)}}
+    (is (= #{{:table (meta/id :products)}} ; how is a driver supposed to work out the ID of the table??
            (->> (lib.metadata/card mp 4)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}}
            (->> (lib.metadata/card mp 5)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}
              {:snippet 1}}
            (->> (lib.metadata/card mp 6)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}
              {:snippet 1}
              {:snippet 2}}
            (->> (lib.metadata/card mp 7)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:table (meta/id :orders)}
              {:card 1}
              {:card 2}}
            (->> (lib.metadata/card mp 9)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))))
 
-(deftest validate-bad-queries-test
+(deftest ^:parallel validate-bad-queries-test
   (testing "validate-native-query handles nonsense queries"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
       (testing "complete nonsense query"
-        (is (= [{:error :bad-sql}]
+        (is (= [{:error :metabase.driver.sql/bad-sql}]
                (deps.native-validation/validate-native-query
-                driver mp
+                driver
                 (fake-query mp "this is not a query")))))
       (testing "bad table wildcard"
         (is (= [{:type :invalid-table-wildcard,
                  :table "products",
                  :metabase.driver.sql/bad-reference true}]
                (deps.native-validation/validate-native-query
-                driver mp
+                driver
                 (fake-query mp "select products.* from orders")))))
       (testing "bad col reference"
         (is (= [{:column "BAD",
@@ -78,94 +84,216 @@
                  :source-columns [[{:type :all-columns, :table {:table "PRODUCTS"}}]],
                  :metabase.driver.sql/bad-reference true}]
                (deps.native-validation/validate-native-query
-                driver mp
+                driver
                 (fake-query mp "select bad from products"))))))))
 
-(deftest validate-native-query-with-subquery-columns-test
+(deftest ^:parallel validate-table-function-query-test
+  (testing "can validate queries using table functions"
+    (let [mp (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (= []
+             (deps.native-validation/validate-native-query
+              driver
+              (fake-query mp "select i from my_function(1, 100)")))))))
+
+(deftest ^:parallel validate-native-query-with-subquery-columns-test
   (testing "validate-native-query should detect invalid columns in subqueries"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
 
       (testing "Valid query - selecting existing columns from subquery"
         (validates? mp driver 10 empty?))
-
       (testing "Invalid query - selecting non-existent column from subquery"
         (validates? mp driver 11 [{:column "CATEGORY",
                                    :alias nil,
                                    :type :single-column,
-                                   :source-columns [[]],
+                                   :source-columns [[{:column "ID",
+                                                      :alias nil,
+                                                      :type :single-column,
+                                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}
+                                                     {:column "NAME",
+                                                      :alias nil,
+                                                      :type :single-column,
+                                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}]],
                                    :metabase.driver.sql/bad-reference true}])
         (validates? mp driver 12 [{:column "CATEGORY",
                                    :alias nil,
                                    :type :single-column,
-                                   :source-columns [[]],
+                                   :source-columns [[{:column "ID",
+                                                      :alias nil,
+                                                      :type :single-column,
+                                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}
+                                                     {:column "NAME",
+                                                      :alias nil,
+                                                      :type :single-column,
+                                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}]],
                                    :metabase.driver.sql/bad-reference true}]))
-
       (testing "Nested subqueries"
         (validates? mp driver 13 empty?)
         (validates? mp driver 14 [{:column "CATEGORY",
                                    :alias nil,
                                    :type :single-column,
-                                   :source-columns [[]],
+                                   :source-columns [[{:column "ID",
+                                                      :alias nil,
+                                                      :type :single-column,
+                                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}
+                                                     {:column "NAME",
+                                                      :alias nil,
+                                                      :type :single-column,
+                                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}]],
                                    :metabase.driver.sql/bad-reference true}]))
-
       (testing "SELECT * from subquery expands to subquery columns"
         (validates? mp driver 15 empty?)
         (validates? mp driver 16 empty?)
         (validates? mp driver 17 [{:column "EMAIL",
                                    :alias nil,
                                    :type :single-column,
-                                   :source-columns [[]],
+                                   :source-columns [[{:column "ID",
+                                                      :alias nil,
+                                                      :type :single-column,
+                                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}
+                                                     {:column "NAME",
+                                                      :alias nil,
+                                                      :type :single-column,
+                                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}]],
                                    :metabase.driver.sql/bad-reference true}])))))
 
-(deftest validate-card-reference-after-expansion-test
+(deftest ^:parallel validate-card-reference-after-expansion-test
   (testing "Validation of queries after card references have been expanded"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
-
       (testing "Card reference expanded to subquery - valid columns"
         (validates? mp driver 18 empty?))
-
       (testing "Card reference expanded to subquery - invalid column"
         (validates? mp driver 19
                     [{:column "DESCRIPTION",
                       :alias nil,
                       :type :single-column,
-                      :source-columns [[]],
+                      :source-columns
+                      [[{:column "ID",
+                         :alias "ID",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "EAN",
+                         :alias "EAN",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "TITLE",
+                         :alias "TITLE",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "CATEGORY",
+                         :alias "CATEGORY",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "VENDOR",
+                         :alias "VENDOR",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "PRICE",
+                         :alias "PRICE",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "RATING",
+                         :alias "RATING",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "CREATED_AT",
+                         :alias "CREATED_AT",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]],
                       :metabase.driver.sql/bad-reference true}]))
-
       (testing "Card reference with alias - valid column"
         (validates? mp driver 20 empty?))
-
       (testing "Card reference with alias - invalid column"
         (validates? mp driver 21
                     [{:column "PASSWORD",
                       :alias nil,
                       :type :single-column,
-                      :source-columns [[]],
+                      :source-columns [[{:column "ID",
+                                         :alias "ID",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "EAN",
+                                         :alias "EAN",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "TITLE",
+                                         :alias "TITLE",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "CATEGORY",
+                                         :alias "CATEGORY",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "VENDOR",
+                                         :alias "VENDOR",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "PRICE",
+                                         :alias "PRICE",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "RATING",
+                                         :alias "RATING",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "CREATED_AT",
+                                         :alias "CREATED_AT",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]]
                       :metabase.driver.sql/bad-reference true}]))
-
       (testing "Wildcard selection from card reference"
         (validates? mp driver 22 empty?))
-
       (testing "Invalid column from aliased card"
         (validates? mp driver 23
                     [{:column "LATITUDE",
                       :alias nil,
                       :type :single-column,
-                      :source-columns [[]],
+                      :source-columns [[{:column "ID",
+                                         :alias "ID",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "EAN",
+                                         :alias "EAN",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "TITLE",
+                                         :alias "TITLE",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "CATEGORY",
+                                         :alias "CATEGORY",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "VENDOR",
+                                         :alias "VENDOR",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "PRICE",
+                                         :alias "PRICE",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "RATING",
+                                         :alias "RATING",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                                        {:column "CREATED_AT",
+                                         :alias "CREATED_AT",
+                                         :type :single-column,
+                                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]],
                       :metabase.driver.sql/bad-reference true}])))))
 
 (defn- check-result-metadata [driver mp query expected]
   (is (=? expected
           (->> query
                (fake-query mp)
-               (deps.native-validation/native-result-metadata driver mp)))))
+               (deps.native-validation/native-result-metadata driver)))))
 
 (defn- add-desired-column-alias [fields]
   (map #(assoc % :lib/desired-column-alias (:name %)) fields))
 
-(deftest result-metadata-test
+(deftest ^:parallel result-metadata-test
   (testing "Calculates result metadata"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
@@ -229,6 +357,15 @@
            :base-type :type/Text,
            :effective-type :type/Text,
            :semantic-type :type/Category}]))
+      (testing "Using a table function"
+        (check-result-metadata
+         driver mp
+         "select ids from my_function(1, 100)"
+         [{:name "IDS",
+           :lib/desired-column-alias "IDS",
+           :display-name "Ids",
+           :effective-type :type/*,
+           :semantic-type :Semantic/*}]))
       (testing "Selecting a bad table wildcard"
         (check-result-metadata
          driver mp

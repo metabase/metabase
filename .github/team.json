@@ -33,20 +33,6 @@
       ]
     },
     {
-      "name": "Workflows",
-      "label": ".Team/Workflows",
-      "members": [
-        "qnkhuat",
-        "piranha",
-        "crisptrutski",
-        "spalt08",
-        "stasgavrylov",
-        "uladzimirdev",
-        "kulyk",
-        "kamilmielnik"
-      ]
-    },
-    {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
@@ -58,10 +44,13 @@
       "label": ".Team/DevEx",
       "members": [
         "camsaul",
-        "escherize"
+        "dpsutton",
+        "escherize",
+        "fraserdrops",
+        "nemanjaglumac"
       ]
     },
-     {
+    {
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
@@ -70,19 +59,10 @@
         "retro",
         "sloansparger",
         "somtom",
-        "wotbrew",
         "tsplude",
         "lbrdnk",
-        "bronsa"
-      ]
-    },
-    {
-      "name": "Product Growth",
-      "label": ".Team/ProductGrowth",
-      "members": [
-        "nemanjaglumac",
-        "chodorowicz",
-        "andsalves"
+        "piranha",
+        "crisptrutski"
       ]
     },
     {
@@ -111,7 +91,24 @@
         "edpaget",
         "deniskaber",
         "alxnddr",
-        "bpander"
+        "bpander",
+        "andsalves",
+        "gantoreno"
+      ]
+    },
+    {
+      "name": "Gadget",
+      "label": ".Team/Gadget",
+      "members": [
+        "nmezzopera",
+        "bronsa",
+        "wotbrew",
+        "qnkhuat",
+        "chodorowicz",
+        "kamilmielnik",
+        "stasgavrylov",
+        "uladzimirdev",
+        "egorgrushin"
       ]
     }
   ]

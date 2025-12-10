@@ -3,11 +3,13 @@
   (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
+   ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
+   ;; Driver API namespace?
    [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.driver.common.parameters.values :as params.values]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
@@ -125,6 +127,14 @@
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
+(defmethod driver/run-transform! [:sql :table-incremental]
+  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
+  (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
+                                                           :name (name output-table)})
+                  (driver/compile-insert driver transform-details)
+                  (driver/compile-transform driver transform-details))]
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
+
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [{schema :schema, table-name :name}]
@@ -173,26 +183,25 @@
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
 
-(defmethod driver/native-query-deps :sql
-  ([driver query]
-   (driver/native-query-deps driver query
-                             (driver-api/metadata-provider)))
-  ([driver query metadata-provider]
-   (let [db-tables (driver-api/tables metadata-provider)
-         db-transforms (driver-api/transforms metadata-provider)]
-     (->> query
-          macaw/parsed-query
-          macaw/query->components
-          :tables
-          (map :component)
-          (into #{} (keep #(->> (normalize-table-spec driver %)
-                                (find-table-or-transform driver db-tables db-transforms))))))))
+(mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (let [db-tables (driver-api/tables query)
+        db-transforms (driver-api/transforms query)]
+    (->> query
+         driver-api/raw-native-query
+         macaw/parsed-query
+         macaw/query->components
+         :tables
+         (map :component)
+         (into #{} (keep #(->> (normalize-table-spec driver %)
+                               (find-table-or-transform driver db-tables db-transforms)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti resolve-field
+(defmulti ^:private resolve-field
   "Resolves a field reference to one or more actual database fields.
 
   This uses a supplied metadata provider instead of hitting the db directly.  'Field reference' refers to the field
@@ -224,7 +233,21 @@
                          ;; inner query, it can also refer to something in the outer query.
                          ;; sql.references/field-references organizes source-cols into a list of lists
                          ;; to account for this.
-                         (->> (mapcat (partial resolve-field driver metadata-provider) source-col-set)
+                         (->> (mapcat (fn [current-col]
+                                        ;; :unknown-columns is a placeholder for "we know there are columns being
+                                        ;; returned, but have no way of knowing what those are -- this is primarily
+                                        ;; used for table-functions like `select * from my_func()`.  If we encounter
+                                        ;; something like that, assume that the query is valid and make up a matching
+                                        ;; column to avoid false positives.
+                                        (if (= (:type current-col) :unknown-columns)
+                                          (let [name (:column col-spec)]
+                                            [{:base-type :type/*
+                                              :name name
+                                              :display-name (->> name (u.humanization/name->human-readable-name :simple))
+                                              :effective-type :type/*
+                                              :semantic-type :Semantic/*}])
+                                          (resolve-field driver metadata-provider current-col)))
+                                      source-col-set)
                               (some #(when (= (:name %) (:column col-spec))
                                        %))))))]
      (assoc found :lib/desired-column-alias (or alias name))
@@ -271,25 +294,35 @@
       :effective-type (apply lca :type/* (map :effective-type member-fields))
       :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}]))
 
-(defmethod driver/native-result-metadata :sql
-  [driver metadata-provider native-query]
-  (let [{:keys [returned-fields]} (->> (macaw/parsed-query native-query)
+(defmethod resolve-field :unknown-columns
+  [_driver _metadata-provider _col-spec]
+  [])
+
+(mu/defmethod driver/native-result-metadata :sql
+  [driver       :- :keyword
+   native-query :- :metabase.lib.schema/native-only-query]
+  (let [{:keys [returned-fields]} (->> native-query
+                                       driver-api/raw-native-query
+                                       macaw/parsed-query
                                        macaw/->ast
                                        (sql.references/field-references driver))]
-    (->> (mapcat (partial resolve-field driver metadata-provider) returned-fields)
+    (->> (mapcat (partial resolve-field driver native-query) returned-fields)
          (remove ::bad-reference))))
 
-(defmethod driver/validate-native-query-fields :sql
-  [driver metadata-provider native-query]
-  (let [{:keys [used-fields returned-fields bad-sql]} (->> (macaw/parsed-query native-query)
+(mu/defmethod driver/validate-native-query-fields :sql
+  [driver       :- :keyword
+   native-query :- :metabase.lib.schema/native-only-query]
+  (let [{:keys [used-fields returned-fields bad-sql]} (->> native-query
+                                                           driver-api/raw-native-query
+                                                           macaw/parsed-query
                                                            macaw/->ast
                                                            (sql.references/field-references driver))
         check-fields #(mapcat (fn [col-spec]
-                                (->> (resolve-field driver metadata-provider col-spec)
+                                (->> (resolve-field driver (driver-api/->metadata-provider native-query) col-spec)
                                      (filter ::bad-reference)))
                               %)]
     (-> (concat (when bad-sql
-                  [{:error :bad-sql}])
+                  [{:error ::bad-sql}])
                 (check-fields used-fields)
                 (check-fields returned-fields))
         distinct)))

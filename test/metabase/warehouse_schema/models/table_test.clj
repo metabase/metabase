@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -106,7 +107,7 @@
                   :perms/download-results      :one-million-rows
                   :perms/manage-table-metadata :no
                   :perms/manage-database       :no}}}
-               (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
+               (data-perms.graph/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
 
         ;; A new group starts with the same perms as All Users
         (is (partial=
@@ -117,7 +118,7 @@
                 :perms/download-results      :one-million-rows
                 :perms/manage-table-metadata :no
                 :perms/manage-database       :no}}}
-             (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))
+             (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))
 
         (testing "A new table has appropriate defaults, when perms are already set granularly for the DB"
           (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
@@ -145,7 +146,7 @@
                                                    table-id-2 :yes
                                                    table-id-3 :no}}
                     :perms/manage-database       :no}}}
-                 (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))))))))
+                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))))
 
 (deftest cleanup-permissions-after-delete-table-test
   (mt/with-temp
@@ -364,3 +365,75 @@
             (is (= #{table-id-1 table-id-2 table-id-3}
                    (fetch-visible-ids user-info permission-map :id))
                 "Clause should filter correctly when requiring :blocked level")))))))
+
+(deftest prevent-metabase-transform-data-source-change-test
+  (testing "Cannot change data_source from metabase-transform"
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
+      (testing "to another value"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot change data_source from metabase-transform"
+             (t2/update! :model/Table table-id {:data_source :transform}))))
+      (testing "to nil"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot change data_source from metabase-transform"
+             (t2/update! :model/Table table-id {:data_source nil}))))))
+
+  (testing "Cannot change data_source to metabase-transform"
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
+      (testing "from another value"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot set data_source to metabase-transform"
+             (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+      (testing "but can change to other non-metabase-transform values"
+        (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
+        (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
+      (testing "can also change it to nil"
+        (is (some? (t2/update! :model/Table table-id {:data_source nil})))
+        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
+
+(deftest is-published-and-collection-id-test
+  (testing "is_published defaults to false"
+    (mt/with-temp [:model/Table {table-id :id} {}]
+      (is (false? (t2/select-one-fn :is_published :model/Table :id table-id)))))
+  (testing "can create a table with is_published=true and collection_id"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Table {table-id :id} {:is_published true :collection_id coll-id}]
+      (let [table (t2/select-one :model/Table :id table-id)]
+        (is (true? (:is_published table)))
+        (is (= coll-id (:collection_id table))))))
+  (testing "collection_id FK constraint prevents referencing non-existent collection"
+    (is (thrown?
+         Exception
+         (mt/with-temp [:model/Table _ {:collection_id Integer/MAX_VALUE}]))))
+  (testing "deleting a collection unpublishes the tables in it"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}
+                   :model/Table {table-2-id :id} {:is_published true :collection_id coll-id}]
+      (t2/delete! :model/Collection :id coll-id)
+      (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
+                                              :id [:in [table-1-id table-2-id]]))))))
+
+(deftest collection-hydration-test
+  (testing "hydrating :collection on a table"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Table table {:is_published true :collection_id coll-id}]
+      (let [hydrated (t2/hydrate table :collection)]
+        (is (= coll-id (-> hydrated :collection :id)))
+        (is (= "Test Collection" (-> hydrated :collection :name))))))
+  (testing "hydrating :collection on a table with no collection_id returns nil"
+    (mt/with-temp [:model/Table table {}]
+      (let [hydrated (t2/hydrate table :collection)]
+        (is (nil? (:collection hydrated))))))
+  (testing "batched hydration works for multiple tables"
+    (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1"}
+                   :model/Collection {coll2-id :id} {:name "Collection 2"}
+                   :model/Table table1 {:is_published true :collection_id coll1-id}
+                   :model/Table table2 {:is_published true :collection_id coll2-id}
+                   :model/Table table3 {}]
+      (let [hydrated (t2/hydrate [table1 table2 table3] :collection)]
+        (is (= coll1-id (-> hydrated first :collection :id)))
+        (is (= coll2-id (-> hydrated second :collection :id)))
+        (is (nil? (-> hydrated (nth 2) :collection)))))))

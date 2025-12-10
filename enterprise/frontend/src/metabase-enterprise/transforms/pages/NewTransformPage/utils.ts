@@ -1,21 +1,32 @@
 import Question from "metabase-lib/v1/Question";
-import type { Card, DatasetQuery } from "metabase-types/api";
+import type {
+  Card,
+  PythonTransformSourceDraft,
+  QueryTransformSource,
+  SuggestedTransform,
+} from "metabase-types/api";
 
-export function getInitialQueryTransformSource(
-  card: Card | undefined,
-  type: DatasetQuery["type"] | undefined,
-) {
-  const query =
-    card != null
-      ? card.dataset_query
-      : Question.create({ type }).datasetQuery();
+import type { NewTransformValues } from "./CreateTransformModal/CreateTransformModal";
 
-  return { type: "query" as const, query };
+export function getInitialQuerySource(): QueryTransformSource {
+  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "query" });
+  return {
+    type: "query",
+    query: question.datasetQuery(),
+  };
 }
 
-export function getInitialPythonTransformSource() {
+export function getInitialNativeSource(): QueryTransformSource {
+  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "native" });
   return {
-    type: "python" as const,
+    type: "query",
+    query: question.datasetQuery(),
+  };
+}
+
+export function getInitialPythonSource(): PythonTransformSourceDraft {
+  return {
+    type: "python",
     "source-database": undefined,
     "source-tables": {},
     body: `# Write your Python transformation script here
@@ -32,5 +43,24 @@ def transform():
     """
     # Your transformation logic here
     return pd.DataFrame([{"message": "Hello from Python transform!"}])`,
+  };
+}
+
+export function getInitialCardSource(card: Card): QueryTransformSource {
+  return { type: "query", query: card.dataset_query };
+}
+
+export function getDefaultValues(
+  name: string,
+  suggestedTransform?: SuggestedTransform,
+): Partial<NewTransformValues> {
+  if (suggestedTransform == null) {
+    return { name };
+  }
+
+  return {
+    name,
+    targetName: suggestedTransform.target.name,
+    targetSchema: suggestedTransform.target.schema,
   };
 }

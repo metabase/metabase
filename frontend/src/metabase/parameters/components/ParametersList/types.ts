@@ -1,6 +1,5 @@
 import type {
   DashboardFullscreenControls,
-  DashboardNightModeControls,
   EmbedHideParametersControls,
 } from "metabase/dashboard/types";
 import type {
@@ -20,6 +19,7 @@ export type ParametersListProps = {
 
     cardId?: CardId;
     dashboardId?: DashboardId;
+    token?: string | null;
     editingParameter: Parameter | null | undefined;
     linkedFilterParameters: Parameter[];
 
@@ -40,6 +40,5 @@ export type ParametersListProps = {
     layout?: "horizontal" | "vertical";
     hasTestIdProps?: boolean;
   } & Pick<DashboardFullscreenControls, "isFullscreen"> &
-    Pick<DashboardNightModeControls, "isNightMode"> &
     Pick<EmbedHideParametersControls, "hideParameters">
 >;

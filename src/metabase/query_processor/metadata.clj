@@ -3,18 +3,12 @@
   MBQL queries; for native queries we use the driver implementation of
   [[metabase.driver/query-result-metadata]], which hopefully can calculate metadata without running the query. If
   that's not possible, our fallback `:default` implementation adds the equivalent of `LIMIT 1` to query and runs it."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv not-empty])
   (:require
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -25,7 +19,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv]]))
+   [metabase.util.performance :as perf :refer [mapv not-empty]]))
 
 (mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
@@ -132,11 +126,12 @@
    (mapv
     (fn [col]
       (-> col
-          (lib.metadata.jvm/instance->metadata :metadata/column)
+          (lib-be/instance->metadata :metadata/column)
           (add-extra-column-metadata ::mlv2)))
     (result-metadata* query current-user-id))))
 
-(mu/defn- ensure-legacy :- ::mbql.s/legacy-column-metadata
+(mu/defn- ensure-legacy :- ::qp.schema/result-metadata.column
+  {:deprecated "0.57.0"}
   [col :- :map]
   (letfn [(ensure-field-ref [col]
             ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
@@ -147,9 +142,9 @@
         lib/lib-metadata-column->legacy-metadata-column
         (add-extra-column-metadata ::legacy)
         ensure-field-ref
-        mbql.normalize/normalize-source-metadata)))
+        (->> (lib/normalize ::qp.schema/result-metadata.column)))))
 
-(mu/defn legacy-result-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
+(mu/defn legacy-result-metadata :- [:maybe ::qp.schema/result-metadata.columns]
   "Like [[result-metadata]], but return metadata in legacy format rather than MLv2 format. This should be considered
   deprecated, as we're working on moving towards using MLv2-style metadata everywhere; avoid new usages of this function
   if possible, and prefer [[result-metadata]] instead.
@@ -160,5 +155,6 @@
   [query           :- :map
    current-user-id :- [:maybe ::lib.schema.id/user]]
   (mapv
+   #_{:clj-kondo/ignore [:deprecated-var]}
    ensure-legacy
    (result-metadata* query current-user-id)))

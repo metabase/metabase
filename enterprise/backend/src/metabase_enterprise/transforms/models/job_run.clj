@@ -1,8 +1,8 @@
 (ns metabase-enterprise.transforms.models.job-run
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.interface :as mi]
+   [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -81,7 +81,7 @@
   [age unit]
   (t2/update! :model/TransformJobRun
               :is_active true
-              :updated_at [:< (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
+              :updated_at [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
               {:status :timeout
                :end_time :%now
                :is_active nil

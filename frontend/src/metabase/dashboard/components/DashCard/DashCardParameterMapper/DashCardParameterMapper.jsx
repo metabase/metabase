@@ -3,8 +3,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { Flex } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import { DashCardCardParameterMapperConnected } from "./DashCardCardParameterMapper";
 import S from "./DashCardParameterMapper.module.css";

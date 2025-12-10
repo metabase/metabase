@@ -1,4 +1,5 @@
 (ns metabase.driver.databricks
+  (:refer-clojure :exclude [not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -18,6 +19,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty get-in]]
    [ring.util.codec :as codec])
   (:import
    [java.sql
@@ -25,7 +27,8 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
-    Statement]
+    Statement
+    Types]
    [java.time
     LocalDate
     LocalDateTime
@@ -499,3 +502,12 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:databricks Types/ARRAY]
+  [_driver ^java.sql.ResultSet rs _rsmeta ^Integer i]
+  ;; This differs from the sql-jdbc implementation due to a change in
+  ;; Databricks' JDBC driver from 2.7.3 to 3.0.1. It returns the type
+  ;; of an array column as Types/ARRAY now, but the object is a
+  ;; java.lang.String, so we can't call .getArray on it and instead
+  ;; should return it as is.
+  (fn [] (.getObject rs i)))

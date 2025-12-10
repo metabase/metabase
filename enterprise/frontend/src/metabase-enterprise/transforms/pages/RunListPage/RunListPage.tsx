@@ -3,19 +3,21 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Stack, Title } from "metabase/ui";
+import type * as Urls from "metabase/lib/urls";
+import { Box, Center, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
 
-import type { RunListParams } from "../../types";
-
 import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
+import S from "./RunListPage.module.css";
 import { PAGE_SIZE } from "./constants";
 import { getParsedParams } from "./utils";
 
@@ -27,16 +29,26 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <div>
-      <Title order={1} mb="sm">{t`Runs`}</Title>
-      <Box mb="xl">{t`A list of when each transform ran.`}</Box>
-      <RunListPageBody params={params} />
-    </div>
+    <Stack
+      bg="bg-light"
+      className={S.body}
+      data-testid="transforms-run-list"
+      gap={0}
+      h="100%"
+    >
+      <TransformsSectionHeader
+        leftSection={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+      />
+      <Stack p="lg" pt={0} h="100%">
+        <Box>{t`A list of when each transform ran.`}</Box>
+        <RunListPageBody params={params} />
+      </Stack>
+    </Stack>
   );
 }
 
 type RunListPageBodyProps = {
-  params: RunListParams;
+  params: Urls.TransformRunListParams;
 };
 
 function RunListPageBody({ params }: RunListPageBodyProps) {
@@ -89,7 +101,11 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   if (!data || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   return (

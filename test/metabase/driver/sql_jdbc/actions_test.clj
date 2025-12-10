@@ -1,6 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.actions-test
   "Most of the tests for code in [[metabase.driver.sql-jdbc.actions]] are e2e tests that live
-  in [[metabase.actions.api-test]]."
+  in [[metabase.actions-rest.api-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.actions.actions :as actions]
@@ -10,12 +10,16 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
+
+(use-fixtures :each (fn [t]
+                      (mt/with-test-user :rasta
+                        (t))))
 
 (mu/defn- cast-values :- ::actions.args/row
   [driver        :- :keyword

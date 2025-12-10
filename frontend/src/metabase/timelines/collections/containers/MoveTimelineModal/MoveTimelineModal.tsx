@@ -1,4 +1,3 @@
-import { goBack } from "react-router-redux";
 import _ from "underscore";
 
 import Timelines from "metabase/entities/timelines";
@@ -26,9 +25,6 @@ const timelineProps = {
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (timeline: Timeline, collectionId: number | null) => {
     dispatch(setCollectionAndNavigate(timeline, collectionId));
-  },
-  onCancel: () => {
-    dispatch(goBack());
   },
 });
 

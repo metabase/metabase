@@ -1,0 +1,45 @@
+.content {
+  & > [data-node-view-content-react] {
+    height: 100%;
+    transform: translateZ(0);
+
+    & > :global(.node-cardEmbed) {
+      height: 100%;
+    }
+
+    & > :global(.node-flexContainer) {
+      height: 100%;
+    }
+  }
+
+  height: 100%;
+  padding-bottom: 1rem;
+}
+
+.dragContainer {
+  position: absolute;
+  bottom: 0.25rem;
+  width: 100%;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.dragHandle {
+  background-color: var(--mb-color-text-secondary);
+  height: 0.25rem;
+  width: 4rem;
+  cursor: row-resize;
+  z-index: 10;
+  border-radius: var(--default-border-radius);
+}
+
+.wrapper {
+  position: relative;
+  cursor: default;
+
+  &:hover {
+    .dragContainer {
+      opacity: 1;
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector } from "metabase/lib/redux";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { getUser } from "metabase/selectors/user";
 
 import { trackMetabotChatOpened } from "../analytics";
@@ -10,16 +11,26 @@ import { useMetabotAgent } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
 
-export interface MetabotProps {
-  hide?: boolean;
+// TODO: add test coverage for these
+export interface MetabotConfig {
+  emptyText?: string;
+  hideSuggestedPrompts?: boolean;
+  preventClose?: boolean;
+  preventRetryMessage?: boolean;
+  suggestionModels: SuggestionModel[];
 }
 
-export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
+export interface MetabotProps {
+  hide?: boolean;
+  config?: MetabotConfig;
+}
+
+export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent();
 
   useEffect(() => {
     return tinykeys(window, {
-      "$mod+b": (e) => {
+      "$mod+e": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
         if (!visible) {
           trackMetabotChatOpened("keyboard_shortcut");
@@ -44,7 +55,7 @@ export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
 
   return (
     <ErrorBoundary errorComponent={() => null}>
-      <MetabotChat />
+      <MetabotChat config={config} />
     </ErrorBoundary>
   );
 };

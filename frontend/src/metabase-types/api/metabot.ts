@@ -4,8 +4,11 @@ import type {
   CardType,
   DashboardId,
   DatasetQuery,
+  DraftTransform,
   PaginationResponse,
   RowValue,
+  SuggestedTransform,
+  Transform,
   UnsavedCard,
   Version,
 } from ".";
@@ -54,18 +57,6 @@ export type MetabotHistoryEntry =
 export type MetabotHistory = any[];
 
 export type MetabotStateContext = Record<string, any>;
-
-export type MetabotMessageReaction = {
-  type: "metabot.reaction/message";
-  message: string;
-};
-
-export type MetabotRedirectReaction = {
-  type: "metabot.reaction/redirect";
-  url: string;
-};
-
-export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
 
 export type MetabotColumnType =
   | "number"
@@ -133,11 +124,17 @@ export type MetabotDocumentInfo = {
   id: number;
 };
 
+export type MetabotTransformInfo =
+  | ({ type: "transform" } & Transform) // edit
+  | ({ type: "transform" } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform" } & DraftTransform); // edit unsaved suggested
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
   | MetabotAdhocQueryInfo
-  | MetabotDocumentInfo;
+  | MetabotDocumentInfo
+  | MetabotTransformInfo;
 
 /* Metabot v3 - API Request Types */
 
@@ -152,7 +149,6 @@ export type MetabotAgentRequest = {
 };
 
 export type MetabotAgentResponse = {
-  reactions: MetabotReaction[];
   history: MetabotHistory[];
   conversation_id: string;
   state: any;
@@ -239,8 +235,11 @@ export interface MetabotGenerateContentResponse {
   error: string | null;
 }
 
-/* Metabot v3 - Add-on Purchase Types */
+/* Metabot v3 - Data Part Types */
 
-export interface PurchaseMetabotAddOnRequest {
-  terms_of_service: boolean;
-}
+export type MetabotTodoItem = {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: "high" | "medium" | "low";
+};

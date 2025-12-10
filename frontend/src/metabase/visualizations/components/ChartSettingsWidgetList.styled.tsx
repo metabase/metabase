@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 export const ChartSettingsWidgetListHeader = styled.h4`
   margin-left: 2rem;
   margin-bottom: 1rem;
-  color: var(--mb-color-bg-dark);
+  color: var(--mb-color-text-secondary);
   text-transform: uppercase;
 `;
 

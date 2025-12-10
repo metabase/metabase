@@ -55,9 +55,13 @@
                               :rename                          true
                               :actions                         false
                               :metadata/key-constraints        false
-                              :database-routing                true
+                              :database-routing                false
                               :transforms/python               true
-                              :transforms/table                true}]
+                              :transforms/table                true
+                              ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
+                              :describe-is-generated           false
+                              :describe-is-nullable            true
+                              :describe-default-expr           true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:clickhouse :schemas]
@@ -316,14 +320,21 @@
 
 (defmethod driver/compile-transform :clickhouse
   [driver {:keys [query output-table]}]
-  (let [pieces [(sql.qp/format-honeysql driver {:create-table output-table})
+  (let [{sql-query :query sql-params :params} query
+        pieces [(sql.qp/format-honeysql driver {:create-table output-table})
                 ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
                 ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
                 (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
                 ["AS"]
-                (sql.qp/format-honeysql driver {:raw query})]
-        query (str/join " " (map first pieces))]
-    (into [query] (mapcat rest) pieces)))
+                [sql-query sql-params]]
+        sql (str/join " " (map first pieces))]
+    (into [sql] (mapcat rest) pieces)))
+
+(defmethod driver/compile-insert :clickhouse
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (sql.qp/format-honeysql driver {:insert-into [output-table {:raw sql-query}]}))
+     sql-params]))
 
 (defmethod driver/create-schema-if-needed! :clickhouse
   [driver conn-spec schema]

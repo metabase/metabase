@@ -35,7 +35,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]))
 
@@ -45,8 +45,10 @@
       (m/update-existing :parameters (fn [parameters]
                                        (mapv lib/->legacy-MBQL parameters)))
       (m/update-existing :template-tags update-vals lib/->legacy-MBQL)
+      (dissoc :lib/type)
       (->> (driver/substitute-native-parameters driver/*driver*))
-      (set/rename-keys {:query :native})))
+      (set/rename-keys {:query :native})
+      (assoc :lib/type (:lib/type stage))))
 
 (mu/defn expand-stage :- ::lib.schema/stage.native
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
@@ -55,8 +57,10 @@
    stage                 :- ::lib.schema/stage.native]
   (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database metadata-providerable))
     stage
-    (let [substituted-stage (qp.store/with-metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-                              (substitute-native-parameters* stage))]
+    (let [substituted-stage (if (qp.store/initialized?)
+                              (substitute-native-parameters* stage)
+                              (qp.store/with-metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+                                (substitute-native-parameters* stage)))]
       (->
        substituted-stage
        (dissoc :parameters :template-tags)))))

@@ -6,9 +6,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -192,9 +192,9 @@
               ;; 'grant' the block permissions.
               (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
                 (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
-                (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
+                (testing "if EE token does not have the `:advanced-permissions` feature, but we're in EE, we still do the check"
                   (mt/with-premium-features #{}
-                    (is (nil? (check-block-perms)))))
+                    (is (true? (check-block-perms)))))
                 (testing "should still not be able to run ad-hoc query"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
@@ -338,6 +338,46 @@
                   (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues)  :perms/view-data :unrestricted)
                   (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
                       "view-data = unrestricted is sufficient to allow running the query"))))))))))
+
+(deftest blocked-in-ee-no-token-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       parent-card           {:dataset_query {:database (mt/id)
+                                                                              :type     :native
+                                                                              :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                              :database_id   (mt/id)
+                                                              :collection_id (u/the-id collection)}
+                     :model/Card       child-card            {:dataset_query {:database (mt/id)
+                                                                              :type     :query
+                                                                              :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
+                                                              :collection_id (u/the-id collection)}]
+        (letfn [(rasta-view-data-perm= [perm] (is (= perm
+                                                     (get-in (data-perms/permissions-for-user (mt/user->id :rasta))
+                                                             [(mt/id) :perms/view-data (mt/id :venues)]))
+                                                  "rasta should be blocked for this table."))]
+          (mt/with-full-data-perms-for-all-users!
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (letfn [(process-query-for-card [card]
+                      (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))]
+              (mt/with-test-user :rasta
+                (rasta-view-data-perm= :blocked)
+                (testing "Should STILL not be able to do it even without token"
+                  (mt/with-test-user :rasta
+                    (is (mi/can-read? parent-card))
+                    (is (mi/can-read? collection))
+                    (is (mi/can-read? child-card)))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to run this query"
+                       (mt/rows (mt/with-premium-features #{:advanced-permissions} (process-query-for-card child-card))))
+                      "With premium feature")
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to run this query"
+                       (mt/rows (mt/with-premium-features #{} (process-query-for-card child-card))))
+                      "Without premium feature behavior is the same"))))))))))
 
 (deftest cannot-run-any-native-queries-when-blocked-test
   (mt/with-premium-features #{:advanced-permissions}
