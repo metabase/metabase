@@ -1,4 +1,7 @@
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Collection,
+  GetLibraryCollectionResponse,
+} from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { idTag, listTag, tag } from "./tags";
@@ -12,7 +15,7 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: [listTag("collection"), tag("library-collection")],
     }),
-    getLibraryCollection: builder.query<CollectionItem | { data: null }, void>({
+    getLibraryCollection: builder.query<GetLibraryCollectionResponse, void>({
       query: () => ({
         url: `/api/ee/library`,
         method: "GET",
