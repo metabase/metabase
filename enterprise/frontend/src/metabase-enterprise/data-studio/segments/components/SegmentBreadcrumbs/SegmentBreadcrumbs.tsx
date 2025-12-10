@@ -10,7 +10,7 @@ import {
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import * as Urls from "metabase/lib/urls";
 import { getCollectionList } from "metabase/nav/components/CollectionBreadcrumbs/utils";
-import { Flex, Group } from "metabase/ui";
+import { Flex, Group, Text } from "metabase/ui";
 import type { Segment, Table } from "metabase-types/api";
 
 import S from "./SegmentBreadcrumbs.module.css";
@@ -31,7 +31,7 @@ export function PublishedTableSegmentBreadcrumbs({
   const ancestors = collection ? getCollectionList({ collection }) : [];
 
   return (
-    <Group className={S.breadcrumbs} gap="sm" wrap="nowrap" px="lg" pt="md">
+    <Group c="text-secondary" gap="sm" wrap="nowrap" px="lg" pt="md">
       {ancestors.map((ancestor, index) => (
         <Fragment key={ancestor.id}>
           {index > 0 && <Separator />}
@@ -74,7 +74,7 @@ export function DataModelSegmentBreadcrumbs({
   const showSchema = schemas && schemas.length > 1 && table.schema;
 
   return (
-    <Group className={S.breadcrumbs} gap="sm" wrap="nowrap" px="lg" pt="md">
+    <Group c="text-secondary" gap="sm" wrap="nowrap" px="lg" pt="md">
       {table.db && (
         <BreadcrumbLink to={Urls.dataStudioData({ databaseId: table.db_id })}>
           <Ellipsified>{table.db.name}</Ellipsified>
@@ -133,12 +133,12 @@ function BreadcrumbLink({
 
 function BreadcrumbText({ children }: { children: React.ReactNode }) {
   return (
-    <Flex align="center" gap="xs" wrap="nowrap" className={S.text}>
+    <Flex align="center" gap="xs" wrap="nowrap">
       {children}
     </Flex>
   );
 }
 
 function Separator() {
-  return <span className={S.separator}>/</span>;
+  return <Text span>/</Text>;
 }

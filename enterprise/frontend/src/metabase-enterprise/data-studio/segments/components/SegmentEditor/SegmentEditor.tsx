@@ -4,6 +4,8 @@ import { SegmentEditorV2 } from "metabase/querying/segments";
 import { Stack, Textarea } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
+import S from "./SegmentEditor.module.css";
+
 type SegmentEditorProps = {
   query: Lib.Query | undefined;
   description: string;
@@ -18,7 +20,7 @@ export function SegmentEditor({
   onDescriptionChange,
 }: SegmentEditorProps) {
   return (
-    <Stack flex={1} gap="lg" px="lg" py="lg" style={{ overflow: "auto" }}>
+    <Stack flex={1} gap="lg" px="lg" py="lg" className={S.scrollable}>
       {query && <SegmentEditorV2 query={query} onChange={onQueryChange} />}
       <Textarea
         label={t`Description`}

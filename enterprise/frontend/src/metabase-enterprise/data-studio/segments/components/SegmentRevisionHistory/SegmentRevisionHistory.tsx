@@ -46,7 +46,7 @@ export function SegmentRevisionHistory({
   if (!revisions || revisions.length === 0) {
     return (
       <Center h="100%">
-        <Text c="text-medium">{t`No revision history available.`}</Text>
+        <Text c="text-secondary">{t`No revision history available.`}</Text>
       </Center>
     );
   }

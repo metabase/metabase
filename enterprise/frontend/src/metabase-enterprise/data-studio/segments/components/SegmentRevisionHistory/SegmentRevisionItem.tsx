@@ -43,18 +43,18 @@ export function SegmentRevisionItem({
             <Text fw={600} size="md">
               {userName}
             </Text>
-            <Text c="text-medium" size="sm">
+            <Text c="text-secondary" size="sm">
               {action}
             </Text>
           </Stack>
-          <Text size="sm" c="text-light" title={formattedDate}>
+          <Text size="sm" c="text-tertiary" title={formattedDate}>
             {timeAgo}
           </Text>
         </Flex>
 
         {revision.message && (
           <Box pl="sm" className={S.messageAccent}>
-            <Text size="sm" c="text-medium">
+            <Text size="sm" c="text-secondary">
               {revision.message}
             </Text>
           </Box>

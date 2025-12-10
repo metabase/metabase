@@ -5,8 +5,6 @@ import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefini
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { DatasetQuery, TableId } from "metabase-types/api";
 
-import S from "./SegmentRevisionHistory.module.css";
-
 type DiffValue = {
   before?: unknown;
   after?: unknown;
@@ -31,10 +29,10 @@ export function SegmentRevisionDiff({
   const label = getPropertyLabel(property);
 
   return (
-    <Box p="md" bg="bg-light" className={S.diffCard}>
+    <Box p="md" bg="bg-light" bd="1px solid border">
       <Flex align="center" gap="sm" mb="sm">
         <DiffIcon before={before} after={after} />
-        <Text size="sm" fw={400} c="text-medium">
+        <Text size="sm" fw={400} c="text-secondary">
           {label}
         </Text>
       </Flex>
@@ -50,7 +48,7 @@ export function SegmentRevisionDiff({
 
 function DiffIcon({ before, after }: { before: unknown; after: unknown }) {
   if (before != null && after != null) {
-    return <Icon name="pencil" size={12} c="text-medium" />;
+    return <Icon name="pencil" size={12} c="text-secondary" />;
   }
   if (before != null) {
     return <Icon name="dash" size={12} c="error" />;
@@ -90,7 +88,7 @@ function TextDiff({ before, after }: TextDiffProps) {
             span
             fw={part.added ? 600 : undefined}
             td={part.removed ? "line-through" : undefined}
-            c={part.removed ? "text-light" : undefined}
+            c={part.removed ? "text-tertiary" : undefined}
           >
             {part.value}
           </Text>
@@ -101,7 +99,7 @@ function TextDiff({ before, after }: TextDiffProps) {
 
   if (beforeStr != null) {
     return (
-      <Text size="sm" td="line-through" c="text-light">
+      <Text size="sm" td="line-through" c="text-tertiary">
         {beforeStr}
       </Text>
     );

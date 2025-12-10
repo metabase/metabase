@@ -1,21 +1,8 @@
-.breadcrumbs {
-  font-size: var(--mb-font-size-sm);
-  color: var(--mb-color-text-medium);
-}
-
 .link {
-  color: var(--mb-color-text-medium);
+  color: inherit;
   text-decoration: none;
 }
 
 .link:hover {
   color: var(--mb-color-brand);
-}
-
-.text {
-  color: var(--mb-color-text-medium);
-}
-
-.separator {
-  color: var(--mb-color-text-medium);
 }

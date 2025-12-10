@@ -5,6 +5,8 @@ import { SegmentRevisionHistory } from "../../components/SegmentRevisionHistory"
 import { useExistingSegmentContext } from "../../layouts/SegmentLayout";
 import { getSegmentPreviewUrl } from "../../utils/get-segment-preview-url";
 
+import S from "./SegmentRevisionHistoryPage.module.css";
+
 export function SegmentRevisionHistoryPage() {
   const { segment, tabUrls, breadcrumbs, onRemove } =
     useExistingSegmentContext();
@@ -22,7 +24,7 @@ export function SegmentRevisionHistoryPage() {
         onRemove={onRemove}
         breadcrumbs={breadcrumbs}
       />
-      <Stack flex={1} style={{ overflow: "auto" }}>
+      <Stack flex={1} className={S.scrollable}>
         <SegmentRevisionHistory segment={segment} />
       </Stack>
     </Flex>
