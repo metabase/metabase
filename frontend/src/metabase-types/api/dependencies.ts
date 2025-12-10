@@ -10,7 +10,6 @@ import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
-import type { UserInfo } from "./user";
 
 export type DependencyId = number;
 
@@ -54,28 +53,14 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   dependents_count?: DependentsCount | null;
 };
 
-export type TableOwnerInfo = Pick<
-  UserInfo,
-  "id" | "email" | "first_name" | "last_name" | "common_name"
->;
-
 export type TableDependencyNodeData = Pick<
   Table,
-  | "name"
-  | "display_name"
-  | "description"
-  | "db_id"
-  | "schema"
-  | "db"
-  | "fields"
-  | "view_count"
-> & {
-  owner?: TableOwnerInfo | null;
-};
+  "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
+>;
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table" | "creator" | "last_run" | "target"
+  "name" | "description" | "table"
 >;
 
 export type CardDependencyNodeData = Pick<
