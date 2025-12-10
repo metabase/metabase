@@ -8,11 +8,7 @@ import {
   DelayedLoadingSpinner,
   NestedItemPicker,
 } from "../../../../EntityPicker";
-import {
-  type CollectionPickerItem,
-  type CollectionPickerModel,
-  useEnsureCollectionSelected,
-} from "../../../CollectionPicker";
+import { useEnsureCollectionSelected } from "../../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../../CollectionPicker/utils";
 import {
