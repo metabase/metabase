@@ -18,12 +18,12 @@ export interface Revision {
 }
 
 export interface ListRevisionRequest {
-  entity: "card" | "dashboard";
+  entity: "card" | "dashboard" | "segment";
   id: number | string;
 }
 
 export interface RevertRevisionRequest {
-  entity: "card" | "dashboard";
+  entity: "card" | "dashboard" | "segment";
   id: number | string;
   revision_id: number;
 }

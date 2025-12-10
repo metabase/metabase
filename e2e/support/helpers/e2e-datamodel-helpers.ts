@@ -82,9 +82,17 @@ export const DataModel = {
     getRowCount: getSegmentEditorRowCount,
     getPreviewLink: getSegmentEditorPreviewLink,
     getSaveButton: getSegmentEditorSaveButton,
+    getCancelButton: getSegmentEditorCancelButton,
     getActionsButton: getSegmentEditorActionsButton,
     getBreadcrumb: getSegmentEditorBreadcrumb,
+    getDefinitionTab: getSegmentEditorDefinitionTab,
+    getRevisionHistoryTab: getSegmentEditorRevisionHistoryTab,
+    getDependenciesTab: getSegmentEditorDependenciesTab,
   },
+  SegmentRevisionHistory: {
+    get: getSegmentRevisionHistory,
+  },
+  visitPublishedTableSegments,
 };
 
 const DEFAULT_BASE_PATH = "/admin/datamodel";
@@ -495,10 +503,38 @@ function getSegmentEditorSaveButton() {
   return getSegmentEditor().button("Save");
 }
 
+function getSegmentEditorCancelButton() {
+  return getSegmentEditor().button("Cancel");
+}
+
 function getSegmentEditorActionsButton() {
   return cy.findByLabelText("Segment actions");
 }
 
 function getSegmentEditorBreadcrumb(tableName: string) {
   return getSegmentEditor().findByText(`${tableName} segments`);
+}
+
+function getSegmentEditorDefinitionTab() {
+  return getSegmentEditor().findByRole("tab", { name: /Definition/i });
+}
+
+function getSegmentEditorRevisionHistoryTab() {
+  return getSegmentEditor().findByRole("tab", { name: /Revision history/i });
+}
+
+function getSegmentEditorDependenciesTab() {
+  return getSegmentEditor().findByRole("tab", { name: /Dependencies/i });
+}
+
+function visitPublishedTableSegments(tableId: TableId) {
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "publishedTableSegments/visit/metadata",
+  );
+  cy.visit(`/data-studio/modeling/tables/${tableId}/segments`);
+  cy.wait("@publishedTableSegments/visit/metadata");
+}
+
+function getSegmentRevisionHistory() {
+  return cy.findByTestId("segment-revision-history-page");
 }

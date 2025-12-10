@@ -110,8 +110,41 @@ export function dataStudioTableSegments(tableId: TableId) {
   return `${dataStudioTable(tableId)}/segments`;
 }
 
+export function dataStudioPublishedTableSegmentNew(tableId: TableId) {
+  return `${dataStudioTableSegments(tableId)}/new`;
+}
+
+export function dataStudioPublishedTableSegment(
+  tableId: TableId,
+  segmentId: SegmentId,
+) {
+  return `${dataStudioTableSegments(tableId)}/${segmentId}`;
+}
+
+export function dataStudioPublishedTableSegmentRevisions(
+  tableId: TableId,
+  segmentId: SegmentId,
+) {
+  return `${dataStudioPublishedTableSegment(tableId, segmentId)}/revisions`;
+}
+
+export function dataStudioPublishedTableSegmentDependencies(
+  tableId: TableId,
+  segmentId: SegmentId,
+) {
+  return `${dataStudioPublishedTableSegment(tableId, segmentId)}/dependencies`;
+}
+
 export function dataStudioSegment(segmentId: SegmentId) {
   return `${dataStudioLibrary()}/segments/${segmentId}`;
+}
+
+export function dataStudioSegmentRevisions(segmentId: SegmentId) {
+  return `${dataStudioSegment(segmentId)}/revisions`;
+}
+
+export function dataStudioSegmentDependencies(segmentId: SegmentId) {
+  return `${dataStudioSegment(segmentId)}/dependencies`;
 }
 
 export function newDataStudioSegment(tableId: TableId) {

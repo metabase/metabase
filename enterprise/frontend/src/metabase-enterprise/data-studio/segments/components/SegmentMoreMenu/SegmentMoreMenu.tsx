@@ -1,21 +1,30 @@
 import { useDisclosure } from "@mantine/hooks";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 
 type SegmentMoreMenuProps = {
-  onRemove: () => void;
+  previewUrl?: string;
+  onRemove?: () => void;
 };
 
-export function SegmentMoreMenu({ onRemove }: SegmentMoreMenuProps) {
+export function SegmentMoreMenu({
+  previewUrl,
+  onRemove,
+}: SegmentMoreMenuProps) {
   const [isConfirmOpen, { open: openConfirm, close: closeConfirm }] =
     useDisclosure();
 
   const handleConfirm = () => {
     closeConfirm();
-    onRemove();
+    onRemove?.();
   };
+
+  if (!previewUrl && !onRemove) {
+    return null;
+  }
 
   return (
     <>
@@ -26,13 +35,25 @@ export function SegmentMoreMenu({ onRemove }: SegmentMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            c="danger"
-            leftSection={<Icon name="trash" />}
-            onClick={openConfirm}
-          >
-            {t`Remove segment`}
-          </Menu.Item>
+          {previewUrl && (
+            <Menu.Item
+              component={Link}
+              to={previewUrl}
+              target="_blank"
+              leftSection={<Icon name="share" />}
+            >
+              {t`Preview`}
+            </Menu.Item>
+          )}
+          {onRemove && (
+            <Menu.Item
+              c="danger"
+              leftSection={<Icon name="trash" />}
+              onClick={openConfirm}
+            >
+              {t`Remove segment`}
+            </Menu.Item>
+          )}
         </Menu.Dropdown>
       </Menu>
       <ConfirmModal

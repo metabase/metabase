@@ -1,0 +1,8 @@
+.messageAccent {
+  border-left: 2px solid var(--mb-color-brand);
+}
+
+.diffCard {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mb-radius-md);
+}
