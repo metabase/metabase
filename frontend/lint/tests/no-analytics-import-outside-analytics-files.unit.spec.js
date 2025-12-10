@@ -47,42 +47,42 @@ const INVALID_CASES = [
     code: `import { trackSchemaEvent } from "metabase/lib/analytics";`,
     filename: "/path/to/Component.tsx",
     error:
-      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts"/,
+      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts", "analytics\.tsx", "analytics\.js", or "analytics\.jsx"\. Please move this import to an analytics file\./,
   },
   {
     name: "Detect import in non-analytics .ts file",
     code: `import { trackSchemaEvent } from "metabase/lib/analytics";`,
     filename: "/path/to/utils.ts",
     error:
-      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts"/,
+      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts", "analytics\.tsx", "analytics\.js", or "analytics\.jsx"\. Please move this import to an analytics file\./,
   },
   {
     name: "Detect import in non-analytics .js file",
     code: `import { trackSchemaEvent } from "metabase/lib/analytics";`,
     filename: "/path/to/helper.js",
     error:
-      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts"/,
+      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts", "analytics\.tsx", "analytics\.js", or "analytics\.jsx"\. Please move this import to an analytics file\./,
   },
   {
     name: "Detect import in non-analytics .jsx file",
     code: `import { trackSchemaEvent } from "metabase/lib/analytics";`,
     filename: "/path/to/Component.jsx",
     error:
-      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts"/,
+      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts", "analytics\.tsx", "analytics\.js", or "analytics\.jsx"\. Please move this import to an analytics file\./,
   },
   {
     name: "Detect multiple imports from analytics",
     code: `import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";`,
     filename: "/path/to/DashCard.tsx",
     error:
-      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts"/,
+      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts", "analytics\.tsx", "analytics\.js", or "analytics\.jsx"\. Please move this import to an analytics file\./,
   },
   {
     name: "Detect default import from analytics",
     code: `import analytics from "metabase/lib/analytics";`,
     filename: "/path/to/Component.tsx",
     error:
-      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts"/,
+      /Imports from "metabase\/lib\/analytics" are only allowed in files named "analytics\.ts", "analytics\.tsx", "analytics\.js", or "analytics\.jsx"\. Please move this import to an analytics file\./,
   },
 ];
 
