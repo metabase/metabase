@@ -1,20 +1,28 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Group, Icon, Stack, rem } from "metabase/ui";
-import { useRunTransformMutation, workspaceApi } from "metabase-enterprise/api";
+import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import {
+  useGetTransformQuery,
+  useRunTransformMutation,
+  workspaceApi,
+} from "metabase-enterprise/api";
 import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
+import { RunStatus } from "metabase-enterprise/transforms/components/RunStatus";
+import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
 import {
   isSameSource,
+  isTransformCanceling,
   isTransformRunning,
+  isTransformSyncing,
 } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -25,6 +33,8 @@ import type {
   TransformId,
   WorkspaceId,
 } from "metabase-types/api";
+
+import { WorkspaceRunButton } from "../../components/WorkspaceRunButton/WorkspaceRunButton";
 
 import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
@@ -50,7 +60,11 @@ export const TransformTab = ({
   onChange,
   onOpenTransform,
 }: Props) => {
-  const { updateTransformState } = useWorkspace();
+  const {
+    updateTransformState,
+    isWorkspaceExecuting,
+    setIsWorkspaceExecuting,
+  } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
     isChangeTargetModalOpen,
@@ -61,6 +75,51 @@ export const TransformTab = ({
     getMetabotSuggestedTransform(state, transform.id),
   );
   const metadata = useSelector(getMetadata);
+
+  const [isRunTriggered, setIsRunTriggered] = useState(false);
+  const shouldPoll =
+    isPollingNeeded(transform) || isRunTriggered || isWorkspaceExecuting;
+  const {
+    data: fetchedTransform,
+    isLoading,
+    isFetching,
+  } = useGetTransformQuery(transform.id, {
+    pollingInterval: shouldPoll ? POLLING_INTERVAL : undefined,
+  });
+
+  useEffect(() => {
+    if (fetchedTransform && fetchedTransform.last_run !== transform.last_run) {
+      updateTransformState(fetchedTransform);
+    }
+
+    // stop forced polling once we get updated data and transform is running
+    if (
+      isRunTriggered &&
+      fetchedTransform &&
+      isPollingNeeded(fetchedTransform)
+    ) {
+      setIsRunTriggered(false);
+    }
+
+    // stop workspace executing flag once transform finishes
+    if (
+      isWorkspaceExecuting &&
+      fetchedTransform &&
+      !isPollingNeeded(fetchedTransform)
+    ) {
+      setIsWorkspaceExecuting(false);
+    }
+  }, [
+    fetchedTransform,
+    transform.last_run,
+    updateTransformState,
+    isRunTriggered,
+    isWorkspaceExecuting,
+    setIsWorkspaceExecuting,
+  ]);
+
+  const run = fetchedTransform?.last_run ?? transform.last_run ?? null;
+  const isRunStatusLoading = run == null && (isLoading || isFetching);
 
   const normalizeSource = useCallback(
     (source: DraftTransformSource) => {
@@ -88,7 +147,7 @@ export const TransformTab = ({
 
   const proposedSource =
     suggestedTransform?.source &&
-    !isSameSource(suggestedTransform.source, editedTransform.source)
+      !isSameSource(suggestedTransform.source, editedTransform.source)
       ? normalizeSource(suggestedTransform.source)
       : undefined;
 
@@ -104,6 +163,7 @@ export const TransformTab = ({
 
   const handleRun = async () => {
     try {
+      setIsRunTriggered(true);
       await runTransform(transform.id).unwrap();
 
       // Invalidate the workspace tables cache since transform execution
@@ -116,6 +176,7 @@ export const TransformTab = ({
         );
       }
     } catch (error) {
+      setIsRunTriggered(false);
       console.error("Failed to run transform", error);
     }
   };
@@ -166,52 +227,66 @@ export const TransformTab = ({
 
   return (
     <Stack gap={0} h="100%">
-      <Group
+      <Stack
         flex="0 0 auto"
-        justify="space-between"
-        mih={rem(73)} // avoid CLS when showing/hiding output table input
+        gap="sm"
         p="md"
         style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
-        <Group>
-          {isSaved && (
-            <Button
-              leftSection={<Icon name="pencil_lines" />}
-              size="sm"
-              disabled={isRunning || hasChanges}
-              onClick={openChangeTargetModal}
-            >{t`Change target`}</Button>
-          )}
+        <Group justify="space-between">
+          <Group>
+            {isSaved && (
+              <Button
+                leftSection={<Icon name="pencil_lines" />}
+                size="sm"
+                disabled={isRunning || hasChanges}
+                onClick={openChangeTargetModal}
+              >{t`Change target`}</Button>
+            )}
+          </Group>
+
+          <Group>
+            {isSaved && (
+              <WorkspaceRunButton
+                id={transform.id}
+                run={transform.last_run}
+                isDisabled={hasChanges}
+                onRun={handleRun}
+              />
+            )}
+
+            {isSaved && (
+              <SaveTransformButton
+                databaseId={databaseId}
+                workspaceId={workspaceId}
+                editedTransform={editedTransform}
+                transform={transform}
+              />
+            )}
+
+            {!isSaved && (
+              <CheckOutTransformButton
+                transform={transform}
+                workspaceId={workspaceId}
+                onOpenTransform={onOpenTransform}
+              />
+            )}
+          </Group>
         </Group>
 
-        <Group>
-          {isSaved && (
-            <Button
-              disabled={hasChanges}
-              leftSection={<Icon name="play" />}
-              size="sm"
-              onClick={handleRun}
-            >{t`Run`}</Button>
-          )}
-
-          {isSaved && (
-            <SaveTransformButton
-              databaseId={databaseId}
-              workspaceId={workspaceId}
-              editedTransform={editedTransform}
-              transform={transform}
+        {isSaved &&
+          (isRunStatusLoading ? (
+            <Group gap="sm">
+              <Icon c="text-secondary" name="sync" />
+              <Box>{t`Loading run status...`}</Box>
+            </Group>
+          ) : (
+            <RunStatus
+              run={run}
+              neverRunMessage={t`This transform hasn't been run before.`}
             />
-          )}
-
-          {!isSaved && (
-            <CheckOutTransformButton
-              transform={transform}
-              workspaceId={workspaceId}
-              onOpenTransform={onOpenTransform}
-            />
-          )}
-        </Group>
-      </Group>
+          ))}
+      </Stack>
 
       {editedTransform && (
         <Box flex="1">
@@ -236,3 +311,11 @@ export const TransformTab = ({
     </Stack>
   );
 };
+
+function isPollingNeeded(transform: Transform) {
+  return (
+    isTransformRunning(transform) ||
+    isTransformCanceling(transform) ||
+    isTransformSyncing(transform)
+  );
+}

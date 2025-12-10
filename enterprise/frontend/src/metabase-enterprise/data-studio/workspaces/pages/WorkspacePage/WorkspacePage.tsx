@@ -166,6 +166,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     addOpenedTransform,
     patchEditedTransform,
     hasUnsavedChanges,
+    setIsWorkspaceExecuting,
   } = useWorkspace();
   const [metabotContextTransform, setMetabotContextTransform] = useState<
     Transform | undefined
@@ -429,6 +430,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           <RunWorkspaceMenu
             workspaceId={id}
             disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
+            onExecute={() => setIsWorkspaceExecuting(true)}
           />
           <Button
             variant="filled"
@@ -607,8 +609,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
               <Tabs.Panel value={`transform-${activeTransform?.id}`} h="100%">
                 {openedTabs.length === 0 ||
-                !activeTransform ||
-                !activeEditedTransform ? (
+                  !activeTransform ||
+                  !activeEditedTransform ? (
                   <Text c="text-medium">
                     {t`Select a transform on the right.`}
                   </Text>

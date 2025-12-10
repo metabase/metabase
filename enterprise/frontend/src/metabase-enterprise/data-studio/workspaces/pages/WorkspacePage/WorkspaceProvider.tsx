@@ -74,6 +74,8 @@ export interface WorkspaceContextValue {
   updateTransformState: (transform: Transform) => void;
   hasUnsavedChanges: () => boolean;
   hasTransformEdits: (originalTransform: Transform) => boolean;
+  isWorkspaceExecuting: boolean;
+  setIsWorkspaceExecuting: (value: boolean) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
@@ -111,6 +113,7 @@ export const WorkspaceProvider = ({
   const [workspaceStates, setWorkspaceStates] = useState<
     Map<number, WorkspaceState>
   >(new Map());
+  const [isWorkspaceExecuting, setIsWorkspaceExecuting] = useState(false);
 
   const currentState = useMemo(() => {
     const existing = workspaceStates.get(workspaceId);
@@ -524,6 +527,8 @@ export const WorkspaceProvider = ({
       updateTransformState,
       hasUnsavedChanges,
       hasTransformEdits,
+      isWorkspaceExecuting,
+      setIsWorkspaceExecuting,
     }),
     [
       workspaceId,
@@ -547,6 +552,7 @@ export const WorkspaceProvider = ({
       updateTransformState,
       hasUnsavedChanges,
       hasTransformEdits,
+      isWorkspaceExecuting,
     ],
   );
 

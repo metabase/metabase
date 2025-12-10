@@ -9,11 +9,13 @@ import type { WorkspaceId } from "metabase-types/api";
 type RunWorkspaceMenuProps = {
   workspaceId: WorkspaceId;
   disabled?: boolean;
+  onExecute?: () => void;
 };
 
 export function RunWorkspaceMenu({
   workspaceId,
   disabled = false,
+  onExecute,
 }: RunWorkspaceMenuProps) {
   const { sendErrorToast } = useMetadataToasts();
   const [executeWorkspace, { isLoading: isExecuting }] =
@@ -26,11 +28,12 @@ export function RunWorkspaceMenu({
           id: workspaceId,
           stale_only: staleOnly,
         }).unwrap();
+        onExecute?.();
       } catch (error) {
         sendErrorToast(t`Failed to run transforms`);
       }
     },
-    [workspaceId, executeWorkspace, sendErrorToast],
+    [workspaceId, executeWorkspace, sendErrorToast, onExecute],
   );
 
   return (
