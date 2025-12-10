@@ -1,9 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
-import styled from "@emotion/styled";
-
-import { Box } from "metabase/ui";
-
-export const ListBox = styled(Box)<React.PropsWithChildren>`
+.ListBox {
   border-right: 1px solid var(--mb-color-border);
   height: 100%;
   width: 365px;
@@ -13,4 +8,10 @@ export const ListBox = styled(Box)<React.PropsWithChildren>`
   &:last-child {
     background-color: var(--mb-color-background);
   }
-` as unknown as typeof Box;
+}
+
+.singlePickerView {
+  border-top: 1px solid var(--mb-color-border);
+  flex-grow: 1;
+  height: 0;
+}

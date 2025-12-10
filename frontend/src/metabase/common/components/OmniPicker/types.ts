@@ -5,16 +5,15 @@ import type {
   SchemaName,
   TableId,
 } from "metabase-types/api";
+import { DataPickerValue } from "../Pickers/DataPicker";
+import { CollectionPickerValueItem } from "../Pickers/CollectionPicker";
 
 export type OmniPickerCollectionItem = Pick<
   CollectionItem,
-  "id" | "name" | "model" | "here" | "below" | "moderated_status" | "display"
+  "name" | "model" | "here" | "below" | "moderated_status" | "display"
 > & {
   id: CollectionItem["id"] | CollectionId;
-};
-
-export type OmniPickerPickableItem<PickableModels extends CollectionItem["model"]> = OmniPickerItem & {
-  model: PickableModels;
+  model: "collection";
 };
 
 export type OmniPickerSchemaItem = {
@@ -62,14 +61,22 @@ export type OmniPickerItem =
   | OmniPickerTableItem
   | OmniPickerDatabaseItem;
 
-// this is only the intermediate/folder types that cannot ultimately be picked
+// this is only the intermediate/folder types
 export type OmniPickerFolderItem =
   | OmniPickerDatabaseItem
   | OmniPickerSchemaItem
-  | (OmniPickerCollectionItem & { model: "collection" });
+  | OmniPickerCollectionItem;
 
 // can't get schemas in search results
 export type SearchableOmniPickerItem =
   | OmniPickerCollectionItem
   | OmniPickerTableItem
   | OmniPickerDatabaseItem;
+
+export type OmniPickerValue = DataPickerValue | {
+  id: CollectionId;
+  model: "collection",
+} | {
+  id: SchemaName;
+  model: "schema";
+};

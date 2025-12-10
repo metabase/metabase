@@ -14,6 +14,8 @@ import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
+import { useOmniPickerContext } from "../../EntityPicker/context";
+
 import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
 const personalCollectionsRoot: CollectionPickerItem = {
@@ -32,9 +34,8 @@ const personalCollectionsRoot: CollectionPickerItem = {
  * b) the user's personal collection
  * c) a top level folder including all personal collections (admin only)
  */
-export const useRootCollectionPickerItems = (
-  options: CollectionItemListProps["options"],
-) => {
+export const useRootCollectionPickerItems = () => {
+  const { options } = useOmniPickerContext();
   const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
 

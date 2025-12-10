@@ -40,6 +40,7 @@ import type {
   EntityPickerSearchScope,
   EntityPickerTab,
   EntityPickerTabId,
+  OmniPickerItem,
   TabFolderState,
   TypeWithModel,
 } from "../../types";
@@ -51,6 +52,7 @@ import {
   getSearchTabText,
   isSearchFolder,
 } from "../../utils";
+import { EntityPicker } from "../EntityPicker";
 import { RecentsTab } from "../RecentsTab";
 import { SearchTab } from "../SearchTab";
 
@@ -107,12 +109,14 @@ export interface EntityPickerModalProps<
   recentsContext?: RecentContexts[];
   onClose: () => void;
   onConfirm?: () => void;
+  onChange?: (item: Item) => void;
   onItemSelect: (item: Item) => void;
   isLoadingTabs?: boolean;
   searchExtraButtons?: ReactNode[];
   children?: ReactNode;
   disableCloseOnEscape?: boolean;
   searchModels?: (SearchModel | "table")[];
+  models: OmniPickerItem["model"][];
 }
 
 export function EntityPickerModal<
@@ -124,7 +128,7 @@ export function EntityPickerModal<
   canSelectItem,
   selectedItem,
   initialValue,
-  tabs: passedTabs,
+  tabs: passedTabs = [],
   options,
   actionButtons = [],
   searchResultFilter = DEFAULT_SEARCH_RESULT_FILTER,
@@ -140,6 +144,7 @@ export function EntityPickerModal<
   disableCloseOnEscape = false,
   children,
   searchModels: _searchModels,
+  models,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
@@ -153,15 +158,14 @@ export function EntityPickerModal<
         refetchOnMountOrArgChange: true,
       },
     );
-  const searchModels = useMemo(
-    () => _searchModels || getSearchModels(passedTabs),
-    [passedTabs, _searchModels],
-  );
+  // const searchModels = useMemo(
+  //   () => _searchModels || getSearchModels(passedTabs),
+  //   [passedTabs, _searchModels],
+  // );
 
-  const folderModels = useMemo(
-    () => getSearchFolderModels(passedTabs),
-    [passedTabs],
-  );
+  const searchModels = ["collection"];
+  const folderModels = ["collection"];
+
   const [selectedTabId, setSelectedTabId] = useState<EntityPickerTabId>("");
   const previousTabId = usePreviousDistinct(selectedTabId);
   const [tabFolderState, setTabFolderState] = useState<
@@ -449,7 +453,20 @@ export function EntityPickerModal<
           )}
           {!isLoadingTabs && !isLoadingRecentItems ? (
             <ErrorBoundary>
-              {hasTabs ? (
+              <div
+                className={S.singlePickerView}
+                data-testid="single-picker-view"
+              >
+                <EntityPicker
+                  models={models}
+                  initialValue={initialValue}
+                  isItemHidden={() => false}
+                  isItemDisabled={() => false}
+                  onChange={handleSelectItem}
+                  options={hydratedOptions}
+                />
+              </div>
+              {/* {hasTabs ? (
                 <TabsView
                   selectedTabId={selectedTabId}
                   tabs={tabs}
@@ -457,10 +474,7 @@ export function EntityPickerModal<
                   onTabChange={handleTabChange}
                 />
               ) : (
-                <div
-                  className={S.singlePickerView}
-                  data-testid="single-picker-view"
-                >
+
                   {tabs[0]?.render({
                     onItemSelect: (item) => handleSelectItem(item, tabs[0].id),
                   }) ?? null}
@@ -479,7 +493,7 @@ export function EntityPickerModal<
                   }
                   cancelButtonText={options?.cancelButtonText}
                 />
-              )}
+              )} */}
             </ErrorBoundary>
           ) : (
             <EntityPickerLoadingSkeleton />

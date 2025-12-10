@@ -9,7 +9,6 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import {
   Box,
-  type BoxProps,
   Center,
   Flex,
   Icon,
@@ -36,8 +35,9 @@ export const ItemList = ({
   pathIndex,
 }: ItemListProps) => {
   const {
-    setPath, isFolderItem, isHiddenItem, isDisabledItem, selectedItem,
+    setPath, isFolderItem, isHiddenItem, isDisabledItem, selectedItem, path,
   } = useOmniPickerContext();
+  const isLastLevel = path.length - 1 === pathIndex;
   const filteredItems = items
     ? items.filter(i => !isHiddenItem(i))
     : items;
@@ -78,20 +78,19 @@ export const ItemList = ({
     >
       {filteredItems.map((item: OmniPickerItem) => {
         const isSelected = isSelectedItem(item, selectedItem);
-        const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
-        const isDisabled = shouldDisableItem?.(item);
+        const icon = getEntityPickerIcon(item, isSelected && isLastLevel);
+        const isDisabled = isDisabledItem(item);
 
         return (
           <Box
             data-testid="picker-item"
             key={`${item.model}-${item.id}`}
-            {...containerProps}
           >
             <NavLink
-              w={"auto"}
+              w={"10rem"}
               disabled={isDisabled}
               rightSection={
-                isFolder(item) ? <Icon name="chevronright" size={10} /> : null
+                isFolderItem(item) ? <Icon name="chevronright" size={10} /> : null
               }
               mb={0}
               label={
@@ -110,12 +109,12 @@ export const ItemList = ({
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault(); // prevent form submission
                 e.stopPropagation(); // prevent parent onClick
-                setPath((prevPath) => ({
+                setPath((prevPath) => ([
                   ...prevPath.slice(0, pathIndex + 1),
                   item,
-                }));
+                ]));
               }}
-              variant={isCurrentLevel ? "default" : "mb-light"}
+              variant={isLastLevel ? "default" : "mb-light"}
               {...navLinkProps?.(isSelected)}
             />
           </Box>

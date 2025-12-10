@@ -1,6 +1,5 @@
 import { c, msgid, t } from "ttag";
 
-import type { ObjectWithModel } from "metabase/lib/icon";
 import { getIcon } from "metabase/lib/icon";
 import {
   type DatabaseId,
@@ -12,18 +11,22 @@ import {
 import { isObject } from "metabase-types/guards";
 
 import { RECENTS_TAB_ID } from "./constants";
-import type {
-  EntityPickerSearchScope,
-  EntityPickerTab,
-  SearchItem,
-  TypeWithModel,
+import type { OmniPickerContextValue } from "./context";
+import {
+  type EntityPickerSearchScope,
+  type EntityPickerTab,
+  type OmniPickerFolderItem,
+  OmniPickerFolderModel,
+  type OmniPickerItem,
+  type SearchItem,
+  type TypeWithModel,
 } from "./types";
 
-export const getEntityPickerIcon = <Id, Model extends string>(
-  item: TypeWithModel<Id, Model>,
+export const getEntityPickerIcon = (
+  item: OmniPickerItem,
   isSelected?: boolean,
 ) => {
-  const icon = getIcon(item as ObjectWithModel);
+  const icon = getIcon(item);
 
   if (["person", "group"].includes(icon.name)) {
     // should inherit color
@@ -41,9 +44,9 @@ export const getEntityPickerIcon = <Id, Model extends string>(
   return { ...icon, color: undefined, c: icon.color ?? "brand" };
 };
 
-export const isSelectedItem = <Id, Model extends string>(
-  item: TypeWithModel<Id, Model>,
-  selectedItem: TypeWithModel<Id, Model> | null,
+export const isSelectedItem = (
+  item: OmniPickerItem,
+  selectedItem: OmniPickerItem | null,
 ): boolean => {
   return (
     !!selectedItem &&
@@ -239,3 +242,108 @@ export const isSchemaItem = <
     typeof item.isOnlySchema === "boolean"
   );
 };
+
+const isValidItem = (
+  item: unknown,
+): item is OmniPickerItem => {
+  return isObject(item)
+    && "model" in item
+    && typeof item.model === "string"
+    && !!item.id;
+};
+
+export function getItemFunctions({
+  models,
+  isFolderItem,
+  isHiddenItem,
+  isDisabledItem,
+  isSelectableItem,
+}:{
+  models: OmniPickerContextValue["models"],
+  isFolderItem?: OmniPickerContextValue["isFolderItem"],
+  isHiddenItem?: OmniPickerContextValue["isHiddenItem"],
+  isDisabledItem?: OmniPickerContextValue["isDisabledItem"],
+  isSelectableItem?: OmniPickerContextValue["isSelectableItem"],
+}) {
+  const modelSet = new Set(models);
+
+  const isFolder = (
+    item: OmniPickerItem | unknown,
+  ): item is OmniPickerFolderItem => {
+    if (!isValidItem(item)) {
+      return false;
+    }
+
+    if (isFolderItem && !isFolderItem(item)) {
+      return false;
+    }
+
+    if (
+      item.model === OmniPickerFolderModel.Database ||
+      item.model === OmniPickerFolderModel.Schema
+    ) {
+      return true;
+    }
+
+    if (item.model !== OmniPickerFolderModel.Collection) {
+      return false;
+    }
+
+    if (!("here" in item) && !("below" in item)) {
+      return false;
+    }
+
+    const hereBelowSet = Array.from(
+      new Set([
+        ...("here" in item && Array.isArray(item.here) ? item.here : []),
+        ...("below" in item && Array.isArray(item.below) ? item.below : []),
+      ]),
+    );
+    return (
+      item.model === OmniPickerFolderModel.Collection &&
+      hereBelowSet.some((hereBelowModel) => modelSet.has(hereBelowModel))
+    );
+  };
+
+  const isHidden = (item: OmniPickerItem | unknown): item is unknown => {
+    if (!isValidItem(item)) {
+      return false;
+    }
+
+    if (isHiddenItem && isHiddenItem(item)) {
+      return true;
+    }
+
+    return (
+      !modelSet.has(item.model as OmniPickerItem["model"]) &&
+      !isFolder(item)
+    );
+  };
+
+  const isDisabled = (item: OmniPickerItem | unknown): item is OmniPickerItem => {
+    if (isDisabledItem && isDisabledItem(item)) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const isSelectable = (item: OmniPickerItem | unknown): item is OmniPickerItem => {
+    if (isSelectableItem && isSelectableItem(item)) {
+      return true;
+    }
+
+    if (!isValidItem(item)) {
+      return false;
+    }
+
+    return modelSet.has(item.model);
+  }
+
+  return {
+    isFolderItem: isFolder,
+    isHiddenItem: isHidden,
+    isDisabledItem: isDisabled,
+    isSelectableItem: isSelectable,
+  };
+}
