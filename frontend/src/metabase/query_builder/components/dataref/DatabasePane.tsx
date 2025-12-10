@@ -95,11 +95,15 @@ const TablesList = ({
         <NodeListTitle>
           <NodeListIcon name="folder" />
           <NodeListTitleText>
-            {ngettext(
-              msgid`${schemas.length} schema`,
-              `${schemas.length} schemas`,
+            {t`${tables.length} ${ngettext(
+              msgid`table`,
+              `tables`,
+              tables.length,
+            )} in ${schemas.length} ${ngettext(
+              msgid`schema`,
+              `schemas`,
               schemas.length,
-            )}
+            )}`}
           </NodeListTitleText>
         </NodeListTitle>
         <Tree
