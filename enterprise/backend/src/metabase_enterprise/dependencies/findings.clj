@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
-   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -42,18 +41,9 @@
           success (empty? results)]
       (deps.analysis-finding/upsert-analysis! (model->dependency-type model) (:id toucan-instance) success results))))
 
-(defn analyze-instances!
-  [instances]
-  (lib-be/with-metadata-provider-cache
-    (doseq [instance instances]
-      (try (upsert-analysis! instance)
-           (catch Exception e
-             (log/errorf e "Analyzing entity %s %s failed"
-                         (t2/model instance) (:id instance)))))))
-
 (mu/defn analyze-batch! :- :int
-  [model :- [:enum :card :transform]
+  [type :- [:enum :card :transform]
    batch-size :- :int]
-  (let [instances (deps.analysis-finding/instances-for-analysis model batch-size)]
+  (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
     (analyze-instances! instances)
     (count instances)))
