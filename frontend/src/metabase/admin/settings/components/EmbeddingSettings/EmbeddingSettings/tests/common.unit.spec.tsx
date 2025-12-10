@@ -61,6 +61,6 @@ describe("EmbeddingSdkSettings (OSS)", () => {
   it("shows the Guest Embeds toggle when token features are missing", () => {
     setup({ tokenFeatures: { embedding_simple: false } });
 
-    expect(screen.getByText("Guest embeds")).toBeInTheDocument();
+    expect(screen.getByText("Enable guest embeds")).toBeInTheDocument();
   });
 });
