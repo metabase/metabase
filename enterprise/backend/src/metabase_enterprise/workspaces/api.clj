@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.api.common :as api]
@@ -516,10 +517,8 @@
   (let [ws               (u/prog1 (t2/select-one :model/Workspace :id id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
-        ;; TODO implement individual entity merging
-        ;;      return new global ids for provisional transforms
         {:keys [merged
-                errors]} {:merged {:transforms (vec (t2/select-fn-vec :global_id [:model/WorkspaceTransform :global_id] :workspace_id id))}
+                errors]} {:merged (update-vals (ws.merge/merge-workspace! id) #(map :global_id %))
                           :errors []}]
     (u/prog1
       {:merged      merged
