@@ -4360,14 +4360,6 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
         } ]
       },
-      "metabase.legacy-mbql.schema.AggregationArg" : {
-        "description" : "Schema for the argument to an aggregation clause like `:sum`.\n\n  Strings are allowed as literals here, unlike at the top level as `::Expressions`, so `::FieldOrExpressionDef` is\n  not enough. However, nested aggregations are not allowed here, so we can't use `::ExpressionArg` either. (#66199)",
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
-        }, {
-          "type" : "string"
-        } ]
-      },
       "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
         "description" : "Additional options for any aggregation clause when wrapping it in `:aggregation-options`.",
         "type" : "object",
@@ -4386,6 +4378,9 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregation"
         },
         "minItems" : 1
+      },
+      "metabase.legacy-mbql.schema.AnyMBQLClause" : {
+        "description" : "Schema for ANY valid MBQL clause"
       },
       "metabase.legacy-mbql.schema.ArithmeticDateTimeUnit" : {
         "type" : "string",
@@ -5055,6 +5050,8 @@
           }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ExpressionArg"
           }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
+          }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime"
           } ]
         } ]
@@ -5277,53 +5274,7 @@
         "enum" : [ "hour", "second", "default", "hour-of-day", "millisecond", "minute-of-hour", "minute" ]
       },
       "metabase.legacy-mbql.schema.UnnamedAggregation" : {
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpression"
-        }, {
-          "oneOf" : [ {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.avg"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.cum-sum"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.distinct"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.distinct-where"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.stddev"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.sum"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.min"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.max"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.metric"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.share"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.count-where"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.sum-where"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.median"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.percentile"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.var"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.cum-count"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.count"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.offset"
-          } ]
-        } ]
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.AnyMBQLClause"
       },
       "metabase.legacy-mbql.schema.ValueTypeInfo" : {
         "description" : "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals` middleware to values in filter clauses based on the Field in the clause.",
@@ -5385,10 +5336,6 @@
         "description" : "schema for a valid MBQL 4 :asc clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.avg" : {
-        "description" : "schema for a valid MBQL 4 :avg clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.between" : {
         "description" : "schema for a valid MBQL 4 :between clause",
         "allOf" : [ ]
@@ -5423,22 +5370,6 @@
         "description" : "schema for a valid MBQL 4 :convert-timezone clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.count" : {
-        "description" : "schema for a valid MBQL 4 :count clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.count-where" : {
-        "description" : "schema for a valid MBQL 4 :count-where clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.cum-count" : {
-        "description" : "schema for a valid MBQL 4 :cum-count clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.cum-sum" : {
-        "description" : "schema for a valid MBQL 4 :cum-sum clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.date" : {
         "description" : "schema for a valid MBQL 4 :date clause",
         "allOf" : [ ]
@@ -5465,14 +5396,6 @@
       },
       "metabase.legacy-mbql.schema.desc" : {
         "description" : "schema for a valid MBQL 4 :desc clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.distinct" : {
-        "description" : "schema for a valid MBQL 4 :distinct clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.distinct-where" : {
-        "description" : "schema for a valid MBQL 4 :distinct-where clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.does-not-contain" : {
@@ -5832,22 +5755,6 @@
         "description" : "schema for a valid MBQL 4 :ltrim clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.max" : {
-        "description" : "schema for a valid MBQL 4 :max clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.median" : {
-        "description" : "schema for a valid MBQL 4 :median clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.metric" : {
-        "description" : "schema for a valid MBQL 4 :metric clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.min" : {
-        "description" : "schema for a valid MBQL 4 :min clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.month-name" : {
         "description" : "schema for a valid MBQL 4 :month-name clause",
         "allOf" : [ ]
@@ -5889,10 +5796,6 @@
         "description" : "schema for a valid MBQL 4 :path clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.percentile" : {
-        "description" : "schema for a valid MBQL 4 :percentile clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.power" : {
         "description" : "schema for a valid MBQL 4 :power clause",
         "allOf" : [ ]
@@ -5932,10 +5835,6 @@
         "description" : "schema for a valid MBQL 4 :segment clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.share" : {
-        "description" : "schema for a valid MBQL 4 :share clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.split-part" : {
         "description" : "schema for a valid MBQL 4 :split-part clause",
         "allOf" : [ ]
@@ -5954,24 +5853,12 @@
           "allOf" : [ ]
         } ]
       },
-      "metabase.legacy-mbql.schema.stddev" : {
-        "description" : "schema for a valid MBQL 4 :stddev clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.subdomain" : {
         "description" : "schema for a valid MBQL 4 :subdomain clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.substring" : {
         "description" : "schema for a valid MBQL 4 :substring clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.sum" : {
-        "description" : "schema for a valid MBQL 4 :sum clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.sum-where" : {
-        "description" : "schema for a valid MBQL 4 :sum-where clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.temporal-extract" : {
@@ -6004,10 +5891,6 @@
       },
       "metabase.legacy-mbql.schema.value" : {
         "description" : "schema for a valid MBQL 4 :value clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.var" : {
-        "description" : "schema for a valid MBQL 4 :var clause",
         "allOf" : [ ]
       },
       "metabase.lib.metadata.protocols.metadata-provider" : {
@@ -16030,6 +15913,36 @@
           }
         },
         "tags" : [ "/api/ee/ai-sql-generation" ]
+      }
+    },
+    "/api/ee/audit-app/analytics-dev/export" : {
+      "post" : {
+        "summary" : "POST /api/ee/audit-app/analytics-dev/export",
+        "description" : "Export analytics content as a .tar.gz file for local development.\n\n  Only available when MB_ANALYTICS_DEV_MODE=true. Returns a tarball containing\n  the analytics YAMLs in canonical format, ready to commit to source control.\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:body -> <anything>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : { }
+                  },
+                  "required" : [ "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/audit-app/analytics-dev" ]
       }
     },
     "/api/ee/audit-app/user/audit-info" : {
