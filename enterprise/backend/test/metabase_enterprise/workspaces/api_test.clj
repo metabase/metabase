@@ -635,8 +635,8 @@
           (is (=? {:status     "succeeded"
                    :start_time some?
                    :end_time   some?
-                   :table      {:name   output-table
-                                :schema (:schema workspace1)}}
+                   :table      {:name   #(str/includes? % output-table)
+                                :schema #(str/starts-with? % "mb__isolation_")}}
                   (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "transform" (:ref_id transform) "run")))))))))
 
 (deftest run-workspace-test

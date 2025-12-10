@@ -11,6 +11,7 @@
   (:require
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api.common :as api]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -37,6 +38,12 @@
      {:table {:name   (:name target)
               :schema (:schema target)}})))
 
+(defn- mock-mapping
+  [ws target]
+  (assoc target
+         :schema (ws.u/isolation-namespace-name ws)
+         :name (ws.u/isolated-table-name target)))
+
 (defn run-workspace-transform!
   "Execute a workspace transform in preview mode using transaction rollback.
 
@@ -45,12 +52,15 @@
    in the isolated schema.
 
    Returns an ::execution-result map with status, timing, and table metadata."
-  [workspace workspace-transform]
+  [workspace {:keys [target] :as transform} mapping]
   (isolation/with-workspace-isolation workspace
     (try
       (t2/with-transaction [_conn]
-        (let [new-xf  (-> (select-keys workspace-transform [:name :description :source :target])
-                          (assoc :creator_id api/*current-user-id*))
+        (let [mapping (or mapping (partial mock-mapping workspace))
+              new-xf  (-> (select-keys transform [:name :description :source])
+                          (assoc :creator_id api/*current-user-id*
+                                 :target (mapping target)))
+              _       (assert (:target new-xf) "Are you missing mapping or what?")
               temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
           (transforms.i/execute! temp-xf {:run-method :manual})
           (throw (ex-info "rollback tx!" {::results (execution-results temp-xf)}))))

@@ -479,7 +479,7 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    (ws.execute/run-workspace-transform! workspace transform)))
+    (ws.execute/run-workspace-transform! workspace transform nil)))
 
 (api.macros/defendpoint :get "/checkout"
   :- [:map

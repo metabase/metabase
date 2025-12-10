@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.execute-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
@@ -63,10 +64,10 @@
           (is (=? {:status     :succeeded
                    :start_time some?
                    :end_time   some?
-                   :table      {:name   output-table
+                   :table      {:name   #(str/includes? % output-table)
                                 :schema (:schema workspace)}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.execute/run-workspace-transform! workspace ws-transform)))))
+                    (ws.execute/run-workspace-transform! workspace ws-transform nil)))))
 
         (testing "app DB records are rolled back"
           (is (= before
