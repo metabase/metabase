@@ -404,7 +404,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   if (!workspace) {
     return (
       <Box p="lg">
-        <Text c="text-dark">{t`Workspace not found`}</Text>
+        <Text c="text-dark">{t`No workspaces found.`}</Text>
       </Box>
     );
   }

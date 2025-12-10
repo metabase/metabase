@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -18,10 +18,17 @@ interface SetupTabProps {
 const LOGS_POLLING_INTERVAL = 1000;
 
 export const SetupLog = ({ workspaceId }: SetupTabProps) => {
+  const [shouldPoll, setShouldPoll] = useState(true);
   const { data, error, isLoading } = useGetWorkspaceLogQuery(workspaceId, {
     pollingInterval: LOGS_POLLING_INTERVAL,
     refetchOnMountOrArgChange: true,
+    skip: !shouldPoll,
   });
+  useEffect(() => {
+    if (data?.status === "ready") {
+      setShouldPoll(false);
+    }
+  }, [data?.status]);
 
   const logs = useMemo(() => data?.logs ?? [], [data]);
 
