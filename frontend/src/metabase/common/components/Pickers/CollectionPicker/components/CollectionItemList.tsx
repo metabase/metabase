@@ -1,10 +1,10 @@
-import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { useListCollectionItemsQuery } from "metabase/api";
+import { useOmniPickerContext } from "metabase/common/components/EntityPicker/context";
 import type { CollectionItemModel } from "metabase-types/api";
 
-import { ItemList } from "../../../EntityPicker";
-import type { CollectionItemListProps, CollectionPickerItem } from "../types";
+import { ItemList, type OmniPickerItem } from "../../../EntityPicker";
 
-const validModels: CollectionItemModel[] = [
+const validCollectionModels = new Set([
   "collection",
   "dashboard",
   "document",
@@ -12,51 +12,39 @@ const validModels: CollectionItemModel[] = [
   "dataset",
   "metric",
   "table",
-];
+]);
 
-const getValidCollectionItemModels = (models?: CollectionItemModel[]) =>
-  models ? models.filter((model) => validModels.includes(model)) : undefined;
+const isValidModel = (model: OmniPickerItem['model']): model is CollectionItemModel =>
+  validCollectionModels.has(model);
+
+const getValidCollectionItemModels = (models: OmniPickerItem['model'][]): CollectionItemModel[] =>
+  models.filter(isValidModel);
 
 export const CollectionItemList = ({
-  query,
-  onClick,
-  selectedItem,
-  isFolder,
-  isCurrentLevel,
-  shouldDisableItem,
-  shouldShowItem,
-}: CollectionItemListProps) => {
+  parentItem,
+  pathIndex,
+}: {
+  parentItem: OmniPickerItem;
+  pathIndex: number;
+}) => {
+  const { models } = useOmniPickerContext();
+
   const {
     data: items,
     error,
     isLoading,
-  } = useListCollectionItemsQuery<{
-    data: {
-      data: CollectionPickerItem[];
-    };
-    error: any;
-    isLoading: boolean;
-  }>(
-    query
-      ? {
-          ...query,
-          models: getValidCollectionItemModels(query.models),
-          include_can_run_adhoc_query: true,
-        }
-      : skipToken,
-  );
+  } = useListCollectionItemsQuery({
+    id: parentItem.id,
+    models: getValidCollectionItemModels(models),
+    include_can_run_adhoc_query: true,
+  });
 
   return (
     <ItemList
-      items={items?.data}
+      items={collectionItems?.data}
+      pathIndex={pathIndex}
       isLoading={isLoading}
       error={error}
-      onClick={onClick}
-      selectedItem={selectedItem}
-      isFolder={isFolder}
-      isCurrentLevel={isCurrentLevel}
-      shouldDisableItem={shouldDisableItem}
-      shouldShowItem={shouldShowItem}
     />
   );
 };

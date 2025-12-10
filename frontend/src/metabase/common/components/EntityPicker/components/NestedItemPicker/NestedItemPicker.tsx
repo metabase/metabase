@@ -1,113 +1,48 @@
-import type { ComponentType } from "react";
-import { useState } from "react";
-
 import ErrorBoundary from "metabase/ErrorBoundary";
-import type {
-  TablePickerStatePath,
-  TablePickerValue,
-} from "metabase/common/components/Pickers/TablePicker";
-import { Flex } from "metabase/ui";
+import { CollectionItemPickerResolver } from "metabase/common/components/Pickers/CollectionPicker/components/CollectionItemPickerResolver";
+import { Box, Flex } from "metabase/ui";
 
-import type {
-  EntityPickerOptions,
-  IsFolder,
-  ListProps,
-  PickerState,
-  TypeWithModel,
-} from "../../types";
-import { isSelectedItem } from "../../utils";
+import { useOmniPickerContext } from "../../context";
 import { AutoScrollBox } from "../AutoScrollBox";
+import { RootItemList } from "../ItemList/RootItemList";
 
-import { ListBox } from "./NestedItemPicker.styled";
-import { findLastSelectedItem, generateKey } from "./utils";
+import S from "./NestedItemPicker.module.css";
+import { generateKey } from "./utils";
 
-export interface NestedItemPickerProps<
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
-  Query,
-  Options extends EntityPickerOptions,
-> {
-  onFolderSelect: ({ folder }: { folder: Item }) => void;
-  onItemSelect: (item: Item) => void;
-  options: Options;
-  path: PickerState<Item, Query>;
-  initialValue?: TablePickerValue;
-  isFolder: IsFolder<Id, Model, Item>;
-  listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
-  shouldDisableItem?: (item: Item) => boolean;
-  shouldShowItem?: (item: Item) => boolean;
-  tablesPath?: TablePickerStatePath;
-  onTablesPathChange?: (tablesPath: TablePickerStatePath) => void;
-}
+export function NestedItemPicker() {
+  const {
+    path,
+    isFolderItem,
+  } = useOmniPickerContext();
 
-export function NestedItemPicker<
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
-  Query,
-  Options extends EntityPickerOptions,
->({
-  onFolderSelect,
-  onItemSelect,
-  options,
-  path,
-  isFolder,
-  listResolver: ListResolver,
-  shouldDisableItem,
-  shouldShowItem,
-  initialValue,
-  tablesPath,
-  onTablesPathChange,
-}: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
-  const handleClick = (item: Item) => {
-    if (isFolder(item)) {
-      onFolderSelect({ folder: item });
-    } else {
-      onItemSelect(item);
-    }
-  };
-  const [hashBuster, setHashBuster] = useState(0);
-
-  const lastSelectedItem = findLastSelectedItem(path);
+  const folderPath = path.filter(isFolderItem);
 
   return (
     <AutoScrollBox
       data-testid="nested-item-picker"
-      contentHash={generateKey(path[path.length - 1].query) + hashBuster}
+      contentHash={generateKey(path?.[path.length - 1])}
     >
       <Flex h="100%" w="fit-content">
-        {path.map((level, index) => {
-          const { query, selectedItem, entity } = level;
-          const isCurrentLevel = Boolean(
-            selectedItem &&
-              lastSelectedItem &&
-              isSelectedItem(selectedItem, lastSelectedItem),
-          );
-
+        <Box
+          className={S.ListBox}
+          data-testid={`item-picker-level-root`}
+        >
+          <RootItemList />
+        </Box>
+        {folderPath.map((item, index) => {
           return (
-            <ListBox
-              key={generateKey(query)}
-              data-testid={`item-picker-level-${index}`}
+            <Box
+              className={S.ListBox}
+              data-testid={`item-picker-level-root`}
+              key={generateKey(item)}
             >
               <ErrorBoundary>
-                <ListResolver
-                  entity={entity}
-                  query={query}
-                  selectedItem={selectedItem}
-                  options={options}
-                  onClick={(item: Item) => handleClick(item)}
-                  isCurrentLevel={isCurrentLevel}
-                  shouldDisableItem={shouldDisableItem}
-                  shouldShowItem={shouldShowItem}
-                  isFolder={isFolder}
-                  refresh={() => setHashBuster((b) => b + 1)}
-                  initialValue={initialValue}
-                  tablesPath={tablesPath}
-                  onTablesPathChange={onTablesPathChange}
+                <CollectionItemPickerResolver
+                  parentItem={item}
+                  pathIndex={index}
                 />
               </ErrorBoundary>
-            </ListBox>
+            </Box>
           );
         })}
       </Flex>

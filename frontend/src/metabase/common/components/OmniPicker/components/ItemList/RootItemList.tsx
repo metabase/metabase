@@ -1,18 +1,27 @@
-import { PERSONAL_COLLECTION, PERSONAL_COLLECTIONS, ROOT_COLLECTION } from "metabase/entities/collections";
+import { useMemo } from "react";
+
+import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
+import { PERSONAL_COLLECTIONS, ROOT_COLLECTION } from "metabase/entities/collections";
 
 import { useOmniPickerContext } from "../../context";
-import type { OmniPickerFolderItem } from "../../types";
+import type { OmniPickerCollectionItem, OmniPickerFolderItem } from "../../types";
+import { ItemListWrapper } from "../helpers";
 
 import { OmniPickerItem } from "./OmniPickerItem";
-import { ItemListWrapper } from "../helpers";
 
 export function RootItemList() {
   const { setPath } = useOmniPickerContext();
-  const rootItems: OmniPickerFolderItem[] = [];
+  const { data: personalCollection } = useGetPersonalCollection();
 
-  rootItems.push(ROOT_COLLECTION);
-  rootItems.push(PERSONAL_COLLECTION);
-  rootItems.push(PERSONAL_COLLECTIONS);
+  const rootItems: OmniPickerFolderItem[] = useMemo(() => {
+    const items: OmniPickerFolderItem[] = [];
+    items.push({ ...ROOT_COLLECTION, model: "collection" } as OmniPickerCollectionItem);
+    if (personalCollection) {
+      items.push({ ...personalCollection, model: "collection" });
+    }
+    items.push({ ...PERSONAL_COLLECTIONS, model: "collection" } as OmniPickerCollectionItem);
+    return items;
+  }, [personalCollection]);
 
   return (
     <ItemListWrapper>
@@ -23,10 +32,7 @@ export function RootItemList() {
           model={item.model}
           isFolder
           onClick={() => {
-            setPath(prevPath => ([
-              ...prevPath,
-              item,
-            ]));
+            setPath([item]);
           }}
         />
       ))}

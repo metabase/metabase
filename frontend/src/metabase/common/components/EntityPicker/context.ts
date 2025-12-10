@@ -6,30 +6,26 @@ import {
 } from "react";
 
 import type {
+  EntityPickerOptions,
   OmniPickerCollectionItem,
   OmniPickerFolderItem,
   OmniPickerItem,
 } from "./types";
 
 export interface OmniPickerContextValue {
-  path: OmniPickerFolderItem[];
-  setPath: Dispatch<SetStateAction<OmniPickerFolderItem[]>>;
+  path: OmniPickerItem[];
+  setPath: Dispatch<SetStateAction<OmniPickerItem[]>>;
   onChange: (value: OmniPickerItem) => void;
   initialValue?: OmniPickerItem;
   isFolderItem: (item: OmniPickerItem | unknown) => item is OmniPickerFolderItem;
   isHiddenItem: (item: OmniPickerItem | unknown) => item is unknown;
   isDisabledItem: (item: OmniPickerItem | unknown) => item is OmniPickerItem;
+  isSelectableItem: (item: OmniPickerItem | unknown) => item is OmniPickerItem;
   models: OmniPickerItem["model"][];
-  folderModels: OmniPickerItem["model"][];
   searchQuery?: string;
   libraryCollection?: OmniPickerCollectionItem;
+  options: EntityPickerOptions;
 }
-
-export const defaultOmniPickerContext: Partial<OmniPickerContextValue> = {
-  isDisabledItem: (_item: OmniPickerItem | unknown): _item is OmniPickerFolderItem => false,
-  isHiddenItem: (_item: OmniPickerItem | unknown): _item is unknown => false,
-  folderModels: ["collection", "database", "schema"],
-};
 
 export const OmniPickerContext = createContext<
   OmniPickerContextValue | undefined

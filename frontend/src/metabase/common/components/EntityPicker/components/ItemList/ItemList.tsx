@@ -15,51 +15,48 @@ import {
   type NavLinkProps,
 } from "metabase/ui";
 
-import type { TypeWithModel } from "../../types";
+import { useOmniPickerContext } from "../../context";
+import type { OmniPickerItem } from "../../types";
 import { getEntityPickerIcon, isSelectedItem } from "../../utils";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
 import { PickerColumn } from "./ItemList.styled";
 
-interface ItemListProps<
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
-> {
-  items?: Item[] | null;
+interface ItemListProps {
+  pathIndex: number;
+  items?: OmniPickerItem[];
   isLoading?: boolean;
   error?: unknown;
-  onClick: (item: Item) => void;
-  selectedItem: Item | null;
-  isFolder: (item: Item) => boolean;
-  isCurrentLevel: boolean;
-  shouldDisableItem?: (item: Item) => boolean;
-  shouldShowItem?: (item: Item) => boolean;
   navLinkProps?: (isSelected?: boolean) => NavLinkProps;
   containerProps?: BoxProps;
 }
 
-export const ItemList = <
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->({
+export function ItemList ({
+  pathIndex,
   items,
   isLoading = false,
   error,
-  onClick,
-  selectedItem,
-  isFolder,
-  isCurrentLevel,
-  shouldDisableItem,
-  shouldShowItem,
   navLinkProps,
   containerProps = { pb: "xs" },
-}: ItemListProps<Id, Model, Item>) => {
-  const filteredItems =
-    items && shouldShowItem ? items.filter(shouldShowItem) : items;
+}: ItemListProps) {
+  const {
+    path,
+    setPath,
+    isHiddenItem,
+    isDisabledItem,
+    isFolderItem,
+    isSelectableItem,
+    onChange,
+    options,
+  } = useOmniPickerContext();
+  const selectedItem = path?.[pathIndex + 1];
+  const filteredItems = items
+    ? items.filter((i) => !isHiddenItem(i))
+    : items;
+  const isCurrentLevel = path.length - 2 === pathIndex;
+
   const activeItemIndex = useMemo(() => {
-    if (!filteredItems) {
+    if (!filteredItems || !selectedItem) {
       return -1;
     }
 
@@ -92,10 +89,10 @@ export const ItemList = <
       scrollTo={activeItemIndex}
       estimatedItemSize={37}
     >
-      {filteredItems.map((item: Item) => {
-        const isSelected = isSelectedItem(item, selectedItem);
+      {filteredItems.map((item: OmniPickerItem, index) => {
+        const isSelected = index === activeItemIndex;
         const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
-        const isDisabled = shouldDisableItem?.(item);
+        const isDisabled = isDisabledItem(item);
 
         return (
           <Box
@@ -107,7 +104,7 @@ export const ItemList = <
               w={"auto"}
               disabled={isDisabled}
               rightSection={
-                isFolder(item) ? <Icon name="chevronright" size={10} /> : null
+                isFolderItem(item) ? <Icon name="chevronright" size={10} /> : null
               }
               mb={0}
               label={
@@ -126,7 +123,14 @@ export const ItemList = <
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault(); // prevent form submission
                 e.stopPropagation(); // prevent parent onClick
-                onClick(item);
+                setPath((prevPath) => [
+                  ...prevPath.slice(0, pathIndex + 1),
+                  item,
+                ]);
+
+                if (!options?.hasConfirmButtons && isSelectableItem(item)) {
+                  onChange(item);
+                }
               }}
               variant={isCurrentLevel ? "default" : "mb-light"}
               {...navLinkProps?.(isSelected)}
@@ -136,4 +140,4 @@ export const ItemList = <
       })}
     </VirtualizedList>
   );
-};
+}

@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 
+import { Box } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
-import { ItemList, ListBox } from "../../EntityPicker";
+import { ItemList } from "../../EntityPicker";
+import S from "../../EntityPicker/components/NestedItemPicker/NestedItemPicker.module.css";
 
 import type { TableItem } from "./types";
 
@@ -38,7 +40,7 @@ export const TableList = ({
   }, [tables]);
 
   return (
-    <ListBox data-testid="item-picker-level-3">
+    <Box className={S.ListBox} data-testid="item-picker-level-3">
       <ItemList
         error={error}
         isCurrentLevel={isCurrentLevel}
@@ -49,6 +51,6 @@ export const TableList = ({
         onClick={onClick}
         shouldDisableItem={shouldDisableItem}
       />
-    </ListBox>
+    </Box>
   );
 };

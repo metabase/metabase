@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Flex } from "metabase/ui";
 
 import { AutoScrollBox } from "../../EntityPicker";
-import { OmniPickerContext, type OmniPickerContextValue } from "../context";
+import { OmniPickerContext, type OmniPickerContextValue, defaultOmniPickerContext } from "../context";
 import type { OmniPickerFolderItem, OmniPickerItem } from "../types";
+import { getFolderAndHiddenFunctions } from "../utils";
 
 import { ItemListRouter } from "./ItemList/ItemListRouter";
 import { RootItemList } from "./ItemList/RootItemList";
@@ -16,13 +17,27 @@ export type OmniPickerProps = {
 export function OmniPicker(props: OmniPickerProps) {
   const [path, setPath] = useState<OmniPickerFolderItem[]>([]);
 
+  const { isFolderItem, isHiddenItem, isDisabledItem } = useMemo(() => {
+    return getFolderAndHiddenFunctions({
+      models: props.models,
+      isHiddenItem: props.isHiddenItem,
+      isDisabledItem: props.isDisabledItem,
+    });
+  }, [props]);
+
   return (
-    <OmniPickerContext.Provider value={{
-      ...props,
-      initialValue: props.value,
-      path,
-      setPath,
-    }}>
+    <OmniPickerContext.Provider
+      value={{
+        ...defaultOmniPickerContext,
+        ...props,
+        isFolderItem,
+        isHiddenItem,
+        isDisabledItem,
+        initialValue: props.value,
+        path,
+        setPath,
+      }}
+    >
       <AutoScrollBox contentHash={JSON.stringify(path)}>
         <Flex h="100%" w="fit-content">
           <RootItemList />
