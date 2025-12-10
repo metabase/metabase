@@ -14,7 +14,10 @@ interface NewEventModalProps {
   cardId?: number;
   collectionId?: number;
   onClose?: () => void;
-  sendToast?: (args: ToastArgs) => void;
+}
+
+interface NewEventModalInternalProps extends NewEventModalProps {
+  sendToast: (args: ToastArgs) => void;
 }
 
 const timelineProps = {
@@ -22,18 +25,18 @@ const timelineProps = {
 };
 
 const collectionProps = {
-  id: (state: State, props: NewEventModalProps) => {
+  id: (state: State, props: NewEventModalInternalProps) => {
     return props.collectionId ?? ROOT_COLLECTION.id;
   },
 };
 
-const mapStateToProps = (state: State, { onClose }: NewEventModalProps) => ({
+const mapStateToProps = (state: State, { onClose }: NewEventModalInternalProps) => ({
   source: "question",
   onSubmitSuccess: onClose,
   onCancel: onClose,
 });
 
-const mapDispatchToProps = (dispatch: any, ownProps: NewEventModalProps) => ({
+const mapDispatchToProps = (dispatch: any, ownProps: NewEventModalInternalProps) => ({
   onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
     if (values.timeline_id) {
       await dispatch(TimelineEvents.actions.create(values));
@@ -41,10 +44,7 @@ const mapDispatchToProps = (dispatch: any, ownProps: NewEventModalProps) => ({
       await dispatch(Timelines.actions.createWithEvent(values, collection));
     }
 
-    // Call sendToast from wrapper
-    if (ownProps.sendToast) {
-      ownProps.sendToast({ message: t`Created event` });
-    }
+    ownProps.sendToast({ message: t`Created event` });
   },
 });
 

@@ -11,27 +11,27 @@ import type { State } from "metabase-types/store";
 interface EditEventModalProps {
   eventId: number;
   onClose?: () => void;
-  sendToast?: (args: ToastArgs) => void;
+}
+
+interface EditEventModalInternalProps extends EditEventModalProps {
+  sendToast: (args: ToastArgs) => void;
 }
 
 const timelineEventProps = {
-  id: (state: State, props: EditEventModalProps) => props.eventId,
+  id: (state: State, props: EditEventModalInternalProps) => props.eventId,
   entityAlias: "event",
 };
 
-const mapStateToProps = (state: State, { onClose }: EditEventModalProps) => ({
+const mapStateToProps = (state: State, { onClose }: EditEventModalInternalProps) => ({
   onSubmitSuccess: onClose,
   onArchiveSuccess: onClose,
   onCancel: onClose,
 });
 
-const mapDispatchToProps = (dispatch: any, ownProps: EditEventModalProps) => ({
+const mapDispatchToProps = (dispatch: any, ownProps: EditEventModalInternalProps) => ({
   onSubmit: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.update(event));
-    // Call sendToast from wrapper
-    if (ownProps.sendToast) {
-      ownProps.sendToast({ message: t`Updated event` });
-    }
+    ownProps.sendToast({ message: t`Updated event` });
   },
   onArchive: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
