@@ -9,8 +9,18 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
-import { useListUnreferencedNodesQuery } from "metabase-enterprise/api";
-import type { DependencyGroupType } from "metabase-types/api";
+import {
+  useListBrokenNodesQuery,
+  useListUnreferencedNodesQuery,
+} from "metabase-enterprise/api";
+import type {
+  CardType,
+  DependencyGroupType,
+  DependencyNode,
+  DependencySortColumn,
+  DependencySortDirection,
+  DependencyType,
+} from "metabase-types/api";
 
 import { ListEmptyState } from "../../components/ListEmptyState";
 import type {
@@ -31,16 +41,43 @@ import {
 } from "./constants";
 import { parseRawParams } from "./utils";
 
+type ListNodesRequest = {
+  types?: DependencyType[];
+  card_types?: CardType[];
+  query?: string;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
+  limit?: number;
+  offset?: number;
+};
+
+type ListNodesResponse = {
+  data: DependencyNode[];
+  sort_column: DependencySortColumn;
+  sort_direction: DependencySortDirection;
+  limit: number;
+  offset: number;
+  total: number;
+};
+
+type ListNodesResult = {
+  data?: ListNodesResponse;
+  isLoading: boolean;
+  error?: unknown;
+};
+
 type DependencyListPageProps = {
   availableGroupTypes: DependencyGroupType[];
   nothingFoundMessage: string;
   location: Location<DependencyListRawParams>;
+  useListNodesQuery: (request: ListNodesRequest) => ListNodesResult;
 };
 
 function DependencyListPage({
   availableGroupTypes,
   nothingFoundMessage,
   location,
+  useListNodesQuery,
 }: DependencyListPageProps) {
   const params = useMemo(
     () => parseRawParams(location.query),
@@ -56,7 +93,7 @@ function DependencyListPage({
   const [searchValue, setSearchValue] = useState("");
   const dispatch = useDispatch();
 
-  const { data, isLoading, error } = useListUnreferencedNodesQuery({
+  const { data, isLoading, error } = useListNodesQuery({
     query,
     types: getDependencyTypes(types ?? availableGroupTypes),
     card_types: getCardTypes(types ?? availableGroupTypes),
@@ -199,6 +236,7 @@ export function BrokenDependencyListPage({
       availableGroupTypes={BROKEN_GROUP_TYPES}
       nothingFoundMessage={t`No broken entities found`}
       location={location}
+      useListNodesQuery={useListBrokenNodesQuery}
     />
   );
 }
@@ -215,6 +253,7 @@ export function UnreferencedDependencyListPage({
       availableGroupTypes={UNREFERENCED_GROUP_TYPES}
       nothingFoundMessage={t`No unreferenced entities found`}
       location={location}
+      useListNodesQuery={useListUnreferencedNodesQuery}
     />
   );
 }
