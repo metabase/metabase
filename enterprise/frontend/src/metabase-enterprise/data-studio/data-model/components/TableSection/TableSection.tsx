@@ -36,6 +36,7 @@ import { PublishTablesModal } from "metabase-enterprise/data-studio/common/compo
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
+import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
@@ -278,6 +279,10 @@ const TableSectionBase = ({
               value="segments"
               leftSection={<Icon name="segment2" />}
             >{t`Segments`}</Tabs.Tab>
+            <Tabs.Tab
+              value="measures"
+              leftSection={<Icon name="sum" />}
+            >{t`Measures`}</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="field">
@@ -349,6 +354,10 @@ const TableSectionBase = ({
 
           <Tabs.Panel value="segments">
             <SegmentList table={table} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="measures">
+            <MeasureList table={table} />
           </Tabs.Panel>
         </Tabs>
       </Box>

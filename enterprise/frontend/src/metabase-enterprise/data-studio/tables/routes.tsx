@@ -1,6 +1,10 @@
 import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PublishedTableMeasureLayout } from "metabase-enterprise/data-studio/measures/layouts/PublishedTableMeasureLayout";
+import { MeasureDependenciesPage } from "metabase-enterprise/data-studio/measures/pages/MeasureDependenciesPage";
+import { MeasureDetailPage } from "metabase-enterprise/data-studio/measures/pages/MeasureDetailPage";
+import { NewMeasurePage } from "metabase-enterprise/data-studio/measures/pages/NewMeasurePage";
 import { PublishedTableSegmentLayout } from "metabase-enterprise/data-studio/segments/layouts/PublishedTableSegmentLayout";
 import { NewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/NewSegmentPage";
 import { SegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/SegmentDependenciesPage";
@@ -9,6 +13,7 @@ import { SegmentRevisionHistoryPage } from "metabase-enterprise/data-studio/segm
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
+import { TableMeasuresPage } from "./pages/TableMeasuresPage";
 import { TableOverviewPage } from "./pages/TableOverviewPage";
 import { TableSegmentsPage } from "./pages/TableSegmentsPage";
 
@@ -33,6 +38,24 @@ export function getDataStudioTableRoutes() {
         <Route path="revisions" component={SegmentRevisionHistoryPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={SegmentDependenciesPage}>
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          </Route>
+        )}
+      </Route>
+      <Route path=":tableId/measures" component={TableMeasuresPage} />
+      <Route
+        path=":tableId/measures/new"
+        component={PublishedTableMeasureLayout}
+      >
+        <IndexRoute component={NewMeasurePage} />
+      </Route>
+      <Route
+        path=":tableId/measures/:measureId"
+        component={PublishedTableMeasureLayout}
+      >
+        <IndexRoute component={MeasureDetailPage} />
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route path="dependencies" component={MeasureDependenciesPage}>
             <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
           </Route>
         )}
