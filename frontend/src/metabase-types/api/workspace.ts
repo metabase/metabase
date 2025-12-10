@@ -254,12 +254,12 @@ export type WorkspaceLogEntry = {
   message: string | null;
 };
 
-export type WorkspaceExecuteRequest = {
+export type WorkspaceRunRequest = {
   id: WorkspaceId;
   stale_only?: boolean;
 };
 
-export type WorkspaceExecuteResponse = {
+export type WorkspaceRunResponse = {
   succeeded: TransformId[];
   failed: TransformId[];
   not_run: TransformId[];

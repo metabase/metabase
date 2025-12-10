@@ -9,14 +9,14 @@ import type {
   ValidateTableNameRequest,
   ValidateTableNameResponse,
   Workspace,
-  WorkspaceExecuteRequest,
-  WorkspaceExecuteResponse,
   WorkspaceGraphResponse,
   WorkspaceId,
   WorkspaceListResponse,
   WorkspaceLogResponse,
   WorkspaceMergeResponse,
   WorkspaceProblem,
+  WorkspaceRunRequest,
+  WorkspaceRunResponse,
   WorkspaceTablesResponse,
   WorkspaceTransform,
   WorkspaceTransformItem,
@@ -222,17 +222,27 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (_, _error, id) => [idTag("workspace", id)],
     }),
-    executeWorkspace: builder.mutation<
-      WorkspaceExecuteResponse,
-      WorkspaceExecuteRequest
-    >({
+    runWorkspace: builder.mutation<WorkspaceRunResponse, WorkspaceRunRequest>({
       query: ({ id, stale_only }) => ({
         method: "POST",
-        url: `/api/ee/workspace/${id}/execute`,
+        url: `/api/ee/workspace/${id}/run`,
         params: stale_only ? { stale_only: 1 } : undefined,
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("workspace", id), tag("transform")]),
+    }),
+    runWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/run`,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          tag("transform"),
+        ]),
     }),
     updateWorkspaceTransform: builder.mutation<
       WorkspaceTransform,
@@ -318,5 +328,6 @@ export const {
   useGetWorkspaceGraphQuery,
   useGetWorkspaceProblemsQuery,
   useGetWorkspaceLogQuery,
-  useExecuteWorkspaceMutation,
+  useRunWorkspaceMutation,
+  useRunWorkspaceTransformMutation,
 } = workspaceApi;
