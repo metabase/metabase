@@ -1,3 +1,4 @@
+import type { IconName } from "metabase/ui";
 import type {
   DependencyGroupType,
   DependencySortColumn as DependencyListSortColumn,
@@ -14,6 +15,11 @@ export type DependencyGroupTypeInfo = {
 export type NodeLink = {
   label: string;
   url: string;
+};
+
+export type NodeLocationInfo = {
+  icon: IconName;
+  links: NodeLink[];
 };
 
 export type PaginationOptions = {

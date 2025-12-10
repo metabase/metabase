@@ -1,0 +1,9 @@
+.cell {
+  align-items: center;
+}
+
+.link {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

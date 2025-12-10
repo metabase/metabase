@@ -1,17 +1,22 @@
 import { t } from "ttag";
 
 import { getUserName } from "metabase/lib/user";
-import type { DependencySortColumn } from "metabase-types/api";
+import {
+  DEPENDENCY_SORT_COLUMNS,
+  type DependencySortColumn,
+} from "metabase-types/api";
 
 import {
   getNodeIcon,
   getNodeLabel,
   getNodeLastEditInfo,
   getNodeLink,
+  getNodeLocationInfo,
 } from "../../../utils";
 
 import { DateTimeCell } from "./DateTimeCell";
 import { EntityCell } from "./EntityCell";
+import { LocationCell } from "./LocationCell";
 import { TextCell } from "./TextCell";
 import type { DependencyColumn, DependencyColumnOptions } from "./types";
 
@@ -30,6 +35,23 @@ function getItemNameColumn(): DependencyColumnOptions {
           icon={getNodeIcon(item)}
           url={getNodeLink(item)?.url}
         />
+      );
+    },
+  };
+}
+
+function getItemLocationColumn(): DependencyColumnOptions {
+  return {
+    id: "location",
+    get name() {
+      return t`Location`;
+    },
+    accessorFn: (item) => getNodeLocationInfo(item),
+    cell: ({ row }) => {
+      const item = row.original;
+      const location = getNodeLocationInfo(item);
+      return (
+        <LocationCell links={location?.links ?? []} icon={location?.icon} />
       );
     },
   };
@@ -70,6 +92,7 @@ function getItemLastEditByColumn(): DependencyColumnOptions {
 export function getColumns(): DependencyColumnOptions[] {
   return [
     getItemNameColumn(),
+    getItemLocationColumn(),
     getItemLastEditAtColumn(),
     getItemLastEditByColumn(),
   ];
@@ -78,5 +101,6 @@ export function getColumns(): DependencyColumnOptions[] {
 export function isSortableColumn(
   column: DependencyColumn,
 ): column is DependencySortColumn {
-  return column === "name";
+  const sortColumns: ReadonlyArray<DependencyColumn> = DEPENDENCY_SORT_COLUMNS;
+  return sortColumns.includes(column);
 }

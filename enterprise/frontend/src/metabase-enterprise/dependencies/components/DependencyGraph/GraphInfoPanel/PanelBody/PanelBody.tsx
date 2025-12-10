@@ -121,7 +121,7 @@ function TableSection({ node, getGraphUrl }: TableSectionProps) {
         />
       </Group>
       {info.location && (
-        <GraphBreadcrumbs location={info.location} ml="1rem" pl="sm" />
+        <GraphBreadcrumbs links={info.location} ml="1rem" pl="sm" />
       )}
     </Stack>
   );

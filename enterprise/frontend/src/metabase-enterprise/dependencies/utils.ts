@@ -13,7 +13,12 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { DependencyGroupTypeInfo, NodeId, NodeLink } from "./types";
+import type {
+  DependencyGroupTypeInfo,
+  NodeId,
+  NodeLink,
+  NodeLocationInfo,
+} from "./types";
 
 export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${id}-${type}`;
@@ -152,66 +157,83 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
   }
 }
 
-export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
+export function getNodeLocationInfo(
+  node: DependencyNode,
+): NodeLocationInfo | null {
   switch (node.type) {
     case "card":
       if (node.data.dashboard != null) {
-        return [
-          {
-            label: node.data.dashboard.name,
-            url: Urls.dashboard(node.data.dashboard),
-          },
-        ];
+        return {
+          icon: "dashboard",
+          links: [
+            {
+              label: node.data.dashboard.name,
+              url: Urls.dashboard(node.data.dashboard),
+            },
+          ],
+        };
       }
       if (node.data.collection != null) {
-        return [
-          {
-            label: node.data.collection.name,
-            url: Urls.collection(node.data.collection),
-          },
-        ];
+        return {
+          icon: "collection",
+          links: [
+            {
+              label: node.data.collection.name,
+              url: Urls.collection(node.data.collection),
+            },
+          ],
+        };
       }
       return null;
     case "table":
       if (node.data.db != null) {
-        return [
-          {
-            label: node.data.db.name,
-            url: Urls.dataModel({ databaseId: node.data.db_id }),
-          },
-          {
-            label: node.data.schema,
-            url: Urls.dataModel({
-              databaseId: node.data.db_id,
-              schemaName: node.data.schema,
-            }),
-          },
-        ];
+        return {
+          icon: "database",
+          links: [
+            {
+              label: node.data.db.name,
+              url: Urls.dataModel({ databaseId: node.data.db_id }),
+            },
+            {
+              label: node.data.schema,
+              url: Urls.dataModel({
+                databaseId: node.data.db_id,
+                schemaName: node.data.schema,
+              }),
+            },
+          ],
+        };
       }
       return null;
     case "dashboard":
     case "document":
       if (node.data.collection != null) {
-        return [
-          {
-            label: node.data.collection.name,
-            url: Urls.collection(node.data.collection),
-          },
-        ];
+        return {
+          icon: "collection",
+          links: [
+            {
+              label: node.data.collection.name,
+              url: Urls.collection(node.data.collection),
+            },
+          ],
+        };
       }
       return null;
     case "segment":
       if (node.data.table != null) {
-        return [
-          {
-            label: node.data.table.display_name,
-            url: Urls.dataModel({
-              databaseId: node.data.table.db_id,
-              schemaName: node.data.table.schema,
-              tableId: node.data.table.id,
-            }),
-          },
-        ];
+        return {
+          icon: "table",
+          links: [
+            {
+              label: node.data.table.display_name,
+              url: Urls.dataModel({
+                databaseId: node.data.table.db_id,
+                schemaName: node.data.table.schema,
+                tableId: node.data.table.id,
+              }),
+            },
+          ],
+        };
       }
       return null;
     case "transform":
