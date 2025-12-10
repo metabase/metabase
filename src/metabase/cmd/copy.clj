@@ -53,84 +53,82 @@
   "Entities in the order they should be serialized/deserialized in `load-from-h2`. This is done so we make sure that
    we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
    `Fields`."
-  (remove
-   nil?
-   (concat
-    [:model/Channel
-     :model/ChannelTemplate
-     :model/Database
-     (when config/ee-available? :model/Tenant)
-     :model/User
-     :model/Setting
-     :model/Table
-     :model/Field
-     :model/FieldValues
-     :model/FieldUserSettings
-     :model/Segment
-     :model/ModerationReview
-     :model/Revision
-     :model/ViewLog
-     :model/Session
-     :model/Collection
-     :model/CollectionPermissionGraphRevision
-     :model/Dashboard
-     :model/Card
-     :model/CardBookmark
-     :model/DashboardBookmark
-     :model/DataPermissions
-     :model/CollectionBookmark
-     :model/BookmarkOrdering
-     :model/DashboardCard
-     :model/DashboardCardSeries
-     :model/Pulse
-     :model/PulseCard
-     :model/PulseChannel
-     :model/PulseChannelRecipient
-     :model/PermissionsGroup
-     :model/PermissionsGroupMembership
-     :model/Permissions
-     :model/PermissionsRevision
-     :model/PersistedInfo
-     :model/ApplicationPermissionsRevision
-     :model/Dimension
-     :model/NativeQuerySnippet
-     :model/LoginHistory
-     :model/Timeline
-     :model/TimelineEvent
-     :model/Secret
-     :model/ParameterCard
-     :model/Action
-     :model/ImplicitAction
-     :model/HTTPAction
-     :model/QueryAction
-     :model/DashboardTab
-     :model/ModelIndex
-     :model/ModelIndexValue
-     ;; 48+
-     :model/AuditLog
-     :model/RecentViews
-     :model/UserParameterValue
-     ;; 51+
-     :model/Notification
-     :model/NotificationSubscription
-     :model/NotificationHandler
-     :model/NotificationRecipient
-     :model/NotificationCard
-     ;; 57+
-     :model/Glossary
-     ;; 58+
-     :model/AuthIdentity
-     :model/Document
-     :model/DocumentBookmark
-     :model/Comment
-     :model/CommentReaction]
-    (when config/ee-available?
-      [:model/Sandbox
-       :model/ConnectionImpersonation
-       :model/Metabot
-       :model/MetabotConversation
-       :model/MetabotMessage
-       :model/MetabotPrompt]))))
+  (concat
+   [:model/Channel
+    :model/ChannelTemplate
+    :model/Database
+    :model/User
+    :model/Setting
+    :model/Table
+    :model/Field
+    :model/FieldValues
+    :model/FieldUserSettings
+    :model/Segment
+    :model/ModerationReview
+    :model/Revision
+    :model/ViewLog
+    :model/Session
+    :model/Collection
+    :model/CollectionPermissionGraphRevision
+    :model/Dashboard
+    :model/Card
+    :model/CardBookmark
+    :model/DashboardBookmark
+    :model/DataPermissions
+    :model/CollectionBookmark
+    :model/BookmarkOrdering
+    :model/DashboardCard
+    :model/DashboardCardSeries
+    :model/Pulse
+    :model/PulseCard
+    :model/PulseChannel
+    :model/PulseChannelRecipient
+    :model/PermissionsGroup
+    :model/PermissionsGroupMembership
+    :model/Permissions
+    :model/PermissionsRevision
+    :model/PersistedInfo
+    :model/ApplicationPermissionsRevision
+    :model/Dimension
+    :model/NativeQuerySnippet
+    :model/LoginHistory
+    :model/Timeline
+    :model/TimelineEvent
+    :model/Secret
+    :model/ParameterCard
+    :model/Action
+    :model/ImplicitAction
+    :model/HTTPAction
+    :model/QueryAction
+    :model/DashboardTab
+    :model/ModelIndex
+    :model/ModelIndexValue
+    ;; 48+
+    :model/AuditLog
+    :model/RecentViews
+    :model/UserParameterValue
+    ;; 51+
+    :model/Notification
+    :model/NotificationSubscription
+    :model/NotificationHandler
+    :model/NotificationRecipient
+    :model/NotificationCard
+    ;; 57+
+    :model/Glossary
+    ;; 58+
+    :model/AuthIdentity
+    :model/Document
+    :model/DocumentBookmark
+    :model/Comment
+    :model/CommentReaction]
+   (when config/ee-available?
+     [:model/Sandbox
+      :model/Tenant
+      :model/ConnectionImpersonation
+      :model/Metabot
+      :model/MetabotConversation
+      :model/MetabotMessage
+      :model/MetabotPrompt])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
