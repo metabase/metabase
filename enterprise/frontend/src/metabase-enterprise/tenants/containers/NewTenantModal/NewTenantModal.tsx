@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { Modal } from "metabase/ui";
 import { useCreateTenantMutation } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
@@ -13,7 +12,7 @@ interface NewUserModalProps {
 }
 
 export const NewTenantModal = ({ onClose }: NewUserModalProps) => {
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const [createTenant] = useCreateTenantMutation();
 
@@ -23,7 +22,7 @@ export const NewTenantModal = ({ onClose }: NewUserModalProps) => {
       name: vals.name ?? "",
       slug: vals.slug ?? "",
     }).unwrap();
-    dispatch(addUndo({ message: t`Tenant creation successful` }));
+    sendToast({ message: t`Tenant creation successful` });
     onClose();
   };
 

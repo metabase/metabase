@@ -14,8 +14,8 @@ import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
@@ -45,6 +45,7 @@ export const DatabaseRoutingSection = ({
   database: Database;
 }) => {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const engines = useSetting("engines");
 
@@ -92,9 +93,9 @@ export const DatabaseRoutingSection = ({
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
 
     if (!hasDbRoutingEnabled(database)) {
-      dispatch(addUndo({ message: t`Database routing enabled` }));
+      sendToast({ message: t`Database routing enabled` });
     } else {
-      dispatch(addUndo({ message: t`Database routing updated` }));
+      sendToast({ message: t`Database routing updated` });
     }
   };
 
@@ -105,7 +106,7 @@ export const DatabaseRoutingSection = ({
       await updateRouterDatabase({ id: database.id, user_attribute: null });
 
       if (hasDbRoutingEnabled(database)) {
-        dispatch(addUndo({ message: t`Database routing disabled` }));
+        sendToast({ message: t`Database routing disabled` });
       }
     }
   };

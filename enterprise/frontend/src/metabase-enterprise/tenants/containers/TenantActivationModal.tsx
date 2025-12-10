@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+import { useToast } from "metabase/common/hooks/use-toast";
 import {
   useGetTenantQuery,
   useUpdateTenantMutation,
@@ -20,7 +19,7 @@ export const TenantActivationModal = ({
   const tenantId = parseInt(params.tenantId, 10);
   const { data: tenant } = useGetTenantQuery(tenantId);
 
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const [updateTenant] = useUpdateTenantMutation();
 
@@ -38,7 +37,7 @@ export const TenantActivationModal = ({
         onClose={onClose}
         onConfirm={async () => {
           await updateTenant({ id: tenantId, is_active: false });
-          dispatch(addUndo({ message: t`Tenant deactivated` }));
+          sendToast({ message: t`Tenant deactivated` });
           onClose();
         }}
       />
@@ -54,7 +53,7 @@ export const TenantActivationModal = ({
       onClose={onClose}
       onConfirm={async () => {
         await updateTenant({ id: tenantId, is_active: true });
-        dispatch(addUndo({ message: t`Tenant reactivated` }));
+        sendToast({ message: t`Tenant reactivated` });
         onClose();
       }}
     />
