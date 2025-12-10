@@ -22,7 +22,7 @@ export const CollectionItemList = ({
     };
     error: any;
     isLoading: boolean;
-  }>(query ? {...query, include_can_run_adhoc_query: true,} : skipToken);
+  }>(query ? { ...query, include_can_run_adhoc_query: true } : skipToken);
 
   return (
     <ItemList
