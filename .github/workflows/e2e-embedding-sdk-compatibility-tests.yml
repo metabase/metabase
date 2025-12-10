@@ -230,9 +230,9 @@ jobs:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
         with:
-          android: true
+          android: false
           dotnet: true
-          haskell: true
+          haskell: false
           large-packages: false
           docker-images: false
           swap-storage: false
