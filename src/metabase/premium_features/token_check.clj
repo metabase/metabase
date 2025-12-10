@@ -220,20 +220,6 @@
               (trs "Inserting another user would overflow the maximum number of users ({0}) for your plan. Please upgrade to add more users."
                    (max-users-allowed)))))))
 
-(defn deactivate-illegal-users! []
-  (when-let [max-users-allowed (max-users-allowed)]
-    (let [active-users-count (active-user-count)
-          illegal-users (t2/select :model/User
-                                   :is_active true
-                                   :type :personal
-                                   :order-by [[:last_active_at :asc]]
-                                   :limit (- active-users-count max-users-allowed))]
-      (log/warnf
-       "Deactivating %d users to comply with the max user count of %d" (count illegal-users) max-users-allowed)
-      (doseq [user illegal-users]
-        (log/warnf "Deactivating user %s (last active at %s)" (:email user) (str (:last_active_at user)))
-        (t2/update! user {:is_active false})))))
-
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
   be caught further up with appropriate fall backs, retry strategies, and grace periods for features."
