@@ -10,8 +10,8 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import {
-  useListBrokenNodesQuery,
-  useListUnreferencedNodesQuery,
+  useListBrokenGraphNodesQuery,
+  useListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
 import type {
   CardType,
@@ -236,7 +236,7 @@ export function BrokenDependencyListPage({
       availableGroupTypes={BROKEN_GROUP_TYPES}
       nothingFoundMessage={t`No broken entities found`}
       location={location}
-      useListNodesQuery={useListBrokenNodesQuery}
+      useListNodesQuery={useListBrokenGraphNodesQuery}
     />
   );
 }
@@ -253,7 +253,7 @@ export function UnreferencedDependencyListPage({
       availableGroupTypes={UNREFERENCED_GROUP_TYPES}
       nothingFoundMessage={t`No unreferenced entities found`}
       location={location}
-      useListNodesQuery={useListUnreferencedNodesQuery}
+      useListNodesQuery={useListUnreferencedGraphNodesQuery}
     />
   );
 }

@@ -221,7 +221,7 @@ export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type DependencySortDirection =
   (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
 
-export type ListBrokenNodesRequest = {
+export type ListBrokenGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
@@ -231,7 +231,7 @@ export type ListBrokenNodesRequest = {
   offset?: number;
 };
 
-export type ListBrokenNodesResponse = {
+export type ListBrokenGraphNodesResponse = {
   data: DependencyNode[];
   sort_column: DependencySortColumn;
   sort_direction: DependencySortDirection;
@@ -240,7 +240,7 @@ export type ListBrokenNodesResponse = {
   total: number;
 };
 
-export type ListUnreferencedNodesRequest = {
+export type ListUnreferencedGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
@@ -250,7 +250,7 @@ export type ListUnreferencedNodesRequest = {
   offset?: number;
 };
 
-export type ListUnreferencedNodesResponse = {
+export type ListUnreferencedGraphNodesResponse = {
   data: DependencyNode[];
   sort_column: DependencySortColumn;
   sort_direction: DependencySortDirection;

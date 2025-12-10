@@ -819,7 +819,7 @@
                                                                                (lib.metadata/card mp)
                                                                                (lib/query mp))}]
           (while (#'dependencies.backfill/backfill-dependencies!))
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&card_types=question&query=unreftest")]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=unreftest")]
             (is (=? {:data [{:id unreffed-card-id
                              :type "card"
                              :data {:name "Unreferenced Card - unreftest"}}]
@@ -840,7 +840,7 @@
                                           :type :question
                                           :dataset_query (lib/query mp (lib.metadata/table mp referenced-table-id))}]
           (while (#'dependencies.backfill/backfill-dependencies!))
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=table&query=unreftest")]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest")]
             (is (=? {:data [{:id unreffed-table-id
                              :type "table"
                              :data {:name "Unreferenced Table - unreftest"}}]
@@ -875,7 +875,7 @@
                                            :output-table "referenced_transform_table"
                                            :transform-id referenced-transform-id}})
           (while (#'dependencies.backfill/backfill-dependencies!))
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=transform&query=unreftest")]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
             (is (=? {:data [{:id unreffed-transform-id
                              :type "transform"
                              :data {:name "Unreferenced Transform - unreftest"}}]
@@ -905,7 +905,7 @@
                                               :type :question
                                               :dataset_query native-query}]
               (while (#'dependencies.backfill/backfill-dependencies!))
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=snippet&query=unreftest")]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=unreftest")]
                 (is (=? {:data [{:id unreffed-snippet-id
                                  :type "snippet"
                                  :data {:name "Unreferenced Snippet - unreftest"}}]
@@ -930,7 +930,7 @@
                                                                                  :model "dashboard"}}]}]}
                                         :content_type "application/json+vnd.prose-mirror"}]
         (while (#'dependencies.backfill/backfill-dependencies!))
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=dashboard&query=unreftest")]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=unreftest")]
           (is (=? {:data [{:id unreffed-dashboard-id
                            :type "dashboard"
                            :data {:name "Unreferenced Dashboard - unreftest"}}]
@@ -953,7 +953,7 @@
                                                                                                           :model "document"}}]}]}
                                                                  :content_type "application/json+vnd.prose-mirror"}]
         (while (#'dependencies.backfill/backfill-dependencies!))
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=document&query=unreftest")]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=unreftest")]
           (is (=? {:data [{:id unreffed-document-id
                            :type "document"
                            :data {:name "Unreferenced Document - unreftest"}}]
@@ -977,7 +977,7 @@
                                                         :table_id (mt/id :products)
                                                         :card_id sandbox-card-id}]
           (while (#'dependencies.backfill/backfill-dependencies!))
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=sandbox")]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=sandbox")]
             (is (=? {:data [{:id sandbox-id
                              :type "sandbox"
                              :data {:table {:name "PRODUCTS"}}}]
@@ -1001,7 +1001,7 @@
                                                              :dataset_query (lib/query mp products)}]
           (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "filtering by model only"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&card_types=model&query=cardtype")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=model&query=cardtype")]
               (is (=? {:data [{:id unreffed-model-id
                                :type "card"
                                :data {:name "A - Unreferenced Model - cardtype"
@@ -1013,7 +1013,7 @@
                        :sort_direction "asc"}
                       response))))
           (testing "filtering by metric only"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&card_types=metric&query=cardtype")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=metric&query=cardtype")]
               (is (=? {:data [{:id unreffed-metric-id
                                :type "card"
                                :data {:name "B - Unreferenced Metric - cardtype"
@@ -1025,7 +1025,7 @@
                        :sort_direction "asc"}
                       response))))
           (testing "filtering by model and metric as the default card types"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&query=cardtype")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&query=cardtype")]
               (is (=? {:data [{:id unreffed-model-id
                                :type "card"
                                :data {:name "A - Unreferenced Model - cardtype"
@@ -1041,7 +1041,7 @@
                        :sort_direction "asc"}
                       response))))
           (testing "limit works"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&limit=1&query=cardtype")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&limit=1&query=cardtype")]
               (is (=? {:data [{:id unreffed-model-id
                                :type "card"
                                :data {:name "A - Unreferenced Model - cardtype"
@@ -1053,7 +1053,7 @@
                        :sort_direction "asc"}
                       response))))
           (testing "offset works"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&offset=1&query=cardtype")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&offset=1&query=cardtype")]
               (is (=? {:data [{:id unreffed-metric-id
                                :type "card"
                                :data {:name "B - Unreferenced Metric - cardtype"
@@ -1065,7 +1065,7 @@
                        :sort_direction "asc"}
                       response))))
           (testing "sort descending order by name works"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&sort_direction=desc&query=cardtype")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&sort_direction=desc&query=cardtype")]
               (is (=? {:data [{:id unreffed-metric-id
                                :type "card"
                                :data {:name "B - Unreferenced Metric - cardtype"

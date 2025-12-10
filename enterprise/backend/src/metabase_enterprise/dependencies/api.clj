@@ -661,7 +661,7 @@
    [:sort_column {:optional true} (ms/enum-decode-keyword [:name :location :view_count])]
    [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
 
-(api.macros/defendpoint :get "/unreferenced-items"
+(api.macros/defendpoint :get "/graph/unreferenced"
   "Returns a paginated list of all unreferenced items in the instance.
    An unreferenced item is one that is not a dependency of any other item.
 
@@ -763,7 +763,7 @@
                  (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
             query (conj [:and [:like [:lower :entity.name] (str "%" (u/lower-case-en query) "%")]]))})
 
-(api.macros/defendpoint :get "/broken-items"
+(api.macros/defendpoint :get "/graph/broken"
   "Returns a paginated list of all items (cards or transforms) with broken queries.
 
    Accepts optional parameters for filtering, sorting, and pagination:

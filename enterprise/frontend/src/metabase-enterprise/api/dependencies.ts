@@ -6,11 +6,11 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
-  ListBrokenNodesRequest,
-  ListBrokenNodesResponse,
+  ListBrokenGraphNodesRequest,
+  ListBrokenGraphNodesResponse,
   ListNodeDependentsRequest,
-  ListUnreferencedNodesRequest,
-  ListUnreferencedNodesResponse,
+  ListUnreferencedGraphNodesRequest,
+  ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -44,25 +44,25 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       providesTags: (nodes) =>
         nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
-    listBrokenNodes: builder.query<
-      ListBrokenNodesResponse,
-      ListBrokenNodesRequest
+    listBrokenGraphNodes: builder.query<
+      ListBrokenGraphNodesResponse,
+      ListBrokenGraphNodesRequest
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/dependencies/broken-items",
+        url: "/api/ee/dependencies/graph/broken",
         params,
       }),
       providesTags: (response) =>
         response ? provideDependencyNodeListTags(response.data) : [],
     }),
-    listUnreferencedNodes: builder.query<
-      ListUnreferencedNodesResponse,
-      ListUnreferencedNodesRequest
+    listUnreferencedGraphNodes: builder.query<
+      ListUnreferencedGraphNodesResponse,
+      ListUnreferencedGraphNodesRequest
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/dependencies/unreferenced-items",
+        url: "/api/ee/dependencies/graph/unreferenced",
         params,
       }),
       providesTags: (response) =>
@@ -104,8 +104,8 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
-  useListBrokenNodesQuery,
-  useListUnreferencedNodesQuery,
+  useListBrokenGraphNodesQuery,
+  useListUnreferencedGraphNodesQuery,
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,
