@@ -110,7 +110,7 @@ export const useRootCollectionPickerItems = (
           location: "/",
           name:
             options.namespace === "snippets"
-              ? t`Top folder`
+              ? t`SQL snippets`
               : rootCollection.name,
         });
       } else if (rootCollectionError) {
