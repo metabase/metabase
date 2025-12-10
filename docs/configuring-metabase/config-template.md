@@ -92,6 +92,7 @@ config:
       linkedin.com,
       twitter.com,
       x.com
+    analytics-dev-mode: false
     anon-tracking-enabled: true
     api-key: null
     application-colors: {}
@@ -223,10 +224,10 @@ config:
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
-    retry-max-retries: 6
-    retry-max-interval-millis: 30000
-    retry-multiplier: 2.0
     retry-jitter-factor: 0.1
+    retry-max-interval-millis: 30000
+    retry-max-retries: 6
+    retry-multiplier: 2.0
     saml-application-name: Metabase
     saml-attribute-email: null
     saml-attribute-firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
