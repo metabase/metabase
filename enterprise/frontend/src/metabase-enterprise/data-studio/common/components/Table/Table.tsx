@@ -19,6 +19,8 @@ import { Badge, Icon } from "metabase/ui";
 
 import S from "./Table.module.css";
 
+const DEFAULT_ROW_HEIGHT = 47;
+
 export const TableComponent = <
   T extends Record<string, any> & { children?: T[] },
 >({
@@ -45,12 +47,12 @@ export const TableComponent = <
   });
 
   return (
-    <div className={S.ScrollContainer} ref={(e) => setScrollRef(e)}>
+    <div className={S.scrollContainer} ref={(e) => setScrollRef(e)}>
       {/* Even though we're still using semantic table tags, we must use CSS grid and flexbox for dynamic row heights */}
-      <table className={S.Table}>
-        <thead className={S.Header}>
+      <table className={S.table}>
+        <thead className={S.header}>
           {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className={S.Row}>
+            <tr key={headerGroup.id} className={S.row}>
               {headerGroup.headers.map((header) => {
                 const headerContent = flexRender(
                   header.column.columnDef.header,
@@ -67,7 +69,10 @@ export const TableComponent = <
                     {headerContent && (
                       <Badge
                         onClick={header.column.getToggleSortingHandler()}
-                        className={S.HeaderBadge}
+                        classNames={{
+                          root: S.headerBadge,
+                          label: S.headerBadgeLabel,
+                        }}
                         rightSection={
                           {
                             asc: <Icon name="chevronup" size={10} />,
@@ -112,12 +117,11 @@ function TableBody<T>({
   // Important: Keep the row virtualizer in the lowest component possible to avoid unnecessary re-renders.
   const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLTableRowElement>({
     count: rows.length,
-    estimateSize: () => 33, //estimate row height for accurate scrollbar dragging
+    estimateSize: () => DEFAULT_ROW_HEIGHT, //estimate row height for accurate scrollbar dragging
     getScrollElement: () => tableContainerRef,
     //measure dynamic row height, except in firefox because it measures table border height incorrectly
     measureElement:
-      typeof window !== "undefined" &&
-      navigator.userAgent.indexOf("Firefox") === -1
+      typeof window !== "undefined"
         ? (element) => element?.getBoundingClientRect().height
         : undefined,
     overscan: 5,
@@ -125,6 +129,7 @@ function TableBody<T>({
 
   return (
     <tbody
+      className={S.body}
       style={{
         display: "grid",
         height: `${rowVirtualizer.getTotalSize()}px`, //tells scrollbar how big the table is
@@ -169,7 +174,7 @@ function TableBodyRow<T>({
       data-index={virtualRow.index} //needed for dynamic row height measurement
       ref={(node) => rowVirtualizer.measureElement(node)} //measure dynamic row height
       key={row.id}
-      className={S.Row}
+      className={S.row}
       style={{
         position: "absolute",
         transform: `translateY(${virtualRow.start}px)`, //this should always be a `style` as it changes on scroll
@@ -185,7 +190,7 @@ function TableBodyRow<T>({
         return (
           <td
             key={cell.id}
-            className={S.Cell}
+            className={S.cell}
             style={{
               ...getColumWidthStyle(cell.column.columnDef),
             }}
