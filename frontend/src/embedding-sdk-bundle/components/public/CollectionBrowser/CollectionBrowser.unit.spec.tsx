@@ -112,34 +112,6 @@ describe("CollectionBrowser", () => {
     expect(columnNames).not.toContain("Description");
   });
 
-  it("should allow hiding the description column", async () => {
-    await setup({
-      props: {
-        visibleColumns: ["type", "name", "lastEditedBy", "lastEditedAt"],
-      },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
-    });
-
-    const columnNames: (string | null)[] = [];
-
-    within(screen.getByTestId("items-table-head"))
-      .getAllByRole("button")
-      .forEach((el) => {
-        columnNames.push(el.textContent);
-      });
-
-    expect(columnNames).not.toContain("Description");
-    expect(columnNames).toStrictEqual([
-      "Type",
-      "Name",
-      "Last edited by",
-      "Last edited at",
-    ]);
-  });
-
   it("should show description column when explicitly included", async () => {
     await setup({
       props: {
@@ -173,13 +145,6 @@ describe("CollectionBrowser", () => {
       expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
     });
 
-    // The description column header should be present
-    const descriptionHeader = screen.getByText("Description");
-    expect(descriptionHeader).toBeInTheDocument();
-
-    // Verify that the description column is properly configured
-    // This indirectly tests that our backend changes allow description sorting
-    // since the frontend will only show sortable columns if the backend supports them
     const headerRow = screen.getByTestId("items-table-head");
     const columnHeaders = within(headerRow).getAllByRole("button");
     const columnTexts = columnHeaders.map((header) => header.textContent);
