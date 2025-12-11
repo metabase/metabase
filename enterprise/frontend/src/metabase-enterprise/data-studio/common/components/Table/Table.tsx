@@ -119,7 +119,6 @@ function TableBody<T>({
     count: rows.length,
     estimateSize: () => DEFAULT_ROW_HEIGHT, //estimate row height for accurate scrollbar dragging
     getScrollElement: () => tableContainerRef,
-    //measure dynamic row height, except in firefox because it measures table border height incorrectly
     measureElement:
       typeof window !== "undefined"
         ? (element) => element?.getBoundingClientRect().height
