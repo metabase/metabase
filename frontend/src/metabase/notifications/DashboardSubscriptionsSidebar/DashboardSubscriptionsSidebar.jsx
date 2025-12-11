@@ -67,6 +67,7 @@ const cardsToPulseCards = (cards, pulseCards) => {
       pivot_results: pulseCard.pivot_results,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
+      download_perm: pulseCard.download_perm,
     };
   });
 };

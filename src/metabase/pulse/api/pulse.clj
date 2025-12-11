@@ -112,7 +112,14 @@
         pulses               (if creator-or-recipient
                                (map maybe-strip-sensitive-metadata pulses)
                                pulses)]
-    (t2/hydrate pulses :can_write)))
+    (mapv
+     (fn [pulse]
+       (update pulse :cards
+               (fn [cards]
+                 (mapv (fn [card] (assoc card :download_perm (perms/download-perms-level
+                                                              (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card :dataset_query] (:id card)))
+                                                              api/*current-user-id*))) cards))))
+     (t2/hydrate pulses :can_write))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

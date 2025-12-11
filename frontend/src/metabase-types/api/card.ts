@@ -30,7 +30,11 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 export type CardType = "model" | "question" | "metric";
-
+export type DownloadPermission =
+  | "no"
+  | "ten-thousand-rows"
+  | "one-million-rows"
+  | "full";
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
@@ -82,6 +86,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   creator?: UserInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
+
+  download_perm?: DownloadPermission;
 }
 
 export interface PublicCard {
