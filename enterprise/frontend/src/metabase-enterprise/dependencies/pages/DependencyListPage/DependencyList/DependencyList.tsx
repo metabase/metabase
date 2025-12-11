@@ -10,7 +10,7 @@ import { EntityTable } from "./EntityTable";
 import type { DependencyColumn } from "./types";
 import { getColumns, isSortableColumn } from "./utils";
 
-type DependencyTableProps = {
+type DependencyListProps = {
   items: DependencyNode[];
   sortOptions?: DependencyListSortOptions;
   paginationOptions?: PaginationOptions;
@@ -20,7 +20,7 @@ type DependencyTableProps = {
   onPageChange?: (pageIndex: number) => void;
 };
 
-export const DependencyTable = memo(function DependencyTable({
+export const DependencyList = memo(function DependencyList({
   items,
   sortOptions,
   paginationOptions,
@@ -28,7 +28,7 @@ export const DependencyTable = memo(function DependencyTable({
   withDependentsCountColumn = false,
   onSortChange,
   onPageChange,
-}: DependencyTableProps) {
+}: DependencyListProps) {
   const columns = useMemo(
     () => getColumns({ withErrorsColumn, withDependentsCountColumn }),
     [withErrorsColumn, withDependentsCountColumn],
