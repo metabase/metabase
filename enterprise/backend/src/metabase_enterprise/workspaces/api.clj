@@ -208,7 +208,7 @@
                  :isolated {:transform_id ref_id
                             :schema       isolated-schema
                             :table        isolated-name
-                            :table_id     (or isolated_table_id (get fallback-map [db_id schema isolated-name]))}})}))
+                            :table_id     (or isolated_table_id (get fallback-map [db_id isolated-schema isolated-name]))}})}))
 
 (api.macros/defendpoint :get "/:id" :- Workspace
   "Get a single workspace by ID"

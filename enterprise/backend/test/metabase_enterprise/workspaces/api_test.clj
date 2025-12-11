@@ -295,36 +295,39 @@
                                                         :name     orig-name}}]
         ;; create the global table
         (transforms.i/execute! x1 {:run-method :manual})
-        (let [workspace      (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                   {:name        "Test Workspace"
-                                                                    :database_id (mt/id)}))
-              create-url     (ws-url (:id workspace) "/transform")
-              create-req     (assoc (select-keys x1 [:name :source :target]) :global_id (:id x1))
+        (let [workspace    (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                                 {:name        "Test Workspace"
+                                                                  :database_id (mt/id)}))
+              create-url   (ws-url (:id workspace) "/transform")
+              create-req   (assoc (select-keys x1 [:name :source :target]) :global_id (:id x1))
               ;; add the transform
-              ref-id         (:ref_id (mt/user-http-request :crowberto :post 200 create-url create-req))
-              ws-transform   (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
-              isolated-table (t2/select-one :model/Table
-                                            :schema (-> ws-transform :target :schema)
-                                            :name (-> ws-transform :target :name))]
+              ref-id       (:ref_id (mt/user-http-request :crowberto :post 200 create-url create-req))
+              ws-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id ref-id)
+              orig-id      (t2/select-one-fn :id [:model/Table :id]
+                                             :db_id (:database_id workspace)
+                                             :schema (-> ws-transform :target :schema)
+                                             :name (-> ws-transform :target :name))]
           (testing "/table returns expected results"
             (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
                        :global   {:schema   orig-schema
                                   :table    orig-name
-                                  :table_id (:id isolated-table)}
+                                  :table_id orig-id}
                        :isolated {:transform_id ref-id
+                                  :schema       (:schema workspace)
                                   :table        string?}}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
           (testing "and after we run the transform, id for isolated table appears"
             (is (=? {:status "succeeded"}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "transform" ref-id "run"))))
+            (t2/select-one [:model/Table :id :schema :name] {:order-by [[:id :desc]]})
             (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
                        :global   {:schema   orig-schema
                                   :table    orig-name
-                                  :table_id (:id isolated-table)}
+                                  :table_id orig-id}
                        :isolated {:transform_id ref-id
                                   :schema       (:schema workspace)
                                   :table        string?
