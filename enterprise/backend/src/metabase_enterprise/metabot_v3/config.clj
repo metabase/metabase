@@ -6,17 +6,17 @@
 
 (def internal-metabot-id
   "The UUID of the internal Metabot instance."
-  "b5716059-ad40-4d83-a4e1-673af020b2d8")
+  metabot-v3.settings/internal-metabot-uuid)
 
 (def embedded-metabot-id
   "The UUID of the embedded Metabot instance."
-  "c61bf5f5-1025-47b6-9298-bf1827105bb6")
+  metabot-v3.settings/embedded-metabot-uuid)
 
 (def metabot-config
   "Configuration for the built-in metabot instances."
-  {internal-metabot-id {:entity-id "metabotmetabotmetabot"
+  {internal-metabot-id {:entity-id metabot-v3.settings/internal-metabot-entity-id
                         :default-use-case "omnibot"}
-   embedded-metabot-id {:entity-id "embeddedmetabotmetabo"
+   embedded-metabot-id {:entity-id metabot-v3.settings/embedded-metabot-entity-id
                         :default-use-case "embedding"}})
 
 (defn normalize-metabot-id
