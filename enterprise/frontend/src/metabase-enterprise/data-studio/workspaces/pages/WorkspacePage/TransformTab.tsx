@@ -13,7 +13,7 @@ import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
   useGetTransformQuery,
-  useRunTransformMutation,
+  useRunWorkspaceTransformMutation,
   useValidateTableNameMutation,
   workspaceApi,
 } from "metabase-enterprise/api";
@@ -45,22 +45,24 @@ import type {
   TransformId,
   TransformTarget,
   WorkspaceId,
+  WorkspaceTransform,
+  WorkspaceTransformItem,
 } from "metabase-types/api";
-import type { EditedTransform } from "./WorkspaceProvider";
 
 import { WorkspaceRunButton } from "../../components/WorkspaceRunButton/WorkspaceRunButton";
 
 import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
+import type { EditedTransform } from "./WorkspaceProvider";
 import { useWorkspace } from "./WorkspaceProvider";
 
 interface Props {
   databaseId: DatabaseId;
   editedTransform: EditedTransform;
-  transform: Transform;
+  transform: Transform | WorkspaceTransform;
   workspaceId: WorkspaceId;
-  workspaceTransforms: Transform[];
+  workspaceTransforms: WorkspaceTransformItem[];
   onChange: (patch: Partial<EditedTransform>) => void;
   onOpenTransform: (transformId: TransformId) => void;
 }
@@ -79,6 +81,7 @@ export const TransformTab = ({
     isWorkspaceExecuting,
     setIsWorkspaceExecuting,
     removeUnsavedTransform,
+    unsavedTransforms,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
@@ -100,7 +103,7 @@ export const TransformTab = ({
     isFetching,
   } = useGetTransformQuery(transform.id, {
     pollingInterval: shouldPoll ? POLLING_INTERVAL : undefined,
-    skip: transform.id < 0,
+    skip: "ref_id" in transform || transform.id < 0,
   });
 
   useEffect(() => {
@@ -173,10 +176,14 @@ export const TransformTab = ({
   );
   const hasChanges = hasSourceChanged;
 
-  const isSaved = workspaceTransforms.some((t) => t.id === transform.id);
+  const isSaved = workspaceTransforms.some(
+    (t) => t.ref_id === transform.ref_id,
+  );
+  const isEditable =
+    isSaved || unsavedTransforms.some((t) => t.id === transform.id);
 
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
-  const [runTransform] = useRunTransformMutation();
+  const [runTransform] = useRunWorkspaceTransformMutation();
   const [_validateTableName] = useValidateTableNameMutation();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
@@ -255,7 +262,10 @@ export const TransformTab = ({
   const handleRun = async () => {
     try {
       setIsRunTriggered(true);
-      await runTransform(transform.id).unwrap();
+      await runTransform({
+        workspaceId,
+        transformId: String(transform.id),
+      }).unwrap();
 
       // Invalidate the workspace tables cache since transform execution
       // may affect the list of workspace tables.
@@ -392,7 +402,7 @@ export const TransformTab = ({
       {editedTransform && (
         <Box flex="1">
           <TransformEditor
-            disabled={!isSaved}
+            disabled={!isEditable}
             source={editedTransform.source}
             proposedSource={proposedSource}
             onAcceptProposed={handleAcceptProposed}

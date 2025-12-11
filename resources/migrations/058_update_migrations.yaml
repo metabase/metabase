@@ -1615,10 +1615,11 @@ databaseChangeLog:
               - column:
                   name: workspace_id
       # MySQL requires FK to be dropped before its underlying index can be dropped
+      # Use modifySql to make the FK drop conditional since rollback doesn't support preconditions
       rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: collection
-            constraintName: fk_collection_workspace_id
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE collection DROP FOREIGN KEY fk_collection_workspace_id
         - dropIndex:
             tableName: collection
             indexName: idx_collection_workspace_id
@@ -2411,17 +2412,15 @@ databaseChangeLog:
             - indexExists:
                 indexName: idx_workspace_transform_workspace_global_unique
       changes:
+        # PostgreSQL supports partial indexes for smaller index size
         - sql:
             dbms: postgresql
             sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id) WHERE global_id IS NOT NULL
-        # H2 doesn't support partial/filtered indexes with WHERE clause
-        # Use a regular unique index for H2 - nulls are not considered equal in H2
+        # H2/MySQL/MariaDB don't support partial indexes, but all databases treat NULLs as distinct
+        # in unique indexes, so a regular unique index is functionally equivalent
         - sql:
-            dbms: h2
+            dbms: h2,mysql,mariadb
             sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id)
-        - sql:
-            dbms: mysql,mariadb
-            sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, (IFNULL(global_id, ref_id)))
       rollback:
         - dropIndex:
             tableName: workspace_transform

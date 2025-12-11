@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
+   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
@@ -248,13 +249,21 @@
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
 
-(api.macros/defendpoint :delete "/:id" :- [:map [:ok [:= true]]]
+(api.macros/defendpoint :delete "/:ws-id" :- [:map [:ok [:= true]]]
   "Delete a workspace and all its contents, including mirrored entities."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  ;; TODO implement it https://linear.app/metabase/issue/BOT-574/delete-workspaceid
-  {:ok true})
+  (let [ws (api/check-404 (t2/select-one :model/Workspace :id ws-id))]
+    (api/check-400 (some? (:archived_at ws)) "You cannot delete a workspace without first archiving it")
+    ;; TODO delete actual schema and user too (we shouldn't rely on our metadata for all the table names)
+    ;;      see: https://linear.app/metabase/issue/BOT-690/workspacesisolation-delete-workspace-isolation
+    (let [database (t2/select-one :model/Database (:database_id ws))
+          s+ts     (t2/select-fn-vec (juxt :schema :table) [:model/WorkspaceOutput :schema :table]
+                                     :workspace_id ws-id
+                                     :db_id (:database_id ws))]
+      (ws.isolation/drop-isolated-tables! database s+ts))
+    (t2/delete! :model/Workspace ws-id)
+    {:ok true}))
 
 (api.macros/defendpoint :post "/:id/run"
   :- [:map
@@ -367,6 +376,23 @@
       :else
       {:status 200 :body "OK"})))
 
+(defn- malli-map-keys [schema]
+  (map first (rest schema)))
+
+(def ^:private WorkspaceTransform
+  [:map
+   [:ref_id ::ws.t/ref-id]
+   [:global_id [:maybe ::ws.t/appdb-id]]
+   [:name :string]
+   [:description [:maybe :string]]
+   [:source :map]
+   [:target :map]
+   [:workspace_id ::ws.t/appdb-id]
+   ;[:creator_id ::ws.t/appdb-id]
+   [:archived_at :any]
+   [:created_at :any]
+   [:updated_at :any]])
+
 (api.macros/defendpoint :post "/:id/transform"
   "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
@@ -386,10 +412,9 @@
                                  (deferred-tru "Another transform in this workspace already targets that table."))
         global-id (:global_id body (:id body))
         body      (-> body (dissoc :global_id) (update :target assoc :database_id (:database_id workspace)))]
-    (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)))
-
-(defn- malli-map-keys [schema]
-  (map first (rest schema)))
+    (select-keys
+     (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)
+     (malli-map-keys WorkspaceTransform))))
 
 ;; TODO Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -413,18 +438,6 @@
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id id))
   {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :name :source] :workspace_id id))})
-
-(def ^:private WorkspaceTransform
-  [:map
-   [:ref_id ::ws.t/ref-id]
-   [:name :string]
-   [:description [:maybe :string]]
-   [:source :map]
-   [:target :map]
-   [:workspace_id ::ws.t/appdb-id]
-   ;[:creator_id ::ws.t/appdb-id]
-   [:created_at :any]
-   [:updated_at :any]])
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)

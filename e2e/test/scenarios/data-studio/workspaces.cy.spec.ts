@@ -47,7 +47,7 @@ describe("scenarios > data studio > workspaces", () => {
   //   H.expectNoBadSnowplowEvents();
   // });
 
-  it("should be able to create, navigate, archive, and rename workspaces", () => {
+  it("should be able to create, navigate, archive, unarchive, rename, and delete workspaces", () => {
     Workspaces.visitDataStudio();
 
     Workspaces.getWorkspacesSection()
@@ -94,12 +94,46 @@ describe("scenarios > data studio > workspaces", () => {
     Workspaces.getWorkspaceNameInput().should("have.value", "Workspace A");
 
     cy.log("can archive a workspace");
+    Workspaces.getWorkspaceItem(/Workspace A/).should("contain.text", "Ready");
     Workspaces.getWorkspaceItemActions(/Workspace A/).click();
     H.popover().findByText("Archive").click();
-    H.undoToast().should("have.text", "Workspace archived successfully");
-    Workspaces.getWorkspaceItem(/Workspace A/).should("not.exist");
-    cy.location("pathname").should("eq", "/data-studio/workspaces");
+    verifyAndCloseToast("Workspace archived successfully");
 
+    cy.log("should show archived workspaces and their status");
+    Workspaces.getWorkspaceItem(/Workspace A/).should(
+      "contain.text",
+      "Archived",
+    );
+
+    cy.location("pathname").should("eq", "/data-studio/workspaces");
+    Workspaces.getWorkspacesPage().within(() => {
+      cy.findByText("Workspaces").should("be.visible");
+      cy.findByText("Workspace A").should("be.visible");
+      cy.findByText("Workspace B").should("be.visible");
+    });
+
+    cy.log("can unarchive a workspace");
+    Workspaces.getWorkspaceItemActions(/Workspace A/).click();
+    H.popover().findByText("Restore").click();
+    verifyAndCloseToast("Workspace restored successfully");
+    Workspaces.getWorkspaceItem(/Workspace A/).should("contain.text", "Ready");
+
+    cy.location("pathname").should("eq", "/data-studio/workspaces");
+    Workspaces.getWorkspacesPage().within(() => {
+      cy.findByText("Workspaces").should("be.visible");
+      cy.findByText("Workspace A").should("be.visible");
+      cy.log("can navigate from workspaces list to a workspace");
+      cy.findByText("Workspace B").should("be.visible").click();
+    });
+
+    cy.log("can delete a workspace");
+    Workspaces.getWorkspaceItemActions(/Workspace A/).click();
+    H.popover().findByText("Delete").click();
+    H.modal().findByText("Delete").click();
+    verifyAndCloseToast("Workspace deleted successfully");
+    Workspaces.getWorkspaceItem(/Workspace A/).should("not.exist");
+
+    cy.location("pathname").should("eq", "/data-studio/workspaces");
     Workspaces.getWorkspacesPage().within(() => {
       cy.findByText("Workspaces").should("be.visible");
       cy.findByText("Workspace A").should("not.exist");
@@ -111,10 +145,8 @@ describe("scenarios > data studio > workspaces", () => {
     Workspaces.getWorkspaceNameInput().should("have.value", "Workspace B");
 
     Workspaces.getWorkspaceNameInput().clear().type("Renamed workspace").blur();
-    // H.undoToast().should("have.text", "Workspace renamed"); // TODO: uncomment when implemented
+    // verifyAndCloseToast("Workspace renamed"); // TODO: uncomment when implemented
     Workspaces.getWorkspaceItem(/Renamed workspace/).should("be.visible");
-
-    // TODO: workspace deletion?
   });
 
   it("should be able to check out exisitng transform into a new workspace from the transform page", () => {
@@ -349,4 +381,9 @@ function runTransformAndWaitForSuccess() {
 
 function getRunButton(options: { timeout?: number } = {}) {
   return cy.findAllByTestId("run-button").eq(0, options);
+}
+
+function verifyAndCloseToast(message: string) {
+  H.undoToast().should("contain.text", message);
+  H.undoToast().icon("close").click({ force: true });
 }

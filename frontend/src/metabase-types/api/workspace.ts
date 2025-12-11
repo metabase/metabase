@@ -14,6 +14,8 @@ export type Workspace = {
   id: WorkspaceId;
   name: string;
   archived: boolean;
+  archived_at?: string | null;
+  status?: WorkspaceSetupStatus;
   collection_id?: CollectionId | null;
   database_id?: DatabaseId | null;
   created_at?: string;
@@ -95,16 +97,6 @@ export type WorkspaceTransformMergeResponse = {
   archived_at: string | null;
 };
 
-export type WorkspaceUpdateContentsRequest = {
-  id: WorkspaceId;
-  add?: {
-    transforms?: TransformId[];
-  };
-  remove?: {
-    transforms?: TransformId[];
-  };
-};
-
 export type ValidateTableNameRequest = {
   id: WorkspaceId;
   db_id: DatabaseId;
@@ -153,7 +145,7 @@ export type WorkspaceInputTable = {
 };
 
 export type WorkspaceOutputTableEntry = {
-  id: number | null;
+  transform_id: number | null;
   db_id: DatabaseId;
   schema: string;
   table: string;

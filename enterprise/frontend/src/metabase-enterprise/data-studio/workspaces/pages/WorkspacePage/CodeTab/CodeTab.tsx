@@ -7,6 +7,7 @@ import { useLazyGetWorkspaceTransformQuery } from "metabase-enterprise/api";
 import type {
   Transform,
   WorkspaceId,
+  WorkspaceTransform,
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
@@ -20,7 +21,7 @@ type CodeTabProps = {
   transforms: Transform[];
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
-  onTransformClick: (transform: Transform) => void;
+  onTransformClick: (transform: Transform | WorkspaceTransform) => void;
 };
 
 export const CodeTab = ({
@@ -35,7 +36,7 @@ export const CodeTab = ({
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
 
   const handleTransformClick = useCallback(
-    (transform: Transform) => {
+    (transform: Transform | WorkspaceTransform) => {
       const edited = editedTransforms.get(transform.id);
       const transformToOpen = edited
         ? ({ ...transform, ...edited } as Transform)
@@ -46,7 +47,15 @@ export const CodeTab = ({
   );
 
   const handleWorkspaceTransformClick = useCallback(
-    async (workspaceTransform: WorkspaceTransformItem) => {
+    async (workspaceTransform: WorkspaceTransformItem | Transform) => {
+      if ("id" in workspaceTransform && workspaceTransform.id <= 0) {
+        return handleTransformClick(workspaceTransform);
+      }
+
+      if (!("ref_id" in workspaceTransform)) {
+        return;
+      }
+
       const { data: transform } = await fetchWorkspaceTransform({
         workspaceId,
         transformId: workspaceTransform.ref_id,

@@ -10,8 +10,8 @@ import { useGetWorkspacesQuery } from "metabase-enterprise/api";
 export function WorkspaceListPage() {
   const { data: workspacesData, error, isLoading } = useGetWorkspacesQuery();
 
-  const activeWorkspaces = useMemo(
-    () => (workspacesData?.items ?? []).filter((w) => !w.archived),
+  const workspaces = useMemo(
+    () => workspacesData?.items ?? [],
     [workspacesData],
   );
 
@@ -22,11 +22,11 @@ export function WorkspaceListPage() {
   return (
     <Box data-testid="workspaces-page" p="lg">
       <Title order={2} mb="lg">{t`Workspaces`}</Title>
-      {activeWorkspaces.length === 0 ? (
+      {workspaces.length === 0 ? (
         <Text c="text-secondary">{t`No workspaces yet`}</Text>
       ) : (
         <Stack gap="md">
-          {activeWorkspaces.map((workspace) => (
+          {workspaces.map((workspace) => (
             <Card key={workspace.id} p="md" shadow="none" withBorder>
               <Group justify="space-between">
                 <Anchor

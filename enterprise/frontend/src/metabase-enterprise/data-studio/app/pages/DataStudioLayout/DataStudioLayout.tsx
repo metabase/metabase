@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
@@ -5,6 +6,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -20,6 +22,7 @@ import {
   Box,
   FixedSizeIcon,
   Flex,
+  Group,
   Icon,
   type IconName,
   Menu,
@@ -512,6 +515,10 @@ function WorkspaceItem({
   onUnarchive,
   onDelete,
 }: WorkspaceItemProps) {
+  const [
+    deleteModalOpened,
+    { open: openDeleteModal, close: closeDeleteModal },
+  ] = useDisclosure();
   const timeAgo = workspace.updated_at
     ? dayjs(workspace.updated_at).fromNow()
     : null;
@@ -525,10 +532,15 @@ function WorkspaceItem({
   };
 
   const handleDelete = () => {
-    onDelete(workspace.id);
+    openDeleteModal();
   };
 
-  const isArchived = workspace.archived;
+  const handleConfirmDelete = async () => {
+    await onDelete(workspace.id);
+    closeDeleteModal();
+  };
+
+  const status = getWorkspaceListStatus(workspace);
 
   return (
     <UnstyledButton
@@ -542,6 +554,14 @@ function WorkspaceItem({
           <Text size="sm" fw={600} truncate>
             {workspace.name}
           </Text>
+          {status && (
+            <Group gap="xs" align="center" wrap="nowrap">
+              <Icon name={status.icon} size={10} c={status.color} />
+              <Text size="xs" fw={500} c={status.color}>
+                {status.label}
+              </Text>
+            </Group>
+          )}
           {timeAgo && (
             <Text size="xs" c="text-secondary" truncate>
               {t`Updated ${timeAgo}`}
@@ -561,7 +581,7 @@ function WorkspaceItem({
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            {isArchived ? (
+            {workspace.archived ? (
               <Menu.Item
                 leftSection={<Icon name="revert" />}
                 onClick={handleUnarchive}
@@ -578,6 +598,7 @@ function WorkspaceItem({
             )}
             <Menu.Divider />
             <Menu.Item
+              c="error"
               leftSection={<Icon name="trash" />}
               onClick={handleDelete}
               color="danger"
@@ -587,6 +608,33 @@ function WorkspaceItem({
           </Menu.Dropdown>
         </Menu>
       </Flex>
+
+      <ConfirmModal
+        confirmButtonText={t`Delete`}
+        message={t`This can't be undone.`}
+        opened={deleteModalOpened}
+        title={t`Delete ${workspace.name}?`}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+      />
     </UnstyledButton>
   );
+}
+
+type WorkspaceListStatus = {
+  label: string;
+  icon: IconName;
+  color: string;
+};
+
+function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
+  if (workspace.archived) {
+    return { label: t`Archived`, icon: "archive", color: "text-light" };
+  }
+
+  if (workspace.status === "pending") {
+    return { label: t`Pending setup`, icon: "clock", color: "warning" };
+  }
+
+  return { label: t`Ready`, icon: "check", color: "success" };
 }
