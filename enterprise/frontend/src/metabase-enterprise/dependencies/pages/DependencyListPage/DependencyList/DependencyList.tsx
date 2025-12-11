@@ -1,5 +1,6 @@
 import { memo, useMemo } from "react";
 
+import { Card } from "metabase/ui";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import type {
   DependencyListSortOptions,
@@ -27,5 +28,9 @@ export const DependencyList = memo(function DependencyList({
     [withDependentsCountColumn],
   );
 
-  return <Table data={items} columns={columns} />;
+  return (
+    <Card withBorder p={0}>
+      <Table data={items} columns={columns} />
+    </Card>
+  );
 });
