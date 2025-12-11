@@ -7,7 +7,7 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import type { SegmentTabUrls } from "metabase-enterprise/data-studio/segments/layouts/SegmentLayout";
+import type { SegmentTabUrls } from "metabase-enterprise/data-studio/segments/types";
 
 type SegmentTabsProps = {
   urls: SegmentTabUrls;

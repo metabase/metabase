@@ -1,11 +1,10 @@
 import { IndexRoute, Redirect, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { DataModelSegmentLayout } from "metabase-enterprise/data-studio/segments/layouts/DataModelSegmentLayout";
-import { NewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/NewSegmentPage";
-import { SegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/SegmentDependenciesPage";
-import { SegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/SegmentDetailPage";
-import { SegmentRevisionHistoryPage } from "metabase-enterprise/data-studio/segments/pages/SegmentRevisionHistoryPage";
+import { DataModelNewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/DataModelNewSegmentPage";
+import { DataModelSegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/DataModelSegmentDependenciesPage";
+import { DataModelSegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/DataModelSegmentDetailPage";
+import { DataModelSegmentRevisionHistoryPage } from "metabase-enterprise/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 
 import { DataModel } from "./pages/DataModel";
 
@@ -25,22 +24,24 @@ export function getDataStudioMetadataRoutes() {
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/new"
-        component={DataModelSegmentLayout}
-      >
-        <IndexRoute component={NewSegmentPage} />
-      </Route>
+        component={DataModelNewSegmentPage}
+      />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId"
-        component={DataModelSegmentLayout}
-      >
-        <IndexRoute component={SegmentDetailPage} />
-        <Route path="revisions" component={SegmentRevisionHistoryPage} />
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="dependencies" component={SegmentDependenciesPage}>
-            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-          </Route>
-        )}
-      </Route>
+        component={DataModelSegmentDetailPage}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/revisions"
+        component={DataModelSegmentRevisionHistoryPage}
+      />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies"
+          component={DataModelSegmentDependenciesPage}
+        >
+          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        </Route>
+      )}
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
         component={DataModel}

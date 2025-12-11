@@ -1,11 +1,10 @@
 import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { PublishedTableSegmentLayout } from "metabase-enterprise/data-studio/segments/layouts/PublishedTableSegmentLayout";
-import { NewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/NewSegmentPage";
-import { SegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/SegmentDependenciesPage";
-import { SegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/SegmentDetailPage";
-import { SegmentRevisionHistoryPage } from "metabase-enterprise/data-studio/segments/pages/SegmentRevisionHistoryPage";
+import { PublishedTableNewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableNewSegmentPage";
+import { PublishedTableSegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableSegmentDependenciesPage";
+import { PublishedTableSegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableSegmentDetailPage";
+import { PublishedTableSegmentRevisionHistoryPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
@@ -21,22 +20,24 @@ export function getDataStudioTableRoutes() {
       <Route path=":tableId/segments" component={TableSegmentsPage} />
       <Route
         path=":tableId/segments/new"
-        component={PublishedTableSegmentLayout}
-      >
-        <IndexRoute component={NewSegmentPage} />
-      </Route>
+        component={PublishedTableNewSegmentPage}
+      />
       <Route
         path=":tableId/segments/:segmentId"
-        component={PublishedTableSegmentLayout}
-      >
-        <IndexRoute component={SegmentDetailPage} />
-        <Route path="revisions" component={SegmentRevisionHistoryPage} />
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="dependencies" component={SegmentDependenciesPage}>
-            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-          </Route>
-        )}
-      </Route>
+        component={PublishedTableSegmentDetailPage}
+      />
+      <Route
+        path=":tableId/segments/:segmentId/revisions"
+        component={PublishedTableSegmentRevisionHistoryPage}
+      />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route
+          path=":tableId/segments/:segmentId/dependencies"
+          component={PublishedTableSegmentDependenciesPage}
+        >
+          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        </Route>
+      )}
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path=":tableId/dependencies" component={TableDependenciesPage}>
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />

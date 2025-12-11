@@ -1,16 +1,28 @@
+import type { ReactNode } from "react";
+
 import { Flex, Stack } from "metabase/ui";
+import type { Segment } from "metabase-types/api";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
 import { SegmentRevisionHistory } from "../../components/SegmentRevisionHistory";
-import { useExistingSegmentContext } from "../../layouts/SegmentLayout";
+import type { SegmentTabUrls } from "../../types";
 import { getSegmentPreviewUrl } from "../../utils/get-segment-preview-url";
 
 import S from "./SegmentRevisionHistoryPage.module.css";
 
-export function SegmentRevisionHistoryPage() {
-  const { segment, tabUrls, breadcrumbs, onRemove } =
-    useExistingSegmentContext();
+type SegmentRevisionHistoryPageProps = {
+  segment: Segment;
+  tabUrls: SegmentTabUrls;
+  breadcrumbs: ReactNode;
+  onRemove: () => Promise<void>;
+};
 
+export function SegmentRevisionHistoryPage({
+  segment,
+  tabUrls,
+  breadcrumbs,
+  onRemove,
+}: SegmentRevisionHistoryPageProps) {
   return (
     <Flex
       direction="column"

@@ -5,16 +5,9 @@ import { Route } from "react-router";
 import {
   setupSchemaEndpoints,
   setupSegmentEndpoint,
-  setupSegmentEndpointError,
-  setupTableQueryMetadataEndpoint,
-  setupTableQueryMetadataEndpointError,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type { Segment, Table } from "metabase-types/api";
 import {
@@ -26,7 +19,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
-import { ExistingSegmentLayout } from "../../layouts/SegmentLayout";
 
 import { SegmentDetailPage } from "./SegmentDetailPage";
 
@@ -79,82 +71,54 @@ const TEST_SEGMENT = createMockSegment({
 type SetupOpts = {
   segment?: Segment;
   table?: Table;
-  hasSegmentError?: boolean;
-  hasTableError?: boolean;
 };
 
-function setup({
-  segment = TEST_SEGMENT,
-  table = TEST_TABLE,
-  hasSegmentError = false,
-  hasTableError = false,
-}: SetupOpts = {}) {
-  if (hasSegmentError) {
-    setupSegmentEndpointError(segment.id);
-  } else {
-    setupSegmentEndpoint(segment);
-  }
-
-  if (hasTableError) {
-    setupTableQueryMetadataEndpointError(table.id);
-  } else {
-    setupTableQueryMetadataEndpoint(table);
-  }
-
+function setup({ segment = TEST_SEGMENT, table = TEST_TABLE }: SetupOpts = {}) {
+  setupSegmentEndpoint(segment);
   setupSchemaEndpoints(checkNotNull(table.db));
 
   const baseUrl = `/data-studio/data/database/${TEST_DATABASE.id}/schema/${TEST_DATABASE.id}:PUBLIC/table/${table.id}/segments/${segment.id}`;
+
+  const tabUrls = {
+    definition: baseUrl,
+    revisions: `${baseUrl}/revisions`,
+    dependencies: `${baseUrl}/dependencies`,
+  };
+
+  const onRemove = jest.fn().mockResolvedValue(undefined);
 
   renderWithProviders(
     <Route
       path="/"
       component={() => (
-        <ExistingSegmentLayout
-          config={{
-            segmentId: segment.id,
-            backUrl: `/data-studio/data/database/${TEST_DATABASE.id}/schema/${TEST_DATABASE.id}:PUBLIC/table/${table.id}/segments`,
-            tabUrls: {
-              definition: baseUrl,
-              revisions: `${baseUrl}/revisions`,
-              dependencies: `${baseUrl}/dependencies`,
-            },
-            renderBreadcrumbs: (t, s) => (
-              <DataModelSegmentBreadcrumbs table={t} segment={s} />
-            ),
-          }}
-        >
-          <SegmentDetailPage route={{ path: "/" } as never} />
-        </ExistingSegmentLayout>
+        <SegmentDetailPage
+          route={{ path: "/" } as never}
+          segment={segment}
+          tabUrls={tabUrls}
+          breadcrumbs={
+            <DataModelSegmentBreadcrumbs table={table} segment={segment} />
+          }
+          onRemove={onRemove}
+        />
       )}
     />,
     {
       withRouter: true,
+      storeInitialState: {
+        entities: createMockEntitiesState({
+          databases: [TEST_DATABASE],
+          tables: [table],
+        }),
+      },
     },
   );
+
+  return { onRemove };
 }
 
 describe("SegmentDetailPage", () => {
-  it("shows loading state while fetching segment and table", async () => {
-    setup();
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
-  });
-
-  it("shows error state when segment fails to load", async () => {
-    setup({ hasSegmentError: true });
-    await waitForLoaderToBeRemoved();
-    expect(screen.getByText("Segment not found")).toBeInTheDocument();
-  });
-
-  it("shows error state when table fails to load", async () => {
-    setup({ hasTableError: true });
-    await waitForLoaderToBeRemoved();
-    expect(screen.getByText("Table not found")).toBeInTheDocument();
-  });
-
   it("renders page with segment data, tabs, and actions menu", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     expect(screen.getByDisplayValue("High Value Orders")).toBeInTheDocument();
     expect(screen.getByLabelText("Description")).toHaveValue(
@@ -167,7 +131,6 @@ describe("SegmentDetailPage", () => {
 
   it("does not show Save/Cancel buttons when form is pristine", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     expect(
       screen.queryByRole("button", { name: "Save" }),
@@ -179,7 +142,6 @@ describe("SegmentDetailPage", () => {
 
   it("shows Save/Cancel buttons when description is modified", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     const descriptionInput = screen.getByLabelText("Description");
     await userEvent.clear(descriptionInput);
@@ -191,7 +153,6 @@ describe("SegmentDetailPage", () => {
 
   it("resets form when Cancel is clicked after modifying description", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     const descriptionInput = screen.getByLabelText("Description");
     await userEvent.clear(descriptionInput);
@@ -215,7 +176,6 @@ describe("SegmentDetailPage", () => {
     fetchMock.put(`path:/api/segment/${TEST_SEGMENT.id}`, updatedSegment);
 
     setup();
-    await waitForLoaderToBeRemoved();
 
     const descriptionInput = screen.getByLabelText("Description");
     await userEvent.clear(descriptionInput);
@@ -234,19 +194,21 @@ describe("SegmentDetailPage", () => {
     });
 
     expect(descriptionInput).toHaveValue("Updated description");
-    expect(screen.getByText(/Total is greater than/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Total is greater than/)).toBeInTheDocument();
+    });
   });
 
   it("displays existing filter from segment definition", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText(/Total is greater than/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Total is greater than/)).toBeInTheDocument();
+    });
   });
 
   it("opens actions menu with Preview and Remove options when clicking menu button", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     await userEvent.click(screen.getByLabelText("Segment actions"));
 
@@ -256,7 +218,6 @@ describe("SegmentDetailPage", () => {
 
   it("shows confirmation modal when Remove segment is clicked", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     await userEvent.click(screen.getByLabelText("Segment actions"));
     await userEvent.click(screen.getByText("Remove segment"));

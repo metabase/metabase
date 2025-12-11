@@ -8,7 +8,7 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import type { SegmentTabUrls } from "metabase-enterprise/data-studio/segments/layouts/SegmentLayout";
+import type { SegmentTabUrls } from "metabase-enterprise/data-studio/segments/types";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";

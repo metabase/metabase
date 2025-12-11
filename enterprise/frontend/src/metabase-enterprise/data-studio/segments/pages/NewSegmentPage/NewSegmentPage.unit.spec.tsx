@@ -2,17 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import {
-  setupSchemaEndpoints,
-  setupTableQueryMetadataEndpoint,
-  setupTableQueryMetadataEndpointError,
-} from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { setupSchemaEndpoints } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Table } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -22,7 +14,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
-import { NewSegmentLayout } from "../../layouts/SegmentLayout";
 
 import { NewSegmentPage } from "./NewSegmentPage";
 
@@ -59,37 +50,36 @@ const TEST_TABLE = createMockTable({
 
 type SetupOpts = {
   table?: Table;
-  hasError?: boolean;
 };
 
-function setup({ table = TEST_TABLE, hasError = false }: SetupOpts = {}) {
-  if (hasError) {
-    setupTableQueryMetadataEndpointError(table.id, "Server error");
-  } else {
-    setupTableQueryMetadataEndpoint(table);
-  }
-
+function setup({ table = TEST_TABLE }: SetupOpts = {}) {
   setupSchemaEndpoints(TEST_DATABASE);
 
   const successUrl = `/data-studio/data/database/${TEST_DATABASE.id}/schema/${TEST_DATABASE.id}:PUBLIC/table/${table.id}/segments`;
+
+  const getSuccessUrl = (segment: { id: number }) =>
+    `${successUrl}/${segment.id}`;
 
   const { history } = renderWithProviders(
     <Route
       path="/"
       component={() => (
-        <NewSegmentLayout
-          config={{
-            tableId: table.id,
-            getSuccessUrl: (segment) => `${successUrl}/${segment.id}`,
-            renderBreadcrumbs: (t) => <DataModelSegmentBreadcrumbs table={t} />,
-          }}
-        >
-          <NewSegmentPage route={{ path: "/" } as never} />
-        </NewSegmentLayout>
+        <NewSegmentPage
+          route={{ path: "/" } as never}
+          table={table}
+          breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
+          getSuccessUrl={getSuccessUrl}
+        />
       )}
     />,
     {
       withRouter: true,
+      storeInitialState: {
+        entities: createMockEntitiesState({
+          databases: [TEST_DATABASE],
+          tables: [table],
+        }),
+      },
     },
   );
 
@@ -113,21 +103,8 @@ async function addFilter() {
 }
 
 describe("NewSegmentPage", () => {
-  it("shows loading state while fetching table metadata", async () => {
-    setup();
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
-  });
-
-  it("shows error state when table fails to load", async () => {
-    setup({ hasError: true });
-    await waitForLoaderToBeRemoved();
-    expect(screen.getByText("Server error")).toBeInTheDocument();
-  });
-
   it("renders page with empty form and no Save button", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     expect(screen.getByTestId("new-segment-page")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("New segment")).toHaveValue("");
@@ -139,7 +116,6 @@ describe("NewSegmentPage", () => {
 
   it("renders filter placeholder prompting user to add filters", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     expect(
       screen.getByText("Add filters to narrow your answer"),
@@ -148,7 +124,6 @@ describe("NewSegmentPage", () => {
 
   it("shows Save button when name is entered", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     await userEvent.type(
       screen.getByPlaceholderText("New segment"),
@@ -160,7 +135,6 @@ describe("NewSegmentPage", () => {
 
   it("shows Save button when description is entered", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     await userEvent.type(
       screen.getByLabelText("Description"),
@@ -172,7 +146,6 @@ describe("NewSegmentPage", () => {
 
   it("hides Save button when form is cleared back to empty", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     const nameInput = screen.getByPlaceholderText("New segment");
     await userEvent.type(nameInput, "Test");
@@ -189,7 +162,6 @@ describe("NewSegmentPage", () => {
 
   it("Save button is disabled when name is provided but no filters defined", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     await userEvent.type(
       screen.getByPlaceholderText("New segment"),
@@ -202,7 +174,6 @@ describe("NewSegmentPage", () => {
 
   it("does not show Save when name is whitespace only", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     await userEvent.type(screen.getByPlaceholderText("New segment"), "   ");
 
@@ -215,14 +186,12 @@ describe("NewSegmentPage", () => {
 
   it("does not show actions menu when no filters are defined", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     expect(screen.queryByLabelText("Segment actions")).not.toBeInTheDocument();
   });
 
   it("shows actions menu with Preview after adding a filter", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     await addFilter();
 
@@ -232,7 +201,6 @@ describe("NewSegmentPage", () => {
 
   it("enables Save button when name and filter are both provided", async () => {
     setup();
-    await waitForLoaderToBeRemoved();
 
     await userEvent.type(
       screen.getByPlaceholderText("New segment"),
@@ -255,7 +223,6 @@ describe("NewSegmentPage", () => {
     fetchMock.post("path:/api/segment", createdSegment);
 
     const { history, successUrl } = setup();
-    await waitForLoaderToBeRemoved();
 
     await userEvent.type(
       screen.getByPlaceholderText("New segment"),

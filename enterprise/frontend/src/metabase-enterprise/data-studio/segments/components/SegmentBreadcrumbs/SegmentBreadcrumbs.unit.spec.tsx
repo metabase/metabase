@@ -1,13 +1,12 @@
 import { Route } from "react-router";
 
 import {
-  setupCollectionByIdEndpoint,
   setupSchemaEndpoints,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import type { Collection, Segment, Table } from "metabase-types/api";
+import type { Segment, Table } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -26,13 +25,20 @@ const SINGLE_SCHEMA_DB = createMockDatabase({
   tables: [createMockTable({ schema: "PUBLIC" })],
 });
 
+const TEST_COLLECTION = createMockCollection({
+  id: 1,
+  name: "Data",
+  effective_ancestors: [],
+});
+
 const TEST_TABLE = createMockTable({
   id: 42,
   db_id: SINGLE_SCHEMA_DB.id,
   db: SINGLE_SCHEMA_DB,
   display_name: "Orders",
   schema: "PUBLIC",
-  collection_id: 1,
+  collection_id: TEST_COLLECTION.id,
+  collection: TEST_COLLECTION,
 });
 
 const TEST_SEGMENT = createMockSegment({
@@ -45,20 +51,10 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
   function setup({
     table = TEST_TABLE,
     segment,
-    collection = createMockCollection({
-      id: 1,
-      name: "Data",
-      effective_ancestors: [],
-    }),
   }: {
     table?: Table;
     segment?: Segment;
-    collection?: Collection | null;
   } = {}) {
-    if (collection) {
-      setupCollectionByIdEndpoint({ collections: [collection] });
-    }
-
     renderWithProviders(
       <Route
         path="/"
@@ -106,7 +102,13 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
       effective_ancestors: [grandparent, parent],
     });
 
-    setup({ collection });
+    const tableWithAncestors = createMockTable({
+      ...TEST_TABLE,
+      collection_id: collection.id,
+      collection,
+    });
+
+    setup({ table: tableWithAncestors });
 
     await waitFor(() => {
       expect(screen.getByText("Root")).toBeInTheDocument();
@@ -153,9 +155,10 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
       id: 44,
       display_name: "Unpublished Table",
       collection_id: null,
+      collection: undefined,
     });
 
-    setup({ table: tableNoCollection, collection: null });
+    setup({ table: tableNoCollection });
 
     await waitFor(() => {
       expect(screen.getByText("Unpublished Table")).toBeInTheDocument();

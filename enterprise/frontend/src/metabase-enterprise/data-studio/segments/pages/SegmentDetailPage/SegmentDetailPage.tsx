@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
@@ -9,20 +10,29 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Flex, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { Segment } from "metabase-types/api";
 
 import { SegmentEditor } from "../../components/SegmentEditor";
 import { SegmentHeader } from "../../components/SegmentHeader";
 import { useSegmentQuery } from "../../hooks/use-segment-query";
-import { useExistingSegmentContext } from "../../layouts/SegmentLayout";
+import type { SegmentTabUrls } from "../../types";
 import { getPreviewUrl } from "../../utils/segment-query";
 
 type SegmentDetailPageProps = {
   route: Route;
+  segment: Segment;
+  tabUrls: SegmentTabUrls;
+  breadcrumbs: ReactNode;
+  onRemove: () => Promise<void>;
 };
 
-export function SegmentDetailPage({ route }: SegmentDetailPageProps) {
-  const { segment, tabUrls, breadcrumbs, onRemove } =
-    useExistingSegmentContext();
+export function SegmentDetailPage({
+  route,
+  segment,
+  tabUrls,
+  breadcrumbs,
+  onRemove,
+}: SegmentDetailPageProps) {
   const metadata = useSelector(getMetadata);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -40,7 +50,10 @@ export function SegmentDetailPage({ route }: SegmentDetailPageProps) {
   );
 
   const isValid = filters.length > 0;
-  const previewUrl = filters.length > 0 ? getPreviewUrl(definition) : undefined;
+  const previewUrl = useMemo(
+    () => (filters.length > 0 ? getPreviewUrl(definition) : undefined),
+    [definition, filters],
+  );
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));

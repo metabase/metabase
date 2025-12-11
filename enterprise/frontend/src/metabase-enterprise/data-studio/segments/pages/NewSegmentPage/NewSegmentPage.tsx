@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -10,12 +11,11 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatasetQuery, Segment, Table } from "metabase-types/api";
 
 import { NewSegmentHeader } from "../../components/NewSegmentHeader";
 import { SegmentEditor } from "../../components/SegmentEditor";
 import { useSegmentQuery } from "../../hooks/use-segment-query";
-import { useNewSegmentContext } from "../../layouts/SegmentLayout";
 import {
   createInitialQueryForTable,
   getPreviewUrl,
@@ -23,14 +23,20 @@ import {
 
 type NewSegmentPageProps = {
   route: Route;
+  table: Table;
+  breadcrumbs: ReactNode;
+  getSuccessUrl: (segment: Segment) => string;
 };
 
-export function NewSegmentPage({ route }: NewSegmentPageProps) {
+export function NewSegmentPage({
+  route,
+  table,
+  breadcrumbs,
+  getSuccessUrl,
+}: NewSegmentPageProps) {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  const { table, breadcrumbs, getSuccessUrl } = useNewSegmentContext();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

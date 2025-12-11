@@ -1,0 +1,1 @@
+export { DataModelNewSegmentPage } from "./DataModelNewSegmentPage";
