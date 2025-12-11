@@ -49,9 +49,9 @@
   [:name])
 
 (defmethod serdes/dependencies "Metabot"
-  [{:keys [prompts use_cases]}]
-  (set (concat (mapcat serdes/dependencies prompts)
-               (mapcat serdes/dependencies use_cases))))
+  [{:keys [collection_id prompts]}]
+  (cond-> (set (mapcat serdes/dependencies prompts))
+    collection_id (conj [{:model "Collection" :id collection_id}])))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])

@@ -2,28 +2,31 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
    [metabase.util.malli.registry :as mr]))
 
 ;;; ---------------------------------------------------- invoke-tool tests ----------------------------------------------------
 
 (deftest ^:parallel invoke-tool-no-args-test
-  (testing "invoke-tool with no arguments schema passes metabot-id in args"
+  (testing "invoke-tool with no arguments schema passes metabot-id and use-case in args"
     (let [received-args (atom nil)
           handler       (fn [args]
                           (reset! received-args args)
                           {:structured_output {:message "hello"}})
           body          {:conversation_id "conv-123"}
-          request       {:metabot-v3/metabot-id "bot-456"}
+          request       {:metabot-v3/metabot-id "bot-456"
+                         :headers {"x-metabot-use-case" "transforms"}}
           opts          {:api-name      :test-tool
                          :handler       handler
                          :result-schema nil}
           result (deftool/invoke-tool body request opts)]
-      (is (= {:metabot-id "bot-456"} @received-args) "Handler should receive metabot-id in args")
+      (is (= {:metabot-id "bot-456" :use-case "transforms"} @received-args)
+          "Handler should receive metabot-id and use-case in args")
       (is (= "conv-123" (:conversation_id result)))
       (is (= {:message "hello"} (:structured_output result)))))
 
-  (testing "invoke-tool with no arguments schema and no metabot-id"
+  (testing "invoke-tool with no arguments schema and no metabot-id defaults use-case to omnibot"
     (let [received-args (atom nil)
           handler       (fn [args]
                           (reset! received-args args)
@@ -34,7 +37,8 @@
                          :handler       handler
                          :result-schema nil}
           result (deftool/invoke-tool body request opts)]
-      (is (= {} @received-args) "Handler should receive empty args when no metabot-id")
+      (is (= {:use-case "omnibot"} @received-args)
+          "Handler should receive default use-case when no metabot-id or header")
       (is (= "conv-123" (:conversation_id result))))))
 
 (deftest ^:parallel invoke-tool-with-args-test
@@ -49,14 +53,15 @@
                           {:structured_output {:processed true}})
           body          {:arguments       {:user_id 42}
                          :conversation_id "conv-456"}
-          request       {:metabot-v3/metabot-id "bot-789"}
+          request       {:metabot-v3/metabot-id "bot-789"
+                         :headers {"x-metabot-use-case" "nlq"}}
           opts          {:api-name      :test-tool
                          :args-schema   ::test-args
                          :handler       handler
                          :result-schema nil}
           result (deftool/invoke-tool body request opts)]
-      (is (= {:user-id 42, :metabot-id "bot-789"} @received-args)
-          "Arguments should be encoded with schema transformer and include metabot-id")
+      (is (= {:user-id 42 :metabot-id "bot-789" :use-case "nlq"} @received-args)
+          "Arguments should be encoded with schema transformer and include metabot-id and use-case")
       (is (= "conv-456" (:conversation_id result))))))
 
 (deftest ^:parallel invoke-tool-with-result-decoding-test

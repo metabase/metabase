@@ -14,8 +14,10 @@
 
 (def metabot-config
   "Configuration for the built-in metabot instances."
-  {internal-metabot-id {:entity-id "metabotmetabotmetabot"}
-   embedded-metabot-id {:entity-id "embeddedmetabotmetabo"}})
+  {internal-metabot-id {:entity-id "metabotmetabotmetabot"
+                        :default-use-case "omnibot"}
+   embedded-metabot-id {:entity-id "embeddedmetabotmetabo"
+                        :default-use-case "embedding"}})
 
 (defn normalize-metabot-id
   "Return the primary key for the metabot instance identified by `metabot-id`.
@@ -24,6 +26,12 @@
   The provided ID can be a UUID from [[metabot-config]] or an entity_id of a Metabot instance."
   [metabot-id]
   (t2/select-one-pk :model/Metabot :entity_id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
+
+(defn default-use-case
+  "Return the default use case for a metabot. Falls back to \"omnibot\" for unknown metabots."
+  [metabot-id]
+  (or (get-in metabot-config [metabot-id :default-use-case])
+      "omnibot"))
 
 (defn resolve-dynamic-metabot-id
   "Resolve dynamic metabot ID with logical fall backs.
