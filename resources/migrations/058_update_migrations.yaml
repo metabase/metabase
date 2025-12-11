@@ -1614,7 +1614,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      # MySQL requires FK to be dropped before its underlying index can be dropped
       rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: collection
+            constraintName: fk_collection_workspace_id
         - dropIndex:
             tableName: collection
             indexName: idx_collection_workspace_id
