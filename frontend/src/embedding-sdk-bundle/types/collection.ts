@@ -27,6 +27,8 @@ export type MetabaseCollectionItem = {
   model: string;
   name: string;
   description: string | null;
+  namespace?: string | null;
+  collection_namespace?: string | null;
   type?:
     | "instance-analytics"
     | "trash"
@@ -34,7 +36,6 @@ export type MetabaseCollectionItem = {
     | "library"
     | "library-data"
     | "library-metrics"
-    | "shared-tenant-collection"
     | "tenant-specific-root-collection"
     | "model"
     | "question"
