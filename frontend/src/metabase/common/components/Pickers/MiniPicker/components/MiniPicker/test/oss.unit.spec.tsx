@@ -224,6 +224,16 @@ describe("MiniPicker", () => {
       expect(await screen.findByText("london (lydia)")).toBeInTheDocument();
     });
 
+    it("shows collection name for a table in a collection", async () => {
+      await setup({ searchQuery: "kit" });
+      expect(await screen.findByText("Kitty")).toBeInTheDocument();
+      expect(await screen.findByText("Misc Tables")).toBeInTheDocument();
+
+      // should not show table or schema
+      expect(screen.queryByText(/big_secret/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/also_secret/)).not.toBeInTheDocument();
+    });
+
     it("properly filters search results", async () => {
       await setup({ searchQuery: "a" });
       expect(await screen.findByText("Lucas")).toBeInTheDocument();

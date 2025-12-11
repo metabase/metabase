@@ -222,6 +222,17 @@ export const setup = async (
         name: "Misc Metrics",
       },
     }),
+    createMockSearchResult({
+      id: 303,
+      model: "table",
+      name: "Kitty",
+      database_name: "big_secret",
+      table_schema: "also_secret",
+      collection: {
+        id: 7891,
+        name: "Misc Tables",
+      },
+    }),
     createMockSearchResult({ id: 304, model: "document", name: "Wickham" }),
     createMockSearchResult({ id: 305, model: "collection", name: "Reynolds" }),
     createMockSearchResult({
@@ -230,6 +241,11 @@ export const setup = async (
       name: "wickham",
       table_schema: "lydia",
       database_name: "london",
+      collection: {
+        // @ts-expect-error - can be null in search results
+        id: null,
+        name: "",
+      },
     }),
   ]);
 

@@ -341,7 +341,7 @@ export const MiniPickerListLoader = () => (
 const isInCollection = (
   item: MiniPickerPickableItem,
 ): item is MiniPickerCollectionItem => {
-  return "collection" in item && !!item.name;
+  return "collection" in item && !!item.collection && !!item.collection.name;
 };
 
 const ItemList = ({ children }: { children: React.ReactNode[] }) => {
