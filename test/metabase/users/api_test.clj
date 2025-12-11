@@ -1419,6 +1419,18 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
 
+(deftest deactivate-missing-user-fails
+  (testing "DELETE /api/user/:id"
+    (let [max-id (:max_id (t2/query-one {:select [[:%max.id :max_id]]
+                                         :from :core_user}))]
+      (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
+
+(deftest deactivate-deactivated-user-again-succeeds
+  (testing "DELETE /api/user/:id"
+    (mt/with-temp [:model/User user {:is_active false}]
+      (is (= {:success true}
+             (mt/user-http-request :crowberto :delete 200 (format "user/%d" (:id user)) {}))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Other Endpoints                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
