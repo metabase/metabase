@@ -4,6 +4,7 @@ import { Anchor, FixedSizeIcon, Flex } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel, getNodeLink } from "../../../../utils";
+import S from "../DependencyList.module.css";
 
 type NameCellProps = {
   node: DependencyNode;
@@ -15,7 +16,7 @@ export function NameCell({ node }: NameCellProps) {
   const link = getNodeLink(node);
 
   return (
-    <Anchor component={Link} to={link?.url ?? ""}>
+    <Anchor className={S.link} component={Link} to={link?.url ?? ""}>
       <Flex align="center" gap="sm">
         {icon && <FixedSizeIcon name={icon} />}
         {label}

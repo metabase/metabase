@@ -4,6 +4,7 @@ import { Anchor, Group, List, Modal } from "metabase/ui";
 import type { DependencyError, DependencyNode } from "metabase-types/api";
 
 import { getNodeLabel } from "../../../../utils";
+import S from "../DependencyList.module.css";
 
 import { getErrorDetail, getErrorTypeLabel, getErrorsInfo } from "./utils";
 
@@ -23,7 +24,7 @@ export function ErrorsCell({ node }: ErrorsCellProps) {
   return (
     <>
       <Group>
-        <Anchor role="button" onClick={open}>
+        <Anchor className={S.link} role="button" onClick={open}>
           {errorsInfo.label}{" "}
           {errorsInfo.detail && <strong>{errorsInfo.detail}</strong>}
         </Anchor>

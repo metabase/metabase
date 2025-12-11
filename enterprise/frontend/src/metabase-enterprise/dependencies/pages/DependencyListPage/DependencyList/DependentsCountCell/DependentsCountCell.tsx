@@ -5,6 +5,7 @@ import { Anchor } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeDependentsCount } from "../../../../utils";
+import S from "../DependencyList.module.css";
 
 type DependentsCountCellProps = {
   node: DependencyNode;
@@ -15,7 +16,7 @@ export function DependentsCountCell({ node }: DependentsCountCellProps) {
   const url = Urls.dependencyGraph({ entry: node });
 
   return (
-    <Anchor component={Link} to={url}>
+    <Anchor className={S.link} component={Link} to={url}>
       {count}
     </Anchor>
   );

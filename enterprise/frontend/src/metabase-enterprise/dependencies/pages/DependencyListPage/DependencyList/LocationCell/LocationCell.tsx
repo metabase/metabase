@@ -6,6 +6,7 @@ import { Anchor, Box, FixedSizeIcon, Flex } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
+import S from "../DependencyList.module.css";
 
 type LocationCellProps = {
   node: DependencyNode;
@@ -24,7 +25,7 @@ export function LocationCell({ node }: LocationCellProps) {
       {links.map((link, linkIndex) => (
         <Fragment key={linkIndex}>
           {linkIndex > 0 && <Box>/</Box>}
-          <Anchor component={Link} to={link.url}>
+          <Anchor className={S.link} component={Link} to={link.url}>
             <Flex align="center" gap="sm">
               {linkIndex === 0 && icon && <FixedSizeIcon name={icon} />}
               <Ellipsified>{link.label}</Ellipsified>
