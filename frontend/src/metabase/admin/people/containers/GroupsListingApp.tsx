@@ -48,7 +48,7 @@ export const GroupsListingApp = ({
   const handleCreate = async (group: { name: string }) => {
     await createGroup({
       ...group,
-      is_tenant_group: external, // TODO, make the API accept this
+      is_tenant_group: external,
     }).unwrap();
   };
 

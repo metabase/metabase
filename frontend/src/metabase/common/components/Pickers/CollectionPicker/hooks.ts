@@ -38,7 +38,7 @@ const getTenantSpecificCollectionsRoot = (): CollectionPickerItem | null => {
     model: "collection",
     location: "/",
     description: "",
-    here: ["collection"],
+    here: ["collection", "card", "dashboard"],
     below: ["collection"],
   };
 };
