@@ -2621,19 +2621,18 @@
 
 (deftest create-child-collection-explicit-namespace-fails-test
   (testing "POST /api/collection"
-    (testing "Child collection should use explicit namespace when provided (even if nil)"
+    (testing "Child collection should use explicit namespace when provided (unless nil)"
       (mt/with-model-cleanup [:model/Collection]
         (let [;; Create a parent collection with snippets namespace
               parent-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                       {:name "Parent Snippets Collection"
                                                        :namespace "snippets"})
               parent-id (:id parent-collection)]
-          ;; Create child collection with explicit nil namespace should use nil (not inherit)
           (is (= {:errors {:location "Collection must be in the same namespace as its parent"}}
                  (mt/user-http-request :crowberto :post 400 "collection"
                                        {:name "Child Collection"
                                         :parent_id parent-id
-                                        :namespace nil}))
+                                        :namespace "not-snippets"}))
               "Child namespace validation is still enforced"))))))
 
 (deftest create-root-collection-namespace-test
