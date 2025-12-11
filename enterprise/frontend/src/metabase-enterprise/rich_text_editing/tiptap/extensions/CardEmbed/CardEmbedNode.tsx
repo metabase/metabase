@@ -122,9 +122,10 @@ const CardEmbedMenuDropdown = ({
       <QuestionDownloadWidget
         question={question}
         result={dataset}
-        onDownload={(opts) => {
+        onDownload={async (opts) => {
           setMenuView(null);
-          handleDownload(opts);
+
+          await handleDownload(opts);
         }}
       />
     );
