@@ -267,7 +267,7 @@
 
 (def ^:private GlobalWorkspace
   ;; Might be interesting to show whether they're enclosed, once we have the graph.
-  ;; WWhen they're enclosed it could also be interesting to know whether they're stale.
+  ;; When they're enclosed, it could also be interesting to know whether they're stale.
   [:map
    [:id ::ws.t/appdb-id]
    [:name :string]
