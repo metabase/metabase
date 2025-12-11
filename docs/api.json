@@ -1137,6 +1137,57 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.data-studio.api.table.bulk-table-info" : {
+        "description" : "Schema for table info in bulk operations. Matches frontend BulkTableInfo type.",
+        "type" : "object",
+        "properties" : {
+          "db_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "is_published" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "db_id", "name", "display_name", "is_published" ]
+      },
+      "metabase-enterprise.data-studio.api.table.bulk-table-selection-info" : {
+        "description" : "Schema for /selection endpoint response. Matches frontend BulkTableSelectionInfo type.",
+        "type" : "object",
+        "properties" : {
+          "published_downstream_tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.bulk-table-info"
+            }
+          },
+          "selected_table" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.bulk-table-info"
+          },
+          "unpublished_upstream_tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.bulk-table-info"
+            }
+          }
+        },
+        "required" : [ "published_downstream_tables", "unpublished_upstream_tables" ]
+      },
       "metabase-enterprise.data-studio.api.table.data-authorities" : {
         "type" : "string",
         "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ]
@@ -1148,6 +1199,16 @@
       "metabase-enterprise.data-studio.api.table.data-sources" : {
         "type" : "string",
         "enum" : [ "source-data", "transform", "unknown", "ingested", "metabase-transform", "upload" ]
+      },
+      "metabase-enterprise.data-studio.api.table.publish-tables-response" : {
+        "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type.",
+        "type" : "object",
+        "properties" : {
+          "target_collection" : {
+            "description" : "value must be an instance of :model/Collection"
+          }
+        },
+        "required" : [ ]
       },
       "metabase-enterprise.data-studio.api.table.table-selectors" : {
         "type" : "object",
@@ -2168,6 +2229,20 @@
           "required" : [ "output" ]
         } ]
       },
+      "metabase-enterprise.metabot-v3.tools.api.get-dashboard-details-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "dashboard_id" : {
+              "type" : "integer"
+            }
+          },
+          "required" : [ "dashboard_id" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
       "metabase-enterprise.metabot-v3.tools.api.get-dashboard-details-result" : {
         "anyOf" : [ {
           "type" : "object",
@@ -2294,6 +2369,16 @@
           },
           "required" : [ "output" ]
         } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.get-query-details-arguments" : {
+        "type" : "object",
+        "properties" : {
+          "query" : {
+            "type" : "object",
+            "properties" : { }
+          }
+        },
+        "required" : [ "query" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.get-query-details-result" : {
         "anyOf" : [ {
@@ -3243,7 +3328,8 @@
           "properties" : { }
         } ]
       },
-      "metabase-enterprise.metabot-v3.tools.api.tool-request" : {
+      "metabase-enterprise.metabot-v3.tools.deftool.tool-request" : {
+        "description" : "Base schema for all tool requests. Contains the conversation ID.",
         "type" : "object",
         "properties" : {
           "conversation_id" : {
@@ -4605,14 +4691,6 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
         } ]
       },
-      "metabase.legacy-mbql.schema.AggregationArg" : {
-        "description" : "Schema for the argument to an aggregation clause like `:sum`.\n\n  Strings are allowed as literals here, unlike at the top level as `::Expressions`, so `::FieldOrExpressionDef` is\n  not enough. However, nested aggregations are not allowed here, so we can't use `::ExpressionArg` either. (#66199)",
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
-        }, {
-          "type" : "string"
-        } ]
-      },
       "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
         "description" : "Additional options for any aggregation clause when wrapping it in `:aggregation-options`.",
         "type" : "object",
@@ -4631,6 +4709,9 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregation"
         },
         "minItems" : 1
+      },
+      "metabase.legacy-mbql.schema.AnyMBQLClause" : {
+        "description" : "Schema for ANY valid MBQL clause"
       },
       "metabase.legacy-mbql.schema.ArithmeticDateTimeUnit" : {
         "type" : "string",
@@ -5300,6 +5381,8 @@
           }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ExpressionArg"
           }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
+          }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime"
           } ]
         } ]
@@ -5524,53 +5607,7 @@
         "enum" : [ "hour", "second", "default", "hour-of-day", "millisecond", "minute-of-hour", "minute" ]
       },
       "metabase.legacy-mbql.schema.UnnamedAggregation" : {
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpression"
-        }, {
-          "oneOf" : [ {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.avg"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.cum-sum"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.distinct"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.distinct-where"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.stddev"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.sum"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.min"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.max"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.metric"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.share"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.count-where"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.sum-where"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.median"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.percentile"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.var"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.cum-count"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.count"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.offset"
-          } ]
-        } ]
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.AnyMBQLClause"
       },
       "metabase.legacy-mbql.schema.ValueTypeInfo" : {
         "description" : "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals` middleware to values in filter clauses based on the Field in the clause.",
@@ -5632,10 +5669,6 @@
         "description" : "schema for a valid MBQL 4 :asc clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.avg" : {
-        "description" : "schema for a valid MBQL 4 :avg clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.between" : {
         "description" : "schema for a valid MBQL 4 :between clause",
         "allOf" : [ ]
@@ -5674,22 +5707,6 @@
         "description" : "schema for a valid MBQL 4 :convert-timezone clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.count" : {
-        "description" : "schema for a valid MBQL 4 :count clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.count-where" : {
-        "description" : "schema for a valid MBQL 4 :count-where clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.cum-count" : {
-        "description" : "schema for a valid MBQL 4 :cum-count clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.cum-sum" : {
-        "description" : "schema for a valid MBQL 4 :cum-sum clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.date" : {
         "description" : "schema for a valid MBQL 4 :date clause",
         "allOf" : [ ]
@@ -5716,14 +5733,6 @@
       },
       "metabase.legacy-mbql.schema.desc" : {
         "description" : "schema for a valid MBQL 4 :desc clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.distinct" : {
-        "description" : "schema for a valid MBQL 4 :distinct clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.distinct-where" : {
-        "description" : "schema for a valid MBQL 4 :distinct-where clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.does-not-contain" : {
@@ -6083,22 +6092,6 @@
         "description" : "schema for a valid MBQL 4 :ltrim clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.max" : {
-        "description" : "schema for a valid MBQL 4 :max clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.median" : {
-        "description" : "schema for a valid MBQL 4 :median clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.metric" : {
-        "description" : "schema for a valid MBQL 4 :metric clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.min" : {
-        "description" : "schema for a valid MBQL 4 :min clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.month-name" : {
         "description" : "schema for a valid MBQL 4 :month-name clause",
         "allOf" : [ ]
@@ -6140,10 +6133,6 @@
         "description" : "schema for a valid MBQL 4 :path clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.percentile" : {
-        "description" : "schema for a valid MBQL 4 :percentile clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.power" : {
         "description" : "schema for a valid MBQL 4 :power clause",
         "allOf" : [ ]
@@ -6183,10 +6172,6 @@
         "description" : "schema for a valid MBQL 4 :segment clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.share" : {
-        "description" : "schema for a valid MBQL 4 :share clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.split-part" : {
         "description" : "schema for a valid MBQL 4 :split-part clause",
         "allOf" : [ ]
@@ -6205,24 +6190,12 @@
           "allOf" : [ ]
         } ]
       },
-      "metabase.legacy-mbql.schema.stddev" : {
-        "description" : "schema for a valid MBQL 4 :stddev clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.subdomain" : {
         "description" : "schema for a valid MBQL 4 :subdomain clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.substring" : {
         "description" : "schema for a valid MBQL 4 :substring clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.sum" : {
-        "description" : "schema for a valid MBQL 4 :sum clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.sum-where" : {
-        "description" : "schema for a valid MBQL 4 :sum-where clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.temporal-extract" : {
@@ -6255,10 +6228,6 @@
       },
       "metabase.legacy-mbql.schema.value" : {
         "description" : "schema for a valid MBQL 4 :value clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.var" : {
-        "description" : "schema for a valid MBQL 4 :var clause",
         "allOf" : [ ]
       },
       "metabase.lib.metadata.column.column-unique-key" : {
@@ -12840,7 +12809,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "dashboard", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
+              "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
             }
           }
         }, {
@@ -13255,7 +13224,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "dashboard", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
+              "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
             }
           }
         }, {
@@ -13382,6 +13351,232 @@
           }
         },
         "tags" : [ "/api/collection" ]
+      }
+    },
+    "/api/comment/" : {
+      "get" : {
+        "summary" : "GET /api/comment/",
+        "description" : "Get comments for an entity",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "target_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "document" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "target_id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/comment" ]
+      },
+      "post" : {
+        "summary" : "POST /api/comment/",
+        "description" : "Create a new comment",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "child_target_id" : {
+                    "type" : "string"
+                  },
+                  "content" : {
+                    "type" : "object"
+                  },
+                  "html" : {
+                    "type" : "string"
+                  },
+                  "parent_comment_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "target_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "target_type" : {
+                    "type" : "string",
+                    "enum" : [ "document" ]
+                  }
+                },
+                "required" : [ "target_type", "target_id", "content", "html" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/comment" ]
+      }
+    },
+    "/api/comment/mentions" : {
+      "get" : {
+        "summary" : "GET /api/comment/mentions",
+        "description" : "Get a list of entities suitable for mentions. NOTE: only users for now.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/comment" ]
+      }
+    },
+    "/api/comment/{comment-id}" : {
+      "put" : {
+        "summary" : "PUT /api/comment/{comment-id}",
+        "description" : "Update a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "content" : {
+                    "type" : "object"
+                  },
+                  "html" : {
+                    "type" : "string"
+                  },
+                  "is_resolved" : {
+                    "type" : "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/comment" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/comment/{comment-id}",
+        "description" : "Soft delete a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/comment" ]
+      }
+    },
+    "/api/comment/{comment-id}/reaction" : {
+      "post" : {
+        "summary" : "POST /api/comment/{comment-id}/reaction",
+        "description" : "Toggle a reaction on a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "emoji" : {
+                    "type" : "string",
+                    "minLength" : 1,
+                    "maxLength" : 10
+                  }
+                },
+                "required" : [ "emoji" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/comment" ]
       }
     },
     "/api/dashboard/" : {
@@ -15945,1609 +16140,6 @@
         "tags" : [ "/api/dataset" ]
       }
     },
-    "/api/ee/action-v2/execute" : {
-      "post" : {
-        "summary" : "POST /api/ee/action-v2/execute",
-        "description" : "Execute an action with a single input.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `input`             - a single map. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `input` and `params` are used by the relevant mapping to calculate a map argument to the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for `input`.\n\n   Returns the outputs from the performed action.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "action" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-id-or-expression"
-                  },
-                  "input" : {
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "params" : {
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "scope" : {
-                    "$ref" : "#/components/schemas/metabase.actions.types..scope.raw"
-                  }
-                },
-                "required" : [ "action", "scope" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/action-v2" ]
-      }
-    },
-    "/api/ee/action-v2/execute-bulk" : {
-      "post" : {
-        "summary" : "POST /api/ee/action-v2/execute-bulk",
-        "description" : "Execute an action with multiple inputs.\n\n   This is typically more efficient than calling execute with each input individually, for example by performing batch\n   SQL operations.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `inputs`            - a list of maps. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `inputs` and `params` are used by the relevant mapping to calculate a list of args for the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for each map within `inputs`.\n\n   Returns the outputs from the performed action.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "action" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-id-or-expression"
-                  },
-                  "inputs" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : { }
-                    },
-                    "minItems" : 1
-                  },
-                  "params" : {
-                    "type" : "object",
-                    "additionalProperties" : { }
-                  },
-                  "scope" : {
-                    "$ref" : "#/components/schemas/metabase.actions.types..scope.raw"
-                  }
-                },
-                "required" : [ "action", "scope", "inputs" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/action-v2" ]
-      }
-    },
-    "/api/ee/action-v2/execute-form" : {
-      "post" : {
-        "summary" : "POST /api/ee/action-v2/execute-form",
-        "description" : "Temporary endpoint for describing an actions parameters\n  such that they can be presented correctly in a modal ahead of execution.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/action-v2" ]
-      }
-    },
-    "/api/ee/advanced-permissions/application/graph" : {
-      "get" : {
-        "summary" : "GET /api/ee/advanced-permissions/application/graph",
-        "description" : "Fetch a graph of Application Permissions.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/advanced-permissions/application" ]
-      },
-      "put" : {
-        "summary" : "PUT /api/ee/advanced-permissions/application/graph",
-        "description" : "Do a batch update of Application Permissions by passing a modified graph.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "skip-graph",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean",
-            "default" : false
-          }
-        }, {
-          "in" : "query",
-          "name" : "force",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean",
-            "default" : false
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { }
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/advanced-permissions/application" ]
-      }
-    },
-    "/api/ee/advanced-permissions/impersonation/" : {
-      "get" : {
-        "summary" : "GET /api/ee/advanced-permissions/impersonation/",
-        "description" : "Fetch a list of all Impersonation policies currently in effect, or a single policy if both `group_id` and `db_id`\n  are provided.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "group_id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "db_id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/advanced-permissions/impersonation" ]
-      }
-    },
-    "/api/ee/advanced-permissions/impersonation/{id}" : {
-      "delete" : {
-        "summary" : "DELETE /api/ee/advanced-permissions/impersonation/{id}",
-        "description" : "Delete a Connection Impersonation entry.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/advanced-permissions/impersonation" ]
-      }
-    },
-    "/api/ee/ai-entity-analysis/analyze-chart" : {
-      "post" : {
-        "summary" : "POST /api/ee/ai-entity-analysis/analyze-chart",
-        "description" : "Analyze a chart image using an AI vision model. This function sends the image data to a separate external AI service\n  for analysis.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "description" : {
-                    "type" : "string"
-                  },
-                  "image_base64" : {
-                    "type" : "string"
-                  },
-                  "name" : {
-                    "type" : "string"
-                  },
-                  "timeline_events" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : {
-                        "description" : {
-                          "type" : "string"
-                        },
-                        "name" : {
-                          "type" : "string"
-                        },
-                        "timestamp" : {
-                          "type" : "string"
-                        }
-                      },
-                      "required" : [ "name", "timestamp" ]
-                    }
-                  }
-                },
-                "required" : [ "image_base64" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/ai-entity-analysis" ]
-      }
-    },
-    "/api/ee/ai-sql-fixer/fix" : {
-      "post" : {
-        "summary" : "POST /api/ee/ai-sql-fixer/fix",
-        "description" : "Suggest fixes for a SQL query.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "error_message" : {
-                    "type" : "string"
-                  },
-                  "query" : {
-                    "type" : "object",
-                    "properties" : {
-                      "database" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    },
-                    "required" : [ "database" ]
-                  }
-                },
-                "required" : [ "query", "error_message" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/ai-sql-fixer" ]
-      }
-    },
-    "/api/ee/ai-sql-generation/generate" : {
-      "post" : {
-        "summary" : "POST /api/ee/ai-sql-generation/generate",
-        "description" : "Generate a SQL query.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "database_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "prompt" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  }
-                },
-                "required" : [ "prompt", "database_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/ai-sql-generation" ]
-      }
-    },
-    "/api/ee/audit-app/user/audit-info" : {
-      "get" : {
-        "summary" : "GET /api/ee/audit-app/user/audit-info",
-        "description" : "Gets audit info for the current user if he has permissions to access the audit collection.\n  Otherwise return an empty map.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/audit-app/user" ]
-      }
-    },
-    "/api/ee/audit-app/user/{id}/subscriptions" : {
-      "delete" : {
-        "summary" : "DELETE /api/ee/audit-app/user/{id}/subscriptions",
-        "description" : "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).\n  Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/audit-app/user" ]
-      }
-    },
-    "/api/ee/autodescribe/card/summarize" : {
-      "post" : {
-        "summary" : "POST /api/ee/autodescribe/card/summarize",
-        "description" : "Summarize a question.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "visualization_settings" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "dataset" : {
-                    "type" : "boolean"
-                  },
-                  "dataset_query" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "parameter_mappings" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
-                    }
-                  },
-                  "collection_position" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "result_metadata" : {
-                    "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
-                  },
-                  "collection_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "cache_ttl" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "display" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  },
-                  "parameters" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter"
-                    }
-                  },
-                  "description" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  }
-                },
-                "required" : [ "dataset_query", "display", "visualization_settings" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/autodescribe" ]
-      }
-    },
-    "/api/ee/autodescribe/dashboard/summarize/{id}" : {
-      "post" : {
-        "summary" : "POST /api/ee/autodescribe/dashboard/summarize/{id}",
-        "description" : "Provide a summary of a dashboard.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/autodescribe" ]
-      }
-    },
-    "/api/ee/billing/" : {
-      "get" : {
-        "summary" : "GET /api/ee/billing/",
-        "description" : "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,\n   using the embedding token and signed in user's email to fetch the billing information.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/billing" ]
-      }
-    },
-    "/api/ee/cloud-add-ons/addons" : {
-      "get" : {
-        "summary" : "GET /api/ee/cloud-add-ons/addons",
-        "description" : "Get addons information from the Metabase Store API.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/cloud-add-ons" ]
-      }
-    },
-    "/api/ee/cloud-add-ons/plans" : {
-      "get" : {
-        "summary" : "GET /api/ee/cloud-add-ons/plans",
-        "description" : "Get plans information from the Metabase Store API.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/cloud-add-ons" ]
-      }
-    },
-    "/api/ee/cloud-add-ons/{product-type}" : {
-      "post" : {
-        "summary" : "POST /api/ee/cloud-add-ons/{product-type}",
-        "description" : "Purchase an add-on.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "product-type",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution" ]
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "quantity" : {
-                    "type" : "integer"
-                  },
-                  "terms_of_service" : {
-                    "type" : "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/cloud-add-ons" ]
-      }
-    },
-    "/api/comment/" : {
-      "get" : {
-        "summary" : "GET /api/comment/",
-        "description" : "Get comments for an entity",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "target_type",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "document" ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "target_id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/comment" ]
-      },
-      "post" : {
-        "summary" : "POST /api/comment/",
-        "description" : "Create a new comment",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "child_target_id" : {
-                    "type" : "string"
-                  },
-                  "content" : {
-                    "type" : "object"
-                  },
-                  "html" : {
-                    "type" : "string"
-                  },
-                  "parent_comment_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "target_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "target_type" : {
-                    "type" : "string",
-                    "enum" : [ "document" ]
-                  }
-                },
-                "required" : [ "target_type", "target_id", "content", "html" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/comment" ]
-      }
-    },
-    "/api/comment/mentions" : {
-      "get" : {
-        "summary" : "GET /api/comment/mentions",
-        "description" : "Get a list of entities suitable for mentions. NOTE: only users for now.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/comment" ]
-      }
-    },
-    "/api/comment/{comment-id}" : {
-      "put" : {
-        "summary" : "PUT /api/comment/{comment-id}",
-        "description" : "Update a comment",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "comment-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "content" : {
-                    "type" : "object"
-                  },
-                  "html" : {
-                    "type" : "string"
-                  },
-                  "is_resolved" : {
-                    "type" : "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/comment" ]
-      },
-      "delete" : {
-        "summary" : "DELETE /api/comment/{comment-id}",
-        "description" : "Soft delete a comment",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "comment-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/comment" ]
-      }
-    },
-    "/api/comment/{comment-id}/reaction" : {
-      "post" : {
-        "summary" : "POST /api/comment/{comment-id}/reaction",
-        "description" : "Toggle a reaction on a comment",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "comment-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "emoji" : {
-                    "type" : "string",
-                    "minLength" : 1,
-                    "maxLength" : 10
-                  }
-                },
-                "required" : [ "emoji" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/comment" ]
-      }
-    },
-    "/api/ee/content-translation/csv" : {
-      "get" : {
-        "summary" : "GET /api/ee/content-translation/csv",
-        "description" : "Provides content translation dictionary in CSV",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/content-translation" ]
-      }
-    },
-    "/api/ee/content-translation/dictionary/{token}" : {
-      "get" : {
-        "summary" : "GET /api/ee/content-translation/dictionary/{token}",
-        "description" : "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "token",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/content-translation" ]
-      }
-    },
-    "/api/ee/content-translation/upload-dictionary" : {
-      "post" : {
-        "summary" : "POST /api/ee/content-translation/upload-dictionary",
-        "description" : "Upload a CSV of content translations",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "multipart/form-data" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "file" : {
-                    "type" : "object",
-                    "properties" : {
-                      "filename" : {
-                        "type" : "string"
-                      },
-                      "tempfile" : { }
-                    },
-                    "required" : [ "filename", "tempfile" ]
-                  }
-                },
-                "required" : [ "file" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/content-translation" ]
-      }
-    },
-    "/api/ee/data-studio/table/discard-values" : {
-      "post" : {
-        "summary" : "POST /api/ee/data-studio/table/discard-values",
-        "description" : "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/data-studio/table" ]
-      }
-    },
-    "/api/ee/data-studio/table/edit" : {
-      "post" : {
-        "summary" : "POST /api/ee/data-studio/table/edit",
-        "description" : "Bulk updating tables.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "data_authority" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-authorities"
-                  },
-                  "data_layer" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-layers"
-                  },
-                  "table_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  },
-                  "owner_email" : {
-                    "type" : "string"
-                  },
-                  "owner_user_id" : {
-                    "type" : "integer"
-                  },
-                  "data_source" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-sources"
-                  },
-                  "schema_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "string"
-                    }
-                  },
-                  "entity_type" : {
-                    "type" : "string"
-                  },
-                  "database_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  }
-                },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/data-studio/table" ]
-      }
-    },
-    "/api/ee/data-studio/table/publish-model" : {
-      "post" : {
-        "summary" : "POST /api/ee/data-studio/table/publish-model",
-        "description" : "Create a model for each of selected tables",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "database_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  },
-                  "schema_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "string"
-                    }
-                  },
-                  "table_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  },
-                  "target_collection_id" : {
-                    "anyOf" : [ {
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "const" : "library"
-                    } ]
-                  }
-                },
-                "required" : [ ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/data-studio/table" ]
-      }
-    },
-    "/api/ee/data-studio/table/rescan-values" : {
-      "post" : {
-        "summary" : "POST /api/ee/data-studio/table/rescan-values",
-        "description" : "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/data-studio/table" ]
-      }
-    },
-    "/api/ee/data-studio/table/sync-schema" : {
-      "post" : {
-        "summary" : "POST /api/ee/data-studio/table/sync-schema",
-        "description" : "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asyncronous. This call may return before all tables synced.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/data-studio/table" ]
-      }
-    },
-    "/api/ee/database-replication/connection/{database-id}" : {
-      "post" : {
-        "summary" : "POST /api/ee/database-replication/connection/{database-id}",
-        "description" : "Create a new PG replication connection for the specified database.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "database-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "replicationSchemaFilters" : {
-                    "type" : "object",
-                    "properties" : {
-                      "schema-filters-patterns" : {
-                        "type" : "string"
-                      },
-                      "schema-filters-type" : {
-                        "type" : "string",
-                        "enum" : [ "inclusion", "exclusion", "all" ]
-                      }
-                    },
-                    "required" : [ "schema-filters-type", "schema-filters-patterns" ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/database-replication" ]
-      },
-      "delete" : {
-        "summary" : "DELETE /api/ee/database-replication/connection/{database-id}",
-        "description" : "Delete PG replication connection for the specified database.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "database-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/database-replication" ]
-      }
-    },
-    "/api/ee/database-replication/connection/{database-id}/preview" : {
-      "post" : {
-        "summary" : "POST /api/ee/database-replication/connection/{database-id}/preview",
-        "description" : "Return info about pg-replication connection that is about to be created.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "database-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "replicationSchemaFilters" : {
-                    "type" : "object",
-                    "properties" : {
-                      "schema-filters-patterns" : {
-                        "type" : "string"
-                      },
-                      "schema-filters-type" : {
-                        "type" : "string",
-                        "enum" : [ "inclusion", "exclusion", "all" ]
-                      }
-                    },
-                    "required" : [ "schema-filters-type", "schema-filters-patterns" ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/database-replication" ]
-      }
-    },
-    "/api/ee/database-routing/destination-database" : {
-      "post" : {
-        "summary" : "POST /api/ee/database-routing/destination-database",
-        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "check_connection_details",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "destinations" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : {
-                        "details" : {
-                          "description" : "Value must be a map.",
-                          "type" : "object",
-                          "properties" : { }
-                        },
-                        "name" : {
-                          "type" : "string",
-                          "minLength" : 1
-                        }
-                      },
-                      "required" : [ "name", "details" ]
-                    }
-                  },
-                  "router_database_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  }
-                },
-                "required" : [ "router_database_id", "destinations" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/database-routing" ]
-      }
-    },
-    "/api/ee/database-routing/router-database/{id}" : {
-      "put" : {
-        "summary" : "PUT /api/ee/database-routing/router-database/{id}",
-        "description" : "Updates an existing Database with the `user_attribute` to route on. Will either:\n  - turn an existing Database into a Router database\n  - change the `user_attribute` used to route for an existing Router database, or\n  - turn a Router database into a regular Database\n  depending on the value of `user_attribute`",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "user_attribute" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/database-routing" ]
-      }
-    },
-    "/api/ee/dependencies/check_card" : {
-      "post" : {
-        "summary" : "POST /api/ee/dependencies/check_card",
-        "description" : "Check a proposed edit to a card, and return the card IDs for those cards this edit will break.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-body"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/check_snippet" : {
-      "post" : {
-        "summary" : "POST /api/ee/dependencies/check_snippet",
-        "description" : "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "content" : {
-                    "type" : "string"
-                  },
-                  "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "name" : {
-                    "description" : "snippet names cannot include '}' or start with spaces"
-                  }
-                },
-                "required" : [ "id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/check_transform" : {
-      "post" : {
-        "summary" : "POST /api/ee/dependencies/check_transform",
-        "description" : "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-body"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/graph" : {
-      "get" : {
-        "summary" : "GET /api/ee/dependencies/graph",
-        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.\n\n  Optional :archived parameter controls whether entities in archived collections are included:\n  - false (default): Excludes entities in archived collections\n  - true: Includes entities in archived collections",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "type",
-          "required" : false,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/graph/dependents" : {
-      "get" : {
-        "summary" : "GET /api/ee/dependencies/graph/dependents",
-        "description" : "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of\n   all that entity's dependents with :dependent_type. If the :dependent_type is :card, the dependents are further\n   filtered by :dependent_card_type.\n\n   Optional :archived parameter controls whether entities in archived collections are included:\n   - false (default): Excludes entities in archived collections\n   - true: Includes entities in archived collections",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "dependent_type",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "dependent_card_type",
-          "required" : false,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "question", "model", "metric" ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
     "/api/document/" : {
       "get" : {
         "summary" : "GET /api/document/",
@@ -18041,6 +16633,1487 @@
         "tags" : [ "/api/document" ]
       }
     },
+    "/api/ee/action-v2/execute" : {
+      "post" : {
+        "summary" : "POST /api/ee/action-v2/execute",
+        "description" : "Execute an action with a single input.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `input`             - a single map. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `input` and `params` are used by the relevant mapping to calculate a map argument to the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for `input`.\n\n   Returns the outputs from the performed action.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "action" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-id-or-expression"
+                  },
+                  "input" : {
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "params" : {
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "scope" : {
+                    "$ref" : "#/components/schemas/metabase.actions.types..scope.raw"
+                  }
+                },
+                "required" : [ "action", "scope" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/action-v2" ]
+      }
+    },
+    "/api/ee/action-v2/execute-bulk" : {
+      "post" : {
+        "summary" : "POST /api/ee/action-v2/execute-bulk",
+        "description" : "Execute an action with multiple inputs.\n\n   This is typically more efficient than calling execute with each input individually, for example by performing batch\n   SQL operations.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `inputs`            - a list of maps. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `inputs` and `params` are used by the relevant mapping to calculate a list of args for the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for each map within `inputs`.\n\n   Returns the outputs from the performed action.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "action" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-id-or-expression"
+                  },
+                  "inputs" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "minItems" : 1
+                  },
+                  "params" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  },
+                  "scope" : {
+                    "$ref" : "#/components/schemas/metabase.actions.types..scope.raw"
+                  }
+                },
+                "required" : [ "action", "scope", "inputs" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/action-v2" ]
+      }
+    },
+    "/api/ee/action-v2/execute-form" : {
+      "post" : {
+        "summary" : "POST /api/ee/action-v2/execute-form",
+        "description" : "Temporary endpoint for describing an actions parameters\n  such that they can be presented correctly in a modal ahead of execution.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/action-v2" ]
+      }
+    },
+    "/api/ee/advanced-permissions/application/graph" : {
+      "get" : {
+        "summary" : "GET /api/ee/advanced-permissions/application/graph",
+        "description" : "Fetch a graph of Application Permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/advanced-permissions/application" ]
+      },
+      "put" : {
+        "summary" : "PUT /api/ee/advanced-permissions/application/graph",
+        "description" : "Do a batch update of Application Permissions by passing a modified graph.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "skip-graph",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "force",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/advanced-permissions/application" ]
+      }
+    },
+    "/api/ee/advanced-permissions/impersonation/" : {
+      "get" : {
+        "summary" : "GET /api/ee/advanced-permissions/impersonation/",
+        "description" : "Fetch a list of all Impersonation policies currently in effect, or a single policy if both `group_id` and `db_id`\n  are provided.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "group_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "db_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/advanced-permissions/impersonation" ]
+      }
+    },
+    "/api/ee/advanced-permissions/impersonation/{id}" : {
+      "delete" : {
+        "summary" : "DELETE /api/ee/advanced-permissions/impersonation/{id}",
+        "description" : "Delete a Connection Impersonation entry.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/advanced-permissions/impersonation" ]
+      }
+    },
+    "/api/ee/ai-entity-analysis/analyze-chart" : {
+      "post" : {
+        "summary" : "POST /api/ee/ai-entity-analysis/analyze-chart",
+        "description" : "Analyze a chart image using an AI vision model. This function sends the image data to a separate external AI service\n  for analysis.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "description" : {
+                    "type" : "string"
+                  },
+                  "image_base64" : {
+                    "type" : "string"
+                  },
+                  "name" : {
+                    "type" : "string"
+                  },
+                  "timeline_events" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "description" : {
+                          "type" : "string"
+                        },
+                        "name" : {
+                          "type" : "string"
+                        },
+                        "timestamp" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "name", "timestamp" ]
+                    }
+                  }
+                },
+                "required" : [ "image_base64" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/ai-entity-analysis" ]
+      }
+    },
+    "/api/ee/ai-sql-fixer/fix" : {
+      "post" : {
+        "summary" : "POST /api/ee/ai-sql-fixer/fix",
+        "description" : "Suggest fixes for a SQL query.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "error_message" : {
+                    "type" : "string"
+                  },
+                  "query" : {
+                    "type" : "object",
+                    "properties" : {
+                      "database" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    },
+                    "required" : [ "database" ]
+                  }
+                },
+                "required" : [ "query", "error_message" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/ai-sql-fixer" ]
+      }
+    },
+    "/api/ee/ai-sql-generation/generate" : {
+      "post" : {
+        "summary" : "POST /api/ee/ai-sql-generation/generate",
+        "description" : "Generate a SQL query.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "database_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "prompt" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "prompt", "database_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/ai-sql-generation" ]
+      }
+    },
+    "/api/ee/audit-app/analytics-dev/export" : {
+      "post" : {
+        "summary" : "POST /api/ee/audit-app/analytics-dev/export",
+        "description" : "Export analytics content as a .tar.gz file for local development.\n\n  Only available when MB_ANALYTICS_DEV_MODE=true. Returns a tarball containing\n  the analytics YAMLs in canonical format, ready to commit to source control.\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:body -> <anything>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : { }
+                  },
+                  "required" : [ "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/audit-app/analytics-dev" ]
+      }
+    },
+    "/api/ee/audit-app/user/audit-info" : {
+      "get" : {
+        "summary" : "GET /api/ee/audit-app/user/audit-info",
+        "description" : "Gets audit info for the current user if he has permissions to access the audit collection.\n  Otherwise return an empty map.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/audit-app/user" ]
+      }
+    },
+    "/api/ee/audit-app/user/{id}/subscriptions" : {
+      "delete" : {
+        "summary" : "DELETE /api/ee/audit-app/user/{id}/subscriptions",
+        "description" : "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).\n  Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/audit-app/user" ]
+      }
+    },
+    "/api/ee/autodescribe/card/summarize" : {
+      "post" : {
+        "summary" : "POST /api/ee/autodescribe/card/summarize",
+        "description" : "Summarize a question.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "visualization_settings" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "dataset" : {
+                    "type" : "boolean"
+                  },
+                  "dataset_query" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "parameter_mappings" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
+                    }
+                  },
+                  "collection_position" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "result_metadata" : {
+                    "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
+                  },
+                  "collection_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "cache_ttl" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "display" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "parameters" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter"
+                    }
+                  },
+                  "description" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "dataset_query", "display", "visualization_settings" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/autodescribe" ]
+      }
+    },
+    "/api/ee/autodescribe/dashboard/summarize/{id}" : {
+      "post" : {
+        "summary" : "POST /api/ee/autodescribe/dashboard/summarize/{id}",
+        "description" : "Provide a summary of a dashboard.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/autodescribe" ]
+      }
+    },
+    "/api/ee/billing/" : {
+      "get" : {
+        "summary" : "GET /api/ee/billing/",
+        "description" : "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,\n   using the embedding token and signed in user's email to fetch the billing information.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/billing" ]
+      }
+    },
+    "/api/ee/cloud-add-ons/addons" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/addons",
+        "description" : "Get addons information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
+    "/api/ee/cloud-add-ons/plans" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/plans",
+        "description" : "Get plans information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
+    "/api/ee/cloud-add-ons/{product-type}" : {
+      "post" : {
+        "summary" : "POST /api/ee/cloud-add-ons/{product-type}",
+        "description" : "Purchase an add-on.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "product-type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "quantity" : {
+                    "type" : "integer"
+                  },
+                  "terms_of_service" : {
+                    "type" : "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
+    "/api/ee/content-translation/csv" : {
+      "get" : {
+        "summary" : "GET /api/ee/content-translation/csv",
+        "description" : "Provides content translation dictionary in CSV",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/content-translation" ]
+      }
+    },
+    "/api/ee/content-translation/dictionary/{token}" : {
+      "get" : {
+        "summary" : "GET /api/ee/content-translation/dictionary/{token}",
+        "description" : "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/content-translation" ]
+      }
+    },
+    "/api/ee/content-translation/upload-dictionary" : {
+      "post" : {
+        "summary" : "POST /api/ee/content-translation/upload-dictionary",
+        "description" : "Upload a CSV of content translations",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "object",
+                    "properties" : {
+                      "filename" : {
+                        "type" : "string"
+                      },
+                      "tempfile" : { }
+                    },
+                    "required" : [ "filename", "tempfile" ]
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/content-translation" ]
+      }
+    },
+    "/api/ee/data-studio/table/discard-values" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/discard-values",
+        "description" : "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "null",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/edit" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/edit",
+        "description" : "Bulk updating tables.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map with no other keys",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : { },
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "data_authority" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-authorities"
+                  },
+                  "data_layer" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-layers"
+                  },
+                  "table_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "owner_email" : {
+                    "type" : "string"
+                  },
+                  "owner_user_id" : {
+                    "type" : "integer"
+                  },
+                  "data_source" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-sources"
+                  },
+                  "schema_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  },
+                  "entity_type" : {
+                    "type" : "string"
+                  },
+                  "database_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  }
+                },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/publish-tables" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/publish-tables",
+        "description" : "Set collection for each of selected tables and all upstream dependencies recursively.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.publish-tables-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/rescan-values" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/rescan-values",
+        "description" : "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "null",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/selection" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/selection",
+        "description" : "Gets information about selected tables",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for /selection endpoint response. Matches frontend BulkTableSelectionInfo type.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.bulk-table-selection-info"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/sync-schema" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/sync-schema",
+        "description" : "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asyncronous. This call may return before all tables synced.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "null",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/unpublish-tables" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/unpublish-tables",
+        "description" : "Unset collection for each of selected tables and all downstream dependents recursively.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "null",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/database-replication/connection/{database-id}" : {
+      "post" : {
+        "summary" : "POST /api/ee/database-replication/connection/{database-id}",
+        "description" : "Create a new PG replication connection for the specified database.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "database-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "replicationSchemaFilters" : {
+                    "type" : "object",
+                    "properties" : {
+                      "schema-filters-patterns" : {
+                        "type" : "string"
+                      },
+                      "schema-filters-type" : {
+                        "type" : "string",
+                        "enum" : [ "inclusion", "exclusion", "all" ]
+                      }
+                    },
+                    "required" : [ "schema-filters-type", "schema-filters-patterns" ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/database-replication" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/ee/database-replication/connection/{database-id}",
+        "description" : "Delete PG replication connection for the specified database.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "database-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/database-replication" ]
+      }
+    },
+    "/api/ee/database-replication/connection/{database-id}/preview" : {
+      "post" : {
+        "summary" : "POST /api/ee/database-replication/connection/{database-id}/preview",
+        "description" : "Return info about pg-replication connection that is about to be created.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "database-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "replicationSchemaFilters" : {
+                    "type" : "object",
+                    "properties" : {
+                      "schema-filters-patterns" : {
+                        "type" : "string"
+                      },
+                      "schema-filters-type" : {
+                        "type" : "string",
+                        "enum" : [ "inclusion", "exclusion", "all" ]
+                      }
+                    },
+                    "required" : [ "schema-filters-type", "schema-filters-patterns" ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/database-replication" ]
+      }
+    },
+    "/api/ee/database-routing/destination-database" : {
+      "post" : {
+        "summary" : "POST /api/ee/database-routing/destination-database",
+        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "check_connection_details",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "destinations" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "details" : {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        },
+                        "name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      },
+                      "required" : [ "name", "details" ]
+                    }
+                  },
+                  "router_database_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "router_database_id", "destinations" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/database-routing" ]
+      }
+    },
+    "/api/ee/database-routing/router-database/{id}" : {
+      "put" : {
+        "summary" : "PUT /api/ee/database-routing/router-database/{id}",
+        "description" : "Updates an existing Database with the `user_attribute` to route on. Will either:\n  - turn an existing Database into a Router database\n  - change the `user_attribute` used to route for an existing Router database, or\n  - turn a Router database into a regular Database\n  depending on the value of `user_attribute`",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "user_attribute" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/database-routing" ]
+      }
+    },
+    "/api/ee/dependencies/check_card" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_card",
+        "description" : "Check a proposed edit to a card, and return the card IDs for those cards this edit will break.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-body"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/check_snippet" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_snippet",
+        "description" : "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "content" : {
+                    "type" : "string"
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "name" : {
+                    "description" : "snippet names cannot include '}' or start with spaces"
+                  }
+                },
+                "required" : [ "id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/check_transform" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_transform",
+        "description" : "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-body"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph" : {
+      "get" : {
+        "summary" : "GET /api/ee/dependencies/graph",
+        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.\n\n  Optional :archived parameter controls whether entities in archived collections are included:\n  - false (default): Excludes entities in archived collections\n  - true: Includes entities in archived collections",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/dependents" : {
+      "get" : {
+        "summary" : "GET /api/ee/dependencies/graph/dependents",
+        "description" : "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of\n   all that entity's dependents with :dependent_type. If the :dependent_type is :card, the dependents are further\n   filtered by :dependent_card_type.\n\n   Optional :archived parameter controls whether entities in archived collections are included:\n   - false (default): Excludes entities in archived collections\n   - true: Includes entities in archived collections",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dependent_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dependent_card_type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "question", "model", "metric" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
     "/api/ee/email/override" : {
       "put" : {
         "summary" : "PUT /api/ee/email/override",
@@ -18279,7 +18352,7 @@
     "/api/ee/library/" : {
       "post" : {
         "summary" : "POST /api/ee/library/",
-        "description" : "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires data-studio application permission.",
+        "description" : "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires superuser permissions.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -18366,10 +18439,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18394,6 +18468,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18420,10 +18495,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18448,6 +18524,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18474,10 +18551,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:output -> <string>, :conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18505,6 +18583,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18531,10 +18610,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18559,6 +18639,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18585,10 +18666,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18613,6 +18695,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18639,10 +18722,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18667,6 +18751,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18693,10 +18778,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:output -> <string>, :reactions -> <sequence of map where {:type -> <must equal :metabot.reaction/redirect>, :url -> <string>}>, :conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18730,6 +18816,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18756,10 +18843,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18784,7 +18872,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.tool-request"
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.deftool.tool-request"
               }
             }
           }
@@ -18799,10 +18887,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18827,16 +18916,11 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
-                    "type" : "object",
-                    "properties" : {
-                      "dashboard_id" : {
-                        "type" : "integer"
-                      }
-                    },
-                    "required" : [ "dashboard_id" ]
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-dashboard-details-arguments"
                   },
                   "conversation_id" : {
                     "description" : "value must be a valid UUID.",
@@ -18855,14 +18939,15 @@
     "/api/ee/metabot-tools/get-document-details" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-tools/get-document-details",
-        "description" : "Get information about a given report.",
+        "description" : "Get information about a given document.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18887,6 +18972,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18913,10 +18999,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18941,6 +19028,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18967,10 +19055,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18995,17 +19084,11 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
-                    "type" : "object",
-                    "properties" : {
-                      "query" : {
-                        "type" : "object",
-                        "properties" : { }
-                      }
-                    },
-                    "required" : [ "query" ]
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-query-details-arguments"
                   },
                   "conversation_id" : {
                     "description" : "value must be a valid UUID.",
@@ -19028,10 +19111,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19056,6 +19140,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19082,11 +19167,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Schema for SQL snippet detail results",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Schema for SQL snippet detail results",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19114,6 +19199,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19140,11 +19226,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Schema for SQL snippet list results",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Schema for SQL snippet list results",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19175,7 +19261,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.tool-request"
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.deftool.tool-request"
               }
             }
           }
@@ -19190,10 +19276,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19218,6 +19305,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19244,10 +19332,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19272,6 +19361,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19298,10 +19388,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19326,6 +19417,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19352,10 +19444,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19380,6 +19473,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19406,10 +19500,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19434,7 +19529,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.tool-request"
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.deftool.tool-request"
               }
             }
           }
@@ -19449,10 +19544,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19477,6 +19573,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19503,10 +19600,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19531,6 +19629,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19557,10 +19656,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19585,6 +19685,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19611,10 +19712,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19639,6 +19741,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19665,10 +19768,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "description" : "Base schema for all tool requests. Contains the conversation ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -19693,6 +19797,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -20111,156 +20216,6 @@
           }
         },
         "tags" : [ "/api/ee/permission_debug" ]
-      }
-    },
-    "/api/ee/public/document/{uuid}" : {
-      "get" : {
-        "summary" : "GET /api/ee/public/document/{uuid}",
-        "description" : "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.\n\n  Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).\n  Includes all embedded Cards with their metadata hydrated so the frontend doesn't need to make separate\n  requests for each card — just like public Dashboards do.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "uuid",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-          },
-          "description" : "value must be a valid UUID."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/public" ]
-      }
-    },
-    "/api/ee/public/document/{uuid}/card/{card-id}" : {
-      "get" : {
-        "summary" : "GET /api/ee/public/document/{uuid}/card/{card-id}",
-        "description" : "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must\n  be enabled.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "uuid",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-          },
-          "description" : "value must be a valid UUID."
-        }, {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "parameters",
-          "required" : false,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/public" ]
-      }
-    },
-    "/api/ee/public/document/{uuid}/card/{card-id}/{export-format}" : {
-      "post" : {
-        "summary" : "POST /api/ee/public/document/{uuid}/card/{card-id}/{export-format}",
-        "description" : "Fetch a Card embedded in a public Document and return query results in the specified format.\n  Does not require auth credentials. Public sharing must be enabled.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "uuid",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-          },
-          "description" : "value must be a valid UUID."
-        }, {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "path",
-          "name" : "export-format",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase.query-processor.schema.export-format"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "format_rows" : {
-                    "default" : false,
-                    "type" : "boolean"
-                  },
-                  "parameters" : {
-                    "anyOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "Value must be a map.",
-                        "type" : "object",
-                        "properties" : { }
-                      }
-                    }, {
-                      "description" : "value must be a valid JSON string.",
-                      "type" : "string"
-                    } ]
-                  },
-                  "pivot_results" : {
-                    "default" : false,
-                    "type" : "boolean"
-                  }
-                },
-                "required" : [ "format_rows", "pivot_results" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/public" ]
       }
     },
     "/api/ee/remote-sync/branches" : {
@@ -27598,6 +27553,156 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/public" ]
+      }
+    },
+    "/api/public/document/{uuid}" : {
+      "get" : {
+        "summary" : "GET /api/public/document/{uuid}",
+        "description" : "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.\n\n  Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).\n  Includes all embedded Cards with their metadata hydrated so the frontend doesn't need to make separate\n  requests for each card — just like public Dashboards do.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/public" ]
+      }
+    },
+    "/api/public/document/{uuid}/card/{card-id}" : {
+      "get" : {
+        "summary" : "GET /api/public/document/{uuid}/card/{card-id}",
+        "description" : "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must\n  be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/public" ]
+      }
+    },
+    "/api/public/document/{uuid}/card/{card-id}/{export-format}" : {
+      "post" : {
+        "summary" : "POST /api/public/document/{uuid}/card/{card-id}/{export-format}",
+        "description" : "Fetch a Card embedded in a public Document and return query results in the specified format.\n  Does not require auth credentials. Public sharing must be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "export-format",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.query-processor.schema.export-format"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "format_rows" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  },
+                  "parameters" : {
+                    "anyOf" : [ {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "Value must be a map.",
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    }, {
+                      "description" : "value must be a valid JSON string.",
+                      "type" : "string"
+                    } ]
+                  },
+                  "pivot_results" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "format_rows", "pivot_results" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/public" ]
