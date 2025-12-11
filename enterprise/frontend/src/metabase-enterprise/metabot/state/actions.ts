@@ -83,13 +83,22 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
         shouldRetry: true,
       }),
     )
-    .otherwise(() => ({
+    .with({ message: P.string.includes("use case is not enabled") }, () => ({
       errorMessage: {
         type: "message" as const,
-        message: METABOT_ERR_MSG.default,
+        message: METABOT_ERR_MSG.useCaseDisabled,
       },
-      shouldRetry: true,
-    }));
+      shouldRetry: false,
+    }))
+    .otherwise(() => {
+      return {
+        errorMessage: {
+          type: "message" as const,
+          message: METABOT_ERR_MSG.default,
+        },
+        shouldRetry: true,
+      };
+    });
 };
 
 export const setVisible =

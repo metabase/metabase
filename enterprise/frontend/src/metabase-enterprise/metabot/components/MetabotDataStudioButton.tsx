@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { METAKEY } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -12,7 +13,12 @@ import { useMetabotAgent } from "../hooks";
 export const MetabotDataStudioButton = () => {
   const metabot = useMetabotAgent();
   const location = useSelector(getLocation);
-  const disabled = !location.pathname?.startsWith(Urls.transformList());
+  const enabledUseCases = useSetting("metabot-enabled-use-cases");
+  const isTransformsEnabled = enabledUseCases?.includes("transforms") ?? false;
+  const isOnTransformsPage = location.pathname?.startsWith(
+    Urls.transformList(),
+  );
+  const disabled = !isOnTransformsPage || !isTransformsEnabled;
 
   const handleClick = () => {
     if (!metabot.visible) {
@@ -22,9 +28,11 @@ export const MetabotDataStudioButton = () => {
     metabot.setVisible(!metabot.visible);
   };
 
-  const label = disabled
-    ? `Metabot can't be viewed on this page`
-    : t`Chat with Metabot (${METAKEY}+E)`;
+  const label = !isTransformsEnabled
+    ? t`Metabot has not been enabled for transforms`
+    : !isOnTransformsPage
+      ? t`Metabot can't be viewed on this page`
+      : t`Chat with Metabot (${METAKEY}+E)`;
 
   return (
     <Tooltip label={label}>

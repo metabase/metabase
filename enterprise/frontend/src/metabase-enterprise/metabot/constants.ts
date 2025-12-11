@@ -24,6 +24,9 @@ export const METABOT_ERR_MSG = {
   get agentOffline() {
     return t`Metabot is currently offline. Please try again later.`;
   },
+  get useCaseDisabled() {
+    return t`Sorry, Metabot hasn't been enabled for this use case.`;
+  },
 };
 
 export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
