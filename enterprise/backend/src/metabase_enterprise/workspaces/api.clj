@@ -470,7 +470,7 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/run"
-  :- ::ws.execute/execution-result
+  :- ::ws.t/execution-result
   "Run a transform in a workspace.
 
   App DB changes are rolled back. Warehouse DB changes persist."

@@ -13,20 +13,9 @@
    [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api.common :as api]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(mr/def ::execution-result
-  [:map
-   [:status [:enum :succeeded :failed]]
-   [:start_time {:optional true} [:maybe some?]]
-   [:end_time {:optional true} [:maybe some?]]
-   [:message {:optional true} [:maybe :string]]
-   [:table [:map
-            [:name :string]
-            [:schema {:optional true} [:maybe :string]]]]])
 
 (defn- execution-results
   "Extract execution metadata from transform_run and synced table/fields.
@@ -51,7 +40,7 @@
    scrapes results, then rolls back the transaction. Warehouse DB changes persist
    in the isolated schema.
 
-   Returns an ::execution-result map with status, timing, and table metadata."
+   Returns an ::ws.t/execution-result map with status, timing, and table metadata."
   [workspace {:keys [target] :as transform} mapping]
   (isolation/with-workspace-isolation workspace
     (try
