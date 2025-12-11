@@ -1174,39 +1174,17 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-10T16:07:00
       author: noahmoss
-      comment: Add use_case_id column to metabot_message
+      comment: Add use_case column to metabot_message
       changes:
         - addColumn:
             tableName: metabot_message
             columns:
               - column:
-                  name: use_case_id
-                  type: int
-                  remarks: Reference to the use case this message belongs to
+                  name: use_case
+                  type: ${text.type}
+                  remarks: Name of the use case this message belongs to
                   constraints:
                     nullable: true
-                    referencedTableName: metabot_use_case
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metabot_message_use_case_id
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabot_message
-            constraintName: fk_metabot_message_use_case_id
-        - dropColumn:
-            tableName: metabot_message
-            columnName: use_case_id
-
-  - changeSet:
-      id: v58.2025-12-10T16:07:30
-      author: noahmoss
-      comment: Add index on metabot_message.use_case_id
-      changes:
-        - createIndex:
-            tableName: metabot_message
-            indexName: idx_metabot_message_use_case_id
-            columns:
-              - column:
-                  name: use_case_id
 
   - changeSet:
       id: v58.2025-12-10T16:08:00
