@@ -154,6 +154,8 @@
 (derive ::dashboard-deps :metabase/event)
 (derive :event/dashboard-create ::dashboard-deps)
 (derive :event/dashboard-update ::dashboard-deps)
+;; Backfill-only event that triggers dependency calculation without creating a revision
+(derive :event/dashboard-dependency-backfill ::dashboard-deps)
 
 (methodical/defmethod events/publish-event! ::dashboard-deps
   [_ {:keys [object]}]

@@ -67,22 +67,26 @@
            (take batch-size))
           (t2/reducible-select [model-kw :id] :dependency_analysis_version [:< target-version]))))
 
-(defn- backfill-card!
-  [id target-version]
+(def ^:private custom-backfill-events
+  {:model/Card :event/card-dependency-backfill
+   :model/Dashboard :event/dashboard-dependency-backfill})
+
+(defn- custom-backfill-entity!
+  [model-kw event id target-version]
   ;; We don't want to change the card at all, we just want to update the dependency data and
   ;; mark the card as processed for this dependency analysis version.
-  (let [update-count (t2/update! :model/Card id :dependency_analysis_version [:< target-version]
+  (let [update-count (t2/update! model-kw id :dependency_analysis_version [:< target-version]
                                  {:dependency_analysis_version target-version})]
-    (when-let [card (and (pos? update-count)
-                         (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-dependency-backfill {:object card}))
+    (when-let [entity (and (pos? update-count)
+                           (t2/select-one model-kw id))]
+      (events/publish-event! event {:object entity}))
     update-count))
 
 (defn- backfill-entity!
   [model-kw id target-version]
   (t2/with-transaction [_]
-    (case model-kw
-      :model/Card (backfill-card! id target-version)
+    (if-let [event (custom-backfill-events model-kw)]
+      (custom-backfill-entity! model-kw event id target-version)
       (t2/update! model-kw id :dependency_analysis_version [:< target-version]
                   {:dependency_analysis_version target-version}))))
 

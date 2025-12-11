@@ -32,7 +32,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
@@ -120,9 +121,9 @@
      ;; have linked filters. (metabase#33892)
      (some? (:values_source_type p))
      (= (:values_query_type p) :none))
-     ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
-     ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
-     ;; (metabase#34657)
+    ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
+    ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
+    ;; (metabase#34657)
     (dissoc :filteringParameters)))
 
 (defn- migrate-parameters-list
