@@ -14,7 +14,12 @@ export const EditDefinitionButton = ({
   ...buttonProps
 }: EditDefinitionButtonProps) => {
   return (
-    <Button component={Link} to={transformEdit(transformId)} {...buttonProps}>
+    <Button
+      component={Link}
+      style={{ flexShrink: 0 }}
+      to={transformEdit(transformId)}
+      {...buttonProps}
+    >
       {t`Edit definition`}
     </Button>
   );

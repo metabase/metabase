@@ -4,19 +4,30 @@ import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-import type { GroupProps, IconName } from "metabase/ui";
-import { Box, Button, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Button,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  type GroupProps,
+  type IconName,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
 
 import type { PaneHeaderTab } from "./types";
 
 interface PaneHeaderProps extends Omit<GroupProps, "title"> {
-  title: ReactNode;
+  title?: ReactNode;
   icon?: IconName;
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
   breadcrumbs?: ReactNode;
+  showMetabotButton?: boolean;
 }
 
 export const PaneHeader = ({
@@ -27,6 +38,7 @@ export const PaneHeader = ({
   tabs,
   actions,
   breadcrumbs,
+  showMetabotButton,
   ...rest
 }: PaneHeaderProps) => {
   return (
@@ -39,17 +51,24 @@ export const PaneHeader = ({
       wrap="nowrap"
       {...rest}
     >
-      <Stack gap="sm">
-        {breadcrumbs && (
-          <Box mb="lg" mt="sm">
+      <Stack gap="sm" w="100%">
+        {(breadcrumbs || showMetabotButton) && (
+          <Flex mb="md" mt="md" h="2rem">
             {breadcrumbs}
-          </Box>
+            {showMetabotButton && (
+              <Box ml="auto">
+                <PLUGIN_METABOT.MetabotDataStudioButton />
+              </Box>
+            )}
+          </Flex>
         )}
-        <Group align="center" gap="xs" wrap="nowrap">
-          {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
-          {title}
-          {menu}
-        </Group>
+        {title && (
+          <Group align="center" gap="sm" wrap="nowrap">
+            {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
+            {title}
+            {menu}
+          </Group>
+        )}
         {tabs}
       </Stack>
       {actions}
@@ -165,7 +184,7 @@ export function PaneHeaderActions({
   }
 
   return (
-    <Group>
+    <Group wrap="nowrap">
       <Button onClick={onCancel}>{t`Cancel`}</Button>
       <Tooltip label={errorMessage} disabled={errorMessage == null}>
         <Button variant="filled" disabled={!canSave} onClick={onSave}>

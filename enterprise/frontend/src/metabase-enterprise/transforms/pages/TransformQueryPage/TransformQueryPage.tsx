@@ -185,6 +185,7 @@ function TransformQueryPageBody({
           }
           hasMenu={!isEditMode && !isDirty}
           isEditMode={isEditMode}
+          pb="lg"
         />
         <Flex gap={0} className={S.visualization}>
           <Box w="100%">

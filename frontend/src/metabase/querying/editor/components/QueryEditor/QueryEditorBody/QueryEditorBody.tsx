@@ -26,6 +26,7 @@ import S from "./QueryEditorBody.module.css";
 const EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
 const HEADER_HEIGHT = 65 + 50;
+const PREVIEW_MAX_INITIAL_HEIGHT = 192;
 
 const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   dataReference: true,
@@ -208,5 +209,11 @@ function useInitialEditorHeight(isNative: boolean, readOnly?: boolean) {
     return availableHeight;
   }
 
-  return Math.min(0.8 * availableHeight, EDITOR_HEIGHT);
+  // Let's make the preview initial height be half of the available height at most
+  const previewInitialHeight = Math.min(
+    availableHeight / 2,
+    PREVIEW_MAX_INITIAL_HEIGHT,
+  );
+
+  return Math.min(availableHeight - previewInitialHeight, EDITOR_HEIGHT);
 }

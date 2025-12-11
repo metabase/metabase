@@ -11,7 +11,7 @@ export function SectionLayout({ children }: SectionLayoutProps) {
   return (
     <Stack h="100%" gap={0} bg="bg-light">
       <Flex flex={1} mih={0} miw={0}>
-        <Box flex={1} miw={0}>
+        <Box flex={1} miw={0} style={{ overflow: "auto" }}>
           {children}
         </Box>
         <PLUGIN_METABOT.MetabotDataStudioSidebar />

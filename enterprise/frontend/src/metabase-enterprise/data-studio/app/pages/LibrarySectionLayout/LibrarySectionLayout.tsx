@@ -22,6 +22,8 @@ import {
   TextInput,
 } from "metabase/ui";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { useTreeFilter } from "metabase-enterprise/data-studio/common/components/Table/useTreeFilter";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
@@ -175,12 +177,17 @@ export function LibrarySectionLayout() {
   return (
     <>
       <SectionLayout>
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>{t`Library`}</DataStudioBreadcrumbs>
+          }
+          px="3.5rem"
+          py={0}
+        />
         <Stack
           px="3.5rem"
-          pt="4rem"
           pb="2rem"
           bg="background-light"
-          h="100%"
           data-testid="library-page"
         >
           <Flex gap="md">

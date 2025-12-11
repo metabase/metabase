@@ -11,7 +11,7 @@ import {
   useListTransformsQuery,
 } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { TransformsSectionHeader } from "metabase-enterprise/transforms/components/TransformsSectionHeader";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
 
@@ -29,8 +29,11 @@ export function RunListPage({ location }: RunListPageProps) {
 
   return (
     <>
-      <TransformsSectionHeader
-        leftSection={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+      <PaneHeader
+        breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+        px="3.5rem"
+        py={0}
+        showMetabotButton
       />
       <Stack px="3.5rem" h="100%" data-testid="transforms-run-list">
         <Box>{t`A list of when each transform ran.`}</Box>
