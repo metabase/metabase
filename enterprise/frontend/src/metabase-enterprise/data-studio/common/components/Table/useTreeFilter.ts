@@ -29,11 +29,15 @@ export const useTreeFilter = <
 
           if (
             searchProps.some((s) => {
-              if (typeof node[s] !== "string") {
-                return false;
+              if (
+                typeof node[s] === "string" &&
+                typeof searchQuery === "string"
+              ) {
+                return node[s]
+                  .toLowerCase()
+                  .includes(searchQuery.toLowerCase());
               }
-
-              return !!node[s].includes(searchQuery);
+              return false;
             })
           ) {
             return node;
