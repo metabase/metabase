@@ -1362,3 +1362,47 @@ describe("issue 64293", () => {
     });
   });
 });
+
+describe("issue 13347", () => {
+  beforeEach(() => {
+    H.restore();
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.createQuestion({
+      name: "13347 structured",
+      database: WRITABLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    });
+
+    H.createNativeQuestion({
+      name: "13347 native",
+      database: WRITABLE_DB_ID,
+      native: {
+        query: "SELECT * FROM ORDERS",
+      },
+    });
+
+    cy.signInAsNormalUser();
+
+    cy.visit("/");
+  });
+
+  it("should not display questions in big data picker that cannot be used for new questions (metabase#13347)", () => {
+    H.startNewQuestion();
+
+    H.entityPickerModal()
+      .findByText("Collections")
+      .should("be.visible")
+      .click();
+
+    H.entityPickerModalLevel(1).within(() => {
+      cy.findByText("Orders").should("exist");
+
+      cy.findByText("13347 structured").should("not.exist");
+      cy.findByText("13347 native").should("not.exist");
+    });
+  });
+});
