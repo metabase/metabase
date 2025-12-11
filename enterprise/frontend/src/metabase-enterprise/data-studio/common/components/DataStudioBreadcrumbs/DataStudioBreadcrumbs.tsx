@@ -1,0 +1,18 @@
+import { Breadcrumbs, type BreadcrumbsProps, Icon } from "metabase/ui";
+
+interface DataStudioBreadcrumbs extends BreadcrumbsProps {
+  loading?: boolean;
+}
+
+export const DataStudioBreadcrumbs = ({
+  loading,
+  ...rest
+}: DataStudioBreadcrumbs) => (
+  <Breadcrumbs
+    separator={<Icon size={12} name="chevronright" />}
+    fz="sm"
+    c="text-secondary"
+    style={{ visibility: loading ? "hidden" : undefined }}
+    {...rest}
+  />
+);

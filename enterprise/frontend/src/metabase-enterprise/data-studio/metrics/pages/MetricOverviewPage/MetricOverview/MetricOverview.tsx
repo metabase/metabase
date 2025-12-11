@@ -17,7 +17,7 @@ export function MetricOverview({ card }: MetricOverviewProps) {
       <Flex direction="column" flex={1} mah={700}>
         <OverviewVisualization card={card} />
       </Flex>
-      <Stack maw={300} ml="lg" gap="lg" className={S.sidebar}>
+      <Stack w={300} ml="lg" gap="lg" className={S.sidebar}>
         <DescriptionSection card={card} />
         <QuerySourceSection card={card} />
         <EntityCreationInfo

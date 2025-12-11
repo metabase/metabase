@@ -18,7 +18,7 @@ describe("SegmentItem", () => {
         component={() => (
           <SegmentItem
             segment={segment}
-            href="/data-studio/modeling/segments/42"
+            href="/data-studio/library/segments/42"
           />
         )}
       />,
@@ -30,7 +30,7 @@ describe("SegmentItem", () => {
 
     const item = screen.getByRole("listitem");
     expect(item).toBeInTheDocument();
-    expect(item).toHaveAttribute("href", "/data-studio/modeling/segments/42");
+    expect(item).toHaveAttribute("href", "/data-studio/library/segments/42");
     expect(item).toHaveAttribute("aria-label", "Premium Customers");
   });
 

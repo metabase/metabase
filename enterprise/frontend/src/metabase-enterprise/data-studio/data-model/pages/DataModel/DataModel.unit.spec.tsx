@@ -275,7 +275,7 @@ async function setup({
           component={DataModel}
         />
       </Route>
-      <Route path="data-studio/modeling/segments/new" />
+      <Route path="data-studio/library/segments/new" />
     </>,
     {
       withRouter: true,
@@ -1040,7 +1040,7 @@ describe("DataModel", () => {
       await userEvent.click(screen.getByRole("link", { name: /New segment/i }));
 
       expect(history?.getCurrentLocation().pathname).toBe(
-        "/data-studio/modeling/segments/new",
+        "/data-studio/library/segments/new",
       );
       expect(history?.getCurrentLocation().search).toContain(
         `tableId=${ORDERS_TABLE.id}`,

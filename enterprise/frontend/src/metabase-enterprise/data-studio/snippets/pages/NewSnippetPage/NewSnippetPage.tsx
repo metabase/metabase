@@ -68,7 +68,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioModeling()));
+    dispatch(push(Urls.dataStudioLibrary()));
   };
 
   const handleCollectionSelected = async (

@@ -173,6 +173,11 @@ export type UserKeyValue =
       namespace: "transforms";
       key: string;
       value: "tree" | "alphabetical" | "last-modified";
+    }
+  | {
+      namespace: "data_studio";
+      key: string;
+      value: boolean;
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

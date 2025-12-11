@@ -33,7 +33,7 @@ describe("scenarios > data studio > data model > segments", () => {
 
       cy.url().should(
         "include",
-        `/data-studio/modeling/segments/new?tableId=${ORDERS_ID}`,
+        `/data-studio/library/segments/new?tableId=${ORDERS_ID}`,
       );
     });
 
@@ -57,7 +57,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.get<number>("@segmentId").then((segmentId) => {
         cy.url().should(
           "include",
-          `/data-studio/modeling/segments/${segmentId}`,
+          `/data-studio/library/segments/${segmentId}`,
         );
       });
     });
@@ -121,7 +121,7 @@ describe("scenarios > data studio > data model > segments", () => {
 
       cy.log("verify redirect to edit page and toast");
       H.undoToast().should("contain.text", "Segment created");
-      cy.url().should("match", /\/data-studio\/modeling\/segments\/\d+$/);
+      cy.url().should("match", /\/data-studio\/library\/segments\/\d+$/);
 
       cy.log("verify segment in query builder");
       verifySegmentInQueryBuilder("Premium Orders");
@@ -151,7 +151,7 @@ describe("scenarios > data studio > data model > segments", () => {
         description: "Test description",
       });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/modeling/segments/${segmentId}`);
+        cy.visit(`/data-studio/library/segments/${segmentId}`);
       });
 
       cy.log("verify existing data displayed");
@@ -181,7 +181,7 @@ describe("scenarios > data studio > data model > segments", () => {
     it("should navigate back to segments tab via breadcrumb", () => {
       createTestSegment({ name: "Breadcrumb Test Segment" });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/modeling/segments/${segmentId}`);
+        cy.visit(`/data-studio/library/segments/${segmentId}`);
       });
 
       SegmentEditor.getBreadcrumb("Orders").click();
@@ -200,7 +200,7 @@ describe("scenarios > data studio > data model > segments", () => {
     it("should remove segment via more menu", () => {
       createTestSegment({ name: "Segment to Delete" });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/modeling/segments/${segmentId}`);
+        cy.visit(`/data-studio/library/segments/${segmentId}`);
       });
 
       cy.log("delete via more menu");

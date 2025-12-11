@@ -2,6 +2,7 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type {
   CollectionId,
+  CollectionItem,
   CollectionItemModel,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
@@ -137,4 +138,14 @@ const resolveEntityId = (
       model: isDashboard ? "dashboard" : "collection",
     };
   }
+};
+
+export const canCollectionCardBeUsed = (
+  item: CollectionItem | CollectionPickerItem,
+): boolean => {
+  if (item.model === "card") {
+    return "can_run_adhoc_query" in item ? !!item.can_run_adhoc_query : true;
+  }
+
+  return true;
 };

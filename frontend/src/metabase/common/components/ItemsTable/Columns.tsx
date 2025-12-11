@@ -52,6 +52,7 @@ const ItemLinkComponent = ({
   if (isEmbeddingSdk()) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
+
   return (
     <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
       {children}

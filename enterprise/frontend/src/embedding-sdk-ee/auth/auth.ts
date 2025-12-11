@@ -172,6 +172,7 @@ export const getOrRefreshSession = createAsyncThunk(
     const shouldRefreshToken =
       !session ||
       (typeof session?.exp === "number" && session.exp * 1000 < Date.now());
+
     if (!shouldRefreshToken) {
       return session;
     }
