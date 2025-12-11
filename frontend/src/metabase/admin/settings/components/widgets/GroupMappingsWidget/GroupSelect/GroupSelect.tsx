@@ -1,4 +1,4 @@
-import cx from "classnames";
+import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
@@ -7,9 +7,7 @@ import type {
   UserGroupType,
   UserGroupsType,
 } from "metabase/admin/types";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import Select from "metabase/common/components/Select";
-import CS from "metabase/css/core/index.css";
 import {
   canEditMembership,
   getGroupColor,
@@ -18,7 +16,7 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+import { Flex, Icon, Popover, Text } from "metabase/ui";
 
 type GroupSelectProps = {
   groups: UserGroupsType;
@@ -28,10 +26,15 @@ type GroupSelectProps = {
   emptyListMessage?: string;
 };
 
-function getSections(groups: UserGroupsType) {
+type GroupSection = {
+  name?: string;
+  items: UserGroupsType;
+};
+
+function getSections(groups: UserGroupsType): GroupSection[] {
   const adminGroup = groups.find(isAdminGroup);
   const defaultGroup = groups.find(isDefaultGroup);
-  const topGroups = [defaultGroup, adminGroup].filter((g) => g != null);
+  const topGroups = [defaultGroup, adminGroup].filter(isNotNull);
   const groupsExceptDefaultAndAdmin = groups.filter(
     (g) => !isAdminGroup(g) && !isDefaultGroup(g),
   );
@@ -40,15 +43,16 @@ function getSections(groups: UserGroupsType) {
     return [{ items: groupsExceptDefaultAndAdmin }];
   }
 
-  return [
-    { items: topGroups },
-    groupsExceptDefaultAndAdmin.length > 0
-      ? {
-          items: groupsExceptDefaultAndAdmin as any,
-          name: t`Groups`,
-        }
-      : null,
-  ].filter(isNotNull);
+  const sections: GroupSection[] = [{ items: topGroups }];
+
+  if (groupsExceptDefaultAndAdmin.length > 0) {
+    sections.push({
+      items: groupsExceptDefaultAndAdmin,
+      name: t`Groups`,
+    });
+  }
+
+  return sections;
 }
 
 export const GroupSelect = ({
@@ -58,22 +62,29 @@ export const GroupSelect = ({
   isCurrentUser = false,
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
+  const [opened, { toggle }] = useDisclosure(false);
+
   const triggerElement = (
-    <div className={cx(CS.flex, CS.alignCenter)}>
+    <Flex onClick={toggle} align="center" style={{ cursor: "pointer" }}>
       <GroupSummary
         mr="0.5rem"
         groups={groups}
         selectedGroupIds={selectedGroupIds}
       />
-      <Icon className={CS.textLight} name="chevrondown" size={10} />
-    </div>
+      <Icon c="text-light" name="chevrondown" size={10} />
+    </Flex>
   );
 
   if (groups.length === 0) {
     return (
-      <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className={CS.p1}>{emptyListMessage}</span>
-      </PopoverWithTrigger>
+      <Popover opened={opened} onChange={toggle}>
+        <Popover.Target>{triggerElement}</Popover.Target>
+        <Popover.Dropdown>
+          <Text p="sm" c="text-medium">
+            {emptyListMessage}
+          </Text>
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 
@@ -106,6 +117,3 @@ export const GroupSelect = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default GroupSelect;
