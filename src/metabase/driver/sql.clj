@@ -221,7 +221,7 @@
                (driver-api/active-fields metadata-provider)
                (map #(-> (assoc % :lib/desired-column-alias (:name %))
                          sql.references/wrap-col)))
-      [{:error (driver-api/query-error.missing-table-alias
+      [{:error (driver-api/validate.missing-table-alias
                 (sql.references/table-name (:table col-spec)))}]))
 
 (defmethod resolve-field :single-column
@@ -253,7 +253,7 @@
                               (some #(when (= (:name %) (:column col-spec))
                                        %))))))]
      {:col (assoc found :lib/desired-column-alias (or alias name))}
-     {:error (driver-api/query-error.missing-column (:column col-spec))})])
+     {:error (driver-api/validate.missing-column (:column col-spec))})])
 
 (defn- get-name [m]
   (or (:alias m) (str (gensym "new-col"))))
@@ -308,7 +308,7 @@
                   (keep :col))
             returned-fields)))
 
-(mu/defmethod driver/validate-native-query-fields :sql :- [:set [:ref driver-api/schema.query-error.error]]
+(mu/defmethod driver/validate-native-query-fields :sql :- [:set [:ref driver-api/schema.validate.error]]
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
   (let [{:keys [used-fields returned-fields errors]} (->> native-query

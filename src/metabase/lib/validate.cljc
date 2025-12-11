@@ -6,12 +6,31 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
-   [metabase.lib.schema.query-error :as lib.schema.query-error]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [not-empty]]))
 
-(mu/defn find-bad-refs :- [:set [:ref ::lib.schema.query-error/error]]
+(mu/defn missing-column :- [:ref ::lib.schema.validate/missing-column]
+  [name :- :string]
+  {:type :validate/missing-column
+   :name name})
+
+(mu/defn missing-table-alias :- [:ref ::lib.schema.validate/missing-table-alias]
+  [name :- :string]
+  {:type :validate/missing-table-alias
+   :name name})
+
+(mu/defn duplicate-column :- [:ref ::lib.schema.validate/duplicate-column]
+  [name :- :string]
+  {:type :validate/duplicate-column
+   :name name})
+
+(mu/defn syntax-error :- [:ref ::lib.schema.validate/syntax-error]
+  []
+  {:type :validate/syntax-error})
+
+(mu/defn find-bad-refs :- [:set [:ref ::lib.schema.validate/error]]
   "Returns a list of bad `:field` refs on this query.
 
   Returns nil if all refs on the query are sound, that is if they can be resolved to a column from some source."
@@ -29,7 +48,7 @@
            (when (or (not column)
                      (::lib.field.resolution/fallback-metadata? column)
                      (not (:active column true)))
-             (vswap! bad-fields conj (lib.schema.query-error/missing-column
+             (vswap! bad-fields conj (missing-column
                                       (lib.metadata.calculation/column-name query (second path) column))))))
        nil))
     @bad-fields))

@@ -11,7 +11,7 @@
 (deftest ^:parallel garbage-test
   (is (= {:used-fields #{}
           :returned-fields []
-          :errors #{(driver-api/query-error.syntax-error)}}
+          :errors #{(driver-api/validate.syntax-error)}}
          (->references "nothing"))))
 
 (deftest ^:parallel basic-select-test
@@ -272,7 +272,7 @@
              :source-columns [[{:type :all-columns,
                                 :table {:table "orders"}}]]}},
           :returned-fields []
-          :errors #{(driver-api/query-error.missing-table-alias "foo")}}
+          :errors #{(driver-api/validate.missing-table-alias "foo")}}
          (->references "select foo.* from (select a from orders)"))))
 
 (deftest ^:parallel bad-table-name-test
@@ -286,7 +286,7 @@
             :alias nil,
             :type :single-column,
             :source-columns []}]
-          :errors #{(driver-api/query-error.missing-table-alias "bad")}}
+          :errors #{(driver-api/validate.missing-table-alias "bad")}}
          (->references "select bad.a from products"))))
 
 (deftest ^:parallel basic-where-test

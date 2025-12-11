@@ -6,8 +6,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.query-error :as lib.schema.query-error]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -20,7 +20,7 @@
     (lib/returned-columns query)))
 
 ;; Analyzing an entity in memory ================================================================
-(mu/defn- check-query :- [:set [:ref ::lib.schema.query-error/error]]
+(mu/defn- check-query :- [:set [:ref ::lib.schema.validate/error]]
   "Find any bad refs in a `query`."
   [driver :- :keyword
    query  :- ::lib.schema/query]
@@ -38,7 +38,7 @@
   [_entity-type _entity-id]
   nil)
 
-(mu/defmethod check-entity :card :- [:set [:ref ::lib.schema.query-error/error]]
+(mu/defmethod check-entity :card :- [:set [:ref ::lib.schema.validate/error]]
   "Given a `MetadataProvider` and a card ID, analyses the card's query to find any bad refs or other issues.
   Returns any findings, and `nil` for a clean query."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
@@ -48,7 +48,7 @@
         driver (:engine (lib.metadata/database query))]
     (check-query driver query)))
 
-(mu/defmethod check-entity :transform :- [:set [:ref ::lib.schema.query-error/error]]
+(mu/defmethod check-entity :transform :- [:set [:ref ::lib.schema.validate/error]]
   "Given a `MetadataProvider` and a transform ID, analyses the transform's query to find any bad refs or other issues.
 
   Returns any findings, and `nil` for a clean transform."
@@ -65,7 +65,7 @@
                                (group-by :name)
                                vals
                                (map #(when (> (count %) 1)
-                                       (lib.schema.query-error/duplicate-column (-> % first :name))))
+                                       (lib/duplicate-column (-> % first :name))))
                                seq)]
     (cond-> (check-query driver query)
       duplicated-fields (into duplicated-fields))))
