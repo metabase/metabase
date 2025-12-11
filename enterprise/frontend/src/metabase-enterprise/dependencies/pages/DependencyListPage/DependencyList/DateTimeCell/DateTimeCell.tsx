@@ -5,7 +5,7 @@ import type { DatetimeUnit } from "metabase-types/api";
 import S from "./DateTimeCell.module.css";
 
 export type DateTimeCellProps = {
-  value?: string | Date | number;
+  value: string | Date | number;
   unit?: DatetimeUnit;
 };
 

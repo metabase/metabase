@@ -4,21 +4,21 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { BaseCell } from "metabase/data-grid";
 import { Anchor, FixedSizeIcon, Flex, type IconName } from "metabase/ui";
 
-import S from "./EntityCell.module.css";
+import S from "./LinkCell.module.css";
 
-type EntityCellProps = {
-  name: string;
-  icon: IconName;
+type LinkCellProps = {
+  label: string;
+  icon?: IconName;
   url?: string;
 };
 
-export function EntityCell({ name, icon, url = "" }: EntityCellProps) {
+export function LinkCell({ label, icon, url = "" }: LinkCellProps) {
   return (
     <BaseCell className={S.cell}>
       <Anchor className={S.link} component={Link} to={url}>
         <Flex align="center" gap="sm">
-          <FixedSizeIcon name={icon} />
-          <Ellipsified>{name}</Ellipsified>
+          {icon && <FixedSizeIcon name={icon} />}
+          <Ellipsified>{label}</Ellipsified>
         </Flex>
       </Anchor>
     </BaseCell>

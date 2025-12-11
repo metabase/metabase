@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { BaseCell } from "metabase/data-grid";
+import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import {
   DEPENDENCY_SORT_COLUMNS,
@@ -16,8 +18,8 @@ import {
 } from "../../../utils";
 
 import { DateTimeCell } from "./DateTimeCell";
-import { EntityCell } from "./EntityCell";
-import { LocationCell } from "./LocationCell";
+import { LinkCell } from "./LinkCell";
+import { LinkListCell } from "./LinkListCell";
 import { TextCell } from "./TextCell";
 import type { DependencyColumn, DependencyColumnOptions } from "./types";
 
@@ -31,8 +33,8 @@ function getNodeNameColumn(): DependencyColumnOptions {
     cell: ({ row }) => {
       const item = row.original;
       return (
-        <EntityCell
-          name={getNodeLabel(item)}
+        <LinkCell
+          label={getNodeLabel(item)}
           icon={getNodeIcon(item)}
           url={getNodeLink(item)?.url}
         />
@@ -51,9 +53,10 @@ function getNodeLocationColumn(): DependencyColumnOptions {
     cell: ({ row }) => {
       const item = row.original;
       const location = getNodeLocationInfo(item);
-      return (
-        <LocationCell links={location?.links ?? []} icon={location?.icon} />
-      );
+      if (location == null) {
+        return <BaseCell />;
+      }
+      return <LinkListCell links={location.links} icon={location.icon} />;
     },
   };
 }
@@ -68,8 +71,14 @@ function getNodeDependentsCountColumn(): DependencyColumnOptions {
     cell: ({ row }) => {
       const item = row.original;
       const value = getNodeDependentsCount(item);
-      return <TextCell value={String(value)} />;
+      return (
+        <LinkCell
+          label={String(value)}
+          url={Urls.dependencyGraph({ entry: item })}
+        />
+      );
     },
+    headerClickable: false,
   };
 }
 
@@ -83,6 +92,9 @@ function getNodeLastEditAtColumn(): DependencyColumnOptions {
     cell: ({ row }) => {
       const item = row.original;
       const value = getNodeLastEditInfo(item)?.timestamp;
+      if (value == null) {
+        return <BaseCell />;
+      }
       return <DateTimeCell value={value} unit="day" />;
     },
     headerClickable: false,
@@ -98,8 +110,12 @@ function getNodeLastEditByColumn(): DependencyColumnOptions {
     accessorFn: (item) => getNodeLastEditInfo(item),
     cell: ({ row }) => {
       const item = row.original;
-      const value = getNodeLastEditInfo(item);
-      return <TextCell value={value ? getUserName(value) : undefined} />;
+      const editInfo = getNodeLastEditInfo(item);
+      const userName = editInfo != null ? getUserName(editInfo) : undefined;
+      if (userName == null) {
+        return <BaseCell />;
+      }
+      return <TextCell value={userName} />;
     },
     headerClickable: false,
   };

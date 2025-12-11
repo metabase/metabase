@@ -173,6 +173,17 @@ export function getNodeLocationInfo(
           ],
         };
       }
+      if (node.data.document != null) {
+        return {
+          icon: "document",
+          links: [
+            {
+              label: node.data.document.name,
+              url: Urls.document(node.data.document),
+            },
+          ],
+        };
+      }
       if (node.data.collection != null) {
         return {
           icon: "collection",

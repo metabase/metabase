@@ -4,7 +4,7 @@ import { BaseCell } from "metabase/data-grid";
 import S from "./TextCell.module.css";
 
 export type TextCellProps = {
-  value?: string;
+  value: string;
 };
 
 export function TextCell({ value }: TextCellProps) {

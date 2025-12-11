@@ -7,14 +7,14 @@ import { Anchor, Box, FixedSizeIcon, Flex, type IconName } from "metabase/ui";
 
 import type { NodeLink } from "../../../../types";
 
-import S from "./LocationCell.module.css";
+import S from "./LinkListCell.module.css";
 
-type LocationCellProps = {
+type LinkListCellProps = {
   links: NodeLink[];
   icon?: IconName;
 };
 
-export function LocationCell({ links, icon }: LocationCellProps) {
+export function LinkListCell({ links, icon }: LinkListCellProps) {
   return (
     <BaseCell className={S.cell}>
       <Flex align="center" gap="sm">
