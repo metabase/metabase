@@ -1,3 +1,9 @@
+import {
+  embedModalContent,
+  legacyStaticEmbeddingButton,
+  openSharingMenu,
+} from "e2e/support/helpers";
+
 const { H } = cy;
 
 ["dashboard", "question"].forEach((resource) => {
@@ -252,6 +258,32 @@ describe("#39152 sharing an unsaved question", () => {
 
       createResource(resource).then(({ body }) => {
         cy.wrap(body.id).as("resourceId");
+      });
+    });
+
+    [
+      { embeddingType: "guest-embed", shouldShowAlert: false },
+      { embeddingType: "static-legacy", shouldShowAlert: true },
+    ].forEach(({ embeddingType, shouldShowAlert }) => {
+      it(`should ${shouldShowAlert ? "show" : "not show"} legacy alert for ${embeddingType} embedding type`, () => {
+        cy.get("@resourceId").then((id) => {
+          visitResource(resource, id);
+
+          const apiPath = resource === "question" ? "card" : "dashboard";
+
+          cy.request("PUT", `/api/${apiPath}/${id}`, {
+            enable_embedding: true,
+            embedding_type: embeddingType,
+          });
+
+          openSharingMenu("Embed");
+
+          embedModalContent().should("exist");
+
+          legacyStaticEmbeddingButton().should(
+            shouldShowAlert ? "exist" : "not.exist",
+          );
+        });
       });
     });
 

@@ -32,7 +32,7 @@ export const LegacyStaticEmbeddingAlert = () => {
   }
 
   const shouldShowLegacyStaticEmbeddingAlert =
-    resource.enable_embedding && resource.embedding_type === "static-legacy";
+    resource.enable_embedding && resource.embedding_type !== "guest-embed";
 
   if (!shouldShowLegacyStaticEmbeddingAlert) {
     return null;
