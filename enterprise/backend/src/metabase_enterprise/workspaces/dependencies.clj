@@ -1,9 +1,56 @@
 (ns metabase-enterprise.workspaces.dependencies
   "Workspace-local dependency tracking.
 
-   Unlike the global dependency table which links to table_id (requiring the table to exist and be synced),
-   workspace dependencies link to workspace_input which stores logical table references that don't require
-   the table to exist yet."
+   Unlike the global `dependency` table which links to `table_id` (requiring the table to exist),
+   workspace dependencies use three tables that support logical references:
+
+   - `workspace_input`  - external tables transforms consume (may not exist yet)
+   - `workspace_output` - tables transforms produce
+   - `workspace_dependency` - edges: transform → input (external) or transform → output (internal)
+
+   ## Example: Internal Dependency (Transform B depends on Transform A's output)
+
+   Transform A produces `analytics.orders_summary`:
+   ```
+   {:ref_id \"happy-dolphin-a1b2\"
+    :target {:database 1 :schema \"analytics\" :name \"orders_summary\"}}
+   ```
+
+   Transform B reads from `analytics.orders_summary`:
+   ```
+   {:ref_id \"brave-lion-g7h8\"
+    :source {:type \"query\" :query <SELECT * FROM analytics.orders_summary>}
+    :target {:database 1 :schema \"analytics\" :name \"orders_report\"}}
+   ```
+
+   After processing both transforms:
+
+   workspace_output:
+   | id  | ref_id             | schema    | table          |
+   |-----|--------------------|-----------|----------------|
+   | 101 | happy-dolphin-a1b2 | analytics | orders_summary |
+   | 104 | brave-lion-g7h8    | analytics | orders_report  |
+
+   workspace_dependency:
+   | from_entity_type | from_entity_id     | to_entity_type | to_entity_id | meaning                 |
+   |------------------|--------------------| ---------------|--------------|-------------------------|
+   | transform        | brave-lion-g7h8    | output         | 101          | B depends on A's output |
+
+   Transform B's dependency points to `output:101` (Transform A's output), NOT to a new `input`.
+   This is because `analytics.orders_summary` matches an existing `workspace_output` record.
+
+   If Transform A also depended on an external table ORDERS, we'd also have:
+
+   workspace_input:
+   | id  | schema | table  | table_id |
+   |-----|--------|--------|----------|
+   | 201 | PUBLIC | ORDERS | 42       |
+
+   workspace_dependency:
+   | from_entity_type | from_entity_id     | to_entity_type | to_entity_id | meaning                      |
+   |------------------|--------------------| ---------------|--------------|------------------------------|
+   | transform        | happy-dolphin-a1b2 | input          | 201          | A depends on external ORDERS |
+   | transform        | brave-lion-g7h8    | output         | 101          | B depends on A's output      |"
   (:require
    [clojure.set :as set]
    [metabase-enterprise.workspaces.models.workspace-dependency]
@@ -170,12 +217,12 @@
                    :schema      schema
                    :table       table})
       (:id existing-output))
-    (:id (t2/insert-returning-instance! :model/WorkspaceOutput
-                                        {:workspace_id workspace-id
-                                         :ref_id       ref-id
-                                         :database_id  database_id
-                                         :schema       schema
-                                         :table        table}))))
+    (t2/insert-returning-pk! :model/WorkspaceOutput
+                             {:workspace_id workspace-id
+                              :ref_id       ref-id
+                              :database_id  database_id
+                              :schema       schema
+                              :table        table})))
 
 (defn- build-output-lookup
   "Build a lookup map for workspace outputs: [database_id schema table] -> output_id.
