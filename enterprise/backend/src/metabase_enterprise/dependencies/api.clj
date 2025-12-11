@@ -705,9 +705,10 @@
                                        :limit limit
                                        :offset offset))
         ids-by-type (group-by :entity_type paginated-ids)
+        entities-map (entities-by-type ids-by-type)
         paginated-items (keep (fn [{:keys [entity_type entity_id]}]
                                 (let [entity-type (keyword entity_type)
-                                      entity (get-in (entities-by-type ids-by-type) [entity-type entity_id])]
+                                      entity (get-in entities-map [entity-type entity_id])]
                                   (when entity
                                     {:id entity_id
                                      :type entity-type
@@ -792,9 +793,7 @@
         offset (or (request/offset) 0)
         selected-types (if (sequential? types) types [types])
         card-types (if (sequential? card_types) card_types [card_types])
-        _ (prn "selected-types" selected-types sort_column card-types query)
         union-queries (map #(broken-query % sort_column card-types query) selected-types)
-        _ (prn "broken-queries" union-queries)
         union-query {:union-all union-queries}
         total (-> (t2/query {:select [[:%count.* :total]]
                              :from [[union-query :subquery]]})
@@ -805,14 +804,24 @@
                                        :limit limit
                                        :offset offset))
         ids-by-type (group-by :entity_type paginated-ids)
+        entities-map (entities-by-type ids-by-type)
+        errors-map (into {}
+                         (map (fn [[type entities]]
+                                [(keyword type) (into {}
+                                                      (map (juxt :analyzed_entity_id :finding_details))
+                                                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :finding_details]
+                                                                 :analyzed_entity_type type
+                                                                 :analyzed_entity_id [:in (map :entity_id entities)]))]))
+                         ids-by-type)
         paginated-items (keep (fn [{:keys [entity_type entity_id]}]
                                 (let [entity-type (keyword entity_type)
-                                      entity (get-in (entities-by-type ids-by-type) [entity-type entity_id])]
+                                      entity (get-in entities-map [entity-type entity_id])]
                                   (when entity
                                     {:id entity_id
                                      :type entity-type
                                      :data (->> (select-keys entity (unreferenced-items-keys entity-type))
-                                                (m/map-vals format-subentity))})))
+                                                (m/map-vals format-subentity))
+                                     :errors (get-in errors-map [entity-type entity_id])})))
                               paginated-ids)]
     {:data paginated-items
      :limit limit

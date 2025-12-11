@@ -26,6 +26,7 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.query-error :as lib.schema.query-error]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
@@ -245,6 +246,27 @@
 (def schema.parameter.type
   "::lib.schema.parameter/type"
   ::lib.schema.parameter/type)
+
+(def query-error.missing-column
+  lib.schema.query-error/missing-column)
+
+(def schema.query-error.missing-column
+  ::lib.schema.query-error/missing-column)
+
+(def query-error.missing-table-alias
+  lib.schema.query-error/missing-table-alias)
+
+(def schema.query-error.missing-table-alias
+  ::lib.schema.query-error/missing-table-alias)
+
+(def query-error.syntax-error
+  lib.schema.query-error/syntax-error)
+
+(def schema.query-error.syntax-error
+  ::lib.schema.query-error/syntax-error)
+
+(def schema.query-error.error
+  ::lib.schema.query-error/error)
 
 (def mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"

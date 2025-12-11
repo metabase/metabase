@@ -3,18 +3,20 @@
   (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.lib.field.resolution :as lib.field.resolution]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.query-error :as lib.schema.query-error]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [not-empty]]))
 
-(mu/defn find-bad-refs :- [:maybe [:sequential ::lib.schema.mbql-clause/clause]]
+(mu/defn find-bad-refs :- [:set [:ref ::lib.schema.query-error/error]]
   "Returns a list of bad `:field` refs on this query.
 
   Returns nil if all refs on the query are sound, that is if they can be resolved to a column from some source."
   [query :- ::lib.schema/query]
-  (let [bad-fields (volatile! [])]
+  (let [bad-fields (volatile! #{})]
     (lib.walk/walk-clauses
      query
      (fn [query path-type path clause]
@@ -27,9 +29,10 @@
            (when (or (not column)
                      (::lib.field.resolution/fallback-metadata? column)
                      (not (:active column true)))
-             (vswap! bad-fields conj clause))))
+             (vswap! bad-fields conj (lib.schema.query-error/missing-column
+                                      (lib.metadata.calculation/column-name query (second path) column))))))
        nil))
-    (not-empty @bad-fields)))
+    @bad-fields))
 
 (comment
   (require '[metabase.lib.core :as lib])
