@@ -42,6 +42,10 @@ export function FilterPopover({ filters, onSubmit }: Props) {
           onChange={(dataLayer) => {
             setForm((form) => ({ ...form, dataLayer }));
           }}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
 
         <UserInput
@@ -55,6 +59,10 @@ export function FilterPopover({ filters, onSubmit }: Props) {
           onUserIdChange={(ownerUserId) => {
             setForm((form) => ({ ...form, ownerEmail: null, ownerUserId }));
           }}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
 
         <DataSourceInput
@@ -63,6 +71,10 @@ export function FilterPopover({ filters, onSubmit }: Props) {
           value={form.dataSource}
           onChange={(dataSource) => {
             setForm((form) => ({ ...form, dataSource }));
+          }}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
           }}
         />
 

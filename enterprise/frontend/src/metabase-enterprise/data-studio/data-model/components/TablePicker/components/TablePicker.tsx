@@ -92,9 +92,14 @@ export function TablePicker({
           onChange={(event) => setQuery(event.target.value)}
         />
 
-        <Popover width={rem(340)} position="bottom-start" opened={isOpen}>
+        <Popover
+          width={rem(340)}
+          position="bottom-start"
+          opened={isOpen}
+          onChange={toggle}
+        >
           <Popover.Target>
-            <Tooltip label={t`Filter`}>
+            <Tooltip label={t`Filter`} disabled={isOpen}>
               <Button
                 aria-label={t`Filter`}
                 leftSection={
