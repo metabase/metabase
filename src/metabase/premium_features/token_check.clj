@@ -189,35 +189,26 @@
 (defn- active-user-count []
   (t2/count :model/User :is_active true, :type :personal))
 
-(defn- illegal-airgap-user-count?
-  "Returns true if the active user count exceeds the max allowed users in an airgap context."
+(defn assert-valid-airgap-user-count!
+  "Asserts that, in an airgap context, the current user count does not exceed the allowed maximum.
+   Throws if the limit is exceeded. Called when setting the token."
   []
-  (if-let [max-users-allowed (max-users-allowed)]
-    (> (active-user-count) max-users-allowed)
-    ;; no max user count -> always legal
-    false))
+  (when-let [max-users (max-users-allowed)]
+    (let [current-users (active-user-count)]
+      (when (> current-users max-users)
+        (throw (Exception.
+                (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                     max-users)))))))
 
-(defn airgap-check-user-count
-  "Checks that, when in an airgap context, the allowed user count is acceptable."
+(defn assert-airgap-allows-user-creation!
+  "Asserts that creating a new personal user would not exceed the airgap user limit.
+   Throws if adding another user would overflow the limit. Called in user pre-insert."
   []
-  (when (illegal-airgap-user-count?)
-    (throw (Exception.
-            (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users."
-                 (max-users-allowed))))))
-
-(defn airgap-check-user-count-insert
-  "When inserting a new user, check that we are not exceeding the allowed user count in an airgap context."
-  []
-  (let [max-users-allowed (max-users-allowed)
-        the-new-user-will-overflow? (if max-users-allowed
-                                      (let [the-user-we-want-to-add 1]
-                                        (> (+ (active-user-count) the-user-we-want-to-add) max-users-allowed))
-                                      ;; no max user count -> always legal
-                                      false)]
-    (when the-new-user-will-overflow?
+  (when-let [max-users (max-users-allowed)]
+    (when (>= (active-user-count) max-users)
       (throw (Exception.
-              (trs "Inserting another user would overflow the maximum number of users ({0}) for your plan. Please upgrade to add more users."
-                   max-users-allowed))))))
+              (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                   max-users))))))
 
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
@@ -441,7 +432,7 @@
   (try
     (when (seq new-value)
       (when (mr/validate [:re AirgapToken] new-value)
-        (airgap-check-user-count))
+        (assert-valid-airgap-user-count!))
       (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")
