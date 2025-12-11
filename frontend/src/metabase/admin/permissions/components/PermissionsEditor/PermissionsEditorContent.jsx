@@ -1,3 +1,4 @@
+import { useDebouncedValue } from "@mantine/hooks";
 import PropTypes from "prop-types";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
@@ -6,7 +7,6 @@ import EmptyState from "metabase/common/components/EmptyState";
 import Input from "metabase/common/components/Input";
 import Subhead from "metabase/common/components/type/Subhead";
 import Text from "metabase/common/components/type/Text";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 import { PermissionsTable } from "../PermissionsTable";
