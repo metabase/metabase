@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.core :as ws.core]
@@ -17,6 +18,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -281,6 +283,45 @@
     (t2/delete! :model/Workspace ws-id)
     {:ok true}))
 
+(def ^:private ExternalTransform
+  ;; Might be interesting to show whether they're enclosed, once we have the graph.
+  ;; When they're enclosed, it could also be interesting to know whether they're stale.
+  [:map
+   [:id ::ws.t/appdb-id]
+   [:name :string]
+   [:source_type :keyword]
+   [:checkout_disabled [:maybe :string]]])
+
+(api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential ExternalTransform]]]
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
+   _query-params]
+  (api/check-superuser)
+  (let [db-id      (:database_id (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id)))
+        ;; TODO (chris 2025/12/11) use target_db_id once it's there, and skip :target
+        transforms (t2/select [:model/Transform :id :name :source_type :source :target]
+                              {:left-join [[:workspace_transform :wt]
+                                           [:and
+                                            [:= :transform.id :wt.global_id]
+                                            [:= :wt.workspace_id ws-id]]]
+                               ;; NULL workspace_id means transform is not checked out into this workspace
+                               :where     [:= nil :wt.workspace_id]
+                               :order-by  [[:id :asc]]})]
+    {:transforms
+     (into []
+           (comp (filter #(= db-id (:database (:target %))))
+                 (map #(-> %
+                           (dissoc :source :target)
+                           (assoc :checkout_disabled (case (:source_type %)
+                                                       :mbql "mbql"
+                                                       :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
+                                                                 "card-reference")
+                                                       :python nil
+                                                       "unknown-type"))))
+                 #_(map #(update % :last_run transforms.util/localize-run-timestamps)))
+           transforms
+           ;; Perhaps we want to expose some of this later?
+           #_(t2/hydrate transforms :last_run :creator))}))
+
 (api.macros/defendpoint :post "/:id/run"
   :- [:map
       [:succeeded [:sequential ::ws.t/ref-id]]
@@ -468,9 +509,10 @@
    ; See https://metaboat.slack.com/archives/C099RKNLP6U/p1765205882655869?thread_ts=1765205222.888209&cid=C099RKNLP6U
    #_[:target_stale :boolean]])
 
+;; Global transforms precalculate these in a toucan hook - maybe we should do that too? Let's review later.
 (defn- map-source-type [ws-tx]
   (-> ws-tx
-      (assoc :source_type (keyword (:type (:source ws-tx))))
+      (assoc :source_type (transforms/transform-source-type (:source ws-tx)))
       (dissoc :source)))
 
 (api.macros/defendpoint :get "/:id/transform" :- [:map [:transforms [:sequential WorkspaceTransformListing]]]
