@@ -105,6 +105,6 @@
                                               ;; this is ws.u/isolated-table-name
                                               [:= [:|| :wo.schema [:inline "__"] :wo.table] :t.name]]]
                                  :where     [:in :wo.ref_id ref-ids]})]
-          (into {} (map (juxt (comp str/trim :ref_id) :updated_at)) #p results)))
+          (into {} (map (juxt (comp str/trim :ref_id) :updated_at)) results)))
      :ref_id
      {:default nil})))
