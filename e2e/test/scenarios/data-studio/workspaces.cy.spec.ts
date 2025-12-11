@@ -97,7 +97,10 @@ describe("scenarios > data studio > workspaces", () => {
     Workspaces.getWorkspaceItemActions(/Workspace A/).click();
     H.popover().findByText("Archive").click();
     H.undoToast().should("have.text", "Workspace archived successfully");
-    Workspaces.getWorkspaceItem(/Workspace A/).should("not.exist");
+    Workspaces.getWorkspaceItem(/Workspace A/).should(
+      "contain.text",
+      "Archived",
+    );
     cy.location("pathname").should("eq", "/data-studio/workspaces");
 
     Workspaces.getWorkspacesPage().within(() => {
