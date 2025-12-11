@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -113,18 +113,19 @@ export function LibrarySectionLayout() {
   const showEmptyState =
     !isLoading && (!libraryHasContent || filterReturnedEmpty);
 
-  const libraryColumnDef = useMemo<ColumnDef<TreeItem, ReactNode>[]>(
+  const libraryColumnDef = useMemo<ColumnDef<TreeItem>[]>(
     () => [
       {
         accessorKey: "name",
         header: t`Name`,
         meta: { width: "auto" },
-        cell: ({ getValue, row }) => {
+        cell: ({ row }) => {
           const data = row.original;
+          const name = data.name;
           return (
             <Group data-testid={`${data.model}-name`} gap="sm">
               {data.icon && <Icon name={data.icon} c="brand" />}
-              {getValue()}
+              {name}
             </Group>
           );
         },
@@ -132,9 +133,9 @@ export function LibrarySectionLayout() {
       {
         accessorKey: "updatedAt",
         header: t`Updated At`,
-        cell: ({ getValue }) => {
-          const value = getValue() as string;
-          return value && <DateTime value={value} />;
+        cell: ({ row }) => {
+          const updatedAt = row.original.updatedAt;
+          return updatedAt && <DateTime value={updatedAt} />;
         },
       },
       {

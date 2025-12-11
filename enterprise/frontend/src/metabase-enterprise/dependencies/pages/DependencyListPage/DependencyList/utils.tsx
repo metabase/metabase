@@ -1,12 +1,10 @@
+import type { ColumnDef } from "@tanstack/react-table";
 import { t } from "ttag";
 
-import { BaseCell } from "metabase/data-grid";
+import DateTime from "metabase/common/components/DateTime";
 import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
-import {
-  DEPENDENCY_SORT_COLUMNS,
-  type DependencySortColumn,
-} from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
 import {
   getNodeDependentsCount,
@@ -17,17 +15,15 @@ import {
   getNodeLocationInfo,
 } from "../../../utils";
 
-import { DateTimeCell } from "./DateTimeCell";
 import { LinkCell } from "./LinkCell";
 import { LinkListCell } from "./LinkListCell";
-import { TextCell } from "./TextCell";
-import type { DependencyColumn, DependencyColumnOptions } from "./types";
 
-function getNodeNameColumn(): DependencyColumnOptions {
+function getNodeNameColumn(): ColumnDef<DependencyNode> {
   return {
     id: "name",
-    get name() {
-      return t`Name`;
+    header: t`Name`,
+    meta: {
+      width: "auto",
     },
     accessorFn: (item) => getNodeLabel(item),
     cell: ({ row }) => {
@@ -43,29 +39,35 @@ function getNodeNameColumn(): DependencyColumnOptions {
   };
 }
 
-function getNodeLocationColumn(): DependencyColumnOptions {
+function getNodeLocationColumn(): ColumnDef<DependencyNode> {
   return {
     id: "location",
-    get name() {
-      return t`Location`;
+    header: t`Location`,
+    meta: {
+      width: "auto",
     },
-    accessorFn: (item) => getNodeLocationInfo(item),
+    accessorFn: (item) => {
+      const location = getNodeLocationInfo(item);
+      const links = location?.links ?? [];
+      return links.map((link) => link.label).join(", ");
+    },
     cell: ({ row }) => {
       const item = row.original;
       const location = getNodeLocationInfo(item);
       if (location == null) {
-        return <BaseCell />;
+        return null;
       }
       return <LinkListCell links={location.links} icon={location.icon} />;
     },
   };
 }
 
-function getNodeDependentsCountColumn(): DependencyColumnOptions {
+function getNodeDependentsCountColumn(): ColumnDef<DependencyNode> {
   return {
     id: "dependents-count",
-    get name() {
-      return t`Dependents`;
+    header: t`Dependents`,
+    meta: {
+      width: "auto",
     },
     accessorFn: (item) => getNodeDependentsCount(item),
     cell: ({ row }) => {
@@ -78,46 +80,44 @@ function getNodeDependentsCountColumn(): DependencyColumnOptions {
         />
       );
     },
-    headerClickable: false,
   };
 }
 
-function getNodeLastEditAtColumn(): DependencyColumnOptions {
+function getNodeLastEditAtColumn(): ColumnDef<DependencyNode> {
   return {
     id: "last-edit-at",
-    get name() {
-      return t`Last modified at`;
+    header: t`Last modified at`,
+    meta: {
+      width: "auto",
     },
     accessorFn: (item) => getNodeLastEditInfo(item)?.timestamp,
     cell: ({ row }) => {
       const item = row.original;
       const value = getNodeLastEditInfo(item)?.timestamp;
       if (value == null) {
-        return <BaseCell />;
+        return null;
       }
-      return <DateTimeCell value={value} unit="day" />;
+      return <DateTime value={value} unit="day" />;
     },
-    headerClickable: false,
   };
 }
 
-function getNodeLastEditByColumn(): DependencyColumnOptions {
+function getNodeLastEditByColumn(): ColumnDef<DependencyNode> {
   return {
     id: "last-edit-by",
-    get name() {
-      return t`Last modified by`;
+    header: t`Last modified by`,
+    meta: {
+      width: "auto",
     },
-    accessorFn: (item) => getNodeLastEditInfo(item),
+    accessorFn: (item) => {
+      const editInfo = getNodeLastEditInfo(item);
+      return editInfo != null ? getUserName(editInfo) : undefined;
+    },
     cell: ({ row }) => {
       const item = row.original;
       const editInfo = getNodeLastEditInfo(item);
-      const userName = editInfo != null ? getUserName(editInfo) : undefined;
-      if (userName == null) {
-        return <BaseCell />;
-      }
-      return <TextCell value={userName} />;
+      return editInfo != null ? getUserName(editInfo) : null;
     },
-    headerClickable: false,
   };
 }
 
@@ -127,7 +127,7 @@ type ColumnOptions = {
 
 export function getColumns({
   withDependentsCountColumn,
-}: ColumnOptions): DependencyColumnOptions[] {
+}: ColumnOptions): ColumnDef<DependencyNode>[] {
   return [
     getNodeNameColumn(),
     getNodeLocationColumn(),
@@ -135,11 +135,4 @@ export function getColumns({
     getNodeLastEditAtColumn(),
     getNodeLastEditByColumn(),
   ];
-}
-
-export function isSortableColumn(
-  column: DependencyColumn,
-): column is DependencySortColumn {
-  const sortColumns: ReadonlyArray<DependencyColumn> = DEPENDENCY_SORT_COLUMNS;
-  return sortColumns.includes(column);
 }

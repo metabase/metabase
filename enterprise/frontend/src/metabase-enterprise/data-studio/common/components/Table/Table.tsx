@@ -13,7 +13,7 @@ import {
   type Virtualizer,
   useVirtualizer,
 } from "@tanstack/react-virtual";
-import { type CSSProperties, type ReactNode, useState } from "react";
+import { type CSSProperties, useState } from "react";
 
 import { Badge, Icon } from "metabase/ui";
 
@@ -27,8 +27,8 @@ export const TableComponent = <
   onSelect,
 }: {
   data: T[];
-  columns: ColumnDef<T, ReactNode>[];
-  onSelect: (item: T) => void;
+  columns: ColumnDef<T>[];
+  onSelect?: (item: T) => void;
 }) => {
   const [scrollRef, setScrollRef] = useState<HTMLDivElement | null>(null);
 
@@ -99,7 +99,7 @@ export const TableComponent = <
 interface TableBodyProps<T> {
   table: Table<T>;
   tableContainerRef: HTMLDivElement;
-  onSelect: (item: T) => void;
+  onSelect?: (item: T) => void;
 }
 
 function TableBody<T>({
@@ -151,7 +151,7 @@ interface TableBodyRowProps<T> {
   row: Row<T>;
   virtualRow: VirtualItem;
   rowVirtualizer: Virtualizer<HTMLDivElement, HTMLTableRowElement>;
-  onSelect: (item: T) => void;
+  onSelect?: (item: T) => void;
 }
 
 function TableBodyRow<T>({

@@ -1,6 +1,6 @@
 import { useDebouncedValue } from "@mantine/hooks";
 import type { ColumnDef } from "@tanstack/react-table";
-import { type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -42,7 +42,7 @@ export const JobListPage = () => {
     dispatch(push(Urls.transformJob(item.id)));
   };
 
-  const jobColumnDef = useMemo<ColumnDef<TransformJob, ReactNode>[]>(
+  const jobColumnDef = useMemo<ColumnDef<TransformJob>[]>(
     () => [
       {
         accessorKey: "name",
