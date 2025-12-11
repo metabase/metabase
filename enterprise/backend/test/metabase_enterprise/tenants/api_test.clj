@@ -384,38 +384,6 @@
   (mt/with-temporary-setting-values [use-tenants false]
     (mt/user-http-request :crowberto :post 400 "collection/" {:namespace collection/shared-tenant-ns :name (mt/random-name)})))
 
-(defn do-with-disabled-create-tenant-collections-permissions
-  [f]
-  (let [current-application-permissions (t2/select (t2/table-name :model/Permissions) :object "/application/create-tenant-collections/")]
-    (try
-      (t2/delete! :model/Permissions :object "/application/create-tenant-collections/")
-      (f)
-      (finally
-        (t2/delete! :model/Permissions :object "/application/create-tenant-collections/")
-        (when (seq current-application-permissions)
-          (t2/insert! (t2/table-name :model/Permissions) current-application-permissions))))))
-
-(defmacro ^:private with-disabled-create-tenant-collections-permissions!
-  [& body]
-  `(do-with-disabled-create-tenant-collections-permissions (fn [] ~@body)))
-
-(deftest regular-users-without-necessary-perm-cannot-create-any-shared-tenant-collections
-  (mt/with-premium-features #{:tenants :advanced-permissions}
-    (mt/with-temporary-setting-values [use-tenants true]
-      (with-disabled-create-tenant-collections-permissions!
-        (mt/user-http-request :rasta :post 403 "collection/" {:namespace collection/shared-tenant-ns
-                                                              :name (mt/random-name)})))))
-
-(deftest regular-users-with-necessary-perm-can-create-shared-tenant-collections
-  (mt/with-premium-features #{:tenants :advanced-permissions}
-    (mt/with-temporary-setting-values [use-tenants true]
-      (with-disabled-create-tenant-collections-permissions!
-        (perms/grant-application-permissions! (perms/all-users-group) :create-tenant-collections)
-        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) (assoc collection/root-collection
-                                                                                      :namespace collection/shared-tenant-ns))
-        (mt/user-http-request :rasta :post 200 "collection/" {:namespace collection/shared-tenant-ns
-                                                              :name (mt/random-name)})))))
-
 (deftest admins-can-create-shared-tenant-collections-as-children-of-other-collections
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]

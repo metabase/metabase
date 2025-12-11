@@ -45,7 +45,4 @@
     "/application/monitoring/"
 
     :subscription
-    "/application/subscription/"
-
-    :create-tenant-collections
-    "/application/create-tenant-collections/"))
+    "/application/subscription/"))

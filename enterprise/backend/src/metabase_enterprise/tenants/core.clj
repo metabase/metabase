@@ -59,8 +59,5 @@
   [collection]
   (when (collection/shared-tenant-collection? collection)
     ;; make sure tenants is enabled
-    (api/check-400 (perms/use-tenants))
-
-    ;; check perms - user has the application permission to create shared tenant collections
-    (api/check-403 (perms/check-has-application-permission :create-tenant-collections)))
+    (api/check-400 (perms/use-tenants)))
   collection)
