@@ -8,7 +8,7 @@
    Named for the only case we support currently, to make call sites assumptions more obvious."
   [entity-type]
   (when (not= "transform" (name entity-type))
-    (throw (ex-info "Entity type not supported"
+    (throw (ex-info "Only transform entity type is supported"
                     {:status-code 400
                      :entity-type entity-type}))))
 

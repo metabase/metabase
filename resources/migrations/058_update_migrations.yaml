@@ -2446,6 +2446,504 @@ databaseChangeLog:
             tableName: workspace
             constraintName: idx_workspace_name_unique
 
+  - changeSet:
+      id: v58.2025-12-10T10:00:00
+      author: qnkhuat
+      comment: Create workspace_input table for tracking external table dependencies
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: workspace_input
+      changes:
+        - createTable:
+            tableName: workspace_input
+            remarks: External tables that workspace transforms consume from source databases
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  remarks: Database containing the source table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  remarks: Schema of the source table (nullable for DBs without schemas)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254)
+                  remarks: Name of the source table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: FK to metabase_table if table exists and is synced
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the input was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the input was last updated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_input
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:01
+      author: qnkhuat
+      comment: Add index on workspace_input.workspace_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_input_workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:02
+      author: qnkhuat
+      comment: Add foreign key constraint from workspace_input.workspace_id to workspace
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_input_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_input
+            constraintName: fk_workspace_input_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:03
+      author: qnkhuat
+      comment: Add foreign key constraint from workspace_input.table_id to metabase_table with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_input
+            constraintName: fk_workspace_input_table_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:04
+      author: qnkhuat
+      comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: workspace_input
+                constraintName: uq_workspace_input_logical_table
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, db_id, schema, table
+            constraintName: uq_workspace_input_logical_table
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_input
+            constraintName: uq_workspace_input_logical_table
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:05
+      author: qnkhuat
+      comment: Create workspace_output table for tracking tables produced by workspace transforms
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: workspace_output
+      changes:
+        - createTable:
+            tableName: workspace_output
+            remarks: Tables that workspace transforms produce
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  remarks: FK to workspace_transform.ref_id (producer)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  remarks: Database where the output table is created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  remarks: Schema of the output table
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254)
+                  remarks: Name of the output table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the output was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the output was last updated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_output
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:06
+      author: qnkhuat
+      comment: Add index on workspace_output.workspace_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_output_workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:07
+      author: qnkhuat
+      comment: Add index on workspace_output.ref_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_output_ref_id
+      changes:
+        - createIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_ref_id
+            columns:
+              - column:
+                  name: ref_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_ref_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:08
+      author: qnkhuat
+      comment: Add foreign key constraint from workspace_output.workspace_id to workspace
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_output_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_output_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_output
+            constraintName: fk_workspace_output_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:09
+      author: qnkhuat
+      comment: Add foreign key constraint from workspace_output.ref_id to workspace_transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_output_ref_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output
+            baseColumnNames: ref_id
+            constraintName: fk_workspace_output_ref_id
+            referencedTableName: workspace_transform
+            referencedColumnNames: ref_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_output
+            constraintName: fk_workspace_output_ref_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:10
+      author: qnkhuat
+      comment: Add unique constraint on workspace_output (workspace_id, ref_id)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: workspace_output
+                constraintName: uq_workspace_output_workspace_ref
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_output
+            columnNames: workspace_id, ref_id
+            constraintName: uq_workspace_output_workspace_ref
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_output
+            constraintName: uq_workspace_output_workspace_ref
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:11
+      author: qnkhuat
+      comment: Create workspace_dependency table for tracking dependency edges
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: workspace_dependency
+      changes:
+        - createTable:
+            tableName: workspace_dependency
+            remarks: Edges between workspace transforms and their dependencies
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_type
+                  type: varchar(20)
+                  remarks: Type of the dependent entity (e.g. transform)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_id
+                  type: varchar(36)
+                  remarks: ID of the dependent entity (ref_id for transforms)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_type
+                  type: varchar(20)
+                  remarks: Type of the dependency (input or output)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_id
+                  type: int
+                  remarks: ID of the dependency (workspace_input.id or workspace_output.id)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the dependency was created
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_dependency
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:12
+      author: qnkhuat
+      comment: Add index on workspace_dependency.workspace_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_dependency_workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_dependency
+            indexName: idx_workspace_dependency_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_dependency
+            indexName: idx_workspace_dependency_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:13
+      author: qnkhuat
+      comment: Add foreign key constraint from workspace_dependency.workspace_id to workspace
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_dependency_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_dependency
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_dependency_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_dependency
+            constraintName: fk_workspace_dependency_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:14
+      author: qnkhuat
+      comment: Add unique constraint on workspace_dependency edges
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: workspace_dependency
+                constraintName: uq_workspace_dependency_edge
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_dependency
+            columnNames: workspace_id, from_entity_type, from_entity_id, to_entity_type, to_entity_id
+            constraintName: uq_workspace_dependency_edge
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_dependency
+            constraintName: uq_workspace_dependency_edge
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:15
+      author: qnkhuat
+      comment: Add index on workspace_dependency from entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_dependency_from
+      changes:
+        - createIndex:
+            tableName: workspace_dependency
+            indexName: idx_workspace_dependency_from
+            columns:
+              - column:
+                  name: from_entity_type
+              - column:
+                  name: from_entity_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_dependency
+            indexName: idx_workspace_dependency_from
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:16
+      author: qnkhuat
+      comment: Add index on workspace_dependency to entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_dependency_to
+      changes:
+        - createIndex:
+            tableName: workspace_dependency
+            indexName: idx_workspace_dependency_to
+            columns:
+              - column:
+                  name: to_entity_type
+              - column:
+                  name: to_entity_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_dependency
+            indexName: idx_workspace_dependency_to
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
