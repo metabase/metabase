@@ -792,8 +792,6 @@ describe("Remote Sync", () => {
               .button("Save changes")
               .click();
 
-            H.waitForTask({ taskName: "import" });
-
             // Create a question in the tenant collection
             H.createQuestion({
               name: "Tenant Question",
@@ -841,8 +839,6 @@ describe("Remote Sync", () => {
             cy.findByTestId("admin-layout-content")
               .button("Save changes")
               .click();
-
-            H.waitForTask({ taskName: "import" });
 
             // Create content to trigger dirty state
             H.createQuestion({
