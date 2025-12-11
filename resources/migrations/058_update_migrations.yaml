@@ -1207,10 +1207,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: use_case_id
-      rollback:
-        - dropIndex:
-            tableName: metabot_message
-            indexName: idx_metabot_message_use_case_id
 
   - changeSet:
       id: v58.2025-12-10T16:08:00
