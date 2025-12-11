@@ -14,6 +14,8 @@ export type Workspace = {
   id: WorkspaceId;
   name: string;
   archived: boolean;
+  archived_at?: string | null;
+  status?: WorkspaceSetupStatus;
   collection_id?: CollectionId | null;
   database_id?: DatabaseId | null;
   created_at?: string;

@@ -20,6 +20,7 @@ import {
   Box,
   FixedSizeIcon,
   Flex,
+  Group,
   Icon,
   type IconName,
   Menu,
@@ -528,7 +529,7 @@ function WorkspaceItem({
     onDelete(workspace.id);
   };
 
-  const isArchived = workspace.archived;
+  const status = getWorkspaceListStatus(workspace);
 
   return (
     <UnstyledButton
@@ -542,6 +543,14 @@ function WorkspaceItem({
           <Text size="sm" fw={600} truncate>
             {workspace.name}
           </Text>
+          {status && (
+            <Group gap="xs" align="center" wrap="nowrap">
+              <Icon name={status.icon} size={10} c={status.color} />
+              <Text size="xs" fw={500} c={status.color}>
+                {status.label}
+              </Text>
+            </Group>
+          )}
           {timeAgo && (
             <Text size="xs" c="text-secondary" truncate>
               {t`Updated ${timeAgo}`}
@@ -561,7 +570,7 @@ function WorkspaceItem({
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            {isArchived ? (
+            {workspace.archived ? (
               <Menu.Item
                 leftSection={<Icon name="revert" />}
                 onClick={handleUnarchive}
@@ -589,4 +598,22 @@ function WorkspaceItem({
       </Flex>
     </UnstyledButton>
   );
+}
+
+type WorkspaceListStatus = {
+  label: string;
+  icon: IconName;
+  color: string;
+};
+
+function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
+  if (workspace.archived) {
+    return { label: t`Archived`, icon: "archive", color: "text-light" };
+  }
+
+  if (workspace.status === "pending") {
+    return { label: t`Pending setup`, icon: "clock", color: "warning" };
+  }
+
+  return { label: t`Ready`, icon: "check", color: "success" };
 }
