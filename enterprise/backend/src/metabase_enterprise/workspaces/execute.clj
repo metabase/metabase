@@ -27,12 +27,6 @@
      {:table {:name   (:name target)
               :schema (:schema target)}})))
 
-(defn- mock-mapping
-  [ws target]
-  (assoc target
-         :schema (ws.u/isolation-namespace-name ws)
-         :name (ws.u/isolated-table-name target)))
-
 (defn run-workspace-transform!
   "Execute a workspace transform in preview mode using transaction rollback.
 
@@ -45,8 +39,7 @@
   (isolation/with-workspace-isolation workspace
     (try
       (t2/with-transaction [_conn]
-        (let [mapping (or mapping (partial mock-mapping workspace))
-              new-xf  (-> (select-keys transform [:name :description :source])
+        (let [new-xf  (-> (select-keys transform [:name :description :source])
                           (assoc :creator_id api/*current-user-id*
                                  :target (mapping target)))
               _       (assert (:target new-xf) "Are you missing mapping or what?")

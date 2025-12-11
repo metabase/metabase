@@ -11,6 +11,13 @@
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
+(defn mock-mapping
+  "This is a mocked mapping for execution, used until we get real mapping integrated"
+  [ws target]
+  (assoc target
+         :schema (ws.u/isolation-namespace-name ws)
+         :name (ws.u/isolated-table-name target)))
+
 ;; should be encapsulated in our dag namespace, or dependency module
 (defn check-no-card-dependencies!
   "Check that transforms don't depend on cards. Throws 400 if they do."

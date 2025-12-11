@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
+   [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.test :as mt]
@@ -12,7 +13,7 @@
 
 (ws.tu/ws-fixtures!)
 
-(deftest run-workspace-transform-basic-test
+(deftest run-workspace-transform-no-input-test
   (testing "Executing a workspace transform returns results and rolls back app DB records"
     (transforms.tu/with-transform-cleanup! [output-table "ws_execute_test"]
       (let [workspace    (ws.tu/create-ready-ws! "Execute Test Workspace")
@@ -36,7 +37,8 @@
                    :table      {:name   #(str/includes? % output-table)
                                 :schema (:schema workspace)}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.execute/run-workspace-transform! workspace ws-transform nil)))))
+                    (ws.execute/run-workspace-transform! workspace ws-transform
+                                                         (partial ws.common/mock-mapping workspace))))))
 
         (testing "app DB records are rolled back"
           (is (= before
