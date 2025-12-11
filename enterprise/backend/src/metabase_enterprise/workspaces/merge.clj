@@ -8,6 +8,8 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO we need to implement the route that calls this, see API reference.
 ;; TODO (crisptrutski 2025-12-10): When there are more entity types support, this should update those too.
 (mu/defn merge-transform! :- [:map
@@ -38,8 +40,9 @@
               global_id
               (merge
                {:op :update :global_id global_id :ref_id ref_id}
-               (try (transforms.api/update-transform!
-                     global_id (select-keys ws-transform [:name :description :source :target]))
+               (try (do (transforms.api/update-transform!
+                         global_id (select-keys ws-transform [:name :description :source :target]))
+                        nil)
                     (catch Throwable e
                       {:error e})))
 
@@ -71,10 +74,25 @@
 
   ;; Nested transactions mess things up, this does not work
   (try
-    {:transforms (t2/with-transaction [tx]
-                   (into []
-                         (map merge-transform!)
-                         (t2/select :model/WorkspaceTransform :workspace_id ws-id)))}
-    (catch Throwable e
-      (def eee e)
-      (throw e))))
+    (t2/with-transaction [tx]
+      (let [result (reduce
+                    (fn [acc ws-transform]
+                      (let [{:keys [error] :as result} (merge-transform! ws-transform)]
+                        (if error
+                          #_(reduced {:errors [result]})
+                          (reduced (update acc :errors conj result))
+                          (update acc :transforms conj result))))
+                    {:transforms :errors
+                     [] []}
+                    (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
+        (when (seq (:errors result))
+          (throw (ex-info "dummy rollback"
+                          {:result result})))
+        #_(when (seq (:errors result))
+            (metabase.util.log/error "ROLLIN")
+            (.rollback ^java.sql.Connection tx))
+        result))
+    (catch Throwable t
+      (if-some [{:keys [result]} (ex-data t)]
+        result
+        (throw t)))))
