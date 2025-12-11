@@ -161,6 +161,7 @@ export const EditUserStrategyModal = ({
               <Button
                 onClick={handleApply}
                 disabled={initialStrategy === selectedStrategy}
+                variant="filled"
               >{t`Apply`}</Button>
             </Flex>
           </Stack>
