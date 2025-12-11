@@ -956,4 +956,4 @@
    {:discouraged-java-method
     {java.lang.System {exit
                        {:level :error
-                        :message "Don't use System/exit directly. Instead throw an ex-info with {:babashka/exit <exit-code>} (and optionally :mage/error) let the mage runner handle exiting the process"}}}}}}}
+                        :message "Don't use System/exit directly. Instead use mage.util/exit and let mage handle exiting the process"}}}}}}}
