@@ -9,6 +9,7 @@
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -652,3 +653,70 @@
                 :failed    []
                 :not_run   []}
                (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "/run"))))))))
+
+(defn- random-target [db-id]
+  {:type     "table"
+   :database db-id
+   :schema   "transform_output"
+   :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
+
+(deftest external-transforms-test
+  (testing "GET /api/ee/workspace/id/external/transform"
+    (mt/with-premium-features #{:transforms :workspaces}
+      (let [db-1 (mt/id)]
+        (mt/with-temp [;; Global transforms (workspace_id = null)
+                       :model/Dashboard          {db-2 :id}   {:name "Other Db"}
+                       :model/Transform          {xf1-id :id} {:name   "Checked out - 1"
+                                                               :target (random-target db-1)}
+                       :model/Transform          {xf2-id :id} {:name   "Checked out - 2"
+                                                               :target (random-target db-1)}
+                       :model/Transform          {xf3-id :id} {:name   "Not checked out - python"
+                                                               :source {:type "python"}
+                                                               :target (random-target db-1)}
+                       :model/Transform          {xf4-id :id} {:name   "Not checked out - mbql"
+                                                               :source {:type     :query
+                                                                        :query    {:database db-1
+                                                                                   :type     :query
+                                                                                   :query    {:source-table (mt/id :venues)}}
+                                                                        :lib/type :mbql/query}
+                                                               :target (random-target db-1)}
+                       :model/Transform          {xf5-id :id} {:name   "Not checked out - native"
+                                                               :source {:type  "query"
+                                                                        ;; TODO we shouldn't construct MBQL 5 manually
+                                                                        :query {:database db-1
+                                                                                :lib/type :mbql/query
+                                                                                :stages   [{:lib/type :mbql.stage/native
+                                                                                            :native   "SELECT 1"}]}}
+                                                               :target (random-target db-1)}
+                       ;; TODO add a native card pointing at a card, that we will want to disable
+                       #_#_#_:model/Transform          {xf7-id :id} {:name   "Using another database"
+                                                                     :source ...
+                                                                     :target (random-target db-2)}
+                       :model/Transform          {xf6-id :id} {:name   "Using another database"
+                                                               :target (random-target db-2)}
+                       ;; Workspace
+                       :model/Workspace          {ws1-id :id} {:name        "Our Workspace"
+                                                               :database_id db-1}
+                       :model/Workspace          {ws2-id :id} {:name        "Their Workspace"
+                                                               :database_id db-1}
+                       ;; Workspace transforms (mirrored from global1 and global2)
+                       :model/WorkspaceTransform _            {:global_id    xf1-id
+                                                               :workspace_id ws1-id}
+                       :model/WorkspaceTransform _            {:global_id    xf2-id
+                                                               :workspace_id ws2-id}]
+          (testing "excludes global transforms mirrored into that workspace"
+            (let [transforms (:transforms (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" ws1-id "/external/transform")))
+                  test-ids   #{xf1-id xf2-id xf3-id xf4-id xf5-id xf6-id}
+                  ;; Filter out cruft from dev, leaky tests, etc
+                  ids        (into #{} (comp (map :id) (filter test-ids)) transforms)]
+              (testing "we filter out the expected transforms"
+                ;; ❌ xf1 is checked out in this workspace, so it's filtered out
+                ;; ✅ xf2 is only checked out in another workspace, so it's kept
+                ;; ❌xf6 is in another database, so it's filtered out
+                (is (= (disj test-ids xf1-id xf6-id) ids)))
+              (testing "we get the correct checkout_disabled reasons"
+                (is (= {xf2-id nil
+                        xf3-id nil #_python-is-supported
+                        xf4-id "mbql"
+                        xf5-id nil #_native-is-supported}
+                       (u/index-by :id :checkout_disabled transforms)))))))))))

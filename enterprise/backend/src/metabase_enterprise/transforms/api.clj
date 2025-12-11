@@ -85,21 +85,11 @@
   When `exclude_workspace_id` is provided, additionally excludes global transforms
   that have been mirrored into the specified workspace (i.e., they have a
   workspace_mapping_transform entry pointing to a transform in that workspace)."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids exclude_workspace_id database_id type]}]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids database_id type]}]
   (api/check-superuser)
-  (let [transforms (if exclude_workspace_id
-                     (t2/select :model/Transform
-                                {:left-join [[:workspace_mapping_transform :wmt]
-                                             [:and
-                                              [:= :transform.id :wmt.upstream_id]
-                                              [:= :wmt.workspace_id exclude_workspace_id]]]
-                                 :where [:and
-                                         [:= :transform.workspace_id nil]
-                                         [:= :wmt.upstream_id nil]]
-                                 :order-by [[:id :asc]]})
-                     (t2/select :model/Transform
-                                {:where [:= :workspace_id nil]
-                                 :order-by [[:id :asc]]}))]
+  (let [transforms (t2/select :model/Transform
+                              {:where    [:= :workspace_id nil]
+                               :order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)

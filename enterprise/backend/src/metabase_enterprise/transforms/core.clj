@@ -17,4 +17,6 @@
  [metabase-enterprise.transforms.models.transform-run
   timeout-run!]
  [metabase-enterprise.transforms.models.transform
-  update-transform-tags!])
+  update-transform-tags!]
+ [metabase-enterprise.transforms.util
+  transform-source-type])
