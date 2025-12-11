@@ -103,14 +103,12 @@ export const OptionPopover = ({
   return (
     <Popover position="bottom-end" opened={opened} onChange={setOpened}>
       <Popover.Target>
-        <div>
-          <Icon
-            name="list"
-            size={20}
-            tooltip={t`Change options`}
-            onClick={() => setOpened(true)}
-          />
-        </div>
+        <Icon
+          name="list"
+          size={20}
+          tooltip={t`Change options`}
+          onClick={() => setOpened(!opened)}
+        />
       </Popover.Target>
       <Popover.Dropdown maw={400}>
         <OptionEditorContainer>

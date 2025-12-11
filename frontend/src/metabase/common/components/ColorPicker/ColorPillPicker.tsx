@@ -50,7 +50,7 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
     <Popover opened={opened} onChange={setOpened}>
       <Popover.Target>
         <Group {...props} ref={ref} wrap="nowrap">
-          <ColorPill color={color} onClick={() => setOpened(true)} />
+          <ColorPill color={color} onClick={() => setOpened(!opened)} />
         </Group>
       </Popover.Target>
       <Popover.Dropdown className={S.ColorPillPicker}>

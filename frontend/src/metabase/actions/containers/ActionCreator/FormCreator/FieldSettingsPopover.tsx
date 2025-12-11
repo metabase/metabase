@@ -37,15 +37,13 @@ export function FieldSettingsPopover({
   return (
     <Popover position="bottom-end" opened={opened} onChange={setOpened}>
       <Popover.Target>
-        <div>
-          <SettingsTriggerIcon
-            name="gear"
-            size={16}
-            tooltip={t`Change field settings`}
-            aria-label={t`Field settings`}
-            onClick={() => setOpened(true)}
-          />
-        </div>
+        <SettingsTriggerIcon
+          name="gear"
+          size={16}
+          tooltip={t`Change field settings`}
+          aria-label={t`Field settings`}
+          onClick={() => setOpened(!opened)}
+        />
       </Popover.Target>
       <Popover.Dropdown maw={400}>
         <FormCreatorPopoverBody

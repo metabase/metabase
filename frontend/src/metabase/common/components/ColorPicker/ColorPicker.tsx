@@ -33,7 +33,7 @@ const ColorPicker = forwardRef(function ColorPicker(
           value={value}
           placeholder={placeholder}
           isAuto={isAuto}
-          onClick={() => setOpened(true)}
+          onClick={() => setOpened(!opened)}
           onChange={onChange}
         />
       </Popover.Target>
