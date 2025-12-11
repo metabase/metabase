@@ -102,7 +102,7 @@ export const TransformTab = ({
     isFetching,
   } = useGetTransformQuery(transform.id, {
     pollingInterval: shouldPoll ? POLLING_INTERVAL : undefined,
-    skip: transform.id < 0,
+    skip: "ref_id" in transform,
   });
 
   useEffect(() => {
