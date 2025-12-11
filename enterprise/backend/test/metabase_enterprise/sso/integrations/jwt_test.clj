@@ -915,8 +915,8 @@
 
           (testing "only string attributes are saved to jwt_attributes"
             (is (= {"string_attr" "valid-string"
-                    "number_attr" 42
-                    "boolean_attr" false}
+                    "number_attr" "42"
+                    "boolean_attr" "false"}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
 
           (testing "warning messages are logged for non-stringable values"

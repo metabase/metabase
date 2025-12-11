@@ -915,8 +915,8 @@
                (testing "only string attributes are saved to login_attributes"
                  (let [user-attrs (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com")]
                    (is (=? {"string_attr" "valid-string"
-                            "number_attr" 42
-                            "boolean_attr" true} user-attrs))))))))))))
+                            "number_attr" "42"
+                            "boolean_attr" "true"} user-attrs))))))))))))
 
 ;;; ------------------------------------------------ Tenant Tests ----------------------------------------------------
 
