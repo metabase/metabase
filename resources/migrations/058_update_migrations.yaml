@@ -1615,10 +1615,11 @@ databaseChangeLog:
               - column:
                   name: workspace_id
       # MySQL requires FK to be dropped before its underlying index can be dropped
+      # Use modifySql to make the FK drop conditional since rollback doesn't support preconditions
       rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: collection
-            constraintName: fk_collection_workspace_id
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE collection DROP FOREIGN KEY fk_collection_workspace_id
         - dropIndex:
             tableName: collection
             indexName: idx_collection_workspace_id
