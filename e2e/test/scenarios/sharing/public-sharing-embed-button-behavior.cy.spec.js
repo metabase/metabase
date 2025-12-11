@@ -264,6 +264,7 @@ describe("#39152 sharing an unsaved question", () => {
     [
       { embeddingType: "guest-embed", shouldShowAlert: false },
       { embeddingType: "static-legacy", shouldShowAlert: true },
+      { embeddingType: null, shouldShowAlert: true },
     ].forEach(({ embeddingType, shouldShowAlert }) => {
       it(`should ${shouldShowAlert ? "show" : "not show"} legacy alert for ${embeddingType} embedding type`, () => {
         cy.get("@resourceId").then((id) => {
