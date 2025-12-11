@@ -20,7 +20,7 @@ import {
 import {
   useCreateWorkspaceMutation,
   useCreateWorkspaceTransformMutation,
-  useGetTransformDownstreamMappingQuery,
+  useGetWorkspaceCheckoutQuery,
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
 import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
@@ -42,9 +42,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     useCreateWorkspaceTransformMutation();
   const [createWorkspace, { isLoading: isCreatingWorkspace }] =
     useCreateWorkspaceMutation();
-  const { data: downstreamMapping } = useGetTransformDownstreamMappingQuery(
-    transform.id,
-  );
+  const { data: checkoutData } = useGetWorkspaceCheckoutQuery(transform.id);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [addedWorkspaceIds, setAddedWorkspaceIds] = useState<Set<number>>(
     () => new Set(),
@@ -60,14 +58,14 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
   const existingWorkspaceIds = useMemo(() => {
     const ids = new Set<number>();
-    downstreamMapping?.transforms?.forEach((item) => {
+    checkoutData?.transforms?.forEach((item) => {
       if (item.workspace?.id != null) {
         ids.add(item.workspace.id);
       }
     });
     addedWorkspaceIds.forEach((id) => ids.add(id));
     return ids;
-  }, [downstreamMapping, addedWorkspaceIds]);
+  }, [checkoutData, addedWorkspaceIds]);
 
   const matchingWorkspaces = useMemo(
     () =>

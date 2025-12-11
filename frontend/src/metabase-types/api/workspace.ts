@@ -85,6 +85,16 @@ export type TransformDownstreamMapping = {
   transforms: DownstreamTransformInfo[];
 };
 
+export type WorkspaceCheckoutItem = {
+  id: string;
+  name: string;
+  workspace: WorkspaceItem;
+};
+
+export type WorkspaceCheckoutResponse = {
+  transforms: WorkspaceCheckoutItem[];
+};
+
 export type WorkspaceMergeResponse = {
   promoted: WorkspaceTransformItem[];
   errors?: (WorkspaceTransformItem & { error: string })[];
