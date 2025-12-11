@@ -78,10 +78,13 @@
                   (fn [acc ws-transform]
                     (let [{:keys [error] :as result} (merge-transform! ws-transform)]
                       (if error
-                        (reduced (update acc :errors conj result))
-                        (update acc :transforms conj result))))
-                  {:transforms []
-                   :errors []}
+                        (reduced (-> acc
+                                     (update :errors conj result)
+                                     #_(assoc :short_circuit true)))
+                        (update acc :merged conj result))))
+                  {:merged []
+                   :errors []
+                   #_#_:short_circuit false}
                   (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
       (when (seq (:errors result))
         (.rollback ^Connection tx savepoint))
