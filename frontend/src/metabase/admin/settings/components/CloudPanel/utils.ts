@@ -1,9 +1,7 @@
 import dayjs from "dayjs";
 
 import { useStoreUrl } from "metabase/common/hooks";
-import { getPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
+import type { Plan } from "metabase/common/utils/plan";
 import type {
   CloudMigration,
   CloudMigrationState,
@@ -73,10 +71,7 @@ export const defaultGetPollingInterval = (
 export const getMigrationEventTime = (isoString: string) =>
   dayjs(isoString).format("MMMM DD, YYYY, hh:mm A");
 
-export const useGetStoreUrl = () => {
-  const plan = useSelector((state) =>
-    getPlan(getSetting(state, "token-features")),
-  );
+export const useGetStoreUrl = (plan: Plan) => {
   const checkoutUrl = useStoreUrl("checkout");
   const loginUrl = useStoreUrl("login");
   return plan === "pro-self-hosted" ? loginUrl : checkoutUrl;
@@ -84,16 +79,17 @@ export const useGetStoreUrl = () => {
 
 export const openCheckoutInNewTab = (
   storeUrl: string,
+  plan: Plan,
   migration: CloudMigration,
 ) => {
-  const migrationUrl = getMigrationUrl(storeUrl, migration);
+  const migrationUrl = getMigrationUrl(storeUrl, plan, migration);
   window.open(migrationUrl, "_blank")?.focus();
 };
 
-export function getMigrationUrl(storeUrl: string, migration: CloudMigration) {
-  // const plan = useSelector((state) =>
-  //   getPlan(getSetting(state, "token-features")),
-  // );
-  // return `${storeUrl}?migration-id=${migration.external_id}&source_plan=${plan}`;
-  return `${storeUrl}?migration-id=${migration.external_id}`;
+export function getMigrationUrl(
+  storeUrl: string,
+  plan: Plan,
+  migration: CloudMigration,
+) {
+  return `${storeUrl}?source_plan=${plan}&migration-id=${migration.external_id}`;
 }
