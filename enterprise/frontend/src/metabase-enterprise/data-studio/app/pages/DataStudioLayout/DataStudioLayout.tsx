@@ -598,6 +598,7 @@ function WorkspaceItem({
             )}
             <Menu.Divider />
             <Menu.Item
+              c="error"
               leftSection={<Icon name="trash" />}
               onClick={handleDelete}
               color="danger"
