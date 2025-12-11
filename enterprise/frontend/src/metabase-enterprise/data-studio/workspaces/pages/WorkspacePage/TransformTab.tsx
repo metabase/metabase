@@ -45,6 +45,7 @@ import type {
   TransformId,
   TransformTarget,
   WorkspaceId,
+  WorkspaceTransformItem,
 } from "metabase-types/api";
 import type { EditedTransform } from "./WorkspaceProvider";
 
@@ -60,7 +61,7 @@ interface Props {
   editedTransform: EditedTransform;
   transform: Transform;
   workspaceId: WorkspaceId;
-  workspaceTransforms: Transform[];
+  workspaceTransforms: WorkspaceTransformItem[];
   onChange: (patch: Partial<EditedTransform>) => void;
   onOpenTransform: (transformId: TransformId) => void;
 }
@@ -79,6 +80,7 @@ export const TransformTab = ({
     isWorkspaceExecuting,
     setIsWorkspaceExecuting,
     removeUnsavedTransform,
+    unsavedTransforms,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
@@ -173,7 +175,9 @@ export const TransformTab = ({
   );
   const hasChanges = hasSourceChanged;
 
-  const isSaved = workspaceTransforms.some((t) => t.id === transform.id);
+  const isSaved = workspaceTransforms.some((t) => t.global_id === transform.id);
+  const isEditable =
+    isSaved || unsavedTransforms.some((t) => t.id === transform.id);
 
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [runTransform] = useRunTransformMutation();
@@ -392,7 +396,7 @@ export const TransformTab = ({
       {editedTransform && (
         <Box flex="1">
           <TransformEditor
-            disabled={!isSaved}
+            disabled={!isEditable}
             source={editedTransform.source}
             proposedSource={proposedSource}
             onAcceptProposed={handleAcceptProposed}

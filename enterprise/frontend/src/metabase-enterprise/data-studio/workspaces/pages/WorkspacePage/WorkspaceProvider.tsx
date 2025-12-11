@@ -93,7 +93,7 @@ interface WorkspaceState {
   activeEditedTransform?: Transform;
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
-  editedTransforms: Map<number, EditedTransform>;
+  editedTransforms: Map<number | string, EditedTransform>;
   runTransforms: Set<number>;
   unsavedTransforms: Transform[];
   nextUnsavedTransformIndex: number;
@@ -109,8 +109,8 @@ const createEmptyWorkspaceState = (): WorkspaceState => ({
   activeTransform: undefined,
   activeTable: undefined,
   activeTab: undefined,
-  editedTransforms: new Map(),
-  runTransforms: new Set(),
+  editedTransforms: new Map<number | string, EditedTransform>(),
+  runTransforms: new Set<number>(),
   unsavedTransforms: [],
   nextUnsavedTransformIndex: 0,
 });
