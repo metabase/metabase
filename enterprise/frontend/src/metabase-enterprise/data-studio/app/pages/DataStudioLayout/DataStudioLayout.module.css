@@ -7,6 +7,13 @@
   width: 300px;
 }
 
+.logo {
+  width: 32px;
+  height: 32px;
+  margin: 0 -8px;
+  display: block;
+}
+
 .icon {
   color: var(--mb-color-text-secondary);
 }
@@ -51,8 +58,9 @@
 
 .showOnHover {
   position: absolute;
-  left: 0.5rem;
-  top: 0.75rem;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   opacity: 0;
   transition: opacity 400ms ease;
 }

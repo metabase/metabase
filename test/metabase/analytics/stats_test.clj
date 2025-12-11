@@ -628,3 +628,15 @@
         (is (= "metabase" (get-in snowplow-settings [3 :value]))))
       (testing "converts boolean changed? to string"
         (is (= "default" (get-in snowplow-settings [4 :value])))))))
+
+(deftest document-metrics-test
+  (mt/with-empty-h2-app-db!
+    (testing "with no documents"
+      (is (=? {:documents {}}
+              (#'stats/document-metrics))))
+    (testing "with documents"
+      (mt/with-temp [:model/Document _ {}
+                     :model/Document _ {:archived true}]
+        (is (=? {:documents {:total 2
+                             :archived 1}}
+                (#'stats/document-metrics)))))))
