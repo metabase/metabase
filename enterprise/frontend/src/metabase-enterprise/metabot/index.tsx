@@ -60,7 +60,6 @@ export function initializePlugin() {
       </Route>
     );
 
-    // TODO: make enterprise store + fix type
     PLUGIN_METABOT.getMetabotVisible =
       getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
 
