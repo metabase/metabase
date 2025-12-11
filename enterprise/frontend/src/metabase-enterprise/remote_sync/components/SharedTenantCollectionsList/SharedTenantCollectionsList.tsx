@@ -1,5 +1,6 @@
 import { useFormikContext } from "formik";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
 import { c, t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -23,20 +24,16 @@ export const SharedTenantCollectionsList = () => {
     () => values[COLLECTIONS_KEY] ?? {},
     [values],
   );
-  const isReadOnly = values[TYPE_KEY] === "read-only";
-  const prevTypeRef = useRef(values[TYPE_KEY]);
+  const currentType = values[TYPE_KEY];
+  const isReadOnly = currentType === "read-only";
+  const previousType = usePrevious(currentType);
 
   // Reset collections to initial values when switching from read-write to read-only
   useEffect(() => {
-    const prevType = prevTypeRef.current;
-    const currentType = values[TYPE_KEY];
-
-    if (prevType === "read-write" && currentType === "read-only") {
+    if (previousType === "read-write" && currentType === "read-only") {
       setFieldValue(COLLECTIONS_KEY, initialValues[COLLECTIONS_KEY] ?? {});
     }
-
-    prevTypeRef.current = currentType;
-  }, [values, initialValues, setFieldValue]);
+  }, [currentType, initialValues, setFieldValue, previousType]);
 
   const handleToggle = useCallback(
     (collection: CollectionItem, checked: boolean) => {
