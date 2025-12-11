@@ -49,13 +49,13 @@ import type {
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
-import { WorkspaceRunButton } from "../../components/WorkspaceRunButton/WorkspaceRunButton";
+import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 
-import { CheckOutTransformButton } from "./CheckOutTransformButton";
-import { SaveTransformButton } from "./SaveTransformButton";
-import { TransformEditor } from "./TransformEditor";
-import type { EditedTransform } from "./WorkspaceProvider";
-import { useWorkspace } from "./WorkspaceProvider";
+import { CheckOutTransformButton } from "../CheckOutTransformButton";
+import { SaveTransformButton } from "../SaveTransformButton";
+import { TransformEditor } from "../TransformEditor";
+import type { EditedTransform } from "../WorkspaceProvider";
+import { useWorkspace } from "../WorkspaceProvider";
 
 interface Props {
   databaseId: DatabaseId;
@@ -316,7 +316,7 @@ export const TransformTab = ({
   }, [dispatch, suggestedTransform]);
 
   const handleTargetUpdate = useCallback(
-    (updatedTransform?: Transform) => {
+    (updatedTransform?: WorkspaceTransform) => {
       if (updatedTransform) {
         updateTransformState(updatedTransform);
         sendSuccessToast(t`Transform target updated`);

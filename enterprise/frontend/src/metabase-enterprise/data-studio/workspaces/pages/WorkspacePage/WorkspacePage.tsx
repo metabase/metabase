@@ -62,7 +62,7 @@ import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
-import { TransformTab } from "./TransformTab";
+import { TransformTab } from "./TransformTab/TransformTab";
 import styles from "./WorkspacePage.module.css";
 import {
   type EditedTransform,
