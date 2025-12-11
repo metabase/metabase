@@ -175,7 +175,17 @@ export const SmartLink = Node.create<{
       },
       href: {
         default: "/",
-        parseHTML: (element) => element.getAttribute("data-href"),
+        parseHTML: (element) => {
+          const href = element.getAttribute("href");
+          const siteUrl = element.getAttribute("data-site-url");
+
+          // Remove siteUrl prefix if present to store relative path
+          if (href && siteUrl && href.startsWith(siteUrl)) {
+            return href.substring(siteUrl.length);
+          }
+
+          return href || element.getAttribute("data-href") || "/";
+        },
       },
     };
   },
@@ -187,7 +197,23 @@ export const SmartLink = Node.create<{
   parseHTML() {
     return [
       {
-        tag: 'span[data-type="smart-link"]',
+        tag: 'a[data-type="smart-link"]',
+        priority: 100, // Higher priority than default to override Link mark
+        getAttrs: (element) => {
+          if (typeof element === "string") {
+            return false;
+          }
+
+          const entityId = element.getAttribute("data-entity-id");
+          const model = element.getAttribute("data-model");
+
+          // Only parse as smartLink if it has the required attributes
+          if (!entityId || !model) {
+            return false;
+          }
+
+          return null; // Return null to let the attribute parsers handle extraction
+        },
       },
     ];
   },
