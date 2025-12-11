@@ -18,17 +18,13 @@
           (testing "tenant_collection_id is set and references a valid collection"
             (is (some? tenant-collection-id))
             (is (t2/exists? :model/Collection :id tenant-collection-id)))
-
           (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
             (testing "collection has correct namespace"
               (is (= :tenant-specific (:namespace coll))))
-
             (testing "collection has correct type"
               (is (= "tenant-specific-root-collection" (:type coll))))
-
             (testing "collection has correct name"
               (is (= "Tenant Collection: TestyLilTenant" (:name coll))))
-
             (testing "collection location is at root"
               (is (= "/" (:location coll))))))))))
 
@@ -55,7 +51,6 @@
                                                     :location (collection/children-location tenant-coll)}]
               (testing "child has tenant-specific namespace"
                 (is (= :tenant-specific (:namespace child))))
-
               (testing "child does NOT have tenant-specific-root-collection type"
                 (is (not= "tenant-specific-root-collection" (:type child)))))))))))
 
@@ -73,7 +68,6 @@
                                                              :location (str "/" tenant-collection-id "/" child-id "/")}]
               (testing "grandchild has tenant-specific namespace"
                 (is (= :tenant-specific (:namespace grandchild))))
-
               (testing "grandchild does NOT have root collection type"
                 (is (not= "tenant-specific-root-collection" (:type grandchild)))))))))))
 
@@ -90,10 +84,8 @@
           (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
             (testing "returns true for tenant root collection"
               (is (collection/is-dedicated-tenant-collection-or-descendant? tenant-coll)))
-
             (testing "returns false for regular collection"
               (is (not (collection/is-dedicated-tenant-collection-or-descendant? regular-coll))))
-
             (mt/with-temp [:model/Collection child {:name "Child"
                                                     :namespace "tenant-specific"
                                                     :location (collection/children-location tenant-coll)}]
@@ -115,14 +107,12 @@
                            :model/Collection {grandchild-id :id} {:name "Grandchild"
                                                                   :namespace "tenant-specific"
                                                                   :location (str "/" tenant-collection-id "/" child-id "/")}]
-
               (testing "tenant user gets root collection and all descendants"
                 (let [ids (set (tenants.model/user->tenant-collection-and-descendant-ids tenant-user-id))]
                   (is (contains? ids tenant-collection-id))
                   (is (contains? ids child-id))
                   (is (contains? ids grandchild-id))
                   (is (= 3 (count ids)))))
-
               (testing "regular user gets empty vector"
                 (is (= [] (tenants.model/user->tenant-collection-and-descendant-ids regular-user-id)))))))))))
 
@@ -139,7 +129,6 @@
           (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
             (testing "tenant root collection has no personal_owner_id"
               (is (nil? (:personal_owner_id tenant-coll))))
-
             (testing "attempting to set personal_owner_id should fail"
               (is (thrown-with-msg?
                    Exception

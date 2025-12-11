@@ -12,13 +12,15 @@
 
 (use-fixtures :each with-premium-feature-fixture)
 
-(deftest can-create-tenants
+(deftest can-create-tenant-with-unique-name-test
   (testing "I can create a tenant with a unique name"
     (mt/with-model-cleanup [:model/Tenant]
       (mt/user-http-request :crowberto :post 200 "ee/tenant/"
                             {:name "My Tenant"
                              :slug "my-tenant"})
-      (is (t2/exists? :model/Tenant :name "My Tenant"))))
+      (is (t2/exists? :model/Tenant :name "My Tenant")))))
+
+(deftest duplicate-tenant-names-error-test
   (testing "Duplicate names results in an error"
     (mt/with-model-cleanup [:model/Tenant]
       (mt/user-http-request :crowberto :post 200 "ee/tenant/"
@@ -29,7 +31,9 @@
                                    {:name "My Tenant" :slug "foo"})))
       (is (= "This tenant name or slug is already taken."
              (mt/user-http-request :crowberto :post 400 "ee/tenant/"
-                                   {:name "Foo" :slug "my-tenant"})))))
+                                   {:name "Foo" :slug "my-tenant"}))))))
+
+(deftest invalid-tenant-slug-error-test
   (testing "invalid slug results in an error"
     (mt/user-http-request :crowberto :post 400 "ee/tenant/"
                           {:name "My Tenant"
@@ -111,7 +115,7 @@
       (is (=? {:data [{:id id2 :member_count 1 :attributes {:status "inactive"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/?status=deactivated"))))))
 
-(deftest tenant-users-can-only-list-tenant-recipients
+(deftest tenant-users-can-only-list-tenant-recipients-visibility-all-test
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
                  :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
                  :model/User {tenant-user-id :id} {:tenant_id tenant-id}
@@ -131,24 +135,49 @@
         ;; note that even superusers only see recipients in the same tenant - maybe revisit this?
         (is (=? #{tenant-user-id
                   other-tenant-user-id
-                  normal-user-id} (get-recipient-ids :crowberto)))
-        (mt/with-temporary-setting-values [user-visibility :group
-                                           use-tenants true]
+                  normal-user-id} (get-recipient-ids :crowberto)))))))
 
-          (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
-          (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
-          (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
-          (is (=? #{tenant-user-id
-                    other-tenant-user-id
-                    normal-user-id} (get-recipient-ids :crowberto))))
-        (mt/with-temporary-setting-values [user-visibility :none
-                                           use-tenants true]
-          (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
-          (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
-          (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
-          (is (=? #{tenant-user-id
-                    other-tenant-user-id
-                    normal-user-id} (get-recipient-ids :crowberto))))))))
+(deftest tenant-users-can-only-list-tenant-recipients-visibility-group-test
+  (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
+                 :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
+                 :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                 :model/User {other-tenant-user-id :id} {:tenant_id other-tenant-id}
+                 :model/User {normal-user-id :id} {}]
+    (let [get-recipient-ids (fn [user-id]
+                              (->> (mt/user-http-request user-id :get 200 "user/recipients")
+                                   :data
+                                   (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))
+                                   (map :id)
+                                   (into #{})))]
+      (mt/with-temporary-setting-values [user-visibility :group
+                                         use-tenants true]
+        (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
+        (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
+        (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
+        (is (=? #{tenant-user-id
+                  other-tenant-user-id
+                  normal-user-id} (get-recipient-ids :crowberto)))))))
+
+(deftest tenant-users-can-only-list-tenant-recipients-visibility-none-test
+  (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
+                 :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
+                 :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                 :model/User {other-tenant-user-id :id} {:tenant_id other-tenant-id}
+                 :model/User {normal-user-id :id} {}]
+    (let [get-recipient-ids (fn [user-id]
+                              (->> (mt/user-http-request user-id :get 200 "user/recipients")
+                                   :data
+                                   (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))
+                                   (map :id)
+                                   (into #{})))]
+      (mt/with-temporary-setting-values [user-visibility :none
+                                         use-tenants true]
+        (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
+        (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
+        (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
+        (is (=? #{tenant-user-id
+                  other-tenant-user-id
+                  normal-user-id} (get-recipient-ids :crowberto)))))))
 
 (deftest list-users-can-list-tenant-users
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
@@ -203,7 +232,7 @@
       (testing "Now that the tenant is active, it's possible to reactivate a user"
         (mt/user-http-request :crowberto :put 200 (str "user/" other-user-id "/reactivate"))))))
 
-(deftest can-create-tenant-with-attributes
+(deftest can-create-tenant-with-valid-attributes-test
   (testing "Can create tenant with valid attributes"
     (mt/with-model-cleanup [:model/Tenant]
       (let [tenant-data {:name "Tenant with Attributes"
@@ -217,8 +246,9 @@
           (is (= {"key1" "value1"
                   "key2" "value2"
                   "environment" "production"}
-                 (:attributes created-tenant)))))))
+                 (:attributes created-tenant))))))))
 
+(deftest can-create-tenant-with-keyword-attributes-test
   (testing "Can create tenant with keyword attributes (converted to strings)"
     (mt/with-model-cleanup [:model/Tenant]
       (let [tenant-data {:name "Tenant with Keyword Attrs"
@@ -231,8 +261,9 @@
           ;; Keywords are converted to strings in the JSON storage
           (is (= {"region" "us-east"
                   "tier" "premium"}
-                 (:attributes created-tenant)))))))
+                 (:attributes created-tenant))))))))
 
+(deftest cannot-create-tenant-with-at-prefix-attributes-test
   (testing "Cannot create tenant with attributes starting with @"
     (mt/with-model-cleanup [:model/Tenant]
       (let [tenant-data {:name "Invalid Tenant"
@@ -244,7 +275,7 @@
         (is (contains? (:specific-errors response) :attributes))
         (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))))))
 
-(deftest can-update-tenant-attributes
+(deftest can-update-tenant-attributes-via-put-test
   (testing "Can update tenant attributes via PUT"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test"
                                            :slug "test-tenant"
@@ -260,9 +291,10 @@
                  :is_active true
                  :member_count 0
                  :tenant_collection_id integer?}
-                (dissoc response :attributes))))))
+                (dissoc response :attributes)))))))
 
-  (testing "Can update extisting attributes"
+(deftest can-update-existing-tenant-attributes-test
+  (testing "Can update existing attributes"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 2"
                                            :slug "test-tenant-2"
                                            :attributes {"existing" "value"}}]
@@ -270,16 +302,18 @@
                        "new-key" "new-value"}]
         (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                               {:attributes new-attrs})
-        (is (= new-attrs (:attributes (t2/select-one :model/Tenant :id id)))))))
+        (is (= new-attrs (:attributes (t2/select-one :model/Tenant :id id))))))))
 
+(deftest can-clear-tenant-attributes-test
   (testing "Can clear attributes by setting to empty map"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 3"
                                            :slug "test-tenant-3"
                                            :attributes {"to-be" "cleared"}}]
       (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                             {:attributes {}})
-      (is (= {} (:attributes (t2/select-one :model/Tenant :id id))))))
+      (is (= {} (:attributes (t2/select-one :model/Tenant :id id)))))))
 
+(deftest cannot-update-tenant-with-at-prefix-attributes-test
   (testing "Cannot update with attributes starting with @"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 4"
                                            :slug "test-tenant-4"
