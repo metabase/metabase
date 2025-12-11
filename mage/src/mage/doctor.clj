@@ -498,7 +498,9 @@
           (println (str "Run " (c/green "./bin/dev-install") " to fix most issues."))
           (u/exit 1))
         (seq warnings)
-        (println (c/yellow (str "⚠ " (count warnings) " warning(s) — environment should work, but consider fixing.")))
+        (println (c/yellow (str "⚠ " (count warnings)
+                                " warning" (if (= 1 (count warnings)) "" "s")
+                                " — environment should work, but consider fixing.")))
         :else
         (println (c/green (c/bold "✓ All checks passed!")))))
 
