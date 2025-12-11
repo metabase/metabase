@@ -97,16 +97,6 @@ export type WorkspaceTransformMergeResponse = {
   archived_at: string | null;
 };
 
-export type WorkspaceUpdateContentsRequest = {
-  id: WorkspaceId;
-  add?: {
-    transforms?: TransformId[];
-  };
-  remove?: {
-    transforms?: TransformId[];
-  };
-};
-
 export type ValidateTableNameRequest = {
   id: WorkspaceId;
   db_id: DatabaseId;

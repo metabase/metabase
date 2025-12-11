@@ -23,7 +23,6 @@ import type {
   WorkspaceTransformMergeResponse,
   WorkspaceTransformRef,
   WorkspaceTransformsResponse,
-  WorkspaceUpdateContentsRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -64,18 +63,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("workspace"), listTag("transform")]),
     }),
-    updateWorkspaceContents: builder.mutation<
-      any,
-      WorkspaceUpdateContentsRequest
-    >({
-      query: ({ id, ...body }) => ({
-        method: "POST",
-        url: `/api/ee/workspace/${id}/contents`,
-        body,
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("workspace", id), tag("transform")]),
-    }),
     createWorkspaceTransform: builder.mutation<
       CreateWorkspaceTransformResponse,
       { id: WorkspaceId } & CreateWorkspaceTransformRequest
@@ -86,7 +73,11 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("workspace", id), tag("transform")]),
+        invalidateTags(error, [
+          idTag("workspace", id),
+          idTag("workspace-transforms", id),
+          listTag("transform"),
+        ]),
     }),
     getTransformUpstreamMapping: builder.query<
       TransformUpstreamMapping,
@@ -322,7 +313,6 @@ export const {
   useGetWorkspaceTransformQuery,
   useLazyGetWorkspaceTransformQuery,
   useCreateWorkspaceMutation,
-  useUpdateWorkspaceContentsMutation,
   useCreateWorkspaceTransformMutation,
   useUpdateWorkspaceTransformMutation,
   useArchiveWorkspaceTransformMutation,

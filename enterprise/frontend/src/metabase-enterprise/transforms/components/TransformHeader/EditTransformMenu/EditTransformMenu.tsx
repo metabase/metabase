@@ -19,9 +19,9 @@ import {
 } from "metabase/ui";
 import {
   useCreateWorkspaceMutation,
+  useCreateWorkspaceTransformMutation,
   useGetTransformDownstreamMappingQuery,
   useGetWorkspacesQuery,
-  useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
 import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
 import type { Transform, Workspace } from "metabase-types/api";
@@ -38,8 +38,8 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
   const { data: workspacesData, isLoading: isLoadingWorkspaces } =
     useGetWorkspacesQuery();
-  const [updateWorkspaceContents, { isLoading: isUpdatingWorkspace }] =
-    useUpdateWorkspaceContentsMutation();
+  const [createWorkspaceTransform, { isLoading: isAddingToWorkspace }] =
+    useCreateWorkspaceTransformMutation();
   const [createWorkspace, { isLoading: isCreatingWorkspace }] =
     useCreateWorkspaceMutation();
   const { data: downstreamMapping } = useGetTransformDownstreamMappingQuery(
@@ -81,7 +81,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     [workspaces, sourceDatabaseId, existingWorkspaceIds],
   );
 
-  const isBusy = isUpdatingWorkspace || isCreatingWorkspace;
+  const isBusy = isAddingToWorkspace || isCreatingWorkspace;
   const emptyMessage =
     workspaces.length === 0 || sourceDatabaseId == null
       ? t`No workspaces yet`
@@ -105,9 +105,14 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
   const handleWorkspaceSelect = async (workspace: Workspace) => {
     try {
-      await updateWorkspaceContents({
+      await createWorkspaceTransform({
         id: workspace.id,
-        add: { transforms: [transform.id] },
+        global_id: transform.id,
+        name: transform.name,
+        description: transform.description,
+        source: transform.source,
+        target: transform.target,
+        tag_ids: transform.tag_ids,
       }).unwrap();
       setAddedWorkspaceIds((prev) => new Set(prev).add(workspace.id));
     } catch (error) {

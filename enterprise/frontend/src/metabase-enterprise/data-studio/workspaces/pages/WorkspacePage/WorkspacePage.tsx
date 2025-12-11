@@ -54,7 +54,6 @@ import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type {
   DraftTransformSource,
   Transform,
-  WorkspaceTransform,
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
@@ -140,9 +139,22 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     (db) => db.id === workspace?.database_id,
   );
 
+  const workspaceGlobalIds = useMemo(
+    () =>
+      new Set(
+        workspaceTransforms
+          .map((t) => t.global_id)
+          .filter((id): id is number => id != null),
+      ),
+    [workspaceTransforms],
+  );
+
   const dbTransforms = useMemo(
     () =>
       allDbTransforms.filter((t) => {
+        if (workspaceGlobalIds.has(t.id)) {
+          return false;
+        }
         // TODO: @uladzimirdev add guards
         if (t.source_type === "python") {
           return (
@@ -157,7 +169,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         }
         return false;
       }),
-    [allDbTransforms, sourceDb],
+    [allDbTransforms, sourceDb, workspaceGlobalIds],
   );
 
   const {
@@ -276,7 +288,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           ("id" in t && t.id === transformIdFromPath) ||
           ("ref_id" in t && t.ref_id === String(transformIdFromPath)),
       );
-      debugger;
 
       if (targetTransform) {
         addOpenedTransform(targetTransform);
