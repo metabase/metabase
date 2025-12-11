@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
@@ -337,22 +338,145 @@
                     array_of_tuples_test
                     {})))))))))
 
-(deftest ^:parallel uuid-literals-test
+(deftest ^:parallel uuid-filtering-test
   (mt/test-driver :clickhouse
     (mt/dataset
       (mt/dataset-definition
-       "metabase_tests_uuids_nullable"
-       [["uuids_nullable"
+       "nullable_uuids_dataset"
+       [["nullable_uuids"
          [{:field-name "uuid1", :base-type {:native "Nullable(UUID)"}}]
-         [[#uuid "550e8400-e29b-41d4-a716-446655440000"]
+         [[#uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+          [#uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
           [nil]]]])
-      (let [mp (mt/metadata-provider)]
-        (is (= [[1 #uuid "550e8400-e29b-41d4-a716-446655440000"]]
-               (-> (lib/query mp (lib.metadata/table mp (mt/id :uuids_nullable)))
-                   (lib/filter (lib/= (lib.metadata/field mp (mt/id :uuids_nullable :uuid1))
-                                      "550e8400-e29b-41d4-a716-446655440000"))
-                   mt/process-query
-                   mt/rows)))))))
+      (let [mp (mt/metadata-provider)
+            test-fn (fn [test-case filter exp]
+                      (testing test-case
+                        (is (= exp
+                               (-> (lib/query mp (lib.metadata/table mp (mt/id :nullable_uuids)))
+                                   (lib/filter filter)
+                                   mt/process-query
+                                   mt/rows)))))]
+        (doseq [[test-case filter exp] [["can filter nullable uuids with equals"
+                                         (lib/= (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with not equals"
+                                         (lib/!= (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+                                         [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                                          [3 nil]]]
+
+                                        ["can filter nullable uuids with contains case sensitive lowercase)"
+                                         (-> (lib/contains (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                           "aaa")
+                                             (lib.options/update-options assoc :case-sensitive true))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with contains case insensitive lowercase"
+                                         (-> (lib/contains (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                           "aaa")
+                                             (lib.options/update-options assoc :case-sensitive false))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with contains case sensitive uppercase)"
+                                         (-> (lib/contains (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                           "AAA")
+                                             (lib.options/update-options assoc :case-sensitive true))
+                                         []]
+
+                                        ["can filter nullable uuids with contains case insensitive uppercase"
+                                         (-> (lib/contains (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                           "AAA")
+                                             (lib.options/update-options assoc :case-sensitive false))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with not contains case sensitive lowercase"
+                                         (-> (lib/does-not-contain (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                                   "aaa")
+                                             (lib.options/update-options assoc :case-sensitive true))
+                                         [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                                          [3 nil]]]
+
+                                        ["can filter nullable uuids with not contains case insensitive lowercase"
+                                         (-> (lib/does-not-contain (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                                   "aaa")
+                                             (lib.options/update-options assoc :case-sensitive false))
+                                         [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                                          [3 nil]]]
+
+                                        ["can filter nullable uuids with not contains case sensitive uppercase"
+                                         (-> (lib/does-not-contain (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                                   "AAA")
+                                             (lib.options/update-options assoc :case-sensitive true))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                                          [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                                          [3 nil]]]
+
+                                        ["can filter nullable uuids with not contains case insensitive uppercase"
+                                         (-> (lib/does-not-contain (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                                   "AAA")
+                                             (lib.options/update-options assoc :case-sensitive false))
+                                         [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                                          [3 nil]]]
+
+                                        ["can filter nullable uuids with starts with case sensitive lowercase"
+                                         (-> (lib/starts-with (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                              "aaa")
+                                             (lib.options/update-options assoc :case-sensitive true))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with starts with case insensitive lowercase"
+                                         (-> (lib/starts-with (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                              "aaa")
+                                             (lib.options/update-options assoc :case-sensitive false))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with starts with case sensitive uppercase"
+                                         (-> (lib/starts-with (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                              "AAA")
+                                             (lib.options/update-options assoc :case-sensitive true))
+                                         []]
+
+                                        ["can filter nullable uuids with starts with case insensitive uppercase"
+                                         (-> (lib/starts-with (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                              "AAA")
+                                             (lib.options/update-options assoc :case-sensitive false))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with ends with case sensitive lowercase"
+                                         (-> (lib/ends-with (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                            "aaa")
+                                             (lib.options/update-options assoc :case-sensitive true))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with ends with case insensitive lowercase"
+                                         (-> (lib/ends-with (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                            "aaa")
+                                             (lib.options/update-options assoc :case-sensitive false))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with ends with case sensitive uppercase"
+                                         (-> (lib/ends-with (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                            "AAA")
+                                             (lib.options/update-options assoc :case-sensitive true))
+                                         []]
+
+                                        ["can filter nullable uuids with ends with case insensitive uppercase"
+                                         (-> (lib/ends-with (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+                                                            "AAA")
+                                             (lib.options/update-options assoc :case-sensitive false))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]]
+
+                                        ["can filter nullable uuids with is empty"
+                                         (lib/is-empty (lib.metadata/field mp (mt/id :nullable_uuids :uuid1)))
+                                         [[3 nil]]]
+
+                                        ["can filter nullable uuids with is not empty"
+                                         (lib/not-empty (lib.metadata/field mp (mt/id :nullable_uuids :uuid1)))
+                                         [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                                          [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]]]]]
+          (test-fn test-case filter exp))))))
 
 #_(deftest ^:parallel clickhouse-array-of-uuids
     (mt/test-driver :clickhouse
