@@ -51,6 +51,6 @@ describe("SegmentList", () => {
     expect(screen.getByText("Active Users")).toBeInTheDocument();
     expect(
       screen.getByRole("listitem", { name: "High Value" }),
-    ).toHaveAttribute("href", "/data-studio/modeling/segments/1");
+    ).toHaveAttribute("href", "/data-studio/library/segments/1");
   });
 });

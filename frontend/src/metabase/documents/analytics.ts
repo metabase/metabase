@@ -64,3 +64,13 @@ export const trackDocumentAddSupportingText = (document?: Document | null) => {
     target_id: document?.id || null,
   });
 };
+
+export const trackDocumentUnsavedChangesWarningDisplayed = (
+  document?: Document | null,
+) => {
+  trackSimpleEvent({
+    event: "unsaved_changes_warning_displayed",
+    target_id: document?.id || null,
+    triggered_from: "document",
+  });
+};

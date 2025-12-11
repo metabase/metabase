@@ -81,16 +81,24 @@ export function dataStudioData({
   return parts.join("/");
 }
 
-export function dataStudioModeling() {
-  return `${ROOT_URL}/modeling`;
+export function dataStudioLibrary({
+  expandedIds,
+}: { expandedIds?: CollectionId[] } = {}) {
+  let query = "";
+  if (expandedIds?.length) {
+    const params = new URLSearchParams();
+    expandedIds.forEach((id) => params.append("expandedId", String(id)));
+    query = `?${params.toString()}`;
+  }
+  return `${ROOT_URL}/library${query}`;
 }
 
 export function dataStudioTable(tableId: TableId) {
-  return `${dataStudioModeling()}/tables/${tableId}`;
+  return `${dataStudioLibrary()}/tables/${tableId}`;
 }
 
 export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
-  const baseUrl = `${dataStudioModeling()}/tables/${tableId}/fields`;
+  const baseUrl = `${dataStudioLibrary()}/tables/${tableId}/fields`;
   return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;
 }
 
@@ -103,11 +111,11 @@ export function dataStudioTableSegments(tableId: TableId) {
 }
 
 export function dataStudioSegment(segmentId: SegmentId) {
-  return `${dataStudioModeling()}/segments/${segmentId}`;
+  return `${dataStudioLibrary()}/segments/${segmentId}`;
 }
 
 export function newDataStudioSegment(tableId: TableId) {
-  return `${dataStudioModeling()}/segments/new?tableId=${tableId}`;
+  return `${dataStudioLibrary()}/segments/new?tableId=${tableId}`;
 }
 
 export type NewDataStudioQueryModelParams = {
@@ -117,7 +125,7 @@ export type NewDataStudioQueryModelParams = {
 export function newDataStudioQueryModel(
   params: NewDataStudioQueryModelParams = {},
 ) {
-  return `${dataStudioModeling()}/models/new/query${getQueryString(params)}`;
+  return `${dataStudioLibrary()}/models/new/query${getQueryString(params)}`;
 }
 
 export type NewDataStudioNativeModelParams = {
@@ -127,7 +135,7 @@ export type NewDataStudioNativeModelParams = {
 export function newDataStudioNativeModel(
   params: NewDataStudioNativeModelParams = {},
 ) {
-  return `${dataStudioModeling()}/models/new/native${getQueryString(params)}`;
+  return `${dataStudioLibrary()}/models/new/native${getQueryString(params)}`;
 }
 
 export type NewDataStudioMetricProps = {
@@ -135,11 +143,11 @@ export type NewDataStudioMetricProps = {
 };
 
 export function newDataStudioMetric(params: NewDataStudioMetricProps = {}) {
-  return `${dataStudioModeling()}/metrics/new${getQueryString(params)}`;
+  return `${dataStudioLibrary()}/metrics/new${getQueryString(params)}`;
 }
 
 export function dataStudioMetric(cardId: CardId) {
-  return `${dataStudioModeling()}/metrics/${cardId}`;
+  return `${dataStudioLibrary()}/metrics/${cardId}`;
 }
 
 export function dataStudioMetricQuery(cardId: CardId) {
@@ -151,15 +159,15 @@ export function dataStudioMetricDependencies(cardId: CardId) {
 }
 
 export function dataStudioGlossary() {
-  return `${dataStudioModeling()}/glossary`;
+  return `${dataStudio()}/glossary`;
 }
 
 export function dataStudioCollection(collectionId: CollectionId) {
-  return `${dataStudioModeling()}/collections/${collectionId}`;
+  return `${dataStudioLibrary()}/collections/${collectionId}`;
 }
 
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
-  return `${dataStudioModeling()}/snippets/${snippetId}`;
+  return `${dataStudioLibrary()}/snippets/${snippetId}`;
 }
 
 export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
@@ -167,5 +175,5 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 }
 
 export function newDataStudioSnippet() {
-  return `${dataStudioModeling()}/snippets/new`;
+  return `${dataStudioLibrary()}/snippets/new`;
 }
