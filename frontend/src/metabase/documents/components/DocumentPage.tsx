@@ -426,9 +426,9 @@ export const DocumentPage = ({
 
   useEffect(() => {
     if (isLeaveConfirmModalOpen) {
-      trackDocumentUnsavedChangesWarningDisplayed();
+      trackDocumentUnsavedChangesWarningDisplayed(documentData);
     }
-  }, [isLeaveConfirmModalOpen]);
+  }, [isLeaveConfirmModalOpen, documentData]);
 
   return (
     <Box className={styles.documentPage}>
@@ -512,7 +512,7 @@ export const DocumentPage = ({
           route={route}
           onOpenChange={(open) => {
             if (open) {
-              trackDocumentUnsavedChangesWarningDisplayed();
+              trackDocumentUnsavedChangesWarningDisplayed(documentData);
             }
           }}
         />
