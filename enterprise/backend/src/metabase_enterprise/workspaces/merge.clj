@@ -73,7 +73,11 @@
   ;; TODO we'll want this to short-circuit
 
   ;; Nested transactions mess things up, this does not work
-  (t2/with-transaction [_ #_nil toucan2.connection/*current-connectable* {:nested-transaction-rule :ignore}]
-    {:transforms
-     (for [ws-tx (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
-       (merge-transform! ws-tx))}))
+  (try
+    {:transforms (t2/with-transaction [tx]
+                   (into []
+                         (map merge-transform!)
+                         (t2/select :model/WorkspaceTransform :workspace_id ws-id)))}
+    (catch Throwable e
+      (def eee e)
+      (throw e))))
