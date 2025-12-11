@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { type ReactNode, useLayoutEffect, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
@@ -18,7 +18,6 @@ import {
   PaneHeader,
   PanelHeaderTitle,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import { TransformsSectionHeader } from "metabase-enterprise/transforms/components/TransformsSectionHeader";
 
 import { PythonEditor } from "../../components/PythonEditor";
 
@@ -96,15 +95,13 @@ export function PythonLibraryEditorPage({
   return (
     <>
       <Flex h="100%" w="100%" gap={0} direction="column">
-        <TransformsSectionHeader
-          leftSection={
+        <LibraryEditorHeader
+          breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link to={Urls.transformList()}>{t`Transforms`}</Link>
               {t`Python library`}
             </DataStudioBreadcrumbs>
           }
-        />
-        <LibraryEditorHeader
           onSave={handleSave}
           onRevert={handleRevert}
           isDirty={isDirty}
@@ -124,11 +121,13 @@ export function PythonLibraryEditorPage({
 }
 
 export function LibraryEditorHeader({
+  breadcrumbs,
   isDirty,
   isSaving,
   onSave,
   onRevert,
 }: {
+  breadcrumbs?: ReactNode;
   isDirty?: boolean;
   isSaving?: boolean;
   onSave: () => void;
@@ -136,11 +135,11 @@ export function LibraryEditorHeader({
 }) {
   return (
     <PaneHeader
-      pt={0}
+      breadcrumbs={breadcrumbs}
       title={<PanelHeaderTitle>{t`Python library`}</PanelHeaderTitle>}
       actions={
         (isDirty || isSaving) && (
-          <Group>
+          <Group wrap="nowrap">
             <Button disabled={isSaving} onClick={onRevert}>
               {t`Revert`}
             </Button>
