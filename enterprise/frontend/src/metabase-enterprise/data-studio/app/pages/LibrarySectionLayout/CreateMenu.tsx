@@ -15,7 +15,6 @@ import type { CollectionId } from "metabase-types/api";
 export const CreateMenu = ({
   metricCollectionId,
 }: {
-  modelCollectionId?: CollectionId;
   metricCollectionId?: CollectionId;
 }) => {
   const [creatingSnippetFolder, setCreatingSnippetFolder] = useState(false);
