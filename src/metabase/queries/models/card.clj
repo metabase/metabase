@@ -722,7 +722,8 @@
                       {:card-id (:id card)}))
       ;; Plausible and has the schema, so run the upgrades over it.
       (loop [card card]
-        (if (= (:card_schema card) current-schema-version)
+        ;; Use >= to allow for downgrades.
+        (if (>= (:card_schema card) current-schema-version)
           card
           (let [new-version (inc (:card_schema card))]
             (recur (assoc (upgrade-card-schema-to card new-version)
