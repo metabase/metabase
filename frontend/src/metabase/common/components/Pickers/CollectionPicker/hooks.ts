@@ -114,6 +114,10 @@ export const useRootCollectionPickerItems = (
     }
 
     if (options?.showLibrary && libraryCollection) {
+      options.showLibrary &&
+      libraryCollection &&
+      options.namespace !== "snippets"
+    ) {
       collectionItems.push({
         ...libraryCollection,
         model: "collection",
@@ -141,8 +145,8 @@ export const useRootCollectionPickerItems = (
           here: ["collection"],
           location: "/",
           name:
-            options?.namespace === "snippets"
-              ? t`Top folder`
+            options.namespace === "snippets"
+              ? t`SQL snippets`
               : rootCollection.name,
         });
       } else if (rootCollectionError) {

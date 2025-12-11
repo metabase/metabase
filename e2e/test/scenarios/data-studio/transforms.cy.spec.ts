@@ -404,6 +404,9 @@ LIMIT
   5`;
 
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
+
       getQueryEditor().findByLabelText("View SQL").click();
       H.sidebar().should("be.visible");
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
@@ -1108,9 +1111,44 @@ LIMIT
   });
 
   describe("queries", () => {
+    it("should show SQL query transforms in view-only mode", () => {
+      cy.log("create a new transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+      H.NativeEditor.get().should("have.attr", "contenteditable", "false");
+      H.NativeEditor.get().should("have.attr", "aria-readonly", "true");
+      H.DataStudio.Transforms.editDefinition().should("be.visible");
+      H.DataStudio.Transforms.editDefinition().should(
+        "have.attr",
+        "href",
+        "/data-studio/transforms/1/edit",
+      );
+    });
+
+    it("should show MBQL transforms in view-only mode", () => {
+      cy.log("create a new transform");
+      createMbqlTransform({ visitTransform: true });
+      H.getNotebookStep("data")
+        .findByText("Animals")
+        .closest("button")
+        .should("be.disabled");
+      H.DataStudio.Transforms.editDefinition().should("be.visible");
+      H.DataStudio.Transforms.editDefinition().should(
+        "have.attr",
+        "href",
+        "/data-studio/transforms/1/edit",
+      );
+    });
+
     it("should be able to update a MBQL query", () => {
       cy.log("create a new transform");
       createMbqlTransform({ visitTransform: true });
+
+      cy.log("visit edit mode");
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
 
       cy.log("update the query");
       H.getNotebookStep("data").button("Filter").click();
@@ -1139,6 +1177,10 @@ LIMIT
         sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
         visitTransform: true,
       });
+
+      cy.log("visit edit mode");
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
 
       cy.log("update the query");
       H.NativeEditor.type(" WHERE name = 'Duck'");
@@ -1392,6 +1434,9 @@ LIMIT
 
     it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
       createSlowTransform(500);
+
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
 
       getQueryEditor().within(() => {
         cy.findAllByTestId("run-button").eq(0).click();
