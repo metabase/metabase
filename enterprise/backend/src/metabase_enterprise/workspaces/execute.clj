@@ -27,7 +27,7 @@
      {:table {:name   (:name target)
               :schema (:schema target)}})))
 
-(defn- remap-python-source [table-mapping source]
+(defn- remap-python-source [_table-mapping source]
   ;; TODO (sanya 2025/12/11) busy with this
   source)
 
