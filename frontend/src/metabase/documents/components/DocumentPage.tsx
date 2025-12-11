@@ -3,7 +3,13 @@ import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import dayjs from "dayjs";
 import type { Location } from "history";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
@@ -43,6 +49,7 @@ import type {
 import {
   trackDocumentBookmark,
   trackDocumentCreated,
+  trackDocumentUnsavedChangesWarningDisplayed,
   trackDocumentUpdated,
 } from "../analytics";
 import {
@@ -409,6 +416,20 @@ export const DocumentPage = ({
 
   usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
 
+  const isLeaveConfirmModalOpen = useMemo(
+    () =>
+      hasUnsavedChanges() &&
+      isNewDocument &&
+      location.key !== previousLocationKey,
+    [hasUnsavedChanges, isNewDocument, location.key, previousLocationKey],
+  );
+
+  useEffect(() => {
+    if (isLeaveConfirmModalOpen) {
+      trackDocumentUnsavedChangesWarningDisplayed();
+    }
+  }, [isLeaveConfirmModalOpen]);
+
   return (
     <Box className={styles.documentPage}>
       {documentData?.archived && <DocumentArchivedEntityBanner />}
@@ -489,15 +510,16 @@ export const DocumentPage = ({
           key={location.key}
           isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
           route={route}
+          onOpenChange={(open) => {
+            if (open) {
+              trackDocumentUnsavedChangesWarningDisplayed();
+            }
+          }}
         />
 
         <LeaveConfirmModal
           // only applies when going from /new -> /new
-          opened={
-            hasUnsavedChanges() &&
-            isNewDocument &&
-            location.key !== previousLocationKey
-          }
+          opened={isLeaveConfirmModalOpen}
           onConfirm={resetDocument}
           onClose={() => forceUpdate()}
         />
