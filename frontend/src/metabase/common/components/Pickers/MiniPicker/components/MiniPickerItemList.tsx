@@ -1,3 +1,4 @@
+import { useDebouncedValue } from "@mantine/hooks";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,12 +11,14 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
+import { getIcon } from "metabase/lib/icon";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
 
 import { useMiniPickerContext } from "../context";
@@ -291,9 +294,10 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 
 function SearchItemList({ query }: { query: string }) {
   const { onChange, models, isHidden } = useMiniPickerContext();
+  const [debouncedQuery] = useDebouncedValue(query, 500);
 
   const { data: searchResponse, isLoading } = useSearchQuery({
-    q: query,
+    q: debouncedQuery,
     models: models as SearchModel[],
     limit: 50,
   });
@@ -319,6 +323,7 @@ function SearchItemList({ query }: { query: string }) {
             onClick={() => {
               onChange(item);
             }}
+            rightSection={<LocationInfo item={item} />}
           />
         );
       })}
@@ -332,6 +337,40 @@ export const MiniPickerListLoader = () => (
   </Box>
 );
 
+const isInCollection = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerCollectionItem => {
+  return "collection" in item && !!item.collection && !!item.collection.name;
+};
+
 const ItemList = ({ children }: { children: React.ReactNode[] }) => {
   return <VirtualizedList extraPadding={2}>{children}</VirtualizedList>;
+};
+
+const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
+  const isCollectionItem = isInCollection(item);
+
+  const itemText = isCollectionItem
+    ? item?.collection?.name
+    : `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`;
+
+  if (!itemText) {
+    return null;
+  }
+
+  const iconProps = isCollectionItem
+    ? getIcon({
+        ...item.collection,
+        model: "collection",
+      })
+    : null;
+
+  return (
+    <Flex gap="xs" align="center">
+      {iconProps && <Icon {...iconProps} size={12} />}
+      <Text size="sm" c="text-medium">
+        <Ellipsified maw="18rem">{itemText}</Ellipsified>
+      </Text>
+    </Flex>
+  );
 };
