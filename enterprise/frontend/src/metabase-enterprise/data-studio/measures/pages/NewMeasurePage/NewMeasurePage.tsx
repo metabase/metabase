@@ -9,13 +9,13 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Flex } from "metabase/ui";
+import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
 import { NewMeasureHeader } from "../../components/NewMeasureHeader";
 import { useNewMeasureContext } from "../../layouts/MeasureLayout";
-import { getPreviewUrl } from "../../utils/get-measure-preview-url";
 
 type NewMeasurePageProps = {
   route: Route;
@@ -69,7 +69,9 @@ export function NewMeasurePage({ route }: NewMeasurePageProps) {
     name.trim().length > 0 || description.length > 0 || aggregations.length > 0;
   const isValid = name.trim().length > 0 && aggregations.length === 1;
   const previewUrl =
-    aggregations.length === 1 ? getPreviewUrl(definition) : undefined;
+    aggregations.length === 1
+      ? getDatasetQueryPreviewUrl(definition)
+      : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));

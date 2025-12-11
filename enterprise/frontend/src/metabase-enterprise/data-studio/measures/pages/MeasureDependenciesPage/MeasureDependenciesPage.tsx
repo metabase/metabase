@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex } from "metabase/ui";
+import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 
 import { MeasureHeader } from "../../components/MeasureHeader";
 import { useExistingMeasureContext } from "../../layouts/MeasureLayout";
-import { getMeasurePreviewUrl } from "../../utils/get-measure-preview-url";
 
 type MeasureDependenciesPageProps = {
   children?: ReactNode;
@@ -22,7 +22,7 @@ export function MeasureDependenciesPage({
       <MeasureHeader
         measure={measure}
         tabUrls={tabUrls}
-        previewUrl={getMeasurePreviewUrl(measure)}
+        previewUrl={getDatasetQueryPreviewUrl(measure.definition)}
         onRemove={onRemove}
         breadcrumbs={breadcrumbs}
       />

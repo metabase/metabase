@@ -8,13 +8,13 @@ import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Flex, Group } from "metabase/ui";
+import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
 import { MeasureHeader } from "../../components/MeasureHeader";
 import { useExistingMeasureContext } from "../../layouts/MeasureLayout";
-import { getPreviewUrl } from "../../utils/get-measure-preview-url";
 
 type MeasureDetailPageProps = {
   route: Route;
@@ -56,7 +56,9 @@ export function MeasureDetailPage({ route }: MeasureDetailPageProps) {
   );
 
   const isValid = aggregations.length === 1;
-  const previewUrl = isValid ? getPreviewUrl(definition) : undefined;
+  const previewUrl = isValid
+    ? getDatasetQueryPreviewUrl(definition)
+    : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));
