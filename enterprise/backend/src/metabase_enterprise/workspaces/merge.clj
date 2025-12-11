@@ -10,7 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO we need to implement the route that calls this, see API reference.
 ;; TODO (crisptrutski 2025-12-10): When there are more entity types support, this should update those too.
 (mu/defn merge-transform! :- [:map
                               [:op [:enum :create :delete :noop :update]]
@@ -59,20 +58,19 @@
                                    (select-keys ws-transform [:name :description :source :target])))}
                  (catch Throwable e
                    {:error e}))))]
+
     (when-not error
       (t2/delete! :model/WorkspaceTransform :ref_id ref_id))
 
     result))
 
+;; TODO (crisptrutski 2025-12-XX): When there are more entity types support, this should update those too.
 (defn merge-workspace!
   "Make all the transforms in the Changeset public, i.e. create or update the relevant model/Transform entities.
-   This should also clear the entire Changeset, as it no longer has any changes.
-   When there are more entity types support, this should update those too."
+   This should also clear the entire Changeset, as it no longer has any changes."
   [ws-id]
   ;; Perhaps we want to solve the N+1?
   ;; This will require reworking the lifecycle for validating and recalculating dependencies for the transforms.
-  ;; We need to make sure this is in a transaction too, but perhaps that should already be open, and we can state
-  ;; it as an assumption.
 
   (t2/with-transaction [tx]
     (let [savepoint (.setSavepoint ^Connection tx)
