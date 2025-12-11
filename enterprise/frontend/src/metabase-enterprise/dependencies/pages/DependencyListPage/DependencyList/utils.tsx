@@ -58,19 +58,6 @@ function getNodeLocationColumn(): DependencyColumnOptions {
   };
 }
 
-function getNodeErrorsColumn(): DependencyColumnOptions {
-  return {
-    id: "errors",
-    get name() {
-      return t`Errors`;
-    },
-    accessorFn: () => null,
-    cell: () => {
-      return <TextCell value="" />;
-    },
-  };
-}
-
 function getNodeDependentsCountColumn(): DependencyColumnOptions {
   return {
     id: "dependents-count",
@@ -119,18 +106,15 @@ function getNodeLastEditByColumn(): DependencyColumnOptions {
 }
 
 type ColumnOptions = {
-  withErrorsColumn?: boolean;
   withDependentsCountColumn?: boolean;
 };
 
 export function getColumns({
-  withErrorsColumn,
   withDependentsCountColumn,
 }: ColumnOptions): DependencyColumnOptions[] {
   return [
     getNodeNameColumn(),
     getNodeLocationColumn(),
-    ...(withErrorsColumn ? [getNodeErrorsColumn()] : []),
     ...(withDependentsCountColumn ? [getNodeDependentsCountColumn()] : []),
     getNodeLastEditAtColumn(),
     getNodeLastEditByColumn(),

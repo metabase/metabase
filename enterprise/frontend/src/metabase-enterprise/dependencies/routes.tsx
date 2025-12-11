@@ -1,6 +1,7 @@
 import { IndexRedirect, IndexRoute, Route } from "react-router";
 
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
+import { DependencyListLayout } from "./pages/DependencyListLayout";
 import {
   BrokenDependencyListPage,
   UnreferencedDependencyListPage,
@@ -12,10 +13,10 @@ export function getDataStudioDependencyRoutes() {
 
 export function getDataStudioTasksRoutes() {
   return (
-    <>
+    <Route component={DependencyListLayout}>
       <IndexRedirect to="unreferenced" />
       <Route path="broken" component={BrokenDependencyListPage} />
       <Route path="unreferenced" component={UnreferencedDependencyListPage} />
-    </>
+    </Route>
   );
 }

@@ -15,13 +15,10 @@ export const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
   "model",
   "metric",
   "transform",
-  "segment",
 ];
 
 export const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
   "question",
   "model",
   "metric",
-  "segment",
-  "snippet",
 ];

@@ -69,25 +69,24 @@ type ListNodesResult = {
 
 type DependencyListPageProps = {
   useListNodesQuery: (request: ListNodesRequest) => ListNodesResult;
+  params: Urls.DependencyListParams;
   availableGroupTypes: DependencyGroupType[];
   nothingFoundMessage: string;
-  withErrorsColumn: boolean;
   withDependentsCountColumn: boolean;
-  location: Location<DependencyListRawParams>;
+  onParamsChange: (
+    params: Urls.DependencyListParams,
+    withReplace?: boolean,
+  ) => void;
 };
 
 function DependencyListPage({
   useListNodesQuery,
+  params,
   availableGroupTypes,
   nothingFoundMessage,
-  withErrorsColumn,
   withDependentsCountColumn,
-  location,
+  onParamsChange,
 }: DependencyListPageProps) {
-  const params = useMemo(
-    () => parseRawParams(location.query),
-    [location.query],
-  );
   const {
     query = "",
     page = 0,
@@ -96,7 +95,6 @@ function DependencyListPage({
     sortDirection = DEFAULT_SORT_DIRECTION,
   } = params;
   const [searchValue, setSearchValue] = useState("");
-  const dispatch = useDispatch();
 
   const { data, isFetching, isLoading, error } = useListNodesQuery({
     query,
@@ -104,6 +102,8 @@ function DependencyListPage({
     card_types: getCardTypes(types ?? availableGroupTypes),
     sort_column: sortColumn,
     sort_direction: sortDirection,
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
   });
 
   const filterOptions = useMemo(
@@ -132,7 +132,7 @@ function DependencyListPage({
 
   const handleSearchDebounce = useDebouncedCallback(
     (query: string | undefined) => {
-      dispatch(replace(Urls.dataStudioUnreferencedItems({ ...params, query })));
+      onParamsChange({ ...params, query }, true);
     },
     SEARCH_DEBOUNCE_DURATION,
   );
@@ -148,42 +148,33 @@ function DependencyListPage({
 
   const handleFilterOptionsChange = useCallback(
     (filterOptions: DependencyListFilterOptions) => {
-      dispatch(
-        push(
-          Urls.dataStudioUnreferencedItems({
-            ...params,
-            types: filterOptions.groupTypes,
-          }),
-        ),
-      );
+      onParamsChange({
+        ...params,
+        types: filterOptions.groupTypes,
+      });
     },
-    [params, dispatch],
+    [params, onParamsChange],
   );
 
   const handleSortChange = useCallback(
     (sortOptions: DependencyListSortOptions) => {
-      dispatch(
-        push(
-          Urls.dataStudioUnreferencedItems({
-            ...params,
-            sortColumn: sortOptions.column,
-            sortDirection: sortOptions.direction,
-          }),
-        ),
-      );
+      onParamsChange({
+        ...params,
+        sortColumn: sortOptions.column,
+        sortDirection: sortOptions.direction,
+      });
     },
-    [params, dispatch],
+    [params, onParamsChange],
   );
 
   const handlePageChange = useCallback(
     (newPageIndex: number) => {
-      dispatch(
-        push(
-          Urls.dataStudioUnreferencedItems({ ...params, page: newPageIndex }),
-        ),
-      );
+      onParamsChange({
+        ...params,
+        page: newPageIndex,
+      });
     },
-    [params, dispatch],
+    [params, onParamsChange],
   );
 
   if (isLoading || error != null || data == null) {
@@ -195,7 +186,7 @@ function DependencyListPage({
   }
 
   return (
-    <Stack h="100%" p="lg" gap="md" bg="accent-gray-light">
+    <Stack flex={1} gap="md" mih={0}>
       <Flex gap="md" align="center">
         <TextInput
           value={searchValue}
@@ -221,7 +212,6 @@ function DependencyListPage({
             items={data.data}
             sortOptions={sortOptions}
             paginationOptions={paginationOptions}
-            withErrorsColumn={withErrorsColumn}
             withDependentsCountColumn={withDependentsCountColumn}
             onSortChange={handleSortChange}
             onPageChange={handlePageChange}
@@ -239,14 +229,31 @@ type BrokenDependencyListPageProps = {
 export function BrokenDependencyListPage({
   location,
 }: BrokenDependencyListPageProps) {
+  const params = useMemo(
+    () => parseRawParams(location.query),
+    [location.query],
+  );
+  const dispatch = useDispatch();
+
+  const handleParamsChange = useCallback(
+    (params: Urls.DependencyListParams, withReplace?: boolean) => {
+      dispatch(
+        withReplace
+          ? replace(Urls.dataStudioBrokenItems(params))
+          : push(Urls.dataStudioBrokenItems(params)),
+      );
+    },
+    [dispatch],
+  );
+
   return (
     <DependencyListPage
       useListNodesQuery={useListBrokenGraphNodesQuery}
+      params={params}
       availableGroupTypes={BROKEN_GROUP_TYPES}
       nothingFoundMessage={t`No broken entities found`}
-      withErrorsColumn
       withDependentsCountColumn
-      location={location}
+      onParamsChange={handleParamsChange}
     />
   );
 }
@@ -258,14 +265,31 @@ type UnreferencedDependencyListPageProps = {
 export function UnreferencedDependencyListPage({
   location,
 }: UnreferencedDependencyListPageProps) {
+  const params = useMemo(
+    () => parseRawParams(location.query),
+    [location.query],
+  );
+  const dispatch = useDispatch();
+
+  const handleParamsChange = useCallback(
+    (params: Urls.DependencyListParams, withReplace?: boolean) => {
+      dispatch(
+        withReplace
+          ? replace(Urls.dataStudioUnreferencedItems(params))
+          : push(Urls.dataStudioUnreferencedItems(params)),
+      );
+    },
+    [dispatch],
+  );
+
   return (
     <DependencyListPage
       useListNodesQuery={useListUnreferencedGraphNodesQuery}
+      params={params}
       availableGroupTypes={UNREFERENCED_GROUP_TYPES}
       nothingFoundMessage={t`No unreferenced entities found`}
-      withErrorsColumn={false}
       withDependentsCountColumn={false}
-      location={location}
+      onParamsChange={handleParamsChange}
     />
   );
 }
