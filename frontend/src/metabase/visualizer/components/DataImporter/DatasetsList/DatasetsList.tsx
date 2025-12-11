@@ -152,12 +152,12 @@ export function DatasetsList({
     );
 
   // Handle debouncing of loading state with instant updates when loading ends
-  // When loading starts, we want to delay showing the loading state
+  // When loading starts, we want to delay showing the loading state by 300ms
   // When loading ends, we want to hide it immediately
   const isFetching = isSearchFetching || isListRecentsFetching;
-  const debouncedIsFetchingStart = useDebouncedValue(isFetching, 300);
-  // Show loading immediately when it ends, but with delay when it starts
-  const debouncedIsFetching = isFetching ? debouncedIsFetchingStart : false;
+  const debouncedIsFetching = useDebouncedValue(isFetching, 300);
+  // Use instant value when hiding (false), debounced value when showing (true)
+  const shouldShowLoading = !isFetching ? false : debouncedIsFetching;
 
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
@@ -263,7 +263,7 @@ export function DatasetsList({
       data-testid="datasets-list"
       style={{ overflow: "auto", ...style }}
     >
-      {debouncedIsFetching && (
+      {shouldShowLoading && (
         <>
           <Skeleton height={30} radius="sm" />
           <Skeleton height={30} mt={6} radius="sm" />
@@ -275,7 +275,7 @@ export function DatasetsList({
       {items && items.length === 0 && (
         <Box m="auto">{t`No compatible results`}</Box>
       )}
-      {items && !debouncedIsFetching
+      {items && !shouldShowLoading
         ? items.map((item, index) => (
             <DatasetsListItem
               key={index}
