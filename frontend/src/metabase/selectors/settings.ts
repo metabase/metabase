@@ -36,8 +36,6 @@ export const isSsoEnabled = (state: State) =>
 export type StorePaths =
   /** store main page */
   | ""
-  /** login only page */
-  | "login"
   /** checkout page */
   | "checkout"
   /** plans management page */
