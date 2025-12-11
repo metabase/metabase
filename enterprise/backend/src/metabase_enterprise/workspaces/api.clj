@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace-log]
@@ -482,7 +483,14 @@
             [:target {:optional true} ::transform-target]]]
   (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))
   (t2/update! :model/WorkspaceTransform tx-id body)
-  (fetch-ws-transform id tx-id))
+  (let [transform (fetch-ws-transform id tx-id)]
+    ;; Re-sync dependencies if source or target changed.
+    ;; NOTE: FE may send these fields even when unchanged, causing unnecessary re-syncs.
+    ;; This is acceptable for now - could use t2/changes in hooks for more precision.
+    (when (or (:source body) (:target body))
+      (let [workspace (t2/select-one :model/Workspace :id id)]
+        (ws.impl/sync-transform-dependencies! workspace transform)))
+    transform))
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/archive" :- :nil
   "Mark the given transform to be archived when the workspace is merged.
