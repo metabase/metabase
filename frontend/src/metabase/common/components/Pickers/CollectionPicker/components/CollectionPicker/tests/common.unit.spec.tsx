@@ -83,4 +83,18 @@ describe("CollectionPicker", () => {
       ).not.toBeInTheDocument(),
     );
   });
+
+  it("should allow disabling certain items in the collection picker", async () => {
+    act(() => {
+      setup({
+        initialValue: { id: 1, model: "collection" },
+        shouldDisableItem: () => true,
+      });
+    });
+
+    const links = await screen.findAllByRole("link");
+    for (const link of links) {
+      expect(link).toHaveAttribute("data-disabled", "true");
+    }
+  });
 });

@@ -197,6 +197,7 @@ export interface SetupOpts {
     model: "collection";
   };
   onItemSelect?: (item: CollectionPickerItem) => void;
+  shouldDisableItem?: (item: CollectionPickerItem) => boolean;
   ee?: boolean;
   options?: CollectionPickerOptions;
 }
@@ -204,6 +205,7 @@ export interface SetupOpts {
 export const setup = ({
   initialValue = { id: "root", model: "collection" },
   onItemSelect = jest.fn<void, [CollectionPickerItem]>(),
+  shouldDisableItem,
   ee = false,
   options,
 }: SetupOpts = {}) => {
@@ -270,6 +272,7 @@ export const setup = ({
         onInit={jest.fn()}
         onItemSelect={onItemSelect}
         onPathChange={handlePathChange}
+        shouldDisableItem={shouldDisableItem}
         options={options}
       />
     );
