@@ -50,6 +50,7 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
+  errors?: DependencyError[] | null;
   dependents_count?: DependentsCount | null;
 };
 
@@ -173,6 +174,32 @@ export type DependencyNode =
   | DocumentDependencyNode
   | SandboxDependencyNode
   | SegmentDependencyNode;
+
+export type MissingColumnDependencyError = {
+  type: "query-error/missing-column";
+  name: string;
+};
+
+export type MissingTableAliasDependencyError = {
+  type: "query-error/missing-table-alias";
+  name: string;
+};
+
+export type DuplicateColumnDependencyError = {
+  type: "query-error/duplicate-column";
+  name: string;
+};
+
+export type SyntaxErrorDependencyError = {
+  type: "query-error/syntax-error";
+  message: string;
+};
+
+export type DependencyError =
+  | MissingColumnDependencyError
+  | MissingTableAliasDependencyError
+  | DuplicateColumnDependencyError
+  | SyntaxErrorDependencyError;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;

@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
 import * as Urls from "metabase/lib/urls";
@@ -25,14 +25,14 @@ function getNodeNameColumn(): ColumnDef<DependencyNode> {
     meta: {
       width: "auto",
     },
-    accessorFn: (item) => getNodeLabel(item),
+    accessorFn: (node) => getNodeLabel(node),
     cell: ({ row }) => {
-      const item = row.original;
+      const node = row.original;
       return (
         <LinkCell
-          label={getNodeLabel(item)}
-          icon={getNodeIcon(item)}
-          url={getNodeLink(item)?.url}
+          label={getNodeLabel(node)}
+          icon={getNodeIcon(node)}
+          url={getNodeLink(node)?.url}
         />
       );
     },
@@ -46,18 +46,40 @@ function getNodeLocationColumn(): ColumnDef<DependencyNode> {
     meta: {
       width: "auto",
     },
-    accessorFn: (item) => {
-      const location = getNodeLocationInfo(item);
+    accessorFn: (node) => {
+      const location = getNodeLocationInfo(node);
       const links = location?.links ?? [];
       return links.map((link) => link.label).join(", ");
     },
     cell: ({ row }) => {
-      const item = row.original;
-      const location = getNodeLocationInfo(item);
+      const node = row.original;
+      const location = getNodeLocationInfo(node);
       if (location == null) {
         return null;
       }
       return <LinkListCell links={location.links} icon={location.icon} />;
+    },
+  };
+}
+
+function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
+  return {
+    id: "error",
+    header: t`Errors`,
+    meta: {
+      width: "auto",
+    },
+    cell: ({ row }) => {
+      const node = row.original;
+      const errors = node.errors ?? [];
+      if (errors.length === 0) {
+        return null;
+      }
+      return ngettext(
+        msgid`${errors.length} error`,
+        `${errors.length} errors`,
+        errors.length,
+      );
     },
   };
 }
@@ -69,14 +91,17 @@ function getNodeDependentsCountColumn(): ColumnDef<DependencyNode> {
     meta: {
       width: "auto",
     },
-    accessorFn: (item) => getNodeDependentsCount(item),
+    accessorFn: (node) => getNodeDependentsCount(node),
     cell: ({ row }) => {
-      const item = row.original;
-      const value = getNodeDependentsCount(item);
+      const node = row.original;
+      const value = getNodeDependentsCount(node);
+      if (value === 0) {
+        return null;
+      }
       return (
         <LinkCell
           label={String(value)}
-          url={Urls.dependencyGraph({ entry: item })}
+          url={Urls.dependencyGraph({ entry: node })}
         />
       );
     },
@@ -90,10 +115,10 @@ function getNodeLastEditAtColumn(): ColumnDef<DependencyNode> {
     meta: {
       width: "auto",
     },
-    accessorFn: (item) => getNodeLastEditInfo(item)?.timestamp,
+    accessorFn: (node) => getNodeLastEditInfo(node)?.timestamp,
     cell: ({ row }) => {
-      const item = row.original;
-      const value = getNodeLastEditInfo(item)?.timestamp;
+      const node = row.original;
+      const value = getNodeLastEditInfo(node)?.timestamp;
       if (value == null) {
         return null;
       }
@@ -109,13 +134,13 @@ function getNodeLastEditByColumn(): ColumnDef<DependencyNode> {
     meta: {
       width: "auto",
     },
-    accessorFn: (item) => {
-      const editInfo = getNodeLastEditInfo(item);
+    accessorFn: (node) => {
+      const editInfo = getNodeLastEditInfo(node);
       return editInfo != null ? getUserName(editInfo) : undefined;
     },
     cell: ({ row }) => {
-      const item = row.original;
-      const editInfo = getNodeLastEditInfo(item);
+      const node = row.original;
+      const editInfo = getNodeLastEditInfo(node);
       return editInfo != null ? getUserName(editInfo) : null;
     },
   };
@@ -131,6 +156,7 @@ export function getColumns({
   return [
     getNodeNameColumn(),
     getNodeLocationColumn(),
+    getNodeErrorsColumn(),
     ...(withDependentsCountColumn ? [getNodeDependentsCountColumn()] : []),
     getNodeLastEditAtColumn(),
     getNodeLastEditByColumn(),
