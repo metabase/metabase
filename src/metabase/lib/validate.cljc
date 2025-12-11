@@ -30,6 +30,11 @@
   []
   {:type :query-error/syntax-error})
 
+(mu/defn unknown-error :- [:ref ::lib.schema.validate/unknown-error]
+  [message :- :string]
+  {:type :query-error/unknown-error
+   :message message})
+
 (mu/defn find-bad-refs :- [:set [:ref ::lib.schema.validate/error]]
   "Returns a list of bad `:field` refs on this query.
 

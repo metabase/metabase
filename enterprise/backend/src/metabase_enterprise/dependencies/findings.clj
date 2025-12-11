@@ -3,6 +3,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -38,7 +39,7 @@
           results (try (deps.analysis/check-entity mp (model->dependency-type model) (:id toucan-instance))
                        (catch Exception e
                          (log/error "Error analyzing entity" e)
-                         {:exception (str "Error analyzing entity: " (.getMessage e))}))
+                         [(lib/unknown-error (.getMessage e))]))
           success (empty? results)]
       (deps.analysis-finding/upsert-analysis! (model->dependency-type model) (:id toucan-instance) success results))))
 

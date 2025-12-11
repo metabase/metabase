@@ -496,7 +496,8 @@
   find-bad-refs
   missing-column
   missing-table-alias
-  syntax-error]
+  syntax-error
+  unknown-error]
  [metabase.lib.walk.util
   all-field-ids
   all-implicitly-joined-field-ids

@@ -22,9 +22,15 @@
   [:map
    [:type [:= :query-error/syntax-error]]])
 
+(mr/def ::unknown-error
+  [:map
+   [:type [:= :query-error/unknown-error]
+    :message :string]])
+
 (mr/def ::error
   [:multi {:dispatch :type}
    [:query-error/missing-column [:ref ::missing-column]]
    [:query-error/missing-table-alias [:ref ::missing-table-alias]]
    [:query-error/duplicate-column [:ref ::duplicate-column]]
-   [:query-error/syntax-error [:ref ::syntax-error]]])
+   [:query-error/syntax-error [:ref ::syntax-error]]
+   [:query-error/unknown-error [:ref ::unknown-error]]])
