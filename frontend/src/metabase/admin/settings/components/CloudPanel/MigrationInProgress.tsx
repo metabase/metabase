@@ -24,7 +24,7 @@ import { getMigrationUrl } from "./utils";
 
 interface MigrationInProgressProps {
   migration: InProgressCloudMigration;
-  checkoutUrl: string;
+  storeUrl: string;
 }
 
 const progressMessage: Record<InProgressStates, string> = {
@@ -36,7 +36,7 @@ const progressMessage: Record<InProgressStates, string> = {
 
 export const MigrationInProgress = ({
   migration,
-  checkoutUrl,
+  storeUrl,
 }: MigrationInProgressProps) => {
   const dispatch = useDispatch();
 
@@ -59,7 +59,7 @@ export const MigrationInProgress = ({
     );
   };
 
-  const migrationUrl = getMigrationUrl(checkoutUrl, migration);
+  const migrationUrl = getMigrationUrl(storeUrl, migration);
 
   return (
     <>

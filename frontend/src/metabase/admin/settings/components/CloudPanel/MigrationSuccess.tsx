@@ -12,17 +12,17 @@ interface MigrationSuccessProps {
   migration: CloudMigration;
   restartMigration: () => void;
   isRestarting: boolean;
-  checkoutUrl: string;
+  storeUrl: string;
 }
 
 export const MigrationSuccess = ({
   migration,
   restartMigration,
   isRestarting,
-  checkoutUrl,
+  storeUrl,
 }: MigrationSuccessProps) => {
   const uploadedAt = getMigrationEventTime(migration.updated_at);
-  const migrationUrl = getMigrationUrl(checkoutUrl, migration);
+  const migrationUrl = getMigrationUrl(storeUrl, migration);
 
   return (
     <>

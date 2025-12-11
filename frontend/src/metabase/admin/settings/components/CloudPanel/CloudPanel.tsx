@@ -26,7 +26,7 @@ import {
 
 interface CloudPanelProps {
   getPollingInterval?: (migration: CloudMigration) => number | undefined;
-  onMigrationStart?: (checkoutUrl: string, migration: CloudMigration) => void;
+  onMigrationStart?: (storeUrl: string, migration: CloudMigration) => void;
 }
 
 export const CloudPanel = ({
@@ -71,12 +71,12 @@ export const CloudPanel = ({
   const [createCloudMigration, createCloudMigrationResult] =
     useCreateCloudMigrationMutation();
 
-  const checkoutUrl = useStoreUrl("checkout");
+  const storeUrl = useStoreUrl("login");
 
   const handleCreateMigration = async () => {
     const newMigration = await createCloudMigration().unwrap();
     await dispatch(refreshSiteSettings());
-    onMigrationStart(checkoutUrl, newMigration);
+    onMigrationStart(storeUrl, newMigration);
   };
 
   return (
@@ -89,10 +89,7 @@ export const CloudPanel = ({
       )}
       <Box>
         {migration && isInProgressMigration(migration) && (
-          <MigrationInProgress
-            migration={migration}
-            checkoutUrl={checkoutUrl}
-          />
+          <MigrationInProgress migration={migration} storeUrl={storeUrl} />
         )}
 
         {migration && migrationState === "done" && (
@@ -100,7 +97,7 @@ export const CloudPanel = ({
             migration={migration}
             restartMigration={handleCreateMigration}
             isRestarting={createCloudMigrationResult.isLoading}
-            checkoutUrl={checkoutUrl}
+            storeUrl={storeUrl}
           />
         )}
 
