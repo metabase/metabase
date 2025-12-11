@@ -462,7 +462,9 @@
   (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))
   (t2/update! :model/WorkspaceTransform tx-id body)
   (let [transform (fetch-ws-transform id tx-id)]
-    ;; Re-sync dependencies if source or target changed
+    ;; Re-sync dependencies if source or target changed.
+    ;; NOTE: FE may send these fields even when unchanged, causing unnecessary re-syncs.
+    ;; This is acceptable for now - could use t2/changes in hooks for more precision.
     (when (or (:source body) (:target body))
       (let [workspace (t2/select-one :model/Workspace :id id)]
         (ws.impl/sync-transform-dependencies! workspace transform)))

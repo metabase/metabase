@@ -9,7 +9,9 @@
   "Query for external inputs in a workspace - inputs that are not shadowed by any output.
    Returns seq of WorkspaceInput records."
   [workspace-id]
-  ;; TODO: maybe we should have a flag on workspace_input.access_granted ?
+  ;; TODO (ngoc 12/11/25) -- maybe we should have a flag on workspace_input.access_granted ?
+  ;; NOTE: Could optimize with table_id join if workspace_output gets that column,
+  ;; but not worth it given the small number of rows per workspace.
   (t2/select :model/WorkspaceInput
              :workspace_id workspace-id
              {:where [:not [:exists {:select [1]
