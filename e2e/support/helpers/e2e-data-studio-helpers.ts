@@ -15,6 +15,7 @@ export const DataStudio = {
     header: () => cy.findByTestId("transforms-header"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
+    editDefinition: () => cy.findByRole("link", { name: "Edit definition" }),
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
