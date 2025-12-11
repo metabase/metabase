@@ -9,6 +9,7 @@ import {
 import { CreateCollectionForm } from "metabase/collections/components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "metabase/collections/components/CreateCollectionForm/CreateCollectionForm";
 import { Tree } from "metabase/common/components/tree";
+import { useSetting } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { tenantSpecificCollections } from "metabase/lib/urls";
@@ -18,7 +19,6 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { getSetting } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
@@ -26,9 +26,7 @@ import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/compo
 
 export const MainNavSharedCollections = () => {
   const [modalOpen, setModalOpen] = useState(false);
-  const isTenantsEnabled = useSelector((state) =>
-    getSetting(state, "use-tenants"),
-  );
+  const isTenantsEnabled = useSetting("use-tenants");
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
 
