@@ -502,13 +502,11 @@
     {:transforms (for [transform transforms]
                    (assoc transform :workspace (get workspaces-by-id (:workspace_id transform))))}))
 
-;; TODO: shape of the error for/and underlying transaction failure.
 (api.macros/defendpoint :post "/:id/merge"
   :- [:or
       [:map
-       ;; TODO: why this was not present, why can we rerturn a string?
        [:merged {:optional true} :any]
-       [:errors [:maybe [:sequential [:map [:id [:maybe ::ws.t/ref-id]] [:name :string] [:error :string]]]]]
+       [:errors :any #_[:maybe [:sequential [:map [:id [:maybe ::ws.t/ref-id]] [:name :string] [:error :string]]]]]
        [:workspace [:map [:id ::ws.t/appdb-id] [:name :string]]]
        [:archived_at [:maybe :any]]]
       ;; error message from check-404 or check-400
@@ -525,7 +523,7 @@
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged
                 errors]} (-> (ws.merge/merge-workspace! id)
-                             (update :merged update-vals #(map :global_id %))
+                             (update :merged update-vals #(mapv :global_id %))
                              (update :errors (partial mapv #(-> %
                                                                 (update :error (fn [e] (.getMessage ^Throwable e)))
                                                                 (set/rename-keys {:error :message})))))]

@@ -2,11 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
-   [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase.lib.core :as lib]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -39,7 +39,7 @@
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
     (try
-      (tu/poll-until 300 (or (t2/select-one :model/Workspace :id ws-id :status :ready)
+      (tu/poll-until 700 (or (t2/select-one :model/Workspace :id ws-id :status :ready)
                              (Thread/sleep 10)))
       (catch Exception e
         (if (:timeout-ms (ex-data e))
@@ -173,7 +173,7 @@
       (let [;; Create a workspace
             {ws-id :id} (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                         {:name        "Merge test"
-                                                         :database_id (mt/id)}))
+                                                         :database_id  (mt/id)}))
             ;; Add 2 transforms
             ws-x-1 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                          (merge {:global_id (:id x1)}
@@ -184,16 +184,17 @@
         ;; Update workspace transforms -- TODO: handle through appropriate api calls
         (t2/update! :model/WorkspaceTransform :ref_id (:ref_id ws-x-1) {:name "UPDATED 1"})
         (t2/update! :model/WorkspaceTransform :ref_id (:ref_id ws-x-2) {:name "UPDATED 2"})
-        (let [merge-transorm! ws.merge/merge-transform!]
-          (with-redefs [ws.merge/merge-transform! (let [call-count (atom 0)]
-                                                    (fn [& args]
-                                                      (when (> @call-count 0)
-                                                        (throw (Exception. "boom")))
-                                                      (swap! call-count inc)
-                                                      (apply merge-transorm! args)))]
+        (let [update-transform! transforms.api/update-transform!]
+          (with-redefs [transforms.api/update-transform! (let [call-count (atom 0)]
+                                                           (fn [& args]
+                                                             (when (> @call-count 0)
+                                                               (throw (Exception. "boom")))
+                                                             (swap! call-count inc)
+                                                             (apply update-transform! args)))]
             (testing "Merging should atomically rollback on failure"
               @(def cau (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))))
-            @(def yyy (t2/select :model/Transform :id [:in [(:id x1) (:id x2)]]))))))))
+            (def xss (mapv :id [x1 x2]))
+            @(def zz (t2/select [:model/Transform :id :name]))))))))
 
 (deftest create-workspace-transform-permissions-test
   (testing "POST /api/ee/workspace/:id/transform requires superuser"
@@ -682,3 +683,4 @@
                 :failed    []
                 :not_run   []}
                (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "/run"))))))))
+

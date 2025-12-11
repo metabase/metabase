@@ -80,6 +80,7 @@
                       (if error
                         (reduced (-> acc
                                      (update :errors conj result)
+                                     (assoc :merged [])
                                      #_(assoc :short_circuit true)))
                         (update acc :merged conj result))))
                   {:merged []
