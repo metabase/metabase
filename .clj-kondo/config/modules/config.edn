@@ -2203,7 +2203,6 @@
    :uses #{api
            appearance
            auth-identity
-           channel
            embedding
            premium-features
            request
