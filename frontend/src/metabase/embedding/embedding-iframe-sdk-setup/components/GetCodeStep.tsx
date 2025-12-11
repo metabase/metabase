@@ -53,7 +53,7 @@ export const GetCodeStep = () => {
     <Stack gap="md" align="center" justify={justify} flex={1}>
       {!isGuestEmbed && <MetabaseAccountSection />}
 
-      {resource?.enable_embedding ? (
+      {!isGuestEmbed || resource?.enable_embedding ? (
         <>
           <Card p="md">
             <Text size="lg" fw="bold" mb="md">
