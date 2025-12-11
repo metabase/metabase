@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.workspaces.core :as ws.core]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
@@ -142,7 +143,7 @@
     (create-workspace-with-unique-name! creator-id database ws-name 5)))
 
 (defn add-to-changeset!
-  "Add the given "
+  "Add the given transform to the workspace changeset."
   [_creator-id workspace entity-type global-id body]
   (ws.u/assert-transform! entity-type)
   (t2/with-transaction [_]

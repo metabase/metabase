@@ -171,9 +171,10 @@
                                                 :data_authority :computed
                                                 :data_source :metabase-transform)
                                 {:create? true})]
-    (when-not (:active table)
-      (t2/update! :model/Table (:id table) {:active true}))
-    table))
+    (let [data (cond-> {:updated_at (t/offset-date-time)}
+                 (not (:active table)) (assoc :active true))]
+      (t2/update! :model/Table (:id table) data)
+      (merge table data))))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."

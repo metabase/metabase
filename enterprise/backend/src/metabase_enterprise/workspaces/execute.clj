@@ -12,6 +12,7 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase.api.common :as api]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -35,16 +36,19 @@
 
    Returns an ::ws.t/execution-result map with status, timing, and table metadata."
   [workspace {:keys [target] :as transform} mapping]
-  (isolation/with-workspace-isolation workspace
-    (try
-      (t2/with-transaction [_conn]
-        (let [new-xf  (-> (select-keys transform [:name :description :source])
-                          (assoc :creator_id api/*current-user-id*
-                                 :target (mapping target)))
-              _       (assert (:target new-xf) "Target mapping must not be nil")
-              temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
-          (transforms.i/execute! temp-xf {:run-method :manual})
+  #_(isolation/with-workspace-isolation workspace)
+  (try
+    (t2/with-transaction [_conn]
+      (let [new-xf  (-> (select-keys transform [:name :description :source])
+                        (assoc :creator_id api/*current-user-id*
+                               :target (mapping target)))
+            _       (assert (:target new-xf) "Target mapping must not be nil")
+            temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
+        (transforms.i/execute! temp-xf {:run-method :manual})
+        (u/prog1 (execution-results temp-xf)
+          (t2/delete! :model/Transform (:id temp-xf)))
+        #_ ;; this just deletes also writes to :model/Table and actual output table too
           (throw (ex-info "rollback tx!" {::results (execution-results temp-xf)}))))
-      (catch Exception e
-        (or (::results (ex-data e))
-            (throw e))))))
+    (catch Exception e
+      (or (::results (ex-data e))
+          (throw e)))))

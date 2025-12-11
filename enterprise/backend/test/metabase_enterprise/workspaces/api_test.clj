@@ -274,7 +274,7 @@
               ;; get the tables
               tables-result (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/table"))]
           (testing "/tables returns expected results"
-            (is (=? {:inputs  [#_{:id (mt/id :orders) :schema orig-schema :table "orders"}]
+            (is (=? {:inputs  [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs [{:db_id (mt/id)
                                 :global {:schema "public", :table orig-name}
                                 :isolated {:transform_id ref_id}}]}
@@ -293,28 +293,41 @@
                                                         :database (mt/id)
                                                         :schema   "public"
                                                         :name     orig-name}}]
-        ;; TODO: add a provisional transform, and make sure one of the output tables is created
         ;; create the global table
         (transforms.i/execute! x1 {:run-method :manual})
         (let [workspace        (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                                      {:name        "Test Workspace"
                                                                       :database_id (mt/id)}))
               ;; add the transform
-              ref-id           (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform") x1))
-              ;; get the tables
-              tables-result    (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))
+              ref-id           (:ref_id
+                                (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform") x1))
               mirror-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
               mirror-table     (t2/select-one :model/Table
                                               :schema (-> mirror-transform :target :schema)
                                               :name (-> mirror-transform :target :name))]
           (testing "/table returns expected results"
-            ;; TODO: implement inputs (requires query analysis)
-            (is (=? {:inputs [#_{:id (mt/id :orders) :schema orig-schema :table "orders"}]
+            (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
-                       :global   {:schema orig-schema :table orig-name, :table_id (:id mirror-table)}
-                       :isolated {:transform_id ref-id}}]}
-                    tables-result))))))))
+                       :global   {:schema   orig-schema
+                                  :table    orig-name
+                                  :table_id (:id mirror-table)}
+                       :isolated {:transform_id ref-id
+                                  :table        string?}}]}
+                    (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
+          (testing "and after we run the transform, id for isolated table appears"
+            (is (=? {:status "succeeded"}
+                    (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "transform" ref-id "run"))))
+            (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
+                     :outputs
+                     [{:db_id    (mt/id)
+                       :global   {:schema   orig-schema
+                                  :table    orig-name
+                                  :table_id (:id mirror-table)}
+                       :isolated {:transform_id ref-id
+                                  :table        string?
+                                  :table_id     int?}}]}
+                    (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))))))))))
 
 ;;;; Card dependency rejection tests
 
@@ -609,32 +622,41 @@
 (deftest run-workspace-transform-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run"
     (transforms.tu/with-transform-cleanup! [output-table "ws_api"]
-      (mt/with-temp [:model/Workspace workspace1 {:name        "Workspace 1"
-                                                  :database_id (mt/id)}
-                     :model/Workspace workspace2 {:name "Workspace 2"}
-                     :model/WorkspaceTransform transform {:name         "Transform in WS1"
-                                                          :workspace_id (:id workspace1)
-                                                          :source       {:type  "query"
-                                                                         :query (mt/native-query {:query "SELECT 42 as answer"})}
-                                                          :target       {:type     "table"
-                                                                         :database (:database_id workspace1)
-                                                                         :schema   (:schema workspace1)
-                                                                         :name     output-table}}]
-        (testing "returns 404 if transform not in workspace"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :post 404
-                                       (ws-url (:id workspace2) "/transform/" (:ref_id transform) "/run")))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :post 403
-                                       (ws-url (:id workspace1) "/transform/" (:ref_id transform) "/run")))))
-        (testing "sucessful execution"
-          (is (=? {:status     "succeeded"
-                   :start_time some?
-                   :end_time   some?
-                   :table      {:name   #(str/includes? % output-table)
-                                :schema #(str/starts-with? % "mb__isolation_")}}
-                  (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "transform" (:ref_id transform) "run")))))))))
+      (mt/with-temp [:model/Workspace ws1 {:name        "Workspace 1"
+                                           :schema      "ws1"
+                                           :database_id (mt/id)}
+                     :model/Workspace ws2 {:name   "Workspace 2"
+                                           :schema "ws2"}
+                     :model/Transform x1  {:name   "Transform in WS1"
+                                           :source {:type  "query"
+                                                    :query (mt/native-query {:query "SELECT 42 as answer"})}
+                                           :target {:type     "table"
+                                                    :database (mt/id)
+                                                    :schema   "public"
+                                                    :name     output-table}}]
+        (let [ref-id (:ref_id
+                      (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "/transform") x1))]
+          (testing "returns 404 if transform not in workspace"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :post 404
+                                         (ws-url (:id ws2) "/transform/" ref-id "/run")))))
+          (testing "requires superuser"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403
+                                         (ws-url (:id ws1) "/transform/" ref-id "/run")))))
+          (testing "successful execution"
+            (is (=? {:status     "succeeded"
+                     :start_time some?
+                     :end_time   some?
+                     :table      {:name   #(str/includes? % output-table)
+                                  :schema #(str/starts-with? % "mb__isolation_")}}
+                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "run"))))
+            (testing "and we don't get any excessive transforms in the db"
+              (is (= (:id x1)
+                     (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]})))))
+          (testing "transform has last_run_at after that"
+            (is (=? {:last_run_at some?}
+                    (mt/user-http-request :crowberto :get 200 (ws-url (:id ws1) "transform" ref-id))))))))))
 
 (deftest run-workspace-test
   (testing "POST /api/ee/workspace/:id/execute"

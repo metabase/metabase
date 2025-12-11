@@ -5,12 +5,14 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.core :as ws.core]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -110,7 +112,7 @@
   [:map
    ;; Future-proof with cross-db Python transforms
    [:db_id ::ws.t/appdb-id]
-   [:schema :string]
+   [:schema [:maybe :string]]
    [:table :string]
    [:table_id [:maybe ::ws.t/appdb-id]]])
 
@@ -120,7 +122,7 @@
    [:db_id ::ws.t/appdb-id]
    [:global [:map
              [:transform_id [:maybe ::ws.t/appdb-id]]
-             [:schema :string]
+             [:schema [:maybe :string]]
              [:table :string]
              [:table_id [:maybe ::ws.t/appdb-id]]]]
    [:isolated [:map
@@ -129,6 +131,23 @@
                [:table :string]
                [:table_id [:maybe ::ws.t/appdb-id]]]]])
 
+(defn- batch-lookup-global-table-ids
+  "Batch lookup table_ids for global output tables by [db_id schema table]."
+  [db-id output-refs]
+  (when (seq output-refs)
+    (let [cases  (for [{:keys [schema table]} output-refs]
+                   [:and [:= :schema schema] [:= :name table]])
+          tables (t2/select :model/Table :db_id db-id {:where (into [:or] cases)})]
+      (into {} (map (juxt (juxt :schema :name) :id)) tables))))
+
+(defn- batch-lookup-isolated-table-ids
+  "Batch lookup table_ids for isolated output tables by [isolation-schema isolated-table-name]."
+  [db-id isolation-schema output-refs]
+  (when (seq output-refs)
+    (let [isolated-names (set (map ws.u/isolated-table-name output-refs))
+          tables         (t2/select :model/Table :db_id db-id :schema isolation-schema :name [:in isolated-names])]
+      (into {} (map (juxt :name :id)) tables))))
+
 (api.macros/defendpoint :get "/:id/table"
   :- [:map {:closed true}
       [:inputs [:sequential ::input-table]]
@@ -136,28 +155,24 @@
   "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  ;; This typically needs the big 'ol graph, to know about the enclosed transforms (for their outputs)
-  ;; Easy optimization for the <= 1 entities case and just return the stuff directly though :lightbulb
-  (let [{:keys [database_id schema]} (api/check-404 (t2/select-one [:model/Workspace :database_id :schema] id))]
-    ;; TODO fix N+1
-    {:inputs  []
-     :outputs (for [{:keys [ref_id target]} (t2/select [:model/WorkspaceTransform :ref_id :target] :workspace_id id)]
-                ;; transform_id is not guaranteed to be the global_id, topology may have changed
-                {:db_id    database_id
+  (let [{:keys [schema
+                database_id]} (api/check-404 (t2/select-one [:model/Workspace :database_id :schema] id))
+        outputs               (t2/select [:model/WorkspaceOutput :db_id :schema :table :ref_id] :workspace_id id)
+        inputs                (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id] :workspace_id id)
+        global-table-ids      (batch-lookup-global-table-ids database_id outputs)
+        isolated-table-ids    (batch-lookup-isolated-table-ids database_id schema outputs)]
+    {:inputs  inputs
+     :outputs (for [{:keys [ref_id db_id schema table] :as output} outputs
+                    :let [isolated-name (ws.u/isolated-table-name output)]]
+                {:db_id    db_id
                  :global   {:transform_id nil
-                            :schema       (:schema target)
-                            :table        (:name target)
-                            :table_id     (t2/select-one-pk :model/Table
-                                                            :db_id database_id
-                                                            :schema (:schema target)
-                                                            :name (:name target))}
+                            :schema       schema
+                            :table        table
+                            :table_id     (get global-table-ids [schema table])}
                  :isolated {:transform_id ref_id
                             :schema       schema
-                            :table        (str (:schema target) "__" (:name target))
-                            :table_id     (t2/select-one-pk :model/Table
-                                                            :db_id database_id
-                                                            :schema schema
-                                                            :name (str (:schema target) "__" (:name target)))}})}))
+                            :table        isolated-name
+                            :table_id     (get isolated-table-ids isolated-name)}})}))
 
 (api.macros/defendpoint :get "/:id" :- Workspace
   "Get a single workspace by ID"
@@ -377,7 +392,7 @@
       {:status 200 :body "OK"})))
 
 (defn- malli-map-keys [schema]
-  (map first (rest schema)))
+  (into [] (comp (remove #(:hydrated (second %))) (map first)) (rest schema)))
 
 (defn- select-malli-keys
   "Like select-keys, but with the arguments reversed, and taking the malli schema for the output map.
@@ -408,10 +423,11 @@
    ;; Not yet calculated, see https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
    [:target_stale :boolean]
    [:workspace_id ::ws.t/appdb-id]
-   ;[:creator_id ::ws.t/appdb-id]
+   ;;[:creator_id ::ws.t/appdb-id]
    [:archived_at :any]
    [:created_at :any]
-   [:updated_at :any]])
+   [:updated_at :any]
+   [:last_run_at {:hydrated true} :any]])
 
 (def ^:private workspace-transform-alias {:target_stale :stale})
 
@@ -434,9 +450,10 @@
                                  (deferred-tru "Another transform in this workspace already targets that table."))
         global-id (:global_id body (:id body))
         body      (-> body (dissoc :global_id) (update :target assoc :database_id (:database_id workspace)))]
-    (select-malli-keys
-     WorkspaceTransform workspace-transform-alias
-     (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body))))
+    (-> (select-malli-keys
+         WorkspaceTransform workspace-transform-alias
+         (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body))
+        (assoc :last_run_at nil))))
 
 ;; TODO Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -465,7 +482,8 @@
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :ref_id tx-id :workspace_id ws-id)
-      (api/check-404)))
+      api/check-404
+      (t2/hydrate :last_run_at)))
 
 (api.macros/defendpoint :get "/:id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."
