@@ -245,6 +245,7 @@ function DataModelContent({ params }: Props) {
             }
             maw={COLUMN_CONFIG.field.max}
             miw={COLUMN_CONFIG.field.min}
+            ref={(el) => el?.scrollIntoView({ behavior: "smooth" })}
           >
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {field && table && databaseId != null && (
@@ -283,6 +284,7 @@ function DataModelContent({ params }: Props) {
             p="lg"
             maw={COLUMN_CONFIG.preview.max}
             miw={COLUMN_CONFIG.preview.min}
+            ref={(el) => el?.scrollIntoView({ behavior: "smooth" })}
           >
             <PreviewSection
               className={S.preview}

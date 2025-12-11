@@ -21,6 +21,7 @@ export const DataModel = {
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
+    getFilterForm: getTablePickerFilter,
   },
   TableSection: {
     get: getTableSection,
@@ -250,6 +251,10 @@ function getTablePickerTable(name: string) {
 
 function getTablePickerSearchInput() {
   return cy.findByPlaceholderText("Search tables");
+}
+
+function getTablePickerFilter() {
+  return cy.findByTestId("table-picker-filter");
 }
 
 function getTablePickerTables() {

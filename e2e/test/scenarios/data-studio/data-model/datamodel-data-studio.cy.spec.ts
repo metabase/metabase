@@ -97,10 +97,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       TablePicker.getDatabases().should("have.length", 1);
       TablePicker.getTables().should("have.length", 8);
-      H.DataModel.get()
-        .findByText("Not found.")
-        .scrollIntoView()
-        .should("be.visible");
+      H.DataModel.get().findByText("Not found.").should("be.visible");
       cy.location("pathname").should(
         "eq",
         `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
@@ -585,6 +582,12 @@ describe("scenarios > data studio > datamodel", () => {
         H.DataModel.visitDataStudio();
 
         openFilterPopover();
+
+        cy.log("Filter popover should close on click outside");
+        H.DataModel.TablePicker.getSearchInput().click();
+        H.DataModel.TablePicker.getFilterForm().should("not.exist");
+
+        openFilterPopover();
         selectFilterOption("Visibility type", "Gold");
         applyFilters();
 
@@ -930,8 +933,6 @@ describe("scenarios > data studio > datamodel", () => {
 
       TableSection.clickField("ID");
 
-      // Navbar expansion causes these panels to be off screen
-      FieldSection.get().scrollIntoView();
       FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "BIGINT");
@@ -1934,8 +1935,6 @@ describe("scenarios > data studio > datamodel", () => {
           verifyAndCloseToast("Semantic type of Quantity updated");
 
           cy.log("verify preview");
-          // Navbar expansion causes these panels to be off screen
-          FieldSection.get().scrollIntoView();
           FieldSection.getPreviewButton().click();
           cy.wait("@dataset");
           PreviewSection.get()
@@ -1966,9 +1965,6 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.reload();
           cy.wait(["@metadata", "@metadata"]);
-
-          // Navbar expansion causes these panels to be off screen
-          FieldSection.get().scrollIntoView();
 
           FieldSection.getSemanticTypeFkTarget()
             .should("be.visible")

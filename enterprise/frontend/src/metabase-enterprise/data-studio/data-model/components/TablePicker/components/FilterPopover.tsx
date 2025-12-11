@@ -34,6 +34,7 @@ export function FilterPopover({ filters, onSubmit }: Props) {
         event.preventDefault();
         onSubmit(form);
       }}
+      data-testid="table-picker-filter"
     >
       <Stack gap="xl" p="lg">
         <LayerInput
