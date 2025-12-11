@@ -119,7 +119,7 @@ const CollectionSyncRow = ({
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Icon name={icon.name} c={icon.color ?? "text-medium"} />
-          <Text fw={500}>{collection.name}</Text>
+          <Text fw="medium">{collection.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
           <Switch
