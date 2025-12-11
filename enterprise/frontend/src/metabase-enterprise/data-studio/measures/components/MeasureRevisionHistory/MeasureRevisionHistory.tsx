@@ -18,6 +18,7 @@ export function MeasureRevisionHistory({
       tableId={measure.table_id}
       getActionDescription={getMeasureActionDescription}
       definitionLabel={t`Aggregation`}
+      definitionType="aggregations"
     />
   );
 }

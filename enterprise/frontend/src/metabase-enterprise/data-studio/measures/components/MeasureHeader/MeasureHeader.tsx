@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useUpdateMeasureMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack } from "metabase/ui";
+import { EntityDetailTabs } from "metabase-enterprise/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {
   PaneHeader,
   PaneHeaderInput,
@@ -12,8 +13,6 @@ import type { MeasureTabUrls } from "metabase-enterprise/data-studio/measures/la
 import type { Measure } from "metabase-types/api";
 
 import { MeasureMoreMenu } from "../MeasureMoreMenu";
-
-import { MeasureTabs } from "./MeasureTabs";
 
 const MEASURE_NAME_MAX_LENGTH = 254;
 
@@ -46,7 +45,7 @@ export function MeasureHeader({
         }
         icon="sum"
         menu={<MeasureMoreMenu previewUrl={previewUrl} onRemove={onRemove} />}
-        tabs={<MeasureTabs urls={tabUrls} />}
+        tabs={<EntityDetailTabs urls={tabUrls} />}
         actions={actions}
       />
     </Stack>

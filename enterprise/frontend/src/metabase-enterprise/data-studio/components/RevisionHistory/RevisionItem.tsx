@@ -10,7 +10,7 @@ import type { Revision, TableId } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";
-import type { RevisionActionDescriptor } from "./types";
+import type { DefinitionType, RevisionActionDescriptor } from "./types";
 
 dayjs.extend(relativeTime);
 
@@ -20,6 +20,7 @@ type RevisionItemProps = {
   userColor?: string;
   getActionDescription: RevisionActionDescriptor;
   definitionLabel: string;
+  definitionType: DefinitionType;
 };
 
 export function RevisionItem({
@@ -28,6 +29,7 @@ export function RevisionItem({
   userColor,
   getActionDescription,
   definitionLabel,
+  definitionType,
 }: RevisionItemProps) {
   const currentUserId = useSelector(getUserId);
   const isCurrentUser = revision.user.id === currentUserId;
@@ -74,6 +76,7 @@ export function RevisionItem({
                 diff={getDiffForKey(revision.diff, key)}
                 tableId={tableId}
                 definitionLabel={definitionLabel}
+                definitionType={definitionType}
               />
             ))}
           </Stack>

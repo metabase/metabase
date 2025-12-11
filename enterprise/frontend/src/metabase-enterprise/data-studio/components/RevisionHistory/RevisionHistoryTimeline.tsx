@@ -10,7 +10,7 @@ import { Center, Stack, Text, Timeline } from "metabase/ui";
 import type { RevisionEntityType, TableId } from "metabase-types/api";
 
 import { RevisionItem } from "./RevisionItem";
-import type { RevisionActionDescriptor } from "./types";
+import type { DefinitionType, RevisionActionDescriptor } from "./types";
 
 type RevisionHistoryTimelineProps = {
   entityType: RevisionEntityType;
@@ -18,6 +18,7 @@ type RevisionHistoryTimelineProps = {
   tableId: TableId;
   getActionDescription: RevisionActionDescriptor;
   definitionLabel: string;
+  definitionType: DefinitionType;
 };
 
 export function RevisionHistoryTimeline({
@@ -26,6 +27,7 @@ export function RevisionHistoryTimeline({
   tableId,
   getActionDescription,
   definitionLabel,
+  definitionType,
 }: RevisionHistoryTimelineProps) {
   const currentUserId = useSelector(getUserId);
   const {
@@ -71,6 +73,7 @@ export function RevisionHistoryTimeline({
             userColor={userColorAssignments[String(revision.user.id)]}
             getActionDescription={getActionDescription}
             definitionLabel={definitionLabel}
+            definitionType={definitionType}
           />
         ))}
       </Timeline>

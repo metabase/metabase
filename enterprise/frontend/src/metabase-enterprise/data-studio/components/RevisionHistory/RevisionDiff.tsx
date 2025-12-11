@@ -1,9 +1,11 @@
 import { diffWords } from "diff";
 import { t } from "ttag";
 
-import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { DatasetQuery, TableId } from "metabase-types/api";
+
+import { QueryClauseDisplay } from "./QueryClauseDisplay";
+import type { DefinitionType } from "./types";
 
 type DiffValue = {
   before?: unknown;
@@ -15,6 +17,7 @@ type RevisionDiffProps = {
   diff: DiffValue | undefined;
   tableId: TableId;
   definitionLabel: string;
+  definitionType: DefinitionType;
 };
 
 export function RevisionDiff({
@@ -22,6 +25,7 @@ export function RevisionDiff({
   diff,
   tableId,
   definitionLabel,
+  definitionType,
 }: RevisionDiffProps) {
   if (!diff) {
     return null;
@@ -40,7 +44,12 @@ export function RevisionDiff({
       </Flex>
 
       {property === "definition" ? (
-        <DefinitionDiff before={before} after={after} tableId={tableId} />
+        <DefinitionDiff
+          before={before}
+          after={after}
+          tableId={tableId}
+          definitionType={definitionType}
+        />
       ) : (
         <TextDiff before={before} after={after} />
       )}
@@ -118,18 +127,30 @@ type DefinitionDiffProps = {
   before: unknown;
   after: unknown;
   tableId: TableId;
+  definitionType: DefinitionType;
 };
 
 function isDatasetQuery(value: unknown): value is DatasetQuery {
   return value != null && typeof value === "object";
 }
 
-function DefinitionDiff({ before, after, tableId }: DefinitionDiffProps) {
+function DefinitionDiff({
+  before,
+  after,
+  tableId,
+  definitionType,
+}: DefinitionDiffProps) {
   const definition = after ?? before;
 
   if (!isDatasetQuery(definition)) {
     return null;
   }
 
-  return <QueryDefinition definition={definition} tableId={tableId} />;
+  return (
+    <QueryClauseDisplay
+      definition={definition}
+      tableId={tableId}
+      clauseType={definitionType}
+    />
+  );
 }

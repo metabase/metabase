@@ -18,6 +18,7 @@ export function SegmentRevisionHistory({
       tableId={segment.table_id}
       getActionDescription={getSegmentActionDescription}
       definitionLabel={t`Filter`}
+      definitionType="filters"
     />
   );
 }
