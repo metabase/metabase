@@ -378,6 +378,24 @@
 (defn- malli-map-keys [schema]
   (map first (rest schema)))
 
+(defn- select-malli-keys
+  "Like select-keys, but with the arguments reversed, and taking the malli schema for the output map.
+   Nothing smart - for example, it doesn't understand optional verus maybe."
+  ([schema m]
+   (select-keys m (malli-map-keys schema)))
+  ([schema alias-map m]
+   (merge (select-malli-keys schema m)
+          (u/for-map [[to from] alias-map] [to (from m)]))))
+
+(defn- select-model-malli-keys
+  "Build the model-fields vector for a t2/select from a malli schema for the output row(s)"
+  ([model schema]
+   (into [model] (malli-map-keys schema)))
+  ([model schema alias-map]
+   (into [model]
+         (map (fn [to] (if-let [from (to alias-map)] [from to] to)))
+         (malli-map-keys schema))))
+
 (def ^:private WorkspaceTransform
   [:map
    [:ref_id ::ws.t/ref-id]
@@ -386,13 +404,15 @@
    [:description [:maybe :string]]
    [:source :map]
    [:target :map]
-   ;; See https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
-   #_[:target_stale :boolean]
+   ;; Not yet calculated, see https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
+   [:target_stale :boolean]
    [:workspace_id ::ws.t/appdb-id]
    ;[:creator_id ::ws.t/appdb-id]
    [:archived_at :any]
    [:created_at :any]
    [:updated_at :any]])
+
+(def ^:private workspace-transform-alias {:target_stale :stale})
 
 (api.macros/defendpoint :post "/:id/transform"
   "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new."
@@ -413,9 +433,9 @@
                                  (deferred-tru "Another transform in this workspace already targets that table."))
         global-id (:global_id body (:id body))
         body      (-> body (dissoc :global_id) (update :target assoc :database_id (:database_id workspace)))]
-    (select-keys
-     (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)
-     (malli-map-keys WorkspaceTransform))))
+    (select-malli-keys
+     WorkspaceTransform workspace-transform-alias
+     (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body))))
 
 ;; TODO Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -442,7 +462,7 @@
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
-  (-> (into [:model/WorkspaceTransform] (malli-map-keys WorkspaceTransform))
+  (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :ref_id tx-id :workspace_id ws-id)
       (api/check-404)))
 

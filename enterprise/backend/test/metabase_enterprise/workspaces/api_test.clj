@@ -172,7 +172,8 @@
 (deftest add-transforms-to-workspace-test
   (testing "Add transforms to workspace via POST /transform"
     (with-transform-cleanup! [orig-name "ws_tables_test"]
-      (mt/with-temp [:model/Transform {x1-id :id :as x1} {:target {:type     "table"
+      (mt/with-temp [:model/Transform {x1-id :id :as x1} {:name   "Transform to Check Out"
+                                                          :target {:type     "table"
                                                                    :database (mt/id)
                                                                    :schema   "public"
                                                                    :name     orig-name}}]
@@ -184,8 +185,10 @@
             (let [response (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                  (merge {:global_id x1-id}
                                                         (select-keys x1 [:name :description :source :target])))]
-              (is (=? {:ref_id    string?
-                       :global_id x1-id}
+              (is (=? {:ref_id       string?
+                       :global_id    x1-id
+                       :name         "Transform to Check Out"
+                       :target_stale true}
                       response))
               (is (= response (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/transform" (:ref_id response)))))))
 
@@ -196,9 +199,10 @@
                                                            :query (mt/mbql-query venues)}
                                                   :target {:type "table"
                                                            :name "new_transform_output"}})]
-              (is (=? {:ref_id    string?
-                       :global_id nil?
-                       :name      "New Transform"}
+              (is (=? {:ref_id       string?
+                       :global_id    nil?
+                       :name         "New Transform"
+                       :target_stale true}
                       response))
               (is (= response (mt/user-http-request :crowberto :get 200 (ws-url ws-id "transform" (:ref_id response)))))))
 

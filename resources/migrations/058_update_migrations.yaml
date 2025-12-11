@@ -2943,6 +2943,32 @@ databaseChangeLog:
             tableName: workspace_dependency
             indexName: idx_workspace_dependency_to
 
+  - changeSet:
+      id: v58.2025-12-11T10:00:00
+      author: christruter
+      comment: Add stale column to workspace_transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_transform
+                columnName: stale
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Indicates if the target configuration needs to be refreshed
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: stale
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
