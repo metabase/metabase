@@ -273,6 +273,24 @@ describe(suiteTitle, () => {
       cy.findByRole("heading", { name: "Email this dashboard" }).should(
         "be.visible",
       );
+
+      /**
+       * It seems `should("be.visible")` above doesn't not work in iframe.
+       * It can only check the existence of the element but not its visibility.
+       */
+      cy.findByTestId("dashboard").then(($dashboard) => {
+        const EXPECTED_APPROX_WIDTH = 800;
+        const ERROR_TOLERANCE = 50;
+        const dashboardWidth = $dashboard.width();
+        expect(
+          dashboardWidth,
+          "EAJS preview should scale when opening a dashboard sidebar (EMB-1120)",
+        ).to.be.greaterThan(EXPECTED_APPROX_WIDTH - ERROR_TOLERANCE);
+        expect(
+          dashboardWidth,
+          "EAJS preview should scale when opening a dashboard sidebar (EMB-1120)",
+        ).to.be.lessThan(EXPECTED_APPROX_WIDTH + ERROR_TOLERANCE);
+      });
     });
 
     getEmbedSidebar()
