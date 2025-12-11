@@ -176,12 +176,13 @@
     :model/Document (select-keys entity [:id :name])
     entity))
 
-(defn- entity-value [entity-type {:keys [id] :as entity} usages]
-  {:id id
-   :type entity-type
-   :data (->> (select-keys entity (entity-keys entity-type))
-              (m/map-vals format-subentity))
-   :dependents_count (usages [entity-type id])})
+(defn- entity-value [entity-type {:keys [id] :as entity} usages errors]
+  (cond-> {:id id
+           :type entity-type
+           :data (->> (select-keys entity (entity-keys entity-type))
+                      (m/map-vals format-subentity))
+           :dependents_count (usages [entity-type id])}
+    errors (assoc :errors (get errors [entity-type id]))))
 
 (def ^:private entity-model
   {:table :model/Table
@@ -360,10 +361,23 @@
                        (apply merge-with +)))
                 children-map)))
 
-(defn- expanded-nodes [downstream-graph nodes]
+(defn- calc-errors [nodes-by-type]
+  (-> (into {}
+            (mapcat (fn [[type ids]]
+                      (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :finding_details]
+                                      :analyzed_entity_type type
+                                      :analyzed_entity_id [:in ids])
+                           (map (fn [{:keys [analyzed_entity_id finding_details]}]
+                                  [[type analyzed_entity_id] finding_details])))))
+            nodes-by-type)
+      not-empty))
+
+(defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
   (let [usages (calc-usages downstream-graph nodes)
         nodes-by-type (->> (group-by first nodes)
-                           (m/map-vals #(map second %)))]
+                           (m/map-vals #(map second %)))
+        errors (when include-errors?
+                 (calc-errors nodes-by-type))]
     (mapcat (fn [[entity-type entity-ids]]
               (let [model (entity-model entity-type)
                     fields (entity-select-fields entity-type)]
@@ -380,7 +394,7 @@
                                                      (->> (map collection.root/hydrate-root-collection)))
                        (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
                        (= entity-type :segment) (t2/hydrate :creator [:table :db]))
-                     (mapv #(entity-value entity-type % usages)))))
+                     (mapv #(entity-value entity-type % usages errors)))))
             nodes-by-type)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -411,7 +425,7 @@
           nodes (into (set starting-nodes)
                       (graph/transitive upstream-graph starting-nodes))
           edges (graph/calc-edges-between downstream-graph nodes)]
-      {:nodes (expanded-nodes downstream-graph nodes)
+      {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
        :edges edges})))
 
 (def ^:private dependents-args
@@ -443,7 +457,7 @@
           downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
           nodes (-> (graph/children-of downstream-graph [[type id]])
                     (get [type id]))]
-      (->> (expanded-nodes downstream-graph nodes)
+      (->> (expanded-nodes downstream-graph nodes {:include-errors? false})
            (filter #(and (= (:type %) dependent_type)
                          (or (not= dependent_type :card)
                              (= (-> % :data :type) dependent_card_type))))))))
@@ -582,72 +596,22 @@
                                       [:= :dependency.to_entity_id :sandboxes.id]
                                       [:= :dependency.to_entity_type [:inline "sandbox"]]]}]]}}))
 
-(defn- entities-by-type [ids-by-type]
-  {:card (when-let [card-ids (seq (map :entity_id (get ids-by-type "card")))]
-           (-> (t2/select :model/Card :id [:in card-ids])
-               (t2/hydrate :creator :dashboard :document [:collection :is_personal] :moderation_reviews)
-               (->> (map collection.root/hydrate-root-collection))
-               (revisions/with-last-edit-info :card)
-               (->> (map (fn [card] [(:id card) card]))
-                    (into {}))))
-   :table (when-let [table-ids (seq (map :entity_id (get ids-by-type "table")))]
-            (let [tables    (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)
-                  owner-ids (into #{} (keep :owner_user_id tables))
-                  id->owner (when (seq owner-ids)
-                              (t2/select-pk->fn #(select-keys % [:id :email :first_name :last_name :common_name])
-                                                :model/User
-                                                :id [:in owner-ids]))]
-              (into {}
-                    (map (fn [table]
-                           [(:id table)
-                            (assoc table :owner (get id->owner (:owner_user_id table)))]))
-                    tables)))
-   :transform (when-let [transform-ids (seq (map :entity_id (get ids-by-type "transform")))]
-                (let [transforms (-> (t2/select :model/Transform :id [:in transform-ids])
-                                     (t2/hydrate :creator :table-with-db-and-fields :last_run))
-                      run-counts (t2/query {:select [:transform_id [[:count :*] :count]]
-                                            :from [:transform_run]
-                                            :where [:in :transform_id transform-ids]
-                                            :group-by [:transform_id]})
-                      id->run-count (into {} (map (juxt :transform_id :count) run-counts))]
-                  (->> transforms
-                       (map (fn [transform]
-                              [(:id transform)
-                               (assoc transform :view_count (get id->run-count (:id transform) 0))]))
-                       (into {}))))
-   :snippet (when-let [snippet-ids (seq (map :entity_id (get ids-by-type "snippet")))]
-              (-> (t2/select :model/NativeQuerySnippet :id [:in snippet-ids])
-                  (t2/hydrate :collection)
-                  (->> (map (fn [snippet] [(:id snippet) (assoc snippet :view_count 0)]))
-                       (into {}))))
-   :dashboard (when-let [dashboard-ids (seq (map :entity_id (get ids-by-type "dashboard")))]
-                (-> (t2/select :model/Dashboard :id [:in dashboard-ids])
-                    (t2/hydrate :creator [:collection :is_personal])
-                    (->> (map collection.root/hydrate-root-collection))
-                    (revisions/with-last-edit-info :dashboard)
-                    (->> (map (fn [dashboard] [(:id dashboard) dashboard]))
-                         (into {}))))
-   :document (when-let [document-ids (seq (map :entity_id (get ids-by-type "document")))]
-               (-> (t2/select :model/Document :id [:in document-ids])
-                   (t2/hydrate :creator [:collection :is_personal])
-                   (->> (map collection.root/hydrate-root-collection)
-                        (map (fn [document] [(:id document) document]))
-                        (into {}))))
-   :sandbox (when-let [sandbox-ids (seq (map :entity_id (get ids-by-type "sandbox")))]
-              (-> (t2/select :model/Sandbox :id [:in sandbox-ids])
-                  (t2/hydrate [:table :db :fields])
-                  (->> (map (fn [sandbox] [(:id sandbox) (assoc sandbox :view_count 0)]))
-                       (into {}))))})
-
-(def ^:private unreferenced-items-keys
-  {:table [:name :display_name :db_id :schema :db :view_count :owner]
-   :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
-          :collection :dashboard :creator :last-edit-info]
-   :snippet [:name :view_count :collection_id :collection]
-   :transform [:name :table :creator :last_run :target :view_count]
-   :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection :view_count]
-   :document [:name :creator_id :created_at :collection_id :creator :collection :view_count]
-   :sandbox [:table :table_id :view_count]})
+(defn- get-paginated-items [union-queries {:keys [sort-direction limit offset include-errors?]}]
+  (let [union-query {:union-all union-queries}
+        total (-> (t2/query {:select [[:%count.* :total]]
+                             :from [[union-query :subquery]]})
+                  first
+                  :total)
+        paginated-ids (->> (t2/query (assoc union-query
+                                            :order-by [[:sort_key sort-direction]]
+                                            :limit limit
+                                            :offset offset))
+                           (map (fn [{:keys [entity_id entity_type]}]
+                                  [(keyword entity_type) entity_id])))
+        downstream-graph (graph/cached-graph (readable-graph-dependents))
+        paginated-items (expanded-nodes downstream-graph paginated-ids {:include-errors? include-errors?})]
+    {:paginated-items paginated-items
+     :total total}))
 
 (def ^:private unreferenced-items-args
   [:map
@@ -695,26 +659,10 @@
         card-types (if (sequential? card_types) card_types [card_types])
         entity-queries (unreferenced-entity-queries sort_column card-types query)
         union-queries (keep #(get entity-queries %) selected-types)
-        union-query {:union-all union-queries}
-        total (-> (t2/query {:select [[:%count.* :total]]
-                             :from [[union-query :subquery]]})
-                  first
-                  :total)
-        paginated-ids (t2/query (assoc union-query
-                                       :order-by [[:sort_key sort_direction]]
-                                       :limit limit
-                                       :offset offset))
-        ids-by-type (group-by :entity_type paginated-ids)
-        entities-map (entities-by-type ids-by-type)
-        paginated-items (keep (fn [{:keys [entity_type entity_id]}]
-                                (let [entity-type (keyword entity_type)
-                                      entity (get-in entities-map [entity-type entity_id])]
-                                  (when entity
-                                    {:id entity_id
-                                     :type entity-type
-                                     :data (->> (select-keys entity (unreferenced-items-keys entity-type))
-                                                (m/map-vals format-subentity))})))
-                              paginated-ids)]
+        {:keys [total paginated-items]} (get-paginated-items union-queries
+                                                             {:sort-direction sort_direction
+                                                              :limit limit
+                                                              :offset offset})]
     {:data paginated-items
      :limit limit
      :offset offset
@@ -794,35 +742,11 @@
         selected-types (if (sequential? types) types [types])
         card-types (if (sequential? card_types) card_types [card_types])
         union-queries (map #(broken-query % sort_column card-types query) selected-types)
-        union-query {:union-all union-queries}
-        total (-> (t2/query {:select [[:%count.* :total]]
-                             :from [[union-query :subquery]]})
-                  first
-                  :total)
-        paginated-ids (t2/query (assoc union-query
-                                       :order-by [[:sort_key sort_direction]]
-                                       :limit limit
-                                       :offset offset))
-        ids-by-type (group-by :entity_type paginated-ids)
-        entities-map (entities-by-type ids-by-type)
-        errors-map (into {}
-                         (map (fn [[type entities]]
-                                [(keyword type) (into {}
-                                                      (map (juxt :analyzed_entity_id :finding_details))
-                                                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :finding_details]
-                                                                 :analyzed_entity_type type
-                                                                 :analyzed_entity_id [:in (map :entity_id entities)]))]))
-                         ids-by-type)
-        paginated-items (keep (fn [{:keys [entity_type entity_id]}]
-                                (let [entity-type (keyword entity_type)
-                                      entity (get-in entities-map [entity-type entity_id])]
-                                  (when entity
-                                    {:id entity_id
-                                     :type entity-type
-                                     :data (->> (select-keys entity (unreferenced-items-keys entity-type))
-                                                (m/map-vals format-subentity))
-                                     :errors (get-in errors-map [entity-type entity_id])})))
-                              paginated-ids)]
+        {:keys [total paginated-items]} (get-paginated-items union-queries
+                                                             {:sort-direction sort_direction
+                                                              :limit limit
+                                                              :offset offset
+                                                              :include-errors? true})]
     {:data paginated-items
      :limit limit
      :offset offset
