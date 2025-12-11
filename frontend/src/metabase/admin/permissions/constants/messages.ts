@@ -23,6 +23,9 @@ export const Messages = {
   get EXTERNAL_USERS_NO_ACCESS_MONITORING() {
     return t`Tenant users cannot have monitoring permissions`;
   },
+  get UNABLE_TO_DOWNLOAD_RESULTS() {
+    return t`Groups with Block data access can't download results`;
+  },
 };
 
 export const getLimitedPermissionAvailabilityMessage = () =>

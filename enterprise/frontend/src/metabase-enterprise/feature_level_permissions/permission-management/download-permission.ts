@@ -24,16 +24,13 @@ import {
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
-export const UNABLE_TO_DOWNLOAD_RESULTS = () =>
-  t`Groups with Block data access can't download results`;
-
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
   if (isAdmin) {
     return Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
   }
 
   if (isBlockedAccess) {
-    return UNABLE_TO_DOWNLOAD_RESULTS();
+    return Messages.UNABLE_TO_DOWNLOAD_RESULTS;
   }
 
   return null;
