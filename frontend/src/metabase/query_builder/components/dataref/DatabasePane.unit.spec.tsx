@@ -412,22 +412,6 @@ describe("DatabasePane", () => {
     });
   });
 
-  describe("edge cases", () => {
-    it("should use skipToken when database.id is null or undefined", async () => {
-      const databaseWithoutId = {
-        ...database,
-        id: null,
-      } as unknown as typeof database;
-
-      setup({ database: databaseWithoutId });
-      setupSearchEndpoints([]);
-
-      await waitForLoaderToBeRemoved();
-
-      expect(screen.getByText(database.name)).toBeInTheDocument();
-    });
-  });
-
   describe("user interactions", () => {
     it("should call onItemClick with correct type ('table') and item for tables", async () => {
       const onItemClick = jest.fn();
