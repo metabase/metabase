@@ -668,7 +668,6 @@
    :lib/type :mbql/query
    :stages   [{:lib/type      :mbql.stage/native
                :native        sql
-               ;; Not sure if this is the right way to specify this for MBQL5 :shrug:
                :template-tags (u/for-map [[tag card-id] card-mapping]
                                 [tag {:name         tag
                                       :display-name tag
