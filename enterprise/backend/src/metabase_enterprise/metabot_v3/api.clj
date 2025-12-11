@@ -56,15 +56,16 @@
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id use_case profile_id message context history conversation_id state]}]
-  (let [message    (metabot-v3.envelope/user-message message)
-        metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        use-case   (or use_case (metabot-v3.config/default-use-case metabot-id))
-        metabot-pk (metabot-v3.config/normalize-metabot-id metabot-id)
+  (let [message       (metabot-v3.envelope/user-message message)
+        metabot-id    (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+        use-case      (or use_case (metabot-v3.config/default-use-case metabot-id))
+        use-case-info (metabot-v3.config/fetch-use-case metabot-id use-case)
+        metabot-pk    (metabot-v3.config/normalize-metabot-id metabot-id)
         _             (api/check-400 use-case-info (format "Unknown use case: %s" use_case))
         _             (api/check-400 (:enabled use-case-info) (format "The %s use case is not enabled" use_case))
-        profile    (metabot-v3.config/resolve-profile metabot-pk use-case profile_id)
-        session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
-    (store-message! conversation_id use-case profile [message])
+        profile       (or profile_id (:profile use-case-info))
+        session-id    (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
+    (store-message! conversation_id use_case profile [message])
     (metabot-v3.client/streaming-request
      {:context         (metabot-v3.context/create-context context)
       :metabot-id      metabot-id

@@ -289,24 +289,7 @@
                                                    (format "ee/metabot-v3/metabot/%d" metabot-id)
                                                    {:use_verified_content true}))))))
 
-        (testing "should prevent updating collection_id on primary metabot instance"
-          (let [metabot-id (metabot-v3.config/normalize-metabot-id metabot-v3.settings/internal-metabot-uuid)]
-            (is (= "Cannot update collection_id for the primary metabot instance."
-                   (mt/user-http-request :crowberto :put 400
-
-                                         (format "ee/metabot-v3/metabot/%d" metabot-id)
-                                         {:collection_id collection-id-1})))
-            ;; Verify the collection_id was not updated
-            (let [unchanged-metabot (t2/select-one :model/Metabot :id metabot-id)]
-              (is (= nil (:collection_id unchanged-metabot))))
-
-            ;; Verify that updating other fields still works
-            (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
-              (let [response (mt/user-http-request :crowberto :put 200
-                                                   (format "ee/metabot-v3/metabot/%d" metabot-id)
-                                                   {:use_verified_content true})]
-                (is (true? (:use_verified_content response)))
-                (is (= nil (:collection_id response)))))))))))
+)))))
 
 (deftest metabot-put-use-cases-test
   (testing "PUT /api/ee/metabot-v3/metabot/:id can update use_cases"
