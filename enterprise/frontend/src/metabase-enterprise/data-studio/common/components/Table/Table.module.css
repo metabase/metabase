@@ -1,0 +1,56 @@
+.Row {
+  display: flex;
+  width: 100%;
+  border-bottom: 1px solid var(--mb-color-border);
+  color: var(--mb-color-text-dark);
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  padding-right: 1rem;
+  font-size: 14px;
+  line-height: 20px;
+  background: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-brand-light);
+  }
+}
+
+.Cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.Table {
+  background: inherit;
+  display: grid;
+}
+
+.Header {
+  background: inherit;
+  display: grid;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+
+  .Row {
+    cursor: unset;
+    padding-left: 1rem;
+
+    &:hover {
+      background-color: inherit;
+    }
+  }
+}
+
+.HeaderBadge {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ScrollContainer {
+  background: inherit;
+  overflow: auto;
+  position: relative;
+}
