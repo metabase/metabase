@@ -6,9 +6,9 @@ import cx from "classnames";
 import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { METAKEY } from "metabase/lib/browser";
-import { useSelector } from "metabase/lib/redux";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import type { FormattingOptions } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/types";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
@@ -19,7 +19,6 @@ import { createMentionSuggestion } from "metabase/rich_text_editing/tiptap/exten
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { LINK_SEARCH_MODELS } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { getSetting } from "metabase/selectors/settings";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import type { DocumentContent } from "metabase-types/api";
 
@@ -59,7 +58,7 @@ export const CommentEditor = ({
   onSubmit,
   onEscape,
 }: Props) => {
-  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const siteUrl = useSetting("site-url");
   const [content, setContent] = useState<string | null>(null);
 
   const extensions = useMemo(
