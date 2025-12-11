@@ -5,6 +5,7 @@ import {
   useGetCloudMigrationQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useStoreUrl } from "metabase/common/hooks";
 import { type Plan, getPlan } from "metabase/common/utils/plan";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -17,7 +18,6 @@ import { MigrationError } from "./MigrationError";
 import { MigrationInProgress } from "./MigrationInProgress";
 import { MigrationStart } from "./MigrationStart";
 import { MigrationSuccess } from "./MigrationSuccess";
-import { useGetStoreUrl } from "./hooks";
 import {
   type InternalCloudMigrationState,
   defaultGetPollingInterval,
@@ -77,10 +77,10 @@ export const CloudPanel = ({
   const [createCloudMigration, createCloudMigrationResult] =
     useCreateCloudMigrationMutation();
 
+  const storeUrl = useStoreUrl("checkout");
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
-  const storeUrl = useGetStoreUrl(plan);
 
   const handleCreateMigration = async () => {
     const newMigration = await createCloudMigration().unwrap();
