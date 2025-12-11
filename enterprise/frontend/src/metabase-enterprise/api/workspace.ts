@@ -253,7 +253,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           idTag("workspace", workspaceId),
           idTag("workspace-transforms", workspaceId),
           idTag("workspace-transform", transformId),
-          tag("transform"),
+          // tag("transform"),
         ]),
     }),
     updateWorkspaceTransform: builder.mutation<
@@ -270,7 +270,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           idTag("workspace", workspaceId),
           idTag("workspace-transforms", workspaceId),
           idTag("workspace-transform", transformId),
-          tag("transform"),
+          // tag("transform"),
         ]),
     }),
     archiveWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
