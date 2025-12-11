@@ -265,7 +265,7 @@
     (t2/delete! :model/Workspace ws-id)
     {:ok true}))
 
-(def ^:private GlobalWorkspace
+(def ^:private ExternalTransform
   ;; Might be interesting to show whether they're enclosed, once we have the graph.
   ;; When they're enclosed, it could also be interesting to know whether they're stale.
   [:map
@@ -274,17 +274,18 @@
    [:source_type :keyword]
    [:checkout_disabled [:maybe :string]]])
 
-(api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential GlobalWorkspace]]]
+(api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential ExternalTransform]]]
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params]
   (api/check-superuser)
   (let [db-id      (:database_id (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id)))
-        ;; TODO use target_db_id once it's there, and skip :target
+        ;; TODO (chris 2025/12/11) use target_db_id once it's there, and skip :target
         transforms (t2/select [:model/Transform :id :name :source_type :target]
                               {:left-join [[:workspace_transform :wt]
                                            [:and
                                             [:= :transform.id :wt.global_id]
                                             [:= :wt.workspace_id ws-id]]]
+                               ;; NULL workspace_id means transform is not checked out into this workspace
                                :where     [:= nil :wt.workspace_id]
                                :order-by  [[:id :asc]]})]
     {:transforms

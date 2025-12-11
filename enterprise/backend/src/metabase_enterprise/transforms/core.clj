@@ -13,10 +13,9 @@
  [metabase-enterprise.transforms.util
   native-query-transform?
   python-transform?
-  query-transform?]
+  query-transform?
+  transform-source-type]
  [metabase-enterprise.transforms.models.transform-run
   timeout-run!]
  [metabase-enterprise.transforms.models.transform
-  update-transform-tags!]
- [metabase-enterprise.transforms.util
-  transform-source-type])
+  update-transform-tags!])

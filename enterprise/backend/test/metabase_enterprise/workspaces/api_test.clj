@@ -660,6 +660,21 @@
    :schema   "transform_output"
    :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
 
+(defn- my-native-query [db-id sql & [card-mapping]]
+  ;; TODO (chris 2025/12/11) don't build MBQL manually
+  ;; For some reason, when is use mt/native-query the transforms hook thinks this is MBQL.
+  ;; It's probably a dialect version issue.
+  {:database db-id
+   :lib/type :mbql/query
+   :stages   [{:lib/type      :mbql.stage/native
+               :native        sql
+               ;; Not sure if this is the right way to specify this for MBQL5 :shrug:
+               :template-tags (u/for-map [[tag card-id] card-mapping]
+                                [tag {:name         tag
+                                      :display-name tag
+                                      :type         :card
+                                      :card-id      card-id}])}]})
+
 (deftest external-transforms-test
   (testing "GET /api/ee/workspace/id/external/transform"
     (mt/with-premium-features #{:transforms :workspaces}
@@ -675,24 +690,25 @@
                                                                :target (random-target db-1)}
                        :model/Transform          {xf4-id :id} {:name   "Not checked out - mbql"
                                                                :source {:type     :query
-                                                                        :query    {:database db-1
-                                                                                   :type     :query
-                                                                                   :query    {:source-table (mt/id :venues)}}
-                                                                        :lib/type :mbql/query}
+                                                                        :query    (mt/mbql-query venues)}
                                                                :target (random-target db-1)}
                        :model/Transform          {xf5-id :id} {:name   "Not checked out - native"
                                                                :source {:type  "query"
-                                                                        ;; TODO we shouldn't construct MBQL 5 manually
-                                                                        :query {:database db-1
-                                                                                :lib/type :mbql/query
-                                                                                :stages   [{:lib/type :mbql.stage/native
-                                                                                            :native   "SELECT 1"}]}}
+                                                                        :query (my-native-query db-1 "SELECT 1")}
                                                                :target (random-target db-1)}
-                       ;; TODO add a native card pointing at a card, that we will want to disable
-                       #_#_#_:model/Transform          {xf7-id :id} {:name   "Using another database"
-                                                                     :source ...
-                                                                     :target (random-target db-2)}
-                       :model/Transform          {xf6-id :id} {:name   "Using another database"
+                       ;; Native transform referencing a card - should be disabled once BOT-694 is implemented
+                       :model/Card               {card-id :id} {:name          "Source Card"
+                                                                :database_id   db-1
+                                                                :dataset_query (mt/mbql-query venues)}
+                       :model/Transform          {xf6-id :id} {:name        "Not checked out - native with card dep"
+                                                               :source_type :native
+                                                               :source      {:type  "query"
+                                                                             :query (my-native-query
+                                                                                     db-1
+                                                                                     "SELECT * FROM {{card}}"
+                                                                                     {"card" 1})}
+                                                               :target      (random-target db-1)}
+                       :model/Transform          {xf7-id :id} {:name   "Using another database"
                                                                :target (random-target db-2)}
                        ;; Workspace
                        :model/Workspace          {ws1-id :id} {:name        "Our Workspace"
@@ -706,17 +722,19 @@
                                                                :workspace_id ws2-id}]
           (testing "excludes global transforms mirrored into that workspace"
             (let [transforms (:transforms (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" ws1-id "/external/transform")))
-                  test-ids   #{xf1-id xf2-id xf3-id xf4-id xf5-id xf6-id}
+                  test-ids   #{xf1-id xf2-id xf3-id xf4-id xf5-id xf6-id xf7-id}
                   ;; Filter out cruft from dev, leaky tests, etc
                   ids        (into #{} (comp (map :id) (filter test-ids)) transforms)]
               (testing "we filter out the expected transforms"
                 ;; ❌ xf1 is checked out in this workspace, so it's filtered out
                 ;; ✅ xf2 is only checked out in another workspace, so it's kept
-                ;; ❌xf6 is in another database, so it's filtered out
-                (is (= (disj test-ids xf1-id xf6-id) ids)))
+                ;; ❌xf7 is in another database, so it's filtered out
+                (is (= (disj test-ids xf1-id xf7-id) ids)))
               (testing "we get the correct checkout_disabled reasons"
                 (is (= {xf2-id nil
                         xf3-id nil #_python-is-supported
                         xf4-id "mbql"
-                        xf5-id nil #_native-is-supported}
+                        xf5-id nil #_native-is-supported
+                        ;; TODO (chris 2025/12/11) checkout should be blocked because of the use of card references
+                        xf6-id nil #_"card-reference"}
                        (u/index-by :id :checkout_disabled transforms)))))))))))
