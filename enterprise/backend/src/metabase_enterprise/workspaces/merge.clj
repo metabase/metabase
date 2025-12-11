@@ -40,9 +40,9 @@
               global_id
               (merge
                {:op :update :global_id global_id :ref_id ref_id}
-               (try (do (transforms.api/update-transform!
-                         global_id (select-keys ws-transform [:name :description :source :target]))
-                        nil)
+               (try (transforms.api/update-transform!
+                     global_id (select-keys ws-transform [:name :description :source :target]))
+                    nil
                     (catch Throwable e
                       {:error e})))
 
@@ -82,12 +82,13 @@
                           #_(reduced {:errors [result]})
                           (reduced (update acc :errors conj result))
                           (update acc :transforms conj result))))
-                    {:transforms :errors
-                     [] []}
+                    {:transforms []
+                     :errors []}
                     (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
         (when (seq (:errors result))
           (throw (ex-info "dummy rollback"
                           {:result result})))
+        (def rrr result)
         #_(when (seq (:errors result))
             (metabase.util.log/error "ROLLIN")
             (.rollback ^java.sql.Connection tx))
