@@ -1,6 +1,6 @@
 (ns metabase.queries.events.cards-notification-deleted-on-card-save
   (:require
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel-interface.core :as channel-interface]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
@@ -17,10 +17,10 @@
   (try
     (let [send-message! (case topic
                           :event/card-update.notification-deleted.card-archived
-                          messages/send-alert-stopped-because-archived-email!
+                          channel-interface/send-alert-stopped-because-archived-email!
 
                           :event/card-update.notification-deleted.card-changed
-                          messages/send-alert-stopped-because-changed-email!)
+                          channel-interface/send-alert-stopped-because-changed-email!)
           recipients (->> notifications
                           (mapcat :handlers)
                           (filter #(= :channel/email (:channel_type %)))

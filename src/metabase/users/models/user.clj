@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.channel-interface.core :as channel-interface]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -451,7 +452,7 @@
   (u/prog1 (t2/insert-returning-instance! :model/User new-user)
     ;; send an email to everyone including the site admin if that's set
     (when (setting/get :send-new-sso-user-admin-email?)
-      ((requiring-resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
+      (channel-interface/send-user-joined-admin-notification-email! <> {:google-auth? true}))))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."

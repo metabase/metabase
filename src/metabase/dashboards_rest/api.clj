@@ -10,7 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel-interface.core :as channel-interface]
    [metabase.collections-rest.api :as api.collection]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
@@ -928,7 +928,7 @@
     ;; Archive the pulse
     (pulse/update-pulse! {:id pulse-id :archived true})
     ;; Let the pulse and subscription creator know about the broken pulse
-    (messages/send-broken-subscription-notification! broken-subscription)))
+    (channel-interface/send-broken-subscription-notification! broken-subscription)))
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 

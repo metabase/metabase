@@ -2,7 +2,7 @@
   "Event handler for the `:event/persisted-model-refresh-error` event defined
   in [[metabase.model-persistence.events.persisted-model-refresh-error]]."
   (:require
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel-interface.core :as channel-interface]
    [metabase.events.core :as events]
    [methodical.core :as methodical]))
 
@@ -10,7 +10,7 @@
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [database-id persisted-infos trigger]}]
-  (messages/send-persistent-model-error-email!
+  (channel-interface/send-persistent-model-error-email!
    database-id
    persisted-infos
    trigger))

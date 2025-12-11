@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel-interface.core :as channel-interface]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
@@ -97,7 +97,7 @@
                  (count all-creators) (count recipients))
       (doseq [creator recipients]
         (try
-          (messages/send-creator-sentiment-email! creator (blob creator))
+          (channel-interface/send-creator-sentiment-email! creator (blob creator))
           (catch Throwable e
             (log/error e "Problem sending creator sentiment email:")))))))
 

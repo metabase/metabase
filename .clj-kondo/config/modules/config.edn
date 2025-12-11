@@ -208,7 +208,7 @@
   {:team "UX West"
    :api  #{metabase.auth-identity.core
            metabase.auth-identity.init}
-   :uses #{channel
+   :uses #{channel-interface
            events
            login-history
            models
@@ -285,6 +285,7 @@
            api
            app-db
            appearance
+           channel-interface
            collections
            config
            dashboards
@@ -305,6 +306,11 @@
            timeline
            types
            util}}
+
+  channel-interface
+  {:team "Gadget"
+   :api  #{metabase.channel-interface.core}
+   :uses #{}}
 
   classloader
   {:team "DevEx"
@@ -464,7 +470,7 @@
            analytics
            api
            app-db
-           channel
+           channel-interface
            collections
            collections-rest
            dashboards
@@ -782,7 +788,7 @@
            metabase.login-history.init}
    :uses #{analytics
            api
-           channel
+           channel-interface
            request
            settings
            util}}
@@ -851,6 +857,7 @@
            appearance
            auth-identity
            channel
+           channel-interface
            config
            dashboards
            driver
@@ -958,6 +965,7 @@
            api
            app-db
            channel
+           channel-interface
            config
            premium-features
            settings
@@ -1030,7 +1038,7 @@
            app-db
            audit-app
            cache
-           channel
+           channel-interface
            collections
            config
            content-verification
@@ -1292,7 +1300,7 @@
    :uses #{api
            app-db
            auth-identity
-           channel
+           channel-interface
            config
            events
            request
@@ -1508,7 +1516,7 @@
            metabase.users.settings}
    :uses #{api
            batch-processing
-           channel
+           channel-interface
            config
            events
            models

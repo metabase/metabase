@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
+   [metabase.channel-interface.core :as channel-interface]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
@@ -28,6 +29,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [potemkin :as p]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -93,7 +95,7 @@
             [admin-email])
           (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, :type "personal" {:order-by [[:id :asc]]})))
 
-(defn send-user-joined-admin-notification-email!
+(defn- send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
   [new-user & {:keys [google-auth?]}]
   {:pre [(map? new-user)]}
@@ -114,7 +116,7 @@
                                                      :adminEmail        (first recipients)
                                                      :joinedUserEditUrl (str (system/site-url) "/admin/people")}))})))
 
-(defn send-password-reset-email!
+(defn- send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
   [email sso-source password-reset-url is-active?]
   {:pre [(u/email? email)
@@ -137,7 +139,7 @@
       :message-type :html
       :message      message-body})))
 
-(mu/defn send-login-from-new-device-email!
+(mu/defn- send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
@@ -192,7 +194,7 @@
                                                       [:= :is_active true]
                                                       [:in :id user-ids]]}))))))
 
-(defn send-persistent-model-error-email!
+(defn- send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."
   [database-id persisted-infos trigger]
   {:pre [(seq persisted-infos)]}
@@ -225,7 +227,7 @@
         :message-type :html
         :message      message-body}))))
 
-(defn send-follow-up-email!
+(defn- send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
   [email]
   {:pre [(u/email? email)]}
@@ -241,7 +243,7 @@
                :message      (channel.template/render "metabase/channel/email/follow_up_email.hbs" context)}]
     (email/send-message! email)))
 
-(defn send-creator-sentiment-email!
+(defn- send-creator-sentiment-email!
   "Format and send an email to a creator with a link to a survey. If a [[blob]] is included, it will be turned into json
   and then base64 encoded."
   [{:keys [email first_name]} blob]
@@ -332,17 +334,17 @@
            (remove nil?)
            (str/join " "))))
 
-(defn send-you-unsubscribed-notification-card-email!
+(defn- send-you-unsubscribed-notification-card-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"
   [notification unsubscribed-emails]
   (send-email! unsubscribed-emails "You unsubscribed from an alert" you-unsubscribed-template notification true))
 
-(defn send-you-were-removed-notification-card-email!
+(defn- send-you-were-removed-notification-card-email!
   "Send an email to `removed-users` letting them know `admin` has removed them from `notification`"
   [notification removed-emails actor]
   (send-email! removed-emails "You’ve been unsubscribed from an alert" removed-template (assoc notification :actor_name (username actor)) true))
 
-(defn send-you-were-added-card-notification-email!
+(defn- send-you-were-added-card-notification-email!
   "Send an email to `added-users` letting them know `admin-adder` has added them to `notification`"
   [notification added-user-emails adder]
   (let [subject (format "%s added you to an alert" (username adder))]
@@ -350,7 +352,7 @@
 
 (def ^:private not-working-subject "One of your alerts has stopped working")
 
-(defn send-alert-stopped-because-archived-email!
+(defn- send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
   [card recipient-emails archiver]
   (send-email! recipient-emails not-working-subject archived-template
@@ -358,7 +360,7 @@
                 :actor archiver}
                true))
 
-(defn send-alert-stopped-because-changed-email!
+(defn- send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
   [card recipient-emails archiver]
   (send-email! recipient-emails not-working-subject changed-stopped-template
@@ -366,7 +368,7 @@
                 :actor archiver}
                true))
 
-(defn send-broken-subscription-notification!
+(defn- send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
   [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
   (let [{:keys [siteUrl] :as context} (common-context)]
@@ -400,3 +402,32 @@
                                                      :role              "Subscription Creator"}]
                                                    (map #(assoc % :role "Subscriber") affected-users)))
                        :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)})))))
+
+(p/deftype+ DefaultEmailService []
+  channel-interface/EmailService
+  (-send-alert-stopped-because-archived-email! [_this card recipient-emails archiver]
+    (send-alert-stopped-because-archived-email! card recipient-emails archiver))
+  (-send-broken-subscription-notification! [_this dashboard-subscription-info]
+    (send-broken-subscription-notification! dashboard-subscription-info))
+  (-send-you-unsubscribed-notification-card-email! [_this notification unsubscribed-emails]
+    (send-you-unsubscribed-notification-card-email! notification unsubscribed-emails))
+  (-send-alert-stopped-because-changed-email! [_this card recipient-emails archiver]
+    (send-alert-stopped-because-changed-email! card recipient-emails archiver))
+  (-send-persistent-model-error-email! [_this database-id persisted-infos trigger]
+    (send-persistent-model-error-email! database-id persisted-infos trigger))
+  (-send-you-were-removed-notification-card-email! [_this notification removed-emails actor]
+    (send-you-were-removed-notification-card-email! notification removed-emails actor))
+  (-send-you-were-added-card-notification-email! [_this notification added-user-emails adder]
+    (send-you-were-added-card-notification-email! notification added-user-emails adder))
+  (-send-user-joined-admin-notification-email! [_this new-user {:keys [google-auth?], :as _options}]
+    (send-user-joined-admin-notification-email! new-user {:keys [google-auth?], :as _options}))
+  (-send-follow-up-email! [_this email]
+    (send-follow-up-email! email))
+  (-send-creator-sentiment-email! [_this user blob]
+    (send-creator-sentiment-email! user blob))
+  (-send-password-reset-email! [_this email sso-source password-reset-url is-active?]
+    (send-password-reset-email! email sso-source password-reset-url is-active?))
+  (-send-login-from-new-device-email! [_this login-history]
+    (send-login-from-new-device-email! login-history)))
+
+(channel-interface/set-email-service! (->DefaultEmailService))
