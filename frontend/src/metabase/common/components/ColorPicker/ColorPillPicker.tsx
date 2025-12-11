@@ -1,8 +1,7 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { type Ref, forwardRef } from "react";
+import { type Ref, forwardRef, useState } from "react";
 
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { Group } from "metabase/ui";
+import { Group, Popover } from "metabase/ui";
 
 import { ColorPill } from "../ColorPill";
 
@@ -43,18 +42,18 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
   }: ColorPillPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const [opened, setOpened] = useState(false);
   const debouncedUpdate = useDebouncedCallback(onChange, debounceMs);
   const color = previewValue ?? originalColor;
 
   return (
-    <TippyPopoverWithTrigger
-      disableContentSandbox
-      renderTrigger={({ onClick }) => (
+    <Popover opened={opened} onChange={setOpened}>
+      <Popover.Target>
         <Group {...props} ref={ref} wrap="nowrap">
-          <ColorPill color={color} onClick={onClick} />
+          <ColorPill color={color} onClick={() => setOpened(true)} />
         </Group>
-      )}
-      popoverContent={
+      </Popover.Target>
+      <Popover.Dropdown className={S.ColorPillPicker}>
         <ColorPickerContent
           value={color}
           onChange={(nextColor) => {
@@ -65,8 +64,7 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
             debouncedUpdate(colorWithDefault);
           }}
         />
-      }
-      className={S.ColorPillPicker}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 });

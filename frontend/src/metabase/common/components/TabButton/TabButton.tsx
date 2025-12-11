@@ -21,9 +21,9 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import ControlledPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { lighten } from "metabase/lib/colors";
+import { Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -157,29 +157,30 @@ const _TabButton = forwardRef(function TabButton(
         />
       </TabButtonInputWrapper>
       {showMenu && (
-        <ControlledPopoverWithTrigger
-          visible={isMenuOpen}
-          onOpen={() => setIsMenuOpen(true)}
-          onClose={() => setIsMenuOpen(false)}
-          renderTrigger={({ onClick }) => (
+        <Popover
+          opened={isMenuOpen}
+          onChange={setIsMenuOpen}
+          position="bottom-start"
+        >
+          <Popover.Target>
             <MenuButton
               icon="chevrondown"
               iconSize={10}
               isSelected={isSelected}
               isOpen={isMenuOpen}
-              onClick={onClick}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
               ref={menuButtonRef}
               disabled={disabled}
             />
-          )}
-          popoverContent={({ closePopover }) => (
+          </Popover.Target>
+          <Popover.Dropdown>
             <TabButtonMenu
               menuItems={menuItems}
               value={value}
-              closePopover={closePopover}
+              closePopover={() => setIsMenuOpen(false)}
             />
-          )}
-        />
+          </Popover.Dropdown>
+        </Popover>
       )}
     </TabButtonRoot>
   );

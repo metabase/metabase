@@ -1,10 +1,10 @@
 import type * as React from "react";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SelectList from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import { Popover } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { InputProps } from "../Input";
@@ -46,6 +46,7 @@ const AutocompleteInput = ({
   onChangeSettings,
   ...rest
 }: AutocompleteInputProps) => {
+  const [opened, setOpened] = useState(false);
   const optionsListRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLDivElement | null>(null);
   const filteredOptions = useMemo(() => {
@@ -71,16 +72,31 @@ const AutocompleteInput = ({
     } else {
       onChange(option);
     }
+    setOpened(false);
   };
 
   const handleChange: InputProps["onChange"] = (e) => {
     onChange(e.target.value);
   };
 
+  const handleShowPopover = () => {
+    if (filteredOptions.length > 0) {
+      setOpened(true);
+    }
+  };
+
+  const handleClosePopover = () => {
+    setOpened(false);
+  };
+
   return (
-    <TippyPopoverWithTrigger
-      sizeToFit
-      renderTrigger={({ onClick: handleShowPopover, closePopover }) => (
+    <Popover
+      opened={opened && filteredOptions.length > 0}
+      onChange={setOpened}
+      position="bottom-start"
+      width="target"
+    >
+      <Popover.Target>
         <Input
           ref={inputRef}
           role="combobox"
@@ -95,36 +111,28 @@ const AutocompleteInput = ({
           onChange={composeEventHandlers(handleChange, handleShowPopover)}
           onBlur={composeEventHandlers<React.FocusEvent<HTMLInputElement>>(
             onBlur,
-            closePopover,
+            handleClosePopover,
           )}
         />
-      )}
-      placement="bottom-start"
-      popoverContent={({ closePopover }) => {
-        if (filteredOptions.length === 0) {
-          return null;
-        }
-
-        return (
-          <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
-            {filteredOptions.map((item, index) => (
-              <SelectList.Item
-                isSelected={cursorIndex === index}
-                key={item}
-                id={item}
-                name={item}
-                onSelect={(item) => {
-                  handleOptionSelect(String(item));
-                  closePopover();
-                }}
-              >
-                {item}
-              </SelectList.Item>
-            ))}
-          </OptionsList>
-        );
-      }}
-    />
+      </Popover.Target>
+      <Popover.Dropdown p={0}>
+        <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
+          {filteredOptions.map((item, index) => (
+            <SelectList.Item
+              isSelected={cursorIndex === index}
+              key={item}
+              id={item}
+              name={item}
+              onSelect={(item) => {
+                handleOptionSelect(String(item));
+              }}
+            >
+              {item}
+            </SelectList.Item>
+          ))}
+        </OptionsList>
+      </Popover.Dropdown>
+    </Popover>
   );
 };
 
