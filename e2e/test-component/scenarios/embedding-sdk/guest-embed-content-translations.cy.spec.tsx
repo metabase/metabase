@@ -63,7 +63,9 @@ describe("scenarios > embedding-sdk > guest-embed-content-translations", () => {
           mountGuestEmbedQuestion(
             { token, title: true },
             {
-              locale: "de",
+              sdkProviderProps: {
+                locale: "de",
+              },
             },
           );
 

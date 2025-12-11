@@ -1825,7 +1825,7 @@
         (is (=? ["Created At: Year" "Count"]
                 (mapv :display-name (lib/returned-columns query))))))))
 
-;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
+;;; adapted from [[metabase.query-processor.model-test/model-self-join-test]]
 (deftest ^:parallel model-self-join-test-display-name-test
   (binding [lib.metadata.calculation/*display-name-style* :long]
     (let [mp       meta/metadata-provider
@@ -1926,7 +1926,7 @@
               (lib/aggregate (lib/count))
               (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "People → Birth Date"} {}))))))
 
-;;; adapted from [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+;;; adapted from [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]]
 (deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test
   (testing "Remapped columns in joined source queries should work (#15578)"
     (let [mp    (lib.tu/remap-metadata-provider meta/metadata-provider (meta/id :orders :product-id) (meta/id :products :title))

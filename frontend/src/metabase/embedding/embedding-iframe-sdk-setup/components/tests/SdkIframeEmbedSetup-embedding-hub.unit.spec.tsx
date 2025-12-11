@@ -7,11 +7,11 @@ import { setup, waitForUpdateSetting } from "./test-setup";
 
 describe("Embed flow > embedding hub step completion tracking", () => {
   beforeEach(() => {
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled = jest.fn(() => true);
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
   });
 
   afterEach(() => {
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled = () => false;
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
 
   afterEach(() => {
@@ -35,17 +35,19 @@ describe("Embed flow > embedding hub step completion tracking", () => {
         },
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Next" }));
-      await userEvent.click(screen.getByRole("button", { name: "Next" }));
-
-      const authRadio = screen.getByDisplayValue(
-        useExistingUserSession ? "user-session" : "sso",
-      );
-
+      const authRadio = screen.getByDisplayValue("sso");
       await userEvent.click(authRadio);
       expect(authRadio).toBeChecked();
 
+      await userEvent.click(screen.getByRole("button", { name: "Next" }));
+      await userEvent.click(screen.getByRole("button", { name: "Next" }));
       await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+      const ssoTypeRadio = screen.getByDisplayValue(
+        useExistingUserSession ? "user-session" : "sso",
+      );
+      await userEvent.click(ssoTypeRadio);
+      expect(ssoTypeRadio).toBeChecked();
 
       const actionButton = screen.getByRole("button", {
         name: trigger === "copy" ? /Copy code/ : /Done/,

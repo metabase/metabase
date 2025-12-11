@@ -1,0 +1,5 @@
+# Custom merge driver for YAML migration files
+# Treats each changeset as an atomic unit to avoid conflicts within changesets
+# Execute this in your shell to enable custom merge driver:
+# echo '\n[include]\npath=../.gitconfig' >> .git/config
+resources/migrations/*.yaml merge=yaml-migrations

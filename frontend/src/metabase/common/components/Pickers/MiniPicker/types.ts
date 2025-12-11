@@ -8,7 +8,7 @@ import type {
 
 export type MiniPickerCollectionItem = Pick<
   CollectionItem,
-  "name" | "model" | "here" | "below"
+  "id" | "name" | "model" | "here" | "below" | "display"
 > & {
   id: CollectionItem["id"] | CollectionId;
 };

@@ -10,7 +10,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type { GdrivePayload, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
@@ -49,16 +48,15 @@ export const setup = ({
   status,
   adminEmail = "admin@metabase.test",
 }: SetupOpts = {}) => {
-  const user = {
+  const user = createMockUser({
     is_superuser: isAdmin,
-  };
+  });
 
   if (canManageSettings) {
-    (user as UserWithApplicationPermissions).permissions = {
+    user.permissions = {
       can_access_setting: true,
       can_access_monitoring: false,
       can_access_subscription: false,
-      can_access_data_studio: false,
     };
   }
 

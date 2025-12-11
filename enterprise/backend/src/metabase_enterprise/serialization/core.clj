@@ -14,10 +14,12 @@
 
 (p/import-vars
  [metabase-enterprise.serialization.v2.extract
+  make-targets-of-type
   extract]
  [metabase-enterprise.serialization.v2.ingest
   strip-labels
   Ingestable
+  ingest-yaml
   ingest-list
   ingest-one
   read-timestamps
@@ -25,4 +27,5 @@
  [metabase-enterprise.serialization.v2.load
   load-metabase!]
  [metabase-enterprise.serialization.v2.storage
+  store!
   escape-segment])

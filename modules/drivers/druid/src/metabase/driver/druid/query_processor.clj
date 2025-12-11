@@ -1,5 +1,5 @@
 (ns metabase.driver.druid.query-processor
-  (:refer-clojure :exclude [every? mapv some])
+  (:refer-clojure :exclude [every? mapv some get-in])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
@@ -11,7 +11,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv some]]))
+   [metabase.util.performance :refer [every? mapv some get-in]]))
 
 (set! *warn-on-reflection* true)
 

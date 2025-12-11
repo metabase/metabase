@@ -24,13 +24,18 @@ const DashboardContextWithReduxProps = (
   const {
     isEditing,
     downloadsEnabled,
+    withSubscriptions,
     dashboardActions: dashboardActionsOrGetter,
   } = props;
 
   // Use exact same implementation as in DashboardContextProviderInner
   const dashboardActions =
     typeof dashboardActionsOrGetter === "function"
-      ? dashboardActionsOrGetter({ isEditing, downloadsEnabled })
+      ? dashboardActionsOrGetter({
+          isEditing,
+          downloadsEnabled,
+          withSubscriptions,
+        })
       : (dashboardActionsOrGetter ?? null);
 
   return (

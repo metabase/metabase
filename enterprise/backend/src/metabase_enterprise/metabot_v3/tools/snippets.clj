@@ -5,7 +5,7 @@
 
 (defn get-snippets
   "Lists SQL snippets available to the current user."
-  []
+  [_args]
   (try
     {:structured_output
      (->> (snippets/list-native-query-snippets)
@@ -15,7 +15,7 @@
 
 (defn get-snippet-details
   "Retrieve a specific SQL snippet by ID, including its content."
-  [snippet-id]
+  [{:keys [snippet-id]}]
   (try
     {:structured_output
      (when snippet-id
