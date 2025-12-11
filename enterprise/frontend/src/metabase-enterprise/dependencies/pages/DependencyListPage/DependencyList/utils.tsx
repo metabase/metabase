@@ -67,9 +67,6 @@ function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
   return {
     id: "error",
     header: t`Errors`,
-    meta: {
-      width: "auto",
-    },
     cell: ({ row }) => {
       const node = row.original;
       const errors = node.errors ?? [];
@@ -85,9 +82,6 @@ function getNodeDependentsCountColumn(): ColumnDef<DependencyNode> {
   return {
     id: "dependents-count",
     header: t`Dependents`,
-    meta: {
-      width: "auto",
-    },
     accessorFn: (node) => getNodeDependentsCount(node),
     cell: ({ row }) => {
       const node = row.original;
@@ -109,9 +103,6 @@ function getNodeLastEditAtColumn(): ColumnDef<DependencyNode> {
   return {
     id: "last-edit-at",
     header: t`Last modified at`,
-    meta: {
-      width: "auto",
-    },
     accessorFn: (node) => getNodeLastEditInfo(node)?.timestamp,
     cell: ({ row }) => {
       const node = row.original;
@@ -128,9 +119,6 @@ function getNodeLastEditByColumn(): ColumnDef<DependencyNode> {
   return {
     id: "last-edit-by",
     header: t`Last modified by`,
-    meta: {
-      width: "auto",
-    },
     accessorFn: (node) => {
       const editInfo = getNodeLastEditInfo(node);
       return editInfo != null ? getUserName(editInfo) : undefined;
@@ -144,16 +132,18 @@ function getNodeLastEditByColumn(): ColumnDef<DependencyNode> {
 }
 
 type ColumnOptions = {
-  withDependentsCountColumn?: boolean;
+  withErrorsColumn: boolean;
+  withDependentsCountColumn: boolean;
 };
 
 export function getColumns({
+  withErrorsColumn,
   withDependentsCountColumn,
 }: ColumnOptions): ColumnDef<DependencyNode>[] {
   return [
     getNodeNameColumn(),
     getNodeLocationColumn(),
-    getNodeErrorsColumn(),
+    ...(withErrorsColumn ? [getNodeErrorsColumn()] : []),
     ...(withDependentsCountColumn ? [getNodeDependentsCountColumn()] : []),
     getNodeLastEditAtColumn(),
     getNodeLastEditByColumn(),

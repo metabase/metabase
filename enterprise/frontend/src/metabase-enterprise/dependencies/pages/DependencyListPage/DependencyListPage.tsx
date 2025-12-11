@@ -72,6 +72,7 @@ type DependencyListPageProps = {
   params: Urls.DependencyListParams;
   availableGroupTypes: DependencyGroupType[];
   nothingFoundMessage: string;
+  withErrorsColumn: boolean;
   withDependentsCountColumn: boolean;
   onParamsChange: (
     params: Urls.DependencyListParams,
@@ -84,6 +85,7 @@ function DependencyListPage({
   params,
   availableGroupTypes,
   nothingFoundMessage,
+  withErrorsColumn,
   withDependentsCountColumn,
   onParamsChange,
 }: DependencyListPageProps) {
@@ -212,6 +214,7 @@ function DependencyListPage({
             items={data.data}
             sortOptions={sortOptions}
             paginationOptions={paginationOptions}
+            withErrorsColumn={withErrorsColumn}
             withDependentsCountColumn={withDependentsCountColumn}
             onSortChange={handleSortChange}
             onPageChange={handlePageChange}
@@ -252,6 +255,7 @@ export function BrokenDependencyListPage({
       params={params}
       availableGroupTypes={BROKEN_GROUP_TYPES}
       nothingFoundMessage={t`No broken entities found`}
+      withErrorsColumn
       withDependentsCountColumn
       onParamsChange={handleParamsChange}
     />
@@ -288,6 +292,7 @@ export function UnreferencedDependencyListPage({
       params={params}
       availableGroupTypes={UNREFERENCED_GROUP_TYPES}
       nothingFoundMessage={t`No unreferenced entities found`}
+      withErrorsColumn={false}
       withDependentsCountColumn={false}
       onParamsChange={handleParamsChange}
     />

@@ -14,18 +14,20 @@ type DependencyListProps = {
   items: DependencyNode[];
   sortOptions?: DependencyListSortOptions;
   paginationOptions?: PaginationOptions;
-  withDependentsCountColumn?: boolean;
+  withErrorsColumn: boolean;
+  withDependentsCountColumn: boolean;
   onSortChange?: (sortOptions: DependencyListSortOptions) => void;
   onPageChange?: (pageIndex: number) => void;
 };
 
 export const DependencyList = memo(function DependencyList({
   items,
-  withDependentsCountColumn = false,
+  withErrorsColumn,
+  withDependentsCountColumn,
 }: DependencyListProps) {
   const columns = useMemo(
-    () => getColumns({ withDependentsCountColumn }),
-    [withDependentsCountColumn],
+    () => getColumns({ withErrorsColumn, withDependentsCountColumn }),
+    [withErrorsColumn, withDependentsCountColumn],
   );
 
   return (
