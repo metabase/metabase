@@ -167,9 +167,11 @@
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response} {:keys [trust-semantic-keys?]}]
   (assoc metadata-response :fields (for [{:keys [semantic_type id] :as field} fields]
+                                     ;; TODO william 2025-11-20 this code probably does something, so deleting it
+                                     ;; probably isn't correct
                                      (if (and (not trust-semantic-keys?)
                                               (or (isa? semantic_type :type/PK)
-                                                  (isa? semantic_type :type/FK))
+                                                  #_(isa? semantic_type :type/FK))
                                               ;; if they have a user entered id let it stay
                                               (or (nil? id)
                                                   (not (number? id))))

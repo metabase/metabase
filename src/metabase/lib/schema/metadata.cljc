@@ -353,6 +353,9 @@
     ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
     ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
     [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+    ;; TODO wzimrin 2025/11/12 make fk-target-column-name/fk-target-card-id and fk-target-field-id mutually exclusive
+    [:fk-target-column-name {:optional true} [:maybe :string]]
+    [:fk-target-card-id {:optional true} [:maybe ::lib.schema.id/card]]
     ;;
     ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
     ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can

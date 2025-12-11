@@ -19,11 +19,17 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv some empty? not-empty get-in]]))
+
+(defn- implicit-join-opts? [opts]
+  (and (or (:source-field opts)
+           (:source-field-name opts))
+       (not (:join-alias opts))))
 
 (defn- implicitly-joined-fields
   "Find fields that come from implicit join in form `x`, presumably a query.
@@ -35,7 +41,7 @@
   (into []
         (distinct)
         (lib.util.match/match (dissoc x :lib/stage-metadata)
-          [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-oname]
+          [:field (_opts :guard implicit-join-opts?) _id-or-oname]
           &match)))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
@@ -44,7 +50,8 @@
 (mr/def ::fk-field-info
   [:map
    {:closed true} ; closed because it is used as a map key
-   [:fk-field-id   ::lib.schema.id/field]
+   [:fk-card-id    {:optional true} ::lib.schema.id/card]
+   [:fk-field-id   {:optional true} ::lib.schema.id/field]
    [:fk-field-name {:optional true} :string]
    [:fk-join-alias {:optional true} ::lib.schema.join/alias]])
 
@@ -55,7 +62,7 @@
     [:fields        [:= :none]]
     [:strategy      [:= :left-join]]
     [:conditions    [:tuple :mbql.clause/=]] ; exactly one condition
-    [:fk-field-id   ::lib.schema.id/field]
+    [:fk-field-id   {:optional true} ::lib.schema.id/field]
     [:fk-field-name {:optional true} [:maybe :string]]
     [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]]])
 
@@ -65,8 +72,21 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    fk-field-infos        :- [:maybe [:sequential ::fk-field-info]]]
   (when (seq fk-field-infos)
-    (let [fk-field-ids     (into #{} (map :fk-field-id) fk-field-infos)
-          fk-fields        (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column fk-field-ids)
+    (let [fk-field-ids     (into #{} (keep :fk-field-id) fk-field-infos)
+          fk-direct-fields (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column fk-field-ids)
+          _fk-cards        (->> (into #{} (keep :fk-card-id) fk-field-infos) ;; warm the cache
+                                (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/card))
+          card-fields-map  (into {}
+                                 (keep (fn [{:keys [fk-card-id fk-field-name fk-field-id]}]
+                                         (when (and fk-card-id
+                                                    (not fk-field-id))
+                                           (when-let [card-field (-> (lib.metadata/card metadata-providerable fk-card-id)
+                                                                     :result-metadata
+                                                                     (->> (some #(and (= (:name %) fk-field-name) %)))
+                                                                     (update-keys u/->kebab-case-en))]
+                                             [[fk-card-id fk-field-name] card-field]))))
+                                 fk-field-infos)
+          fk-fields        (into fk-direct-fields (vals card-fields-map))
           target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
           target-fields    (when (seq target-field-ids)
                              (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column target-field-ids))
@@ -74,30 +94,40 @@
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
         (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/table target-table-ids))
-      (for [{:keys [fk-field-id fk-field-name fk-join-alias]} fk-field-infos
-            :let                                              [fk-field (lib.metadata/field metadata-providerable fk-field-id)]
-            :when                                             fk-field
-            :let                                              [{pk-id :fk-target-field-id} fk-field]
-            :when                                             pk-id]
-        (let [{source-table-id :table-id}          (lib.metadata/field metadata-providerable pk-id)
-              {table-name :name, :as source-table} (lib.metadata/table metadata-providerable source-table-id)
+      (for [{:keys [fk-field-id fk-field-name
+                    fk-join-alias fk-card-id]} fk-field-infos
+            :let                               [fk-field (if fk-field-id
+                                                           (lib.metadata/field metadata-providerable fk-field-id)
+                                                           (card-fields-map [fk-card-id fk-field-name]))]
+            :when                              fk-field
+            :let                               [{target-id :fk-target-field-id
+                                                 target-name :fk-target-column-name
+                                                 target-card :fk-target-card-id} fk-field]
+            :when                              (or target-id target-name)]
+        (let [{table-name :name, :as source-table} (if target-id
+                                                     (->> (lib.metadata/field metadata-providerable target-id)
+                                                          (lib.metadata/table metadata-providerable))
+                                                     (lib.metadata/card metadata-providerable target-card))
               alias-for-join                       (join-alias table-name (or fk-field-name (:name fk-field)) fk-join-alias)]
-
           (-> (lib/join-clause source-table)
               (lib/with-join-alias alias-for-join)
               (lib/with-join-conditions [(lib/= [:field
                                                  (m/assoc-some {:lib/uuid (str (random-uuid))}
-                                                               :base-type (when fk-field-name (:base-type fk-field))
+                                                               :base-type (when fk-field-name
+                                                                            (:base-type fk-field))
                                                                :join-alias fk-join-alias)
                                                  (or fk-field-name fk-field-id)]
                                                 [:field
-                                                 {:lib/uuid (str (random-uuid)), :join-alias alias-for-join}
-                                                 pk-id])])
+                                                 {:lib/uuid (str (random-uuid)),
+                                                  :join-alias alias-for-join
+                                                  :base-type (when target-name
+                                                               (:base-type fk-field))}
+                                                 (or target-id target-name)])])
               (lib/with-join-strategy :left-join)
               (lib/with-join-fields :none)
-              (assoc :qp/is-implicit-join true
-                     :fk-field-id         fk-field-id)
-              (m/assoc-some :fk-field-name fk-field-name
+              (assoc :qp/is-implicit-join true)
+              (m/assoc-some :fk-field-id   fk-field-id
+                            :fk-field-name fk-field-name
                             :fk-join-alias fk-join-alias)))))))
 
 (mu/defn- field-opts->fk-field-info :- ::fk-field-info
@@ -108,9 +138,11 @@
   problematic case is when refs with and without `:source-field-name` are mixed, but there should be the same implicit
   join for all of them."
   [metadata-providerable                                            :- ::lib.schema.metadata/metadata-providerable
-   {:keys [source-field source-field-name source-field-join-alias]} :- :map] ; not `::lib.schema.ref/field.options` because this might come from a legacy ref
-  (let [fk-field (lib.metadata/field metadata-providerable source-field)]
-    (m/assoc-some {:fk-field-id source-field}
+   {:keys [source-field source-field-name source-field-join-alias source-card]} :- :map] ; not `::lib.schema.ref/field.options` because this might come from a legacy ref
+  (let [fk-field (and source-field (lib.metadata/field metadata-providerable source-field))]
+    (m/assoc-some {}
+                  :fk-card-id    source-card
+                  :fk-field-id   source-field
                   :fk-field-name (when (and (some? source-field-name) (not= source-field-name (:name fk-field)))
                                    source-field-name)
                   :fk-join-alias source-field-join-alias)))
@@ -122,7 +154,7 @@
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
                                     (lib.util.match/match-one clause
-                                      [:field (opts :guard (every-pred :source-field (complement :join-alias))) (id :guard integer?)]
+                                      [:field (opts :guard implicit-join-opts?) id]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
                             not-empty)]
@@ -176,7 +208,7 @@
     (letfn [(update-legacy-field-ref [field-ref]
               ;; field ref should be a LEGACY field ref.
               (lib.util.match/replace field-ref
-                [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
+                [:field id-or-name (opts :guard implicit-join-opts?)]
                 (let [join-alias (fk-field-info->join-alias (field-opts->fk-field-info query opts))]
                   (if (some? join-alias)
                     [:field id-or-name (assoc opts :join-alias join-alias)]
@@ -194,7 +226,7 @@
    stage :- ::lib.schema/stage]
   (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
         (let [stage' (lib.util.match/replace stage
-                       [:field (opts :guard (every-pred :source-field (complement :join-alias))) id-or-name]
+                       [:field (opts :guard implicit-join-opts?) id-or-name]
                        (if-not (some #{:lib/stage-metadata} &parents)
                          (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
                                               (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
@@ -399,7 +431,9 @@
    stage :- ::lib.schema/stage]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
              (lib.util.match/match-one stage
-               [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-name]))
+               [:field (_opts :guard #(and (or (:source-field %)
+                                               (:source-field-name %))
+                                           (not (:join-alias %)))) _id-or-name]))
     (when (and driver/*driver*
                (not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database query))))
       (throw (ex-info (tru "{0} driver does not support left join." driver/*driver*)
