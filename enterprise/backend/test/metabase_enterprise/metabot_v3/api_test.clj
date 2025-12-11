@@ -105,33 +105,27 @@
               (is (= "omnibot" (:use_case (first @ai-requests)))))))))))
 
 (deftest agent-streaming-use-case-tracking-test
-  (testing "use_case_id is stored in MetabotMessage when use case exists"
+  (testing "use_case is stored in MetabotMessage"
     (mt/with-premium-features #{:metabot-v3}
       (let [mock-response   (client-test/make-mock-stream-response
                              ["OK"]
                              {"model" {:prompt 1 :completion 1}})
             conversation-id (str (random-uuid))]
-        (mt/with-temp [:model/Metabot {metabot-id :id :as metabot} {:name "Test Metabot"}
-                       :model/MetabotUseCase {uc-id :id} {:metabot_id metabot-id
-                                                          :name       "test-use-case"
-                                                          :profile    "test-profile"
-                                                          :enabled    true}]
-          (mt/with-dynamic-fn-redefs [client/post! (fn [url opts]
-                                                     ((client-test/mock-post! mock-response) url opts))]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
-                                    {:message         "test"
-                                     :context         {}
-                                     :conversation_id conversation-id
-                                     :history         []
-                                     :state           {}
-                                     :metabot_id      (:entity_id metabot)
-                                     :use_case        "test-use-case"})
-              (let [messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-                (is (= 2 (count messages)))
-                ;; Both user and assistant messages should have the use_case_id
-                (is (every? #(= uc-id (:use_case_id %)) messages))))))))))
+        (mt/with-dynamic-fn-redefs [client/post! (fn [url opts]
+                                                   ((client-test/mock-post! mock-response) url opts))]
+          (mt/with-model-cleanup [:model/MetabotMessage
+                                  [:model/MetabotConversation :created_at]]
+            (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                  {:message         "test"
+                                   :context         {}
+                                   :conversation_id conversation-id
+                                   :history         []
+                                   :state           {}
+                                   :use_case        "test-use-case"})
+            (let [messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+              (is (= 2 (count messages)))
+              ;; Both user and assistant messages should have the use_case
+              (is (every? #(= "test-use-case" (:use_case %)) messages)))))))))
 
 (deftest closing-connection-test
   (let [messages   (atom nil)
