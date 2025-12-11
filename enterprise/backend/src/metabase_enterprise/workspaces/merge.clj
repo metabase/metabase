@@ -20,46 +20,37 @@
 
   ;; Assume validation has alr
   ;; Ensure the hook
-  (let [[op global-tx] (cond (and global_id archived_at)
-                             [:delete
-                              (try (u/prog1 (t2/select-one :model/Transform :id global_id)
-                                     (transforms.api/delete-transform! global_id))
-                                   (catch Throwable e
-                                     (throw (ex-info "Merging of a transform failed."
-                                                     {:op :delete
-                                                      :global_id global_id
-                                                      :ref_id ref_id}
-                                                     e))))]
+  (let [{:keys [error] :as result}
+        (cond (and global_id archived_at)
+              (merge
+               {:op :delete :global_id global_id :ref_id ref_id}
+               (try (u/prog1 (t2/select-one :model/Transform :id global_id)
+                      (transforms.api/delete-transform! global_id))
+                    (catch Throwable e
+                      {:error e})))
 
-                             global_id
-                             [:update
-                              (try (transforms.api/update-transform!
-                                    global_id (select-keys ws-transform [:name :description :source :target]))
-                                   (catch Throwable e
-                                     (throw (ex-info "Merging of a transform failed."
-                                                     {:op :update
-                                                      :global_id global_id
-                                                      :ref_id ref_id}
-                                                     e))))]
+              global_id
+              (merge
+               {:op :update :global_id global_id :ref_id ref_id}
+               (try (transforms.api/update-transform!
+                     global_id (select-keys ws-transform [:name :description :source :target]))
+                    (catch Throwable e
+                      {:error e})))
 
-                             archived_at
-                             [:noop nil]
+              archived_at
+              {:op :noop :global_id nil :ref_id ref_id}
 
-                             :else
-                             [:create
-                              (try (transforms.api/create-transform!
-                                    (select-keys ws-transform [:name :description :source :target]))
-                                   (catch Throwable e
-                                     (throw (ex-info "Merging of a transform failed."
-                                                     {:op :create
-                                                      :ref_id ref_id}
-                                                     e))))])]
+              :else
+              (merge
+               {:op :create :global_id nil :ref_id ref_id}
+               (try {:global_id (:id (transforms.api/create-transform!
+                                      (select-keys ws-transform [:name :description :source :target])))}
+                    (catch Throwable e
+                      {:error e}))))]
+    (when-not error
+      (t2/delete! :model/WorkspaceTransform :ref_id ref_id))
 
-    (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
-
-    {:op op
-     :ref_id ref_id
-     :global_id (:global_id global-tx)}))
+    result))
 
 (defn merge-workspace!
   "Make all the transforms in the Changeset public, i.e. create or update the relevant model/Transform entities.
