@@ -152,11 +152,12 @@ export function DatasetsList({
     );
 
   // Handle debouncing of loading state with instant updates when loading ends
-  // When loading starts, we want to delay showing the loading state by 300ms
-  // When loading ends, we want to hide it immediately
+  // When loading starts (false → true): debouncedIsFetching stays false for 300ms,
+  //   so shouldShowLoading delays showing the loading indicator
+  // When loading ends (true → false): shouldShowLoading immediately becomes false
+  //   regardless of debouncedIsFetching's debounced value
   const isFetching = isSearchFetching || isListRecentsFetching;
   const debouncedIsFetching = useDebouncedValue(isFetching, 300);
-  // Use instant value when hiding, debounced value when showing
   const shouldShowLoading = isFetching && debouncedIsFetching;
 
   const handleSwapDataSources = useCallback(
