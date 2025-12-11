@@ -286,8 +286,7 @@
         query       (lib/native-query mp "select * from orders limit 10;")
         orig-schema "public"]
     (with-transform-cleanup! [orig-name "ws_tables_test"]
-      (mt/with-temp [:model/Transform x1 {:source_type "native"
-                                          :name        "My X1"
+      (mt/with-temp [:model/Transform x1 {:name        "My X1"
                                           :source      {:type  "query"
                                                         :query query}
                                           :target      {:type     "table"
@@ -296,23 +295,24 @@
                                                         :name     orig-name}}]
         ;; create the global table
         (transforms.i/execute! x1 {:run-method :manual})
-        (let [workspace        (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                     {:name        "Test Workspace"
-                                                                      :database_id (mt/id)}))
+        (let [workspace      (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                                   {:name        "Test Workspace"
+                                                                    :database_id (mt/id)}))
+              create-url     (ws-url (:id workspace) "/transform")
+              create-req     (assoc (select-keys x1 [:name :source :target]) :global_id (:id x1))
               ;; add the transform
-              ref-id           (:ref_id
-                                (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform") x1))
-              mirror-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
-              mirror-table     (t2/select-one :model/Table
-                                              :schema (-> mirror-transform :target :schema)
-                                              :name (-> mirror-transform :target :name))]
+              ref-id         (:ref_id (mt/user-http-request :crowberto :post 200 create-url create-req))
+              ws-transform   (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
+              isolated-table (t2/select-one :model/Table
+                                            :schema (-> ws-transform :target :schema)
+                                            :name (-> ws-transform :target :name))]
           (testing "/table returns expected results"
             (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
                        :global   {:schema   orig-schema
                                   :table    orig-name
-                                  :table_id (:id mirror-table)}
+                                  :table_id (:id isolated-table)}
                        :isolated {:transform_id ref-id
                                   :table        string?}}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
@@ -324,11 +324,18 @@
                      [{:db_id    (mt/id)
                        :global   {:schema   orig-schema
                                   :table    orig-name
-                                  :table_id (:id mirror-table)}
+                                  :table_id (:id isolated-table)}
                        :isolated {:transform_id ref-id
+                                  :schema       (:schema workspace)
                                   :table        string?
                                   :table_id     int?}}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))))))))))
+
+;; TODO write a test for /table that covers the shadowing
+;; e.g. have two transforms in a chain connecting 3 tables:  (A -> X1 -> B -> X2 -> C)
+;; raw-inputs:      A (from X1) and B (from X2)
+;; outputs:         B (from X1) and C (from X2)
+;; external-inputs: A (raw-inputs - outputs)
 
 ;;;; Card dependency rejection tests
 

@@ -10,7 +10,6 @@
    The warehouse DB changes (actual table data) DO persist in the isolated schema."
   (:require
    [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase.api.common :as api]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -27,6 +26,15 @@
      {:table {:name   (:name target)
               :schema (:schema target)}})))
 
+(defn- remap-target [table-mapping {d :database, s :schema, t :name :as target}]
+  (if-let [replacement (table-mapping [d s t])]
+    ;; Always fallback to tables for re-mapped outputs, regardless of the type used in the original target.
+    {:type     (:type replacement "table")
+     :database (:db-id replacement)
+     :schema   (:schema replacement)
+     :name     (:table replacement)}
+    target))
+
 (defn run-workspace-transform!
   "Execute a workspace transform in preview mode using transaction rollback.
 
@@ -35,13 +43,13 @@
    in the isolated schema.
 
    Returns an ::ws.t/execution-result map with status, timing, and table metadata."
-  [workspace {:keys [target] :as transform} mapping]
-  #_(isolation/with-workspace-isolation workspace)
+  [_workspace {:keys [target] :as transform} table-mapping _field-mappings]
   (try
     (t2/with-transaction [_conn]
       (let [new-xf  (-> (select-keys transform [:name :description :source])
                         (assoc :creator_id api/*current-user-id*
-                               :target (mapping target)))
+                               ;; TODO remap :source as well
+                               :target (remap-target table-mapping target)))
             _       (assert (:target new-xf) "Target mapping must not be nil")
             temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
         (transforms.i/execute! temp-xf {:run-method :manual})
