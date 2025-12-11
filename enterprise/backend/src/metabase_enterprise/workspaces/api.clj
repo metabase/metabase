@@ -533,12 +533,13 @@
         ;; Most of the APIs and the FE are not respecting when a Workspace is archived yet.
         (t2/delete! :model/Workspace id)))))
 
-;; TODO: shape of the error
 (api.macros/defendpoint :post "/:id/transform/:txid/merge"
   :- [:map
-      [:global_id ::ws.t/appdb-id]
+      [:op [:enum :create :delete :update :noop]]
+      [:global_id [:maybe ::ws.t/appdb-id]]
       [:ref_id ::ws.t/ref-id]]
-  "Merge single transform from workspace back to the core."
+  "Merge single transform from workspace back to the core. If workspace transform is archived
+  the corresponding core transform is deleted."
   [{:keys [id txid]} :- [:map
                          [:id ::ws.t/appdb-id]
                          [:txid ::ws.t/ref-id]]]
