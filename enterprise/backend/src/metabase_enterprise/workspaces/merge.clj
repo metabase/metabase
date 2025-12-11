@@ -54,6 +54,11 @@
   ;; We need to make sure this is in a transaction too, but perhaps that should already be open, and we can state
   ;; it as an assumption.
   ;; TODO we'll want this to short-circuit
-  {:transforms
-   (for [ws-tx (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
-     (merge-transform! ws-tx))})
+  (try
+    (t2/with-transaction [_]
+      {:transforms
+       (for [ws-tx (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
+         (merge-transform! ws-tx))})
+    (catch Throwable t
+      ;; TODO: Wrap!
+      (throw t))))
