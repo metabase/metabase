@@ -15,6 +15,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -280,7 +281,7 @@
   (api/check-superuser)
   (let [db-id      (:database_id (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id)))
         ;; TODO (chris 2025/12/11) use target_db_id once it's there, and skip :target
-        transforms (t2/select [:model/Transform :id :name :source_type :target]
+        transforms (t2/select [:model/Transform :id :name :source_type :source :target]
                               {:left-join [[:workspace_transform :wt]
                                            [:and
                                             [:= :transform.id :wt.global_id]
@@ -291,10 +292,14 @@
     {:transforms
      (into []
            (comp (filter #(= db-id (:database (:target %))))
-                 (map #(dissoc % :target))
-                 ;; TODO (BOT-694) also mark native transforms which depend on cards as disabled
-                 (map #(assoc % :checkout_disabled (when (= :mbql (:source_type %))
-                                                     "mbql")))
+                 (map #(-> %
+                           (dissoc :source :target)
+                           (assoc :checkout_disabled (case (:source_type %)
+                                                       :mbql "mbql"
+                                                       :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
+                                                                 "card-reference")
+                                                       :python nil
+                                                       "unknown-type"))))
                  #_(map #(update % :last_run transforms.util/localize-run-timestamps)))
            transforms
            ;; Perhaps we want to expose some of this later?

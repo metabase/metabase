@@ -706,7 +706,7 @@
                                                                              :query (my-native-query
                                                                                      db-1
                                                                                      "SELECT * FROM {{card}}"
-                                                                                     {"card" 1})}
+                                                                                     {"card" card-id})}
                                                                :target      (random-target db-1)}
                        :model/Transform          {xf7-id :id} {:name   "Using another database"
                                                                :target (random-target db-2)}
@@ -735,6 +735,5 @@
                         xf3-id nil #_python-is-supported
                         xf4-id "mbql"
                         xf5-id nil #_native-is-supported
-                        ;; TODO (chris 2025/12/11) checkout should be blocked because of the use of card references
-                        xf6-id nil #_"card-reference"}
+                        xf6-id "card-reference"}
                        (u/index-by :id :checkout_disabled transforms)))))))))))
