@@ -38,25 +38,10 @@ describe("scenarios > embedding-sdk > requests", () => {
       });
     });
 
-    beforeEach(() => {
-      cy.clock(Date.now());
-    });
-
-    afterEach(() => {
-      cy.clock().then((clock) => clock.restore());
-    });
-
     it("properly performs session token refresh request when multiple data requests are triggered at the same time", () => {
-      let datasetCount = 0;
-      cy.intercept("POST", "/api/dataset", (req) => {
-        datasetCount++;
-        // eslint-disable-next-line no-console
-        console.log(
-          `Dataset request #${datasetCount}`,
-          req.headers["x-metabase-session"],
-        );
-        req.continue();
-      }).as("dataset");
+      cy.clock(Date.now());
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
       const sessionIds: string[] = [];
 
