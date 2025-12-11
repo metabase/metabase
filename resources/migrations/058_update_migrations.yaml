@@ -2451,7 +2451,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: database_id
+                  name: db_id
                   type: int
                   remarks: Database containing the source table
                   constraints:
@@ -2558,7 +2558,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-10T10:00:04
       author: qnkhuat
-      comment: Add unique constraint on workspace_input (workspace_id, database_id, schema, table)
+      comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -2568,7 +2568,7 @@ databaseChangeLog:
       changes:
         - addUniqueConstraint:
             tableName: workspace_input
-            columnNames: workspace_id, database_id, schema, table
+            columnNames: workspace_id, db_id, schema, table
             constraintName: uq_workspace_input_logical_table
       rollback:
         - dropUniqueConstraint:
@@ -2610,7 +2610,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: database_id
+                  name: db_id
                   type: int
                   remarks: Database where the output table is created
                   constraints:

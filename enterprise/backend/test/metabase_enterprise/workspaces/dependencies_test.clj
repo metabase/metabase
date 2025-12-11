@@ -34,9 +34,9 @@
                               :name     "orders_with_products"}}
           result    (ws.deps/analyze-entity :transform transform)]
       (testing "output is extracted from target"
-        (is (= {:database_id (mt/id)
-                :schema      "public"
-                :table       "orders_with_products"}
+        (is (= {:db_id  (mt/id)
+                :schema "public"
+                :table  "orders_with_products"}
                (:output result))))
       (testing "inputs contain the source table with table_id (since table exists)"
         (let [inputs (:inputs result)
@@ -44,7 +44,7 @@
           (is (= 1 (count inputs)))
           (is (contains? table-names "ORDERS"))
           ;; MBQL queries have table_id since the tables must exist
-          (is (every? #(and (:database_id %)
+          (is (every? #(and (:db_id %)
                             (:table %)
                             (:table_id %))
                       inputs)))))))
@@ -60,15 +60,15 @@
                               :name     "high_value_orders"}}
           result    (ws.deps/analyze-entity :transform transform)]
       (testing "output is extracted from target"
-        (is (= {:database_id (mt/id)
-                :schema      "analytics"
-                :table       "high_value_orders"}
+        (is (= {:db_id  (mt/id)
+                :schema "analytics"
+                :table  "high_value_orders"}
                (:output result))))
       (testing "inputs include table_id since ORDERS table exists"
         (let [inputs (:inputs result)]
           ;; Native query parsing should detect ORDERS table reference and look up table_id
           (is (pos? (count inputs)))
-          (is (every? #(and (:database_id %)
+          (is (every? #(and (:db_id %)
                             (:table %)
                             (:table_id %))
                       inputs)))))))
@@ -85,23 +85,23 @@
                               :name     "regional_sales"}}
           result    (ws.deps/analyze-entity :transform transform)]
       (testing "output is extracted from target"
-        (is (= {:database_id (mt/id)
-                :schema      "analytics"
-                :table       "regional_sales"}
+        (is (= {:db_id  (mt/id)
+                :schema "analytics"
+                :table  "regional_sales"}
                (:output result))))
       (testing "inputs have logical reference but no table_id (table doesn't exist)"
         (let [inputs (:inputs result)]
           ;; Should still parse the table reference even though table doesn't exist
           (is (pos? (count inputs)))
-          ;; Has database_id and table name but NOT table_id
-          (is (every? #(and (:database_id %)
+          ;; Has db_id and table name but NOT table_id
+          (is (every? #(and (:db_id %)
                             (:table %))
                       inputs))
           ;; Verify table_id is nil or missing for non-existent tables
           (is (every? #(nil? (:table_id %)) inputs)))))))
 
 (deftest ^:parallel analyze-entity-python-transform-test
-  (testing "analyze-entity extracts dependencies from t python transform"
+  (testing "analyze-entity extracts dependencies from a python transform"
     (let [transform {:source {:type          "python"
                               :source-tables {"orders"   (mt/id :orders)
                                               "products" (mt/id :products)}
@@ -111,9 +111,9 @@
                               :name     "python_result"}}
           result    (ws.deps/analyze-entity :transform transform)]
       (testing "output is extracted from target"
-        (is (= {:database_id (mt/id)
-                :schema      "public"
-                :table       "python_result"}
+        (is (= {:db_id  (mt/id)
+                :schema "public"
+                :table  "python_result"}
                (:output result))))
       (testing "inputs contain the source tables with table_ids"
         (let [inputs (:inputs result)
@@ -126,7 +126,7 @@
 
 (deftest analyze-entity-asserts-transform-type-test
   (testing "analyze-entity asserts entity-type is :transform"
-    (is (thrown-with-msg? Exception #"transform"
+    (is (thrown-with-msg? Exception #"Entity type not supported"
                           (ws.deps/analyze-entity :card {})))))
 
 ;;; ---------------------------------------- write-dependencies! tests ----------------------------------------
@@ -141,16 +141,16 @@
                                                  :target       {:database (mt/id)
                                                                 :schema   "public"
                                                                 :name     "test_output"}}]
-      (let [analysis {:output {:database_id (mt/id)
-                               :schema      "public"
-                               :table       "test_output"}
+      (let [analysis {:output {:db_id  (mt/id)
+                               :schema "public"
+                               :table  "test_output"}
                       :inputs []}]
         (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
         (let [output (t2/select-one :model/WorkspaceOutput
                                     :workspace_id (:id workspace)
                                     :ref_id (:ref_id wt))]
           (is (some? output))
-          (is (= (mt/id) (:database_id output)))
+          (is (= (mt/id) (:db_id output)))
           (is (= "public" (:schema output)))
           (is (= "test_output" (:table output))))))))
 
@@ -165,18 +165,18 @@
                                                                 :schema   "public"
                                                                 :name     "test_output"}}]
       (let [orders-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :orders))
-            analysis     {:output {:database_id (mt/id)
-                                   :schema      "public"
-                                   :table       "test_output"}
-                          :inputs [{:database_id (:db_id orders-table)
-                                    :schema      (:schema orders-table)
-                                    :table       (:name orders-table)}]}]
+            analysis     {:output {:db_id  (mt/id)
+                                   :schema "public"
+                                   :table  "test_output"}
+                          :inputs [{:db_id  (:db_id orders-table)
+                                    :schema (:schema orders-table)
+                                    :table  (:name orders-table)}]}]
         (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
         (let [input (t2/select-one :model/WorkspaceInput
                                    :workspace_id (:id workspace)
                                    :table (:name orders-table))]
           (is (some? input))
-          (is (= (:db_id orders-table) (:database_id input)))
+          (is (= (:db_id orders-table) (:db_id input)))
           (is (= (:name orders-table) (:table input))))))))
 
 (deftest write-dependencies-creates-edges-test
@@ -190,12 +190,12 @@
                                                                 :schema   "public"
                                                                 :name     "test_output"}}]
       (let [orders-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :orders))
-            analysis     {:output {:database_id (mt/id)
-                                   :schema      "public"
-                                   :table       "test_output"}
-                          :inputs [{:database_id (:db_id orders-table)
-                                    :schema      (:schema orders-table)
-                                    :table       (:name orders-table)}]}]
+            analysis     {:output {:db_id  (mt/id)
+                                   :schema "public"
+                                   :table  "test_output"}
+                          :inputs [{:db_id  (:db_id orders-table)
+                                    :schema (:schema orders-table)
+                                    :table  (:name orders-table)}]}]
         (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
         (let [edges (t2/select :model/WorkspaceDependency
                                :workspace_id (:id workspace)
@@ -222,19 +222,19 @@
                                                                  :name     "downstream_output"}}]
       ;; First, write dependencies for the upstream transform (creates the output)
       (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt1)
-                                   {:output {:database_id (mt/id)
-                                             :schema      "public"
-                                             :table       "upstream_output"}
+                                   {:output {:db_id  (mt/id)
+                                             :schema "public"
+                                             :table  "upstream_output"}
                                     :inputs []})
 
       ;; Now write dependencies for downstream that depends on upstream's output
       (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt2)
-                                   {:output {:database_id (mt/id)
-                                             :schema      "public"
-                                             :table       "downstream_output"}
-                                    :inputs [{:database_id (mt/id)
-                                              :schema      "public"
-                                              :table       "upstream_output"}]})
+                                   {:output {:db_id  (mt/id)
+                                             :schema "public"
+                                             :table  "downstream_output"}
+                                    :inputs [{:db_id  (mt/id)
+                                              :schema "public"
+                                              :table  "upstream_output"}]})
 
       (let [edges (t2/select :model/WorkspaceDependency
                              :workspace_id (:id workspace)
@@ -262,22 +262,22 @@
             products-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :products))]
         ;; First write with orders dependency
         (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt)
-                                     {:output {:database_id (mt/id)
-                                               :schema      "public"
-                                               :table       "test_output"}
-                                      :inputs [{:database_id (:db_id orders-table)
-                                                :schema      (:schema orders-table)
-                                                :table       (:name orders-table)}]})
+                                     {:output {:db_id  (mt/id)
+                                               :schema "public"
+                                               :table  "test_output"}
+                                      :inputs [{:db_id  (:db_id orders-table)
+                                                :schema (:schema orders-table)
+                                                :table  (:name orders-table)}]})
         (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace))))
 
         ;; Update to depend on products instead
         (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt)
-                                     {:output {:database_id (mt/id)
-                                               :schema      "public"
-                                               :table       "test_output"}
-                                      :inputs [{:database_id (:db_id products-table)
-                                                :schema      (:schema products-table)
-                                                :table       (:name products-table)}]})
+                                     {:output {:db_id  (mt/id)
+                                               :schema "public"
+                                               :table  "test_output"}
+                                      :inputs [{:db_id  (:db_id products-table)
+                                                :schema (:schema products-table)
+                                                :table  (:name products-table)}]})
 
         (testing "old edge is removed"
           (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace)))))

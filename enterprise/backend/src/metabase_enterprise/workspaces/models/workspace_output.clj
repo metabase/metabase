@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.models.workspace-output
   "Model for WorkspaceOutput - tables that workspace transforms produce."
   (:require
-   [clojure.string :as str]
+   [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,4 +12,4 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/WorkspaceOutput
-  {:ref_id {:in identity :out str/trim}})
+  {:ref_id mi/transform-trim})

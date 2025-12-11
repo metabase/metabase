@@ -1891,7 +1891,6 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           metabase-enterprise.dependencies.calculation
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
@@ -2303,6 +2302,7 @@
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
+           app-db
            driver
            enterprise/dependencies
            enterprise/transforms

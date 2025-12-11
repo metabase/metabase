@@ -1369,17 +1369,13 @@
   This is useful for workspace dependency tracking where referenced tables may not
   exist yet.
 
-  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use [[metabase.driver-api.core/raw-native-query]]
-  to get the raw native query as needed.
+  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use
+  [[metabase.driver-api.core/raw-native-query]] to get the raw native query as needed.
 
   The return value should match the `:metabase.driver/native-query-table-refs` schema."
   {:added "0.58.0" :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-(defmethod native-query-table-refs :default
-  [_driver _query]
-  #{})
 
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
