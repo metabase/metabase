@@ -23,6 +23,10 @@ type CardWidthProps =
   | {
       maxWidth?: number;
       fullWidth?: never;
+    }
+  | {
+      maxWidth?: "initial";
+      fullWidth?: boolean;
     };
 
 type CardLinkProps =
@@ -82,11 +86,14 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
     [S.Large]: large,
   });
 
+  const normalizedMaxWidth =
+    maxWidth === "initial" ? undefined : `${maxWidth ?? 200}px`;
+
   return (
     <Box
       data-testid="upsell-card"
       w={fullWidth ? "100%" : "auto"}
-      maw={`${maxWidth ?? 200}px`}
+      maw={normalizedMaxWidth}
       {...props}
       className={className}
     >

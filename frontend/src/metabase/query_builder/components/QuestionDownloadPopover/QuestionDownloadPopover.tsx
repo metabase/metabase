@@ -87,9 +87,10 @@ const BaseQuestionDownloadPopover = ({
           question={question}
           result={result}
           formatPreference={formatPreference}
-          onDownload={(opts) => {
+          onDownload={async (opts) => {
             setIsPopoverOpen(false);
-            handleDownload(opts);
+
+            await handleDownload(opts);
           }}
         />
       </Popover.Dropdown>

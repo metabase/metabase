@@ -1,10 +1,11 @@
-import dayjs from "dayjs";
-import { useCallback, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
+import DateTime from "metabase/common/components/DateTime";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -109,6 +110,67 @@ export function LibrarySectionLayout() {
   useErrorHandling(tablesError || metricsError || snippetsError);
   const filterReturnedEmpty =
     !!searchQuery && filteredTree.length === 0 && libraryHasContent;
+  const showEmptyState =
+    !isLoading && (!libraryHasContent || filterReturnedEmpty);
+
+  const libraryColumnDef = useMemo<ColumnDef<TreeItem, ReactNode>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: t`Name`,
+        meta: { width: "auto" },
+        cell: ({ getValue, row }) => {
+          const data = row.original;
+          return (
+            <Group data-testid={`${data.model}-name`} gap="sm">
+              {data.icon && <Icon name={data.icon} c="brand" />}
+              {getValue()}
+            </Group>
+          );
+        },
+      },
+      {
+        accessorKey: "updatedAt",
+        header: t`Updated At`,
+        cell: ({ getValue }) => {
+          const value = getValue() as string;
+          return value && <DateTime value={value} />;
+        },
+      },
+      {
+        id: "actions",
+        header: "",
+        size: 24,
+        cell: ({ row: { original } }) => {
+          const { data } = original;
+          if (
+            isCollection(data) &&
+            data.model === "collection" &&
+            data.namespace === "snippets"
+          ) {
+            if (data.id === "root") {
+              return (
+                <RootSnippetsCollectionMenu
+                  setPermissionsCollectionId={setPermissionsCollectionId}
+                />
+              );
+            } else {
+              return (
+                <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
+                  collection={data}
+                  onEditDetails={setEditingCollection}
+                  onChangePermissions={setPermissionsCollectionId}
+                />
+              );
+            }
+          }
+
+          return null;
+        },
+      },
+    ],
+    [],
+  );
 
   return (
     <>
@@ -116,11 +178,12 @@ export function LibrarySectionLayout() {
         <Stack
           px="3.5rem"
           pt="4rem"
+          pb="2rem"
           bg="background-light"
-          mih="100%"
+          h="100%"
           data-testid="library-page"
         >
-          <Flex gap="0.5rem">
+          <Flex gap="md">
             <TextInput
               placeholder={t`Search...`}
               leftSection={<Icon name="search" />}
@@ -132,9 +195,8 @@ export function LibrarySectionLayout() {
             <CreateMenu metricCollectionId={metricCollection?.id} />
           </Flex>
           <Card withBorder p={0}>
-            {isLoading ? (
-              <ListLoadingState />
-            ) : !libraryHasContent || filterReturnedEmpty ? (
+            {isLoading && <ListLoadingState />}
+            {showEmptyState && (
               <ListEmptyState
                 label={
                   filterReturnedEmpty
@@ -142,67 +204,11 @@ export function LibrarySectionLayout() {
                     : t`No tables, metrics, or snippets yet`
                 }
               />
-            ) : (
+            )}
+            {!isLoading && !showEmptyState && (
               <Table
                 data={filteredTree}
-                columns={[
-                  {
-                    accessorKey: "name",
-                    header: t`Name`,
-                    meta: { width: "auto" },
-                    cell: ({ getValue, row }) => {
-                      const data = row.original;
-                      return (
-                        <Group data-testid={`${data.model}-name`} gap="sm">
-                          {data.icon && <Icon name={data.icon} c="brand" />}
-                          {getValue()}
-                        </Group>
-                      );
-                    },
-                  },
-                  {
-                    accessorKey: "updatedAt",
-                    header: t`Updated At`,
-                    cell: ({ getValue }) => {
-                      const value = getValue() as string;
-
-                      return value && dayjs(value).format("lll");
-                    },
-                  },
-                  {
-                    id: "actions",
-                    header: "",
-                    size: 24,
-                    cell: ({ row: { original } }) => {
-                      const { data } = original;
-                      if (
-                        isCollection(data) &&
-                        data.model === "collection" &&
-                        data.namespace === "snippets"
-                      ) {
-                        if (data.id === "root") {
-                          return (
-                            <RootSnippetsCollectionMenu
-                              setPermissionsCollectionId={
-                                setPermissionsCollectionId
-                              }
-                            />
-                          );
-                        } else {
-                          return (
-                            <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
-                              collection={data}
-                              onEditDetails={setEditingCollection}
-                              onChangePermissions={setPermissionsCollectionId}
-                            />
-                          );
-                        }
-                      }
-
-                      return null;
-                    },
-                  },
-                ]}
+                columns={libraryColumnDef}
                 onSelect={handleItemSelect}
               />
             )}
