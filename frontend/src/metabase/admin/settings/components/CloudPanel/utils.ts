@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 
-import { useStoreUrl } from "metabase/common/hooks";
 import type { Plan } from "metabase/common/utils/plan";
 import type {
   CloudMigration,
@@ -70,12 +69,6 @@ export const defaultGetPollingInterval = (
 
 export const getMigrationEventTime = (isoString: string) =>
   dayjs(isoString).format("MMMM DD, YYYY, hh:mm A");
-
-export const useGetStoreUrl = (plan: Plan) => {
-  const checkoutUrl = useStoreUrl("checkout");
-  const loginUrl = useStoreUrl("login");
-  return plan === "pro-self-hosted" ? loginUrl : checkoutUrl;
-};
 
 export const openCheckoutInNewTab = (
   storeUrl: string,

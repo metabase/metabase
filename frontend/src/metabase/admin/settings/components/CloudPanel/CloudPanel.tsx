@@ -17,13 +17,13 @@ import { MigrationError } from "./MigrationError";
 import { MigrationInProgress } from "./MigrationInProgress";
 import { MigrationStart } from "./MigrationStart";
 import { MigrationSuccess } from "./MigrationSuccess";
+import { useGetStoreUrl } from "./hooks";
 import {
   type InternalCloudMigrationState,
   defaultGetPollingInterval,
   getStartedVisibleStates,
   isInProgressMigration,
   openCheckoutInNewTab,
-  useGetStoreUrl,
 } from "./utils";
 
 interface CloudPanelProps {
