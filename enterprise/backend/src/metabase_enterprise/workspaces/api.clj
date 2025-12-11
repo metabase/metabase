@@ -428,7 +428,8 @@
    [:archived_at :any]
    [:created_at :any]
    [:updated_at :any]
-   [:last_run_at {:hydrated true} :any]])
+   ;; We are not storing this yet.
+   #_[:last_run_at {:hydrated true} :any]])
 
 (def ^:private workspace-transform-alias {:target_stale :stale})
 
@@ -483,33 +484,37 @@
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :ref_id tx-id :workspace_id ws-id)
-      api/check-404
-      (t2/hydrate :last_run_at)))
+      api/check-404))
 
 (api.macros/defendpoint :get "/:id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (fetch-ws-transform id tx-id))
 
-(api.macros/defendpoint :put "/:id/transform/:tx-id" :- WorkspaceTransform
+(api.macros/defendpoint :put "/:ws-id/transform/:tx-id" :- WorkspaceTransform
   "Update a transform in a workspace."
-  [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
    _query-params
    body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
-  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))
-  (t2/update! :model/WorkspaceTransform tx-id body)
-  (let [transform (fetch-ws-transform id tx-id)]
-    ;; Re-sync dependencies if source or target changed.
-    ;; NOTE: FE may send these fields even when unchanged, causing unnecessary re-syncs.
-    ;; This is acceptable for now - could use t2/changes in hooks for more precision.
-    (when (or (:source body) (:target body))
-      (let [workspace (t2/select-one :model/Workspace :id id)]
-        (ws.impl/sync-transform-dependencies! workspace transform)))
-    transform))
+  (t2/with-transaction [_tx]
+    (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+    (t2/update! :model/WorkspaceTransform tx-id body)
+    ;; Being cheeky and using the API response value for the pre-validation, to save a query.
+    (u/prog1 (fetch-ws-transform ws-id tx-id)
+      ;; NOTE: FE may send these fields even when unchanged, causing unnecessary re-syncs.
+      ;; This is acceptable for now, but using t2/changes in hooks might catch false positives?
+      ;; The most reliable thing would be to have a clear, tested contract with the FE to NOT send them if unchanged.
+      (when (or (:source body) (:target body))
+        ;; Note that we do NOT want to couple ourselves to the response shape of this API.
+        ;; We want to be extremely mindful of the fields we depend on, in case we remove them from the response.
+        (let [transform (select-keys <> [:ref_id :source :source_type :target])
+              workspace (t2/select-one :model/Workspace :id ws-id)]
+          ;; Re-sync dependencies if source or target changed.
+          (ws.impl/sync-transform-dependencies! workspace transform))))))
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/archive" :- :nil
   "Mark the given transform to be archived when the workspace is merged.
