@@ -41,6 +41,10 @@
     (with-open [r (io/reader f)]
       (vectorized (parse-stream r opts)))))
 
+(def codepoints-limit
+  "Default limit of our yaml parser"
+  3145728)
+
 (defn generate-string
   "Returns a YAML string from Clojure value x"
   [x & {:as opts}]
