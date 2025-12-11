@@ -15,7 +15,6 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -62,7 +61,6 @@ export function SettingsSAMLForm() {
   const { data: settingValues, isLoading: isLoadingValues } =
     useGetSettingsQuery();
   const [updateSamlSettings] = useUpdateSamlMutation();
-  const { value: tenantEnabled } = useAdminSetting("use-tenants");
 
   const isEnabled = Boolean(settingValues?.["saml-enabled"]);
 
@@ -154,7 +152,7 @@ export function SettingsSAMLForm() {
                       settingDetails?.["saml-attribute-lastname"],
                     )}
                   />
-                  {tenantEnabled && (
+                  {settingValues["use-tenants"] && (
                     <FormTextInput
                       name="saml-attribute-tenant"
                       label={t`Tenant assignment attribute`}
