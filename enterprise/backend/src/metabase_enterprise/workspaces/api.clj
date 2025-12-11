@@ -291,7 +291,7 @@
      (into []
            (comp (filter #(= db-id (:database (:target %))))
                  (map #(dissoc % :target))
-                 ;; TODO also mark native transforms which depend on cards as disabled
+                 ;; TODO (BOT-694) also mark native transforms which depend on cards as disabled
                  (map #(assoc % :checkout_disabled (when (= :mbql (:source_type %))
                                                      "mbql")))
                  #_(map #(update % :last_run transforms.util/localize-run-timestamps)))
