@@ -13,7 +13,7 @@ export const CollectionItemList = ({
   shouldShowItem,
 }: CollectionItemListProps) => {
   const {
-    data: collectionItems,
+    data: items,
     error,
     isLoading,
   } = useListCollectionItemsQuery<{
@@ -22,11 +22,11 @@ export const CollectionItemList = ({
     };
     error: any;
     isLoading: boolean;
-  }>(query ? query : skipToken);
+  }>(query ? { ...query, include_can_run_adhoc_query: true } : skipToken);
 
   return (
     <ItemList
-      items={collectionItems?.data}
+      items={items?.data}
       isLoading={isLoading}
       error={error}
       onClick={onClick}
