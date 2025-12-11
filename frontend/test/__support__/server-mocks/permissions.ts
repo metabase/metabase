@@ -33,13 +33,20 @@ export const setupPermissionsGraphEndpoints = (
 };
 
 export const setupCollectionPermissionsGraphEndpoint = (
-  permissionsGraph: CollectionPermissionsGraph,
+  initialPermissionsGraph: CollectionPermissionsGraph,
 ) => {
-  fetchMock.get("path:/api/collection/graph", permissionsGraph);
+  // Use a mutable state so that GET returns updated data after PUT
+  let currentGraph = { ...initialPermissionsGraph };
+
+  fetchMock.get("path:/api/collection/graph", () => currentGraph);
   fetchMock.put("path:/api/collection/graph", (call) => {
     const body = JSON.parse(call.options?.body as string);
-    body.revision += 1;
-    return body;
+    // Update the current graph with the new data
+    currentGraph = {
+      ...body,
+      revision: body.revision + 1,
+    };
+    return currentGraph;
   });
 };
 

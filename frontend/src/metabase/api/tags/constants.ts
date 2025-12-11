@@ -9,6 +9,7 @@ export const TAG_TYPES = [
   "channel",
   "cloud-migration",
   "collection",
+  "collection-permissions",
   "collection-tree",
   "content-translation",
   "dashboard",

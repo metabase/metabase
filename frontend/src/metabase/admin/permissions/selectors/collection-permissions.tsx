@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { t } from "ttag";
@@ -35,6 +37,7 @@ import type {
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { Messages } from "../constants/messages";
+import type { CollectionPermissionsConfig } from "../pages/CollectionPermissionsPage/types";
 import type { DataPermissionValue } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
@@ -73,10 +76,11 @@ export const getCurrentCollectionId = (
     : parseInt(String(props.params.collectionId));
 };
 
-const getRootCollectionTreeItem = () => {
+const getRootCollectionTreeItem = (rootCollectionName?: string) => {
   const rootCollectionIcon = getCollectionIcon(ROOT_COLLECTION);
   return {
     ...ROOT_COLLECTION,
+    name: rootCollectionName ?? ROOT_COLLECTION.name,
     icon: rootCollectionIcon.name,
     iconColor: rootCollectionIcon.color,
   };
@@ -217,14 +221,15 @@ export type CollectionPermissionEditorType = null | {
   entities: {
     id: number;
     name: string;
+    icon?: ReactNode;
     permissions: {
-      toggleLabel: string;
+      toggleLabel: string | null;
       hasChildren: boolean;
       isDisabled: boolean;
       disabledTooltip: string | null;
       value: string;
-      warning: string | null;
-      confirmations: (newValue: string) => string[];
+      warning: string | undefined;
+      confirmations: (newValue: DataPermissionValue) => (string | null)[];
       options: string[];
     }[];
   }[];
@@ -385,3 +390,4 @@ function getCollectionWarning(
     return t`This group has permission to edit at least one subcollection of this collection.`;
   }
 }
+
