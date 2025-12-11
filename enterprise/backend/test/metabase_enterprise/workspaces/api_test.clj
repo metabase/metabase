@@ -727,7 +727,7 @@
               (testing "we filter out the expected transforms"
                 ;; ❌ xf1 is checked out in this workspace, so it's filtered out
                 ;; ✅ xf2 is only checked out in another workspace, so it's kept
-                ;; ❌xf7 is in another database, so it's filtered out
+                ;; ❌ xf7 is in another database, so it's filtered out
                 (is (= (disj test-ids xf1-id xf7-id) ids)))
               (testing "we get the correct checkout_disabled reasons"
                 (is (= {xf2-id nil
