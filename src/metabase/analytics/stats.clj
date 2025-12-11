@@ -174,6 +174,13 @@
                                :logged_in (:last_login   user)
                                :sso       (= :google (:sso_source user))}))})
 
+(defn- document-metrics
+  "Get metrics based on documents."
+  []
+  {:documents (merge-count-maps (for [document (t2/select [:model/Document :archived])]
+                                  {:total 1
+                                   :archived (true? (:archived document))}))})
+
 (defn- group-metrics
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
@@ -490,7 +497,8 @@
                       :segment    (segment-metrics)
                       :system     (system-metrics)
                       :table      (table-metrics)
-                      :user       (user-metrics)}}))
+                      :user       (user-metrics)
+                      :document   (document-metrics)}}))
 
 (defn- ^:deprecated send-stats-deprecated!
   "Send stats to Metabase tracking server."
