@@ -88,14 +88,19 @@
                      (merge (select-keys (underlying col-id)
                                          [:semantic_type :fk_target_field_id :has_field_values :target :dimensions :name_field]))
                      (assoc
-                      :table_id     (str "card__" card-id)
-                      :id           (or col-id
-                                        ;; TODO -- what????
-                                        [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
+                      :table_id      (str "card__" card-id)
+                      :id            (or col-id
+                                         ;; TODO -- what????
+                                         [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
                       ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
-                      :semantic_type (keyword (:semantic_type col)))))]
+                      :semantic_type (keyword (:semantic_type col)))
+                     (m/assoc-some
+                      ;; If the semantic type is a FK, and the target is defined, keep it too.
+                      :fk_target_field_id (when (and (:semantic_type col)
+                                                     (isa? (keyword (:semantic_type col)) :type/FK))
+                                            (:fk_target_field_id col)))))]
     fields))
 
 (defn root-collection-schema-name
@@ -189,9 +194,11 @@
                                          cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        (let [trust-semantic-keys? (and (= (:type card) :model)
-                                        (= (-> card :dataset_query :type) :native))]
+        ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
+        ;; stale data that remained there from a time when the given column was still FK. We assume
+        ;; treating a not-FK-anymore column as FK is not that bad as not supporting user defined FK
+        ;; settings, so we trust the model's information.
+        (let [trust-semantic-keys? (= (:type card) :model)]
           (-> card
               (card->virtual-table :include-database? include-database?
                                    :include-fields? true
