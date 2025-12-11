@@ -546,8 +546,13 @@
                          [:id ::ws.t/appdb-id]
                          [:txid ::ws.t/ref-id]]]
   (let [ws-transform (u/prog1 (t2/select-one :model/WorkspaceTransform :workspace_id id :ref_id txid)
-                       (api/check-404 <>))]
-    (ws.merge/merge-transform! ws-transform)))
+                       (api/check-404 <>))
+        {:keys [error] :as result} (ws.merge/merge-transform! ws-transform)]
+    (if-not error
+      result
+      ;; tmp
+      {:status 500
+       :body (dissoc result :error)})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
