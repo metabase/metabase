@@ -25,8 +25,8 @@
    [toucan2.core :as t2]))
 
 (defn- store-message!
-  "Store a message in the conversation. Takes either use-case-id (preferred) or profile-id (legacy/dev override)."
-  [conversation-id {:keys [use-case-id profile-id]} messages]
+  "Store a message in the conversation. Takes either use-case (preferred) or profile-id (legacy/dev override)."
+  [conversation-id {:keys [use-case profile-id]} messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -44,7 +44,7 @@
                  :data            messages
                  :usage           (:usage finish)
                  :role            (:role (first messages))
-                 :use_case_id     use-case-id
+                 :use_case        use-case
                  :profile_id      profile-id
                  :total_tokens    (->> (vals (:usage finish))
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
@@ -59,12 +59,10 @@
   (let [message       (metabot-v3.envelope/user-message message)
         metabot-id    (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
         metabot-pk    (metabot-v3.config/normalize-metabot-id metabot-id)
-        use-case-id   (when use_case
-                        (t2/select-one-pk :model/MetabotUseCase :metabot_id metabot-pk :name use_case))
         profile       (metabot-v3.config/resolve-profile metabot-pk use_case profile_id)
         session-id    (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
-        tracking-info {:use-case-id use-case-id
-                       :profile-id  profile}]
+        tracking-info {:use-case   use_case
+                       :profile-id profile}]
     (store-message! conversation_id tracking-info [message])
     (metabot-v3.client/streaming-request
      {:context         (metabot-v3.context/create-context context)
