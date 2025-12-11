@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { GitSyncControls } from "./GitSyncControls";
@@ -8,7 +9,6 @@ import {
   createMockDirtyEntity,
   createRemoteSyncStoreState,
   setupCollectionEndpoints,
-  setupRemoteSyncEndpoints,
   setupSessionEndpoints,
 } from "./test-utils";
 
