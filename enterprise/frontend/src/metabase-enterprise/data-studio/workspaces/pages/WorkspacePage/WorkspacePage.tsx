@@ -686,8 +686,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 onTransformClick={async (
                   workspaceTransform: WorkspaceTransformItem,
                 ) => {
-                  // const workspaceTransform = await fetch;
-                  // addOpenedTransform(workspaceTransform);
                   const { data: transform } = await fetchWorkspaceTransform({
                     workspaceId: workspace.id,
                     transformId: workspaceTransform.ref_id,

@@ -155,7 +155,7 @@ export type WorkspaceInputTable = {
 };
 
 export type WorkspaceOutputTableEntry = {
-  id: number | null;
+  transform_id: number | null;
   db_id: DatabaseId;
   schema: string;
   table: string;

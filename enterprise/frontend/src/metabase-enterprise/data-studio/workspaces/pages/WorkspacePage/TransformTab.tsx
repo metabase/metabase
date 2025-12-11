@@ -13,7 +13,6 @@ import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
   useGetTransformQuery,
-  useRunTransformMutation,
   useRunWorkspaceTransformMutation,
   useValidateTableNameMutation,
   workspaceApi,
@@ -184,7 +183,6 @@ export const TransformTab = ({
     isSaved || unsavedTransforms.some((t) => t.id === transform.id);
 
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
-  // const [runTransform] = useRunTransformMutation();
   const [runTransform] = useRunWorkspaceTransformMutation();
   const [_validateTableName] = useValidateTableNameMutation();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
