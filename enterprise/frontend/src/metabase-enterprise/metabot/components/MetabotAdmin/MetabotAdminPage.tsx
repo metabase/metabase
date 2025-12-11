@@ -91,31 +91,49 @@ export function MetabotAdminPage() {
         >
           {!isEmbedMetabot && (
             <Box className={S.SectionCard}>
-              <MetabotNLQSection metabot={metabot} />
+              <MetabotUseCaseSection
+                metabot={metabot}
+                useCase="nlq"
+                title={t`Natural Language Querying`}
+                description={t`Allow users to query data using natural language`}
+                switchLabel={t`Enable NLQ`}
+              />
             </Box>
           )}
 
           {!isEmbedMetabot && (
             <Box className={S.SectionCard}>
-              <MetabotSQLGenerationSection metabot={metabot} />
+              <MetabotUseCaseSection
+                metabot={metabot}
+                useCase="sql"
+                title={t`SQL Generation`}
+                description={t`Generate SQL queries from natural language inputs`}
+                switchLabel={t`Enable SQL generation`}
+              />
             </Box>
           )}
 
           {!isEmbedMetabot && (
             <Box className={S.SectionCard}>
-              <MetabotOmnibotSection metabot={metabot} />
+              <MetabotUseCaseSection
+                metabot={metabot}
+                useCase="omnibot"
+                title={t`Omnibot`}
+                description={t`Enable the multi-modal AI assistant`}
+                switchLabel={t`Enable Omnibot`}
+              />
             </Box>
           )}
 
           {!isEmbedMetabot && (
             <Box className={S.SectionCard}>
-              <MetabotTransformsSection metabot={metabot} />
-            </Box>
-          )}
-
-          {isEmbedMetabot && (
-            <Box className={S.SectionCard}>
-              <MetabotCollectionConfigurationPane metabot={metabot} />
+              <MetabotUseCaseSection
+                metabot={metabot}
+                useCase="transforms"
+                title={t`Transforms`}
+                description={t`Allow Metabot to write and edit transforms`}
+                switchLabel={t`Enable Transforms`}
+              />
             </Box>
           )}
 
@@ -134,6 +152,9 @@ export function MetabotAdminPage() {
                   metabot={metabot}
                   title={t`Collection for NLQ`}
                 />
+              )}
+              {isEmbedMetabot && (
+                <MetabotCollectionConfigurationPane metabot={metabot} />
               )}
               <MetabotVerifiedContentConfigurationPane metabot={metabot} />
               <MetabotPromptSuggestionPane metabot={metabot} />
@@ -172,100 +193,34 @@ function useUseCaseToggle(metabot: MetabotInfo, useCaseName: MetabotUseCase) {
   return { isEnabled, isLoading, handleToggle };
 }
 
-function MetabotNLQSection({ metabot }: { metabot: MetabotInfo }) {
+function MetabotUseCaseSection({
+  metabot,
+  useCase,
+  title,
+  description,
+  switchLabel,
+}: {
+  metabot: MetabotInfo;
+  useCase: MetabotUseCase;
+  title: string;
+  description: string;
+  switchLabel: string;
+}) {
   const { isEnabled, isLoading, handleToggle } = useUseCaseToggle(
     metabot,
-    "nlq",
+    useCase,
   );
 
   return (
     <Stack gap="sm">
       <Text fw={600} c="text-dark" fz="h4">
-        {t`Natural Language Querying`}
+        {title}
       </Text>
       <Text c="text-medium" maw="38rem">
-        {t`Allow users to query data using natural language`}
+        {description}
       </Text>
       <Switch
-        label={t`Enable NLQ`}
-        checked={isEnabled}
-        onChange={(e) => handleToggle(e.target.checked)}
-        disabled={isLoading}
-        w="auto"
-        size="sm"
-      />
-    </Stack>
-  );
-}
-
-function MetabotSQLGenerationSection({ metabot }: { metabot: MetabotInfo }) {
-  const { isEnabled, isLoading, handleToggle } = useUseCaseToggle(
-    metabot,
-    "sql",
-  );
-
-  return (
-    <Stack gap="sm">
-      <Text fw={600} c="text-dark" fz="h4">
-        {t`SQL Generation`}
-      </Text>
-      <Text c="text-medium" maw="38rem">
-        {t`Generate SQL queries from natural language inputs`}
-      </Text>
-      <Switch
-        label={t`Enable SQL generation`}
-        checked={isEnabled}
-        onChange={(e) => handleToggle(e.target.checked)}
-        disabled={isLoading}
-        w="auto"
-        size="sm"
-      />
-    </Stack>
-  );
-}
-
-function MetabotOmnibotSection({ metabot }: { metabot: MetabotInfo }) {
-  const { isEnabled, isLoading, handleToggle } = useUseCaseToggle(
-    metabot,
-    "omnibot",
-  );
-
-  return (
-    <Stack gap="sm">
-      <Text fw={600} c="text-dark" fz="h4">
-        {t`Omnibot`}
-      </Text>
-      <Text c="text-medium" maw="38rem">
-        {t`Enable the multi-modal AI assistant`}
-      </Text>
-      <Switch
-        label={t`Enable Omnibot`}
-        checked={isEnabled}
-        onChange={(e) => handleToggle(e.target.checked)}
-        disabled={isLoading}
-        w="auto"
-        size="sm"
-      />
-    </Stack>
-  );
-}
-
-function MetabotTransformsSection({ metabot }: { metabot: MetabotInfo }) {
-  const { isEnabled, isLoading, handleToggle } = useUseCaseToggle(
-    metabot,
-    "transforms",
-  );
-
-  return (
-    <Stack gap="sm">
-      <Text fw={600} c="text-dark" fz="h4">
-        {t`Transforms`}
-      </Text>
-      <Text c="text-medium" maw="38rem">
-        {t`Allow Metabot to write and edit transforms`}
-      </Text>
-      <Switch
-        label={t`Enable Transforms`}
+        label={switchLabel}
         checked={isEnabled}
         onChange={(e) => handleToggle(e.target.checked)}
         disabled={isLoading}
