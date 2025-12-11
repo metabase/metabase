@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import Link from "metabase/common/components/Link/Link";
 import * as Urls from "metabase/lib/urls";
-import type { GroupProps } from "metabase/ui";
+import type { StackProps } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import type { Transform } from "metabase-types/api";
@@ -17,7 +17,7 @@ type TransformHeaderProps = {
   hasMenu?: boolean;
   isEditMode?: boolean;
   transform: Transform;
-} & Omit<GroupProps, "title">;
+} & Omit<StackProps, "title">;
 
 export function TransformHeader({
   transform,
