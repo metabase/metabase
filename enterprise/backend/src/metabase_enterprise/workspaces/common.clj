@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.dag :as ws.dag]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -144,18 +145,19 @@
   "Add the given "
   [_creator-id workspace entity-type global-id body]
   (ws.u/assert-transform! entity-type)
-  (u/prog1
-    (t2/with-transaction [_]
-      (let [workspace-id    (:id workspace)
-            workspace-db-id (:database_id workspace)
-            body            (assoc-in body [:target :database] workspace-db-id)]
-        (t2/insert-returning-instance!
-         :model/WorkspaceTransform
-         (assoc (select-keys body [:name :description :source :target])
-                ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
-                ;:creator_id creator-id
-                :global_id global-id
-                :workspace_id workspace-id))))))
+  (let [transform (t2/with-transaction [_]
+                    (let [workspace-id    (:id workspace)
+                          workspace-db-id (:database_id workspace)
+                          body            (assoc-in body [:target :database] workspace-db-id)]
+                      (t2/insert-returning-instance!
+                       :model/WorkspaceTransform
+                       (assoc (select-keys body [:name :description :source :target])
+                              ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
+                              ;:creator_id creator-id
+                              :global_id global-id
+                              :workspace_id workspace-id))))]
+    (ws.impl/sync-transform-dependencies! workspace transform)
+    transform))
 
 (defn- mirror-table-to-delete-where
   [database-id targets]
