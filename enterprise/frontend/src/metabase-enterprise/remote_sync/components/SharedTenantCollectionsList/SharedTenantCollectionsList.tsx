@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Box, Flex, Icon, Loader, Switch, Text } from "metabase/ui";
@@ -127,7 +127,8 @@ const CollectionSyncRow = ({
             checked={isChecked}
             onChange={(e) => onToggle(collection, e.currentTarget.checked)}
             disabled={!canWrite || isReadOnly}
-            aria-label={t`Sync ${collection.name}`}
+            aria-label={c("{0} is the name of a metabase collection")
+              .t`Sync ${collection.name}`}
           />
           <Text>{t`Sync`}</Text>
         </Flex>
