@@ -8,7 +8,7 @@ import { useToast } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Icon, Loader, Tooltip } from "metabase/ui";
+import { Button, Icon, Loader, Tooltip } from "metabase/ui";
 import {
   useGetRemoteSyncChangesQuery,
   useImportChangesMutation,
@@ -25,7 +25,6 @@ import {
 } from "../SyncConflictModal";
 
 import { BranchPicker } from "./BranchPicker";
-import styles from "./GitSyncControls.module.css";
 
 export const GitSyncControls = () => {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -174,7 +173,7 @@ export const GitSyncControls = () => {
 
   return (
     <>
-      <div className={styles.pill} data-testid="git-sync-controls">
+      <Button.Group data-testid="git-sync-controls" mr="2rem">
         <BranchPicker
           isLoading={isLoading}
           value={currentBranch}
@@ -182,38 +181,40 @@ export const GitSyncControls = () => {
           baseBranch={currentBranch}
         />
 
-        <div className={styles.divider} />
-
         <Tooltip label={t`Pull from Git`}>
-          <button
-            className={styles.syncButton}
+          <Button
+            variant="default"
+            size="compact-sm"
+            px="0.5rem"
+            py="1rem"
             onClick={handlePullClick}
             disabled={isLoading}
             aria-label={t`Pull from Git`}
             data-testid="git-pull-button"
-          >
-            {isImporting ? (
-              <Loader size="xs" />
-            ) : (
-              <Icon name="arrow_down" size={16} />
-            )}
-          </button>
+            leftSection={
+              isImporting ? (
+                <Loader size="xs" />
+              ) : (
+                <Icon name="arrow_down" size={16} />
+              )
+            }
+          />
         </Tooltip>
 
-        <div className={styles.divider} />
-
         <Tooltip label={isDirty ? t`Push to Git` : t`No changes to push`}>
-          <button
-            className={styles.syncButton}
+          <Button
+            variant="default"
+            size="compact-sm"
+            px="0.5rem"
+            py="1rem"
             onClick={handlePushClick}
             disabled={isLoading || !isDirty}
             aria-label={t`Push to Git`}
             data-testid="git-push-button"
-          >
-            <Icon name="arrow_up" size={16} />
-          </button>
+            leftSection={<Icon name="arrow_up" size={16} />}
+          />
         </Tooltip>
-      </div>
+      </Button.Group>
 
       {showPushModal && (
         <PushChangesModal
