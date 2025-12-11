@@ -27,7 +27,7 @@ import {
 import { permissionEditorPropTypes } from "../PermissionsEditor";
 import { PermissionsTable } from "../PermissionsTable";
 
-import { PermissionTableContainer } from "./CollectionPermissionsModal.styled";
+import S from "./CollectionPermissionsModal.module.css";
 
 const getDefaultTitle = (namespace) =>
   namespace === "snippets"
@@ -146,14 +146,14 @@ const CollectionPermissionsModal = ({
         </Button>,
       ]}
     >
-      <PermissionTableContainer>
+      <div className={S.PermissionTableContainer}>
         {permissionEditor && (
           <PermissionsTable
             {...permissionEditor}
             onChange={handlePermissionChange}
           />
         )}
-      </PermissionTableContainer>
+      </div>
     </ModalContent>
   );
 };
