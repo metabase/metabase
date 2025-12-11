@@ -21,7 +21,7 @@ export interface MetabotConfig {
   suggestionModels: SuggestionModel[];
 }
 
-export const SIDEBAR_USE_CASES = ["sql", "nlq", "omnibot"];
+export const DEFAULT_USE_CASES = ["sql", "nlq", "omnibot"];
 
 export interface MetabotProps {
   hide?: boolean;
@@ -33,7 +33,7 @@ export interface MetabotProps {
 export const MetabotAuthenticated = ({
   hide,
   config,
-  requiredUseCases = SIDEBAR_USE_CASES,
+  requiredUseCases = DEFAULT_USE_CASES,
 }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent();
   const enabledUseCases = useSetting("metabot-enabled-use-cases");

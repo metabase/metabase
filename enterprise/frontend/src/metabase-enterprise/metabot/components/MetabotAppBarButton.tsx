@@ -7,7 +7,7 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { trackMetabotChatOpened } from "../analytics";
 
-import { SIDEBAR_USE_CASES } from "./Metabot";
+import { DEFAULT_USE_CASES } from "./Metabot";
 
 interface MetabotAppBarButtonProps extends ActionIconProps {
   className?: string;
@@ -19,7 +19,7 @@ export function MetabotAppBarButton({
 }: MetabotAppBarButtonProps) {
   const metabot = useMetabotAgent();
   const enabledUseCases = useSetting("metabot-enabled-use-cases");
-  const hasSidebarUseCase = SIDEBAR_USE_CASES.some((useCase) =>
+  const hasDefaultUseCase = DEFAULT_USE_CASES.some((useCase) =>
     enabledUseCases?.includes(useCase),
   );
 
@@ -31,7 +31,7 @@ export function MetabotAppBarButton({
     metabot.setVisible(!metabot.visible);
   };
 
-  if (!hasSidebarUseCase) {
+  if (!hasDefaultUseCase) {
     return null;
   }
 
