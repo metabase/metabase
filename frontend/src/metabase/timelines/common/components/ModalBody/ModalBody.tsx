@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
-import { BodyRoot } from "./ModalBody.styled";
+import S from "./ModalBody.module.css";
 
 export interface ModalBodyProps {
   children?: ReactNode;
 }
 
 const ModalBody = ({ children }: ModalBodyProps): JSX.Element => {
-  return <BodyRoot>{children}</BodyRoot>;
+  return <div className={S.BodyRoot}>{children}</div>;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

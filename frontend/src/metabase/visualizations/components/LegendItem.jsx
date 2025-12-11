@@ -9,7 +9,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { Icon, Tooltip } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
-import { IconContainer } from "./LegendItem.styled";
+import S from "./LegendItem.module.css";
 import { LegendItemDot } from "./legend/LegendItemDot";
 
 const propTypes = {
@@ -87,9 +87,9 @@ export default class LegendItem extends Component {
         onClick={onClick}
       >
         {icon && (
-          <IconContainer>
+          <div className={S.IconContainer}>
             <Icon {...icon} />
-          </IconContainer>
+          </div>
         )}
         {showDot && (
           <Tooltip
