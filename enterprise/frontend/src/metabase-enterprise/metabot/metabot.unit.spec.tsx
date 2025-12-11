@@ -46,9 +46,8 @@ import {
   type MetabotState,
   addUserMessage,
   getHistory,
-  getMetabot,
-  getMetabotConversationId,
   getMetabotInitialState,
+  getMetabotState,
   getMetabotState,
   metabotReducer,
   setVisible,
@@ -493,12 +492,6 @@ describe("metabot-streaming", () => {
   });
 
   describe("message", () => {
-    it("should have a conversation id before sending any messages", async () => {
-      const { store } = setup();
-      const state = store.getState() as any;
-      expect(getMetabotConversationId(state)).not.toBeUndefined();
-    });
-
     it("should properly send chat messages", async () => {
       setup();
 
@@ -1093,7 +1086,7 @@ describe("metabot-streaming", () => {
 
     it("should clear history when the user hits the reset button", async () => {
       const { store } = setup();
-      const getState = () => getMetabot(store.getState() as any);
+      const getState = () => getMetabotState(store.getState() as any);
       mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       // send a message to get some history back

@@ -103,9 +103,10 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     ? () => {
         resetInput();
         dispatch(
-          addDeveloperMessage(
-            `User rejected the following suggestion:\n\n${generatedSql}`,
-          ),
+          addDeveloperMessage({
+            conversation_id: "inline_sql",
+            message: `User rejected the following suggestion:\n\n${generatedSql}`,
+          }),
         );
       }
     : undefined;

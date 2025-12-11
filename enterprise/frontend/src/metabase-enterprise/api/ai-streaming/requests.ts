@@ -9,7 +9,7 @@ import type { JSONValue } from "./types";
 // places in the app w/o passing references to the abort controller directly
 export const inflightAiStreamingRequests = new Map<
   string,
-  { abortController: AbortController }
+  { conversation_id: string; abortController: AbortController }
 >();
 
 export const getInflightRequestsForUrl = (url: string) => {
@@ -31,6 +31,7 @@ export async function aiStreamingQuery(
   config: AIStreamingConfig = {},
 ) {
   const reqId = `${req.url}-${nanoid()}`;
+  const conversation_id = (req.body as any).conversation_id;
 
   try {
     const abortController = new AbortController();
@@ -41,7 +42,10 @@ export async function aiStreamingQuery(
         inflightAiStreamingRequests.delete(reqId);
       });
     }
-    inflightAiStreamingRequests.set(reqId, { abortController });
+    inflightAiStreamingRequests.set(reqId, {
+      conversation_id,
+      abortController,
+    });
 
     // The basename is needed to work within the Embedding SDK
     const response = await fetch(`${api.basename}${req.url}`, {

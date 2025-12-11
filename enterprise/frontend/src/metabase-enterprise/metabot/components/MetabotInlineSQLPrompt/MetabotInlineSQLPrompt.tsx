@@ -22,7 +22,8 @@ export const MetabotInlineSQLPrompt = ({
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
   const [hasError, setHasError] = useState(false);
-  const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent();
+  const { isDoingScience, submitInput, cancelRequest } =
+    useMetabotAgent("inline_sql");
 
   const disabled = !value.trim() || isDoingScience;
 

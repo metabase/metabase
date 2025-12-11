@@ -1,11 +1,9 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockState } from "metabase-types/store/mocks";
 
-import {
-  type MetabotState,
-  getMetabotInitialState,
-  getUserPromptForMessageId,
-} from "./index";
+import { getMetabotInitialState } from "./reducer-utils";
+
+import { type MetabotState, getUserPromptForMessageId } from "./index";
 
 function setup(metabotState: Partial<MetabotState>) {
   setupEnterprisePlugins();
