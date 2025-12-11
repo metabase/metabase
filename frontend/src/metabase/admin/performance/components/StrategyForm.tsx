@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
+import { useSetting } from "metabase/common/hooks";
 import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
@@ -16,9 +17,7 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -394,9 +393,7 @@ const ScheduleStrategyFormFields = () => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
   const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
-  const timezone = useSelector((state) =>
-    getSetting(state, "report-timezone-short"),
-  );
+  const timezone = useSetting("report-timezone-short");
   const onScheduleChange = useCallback(
     (newCronSchedule: string) => {
       setFieldValue("schedule", newCronSchedule);

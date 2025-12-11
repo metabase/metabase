@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { useDatabaseListQuery } from "metabase/common/hooks";
+import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
   isQuestionDirty,
@@ -9,7 +9,6 @@ import {
 } from "metabase/query_builder/utils/question";
 import { Notebook as QBNotebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
@@ -66,9 +65,7 @@ export const Editor = ({
     return isQuestionRunnable(question, isDirty);
   }, [question, isDirty]);
 
-  const reportTimezone = useSelector((state) =>
-    getSetting(state, "report-timezone-long"),
-  );
+  const reportTimezone = useSetting("report-timezone-long");
 
   return (
     question && (

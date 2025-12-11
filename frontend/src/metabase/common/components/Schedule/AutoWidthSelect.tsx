@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { useSetting } from "metabase/common/hooks";
 import type { SelectProps } from "metabase/ui";
 import { Select } from "metabase/ui";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
@@ -14,9 +13,7 @@ export const AutoWidthSelect = <Value extends string>({
   value,
   ...props
 }: { style?: Partial<FontStyle>; value: Value } & SelectProps<Value>) => {
-  const fontFamily = useSelector((state) =>
-    getSetting(state, "application-font"),
-  );
+  const fontFamily = useSetting("application-font");
   const width = useMemo(() => {
     const longestLabel = getLongestSelectLabel(props.data, fontFamily);
     const width =

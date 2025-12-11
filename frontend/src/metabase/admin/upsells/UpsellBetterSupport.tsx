@@ -1,9 +1,8 @@
 import { c, t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 import { Text } from "metabase/ui";
 
 import { UpsellBanner } from "./components";
@@ -16,9 +15,7 @@ export const UpsellBetterSupport = ({ location }: { location: string }) => {
     location,
   });
 
-  const plan = useSelector((state) =>
-    getPlan(getSetting(state, "token-features")),
-  );
+  const plan = getPlan(useSetting("token-features"));
 
   if (plan !== "oss") {
     return null;

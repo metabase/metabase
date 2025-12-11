@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
 import { UpsellCard } from "metabase/common/components/UpsellCard";
+import { useSetting } from "metabase/common/hooks";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 import { Box, List } from "metabase/ui";
 
 import { UPGRADE_URL } from "./constants";
@@ -15,9 +14,7 @@ export const UpsellSSO = ({ location }: { location: string }) => {
     campaign,
     location,
   });
-  const tokenFeatures = useSelector((state) =>
-    getSetting(state, "token-features"),
-  );
+  const tokenFeatures = useSetting("token-features");
 
   const hasSso = hasAnySsoFeature(tokenFeatures);
   const hasScim = tokenFeatures["scim"];
