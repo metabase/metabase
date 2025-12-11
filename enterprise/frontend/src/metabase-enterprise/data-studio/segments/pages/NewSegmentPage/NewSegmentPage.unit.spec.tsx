@@ -5,6 +5,7 @@ import { Route } from "react-router";
 import {
   setupSchemaEndpoints,
   setupTableQueryMetadataEndpoint,
+  setupTableQueryMetadataEndpointError,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -63,10 +64,7 @@ type SetupOpts = {
 
 function setup({ table = TEST_TABLE, hasError = false }: SetupOpts = {}) {
   if (hasError) {
-    fetchMock.get(`path:/api/table/${table.id}/query_metadata`, {
-      status: 500,
-      body: "Server error",
-    });
+    setupTableQueryMetadataEndpointError(table.id, "Server error");
   } else {
     setupTableQueryMetadataEndpoint(table);
   }

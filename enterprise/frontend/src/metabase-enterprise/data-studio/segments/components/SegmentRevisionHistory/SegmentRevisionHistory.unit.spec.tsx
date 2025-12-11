@@ -1,6 +1,7 @@
-import fetchMock from "fetch-mock";
-
-import { setupSegmentRevisionsEndpoint } from "__support__/server-mocks";
+import {
+  setupSegmentRevisionsEndpoint,
+  setupSegmentRevisionsEndpointError,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -36,10 +37,7 @@ function setup({
   currentUserId = 1,
 }: SetupOpts = {}) {
   if (hasError) {
-    fetchMock.get(`path:/api/revision?entity=segment&id=${segment.id}`, {
-      status: 500,
-      body: "Server error",
-    });
+    setupSegmentRevisionsEndpointError(segment.id);
   } else {
     setupSegmentRevisionsEndpoint(segment.id, revisions);
   }

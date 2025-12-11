@@ -5,7 +5,9 @@ import { Route } from "react-router";
 import {
   setupSchemaEndpoints,
   setupSegmentEndpoint,
+  setupSegmentEndpointError,
   setupTableQueryMetadataEndpoint,
+  setupTableQueryMetadataEndpointError,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -88,19 +90,13 @@ function setup({
   hasTableError = false,
 }: SetupOpts = {}) {
   if (hasSegmentError) {
-    fetchMock.get(`path:/api/segment/${segment.id}`, {
-      status: 500,
-      body: "Segment not found",
-    });
+    setupSegmentEndpointError(segment.id);
   } else {
     setupSegmentEndpoint(segment);
   }
 
   if (hasTableError) {
-    fetchMock.get(`path:/api/table/${table.id}/query_metadata`, {
-      status: 500,
-      body: "Table not found",
-    });
+    setupTableQueryMetadataEndpointError(table.id);
   } else {
     setupTableQueryMetadataEndpoint(table);
   }

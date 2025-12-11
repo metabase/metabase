@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import * as Urls from "metabase/lib/urls";
 import { createMockSegment } from "metabase-types/api/mocks";
 
 import { SegmentItem } from "./SegmentItem";
@@ -12,8 +13,7 @@ describe("SegmentItem", () => {
       definition_description: "Total > $1000",
     });
 
-    const segmentUrl =
-      "/data-studio/data/database/1/schema/1:PUBLIC/table/1/segments/42";
+    const segmentUrl = Urls.dataModelSegment(segment.id);
 
     renderWithProviders(
       <Route

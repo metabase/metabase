@@ -3,10 +3,7 @@ import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import {
-  useGetCollectionQuery,
-  useListDatabaseSchemasQuery,
-} from "metabase/api";
+import { useListDatabaseSchemasQuery } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import * as Urls from "metabase/lib/urls";
 import { getCollectionList } from "metabase/nav/components/CollectionBreadcrumbs/utils";
@@ -24,10 +21,7 @@ export function PublishedTableSegmentBreadcrumbs({
   table,
   segment,
 }: SegmentBreadcrumbsProps) {
-  const { data: collection } = useGetCollectionQuery(
-    table.collection_id != null ? { id: table.collection_id } : skipToken,
-  );
-
+  const collection = table.collection;
   const ancestors = collection ? getCollectionList({ collection }) : [];
 
   return (

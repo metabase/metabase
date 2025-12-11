@@ -9,17 +9,17 @@ import * as Lib from "metabase-lib";
 
 const STAGE_INDEX = -1;
 
-type SegmentEditorV2Props = {
+type SegmentFilterEditorProps = {
   query: Lib.Query;
   onChange: (query: Lib.Query) => void;
   readOnly?: boolean;
 };
 
-export function SegmentEditorV2({
+export function SegmentFilterEditor({
   query,
   onChange,
   readOnly = false,
-}: SegmentEditorV2Props) {
+}: SegmentFilterEditorProps) {
   const filters = useMemo(() => Lib.filters(query, STAGE_INDEX), [query]);
 
   const renderFilterName = useCallback(

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { SegmentEditorV2 } from "metabase/querying/segments";
+import { SegmentFilterEditor } from "metabase/querying/segments";
 import { Stack, Textarea } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -21,7 +21,7 @@ export function SegmentEditor({
 }: SegmentEditorProps) {
   return (
     <Stack flex={1} gap="lg" px="lg" py="lg" className={S.scrollable}>
-      {query && <SegmentEditorV2 query={query} onChange={onQueryChange} />}
+      {query && <SegmentFilterEditor query={query} onChange={onQueryChange} />}
       <Textarea
         label={t`Description`}
         placeholder={t`Give it a description`}
