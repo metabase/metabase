@@ -3,6 +3,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.registry :as mr]
@@ -42,12 +43,13 @@
    {:keys [api-name args-schema result-schema handler]}]
   (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
   (let [metabot-id   (:metabot-v3/metabot-id request)
-        use-case     (get-in request [:headers "x-metabot-use-case"])
+        use-case     (or (get-in request [:headers "x-metabot-use-case"])
+                         (metabot-v3.config/default-use-case metabot-id))
         encoded-args (cond-> (if args-schema
                                (mc/encode args-schema arguments request-transformer)
                                {})
                        metabot-id (assoc :metabot-id metabot-id)
-                       use-case (assoc :use-case use-case))
+                       :always (assoc :use-case use-case))
         raw-result   (handler encoded-args)
         result       (if result-schema
                        (mc/decode result-schema raw-result response-transformer)

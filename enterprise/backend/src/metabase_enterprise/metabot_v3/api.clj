@@ -25,8 +25,8 @@
    [toucan2.core :as t2]))
 
 (defn- store-message!
-  "Store a message in the conversation. Takes either use-case (preferred) or profile-id (legacy/dev override)."
-  [conversation-id {:keys [use-case profile-id]} messages]
+  "Store a message in the conversation. `profile-id` is optional (for legacy/dev override)."
+  [conversation-id use-case profile-id messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -56,14 +56,12 @@
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id use_case profile_id message context history conversation_id state]}]
-  (let [message       (metabot-v3.envelope/user-message message)
-        metabot-id    (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        metabot-pk    (metabot-v3.config/normalize-metabot-id metabot-id)
-        profile       (metabot-v3.config/resolve-profile metabot-pk use_case profile_id)
-        session-id    (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
-        tracking-info {:use-case   use_case
-                       :profile-id profile}]
-    (store-message! conversation_id tracking-info [message])
+  (let [message    (metabot-v3.envelope/user-message message)
+        metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+        metabot-pk (metabot-v3.config/normalize-metabot-id metabot-id)
+        profile    (metabot-v3.config/resolve-profile metabot-pk use_case profile_id)
+        session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
+    (store-message! conversation_id use_case profile [message])
     (metabot-v3.client/streaming-request
      {:context         (metabot-v3.context/create-context context)
       :metabot-id      metabot-id
@@ -75,7 +73,7 @@
       :history         history
       :state           state
       :on-complete     (fn [lines]
-                         (store-message! conversation_id tracking-info (metabot-v3.u/aisdk->messages :assistant lines))
+                         (store-message! conversation_id use_case profile (metabot-v3.u/aisdk->messages :assistant lines))
                          :store-in-db)})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
