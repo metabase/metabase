@@ -13,18 +13,18 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type { Collection, Dashboard } from "metabase-types/api";
+import type { Collection, CollectionNamespace, Dashboard } from "metabase-types/api";
 
+import type { EntityPickerModalOptions } from "../../EntityPicker";
 import { useOmniPickerContext } from "../../EntityPicker/context";
+import type { OmniPickerItem } from "../../EntityPicker/types";
 
-import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
-const personalCollectionsRoot: CollectionPickerItem = {
+const personalCollectionsRoot: OmniPickerItem = {
   ...PERSONAL_COLLECTIONS,
   can_write: false,
   model: "collection",
   location: "/",
-  description: "",
   here: ["collection"],
   below: ["collection"],
 };
@@ -45,6 +45,19 @@ const getTenantSpecificCollectionsRoot = (): CollectionPickerItem | null => {
   };
 };
 
+const namespaces: Record<string, CollectionNamespace[]> = {
+  normal: [null, "analytics"],
+  snippet: ["snippets"],
+}
+
+const getNamespacesFromModels = (models: OmniPickerItem["model"][]): CollectionNamespace[] => {
+  if (models.includes("snippet")) {
+    return namespaces.snippet;
+  }
+
+  return namespaces.normal;
+}
+
 /**
  * This is a special item list that exists "above" our analytics and might include:
  * a) the highest-level collections the user can access (often "our analytics")
@@ -52,9 +65,10 @@ const getTenantSpecificCollectionsRoot = (): CollectionPickerItem | null => {
  * c) a top level folder including all personal collections (admin only)
  */
 export const useRootCollectionPickerItems = () => {
-  const { options } = useOmniPickerContext();
+  const { options, models } = useOmniPickerContext();
   const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
+  const namespaces = getNamespacesFromModels(models);
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.showDatabases });
@@ -94,7 +108,7 @@ export const useRootCollectionPickerItems = () => {
   } = useGetCollectionQuery({ id: "root" });
 
   const items = useMemo(() => {
-    const collectionItems: CollectionPickerItem[] = [];
+    const collectionItems: OmniPickerItem[] = [];
 
     if (
       options?.restrictToNamespace === PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
@@ -122,7 +136,8 @@ export const useRootCollectionPickerItems = () => {
       collectionItems.push({
         ...libraryCollection,
         model: "collection",
-        moderated_status: null,
+        can_write: false,
+        location: "/",
       });
     }
 
@@ -138,7 +153,7 @@ export const useRootCollectionPickerItems = () => {
       });
     }
 
-    if (options?.showRootCollection || options?.namespace === "snippets") {
+    if (options.showRootCollection || namespaces.includes("snippets")) {
       if (rootCollection && !rootCollectionError) {
         collectionItems.push({
           ...rootCollection,
@@ -146,7 +161,7 @@ export const useRootCollectionPickerItems = () => {
           here: ["collection"],
           location: "/",
           name:
-            options.namespace === "snippets"
+            namespaces.includes("snippets")
               ? t`SQL snippets`
               : rootCollection.name,
         });
@@ -155,7 +170,6 @@ export const useRootCollectionPickerItems = () => {
           name: t`Collections`,
           id: "root",
           here: ["collection"],
-          description: null,
           can_write: false,
           model: "collection",
           location: "/",
@@ -164,8 +178,8 @@ export const useRootCollectionPickerItems = () => {
     }
 
     if (
-      options?.showPersonalCollections &&
-      options?.namespace !== "snippets" &&
+      options.showPersonalCollections &&
+      namespaces.includes("snippets") &&
       currentUser &&
       !!personalCollection
     ) {
@@ -233,6 +247,7 @@ export const useRootCollectionPickerItems = () => {
     rootCollectionError,
     totalPersonalCollectionItems,
     libraryCollection,
+    namespaces,
     tenantsEnabled,
   ]);
 
@@ -249,22 +264,21 @@ export const useEnsureCollectionSelected = ({
   currentCollection,
   currentDashboard,
   enabled,
-  options,
   useRootCollection,
   onInit,
 }: {
   currentCollection: Collection | undefined;
   currentDashboard: Dashboard | undefined;
   enabled: boolean;
-  options: CollectionItemListProps["options"];
+  options: EntityPickerModalOptions;
   useRootCollection: boolean;
-  onInit: (item: CollectionPickerItem) => void;
+  onInit: (item: OmniPickerItem) => void;
 }) => {
   const [isEnabled, setIsEnabled] = useState(enabled);
   // all this is done to acquire the name of the root collection, which getStateFromIdPath can't provide
-  const { items } = useRootCollectionPickerItems(options);
+  const { items } = useRootCollectionPickerItems();
 
-  const currentCollectionItem: CollectionPickerItem | undefined =
+  const currentCollectionItem: OmniPickerItem | undefined =
     useMemo(() => {
       if (!currentCollection && !currentDashboard) {
         return undefined;

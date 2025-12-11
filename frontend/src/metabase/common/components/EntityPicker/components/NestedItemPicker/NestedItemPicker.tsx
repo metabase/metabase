@@ -18,34 +18,39 @@ export function NestedItemPicker() {
   const folderPath = path.filter(isFolderItem);
 
   return (
-    <AutoScrollBox
-      data-testid="nested-item-picker"
-      contentHash={generateKey(path?.[path.length - 1])}
+    <div
+      className={S.singlePickerView}
+      data-testid="single-picker-view"
     >
-      <Flex h="100%" w="fit-content">
-        <Box
-          className={S.ListBox}
-          data-testid={`item-picker-level-root`}
-        >
-          <RootItemList />
-        </Box>
-        {folderPath.map((item, index) => {
-          return (
-            <Box
-              className={S.ListBox}
-              data-testid={`item-picker-level-root`}
-              key={generateKey(item)}
-            >
-              <ErrorBoundary>
-                <CollectionItemPickerResolver
-                  parentItem={item}
-                  pathIndex={index}
-                />
-              </ErrorBoundary>
-            </Box>
-          );
-        })}
-      </Flex>
-    </AutoScrollBox>
+      <AutoScrollBox
+        data-testid="nested-item-picker"
+        contentHash={generateKey(path?.[path.length - 1])}
+      >
+        <Flex h="100%" w="fit-content">
+          <Box
+            className={S.ListBox}
+            data-testid={`item-picker-level-root`}
+          >
+            <RootItemList />
+          </Box>
+          {folderPath.map((item, index) => {
+            return (
+              <Box
+                className={S.ListBox}
+                data-testid={`item-picker-level-root`}
+                key={generateKey(item)}
+              >
+                <ErrorBoundary>
+                  <CollectionItemPickerResolver
+                    parentItem={item}
+                    pathIndex={index}
+                  />
+                </ErrorBoundary>
+              </Box>
+            );
+          })}
+        </Flex>
+      </AutoScrollBox>
+    </div>
   );
 }

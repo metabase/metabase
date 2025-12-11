@@ -19,6 +19,7 @@ import type { UserId, UserInfo } from "./user";
 export type CollectionNamespace =
   | null
   | "snippets"
+  | "analytics"
   | "tenant-specific"
   | "shared-tenant-collection";
 
@@ -149,7 +150,7 @@ export interface CollectionItem {
   can_delete?: boolean;
   can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
-  location?: string;
+  location?: string | null;
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;

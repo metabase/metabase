@@ -1,25 +1,39 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
+import type { OmniPickerItem } from "metabase/common/components/OmniPicker/types";
 import { Button, Flex, Text } from "metabase/ui";
+
+import { useOmniPickerContext } from "../../context";
 
 export const ButtonBar = ({
   onConfirm,
   onCancel,
-  canConfirm,
   actionButtons,
   confirmButtonText,
   cancelButtonText,
 }: {
-  onConfirm: () => void;
-  onCancel: () => void;
-  canConfirm?: boolean;
+  onConfirm: (item: OmniPickerItem) => void;
+  onCancel?: () => void;
   actionButtons: JSX.Element[];
   confirmButtonText?: string;
   cancelButtonText?: string;
 }) => {
+  const { path, isSelectableItem } = useOmniPickerContext();
   const [error, setError] = useState<string | null>(null);
+
+  const canConfirm = useMemo(() => {
+    const selectedItem = path[path.length - 1];
+    return isSelectableItem(selectedItem);
+  }, [isSelectableItem, path]);
+
+  const handleConfirm = useCallback(() => {
+    const selectedItem = path[path.length - 1];
+    if (canConfirm) {
+      onConfirm(selectedItem);
+    }
+  }, [canConfirm, onConfirm, path]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -27,14 +41,14 @@ export const ButtonBar = ({
         return;
       }
       if (canConfirm && e.key === "Enter") {
-        onConfirm();
+        handleConfirm();
       }
     };
-    document.addEventListener("keypress", handleKeyPress);
+    document.addEventListener("keydown", handleKeyPress);
     return () => {
-      document.removeEventListener("keypress", handleKeyPress);
+      document.removeEventListener("keydown", handleKeyPress);
     };
-  }, [canConfirm, onConfirm]);
+  }, [handleConfirm, canConfirm]);
 
   return (
     <Flex
@@ -61,7 +75,7 @@ export const ButtonBar = ({
           onClick={async () => {
             try {
               setError(null);
-              await onConfirm();
+              await handleConfirm();
             } catch (e: any) {
               console.error(e);
               setError(getErrorMessage(e));

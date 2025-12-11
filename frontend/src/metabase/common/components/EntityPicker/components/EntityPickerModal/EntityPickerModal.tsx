@@ -68,6 +68,7 @@ export type EntityPickerModalOptions = {
   hasRecents?: boolean;
   showDatabases?: boolean;
   showLibrary?: boolean;
+  showRootCollection?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
@@ -453,19 +454,12 @@ export function EntityPickerModal<
           )}
           {!isLoadingTabs && !isLoadingRecentItems ? (
             <ErrorBoundary>
-              <div
-                className={S.singlePickerView}
-                data-testid="single-picker-view"
-              >
                 <EntityPicker
                   models={models}
                   initialValue={initialValue}
-                  isItemHidden={() => false}
-                  isItemDisabled={() => false}
                   onChange={handleSelectItem}
                   options={hydratedOptions}
                 />
-              </div>
               {/* {hasTabs ? (
                 <TabsView
                   selectedTabId={selectedTabId}
