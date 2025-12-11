@@ -25,7 +25,7 @@ function getNodeNameColumn(): DependencyColumnOptions {
   return {
     id: "name",
     get name() {
-      return t`Entity`;
+      return t`Name`;
     },
     accessorFn: (item) => getNodeLabel(item),
     cell: ({ row }) => {
