@@ -289,6 +289,27 @@
           :errors #{(driver-api/validate.missing-table-alias "bad")}}
          (->references "select bad.a from products"))))
 
+(deftest ^:parallel no-possible-sources-test
+  (is (= {:used-fields
+          #{{:column "a"
+             :alias nil
+             :type :single-column
+             :source-columns []}}
+          :returned-fields
+          [{:column "a"
+            :alias nil
+            :type :single-column
+            :source-columns []}]
+          :errors #{(driver-api/validate.missing-column "a")}}
+         (->references "select a"))))
+
+(deftest ^:parallel select-constant-test
+  (is (= {:used-fields #{},
+          :returned-fields
+          [{:alias nil, :type :custom-field, :used-fields #{}}],
+          :errors #{}}
+         (->references "select 1"))))
+
 (deftest ^:parallel basic-where-test
   (is (= {:used-fields
           #{{:column "category",

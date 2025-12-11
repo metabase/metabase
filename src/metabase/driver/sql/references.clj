@@ -88,7 +88,7 @@
                 sublist))
         sources))
 
-(mu/defn table-name :- :string
+(mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
   [raw-col :- [:map
                [:database {:optional true} :string]
