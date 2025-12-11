@@ -82,11 +82,12 @@ export const JobListPage = () => {
         showMetabotButton
       />
       <Stack
-        px="3.5rem"
-        data-testid="transforms-job-list"
-        pb="2rem"
         bg="background-light"
+        data-testid="transforms-job-list"
         h="100%"
+        pb="2rem"
+        px="3.5rem"
+        style={{ overflow: "hidden" }}
       >
         <Flex gap="0.5rem">
           <TextInput

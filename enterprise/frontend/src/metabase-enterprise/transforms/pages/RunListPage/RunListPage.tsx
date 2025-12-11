@@ -35,7 +35,12 @@ export function RunListPage({ location }: RunListPageProps) {
         py={0}
         showMetabotButton
       />
-      <Stack px="3.5rem" h="100%" data-testid="transforms-run-list">
+      <Stack
+        px="3.5rem"
+        h="100%"
+        data-testid="transforms-run-list"
+        style={{ overflow: "hidden" }}
+      >
         <Box>{t`A list of when each transform ran.`}</Box>
         <RunListPageBody params={params} />
       </Stack>

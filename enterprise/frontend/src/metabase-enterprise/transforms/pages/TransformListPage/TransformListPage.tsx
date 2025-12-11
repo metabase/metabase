@@ -97,10 +97,11 @@ export const TransformListPage = () => {
         py={0}
       />
       <Stack
-        px="3.5rem"
+        bg="background-light"
         data-testid="transforms-list"
         pb="2rem"
-        bg="background-light"
+        px="3.5rem"
+        style={{ overflow: "hidden" }}
       >
         <Flex gap="md">
           <TextInput

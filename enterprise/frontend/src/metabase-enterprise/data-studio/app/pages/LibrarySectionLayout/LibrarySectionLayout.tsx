@@ -185,10 +185,11 @@ export function LibrarySectionLayout() {
           py={0}
         />
         <Stack
-          px="3.5rem"
-          pb="2rem"
           bg="background-light"
           data-testid="library-page"
+          pb="2rem"
+          px="3.5rem"
+          style={{ overflow: "hidden" }}
         >
           <Flex gap="md">
             <TextInput
