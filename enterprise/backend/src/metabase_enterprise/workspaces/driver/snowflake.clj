@@ -61,3 +61,16 @@
           db-name   (-> database :details :db)]
       (doseq [[schema-name table-name] s+t-tuples]
         (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS \"%s\".\"%s\".\"%s\"" db-name schema-name table-name)])))))
+
+(defmethod isolation/cleanup-workspace-isolation! :snowflake
+  [database workspace]
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
+        db-name     (-> database :details :db)
+        role-name   (isolation-role-name workspace)
+        username    (ws.u/isolation-user-name workspace)
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
+    (doseq [sql [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE" db-name schema-name)
+                 (format "DROP USER IF EXISTS \"%s\"" username)
+                 (format "DROP ROLE IF EXISTS %s" role-name)]]
+      (jdbc/execute! conn-spec [sql]))))
