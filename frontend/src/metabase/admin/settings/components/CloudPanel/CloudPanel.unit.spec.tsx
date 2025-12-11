@@ -5,9 +5,15 @@ import {
   setupBugReportingDetailsEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getPlan } from "metabase/common/utils/plan";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { CloudPanel } from "./CloudPanel";
@@ -17,6 +23,11 @@ const POLL_INTERVAL = 200;
 const setup = () => {
   const mockMigrationStart = jest.fn();
 
+  const tokenFeatures = createMockTokenFeatures({
+    hosting: false,
+    attached_dwh: false,
+  });
+
   const { store } = renderWithProviders(
     <CloudPanel
       getPollingInterval={() => POLL_INTERVAL}
@@ -25,12 +36,17 @@ const setup = () => {
     {
       storeInitialState: createMockState({
         currentUser: createMockUser({ is_superuser: true }),
+        settings: mockSettings(
+          createMockSettings({ "token-features": tokenFeatures }),
+        ),
       }),
     },
   );
 
   const STORE_URL = store.getState().settings.values["store-url"];
-  const metabaseStoreLink = `${STORE_URL}/checkout?migration-id=${BASE_RESPONSE.external_id}`;
+  const plan = getPlan(tokenFeatures);
+  const storePath = plan === "pro-self-hosted" ? "login" : "checkout";
+  const metabaseStoreLink = `${STORE_URL}/${storePath}?migration-id=${BASE_RESPONSE.external_id}`;
 
   return { mockMigrationStart, store, metabaseStoreLink };
 };
