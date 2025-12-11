@@ -14,6 +14,7 @@ import {
   useCreateWorkspaceTransformMutation,
   useGetTransformQuery,
   useRunTransformMutation,
+  useRunWorkspaceTransformMutation,
   useValidateTableNameMutation,
   workspaceApi,
 } from "metabase-enterprise/api";
@@ -183,7 +184,8 @@ export const TransformTab = ({
     isSaved || unsavedTransforms.some((t) => t.id === transform.id);
 
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
-  const [runTransform] = useRunTransformMutation();
+  // const [runTransform] = useRunTransformMutation();
+  const [runTransform] = useRunWorkspaceTransformMutation();
   const [_validateTableName] = useValidateTableNameMutation();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
@@ -262,7 +264,10 @@ export const TransformTab = ({
   const handleRun = async () => {
     try {
       setIsRunTriggered(true);
-      await runTransform(transform.id).unwrap();
+      await runTransform({
+        workspaceId,
+        transformId: String(transform.id),
+      }).unwrap();
 
       // Invalidate the workspace tables cache since transform execution
       // may affect the list of workspace tables.

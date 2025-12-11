@@ -36,6 +36,7 @@ import {
   useGetWorkspaceQuery,
   useGetWorkspaceTablesQuery,
   useGetWorkspaceTransformsQuery,
+  useLazyGetWorkspaceTransformQuery,
   useListTransformsQuery,
   useMergeWorkspaceMutation,
   useUpdateWorkspaceMutation,
@@ -53,6 +54,7 @@ import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type {
   DraftTransformSource,
   Transform,
+  WorkspaceTransform,
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
@@ -114,6 +116,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
   const { data: workspaceTransforms = [] } = useGetWorkspaceTransformsQuery(id);
+  const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   useRegisterMetabotContextProvider(async () => {
     if (!workspace?.database_id) {
       return;
@@ -273,6 +276,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           ("id" in t && t.id === transformIdFromPath) ||
           ("ref_id" in t && t.ref_id === String(transformIdFromPath)),
       );
+      debugger;
 
       if (targetTransform) {
         addOpenedTransform(targetTransform);
@@ -679,8 +683,18 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 workspaceTransforms={workspaceTransforms}
                 dbTransforms={dbTransforms}
                 selectedTableId={activeTable?.tableId}
-                onTransformClick={(transform) => {
-                  addOpenedTransform(transform);
+                onTransformClick={async (
+                  workspaceTransform: WorkspaceTransformItem,
+                ) => {
+                  // const workspaceTransform = await fetch;
+                  // addOpenedTransform(workspaceTransform);
+                  const { data: transform } = await fetchWorkspaceTransform({
+                    workspaceId: workspace.id,
+                    transformId: workspaceTransform.ref_id,
+                  });
+                  if (transform) {
+                    addOpenedTransform(transform);
+                  }
                 }}
                 onTableSelect={handleTableSelect}
               />
