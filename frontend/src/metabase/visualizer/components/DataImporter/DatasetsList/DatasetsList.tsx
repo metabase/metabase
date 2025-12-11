@@ -1,5 +1,5 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
@@ -155,20 +155,9 @@ export function DatasetsList({
   // When loading starts, we want to delay showing the loading state
   // When loading ends, we want to hide it immediately
   const isFetching = isSearchFetching || isListRecentsFetching;
-  const [debouncedIsFetching, setDebouncedIsFetching] = useState(false);
-
-  useEffect(() => {
-    if (isFetching) {
-      // Delay showing loading state
-      const timer = setTimeout(() => {
-        setDebouncedIsFetching(true);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      // Immediately hide loading state
-      setDebouncedIsFetching(false);
-    }
-  }, [isFetching]);
+  const debouncedIsFetchingStart = useDebouncedValue(isFetching, 300);
+  // Show loading immediately when it ends, but with delay when it starts
+  const debouncedIsFetching = isFetching ? debouncedIsFetchingStart : false;
 
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
