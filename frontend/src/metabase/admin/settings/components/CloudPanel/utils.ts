@@ -84,5 +84,5 @@ export function getMigrationUrl(
   plan: Plan,
   migration: CloudMigration,
 ) {
-  return `${storeUrl}?migration_source_plan=${plan}&migration-id=${migration.external_id}`;
+  return `${storeUrl}?migration-source-plan=${plan}&migration-id=${migration.external_id}`;
 }
