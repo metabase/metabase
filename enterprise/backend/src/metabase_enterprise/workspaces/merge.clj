@@ -4,7 +4,6 @@
   (:require
    [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.workspaces.types :as ws.types]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -32,19 +31,21 @@
         (cond (and global_id archived_at)
               (merge
                {:op :delete :global_id global_id :ref_id ref_id}
-               (try (u/prog1 (t2/select-one :model/Transform :id global_id)
-                      (transforms.api/delete-transform! global_id))
-                    (catch Throwable e
-                      {:error e})))
+               (try
+                 (transforms.api/delete-transform! global_id)
+                 nil
+                 (catch Throwable e
+                   {:error e})))
 
               global_id
               (merge
                {:op :update :global_id global_id :ref_id ref_id}
-               (try (transforms.api/update-transform!
-                     global_id (select-keys ws-transform [:name :description :source :target]))
-                    nil
-                    (catch Throwable e
-                      {:error e})))
+               (try
+                 (transforms.api/update-transform!
+                  global_id (select-keys ws-transform [:name :description :source :target]))
+                 nil
+                 (catch Throwable e
+                   {:error e})))
 
               archived_at
               {:op :noop :global_id nil :ref_id ref_id}
@@ -52,10 +53,11 @@
               :else
               (merge
                {:op :create :global_id nil :ref_id ref_id}
-               (try {:global_id (:id (transforms.api/create-transform!
-                                      (select-keys ws-transform [:name :description :source :target])))}
-                    (catch Throwable e
-                      {:error e}))))]
+               (try
+                 {:global_id (:id (transforms.api/create-transform!
+                                   (select-keys ws-transform [:name :description :source :target])))}
+                 (catch Throwable e
+                   {:error e}))))]
     (when-not error
       (t2/delete! :model/WorkspaceTransform :ref_id ref_id))
 
