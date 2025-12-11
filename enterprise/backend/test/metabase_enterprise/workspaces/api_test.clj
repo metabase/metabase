@@ -720,7 +720,7 @@
                                                                :workspace_id ws1-id}
                        :model/WorkspaceTransform _            {:global_id    xf2-id
                                                                :workspace_id ws2-id}]
-          (testing "excludes global transforms mirrored into that workspace"
+          (testing "excludes irrelevant transforms, and indicates which remaining transforms cannot be checked out."
             (let [transforms (:transforms (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" ws1-id "/external/transform")))
                   test-ids   #{xf1-id xf2-id xf3-id xf4-id xf5-id xf6-id xf7-id}
                   ;; Filter out cruft from dev, leaky tests, etc
