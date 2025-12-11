@@ -503,6 +503,8 @@
 (api.macros/defendpoint :post "/:id/merge"
   :- [:or
       [:map
+       ;; TODO: why this was not present, why can we rerturn a string?
+       [:merged {:optional true} :any]
        [:errors [:maybe [:sequential [:map [:id ::ws.t/ref-id] [:name :string] [:error :string]]]]]
        [:workspace [:map [:id ::ws.t/appdb-id] [:name :string]]]
        [:archived_at [:maybe :any]]]
