@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
@@ -5,6 +6,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -513,6 +515,10 @@ function WorkspaceItem({
   onUnarchive,
   onDelete,
 }: WorkspaceItemProps) {
+  const [
+    deleteModalOpened,
+    { open: openDeleteModal, close: closeDeleteModal },
+  ] = useDisclosure();
   const timeAgo = workspace.updated_at
     ? dayjs(workspace.updated_at).fromNow()
     : null;
@@ -526,7 +532,12 @@ function WorkspaceItem({
   };
 
   const handleDelete = () => {
-    onDelete(workspace.id);
+    openDeleteModal();
+  };
+
+  const handleConfirmDelete = async () => {
+    await onDelete(workspace.id);
+    closeDeleteModal();
   };
 
   const status = getWorkspaceListStatus(workspace);
@@ -596,6 +607,15 @@ function WorkspaceItem({
           </Menu.Dropdown>
         </Menu>
       </Flex>
+
+      <ConfirmModal
+        confirmButtonText={t`Delete`}
+        message={t`This can't be undone.`}
+        opened={deleteModalOpened}
+        title={t`Delete ${workspace.name}?`}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+      />
     </UnstyledButton>
   );
 }
