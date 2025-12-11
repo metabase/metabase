@@ -113,7 +113,7 @@ export const useRootCollectionPickerItems = (
       return collectionItems;
     }
 
-    if (options?.showLibrary && libraryCollection) {
+    if (
       options.showLibrary &&
       libraryCollection &&
       options.namespace !== "snippets"
