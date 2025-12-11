@@ -45,21 +45,22 @@ import type {
   TransformId,
   TransformTarget,
   WorkspaceId,
+  WorkspaceTransform,
   WorkspaceTransformItem,
 } from "metabase-types/api";
-import type { EditedTransform } from "./WorkspaceProvider";
 
 import { WorkspaceRunButton } from "../../components/WorkspaceRunButton/WorkspaceRunButton";
 
 import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
+import type { EditedTransform } from "./WorkspaceProvider";
 import { useWorkspace } from "./WorkspaceProvider";
 
 interface Props {
   databaseId: DatabaseId;
   editedTransform: EditedTransform;
-  transform: Transform;
+  transform: Transform | WorkspaceTransform;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
   onChange: (patch: Partial<EditedTransform>) => void;
@@ -102,7 +103,7 @@ export const TransformTab = ({
     isFetching,
   } = useGetTransformQuery(transform.id, {
     pollingInterval: shouldPoll ? POLLING_INTERVAL : undefined,
-    skip: "ref_id" in transform,
+    skip: "ref_id" in transform || transform.id < 0,
   });
 
   useEffect(() => {
@@ -175,7 +176,9 @@ export const TransformTab = ({
   );
   const hasChanges = hasSourceChanged;
 
-  const isSaved = workspaceTransforms.some((t) => t.global_id === transform.id);
+  const isSaved = workspaceTransforms.some(
+    (t) => t.ref_id === transform.ref_id,
+  );
   const isEditable =
     isSaved || unsavedTransforms.some((t) => t.id === transform.id);
 
