@@ -1367,7 +1367,7 @@
     (write-check-collection-or-root-collection parent-coll)
     (-> (cond-> coll-data
           (and (:namespace parent-coll)
-               (not (contains? coll-data :namespace))) (assoc :namespace (:namespace parent-coll))
+               (nil? (:namespace coll-data))) (assoc :namespace (:namespace parent-coll))
           parent-coll (assoc :location (collection/children-location parent-coll)))
         (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
         (select-keys (malli.util/keys NewCollectionArguments)))))
