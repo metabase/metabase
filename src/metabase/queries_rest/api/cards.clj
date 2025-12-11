@@ -1,9 +1,9 @@
-(ns metabase.queries.api.cards
+(ns metabase.queries-rest.api.cards
   "Bulk endpoints for Cards"
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
-   [metabase.queries.api.card :as api.card]
+   [metabase.queries-rest.api.card :as api.card]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 

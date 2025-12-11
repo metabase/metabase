@@ -1021,11 +1021,10 @@
 
   queries
   {:team "Querying"
-   :api  #{metabase.queries.api
-           metabase.queries.core
+   :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema} ; TODO FIXME
+           metabase.queries.schema}
    :uses #{analytics
            analyze
            api
@@ -1037,8 +1036,6 @@
            config
            content-verification
            dashboards
-           eid-translation
-           embedding
            events
            lib
            lib-be
@@ -1051,11 +1048,33 @@
            query-permissions
            query-processor
            request
-           revisions
            search
            util
            view-log
            warehouse-schema}}
+
+  queries-rest
+  {:team "Querying"
+   :api  #{metabase.queries-rest.api}
+   :uses #{analyze
+           api
+           collections
+           eid-translation
+           embedding
+           events
+           lib
+           lib-be
+           models
+           parameters
+           permissions
+           public-sharing
+           queries
+           query-permissions
+           query-processor
+           request
+           revisions
+           search
+           util}}
 
   query-permissions
   {:team "UX West"

@@ -1,4 +1,4 @@
-(ns metabase.queries.api.card
+(ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
    [medley.core :as m]
@@ -19,10 +19,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.queries.card :as queries.card]
-   [metabase.queries.metadata :as queries.metadata]
-   [metabase.queries.models.card :as card]
-   [metabase.queries.models.card.metadata :as card.metadata]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
@@ -201,7 +198,7 @@
   [{card-id :id :as card}]
   (span/with-span!
     {:name       "hydrate-card-details"
-     :attributes {:card/id card-id}}
+     :attributes {:queries/id card-id}}
     (-> card
         (t2/hydrate :based_on_upload
                     :creator
@@ -220,9 +217,9 @@
                     :is_remote_synced)
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
-         (card/model? card) (t2/hydrate :persisted
-                                        ;; can_manage_db determines whether we should enable model persistence settings
-                                        :can_manage_db)))))
+         (queries/model? card) (t2/hydrate :persisted
+                                           ;; can_manage_db determines whether we should enable model persistence settings
+                                           :can_manage_db)))))
 
 (defn- get-card
   "Get `Card` with ID."
@@ -560,7 +557,7 @@
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
-    (-> (card/create-card! card @api/*current-user*)
+    (-> (queries/create-card! card @api/*current-user*)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
@@ -575,7 +572,7 @@
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (-> (card/create-card! new-card @api/*current-user*)
+    (-> (queries/create-card! new-card @api/*current-user*)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
@@ -668,15 +665,15 @@
                                   card-before-update
                                   (api/updates-with-archived-directly card-before-update card-updates))
           is-model-after-update? (if (nil? card-type)
-                                   (card/model? card-before-update)
-                                   (card/model? card-updates))]
+                                   (queries/model? card-before-update)
+                                   (queries/model? card-updates))]
       ;; Do various permissions checks
       (doseq [f [check-update-result-metadata-data-perms
                  check-allowed-to-move
                  check-allowed-to-modify-query
                  check-allowed-to-change-embedding]]
         (f card-before-update card-updates))
-      (let [{:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
+      (let [{:keys [metadata metadata-future]} (queries/maybe-async-result-metadata
                                                 {:original-query    (:dataset_query card-before-update)
                                                  :query             query
                                                  :metadata          metadata
@@ -702,10 +699,10 @@
                                                  metadata
                                                  (assoc :result_metadata           metadata
                                                         :verified-result-metadata? true))
-            card                               (-> (card/update-card! {:card-before-update    card-before-update
-                                                                       :card-updates          card-updates
-                                                                       :actor                 @api/*current-user*
-                                                                       :delete-old-dashcards? delete-old-dashcards?})
+            card                               (-> (queries/update-card! {:card-before-update    card-before-update
+                                                                          :card-updates          card-updates
+                                                                          :actor                 @api/*current-user*
+                                                                          :delete-old-dashcards? delete-old-dashcards?})
                                                    hydrate-card-details
                                                    (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
         ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
@@ -721,7 +718,7 @@
                                  [search-model [:= :this.id id]])))
         (when metadata-future
           (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
-          (card.metadata/save-metadata-async! metadata-future card))
+          (queries/save-metadata-async! metadata-future card))
         card))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -754,7 +751,7 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (lib-be/with-metadata-provider-cache
     (let [resolved-id (eid-translation/->id-or-404 :card id)]
-      (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)]))))
+      (queries/batch-fetch-card-metadata [(get-card resolved-id)]))))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -763,7 +760,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
-  "Hard delete a Card. To soft delete, use `PUT /api/card/:id`"
+  "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
@@ -879,7 +876,7 @@
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
-  ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
+  ;;    POST /api/dashboard/:dashboard-id/queries/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
@@ -1011,11 +1008,11 @@
   "Fetch possible values of the parameter whose ID is `:param-key`.
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
-    GET /api/card/1/params/abc/values"
+    GET /api/queries/1/params/abc/values"
   [{:keys [card-id param-key]} :- [:map
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
-  (queries.card/card-param-values (api/read-check :model/Card card-id) param-key))
+  (queries/card-param-values (api/read-check :model/Card card-id) param-key))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1025,14 +1022,14 @@
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
 
     ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';
-     GET /api/card/1/params/abc/search/Orange
+     GET /api/queries/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
   [{:keys [card-id param-key query]} :- [:map
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]]
-  (queries.card/card-param-values (api/read-check :model/Card card-id) param-key query))
+  (queries/card-param-values (api/read-check :model/Card card-id) param-key query))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1042,10 +1039,10 @@
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
-    GET /api/card/1/params/abc/remapping?value=100"
+    GET /api/queries/1/params/abc/remapping?value=100"
   [{:keys [id param-key]} :- [:map
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
    {:keys [value]}        :- [:map [:value :string]]]
   (-> (api/read-check :model/Card id)
-      (queries.card/card-param-remapped-value param-key (codec/url-decode value))))
+      (queries/card-param-remapped-value param-key (codec/url-decode value))))
