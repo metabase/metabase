@@ -1,9 +1,25 @@
 import type React from "react";
 
 import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker/types";
-import type { Collection, Group, User } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionNamespace,
+  Group,
+  User,
+} from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+
+export type TenantCollectionPathItem = {
+  id: CollectionId;
+  namespace?: CollectionNamespace;
+  type?: Collection["type"];
+  collection_id?: CollectionId | null;
+  collection_namespace?: CollectionNamespace;
+  is_shared_tenant_collection?: boolean;
+  is_tenant_dashboard?: boolean;
+};
 
 const getDefaultPluginTenants = () => ({
   isEnabled: false,
@@ -26,6 +42,26 @@ const getDefaultPluginTenants = () => ({
   TenantSpecificCollectionsItemList: (_props: CollectionItemListProps) =>
     null as React.ReactElement | null,
   TenantCollectionList: PluginPlaceholder,
+  GroupDescription: (_props: { group: Group }) =>
+    null as React.ReactElement | null,
+  getNewUserModalTitle: (_isExternal: boolean) => null as string | null,
+  getFormGroupsTitle: (_isExternal: boolean) => null as string | null,
+  SHARED_TENANT_NAMESPACE: null as CollectionNamespace,
+  isTenantNamespace: (_namespace?: CollectionNamespace) => false,
+  isTenantCollectionId: (_id: CollectionId) => false,
+  getNamespaceForTenantId: (_id: CollectionId) => null as CollectionNamespace,
+  getTenantCollectionPathPrefix: (_collection: TenantCollectionPathItem) =>
+    null as CollectionId[] | null,
+  getTenantRootDisabledReason: () => null as string | null,
+  getNamespaceDisplayName: (_namespace?: CollectionNamespace) =>
+    null as string | null,
+  TENANT_SPECIFIC_COLLECTIONS: null as {
+    id: "tenant-specific";
+    name: string;
+    location: string;
+    path: CollectionId[];
+    can_write: boolean;
+  } | null,
 });
 
 export const PLUGIN_TENANTS: {
@@ -52,6 +88,25 @@ export const PLUGIN_TENANTS: {
     props: CollectionItemListProps,
   ) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
+  GroupDescription: (props: { group: Group }) => React.ReactElement | null;
+  getNewUserModalTitle: (isExternal: boolean) => string | null;
+  getFormGroupsTitle: (isExternal: boolean) => string | null;
+  SHARED_TENANT_NAMESPACE: CollectionNamespace;
+  isTenantNamespace: (namespace?: CollectionNamespace) => boolean;
+  isTenantCollectionId: (id: CollectionId) => boolean;
+  getNamespaceForTenantId: (id: CollectionId) => CollectionNamespace;
+  getTenantCollectionPathPrefix: (
+    collection: TenantCollectionPathItem,
+  ) => CollectionId[] | null;
+  getTenantRootDisabledReason: () => string | null;
+  getNamespaceDisplayName: (namespace?: CollectionNamespace) => string | null;
+  TENANT_SPECIFIC_COLLECTIONS: {
+    id: "tenant-specific";
+    name: string;
+    location: string;
+    path: CollectionId[];
+    can_write: boolean;
+  } | null;
 } = getDefaultPluginTenants();
 
 /**

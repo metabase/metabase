@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,
@@ -19,17 +20,6 @@ import type {
   CollectionPickerStatePath,
 } from "./CollectionPicker";
 
-export const SHARED_TENANT_NAMESPACE = "shared-tenant-collection";
-
-const isTenantNamespace = (namespace?: CollectionNamespace): boolean => {
-  return namespace === SHARED_TENANT_NAMESPACE;
-};
-
-/**
- * Gets the namespace for a collection item.
- * For namespace roots (like "tenant"), returns the corresponding namespace.
- * For regular collections, returns their namespace property.
- */
 export const getNamespaceForItem = (
   item: Pick<CollectionPickerItem, "id" | "namespace"> | null | undefined,
 ): CollectionNamespace | undefined => {
@@ -37,12 +27,11 @@ export const getNamespaceForItem = (
     return undefined;
   }
 
-  // If the item is the tenant root, return the shared tenant namespace
-  if (item.id === "tenant") {
-    return SHARED_TENANT_NAMESPACE;
+  const tenantNamespace = PLUGIN_TENANTS.getNamespaceForTenantId(item.id);
+  if (tenantNamespace) {
+    return tenantNamespace as CollectionNamespace;
   }
 
-  // Otherwise return the item's namespace
   return item.namespace;
 };
 
@@ -73,30 +62,24 @@ export const getCollectionIdPath = (
     return ["databases"];
   }
 
-  if (collection.id === "tenant") {
-    return ["tenant"];
-  }
-
-  if (collection.id === "tenant-specific") {
-    return ["tenant-specific"];
+  const tenantPath = PLUGIN_TENANTS.getTenantCollectionPathPrefix(collection);
+  if (tenantPath) {
+    if (
+      PLUGIN_TENANTS.isTenantCollectionId(collection.id) ||
+      collection.type === "tenant-specific-root-collection"
+    ) {
+      return tenantPath;
+    }
+    const location = collection?.effective_location ?? collection?.location;
+    const pathFromRoot: CollectionId[] =
+      location?.split("/").filter(Boolean).map(Number) ?? [];
+    const id =
+      collection.model === "collection" ? collection.id : -collection.id;
+    return [...tenantPath, ...pathFromRoot, id];
   }
 
   if (collection.type === "library") {
     return [collection.id];
-  }
-
-  if (collection.type === "tenant-specific-root-collection") {
-    // Child of "Tenant-Specific Collections" for admins
-    if (collection.collection_id === "tenant-specific") {
-      return ["tenant-specific", collection.id];
-    }
-
-    // "My Tenant Collection" root for tenant users
-    return [collection.id];
-  }
-
-  if (collection.namespace === "tenant-specific") {
-    return ["tenant"];
   }
 
   if (collection.id === PERSONAL_COLLECTIONS.id) {
@@ -121,21 +104,12 @@ export const getCollectionIdPath = (
 
   const id = collection.model === "collection" ? collection.id : -collection.id;
 
-  // Check for tenant collection using namespace first, then fall back to boolean flags
-  const isTenantCollection =
-    isTenantNamespace(collection.namespace) ||
-    isTenantNamespace(collection.collection_namespace) ||
-    collection.is_shared_tenant_collection ||
-    collection.is_tenant_dashboard;
-
   if (isInUserPersonalCollection) {
     return [...pathFromRoot, id];
   } else if (isInSemanticLayerCollection) {
     return [...pathFromRoot, id];
   } else if (collection.is_personal) {
     return ["personal", ...pathFromRoot, id];
-  } else if (isTenantCollection) {
-    return ["tenant", ...pathFromRoot, id];
   } else {
     return ["root", ...pathFromRoot, id];
   }
@@ -150,10 +124,11 @@ export const getStateFromIdPath = ({
   namespace?: CollectionNamespace;
   models: CollectionItemModel[];
 }): CollectionPickerStatePath => {
-  // Determine the effective namespace based on the path
-  // If the path starts with "tenant", use the shared tenant namespace
   const effectiveNamespace =
-    idPath[0] === "tenant" ? SHARED_TENANT_NAMESPACE : namespace;
+    PLUGIN_TENANTS.isTenantCollectionId(idPath[0]) &&
+    PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+      ? (PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE as CollectionNamespace)
+      : namespace;
 
   const statePath: PickerState<
     CollectionPickerItem,
@@ -223,46 +198,25 @@ const resolveEntityId = (
   }
 };
 
-/**
- * Checks if a collection item is a namespace root (like tenant root).
- * Namespace roots should only contain sub-collections, not actual content.
- */
 export const isNamespaceRoot = (item: CollectionPickerItem): boolean => {
-  // The tenant root has id "tenant" and namespace "shared-tenant-collection"
-  if (item.id === "tenant") {
-    return true;
-  }
-
-  // Future namespace roots could be detected by having a namespace but being
-  // at the root level (no location or location is "/")
-  return false;
+  return PLUGIN_TENANTS.isTenantCollectionId(item.id);
 };
 
-/**
- * Checks if an item should be disabled based on the savingModel option.
- * Namespace roots are disabled when saving non-collection items.
- */
 export const shouldDisableItemForSavingModel = (
   item: CollectionPickerItem,
   savingModel?: CollectionPickerOptions["savingModel"],
 ): boolean => {
-  // If no savingModel specified, don't disable anything
   if (!savingModel) {
     return false;
   }
 
-  // Collections can be saved anywhere
   if (savingModel === "collection") {
     return false;
   }
 
-  // For other item types, disable namespace roots
   return isNamespaceRoot(item);
 };
 
-/**
- * Returns the reason why an item is disabled, for use in tooltips.
- */
 export const getDisabledReasonForSavingModel = (
   item: CollectionPickerItem,
   savingModel?: CollectionPickerOptions["savingModel"],
@@ -271,8 +225,11 @@ export const getDisabledReasonForSavingModel = (
     return undefined;
   }
 
-  if (item.id === "tenant") {
-    return t`Items cannot be saved directly to the tenant root collection. Please select a sub-collection.`;
+  if (PLUGIN_TENANTS.isTenantCollectionId(item.id)) {
+    const tenantReason = PLUGIN_TENANTS.getTenantRootDisabledReason();
+    if (tenantReason) {
+      return tenantReason;
+    }
   }
 
   return t`Items cannot be saved to this collection.`;

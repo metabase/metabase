@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
-import { SHARED_TENANT_NAMESPACE } from "metabase/common/components/Pickers/utils";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 
 import { type SetupOpts, setup as coreSetup } from "./setup";
 
@@ -56,7 +56,10 @@ describe("tenant collections", () => {
 describe("restrictToNamespace option", () => {
   it("should only show tenant collections when restricted to shared-tenant-collection namespace", async () => {
     setup({
-      options: { restrictToNamespace: SHARED_TENANT_NAMESPACE },
+      options: {
+        restrictToNamespace:
+          PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE ?? undefined,
+      },
     });
 
     // Tenant root should be visible

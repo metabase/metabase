@@ -22,8 +22,9 @@ import SnippetCollectionName from "metabase/common/components/SnippetCollectionN
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import Collections from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Icon } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
@@ -56,8 +57,14 @@ function ItemName({
     return <SnippetCollectionName id={id} />;
   }
 
-  if (id === null && namespace === "shared-tenant-collection") {
-    return <span>{t`Shared collections`}</span>;
+  // Check for tenant namespace display name via plugin
+  if (id === null) {
+    const namespaceDisplayName = PLUGIN_TENANTS.getNamespaceDisplayName(
+      namespace as CollectionNamespace,
+    );
+    if (namespaceDisplayName) {
+      return <span>{namespaceDisplayName}</span>;
+    }
   }
 
   return <CollectionName id={id} />;

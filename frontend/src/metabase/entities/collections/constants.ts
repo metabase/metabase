@@ -43,14 +43,3 @@ export const DATABASES_COLLECTION = {
   location: "/",
   can_write: false,
 };
-
-// fake collection for admins that contains all tenant-specific collections
-export const TENANT_SPECIFIC_COLLECTIONS = {
-  id: "tenant-specific" as const, // placeholder id
-  get name() {
-    return t`Tenant collections`;
-  },
-  location: "/",
-  path: [ROOT_COLLECTION.id],
-  can_write: false,
-};

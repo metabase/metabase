@@ -1,10 +1,7 @@
 import _ from "underscore";
 
 import { TablePicker } from "metabase/common/components/Pickers/TablePicker";
-import {
-  PERSONAL_COLLECTIONS,
-  TENANT_SPECIFIC_COLLECTIONS,
-} from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
@@ -56,7 +53,7 @@ export const CollectionItemPickerResolver = ({
     );
   }
 
-  if (query.id === TENANT_SPECIFIC_COLLECTIONS.id) {
+  if (query.id === PLUGIN_TENANTS.TENANT_SPECIFIC_COLLECTIONS?.id) {
     return (
       <PLUGIN_TENANTS.TenantSpecificCollectionsItemList
         onClick={onClick}

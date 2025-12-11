@@ -9,16 +9,11 @@ import {
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
-import {
-  PERSONAL_COLLECTIONS,
-  TENANT_SPECIFIC_COLLECTIONS,
-} from "metabase/entities/collections/constants";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
-
-import { SHARED_TENANT_NAMESPACE } from "../utils";
 
 import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
@@ -32,14 +27,20 @@ const personalCollectionsRoot: CollectionPickerItem = {
   below: ["collection"],
 };
 
-const tenantSpecificCollectionsRoot: CollectionPickerItem = {
-  ...TENANT_SPECIFIC_COLLECTIONS,
-  can_write: false,
-  model: "collection",
-  location: "/",
-  description: "",
-  here: ["collection"],
-  below: ["collection"],
+const getTenantSpecificCollectionsRoot = (): CollectionPickerItem | null => {
+  const base = PLUGIN_TENANTS.TENANT_SPECIFIC_COLLECTIONS;
+  if (!base) {
+    return null;
+  }
+  return {
+    ...base,
+    can_write: false,
+    model: "collection",
+    location: "/",
+    description: "",
+    here: ["collection"],
+    below: ["collection"],
+  };
 };
 
 /**
@@ -94,13 +95,14 @@ export const useRootCollectionPickerItems = (
   const items = useMemo(() => {
     const collectionItems: CollectionPickerItem[] = [];
 
-    // If restricted to shared-tenant namespace, only show tenant root
-    if (options?.restrictToNamespace === SHARED_TENANT_NAMESPACE) {
+    if (
+      options?.restrictToNamespace === PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+    ) {
       if (tenantsEnabled && currentUser) {
         collectionItems.push({
           name: t`Shared collections`,
           id: "tenant",
-          namespace: SHARED_TENANT_NAMESPACE,
+          namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
           here: ["collection", "card", "dashboard"],
           description: null,
           can_write: true,
@@ -185,7 +187,7 @@ export const useRootCollectionPickerItems = (
       collectionItems.push({
         name: t`Shared collections`,
         id: "tenant",
-        namespace: SHARED_TENANT_NAMESPACE,
+        namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
         here: ["collection", "card", "dashboard"],
         description: null,
         can_write: true,
@@ -208,9 +210,11 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    // Show all tenant-specific collections for admins
     if (shouldShowTenantCollections && isAdmin) {
-      collectionItems.push(tenantSpecificCollectionsRoot);
+      const tenantSpecificRoot = getTenantSpecificCollectionsRoot();
+      if (tenantSpecificRoot) {
+        collectionItems.push(tenantSpecificRoot);
+      }
     }
 
     return collectionItems;

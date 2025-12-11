@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import {
@@ -132,9 +133,9 @@ export const QuestionPicker = ({
             ...currentDashboard,
             model: "dashboard",
             location,
-            is_tenant_dashboard:
-              currentDashboard?.collection?.namespace ===
-              "shared-tenant-collection",
+            is_tenant_dashboard: PLUGIN_TENANTS.isTenantNamespace(
+              currentDashboard?.collection?.namespace,
+            ),
           },
           userPersonalCollectionId,
         );

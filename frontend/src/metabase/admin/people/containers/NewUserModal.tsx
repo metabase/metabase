@@ -6,6 +6,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Modal } from "metabase/ui";
 import type { User as UserType } from "metabase-types/api";
 
@@ -39,13 +40,11 @@ export const NewUserModal = ({
     dispatch(push(Urls.newUserSuccess(user)));
   };
 
+  // Use plugin-provided title for external users, fallback to default
+  const title = PLUGIN_TENANTS.getNewUserModalTitle(external) ?? t`Create user`;
+
   return (
-    <Modal
-      opened
-      title={external ? t`Create tenant user` : t`Create user`}
-      padding="xl"
-      onClose={onClose}
-    >
+    <Modal opened title={title} padding="xl" onClose={onClose}>
       <UserForm
         external={external}
         initialValues={{}}

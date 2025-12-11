@@ -20,7 +20,7 @@ import {
   type CollectionPickerValueItem,
   getCollectionType,
 } from "metabase/common/components/Pickers/CollectionPicker";
-import { SHARED_TENANT_NAMESPACE } from "metabase/common/components/Pickers/utils";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionId,
   CollectionItem,
@@ -94,8 +94,9 @@ export const MoveModal = ({
   savingModel,
   movingCollectionNamespace,
 }: MoveModalProps) => {
-  const isMovingTenantCollection =
-    movingCollectionNamespace === SHARED_TENANT_NAMESPACE;
+  const isMovingTenantCollection = PLUGIN_TENANTS.isTenantNamespace(
+    movingCollectionNamespace,
+  );
   const shouldDisableItem = (item: CollectionPickerItem): boolean => {
     if (movingCollectionId) {
       if (
@@ -165,14 +166,9 @@ export const MoveModal = ({
     ? ["collection", "dashboard"]
     : ["collection"];
 
-  // Determine namespace restriction for the picker:
-  // - Only apply when moving collections (movingCollectionId is set)
-  // - If moving a tenant collection, only show tenant hierarchy
-  // - If moving a regular collection, hide tenant collections
-  // - Non-collections (dashboards, cards, etc.) can be moved freely between namespaces
-  const restrictToNamespace = movingCollectionId
-    ? isMovingTenantCollection
-      ? SHARED_TENANT_NAMESPACE
+  const restrictToNamespace: string | undefined = movingCollectionId
+    ? isMovingTenantCollection && PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+      ? PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
       : "default"
     : undefined;
 

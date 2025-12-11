@@ -155,17 +155,10 @@ export const GroupDetail = ({
 };
 
 const GroupDescription = ({ group }: { group: Group }) => {
-  if (PLUGIN_TENANTS.isExternalUsersGroup(group)) {
-    return (
-      <Box maw="38rem" px="1rem">
-        <Text>
-          {t`All tenant users belong to the ${getGroupNameLocalized(
-            group,
-          )} group and can't be removed from it. Setting permissions for this group is a great way to
-        make sure you know what new Metabase users will be able to see.`}
-        </Text>
-      </Box>
-    );
+  // Let plugin handle tenant-specific descriptions first
+  const tenantDescription = PLUGIN_TENANTS.GroupDescription({ group });
+  if (tenantDescription) {
+    return tenantDescription;
   }
 
   if (isDefaultGroup(group)) {

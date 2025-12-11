@@ -85,7 +85,7 @@ export const UserForm = ({
           <FormGroupsWidget
             name="user_group_memberships"
             external={external}
-            title={external ? t`Tenant Groups` : t`Groups`}
+            title={PLUGIN_TENANTS.getFormGroupsTitle(external) ?? t`Groups`}
           />
           {external && (
             <PLUGIN_TENANTS.FormTenantWidget

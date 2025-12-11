@@ -1,5 +1,7 @@
+import { setupEnterpriseTest } from "__support__/enterprise";
+import { PLUGIN_TENANTS } from "metabase/plugins";
+
 import {
-  SHARED_TENANT_NAMESPACE,
   getCollectionIdPath,
   getDisabledReasonForSavingModel,
   getNamespaceForItem,
@@ -7,6 +9,8 @@ import {
   isNamespaceRoot,
   shouldDisableItemForSavingModel,
 } from "./utils";
+
+setupEnterpriseTest();
 
 describe("getCollectionIdPath", () => {
   it("should handle the current user's personal collection", () => {
@@ -489,7 +493,9 @@ describe("getNamespaceForItem", () => {
       namespace: "shared-tenant-collection" as const,
     };
 
-    expect(getNamespaceForItem(item)).toBe(SHARED_TENANT_NAMESPACE);
+    expect(getNamespaceForItem(item)).toBe(
+      PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
+    );
   });
 
   it("should return the item namespace for regular collections with namespace", () => {
