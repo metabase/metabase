@@ -66,8 +66,8 @@
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
-(defn remove-invalid-attributes
-  "Remove all invalid attributes from passed user attributes"
+(defn stringify-valid-attributes
+  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings"
   [attrs]
   (->> attrs
        (keep (fn [[key value]]
@@ -79,5 +79,5 @@
                  (log/warnf "Dropping attribute '%s', keys beginning with `@` are reserved" (name key))
 
                  :else
-                 [key value])))
+                 [(u/qualified-name key) (str value)])))
        (into {})))

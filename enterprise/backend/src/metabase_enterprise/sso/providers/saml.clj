@@ -120,7 +120,7 @@
             tenant-slug (when (and (not-empty (sso-settings/saml-attribute-tenant))
                                    (setting/get :use-tenants))
                           (get attrs (sso-settings/saml-attribute-tenant)))
-            user-attributes (sso-utils/remove-invalid-attributes attrs)]
+            user-attributes (sso-utils/stringify-valid-attributes attrs)]
         (when-not email
           (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email. We tried looking for {0}, but couldn''t find the attribute. Please make sure your SAML IdP is properly configured."
                                     (sso-settings/saml-attribute-email)))

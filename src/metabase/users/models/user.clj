@@ -44,8 +44,8 @@
   (derive :hook/entity-id))
 
 (t2/deftransforms :model/User
-  {:login_attributes mi/transform-json-no-keywordization
-   :jwt_attributes   mi/transform-json-no-keywordization
+  {:login_attributes mi/transform-attributes
+   :jwt_attributes   mi/transform-attributes
    :settings         mi/transform-encrypted-json
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})

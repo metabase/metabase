@@ -53,7 +53,7 @@
                                (jwt-attribute-groups)]
                               (when (setting/get :use-tenants)
                                 [(jwt-attribute-tenant)]))]
-    (sso-utils/remove-invalid-attributes (apply dissoc jwt-data excluded-keys))))
+    (sso-utils/stringify-valid-attributes (apply dissoc jwt-data excluded-keys))))
 
 (defn- decode-and-verify-jwt
   "Decode and verify a JWT token. Returns the JWT data if valid, throws on error."
