@@ -143,7 +143,6 @@
                                            [:= :schema schema]
                                            [:= :name table]]))}))
 
-;; TODO
 (defn- batch-lookup-table-ids
   "Given a list of maps holding [db_id schema table], return a mapping from those tuples => table_id"
   [table-refs]

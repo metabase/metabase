@@ -321,7 +321,6 @@
           (testing "and after we run the transform, id for isolated table appears"
             (is (=? {:status "succeeded"}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "transform" ref-id "run"))))
-            (t2/select-one [:model/Table :id :schema :name] {:order-by [[:id :desc]]})
             (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
