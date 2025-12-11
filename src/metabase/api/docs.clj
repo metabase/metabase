@@ -87,7 +87,8 @@
   (try
     (let [file (io/file openapi-file-path)]
       (when (.exists ^java.io.File file)
-        (json/decode+kw (io/reader file))))
+        (with-open [f (io/reader file)]
+          (json/decode+kw f))))
     (catch Throwable e
       (log/error e "Failed to read OpenAPI specification from file")
       nil)))

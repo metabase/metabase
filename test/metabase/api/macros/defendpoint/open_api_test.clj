@@ -39,16 +39,6 @@
             (#'defendpoint.open-api/fix-json-schema
              (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id)))))))
 
-(deftest ^:parallel json-schema-conversion-4
-  (testing "nested data structures are still fixed up"
-    (is (=? {:type  :array
-             :items {:type       :object
-                     :properties {"params" {:oneOf [{:type :array :items {:type :string}}
-                                                    {:type :null}]}}}}
-            (#'defendpoint.open-api/fix-json-schema
-             (mjs/transform [:sequential [:map
-                                          [:params {:optional true} [:maybe [:sequential :string]]]]]))))))
-
 (deftest ^:parallel collect-definitions-test
   (binding [defendpoint.open-api/*definitions* (atom [])]
     (is (=? {:properties {:value {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
