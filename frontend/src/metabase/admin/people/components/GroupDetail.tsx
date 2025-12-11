@@ -18,7 +18,7 @@ import {
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Button } from "metabase/ui";
+import { Box, Button, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import Alert from "./Alert";
@@ -158,12 +158,12 @@ const GroupDescription = ({ group }: { group: Group }) => {
   if (PLUGIN_TENANTS.isExternalUsersGroup(group)) {
     return (
       <Box maw="38rem" px="1rem">
-        <p>
+        <Text>
           {t`All tenant users belong to the ${getGroupNameLocalized(
             group,
           )} group and can't be removed from it. Setting permissions for this group is a great way to
         make sure you know what new Metabase users will be able to see.`}
-        </p>
+        </Text>
       </Box>
     );
   }
@@ -171,12 +171,12 @@ const GroupDescription = ({ group }: { group: Group }) => {
   if (isDefaultGroup(group)) {
     return (
       <Box maw="38rem" px="1rem">
-        <p>
+        <Text>
           {t`All users belong to the ${getGroupNameLocalized(
             group,
           )} group and can't be removed from it. Setting permissions for this group is a great way to
         make sure you know what new Metabase users will be able to see.`}
-        </p>
+        </Text>
       </Box>
     );
   }
@@ -184,13 +184,13 @@ const GroupDescription = ({ group }: { group: Group }) => {
   if (isAdminGroup(group)) {
     return (
       <Box maw="38rem" px="1rem">
-        <p>
+        <Text>
           {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
         settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
-        </p>
-        <p>
+        </Text>
+        <Text>
           {t`To make sure you don't get locked out of Metabase, there always has to be at least one user in this group.`}
-        </p>
+        </Text>
       </Box>
     );
   }
