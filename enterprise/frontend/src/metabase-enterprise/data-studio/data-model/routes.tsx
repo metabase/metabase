@@ -4,6 +4,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { DataModelMeasureLayout } from "metabase-enterprise/data-studio/measures/layouts/DataModelMeasureLayout";
 import { MeasureDependenciesPage } from "metabase-enterprise/data-studio/measures/pages/MeasureDependenciesPage";
 import { MeasureDetailPage } from "metabase-enterprise/data-studio/measures/pages/MeasureDetailPage";
+import { MeasureRevisionHistoryPage } from "metabase-enterprise/data-studio/measures/pages/MeasureRevisionHistoryPage";
 import { NewMeasurePage } from "metabase-enterprise/data-studio/measures/pages/NewMeasurePage";
 import { DataModelSegmentLayout } from "metabase-enterprise/data-studio/segments/layouts/DataModelSegmentLayout";
 import { NewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/NewSegmentPage";
@@ -56,6 +57,7 @@ export function getDataStudioMetadataRoutes() {
         component={DataModelMeasureLayout}
       >
         <IndexRoute component={MeasureDetailPage} />
+        <Route path="revisions" component={MeasureRevisionHistoryPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={MeasureDependenciesPage}>
             <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />

@@ -13,6 +13,7 @@ import type { Measure, MeasureId, Table, TableId } from "metabase-types/api";
 
 export type MeasureTabUrls = {
   definition: string;
+  revisions: string;
   dependencies: string;
 };
 

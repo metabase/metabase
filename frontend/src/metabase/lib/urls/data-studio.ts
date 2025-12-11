@@ -220,6 +220,19 @@ export function dataStudioDataModelMeasureDependencies(
   return `${dataStudioDataModelMeasure(params)}/dependencies`;
 }
 
+export function dataStudioDataModelMeasureRevisions(
+  params: DataModelMeasureParams,
+) {
+  return `${dataStudioDataModelMeasure(params)}/revisions`;
+}
+
+export function dataStudioPublishedTableMeasureRevisions(
+  tableId: TableId,
+  measureId: MeasureId,
+) {
+  return `${dataStudioPublishedTableMeasure(tableId, measureId)}/revisions`;
+}
+
 export function newDataStudioDataModelMeasure({
   databaseId,
   schemaName,

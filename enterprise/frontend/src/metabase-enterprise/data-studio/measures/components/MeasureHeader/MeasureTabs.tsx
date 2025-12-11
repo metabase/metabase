@@ -21,6 +21,11 @@ export function MeasureTabs({ urls }: MeasureTabsProps) {
       label: t`Definition`,
       to: urls.definition,
     },
+    {
+      label: t`Revision history`,
+      to: urls.revisions,
+      isSelected: location.pathname.startsWith(urls.revisions),
+    },
   ];
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {

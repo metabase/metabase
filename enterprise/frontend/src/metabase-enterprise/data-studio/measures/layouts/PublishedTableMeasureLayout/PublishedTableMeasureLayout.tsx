@@ -38,6 +38,10 @@ export function PublishedTableMeasureLayout({
       backUrl: Urls.dataStudioTableMeasures(tableId),
       tabUrls: {
         definition: Urls.dataStudioPublishedTableMeasure(tableId, measureId),
+        revisions: Urls.dataStudioPublishedTableMeasureRevisions(
+          tableId,
+          measureId,
+        ),
         dependencies: Urls.dataStudioPublishedTableMeasureDependencies(
           tableId,
           measureId,

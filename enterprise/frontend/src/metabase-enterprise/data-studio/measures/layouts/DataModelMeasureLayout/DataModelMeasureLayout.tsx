@@ -49,6 +49,7 @@ export function DataModelMeasureLayout({
       }),
       tabUrls: {
         definition: Urls.dataStudioDataModelMeasure(urlParams),
+        revisions: Urls.dataStudioDataModelMeasureRevisions(urlParams),
         dependencies: Urls.dataStudioDataModelMeasureDependencies(urlParams),
       },
       renderBreadcrumbs: (table, measure) => (

@@ -10,23 +10,25 @@ type DiffValue = {
   after?: unknown;
 };
 
-type SegmentRevisionDiffProps = {
+type RevisionDiffProps = {
   property: string;
   diff: DiffValue | undefined;
   tableId: TableId;
+  definitionLabel: string;
 };
 
-export function SegmentRevisionDiff({
+export function RevisionDiff({
   property,
   diff,
   tableId,
-}: SegmentRevisionDiffProps) {
+  definitionLabel,
+}: RevisionDiffProps) {
   if (!diff) {
     return null;
   }
 
   const { before, after } = diff;
-  const label = getPropertyLabel(property);
+  const label = getPropertyLabel(property, definitionLabel);
 
   return (
     <Box p="md" bg="bg-light" bd="1px solid border">
@@ -56,14 +58,14 @@ function DiffIcon({ before, after }: { before: unknown; after: unknown }) {
   return <Icon name="add" size={12} c="success" />;
 }
 
-function getPropertyLabel(property: string): string {
+function getPropertyLabel(property: string, definitionLabel: string): string {
   switch (property) {
     case "name":
       return t`Name`;
     case "description":
       return t`Description`;
     case "definition":
-      return t`Filter`;
+      return definitionLabel;
     default:
       return property;
   }

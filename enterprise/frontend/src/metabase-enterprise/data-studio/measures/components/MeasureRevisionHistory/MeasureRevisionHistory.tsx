@@ -1,30 +1,30 @@
 import { t } from "ttag";
 
-import type { Revision, Segment } from "metabase-types/api";
+import type { Measure, Revision } from "metabase-types/api";
 
 import { RevisionHistoryTimeline } from "../../../components/RevisionHistory";
 
-type SegmentRevisionHistoryProps = {
-  segment: Segment;
+type MeasureRevisionHistoryProps = {
+  measure: Measure;
 };
 
-export function SegmentRevisionHistory({
-  segment,
-}: SegmentRevisionHistoryProps) {
+export function MeasureRevisionHistory({
+  measure,
+}: MeasureRevisionHistoryProps) {
   return (
     <RevisionHistoryTimeline
-      entityType="segment"
-      entityId={segment.id}
-      tableId={segment.table_id}
-      getActionDescription={getSegmentActionDescription}
-      definitionLabel={t`Filter`}
+      entityType="measure"
+      entityId={measure.id}
+      tableId={measure.table_id}
+      getActionDescription={getMeasureActionDescription}
+      definitionLabel={t`Aggregation`}
     />
   );
 }
 
-function getSegmentActionDescription(revision: Revision): string {
+function getMeasureActionDescription(revision: Revision): string {
   if (revision.is_creation) {
-    return t`created this segment`;
+    return t`created this measure`;
   }
   if (revision.is_reversion) {
     return t`reverted to a previous version`;
@@ -34,11 +34,11 @@ function getSegmentActionDescription(revision: Revision): string {
   if (changedKeys.length === 1) {
     switch (changedKeys[0]) {
       case "name":
-        return t`renamed the segment`;
+        return t`renamed the measure`;
       case "description":
         return t`updated the description`;
       case "definition":
-        return t`changed the filter definition`;
+        return t`changed the aggregation definition`;
     }
   }
 
