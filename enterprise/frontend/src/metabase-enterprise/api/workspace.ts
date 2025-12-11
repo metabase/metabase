@@ -263,6 +263,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           idTag("workspace-transform", transformId),
           // tag("transform"),
         ]),
+      transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
     }),
     archiveWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
       query: ({ workspaceId, transformId }) => ({

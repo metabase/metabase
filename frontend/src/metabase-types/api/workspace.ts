@@ -64,6 +64,7 @@ export type WorkspaceOutputTableRef = {
 export type WorkspaceTransform = Omit<Transform, "id"> & {
   id: string;
   ref_id: string;
+  workspace_id: number;
   stale: boolean;
   global_id: TransformId | null;
   target_stale: boolean;

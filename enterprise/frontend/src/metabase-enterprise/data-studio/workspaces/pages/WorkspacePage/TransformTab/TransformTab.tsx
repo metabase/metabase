@@ -28,7 +28,7 @@ import {
   CreateTransformModal,
   type NewTransformValues,
 } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
-import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
+import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
 import {
   isSameSource,
   isTransformCanceling,
@@ -317,6 +317,7 @@ export const TransformTab = ({
 
   const handleTargetUpdate = useCallback(
     (updatedTransform?: WorkspaceTransform) => {
+      debugger;
       if (updatedTransform) {
         updateTransformState(updatedTransform);
         sendSuccessToast(t`Transform target updated`);
@@ -414,7 +415,7 @@ export const TransformTab = ({
 
       {isChangeTargetModalOpen && (
         <UpdateTargetModal
-          transform={transform}
+          transform={transform as WorkspaceTransform}
           onUpdate={handleTargetUpdate}
           onClose={closeChangeTargetModal}
         />
