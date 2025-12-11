@@ -1,22 +1,39 @@
-const {
-  WRITABLE_DB_ID,
+const { H } = cy;
+import {
   SAMPLE_DB_ID,
   SAMPLE_DB_TABLES,
-} = require("e2e/support/cypress_data");
-const {
-  COLLECTION_GROUP_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
+import {
   ALL_EXTERNAL_USERS_GROUP_ID,
-} = require("e2e/support/cypress_sample_instance_data");
-const { getPermissionRowPermissions } = require("e2e/support/helpers");
+  COLLECTION_GROUP_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import { getPermissionRowPermissions } from "e2e/support/helpers";
 
 const { STATIC_ORDERS_ID, STATIC_PRODUCTS_ID } = SAMPLE_DB_TABLES;
-
-const { H } = cy;
 
 const JWT_SECRET =
   "0000000000000000000000000000000000000000000000000000000000000000";
 
-const GIZMO_TENANT = {
+interface TenantAttributes {
+  CAPS?: string;
+  color?: string;
+}
+
+interface Tenant {
+  name: string;
+  slug: string;
+  attributes?: TenantAttributes;
+}
+
+interface TenantUser {
+  first_name: string;
+  last_name: string;
+  email: string;
+  "@tenant": string;
+}
+
+const GIZMO_TENANT: Tenant = {
   name: "Gizmos",
   slug: "gizmo",
   attributes: {
@@ -25,34 +42,34 @@ const GIZMO_TENANT = {
   },
 };
 
-const DOOHICKEY_TENANT = {
+const DOOHICKEY_TENANT: Tenant = {
   name: "Doohickey",
   slug: "doohickey",
 };
 
-const GIZMO_USER = {
+const GIZMO_USER: TenantUser = {
   first_name: "gizmo",
   last_name: "user",
   email: "gizmo.user@email.com",
   "@tenant": GIZMO_TENANT.slug,
 };
 
-const DOOHICKEY_USER = {
+const DOOHICKEY_USER: TenantUser = {
   first_name: "doohickey",
   last_name: "user",
   email: "doohickey.user@email.com",
   "@tenant": DOOHICKEY_TENANT.slug,
 };
 
-const SECOND_DOOHICKEY_USER = {
+const SECOND_DOOHICKEY_USER: TenantUser = {
   first_name: "donthickey",
   last_name: "user",
   email: "donthickey.user@email.com",
   "@tenant": DOOHICKEY_TENANT.slug,
 };
 
-const TENANTS = [GIZMO_TENANT, DOOHICKEY_TENANT];
-const USERS = [GIZMO_USER, DOOHICKEY_USER, SECOND_DOOHICKEY_USER];
+const TENANTS: Tenant[] = [GIZMO_TENANT, DOOHICKEY_TENANT];
+const USERS: TenantUser[] = [GIZMO_USER, DOOHICKEY_USER, SECOND_DOOHICKEY_USER];
 
 const GIZMO_FULL_NAME = H.getFullName(GIZMO_USER);
 
@@ -530,7 +547,7 @@ describe("Tenants - management", () => {
 
     H.modal().within(() => {
       cy.findByText("Attributes").click();
-      Object.entries(GIZMO_TENANT.attributes).forEach(([key, value]) => {
+      Object.entries(GIZMO_TENANT.attributes!).forEach(([key, value]) => {
         cy.findByText(key).should("be.visible");
         cy.findByDisplayValue(value).should("be.visible");
       });
@@ -561,7 +578,7 @@ describe("tenant users", () => {
     createTenants();
     USERS.forEach((user) =>
       cy
-        .task("signJwt", {
+        .task<string>("signJwt", {
           payload: user,
           secret: JWT_SECRET,
         })
@@ -684,7 +701,7 @@ describe("tenant users", () => {
   });
 
   it("should accept a tenant when provisioning a user via JWT", () => {
-    cy.task("signJwt", {
+    cy.task<string>("signJwt", {
       payload: GIZMO_USER,
       secret: JWT_SECRET,
     }).then((key) =>
@@ -704,7 +721,7 @@ describe("tenant users", () => {
       .should("not.contain.text", "Widget")
       .should("contain.text", "Gizmo");
 
-    cy.task("signJwt", {
+    cy.task<string>("signJwt", {
       payload: DOOHICKEY_USER,
       secret: JWT_SECRET,
     }).then((key) =>
@@ -835,7 +852,17 @@ describe("tenant users", () => {
   });
 });
 
-const assertPermissionTableColumnsExist = (assertions) => {
+type AssertionType = "exist" | "not.exist";
+
+const assertPermissionTableColumnsExist = (
+  assertions: [
+    AssertionType,
+    AssertionType,
+    AssertionType,
+    AssertionType,
+    AssertionType,
+  ],
+) => {
   cy.findByRole("columnheader", { name: "View data" }).should(assertions[0]);
   cy.findByRole("columnheader", { name: "Create queries" }).should(
     assertions[1],
@@ -851,7 +878,7 @@ const assertPermissionTableColumnsExist = (assertions) => {
   );
 };
 
-function hasGlobeIcon(groupName) {
+function hasGlobeIcon(groupName: string) {
   cy.findByTestId("permission-table")
     .findByText(groupName)
     .parent()
@@ -860,7 +887,7 @@ function hasGlobeIcon(groupName) {
     .should("be.visible");
 }
 
-function lacksGlobeIcon(groupName) {
+function lacksGlobeIcon(groupName: string) {
   cy.findByTestId("permission-table")
     .findByText(groupName)
     .parent()
@@ -872,7 +899,7 @@ const createUsers = () => {
   cy.request("GET", "/api/ee/tenant").then(({ body }) => {
     USERS.forEach((user) => {
       const tenantId = body.data.find(
-        (tenant) => tenant.slug === user["@tenant"],
+        (tenant: Tenant) => tenant.slug === user["@tenant"],
       ).id;
 
       cy.request("POST", "/api/user", { ...user, tenant_id: tenantId });
@@ -884,7 +911,7 @@ const createTenants = () => {
   TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenant", tenant));
 };
 
-const createTenantGroupFromUI = (groupName) => {
+const createTenantGroupFromUI = (groupName: string) => {
   cy.intercept("POST", "/api/permissions/group").as("createGroup");
   cy.visit("/admin/tenants/groups");
 
