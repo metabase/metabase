@@ -18,12 +18,14 @@ export function LocationCell({ links, icon }: LocationCellProps) {
   return (
     <BaseCell className={S.cell}>
       <Flex align="center" gap="sm">
-        {icon != null && <FixedSizeIcon name={icon} />}
         {links.map((link, linkIndex) => (
           <Fragment key={linkIndex}>
             {linkIndex > 0 && <Box>/</Box>}
             <Anchor className={S.link} component={Link} to={link.url}>
-              <Ellipsified>{link.label}</Ellipsified>
+              <Flex align="center" gap="sm">
+                {linkIndex === 0 && icon && <FixedSizeIcon name={icon} />}
+                <Ellipsified>{link.label}</Ellipsified>
+              </Flex>
             </Anchor>
           </Fragment>
         ))}
