@@ -23,6 +23,7 @@ export type Transform = {
   tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
+  workspace_id?: number | null;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &

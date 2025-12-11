@@ -32,11 +32,13 @@ import {
 import {
   useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,
+  useDeleteWorkspaceMutation,
   useGetWorkspacesQuery,
+  useUnarchiveWorkspaceMutation,
 } from "metabase-enterprise/api";
 import { DataStudioContext } from "metabase-enterprise/data-studio/common/contexts/DataStudioContext";
 import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
-import type { Database, WorkspaceId } from "metabase-types/api";
+import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
 
@@ -237,10 +239,13 @@ function WorkspacesSection({
 
   const workspaces = useMemo(
     () =>
-      [...(workspacesData?.items ?? [])].sort(
-        (a, b) =>
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-      ),
+      [...(workspacesData?.items ?? [])]
+        // .filter((w) => !w.archived)
+        .sort((a, b) => {
+          const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+          const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+          return bDate - aDate;
+        }),
     [workspacesData],
   );
 
@@ -293,6 +298,9 @@ function WorkspacesSection({
   );
 
   const [archiveWorkspace] = useArchiveWorkspaceMutation();
+  const [unarchiveWorkspace] = useUnarchiveWorkspaceMutation();
+  const [deleteWorkspace] = useDeleteWorkspaceMutation();
+
   const handleWorkspaceArchive = async (id: WorkspaceId) => {
     try {
       await archiveWorkspace(id).unwrap();
@@ -300,6 +308,25 @@ function WorkspacesSection({
       dispatch(push(Urls.dataStudioWorkspaceList()));
     } catch (error) {
       sendErrorToast(t`Failed to archive workspace`);
+    }
+  };
+
+  const handleWorkspaceUnarchive = async (id: WorkspaceId) => {
+    try {
+      await unarchiveWorkspace(id).unwrap();
+      sendSuccessToast(t`Workspace restored successfully`);
+    } catch (error) {
+      sendErrorToast(t`Failed to restore workspace`);
+    }
+  };
+
+  const handleWorkspaceDelete = async (id: WorkspaceId) => {
+    try {
+      await deleteWorkspace(id).unwrap();
+      sendSuccessToast(t`Workspace deleted successfully`);
+      dispatch(push(Urls.dataStudioWorkspaceList()));
+    } catch (error) {
+      sendErrorToast(t`Failed to delete workspace`);
     }
   };
 
@@ -390,7 +417,9 @@ function WorkspacesSection({
                     workspace={workspace}
                     isSelected={isSelected}
                     onOpen={handleOpenWorkspace}
-                    archiveWorkspace={handleWorkspaceArchive}
+                    onArchive={handleWorkspaceArchive}
+                    onUnarchive={handleWorkspaceUnarchive}
+                    onDelete={handleWorkspaceDelete}
                   />
                 );
               })
@@ -467,26 +496,39 @@ function DataStudioNavToggle({
 }
 
 interface WorkspaceItemProps {
-  workspace: { id: number; name: string; updated_at: string };
+  workspace: Workspace;
   isSelected: boolean;
   onOpen: (workspaceId: WorkspaceId) => void;
-  archiveWorkspace: (workspaceId: WorkspaceId) => Promise<void>;
+  onArchive: (workspaceId: WorkspaceId) => Promise<void>;
+  onUnarchive: (workspaceId: WorkspaceId) => Promise<void>;
+  onDelete: (workspaceId: WorkspaceId) => Promise<void>;
 }
 
 function WorkspaceItem({
   workspace,
   isSelected,
   onOpen,
-  archiveWorkspace,
+  onArchive,
+  onUnarchive,
+  onDelete,
 }: WorkspaceItemProps) {
-  const timeAgo = dayjs(workspace.updated_at).fromNow();
+  const timeAgo = workspace.updated_at
+    ? dayjs(workspace.updated_at).fromNow()
+    : null;
+
   const handleArchive = () => {
-    archiveWorkspace(workspace.id);
+    onArchive(workspace.id);
+  };
+
+  const handleUnarchive = () => {
+    onUnarchive(workspace.id);
   };
 
   const handleDelete = () => {
-    archiveWorkspace(workspace.id);
+    onDelete(workspace.id);
   };
+
+  const isArchived = workspace.archived;
 
   return (
     <UnstyledButton
@@ -500,9 +542,11 @@ function WorkspaceItem({
           <Text size="sm" fw={600} truncate>
             {workspace.name}
           </Text>
-          <Text size="xs" c="text-secondary" truncate>
-            {t`Updated ${timeAgo}`}
-          </Text>
+          {timeAgo && (
+            <Text size="xs" c="text-secondary" truncate>
+              {t`Updated ${timeAgo}`}
+            </Text>
+          )}
         </Stack>
         <Menu position="right" withinPortal>
           <Menu.Target>
@@ -517,18 +561,28 @@ function WorkspaceItem({
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <Menu.Item
-              leftSection={<Icon name="archive" />}
-              onClick={handleArchive}
-            >
-              {t`Archive`}
-            </Menu.Item>
+            {isArchived ? (
+              <Menu.Item
+                leftSection={<Icon name="revert" />}
+                onClick={handleUnarchive}
+              >
+                {t`Restore`}
+              </Menu.Item>
+            ) : (
+              <Menu.Item
+                leftSection={<Icon name="archive" />}
+                onClick={handleArchive}
+              >
+                {t`Archive`}
+              </Menu.Item>
+            )}
             <Menu.Divider />
             <Menu.Item
               leftSection={<Icon name="trash" />}
               onClick={handleDelete}
+              color="danger"
             >
-              {t`Move to trash`}
+              {t`Delete`}
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>

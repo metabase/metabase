@@ -35,9 +35,10 @@ import {
 import {
   useGetWorkspaceQuery,
   useGetWorkspaceTablesQuery,
+  useGetWorkspaceTransformsQuery,
   useListTransformsQuery,
   useMergeWorkspaceMutation,
-  useUpdateWorkspaceNameMutation,
+  useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
@@ -49,7 +50,11 @@ import {
 } from "metabase-enterprise/metabot/state/reducer";
 import { getMetabot } from "metabase-enterprise/metabot/state/selectors";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  WorkspaceTransformItem,
+} from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
@@ -105,9 +110,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
   const { data: databases = { data: [] } } = useListDatabasesQuery({});
 
-  const { data: allTransforms = [] } = useListTransformsQuery({});
+  const { data: allDbTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
+  const { data: workspaceTransforms = [] } = useGetWorkspaceTransformsQuery(id);
   useRegisterMetabotContextProvider(async () => {
     if (!workspace?.database_id) {
       return;
@@ -125,7 +131,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
 
-  const [updateWorkspaceName] = useUpdateWorkspaceNameMutation();
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
 
   const sourceDb = databases?.data.find(
     (db) => db.id === workspace?.database_id,
@@ -133,7 +139,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
   const dbTransforms = useMemo(
     () =>
-      allTransforms.filter((t) => {
+      allDbTransforms.filter((t) => {
         // TODO: @uladzimirdev add guards
         if (t.source_type === "python") {
           return (
@@ -148,7 +154,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         }
         return false;
       }),
-    [allTransforms, sourceDb],
+    [allDbTransforms, sourceDb],
   );
 
   const {
@@ -157,14 +163,17 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     activeTransform,
     activeEditedTransform,
     activeTable,
-    setActiveTransform,
     setActiveTab,
+    setActiveTable,
+    setActiveTransform,
     addOpenedTab,
     removeOpenedTab,
     setOpenedTabs,
     addOpenedTransform,
     patchEditedTransform,
     hasUnsavedChanges,
+    setIsWorkspaceExecuting,
+    unsavedTransforms,
   } = useWorkspace();
   const [metabotContextTransform, setMetabotContextTransform] = useState<
     Transform | undefined
@@ -173,9 +182,9 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     DraftTransformSource | undefined
   >();
 
-  const workspaceTransforms = useMemo(
-    () => workspace?.contents?.transforms ?? [],
-    [workspace],
+  const allTransforms = useMemo(
+    () => [...unsavedTransforms, ...workspaceTransforms],
+    [unsavedTransforms, workspaceTransforms],
   );
 
   useEffect(() => {
@@ -259,9 +268,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     })();
 
     if (transformIdFromPath != null) {
-      const targetTransform =
-        workspaceTransforms.find((t) => t.id === transformIdFromPath) ||
-        allTransforms.find((t) => t.id === transformIdFromPath);
+      const targetTransform = allTransforms.find(
+        (t: Transform | WorkspaceTransformItem) =>
+          ("id" in t && t.id === transformIdFromPath) ||
+          ("ref_id" in t && t.ref_id === String(transformIdFromPath)),
+      );
 
       if (targetTransform) {
         addOpenedTransform(targetTransform);
@@ -333,7 +344,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
       if (response.errors && response.errors.length > 0) {
         sendErrorToast(
-          t`Failed to merge workspace: ${response.errors.map((e) => e.error).join(", ")}`,
+          t`Failed to merge workspace: ${response.errors.map((e: any) => e.error).join(", ")}`,
         );
         return;
       }
@@ -350,12 +361,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       }
 
       try {
-        await updateWorkspaceName({ id, name: newName.trim() }).unwrap();
+        await updateWorkspace({ id, name: newName.trim() }).unwrap();
       } catch (error) {
         sendErrorToast(t`Failed to update workspace name`);
       }
     },
-    [workspace, id, updateWorkspaceName, sendErrorToast],
+    [workspace, id, updateWorkspace, sendErrorToast],
   );
 
   const handleTableSelect = useCallback(
@@ -402,7 +413,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   if (!workspace) {
     return (
       <Box p="lg">
-        <Text c="text-dark">{t`Workspace not found`}</Text>
+        <Text c="text-dark">{t`No workspaces found.`}</Text>
       </Box>
     );
   }
@@ -427,7 +438,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         <Flex gap="sm">
           <RunWorkspaceMenu
             workspaceId={id}
-            disabled={workspaceTransforms.length === 0}
+            disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
+            onExecute={() => setIsWorkspaceExecuting(true)}
           />
           <Button
             variant="filled"
@@ -596,6 +608,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   <DataTab
                     databaseId={workspace?.database_id ?? null}
                     tableId={activeTable.tableId}
+                    transform={workspaceTransforms.find(
+                      (transform: Transform) =>
+                        transform.target.schema === activeTable.schema,
+                    )}
                   />
                 )}
               </Tabs.Panel>
@@ -640,13 +656,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 <Tabs.Tab value="data">{t`Data`}</Tabs.Tab>
               </Tabs.List>
               {sourceDb && (
-                <AddTransformMenu
-                  databaseId={sourceDb.id}
-                  workspaceId={id}
-                  onCreate={(transform) => {
-                    addOpenedTransform(transform);
-                  }}
-                />
+                <AddTransformMenu databaseId={sourceDb.id} workspaceId={id} />
               )}
             </Flex>
             <Tabs.Panel value="code" p="md">
@@ -654,9 +664,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 activeTransformId={activeTransform?.id}
                 transforms={dbTransforms}
                 workspaceId={workspace.id}
-                workspaceTransforms={workspaceTransforms}
+                workspaceTransforms={allTransforms}
                 onTransformClick={(transform) => {
                   addOpenedTransform(transform);
+                  if (activeTable) {
+                    setActiveTable(undefined);
+                  }
                 }}
               />
             </Tabs.Panel>

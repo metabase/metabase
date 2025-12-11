@@ -360,7 +360,22 @@
             :email (u.random/random-email)
             :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
-            :updated_at (t/zoned-date-time)})})
+            :updated_at (t/zoned-date-time)})
+
+   :model/Workspace
+   (fn [_]
+     (default-timestamped
+      {:name (str "Test Workspace " (u/generate-nano-id))
+       :schema (str "mb__isolate_" (u/generate-nano-id))}))
+
+   :model/WorkspaceTransform
+   (fn [_]
+     (default-timestamped
+      {:name   (str "Test Transform " (u/generate-nano-id))
+       :source {:type  "query"
+                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
+       :target {:type "table"
+                :name (str "test_table_" (u/generate-nano-id))}}))})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]

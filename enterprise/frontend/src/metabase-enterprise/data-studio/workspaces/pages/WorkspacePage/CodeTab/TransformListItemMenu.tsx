@@ -14,10 +14,20 @@ interface Props {
 
 export function TransformListItemMenu({ transform, workspaceId }: Props) {
   const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
-  const { removeEditedTransform, removeOpenedTransform } = useWorkspace();
+  const {
+    removeEditedTransform,
+    removeOpenedTransform,
+    removeUnsavedTransform,
+  } = useWorkspace();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleRemove = async () => {
+    // Handle unsaved transforms (negative IDs) locally
+    if (transform.id < 0) {
+      removeUnsavedTransform(transform.id);
+      return;
+    }
+
     const response = await updateWorkspaceContents({
       id: workspaceId,
       remove: {

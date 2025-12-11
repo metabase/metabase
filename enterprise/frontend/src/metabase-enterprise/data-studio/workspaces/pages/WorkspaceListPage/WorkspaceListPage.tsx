@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -9,20 +10,23 @@ import { useGetWorkspacesQuery } from "metabase-enterprise/api";
 export function WorkspaceListPage() {
   const { data: workspacesData, error, isLoading } = useGetWorkspacesQuery();
 
+  const activeWorkspaces = useMemo(
+    () => (workspacesData?.items ?? []).filter((w) => !w.archived),
+    [workspacesData],
+  );
+
   if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
 
-  const workspaces = workspacesData?.items ?? [];
-
   return (
     <Box data-testid="workspaces-page" p="lg">
       <Title order={2} mb="lg">{t`Workspaces`}</Title>
-      {workspaces.length === 0 ? (
+      {activeWorkspaces.length === 0 ? (
         <Text c="text-secondary">{t`No workspaces yet`}</Text>
       ) : (
         <Stack gap="md">
-          {workspaces.map((workspace) => (
+          {activeWorkspaces.map((workspace) => (
             <Card key={workspace.id} p="md" shadow="none" withBorder>
               <Group justify="space-between">
                 <Anchor
@@ -32,9 +36,11 @@ export function WorkspaceListPage() {
                 >
                   {workspace.name}
                 </Anchor>
-                <Text c="text-secondary" size="sm">
-                  {t`Created ${new Date(workspace.created_at).toLocaleDateString()}`}
-                </Text>
+                {workspace.created_at && (
+                  <Text c="text-secondary" size="sm">
+                    {t`Created ${new Date(workspace.created_at).toLocaleDateString()}`}
+                  </Text>
+                )}
               </Group>
             </Card>
           ))}

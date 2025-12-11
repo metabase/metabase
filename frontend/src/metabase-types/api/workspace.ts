@@ -13,12 +13,11 @@ export type WorkspaceId = number;
 export type Workspace = {
   id: WorkspaceId;
   name: string;
-  collection_id: CollectionId | null;
-  database_id: DatabaseId | null;
-  created_at: string;
-  updated_at: string;
-  archived_at?: string | null;
-  contents?: WorkspaceContents["contents"];
+  archived: boolean;
+  collection_id?: CollectionId | null;
+  database_id?: DatabaseId | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type WorkspaceItem = {
@@ -36,22 +35,37 @@ export type CreateWorkspaceRequest = {
 
 export type WorkspaceListResponse = {
   items: Workspace[];
+  limit: number | null;
+  offset: number | null;
 };
-
-export type WorkspaceContentItem = WorkspaceTransformItem;
 
 export type WorkspaceTransformItem = {
-  type: "transform";
-  id: TransformId;
+  ref_id: string;
   name: string;
-  upstream_id: TransformId;
-  workspace_id: WorkspaceId;
+  source_type: string;
+  stale: boolean;
+  global_id: TransformId | null;
+  target_stale: boolean;
 };
 
-export type WorkspaceContents = {
-  contents: {
-    transforms: Transform[];
-  };
+export type WorkspaceTransformsResponse = {
+  transforms: WorkspaceTransformItem[];
+};
+
+export type WorkspaceOutputTableRef = {
+  transform_id: number | string | null;
+  schema: string;
+  table: string;
+  table_id: number | null;
+};
+
+export type WorkspaceTransform = Omit<Transform, "id"> & {
+  id: string;
+  ref_id: string;
+  stale: boolean;
+  global_id: TransformId | null;
+  target_stale: boolean;
+  target_isolated: WorkspaceOutputTableRef;
 };
 
 export type TransformUpstreamMapping = {
@@ -69,8 +83,14 @@ export type TransformDownstreamMapping = {
 };
 
 export type WorkspaceMergeResponse = {
-  promoted: WorkspaceContentItem[];
-  errors?: (WorkspaceContentItem & { error: string })[];
+  promoted: WorkspaceTransformItem[];
+  errors?: (WorkspaceTransformItem & { error: string })[];
+  workspace: WorkspaceItem;
+  archived_at: string | null;
+};
+
+export type WorkspaceTransformMergeResponse = {
+  // I have no idea atm how are we going to use this
   workspace: WorkspaceItem;
   archived_at: string | null;
 };
@@ -100,6 +120,7 @@ export type ValidateTableNameResponse =
   | "A table with that name already exists";
 
 export type CreateWorkspaceTransformRequest = {
+  global_id?: TransformId;
   name: string;
   description?: string | null;
   source: TransformSource;
@@ -107,38 +128,117 @@ export type CreateWorkspaceTransformRequest = {
   tag_ids?: TransformTagId[];
 };
 
+export type UpdateWorkspaceTransformRequest = {
+  workspaceId: WorkspaceId;
+  transformId: string;
+  name?: string;
+  description?: string | null;
+  source?: TransformSource;
+  target?: TransformTarget;
+  tag_ids?: TransformTagId[];
+};
+
+export type WorkspaceTransformRef = {
+  workspaceId: WorkspaceId;
+  transformId: string;
+};
+
 export type CreateWorkspaceTransformResponse = Transform;
 
-export type WorkspaceTable = {
-  id?: number;
-  schema: string | null;
-  table: string | null;
+export type WorkspaceInputTable = {
+  id: number | null;
+  db_id: DatabaseId;
+  schema: string;
+  table: string;
+};
+
+export type WorkspaceOutputTableEntry = {
+  id: number | null;
+  db_id: DatabaseId;
+  schema: string;
+  table: string;
 };
 
 export type WorkspaceOutputTable = {
-  global?: WorkspaceTable;
-  workspace?: {
-    "transform-id": number;
-    "table-id": number;
-    schema: string | null;
-    table: string | null;
-  };
+  external: WorkspaceOutputTableEntry;
+  isolated: WorkspaceOutputTableEntry;
 };
 
 export type WorkspaceTablesResponse = {
-  inputs: WorkspaceTable[];
+  inputs: WorkspaceInputTable[];
   outputs: WorkspaceOutputTable[];
 };
 
+// Graph types for React Flow dependency diagram
+export type WorkspaceGraphNode = {
+  id: string;
+  type?: string;
+  data?: Record<string, unknown>;
+  position?: { x: number; y: number };
+};
+
+export type WorkspaceGraphEdge = {
+  id: string;
+  source: string;
+  target: string;
+  type?: string;
+};
+
+export type WorkspaceGraphResponse = {
+  nodes: WorkspaceGraphNode[];
+  edges: WorkspaceGraphEdge[];
+};
+
+// Problem types for workspace validation
+export type WorkspaceEntityRef =
+  | { "entity-type": "workspace-transform"; "entity-id": string }
+  | { "entity-type": "global-transform"; "entity-id": number };
+
+export type WorkspaceTableRef = {
+  db_id: DatabaseId;
+  schema: string;
+  table: string;
+};
+
+export type WorkspaceProblemMissingInputTable = {
+  type: "missing-input-table";
+  data: {
+    "entity-type": "workspace-transform";
+    "entity-id": string;
+    table: WorkspaceTableRef;
+  };
+};
+
+export type WorkspaceProblemTargetConflict = {
+  type: "target-conflict";
+  data: {
+    table: WorkspaceTableRef;
+    entities: WorkspaceEntityRef[];
+  };
+};
+
+export type WorkspaceProblemCycle = {
+  type: "cycle";
+  data: {
+    path: WorkspaceEntityRef[];
+  };
+};
+
+export type WorkspaceProblem =
+  | WorkspaceProblemMissingInputTable
+  | WorkspaceProblemTargetConflict
+  | WorkspaceProblemCycle;
+
 export type WorkspaceLogEntryId = number;
 
-export type WorkspaceStatus = "pending" | "ready";
+// Status used in workspace log responses (different from archived boolean on Workspace)
+export type WorkspaceSetupStatus = "pending" | "ready" | "archived";
 
 export type WorkspaceLogStatus = "started" | "success" | "failure";
 
 export type WorkspaceLogResponse = {
   workspace_id: WorkspaceId;
-  status: WorkspaceStatus;
+  status: WorkspaceSetupStatus;
   updated_at: string | null;
   last_completed_at: string | null;
   logs: WorkspaceLogEntry[];
@@ -160,12 +260,12 @@ export type WorkspaceLogEntry = {
   message: string | null;
 };
 
-export type WorkspaceExecuteRequest = {
+export type WorkspaceRunRequest = {
   id: WorkspaceId;
   stale_only?: boolean;
 };
 
-export type WorkspaceExecuteResponse = {
+export type WorkspaceRunResponse = {
   succeeded: TransformId[];
   failed: TransformId[];
   not_run: TransformId[];

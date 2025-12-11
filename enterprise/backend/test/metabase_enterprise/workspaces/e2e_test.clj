@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.e2e-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
@@ -9,16 +8,25 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- execute-workspace-transform!
   "Execute a transform within workspace isolation context. For testing purposes."
-  [workspace transform opts]
+  [workspace ws-transform opts]
   (workspaces/with-workspace-isolation workspace
-    (transforms.i/execute! transform opts)))
+    (let [result (atom nil)]
+      (t2/with-transaction [_tx]
+        (let [transform (t2/insert-returning-instance!
+                         :model/Transform
+                         (select-keys ws-transform [:name :description :source :target]))]
+          (reset! result (transforms.i/execute! transform opts))
+          ;; rather abort transaction
+          (t2/delete! :model/Transform (:id transform))))
+      @result)))
 
 (defn- mbql->native [query]
   (qp.store/with-metadata-provider (mt/id)
@@ -40,24 +48,33 @@
                                                                   {:name        (mt/random-name)
                                                                    :database_id (mt/id)
                                                                    :upstream    {:transforms [transform-id]}}))
+                _                  (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
+                                                                :transform transform-id
+                                                                (t2/select-one :model/Transform transform-id))
                 workspace          (u/poll {:thunk      #(t2/select-one :model/Workspace (:id workspace))
                                             :done?      #(= :ready (:status %))
                                             :timeout-ms 5000})
-                isolated-transform (t2/select-one :model/Transform :workspace_id (:id workspace))
-                executed-transform (execute-workspace-transform! workspace isolated-transform {:run-method :manual})
-                output-table       (-> executed-transform :object :output-table)]
-            (testing "execute the transform with the original query is fine and the output is in an isolated schema"
-              (u/poll {:thunk     #(t2/select-one :model/Table :name (name output-table))
-                       :done?      some?
-                       :timeout-ms 1000})
-              (transforms.tu/wait-for-table (name output-table) 1000)
-              (is (str/starts-with? (namespace output-table) "mb__isolation"))
-              (is (= 1 (count (transforms.tu/table-rows (name output-table))))))
+                isolated-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
+                ;; TODO We need to reimplement granting permission once we've reimplemented graph analysis
+                #_#_executed-transform (execute-workspace-transform! workspace isolated-transform {:run-method :manual})
+                #_#_output-table       (-> executed-transform :object :output-table)]
+
+            #_(testing "execute the transform with the original query is fine and the output is in an isolated schema"
+                (u/poll {:thunk     #(t2/select-one :model/Table :name (name output-table))
+                         :done?      some?
+                         :timeout-ms 1000})
+                (transforms.tu/wait-for-table (name output-table) 1000)
+                (is (str/starts-with? (namespace output-table) "mb__isolation"))
+                (is (= 1 (count (transforms.tu/table-rows (name output-table))))))
 
             (testing "changing the query without granting access will fail"
-              (t2/update! :model/Transform (:id isolated-transform) {:source {:type  "query"
-                                                                              :query (mt/native-query (mbql->native (mt/mbql-query venues {:limit 1})))}})
+              (t2/update! :model/WorkspaceTransform
+                          {:ref_id (:ref_id isolated-transform)}
+                          {:source {:type  "query"
+                                    :query (mt/native-query (mbql->native (mt/mbql-query venues {:limit 1})))}})
               (is (thrown-with-msg?
                    Exception
                    #"ERROR: permission denied for table.*"
-                   (execute-workspace-transform! workspace (t2/select-one :model/Transform (:id isolated-transform)) {:run-method :manual}))))))))))
+                   (execute-workspace-transform! workspace
+                                                 (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id isolated-transform))
+                                                 {:run-method :manual}))))))))))

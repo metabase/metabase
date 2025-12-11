@@ -1,37 +1,25 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
-   [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
-   [metabase.events.core :as events]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
+;; should be encapsulated in our dag namespace, or dependency module
 (defn check-no-card-dependencies!
   "Check that transforms don't depend on cards. Throws 400 if they do."
   [transform-ids]
-  (when-let [card-ids (seq (ws.dag/card-dependencies transform-ids))]
+  (when-let [card-ids (seq (ws.dag/unsupported-dependency? transform-ids))]
     (api/check-400 false
                    (format "Cannot add transforms that depend on saved questions (cards). Found dependencies on card IDs: %s"
                            (pr-str (vec card-ids))))))
-
-(defn check-transforms-not-in-workspace!
-  "Check that none of the transforms already belong to a workspace. Throws 400 if any do."
-  [transform-ids]
-  (when (seq (t2/select [:model/Transform :id :workspace_id]
-                        :id [:in transform-ids]
-                        :workspace_id [:not= nil]))
-    (throw (ex-info (tru "Cannot add transforms that belong to another workspace")
-                    {:status-code 400}))))
 
 (defn- extract-suffix-number
   "Extract the numeric suffix from a workspace name like 'Foo (3)', or nil if no valid suffix."
@@ -62,27 +50,11 @@
           next-num      (inc (apply max 0 numbers))]
       (str stripped-name " (" next-num ")"))))
 
-;; TODO (Chris 2025-11-20) Just subsume the rest of this up into ws.dag/path-induced-subgraph
-(defn- build-graph
-  "Thin wrapper around the dag module, that should probably be absorbed by it."
-  [upstream]
-  (if (not-any? seq (vals upstream))
-    {:db_id      nil
-     :transforms []
-     :inputs     []
-     :outputs    []}
-    (let [graph        (ws.dag/path-induced-subgraph upstream)
-          db-ids       (when-let [table-ids (seq (keep :id (concat (:inputs graph) (:outputs graph))))]
-                         (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-          _            (assert (<= (count db-ids) 1) "All inputs and outputs must belong to the same database.")]
-      ;; One reason this is here, is that I don't want the DAG module to have the single-DWH assumption.
-      (assoc graph :db_id (first db-ids)))))
-
 ;; TODO: Generate new metabase user for the workspace
 ;; TODO: Should we move this to model as per the diagram?
 (defn- create-workspace-container!
   "Create the workspace and its related collection, user, and api key."
-  [creator-id database-id workspace-name status]
+  [creator-id db-id workspace-name status]
   ;; TODO (Chris 2025-11-19) Unsure API key name is unique, and remove this (insecure) workaround.
   (let [api-key (let [key-name (format "API key for Workspace %s" workspace-name)]
                   (or (t2/select-one :model/ApiKey :name key-name)
@@ -91,7 +63,7 @@
         ws      (t2/insert-returning-instance! :model/Workspace
                                                {:name           workspace-name
                                                 :creator_id     creator-id
-                                                :database_id    database-id
+                                                :database_id    db-id
                                                 :api_key_id     (:id api-key)
                                                 :execution_user (:user_id api-key)
                                                 :status         status})
@@ -120,37 +92,29 @@
 
 (defn- run-workspace-setup!
   "Background job: runs isolation, mirroring, grants. Updates status to :ready when done."
-  [{ws-id :id :as workspace} database graph]
+  [{ws-id :id :as workspace} database]
   (ws.log/track! ws-id :workspace-setup
-    (let [{:keys [schema
-                  database_details]} (ws.log/track! ws-id :database-isolation
-                                       (-> (ws.isolation/ensure-database-isolation! workspace database)
+    (let [{:keys [_database_details]} (ws.log/track! ws-id :database-isolation
+                                        (-> (ws.isolation/ensure-database-isolation! workspace database)
                                            ;; it actually returns just those, this is more like a doc than behavior
-                                           (select-keys [:schema :database_details])
-                                           (u/prog1 (t2/update! :model/Workspace ws-id <>))))
-          ;; not sure this is necessary but `mirror-entities!` will at least get current state
-          workspace                  (assoc workspace :database_details database_details :schema schema)
-          {:keys [inputs]}           (if (empty? (:check-outs graph))
-                                       {}
-                                       (ws.log/track! ws-id :mirror-entities
-                                         (u/prog1 (ws.mirroring/mirror-entities! workspace database graph)
-                                           (t2/update! :model/Workspace ws-id {:graph <>}))))]
+                                            (select-keys [:schema :database_details])
+                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))
+          ;; TODO analyze graph. in the
+          {:keys [inputs]}           {}]
       (when-let [table-ids (seq (keep #(when (= :table (:type %)) (:id %)) inputs))]
         (ws.log/track! ws-id :grant-read-access
           (let [input-tables (t2/select :model/Table :id [:in table-ids])]
             (ws.isolation/grant-read-access-to-tables! database workspace input-tables)))))
     (t2/update! :model/Workspace ws-id {:status :ready})))
 
-;; TODO (Chris 2025-11-20) We have not added a uniqueness constraint to the db, we should either do that, or remove
-;;                         the whole retry song and dance.
 (defn- create-workspace-with-unique-name!
   "Create a workspace with status=updating, then kick off async setup."
-  [creator-id db-id database ws-name graph max-retries]
+  [creator-id database ws-name max-retries]
   (loop [attempt 1]
     (let [unique-name         (generate-unique-workspace-name ws-name)
           {:keys [retry
                   workspace]} (try
-                                {:workspace (create-workspace-container! creator-id db-id unique-name :pending)}
+                                {:workspace (create-workspace-container! creator-id (:id database) unique-name :pending)}
                                 (catch Exception e
                                   (if (and (< attempt max-retries) (unique-constraint-violation? e))
                                     {:retry true}
@@ -158,93 +122,34 @@
       (if retry
         (recur (inc attempt))
         (do
-          (quick-task/submit-task! #(run-workspace-setup! workspace database graph))
+          (quick-task/submit-task! #(run-workspace-setup! workspace database))
           workspace)))))
 
 ;; TODO internal: test!
 (defn create-workspace!
   "Create workspace"
   [creator-id {ws-name-maybe :name
-               maybe-db-id   :database_id
-               upstream      :upstream}]
-  ;; TODO put this in the malli schema for a request
-  (assert (or maybe-db-id (some seq (vals upstream))) "Must provide a database_id unless initial entities are given.")
+               db-id         :database_id}]
   (let [ws-name  (or ws-name-maybe (str (random-uuid)))
-        graph    (build-graph upstream)
-        db-id    (or (:db_id graph) maybe-db-id)
-        _        (when (and maybe-db-id (:db_id graph))
-                   (assert (= maybe-db-id (:db_id graph))
-                           "The database_id provided must match that of the upstream entities."))
-        _        (assert db-id "Was not given and could not infer a database_id for the workspace.")
-        database (api/check-500 (t2/select-one :model/Database :id db-id))]
-    (create-workspace-with-unique-name! creator-id db-id database ws-name graph 5)))
+        database (t2/select-one :model/Database :id db-id)]
+    (create-workspace-with-unique-name! creator-id database ws-name 5)))
 
-(defn- rebuild-workspace-graph!
-  "Rebuild the workspace graph from scratch based on all upstream transforms.
-   Returns the new graph."
-  [workspace-id]
-  (let [all-upstream-ids (t2/select-fn-vec :upstream_id :model/WorkspaceMappingTransform
-                                           :workspace_id workspace-id)
-        graph            (build-graph {:transforms all-upstream-ids})
-        ;; Add from-scratch transforms (those created directly in workspace, not mirrored)
-        ;; These have workspace_id set but no entry in WorkspaceMappingTransform
-        mirrored-ids     (t2/select-fn-set :downstream_id :model/WorkspaceMappingTransform
-                                           :workspace_id workspace-id)
-        from-scratch-txs (->> (t2/select [:model/Transform :id] :workspace_id workspace-id
-                                         {:where (if (seq mirrored-ids)
-                                                   [:not [:in :id mirrored-ids]]
-                                                   true)})
-                              (mapv #(assoc % :type :transform)))
-        graph            (update graph :transforms into from-scratch-txs)]
-    (t2/update! :model/Workspace workspace-id {:graph graph})
-    graph))
-
-(defn add-entities!
-  "Add upstream entities to an existing workspace by mirroring them.
-   Returns the workspace with updated graph."
-  [workspace upstream]
-  (let [new-graph (ws.dag/path-induced-subgraph upstream)
-        database  (t2/select-one :model/Database (:database_id workspace))]
-    (t2/with-transaction [_]
-      (ws.mirroring/mirror-entities! workspace database new-graph)
-      (let [graph (rebuild-workspace-graph! (:id workspace))]
-        (assoc workspace :graph graph)))))
-
-(defn create-transform!
-  "Create a new transform directly within a workspace.
-   Returns the created transform with hydrated tag_ids and creator."
-  [workspace body creator-id]
+(defn add-to-changeset!
+  "Add the given "
+  [_creator-id workspace entity-type global-id body]
+  (ws.u/assert-transform! entity-type)
   (u/prog1
     (t2/with-transaction [_]
       (let [workspace-id    (:id workspace)
             workspace-db-id (:database_id workspace)
-            database        (t2/select-one :model/Database workspace-db-id)
-            tag-ids         (:tag_ids body)
-            body            (assoc-in body [:target :database] workspace-db-id)
-            transform       (t2/insert-returning-instance!
-                             :model/Transform
-                             (assoc (select-keys body [:name :description :source :target :run_trigger])
-                                    :creator_id creator-id
-                                    :workspace_id workspace-id))]
-        (when (seq tag-ids)
-          (transforms/update-transform-tags! (:id transform) tag-ids))
-
-        ;; Create isolated output table for the new transform
-        (let [target    (:target transform)
-              new-graph {:db_id      workspace-db-id
-                         :transforms [transform]
-                         :inputs     []
-                         :outputs    [{:id     nil
-                                       :schema (:schema target)
-                                       :name   (:name target)}]
-                         :check-outs []}]
-          (ws.isolation/create-isolated-output-tables! workspace database new-graph))
-
-        ;; Rebuild the full graph from scratch
-        (rebuild-workspace-graph! workspace-id)
-
-        (t2/hydrate transform :transform_tag_ids :creator)))
-    (events/publish-event! :event/transform-create {:object <> :user-id creator-id})))
+            body            (assoc-in body [:target :database] workspace-db-id)]
+        (t2/insert-returning-instance!
+         :model/WorkspaceTransform
+         (assoc (select-keys body [:name :description :source :target])
+                ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
+                ;:creator_id creator-id
+                :global_id global-id
+                :workspace_id workspace-id))))))
 
 (defn- mirror-table-to-delete-where
   [database-id targets]

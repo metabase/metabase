@@ -3,34 +3,36 @@ import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Icon, Menu } from "metabase/ui";
-import { useExecuteWorkspaceMutation } from "metabase-enterprise/api";
+import { useRunWorkspaceMutation } from "metabase-enterprise/api";
 import type { WorkspaceId } from "metabase-types/api";
 
 type RunWorkspaceMenuProps = {
   workspaceId: WorkspaceId;
   disabled?: boolean;
+  onExecute?: () => void;
 };
 
 export function RunWorkspaceMenu({
   workspaceId,
   disabled = false,
+  onExecute,
 }: RunWorkspaceMenuProps) {
   const { sendErrorToast } = useMetadataToasts();
-  const [executeWorkspace, { isLoading: isExecuting }] =
-    useExecuteWorkspaceMutation();
+  const [runWorkspace, { isLoading: isRunning }] = useRunWorkspaceMutation();
 
-  const handleExecuteWorkspace = useCallback(
+  const handleRunWorkspace = useCallback(
     async ({ staleOnly } = { staleOnly: false }) => {
       try {
-        await executeWorkspace({
+        await runWorkspace({
           id: workspaceId,
           stale_only: staleOnly,
         }).unwrap();
+        onExecute?.();
       } catch (error) {
         sendErrorToast(t`Failed to run transforms`);
       }
     },
-    [workspaceId, executeWorkspace, sendErrorToast],
+    [workspaceId, runWorkspace, sendErrorToast, onExecute],
   );
 
   return (
@@ -39,7 +41,7 @@ export function RunWorkspaceMenu({
         <Button
           variant="default"
           rightSection={<Icon name="chevrondown" />}
-          loading={isExecuting}
+          loading={isRunning}
           disabled={disabled}
           size="xs"
         >
@@ -47,10 +49,10 @@ export function RunWorkspaceMenu({
         </Button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item onClick={() => handleExecuteWorkspace()}>
+        <Menu.Item onClick={() => handleRunWorkspace()}>
           {t`Run all transforms`}
         </Menu.Item>
-        <Menu.Item onClick={() => handleExecuteWorkspace({ staleOnly: true })}>
+        <Menu.Item onClick={() => handleRunWorkspace({ staleOnly: true })}>
           {t`Run stale transforms`}
         </Menu.Item>
       </Menu.Dropdown>

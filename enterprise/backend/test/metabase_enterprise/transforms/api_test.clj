@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
