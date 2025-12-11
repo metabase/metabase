@@ -1,9 +1,9 @@
+import { useListCollectionItemsQuery } from "metabase/api";
 import { ItemList } from "metabase/common/components/EntityPicker/components/ItemList";
 import type {
   CollectionItemListProps,
   CollectionPickerItem,
 } from "metabase/common/components/Pickers/CollectionPicker/types";
-import { useListRootTenantCollectionItemsQuery } from "metabase-enterprise/api";
 
 export const TenantCollectionItemList = ({
   onClick,
@@ -17,17 +17,14 @@ export const TenantCollectionItemList = ({
     data: collectionItems,
     error,
     isLoading,
-  } = useListRootTenantCollectionItemsQuery<{
-    data: {
-      data: CollectionPickerItem[];
-    };
-    error: any;
-    isLoading: boolean;
-  }>();
+  } = useListCollectionItemsQuery({
+    id: "root",
+    namespace: "shared-tenant-collection",
+  });
 
   return (
     <ItemList
-      items={collectionItems?.data}
+      items={collectionItems?.data as CollectionPickerItem[] | undefined}
       isLoading={isLoading}
       error={error}
       onClick={onClick}

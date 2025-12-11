@@ -8,6 +8,7 @@ import {
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
+  useListCollectionItemsQuery,
 } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
@@ -33,7 +34,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useListRootTenantCollectionItemsQuery } from "metabase-enterprise/api";
 import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
@@ -78,8 +78,11 @@ export const RemoteSyncAdminSettings = () => {
   const applicationName = useSelector(getApplicationName);
 
   // Fetch tenant collections to build initial sync state
-  const { data: tenantCollectionsData } = useListRootTenantCollectionItemsQuery(
-    undefined,
+  const { data: tenantCollectionsData } = useListCollectionItemsQuery(
+    {
+      id: "root",
+      namespace: "shared-tenant-collection",
+    },
     { skip: !isRemoteSyncEnabled || !useTenants },
   );
 

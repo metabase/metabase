@@ -3,9 +3,9 @@ import { useCallback, useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { c, t } from "ttag";
 
+import { useListCollectionItemsQuery } from "metabase/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Box, Flex, Icon, Loader, Switch, Text } from "metabase/ui";
-import { useListRootTenantCollectionItemsQuery } from "metabase-enterprise/api";
 import type {
   CollectionItem,
   CollectionSyncPreferences,
@@ -15,7 +15,10 @@ import type {
 import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 
 export const SharedTenantCollectionsList = () => {
-  const { data, isLoading, error } = useListRootTenantCollectionItemsQuery();
+  const { data, isLoading, error } = useListCollectionItemsQuery({
+    id: "root",
+    namespace: "shared-tenant-collection",
+  });
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
 
