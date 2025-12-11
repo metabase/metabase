@@ -1,16 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
-
-beforeEach(() => {
-  jest.useFakeTimers();
-});
-
-afterEach(() => {
-  jest.useRealTimers();
-});
 
 function setup({
   value,
@@ -38,10 +30,9 @@ function setup({
 }
 
 async function type({ input, value }: { input: HTMLElement; value: string }) {
-  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-  await user.clear(input);
-  await user.type(input, value);
-  act(() => jest.runAllTimers());
+  await userEvent.clear(input);
+  await userEvent.type(input, value);
+  fireEvent.blur(input);
 }
 
 describe("ChartSettingInputNumber", () => {
@@ -71,7 +62,7 @@ describe("ChartSettingInputNumber", () => {
     // multiple decimal places should call onChange with
     // undefined since it's an invalid value
     await type({ input, value: "1.2.3" });
-    expect(input).toHaveDisplayValue("1.2.3");
+    expect(input).toHaveDisplayValue("");
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
@@ -79,7 +70,7 @@ describe("ChartSettingInputNumber", () => {
     const { input, onChange } = setup();
 
     await type({ input, value: "1.5e3" });
-    expect(input).toHaveDisplayValue("1500");
+    expect(input).toHaveDisplayValue("1.5e3");
     expect(onChange).toHaveBeenCalledWith(1.5e3);
   });
 
@@ -126,24 +117,24 @@ describe("ChartSettingInputNumber", () => {
 
     await type({ input, value: "asdf" });
     expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(undefined);
 
     // Inputs with `e` that are not valid scientific notation
     type({ input, value: "e123" });
     expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(undefined);
 
     type({ input, value: "e123e" });
     expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(undefined);
 
     type({ input, value: "1e23e" });
     expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(undefined);
 
     type({ input, value: "e1e23e" });
     expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
   it("renders the `value` prop on load", () => {
