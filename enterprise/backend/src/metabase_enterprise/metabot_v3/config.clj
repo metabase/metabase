@@ -41,20 +41,19 @@
       (metabot-v3.settings/metabot-id)
       internal-metabot-id))
 
-(defn resolve-profile
-  "Resolve the AI service profile for a use case.
-   Precedence: explicit profile override > use case profile from DB
+(defn fetch-use-case
+  "Fetch the use case configuration for a metabot instance.
 
    Arguments:
    - metabot-pk: The primary key of the metabot instance
    - use-case: The use case name (e.g., \"nlq\", \"transforms\")
-   - profile-override: Optional explicit profile override (e.g., from /profile command)"
-  [metabot-pk use-case profile-override]
-  (or profile-override
-      (when (and metabot-pk use-case)
-        (let [profile (t2/select-one-fn :profile :model/MetabotUseCase
-                                        :metabot_id metabot-pk
-                                        :name use-case)]
-          (when-not profile
-            (log/warnf "No profile found for metabot %d with use-case %s" metabot-pk use-case))
-          profile))))
+
+   Returns a map with :profile and :enabled keys, or nil if use case not found."
+  [metabot-pk use-case]
+  (when (and metabot-pk use-case)
+    (let [use-case-info (t2/select-one [:model/MetabotUseCase :profile :enabled]
+                                       :metabot_id metabot-pk
+                                       :name use-case)]
+      (when-not use-case-info
+        (log/warnf "No use case found for metabot %d with name %s" metabot-pk use-case))
+      use-case-info)))

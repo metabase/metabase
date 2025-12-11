@@ -107,6 +107,12 @@ export function MetabotAdminPage() {
             </Box>
           )}
 
+          {!isEmbedMetabot && (
+            <Box className={S.SectionCard}>
+              <MetabotTransformsSection metabot={metabot} />
+            </Box>
+          )}
+
           {isEmbedMetabot && (
             <Box className={S.SectionCard}>
               <MetabotCollectionConfigurationPane metabot={metabot} />
@@ -123,6 +129,12 @@ export function MetabotAdminPage() {
                   {t`Fine-tune query behavior and data sources`}
                 </Text>
               </Stack>
+              {!isEmbedMetabot && (
+                <MetabotCollectionConfigurationPane
+                  metabot={metabot}
+                  title={t`Collection for NLQ`}
+                />
+              )}
               <MetabotVerifiedContentConfigurationPane metabot={metabot} />
               <MetabotPromptSuggestionPane metabot={metabot} />
             </Stack>
@@ -238,6 +250,32 @@ function MetabotOmnibotSection({ metabot }: { metabot: MetabotInfo }) {
   );
 }
 
+function MetabotTransformsSection({ metabot }: { metabot: MetabotInfo }) {
+  const { isEnabled, isLoading, handleToggle } = useUseCaseToggle(
+    metabot,
+    "transforms",
+  );
+
+  return (
+    <Stack gap="sm">
+      <Text fw={600} c="text-dark" fz="h4">
+        {t`Transforms`}
+      </Text>
+      <Text c="text-medium" maw="38rem">
+        {t`Allow Metabot to write and edit transforms`}
+      </Text>
+      <Switch
+        label={t`Enable Transforms`}
+        checked={isEnabled}
+        onChange={(e) => handleToggle(e.target.checked)}
+        disabled={isLoading}
+        w="auto"
+        size="sm"
+      />
+    </Stack>
+  );
+}
+
 function MetabotNavPane() {
   const { data, isLoading } = useListMetabotsQuery();
   const metabotId = useMetabotIdPath();
@@ -320,8 +358,10 @@ function MetabotVerifiedContentConfigurationPane({
 
 function MetabotCollectionConfigurationPane({
   metabot,
+  title,
 }: {
   metabot: MetabotInfo;
+  title?: string;
 }) {
   const metabotId = metabot.id;
   const metabotName = metabot.name;
@@ -364,13 +404,12 @@ function MetabotCollectionConfigurationPane({
     }
   };
 
+  const defaultTitle = c("{0} is the name of an AI assistant")
+    .t`Collection ${metabotName} can use`;
+
   return (
     <Box>
-      <SettingHeader
-        id="allow-metabot"
-        title={c("{0} is the name of an AI assistant")
-          .t`Collection ${metabotName} can use`}
-      />
+      <SettingHeader id="allow-metabot" title={title ?? defaultTitle} />
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
         <Button onClick={open} leftSection={isUpdating && <Loader size="xs" />}>
