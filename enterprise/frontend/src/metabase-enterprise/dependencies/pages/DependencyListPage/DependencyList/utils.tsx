@@ -2,22 +2,20 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
-import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import type { DependencyNode } from "metabase-types/api";
 
 import {
   getNodeDependentsCount,
-  getNodeIcon,
   getNodeLabel,
   getNodeLastEditInfo,
-  getNodeLink,
   getNodeLocationInfo,
 } from "../../../utils";
 
-import { ErrorCell } from "./ErrorCell";
-import { LinkCell } from "./LinkCell";
-import { LinkListCell } from "./LinkListCell";
+import { DependentsCountCell } from "./DependentsCountCell";
+import { ErrorsCell } from "./ErrorsCell";
+import { LocationCell } from "./LocationCell";
+import { NameCell } from "./NameCell";
 
 function getNodeNameColumn(): ColumnDef<DependencyNode> {
   return {
@@ -29,13 +27,7 @@ function getNodeNameColumn(): ColumnDef<DependencyNode> {
     accessorFn: (node) => getNodeLabel(node),
     cell: ({ row }) => {
       const node = row.original;
-      return (
-        <LinkCell
-          label={getNodeLabel(node)}
-          icon={getNodeIcon(node)}
-          url={getNodeLink(node)?.url}
-        />
-      );
+      return <NameCell node={node} />;
     },
   };
 }
@@ -54,11 +46,7 @@ function getNodeLocationColumn(): ColumnDef<DependencyNode> {
     },
     cell: ({ row }) => {
       const node = row.original;
-      const location = getNodeLocationInfo(node);
-      if (location == null) {
-        return null;
-      }
-      return <LinkListCell links={location.links} icon={location.icon} />;
+      return <LocationCell node={node} />;
     },
   };
 }
@@ -73,7 +61,10 @@ function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
       if (errors.length === 0) {
         return null;
       }
-      return <ErrorCell node={node} />;
+      return <ErrorsCell node={node} />;
+    },
+    meta: {
+      width: "auto",
     },
   };
 }
@@ -85,16 +76,7 @@ function getNodeDependentsCountColumn(): ColumnDef<DependencyNode> {
     accessorFn: (node) => getNodeDependentsCount(node),
     cell: ({ row }) => {
       const node = row.original;
-      const value = getNodeDependentsCount(node);
-      if (value === 0) {
-        return null;
-      }
-      return (
-        <LinkCell
-          label={String(value)}
-          url={Urls.dependencyGraph({ entry: node })}
-        />
-      );
+      return <DependentsCountCell node={node} />;
     },
   };
 }

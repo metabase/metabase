@@ -4,3 +4,8 @@ export type DependencyErrorGroup = {
   type: DependencyErrorType;
   errors: DependencyError[];
 };
+
+export type DependencyErrorsInfo = {
+  label: string;
+  detail?: string;
+};

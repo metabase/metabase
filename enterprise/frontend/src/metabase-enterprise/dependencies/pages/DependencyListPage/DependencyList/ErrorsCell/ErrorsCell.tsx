@@ -5,21 +5,27 @@ import type { DependencyError, DependencyNode } from "metabase-types/api";
 
 import { getNodeLabel } from "../../../../utils";
 
-import { getErrorCountMessage, getErrorLabel, getErrorMessage } from "./utils";
+import { getErrorDetail, getErrorTypeLabel, getErrorsInfo } from "./utils";
 
-type ErrorCellProps = {
+type ErrorsCellProps = {
   node: DependencyNode;
 };
 
-export function ErrorCell({ node }: ErrorCellProps) {
+export function ErrorsCell({ node }: ErrorsCellProps) {
   const errors = node.errors ?? [];
+  const errorsInfo = getErrorsInfo(errors);
   const [isOpened, { open, close }] = useDisclosure(false);
+
+  if (!errorsInfo) {
+    return null;
+  }
 
   return (
     <>
       <Group>
         <Anchor role="button" onClick={open}>
-          {getErrorCountMessage(errors)}
+          {errorsInfo.label}{" "}
+          {errorsInfo.detail && <strong>{errorsInfo.detail}</strong>}
         </Anchor>
       </Group>
       <Modal title={getNodeLabel(node)} opened={isOpened} onClose={close}>
@@ -48,12 +54,12 @@ type ErrorListItemProps = {
 };
 
 function ErrorListItem({ error }: ErrorListItemProps) {
-  const label = getErrorLabel(error.type);
-  const message = getErrorMessage(error);
+  const label = getErrorTypeLabel(error.type);
+  const detail = getErrorDetail(error);
 
   return (
     <List.Item>
-      {label} {message && <strong>{message}</strong>}
+      {label} {detail && <strong>{detail}</strong>}
     </List.Item>
   );
 }

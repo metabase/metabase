@@ -2,16 +2,23 @@ import { Fragment } from "react";
 import { Link } from "react-router";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Anchor, Box, FixedSizeIcon, Flex, type IconName } from "metabase/ui";
+import { Anchor, Box, FixedSizeIcon, Flex } from "metabase/ui";
+import type { DependencyNode } from "metabase-types/api";
 
-import type { NodeLink } from "../../../../types";
+import { getNodeLocationInfo } from "../../../../utils";
 
-type LinkListCellProps = {
-  links: NodeLink[];
-  icon?: IconName;
+type LocationCellProps = {
+  node: DependencyNode;
 };
 
-export function LinkListCell({ links, icon }: LinkListCellProps) {
+export function LocationCell({ node }: LocationCellProps) {
+  const location = getNodeLocationInfo(node);
+  if (location == null) {
+    return null;
+  }
+
+  const { icon, links } = location;
+
   return (
     <Flex align="center" gap="sm">
       {links.map((link, linkIndex) => (
