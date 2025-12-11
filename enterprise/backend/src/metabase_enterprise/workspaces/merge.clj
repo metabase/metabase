@@ -3,6 +3,7 @@
    All functions assumes that validation of the dependencies AFTER merge is done BEFORE calling any of these methods."
   (:require
    [metabase-enterprise.transforms.api :as transforms.api]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;; TODO we need to implement the route that calls this, see API reference.
@@ -20,29 +21,45 @@
   ;; Assume validation has alr
   ;; Ensure the hook
   (let [[op global-tx] (cond (and global_id archived_at)
-                             (let [tx (t2/select-one :model/Transform :id global_id)]
-                               (transforms.api/delete-transform! global_id)
-                               [:delete tx])
+                             [:delete
+                              (try (u/prog1 (t2/select-one :model/Transform :id global_id)
+                                     (transforms.api/delete-transform! global_id))
+                                   (catch Throwable e
+                                     (throw (ex-info "Merging of a transform failed."
+                                                     {:op :delete
+                                                      :global_id global_id
+                                                      :ref_id ref_id}
+                                                     e))))]
 
                              global_id
                              [:update
-                              (transforms.api/update-transform!
-                               global_id (select-keys ws-transform [:name :description :source :target]))]
+                              (try (transforms.api/update-transform!
+                                    global_id (select-keys ws-transform [:name :description :source :target]))
+                                   (catch Throwable e
+                                     (throw (ex-info "Merging of a transform failed."
+                                                     {:op :update
+                                                      :global_id global_id
+                                                      :ref_id ref_id}
+                                                     e))))]
 
                              archived_at
                              [:noop nil]
 
                              :else
                              [:create
-                              (transforms.api/create-transform!
-                               (select-keys ws-transform [:name :description :source :target]))])]
+                              (try (transforms.api/create-transform!
+                                    (select-keys ws-transform [:name :description :source :target]))
+                                   (catch Throwable e
+                                     (throw (ex-info "Merging of a transform failed."
+                                                     {:op :create
+                                                      :ref_id ref_id}
+                                                     e))))])]
 
-    ;; There are no longer any changes, so it can be removed from the changeset.
     (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
 
     {:op op
      :ref_id ref_id
-     :global_id (:id global-tx)}))
+     :global_id (:global_id global-tx)}))
 
 (defn merge-workspace!
   "Make all the transforms in the Changeset public, i.e. create or update the relevant model/Transform entities.
@@ -54,11 +71,9 @@
   ;; We need to make sure this is in a transaction too, but perhaps that should already be open, and we can state
   ;; it as an assumption.
   ;; TODO we'll want this to short-circuit
-  (try
-    (t2/with-transaction [_]
-      {:transforms
-       (for [ws-tx (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
-         (merge-transform! ws-tx))})
-    (catch Throwable t
-      ;; TODO: Wrap!
-      (throw t))))
+
+  ;; WIP: Let the potential exception bubble up
+  (t2/with-transaction [_]
+    {:transforms
+     (for [ws-tx (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
+       (merge-transform! ws-tx))}))
