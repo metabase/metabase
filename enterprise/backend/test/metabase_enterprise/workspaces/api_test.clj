@@ -242,7 +242,7 @@
                                                 :name table-name}})))
         (is (=? {:id ws-id, :status "ready"}
                 (mt/user-http-request :crowberto :get 200 (ws-url ws-id))))
-        (is (=? {:transforms [{:ref_id string?, :name "Workspace Transform", :source_type "query"}]}
+        (is (=? {:transforms [{:ref_id string?, :name "Workspace Transform", :source_type "mbql"}]}
                 (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/transform"))))))))
 
 (deftest tables-endpoint-empty-ws-test
@@ -259,8 +259,7 @@
   (let [mp    (mt/metadata-provider)
         query (lib/native-query mp "select * from orders limit 10;")]
     (with-transform-cleanup! [orig-name "ws_tables_test"]
-      (mt/with-temp [:model/Transform x1 {:source_type "native"
-                                          :name        "My X1"
+      (mt/with-temp [:model/Transform x1 {:name        "My X1"
                                           :source      {:type  "query"
                                                         :query query}
                                           :target      {:type     "table"
@@ -271,14 +270,15 @@
                                                   {:name        "Test Workspace"
                                                    :database_id (mt/id)})
               ;; add the transform
-              ref_id        (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform") x1))
+              req           (assoc (select-keys x1 [:name :description :source :target]) :global_id (:id x1))
+              ref-id        (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform") req))
               ;; get the tables
               tables-result (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/table"))]
           (testing "/tables returns expected results"
             (is (=? {:inputs  [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs [{:db_id (mt/id)
                                 :global {:schema "public", :table orig-name}
-                                :isolated {:transform_id ref_id}}]}
+                                :isolated {:transform_id ref-id}}]}
                     tables-result))))))))
 
 (deftest tables-endpoint-test
@@ -286,8 +286,7 @@
         query       (lib/native-query mp "select * from orders limit 10;")
         orig-schema "public"]
     (with-transform-cleanup! [orig-name "ws_tables_test"]
-      (mt/with-temp [:model/Transform x1 {:source_type "native"
-                                          :name        "My X1"
+      (mt/with-temp [:model/Transform x1 {:name        "My X1"
                                           :source      {:type  "query"
                                                         :query query}
                                           :target      {:type     "table"
@@ -296,39 +295,50 @@
                                                         :name     orig-name}}]
         ;; create the global table
         (transforms.i/execute! x1 {:run-method :manual})
-        (let [workspace        (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                     {:name        "Test Workspace"
-                                                                      :database_id (mt/id)}))
+        (let [workspace    (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                                 {:name        "Test Workspace"
+                                                                  :database_id (mt/id)}))
+              create-url   (ws-url (:id workspace) "/transform")
+              create-req   (assoc (select-keys x1 [:name :source :target]) :global_id (:id x1))
               ;; add the transform
-              ref-id           (:ref_id
-                                (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform") x1))
-              mirror-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
-              mirror-table     (t2/select-one :model/Table
-                                              :schema (-> mirror-transform :target :schema)
-                                              :name (-> mirror-transform :target :name))]
+              ref-id       (:ref_id (mt/user-http-request :crowberto :post 200 create-url create-req))
+              ws-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id ref-id)
+              orig-id      (t2/select-one-fn :id [:model/Table :id]
+                                             :db_id (:database_id workspace)
+                                             :schema (-> ws-transform :target :schema)
+                                             :name (-> ws-transform :target :name))]
           (testing "/table returns expected results"
             (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
                        :global   {:schema   orig-schema
                                   :table    orig-name
-                                  :table_id (:id mirror-table)}
+                                  :table_id orig-id}
                        :isolated {:transform_id ref-id
+                                  :schema       (:schema workspace)
                                   :table        string?}}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
           (testing "and after we run the transform, id for isolated table appears"
             (is (=? {:status "succeeded"}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "transform" ref-id "run"))))
+            (t2/select-one [:model/Table :id :schema :name] {:order-by [[:id :desc]]})
             (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
                        :global   {:schema   orig-schema
                                   :table    orig-name
-                                  :table_id (:id mirror-table)}
+                                  :table_id orig-id}
                        :isolated {:transform_id ref-id
+                                  :schema       (:schema workspace)
                                   :table        string?
                                   :table_id     int?}}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))))))))))
+
+;; TODO write a test for /table that covers the shadowing
+;; e.g. have two transforms in a chain connecting 3 tables:  (A -> X1 -> B -> X2 -> C)
+;; raw-inputs:      A (from X1) and B (from X2)
+;; outputs:         B (from X1) and C (from X2)
+;; external-inputs: A (raw-inputs - outputs)
 
 ;;;; Card dependency rejection tests
 
@@ -437,17 +447,17 @@
         #_(is (re-find #"Cannot add transforms that depend on saved questions" response))))))
 
 (deftest validate-target-test
-  (let [table (t2/select-one :model/Table :active true)]
-    (mt/with-temp [:model/Workspace          {ws-id :id}  {:name "test"}
-                   :model/WorkspaceTransform _x1          {:workspace_id ws-id
-                                                           :target       {:database (:db_id table)
-                                                                          :type     "table"
-                                                                          :schema   (:schema table)
-                                                                          :name     (str "q_" (:name table))}}]
+  (let [table (t2/select-one :model/Table :active true {:where [:not [:like :schema "mb__%"]]})]
+    (mt/with-temp [:model/Workspace          ws   {:name "test"}
+                   :model/WorkspaceTransform _x1  {:workspace_id (:id ws)
+                                                   :target       {:database (:db_id table)
+                                                                  :type     "table"
+                                                                  :schema   (:schema table)
+                                                                  :name     (str "q_" (:name table))}}]
       (testing "Unique"
         (is (= "OK"
                (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
-                 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform/validate/target")
+                 (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform/validate/target")
                                        {:db_id  (mt/id)
                                         :target {:type   "table"
                                                  :schema "public"
@@ -456,16 +466,26 @@
       ;; Also, this logic is going to become more relaxed, where we're allowed to take over a "dormant" table.
       #_(testing "Conflict outside of workspace"
           (is (= "A table with that name already exists."
-                 (mt/user-http-request :crowberto :post 403 (ws-url ws-id "/transform/validate/target")
+                 (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
                                        {:db_id  (:db_id table)
                                         :target {:type   "table"
                                                  :schema (:schema table)
                                                  :name   (:name table)}}))))
-      (testing "Conflict inside of workspace"
+      (testing "Must not target the isolated schema"
         (let [table (t2/select-one :model/Table :active true)]
           (is (= "Must not target an isolated workspace schema"
                  (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
-                   (mt/user-http-request :crowberto :post 403 (ws-url ws-id "/transform/validate/target")
+                   (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
+                                         {:db_id  (:db_id table)
+                                          :target {:type   "table"
+                                                   :schema (:schema ws)
+                                                   :name   (str "q_" (:name table))}}))))))
+
+      (testing "Conflict inside of workspace"
+        (let [table (t2/select-one :model/Table :active true)]
+          (is (= "Another transform in this workspace already targets that table"
+                 (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
+                   (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
                                          {:db_id  (:db_id table)
                                           :target {:type   "table"
                                                    :schema (:schema table)
@@ -650,7 +670,7 @@
                      :start_time some?
                      :end_time   some?
                      :table      {:name   #(str/includes? % output-table)
-                                  :schema #(str/starts-with? % "mb__isolation_")}}
+                                  :schema "ws1"}}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "run"))))
             (testing "and we don't get any excessive transforms in the db"
               (is (= (:id x1)

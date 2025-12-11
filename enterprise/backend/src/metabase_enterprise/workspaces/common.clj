@@ -1,7 +1,6 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.workspaces.core :as ws.core]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
@@ -12,13 +11,6 @@
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
-
-(defn mock-mapping
-  "This is a mocked mapping for execution, used until we get real mapping integrated."
-  [ws target]
-  (assoc target
-         :schema (ws.u/isolation-namespace-name ws)
-         :name (ws.u/isolated-table-name target)))
 
 ;; should be encapsulated in our dag namespace, or dependency module
 (defn check-no-card-dependencies!

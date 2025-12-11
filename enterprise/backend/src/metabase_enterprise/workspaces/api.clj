@@ -6,7 +6,6 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.core :as ws.core]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
@@ -93,7 +92,6 @@
 (def ^:private WorkspaceListing
   [:map {:closed true}
    [:id ::ws.t/appdb-id]
-   [:global_id ::ws.t/appdb-id]
    [:name :string]
    [:archived :boolean]])
 
@@ -104,7 +102,7 @@
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (t2/select [:model/Workspace :id :global_id :name [[:not= nil :archived_at] :archived]]
+  {:items  (t2/select [:model/Workspace :id :name [[:not= nil :archived_at] :archived]]
                       (cond-> {:order-by [[:created_at :desc]]}
                         (request/limit) (sql.helpers/limit (request/limit))
                         (request/offset) (sql.helpers/offset (request/offset))))
@@ -134,22 +132,47 @@
                [:table :string]
                [:table_id [:maybe ::ws.t/appdb-id]]]]])
 
-(defn- batch-lookup-global-table-ids
-  "Batch lookup table_ids for global output tables by [db_id schema table]."
-  [db-id output-refs]
-  (when (seq output-refs)
-    (let [cases  (for [{:keys [schema table]} output-refs]
-                   [:and [:= :schema schema] [:= :name table]])
-          tables (t2/select :model/Table :db_id db-id {:where (into [:or] cases)})]
-      (into {} (map (juxt (juxt :schema :name) :id)) tables))))
+(defn- batch-lookup-global-table-ids*
+  "Given a bounded list of tables all, within the same database, return an association list of [db schema table] => id"
+  [db-id table-refs]
+  (t2/select-fn-vec (juxt (juxt (constantly db-id) :schema :name) :id)
+                    [:model/Table :id :schema [:name]]
+                    :db_id db-id
+                    {:where (into [:or] (for [{:keys [schema table]} table-refs]
+                                          [:and
+                                           [:= :schema schema]
+                                           [:= :name table]]))}))
 
+;; TODO
+(defn- batch-lookup-table-ids
+  "Given a list of maps holding [db_id schema table], return a mapping from those tuples => table_id"
+  [table-refs]
+  (when (seq table-refs)
+    ;; These are ordered by db, so this will partition fine.
+    (u/for-map [table-refs (partition-by :db_id table-refs)
+                :let [db_id (:db_id (first table-refs))]
+                ;; Guesstimating a number that prevents this query being too large.
+                table-refs (partition-all 20 table-refs)
+                map-entry (batch-lookup-global-table-ids* db_id table-refs)]
+      map-entry)))
+
+;; TODO (chris 2025/12/12)
+;;   after https://linear.app/metabase/issue/BOT-696/fix-workspace-output-table we should not assume that all the
+;;   isolated tables use the same isolated schema, rather we should just trust the refs in the database, and use
+;;   [batch-lookup-table-ids] (deleting this method)
 (defn- batch-lookup-isolated-table-ids
   "Batch lookup table_ids for isolated output tables by [isolation-schema isolated-table-name]."
-  [db-id isolation-schema output-refs]
-  (when (seq output-refs)
-    (let [isolated-names (set (map ws.u/isolated-table-name output-refs))
-          tables         (t2/select :model/Table :db_id db-id :schema isolation-schema :name [:in isolated-names])]
-      (into {} (map (juxt :name :id)) tables))))
+  [isolated-schema global-output-refs]
+  (when (seq global-output-refs)
+    (u/for-map [table-refs (partition-by :db_id global-output-refs)
+                :let [db-id (:db_id (first table-refs))
+                      isolated-names (for [{:keys [schema table]} table-refs] (ws.u/isolated-table-name schema table))]
+                [table id] (map vector
+                                isolated-names
+                                (t2/select-fn-vec :id [:model/Table :id] :db_id db-id :schema isolated-schema :name [:in isolated-names]))]
+      [[db-id isolated-schema table] id])))
+
+(def ^:private dst (juxt :db_id :schema :table))
 
 (api.macros/defendpoint :get "/:id/table"
   :- [:map {:closed true}
@@ -158,24 +181,33 @@
   "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (let [{:keys [schema
-                database_id]} (api/check-404 (t2/select-one [:model/Workspace :database_id :schema] id))
-        outputs               (t2/select [:model/WorkspaceOutput :db_id :schema :table :ref_id] :workspace_id id)
-        inputs                (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id] :workspace_id id)
-        global-table-ids      (batch-lookup-global-table-ids database_id outputs)
-        isolated-table-ids    (batch-lookup-isolated-table-ids database_id schema outputs)]
+  (let [isolated-schema (api/check-404 (t2/select-one-fn :schema [:model/Workspace :schema] id))
+        order-by        {:order-by [:db_id :schema :table]}
+        outputs         (t2/select [:model/WorkspaceOutput :db_id :schema :table :ref_id] :workspace_id id order-by)
+        raw-inputs      (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id] :workspace_id id order-by)
+        ;; Some of our inputs may be shadowed by the outputs of other transforms. We only want external inputs.
+        ;; TODO once the output table has its schema fixed (https://linear.app/metabase/issue/BOT-696) swap this out
+        ;shadowed?             (into #{} (for [{d :db_id, {s :schema, t :table} :global} outputs] [d s t]))
+        shadowed?       (into #{} (map dst) outputs)
+        inputs          (remove (comp shadowed? dst) raw-inputs)
+        ;; Once we've fixed the WorkspaceOutput table, it should contain both of these ids (eventually), and typically
+        ;; we won't need to do any of the following id look-ups. What we'll want to do is group together all the
+        ;; unknown [d s t] references, and look them all up at once for a single fallback map like this.
+        fallback-map    (merge (batch-lookup-table-ids outputs)
+                               (batch-lookup-isolated-table-ids isolated-schema outputs))]
     {:inputs  inputs
-     :outputs (for [{:keys [ref_id db_id schema table] :as output} outputs
-                    :let [isolated-name (ws.u/isolated-table-name output)]]
+     ;; Yes, neither _table_id field is in the table yet - but they will (sometimes) be when the above issue is fixed.
+     :outputs (for [{:keys [ref_id db_id schema table global_table_id isolated_table_id]} outputs
+                    :let [isolated-name (ws.u/isolated-table-name schema table)]]
                 {:db_id    db_id
                  :global   {:transform_id nil
                             :schema       schema
                             :table        table
-                            :table_id     (get global-table-ids [schema table])}
+                            :table_id     (or global_table_id (get fallback-map [db_id schema table]))}
                  :isolated {:transform_id ref_id
-                            :schema       schema
+                            :schema       isolated-schema
                             :table        isolated-name
-                            :table_id     (get isolated-table-ids isolated-name)}})}))
+                            :table_id     (or isolated_table_id (get fallback-map [db_id isolated-schema isolated-name]))}})}))
 
 (api.macros/defendpoint :get "/:id" :- Workspace
   "Get a single workspace by ID"
@@ -395,9 +427,9 @@
                      :workspace_id ws-id)
    (db+schema+table target)))
 
-(api.macros/defendpoint :post "/:id/transform/validate/target"
+(api.macros/defendpoint :post "/:ws-id/transform/validate/target"
   "Validate the target table for a workspace transform"
-  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    {:keys [transform-id]} :- [:map [:transform-id {:optional true} ::ws.t/ref-id]]
    {:keys [db_id target]} :- [:map
                               [:db_id {:optional true} ::ws.t/appdb-id]
@@ -406,7 +438,7 @@
                                         [:type :string]
                                         [:schema :string]
                                         [:name :string]]]]]
-  (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id] id))
+  (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id))
         target    (update target :database #(or % db_id))
         tx-id     (when transform-id (parse-long transform-id))
         ws-db-id  (:database_id workspace)]
@@ -427,8 +459,8 @@
       #_{:status 403 :body (deferred-tru "A table with that name already exists.")}
 
       ;; TODO consider deferring this validation until merge also.
-      (internal-target-conflict? id target tx-id)
-      {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table.")}
+      (internal-target-conflict? ws-id target tx-id)
+      {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table")}
 
       :else
       {:status 200 :body "OK"})))
@@ -486,23 +518,25 @@
             #_[:target ::transform-target]]]
   (api/check (transforms.util/check-feature-enabled body)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
-  (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
-                    (api/check-400 (nil? (:archived_at <>)) "Cannot create transforms in an archived workspace"))
-        ;; TODO why 400 here and 403 in the validation route? T_T
-        _         (api/check-400 (not (internal-target-conflict? id (:target body)))
-                                 (deferred-tru "Another transform in this workspace already targets that table."))
-        global-id (:global_id body (:id body))
-        body      (-> body (dissoc :global_id) (update :target assoc :database_id (:database_id workspace)))]
-    (-> (select-malli-keys
-         WorkspaceTransform workspace-transform-alias
-         (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body))
-        (assoc :last_run_at nil))))
+  (t2/with-transaction [_tx]
+    (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
+                      (api/check-400 (nil? (:archived_at <>)) "Cannot create transforms in an archived workspace"))
+          ;; TODO why 400 here and 403 in the validation route? T_T
+          _         (api/check-400 (not (internal-target-conflict? id (:target body)))
+                                   (deferred-tru "Another transform in this workspace already targets that table"))
+          global-id (:global_id body (:id body))
+          body      (-> body (dissoc :global_id) (update :target assoc :database (:database_id workspace)))
+          transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
+      ;; We want to be careful about which fields we couple our analysis to.
+      (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
+      (select-malli-keys WorkspaceTransform workspace-transform-alias transform))))
 
 ;; TODO Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
   "Schema for a transform in a workspace"
   [:map {:closed true}
    [:ref_id ::ws.t/ref-id]
+   [:global_id [:maybe ::ws.t/appdb-id]]
    [:name :string]
    [:source_type [:maybe :keyword]]
    ;[:creator_id ::ws.t/appdb-id]
@@ -520,7 +554,7 @@
   "Get all transforms in a workspace."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :name :source] :workspace_id id))})
+  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source] :workspace_id id))})
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
@@ -585,11 +619,22 @@
   App DB changes are rolled back. Warehouse DB changes persist."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (let [workspace  (api/check-404 (t2/select-one :model/Workspace id))
-        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
+        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))
+        ;; This is meant to be a map of:
+        ;; (merge {id => {d s t id}}, {[d s t] {d s t id})
+        ;; (the id mappings are for remapping python and mbql sources, the latter for SQL)
+        ;; This map should be built purely from querying WorkspaceOutput, but first we need to fix that table:
+        ;; See: https://linear.app/metabase/issue/BOT-696/fix-workspace-output-table
+        ;; For now the code takes an evil shortcut, that will only work for targets, and will break for both
+        ;; SQL and python sources. Note especially that for SQL we need to pass a concrete map of replacements to macaw,
+        ;; so this will have to be a map, not a function!
+        table-map (let [isolated-s (:schema workspace)]
+                    (fn [[d s t]] {:db-id d, :schema isolated-s, :table (ws.u/isolated-table-name s t), :id nil}))
+        ;; We won't need the field-map until we support MBQL.
+        field-map nil]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    (ws.execute/run-workspace-transform! workspace transform
-                                         (partial ws.common/mock-mapping workspace))))
+    (ws.execute/run-transform-with-remapping transform table-map field-map)))
 
 (api.macros/defendpoint :get "/checkout"
   :- [:map
