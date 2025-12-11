@@ -3,31 +3,20 @@ import type { TableId } from "metabase-types/api";
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
-const modelingSidebar = () => cy.findByTestId("modeling-sidebar");
-const collectionsSection = () => cy.findByTestId("collections-section");
-const snippetsSection = () => cy.findByTestId("snippets-section");
-const glossarySection = () => cy.findByTestId("glossary-section");
+const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
 const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
-const modelOverviewPage = () => cy.findByTestId("model-overview-page");
-const modelQueryEditor = () => cy.findByTestId("model-query-editor");
-const modelFieldsPage = () => cy.findByTestId("model-fields-page");
-const collectionPage = () => cy.findByTestId("collection-page");
 
 export const DataStudio = {
-  header: () => cy.findByTestId("data-studio-header"),
   nav: () => cy.findByTestId("data-studio-nav"),
-  transformsButton: () => DataStudio.header().findByText("Transforms"),
-  jobsButton: () => DataStudio.header().findByText("Jobs"),
-  runsButton: () => DataStudio.header().findByText("Runs"),
-  exitButton: () => DataStudio.header().findByText("Exit data studio"),
+  breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
   Transforms: {
     header: () => cy.findByTestId("transforms-header"),
-    content: () => cy.findByTestId("transforms-content"),
-    sidebar: () => cy.findByTestId("transforms-sidebar"),
+    list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
+    editDefinition: () => cy.findByRole("link", { name: "Edit definition" }),
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
@@ -36,31 +25,19 @@ export const DataStudio = {
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
-    content: () => cy.findByTestId("transforms-content"),
-    sidebar: () => cy.findByTestId("jobs-sidebar"),
+    list: () => cy.findByTestId("transforms-job-list"),
+    editor: () => cy.findByTestId("transforms-job-editor"),
+  },
+  Runs: {
+    list: () => cy.findByTestId("transforms-run-list"),
+    content: () => cy.findByTestId("transforms-run-content"),
+  },
+  Dependencies: {
+    content: () => cy.findByTestId("transforms-dependencies-content"),
+    graph: () => cy.findByTestId("dependency-graph"),
   },
   PythonLibrary: {
     header: () => cy.findByTestId("python-library-header"),
-  },
-  ModelingSidebar: {
-    root: modelingSidebar,
-    collectionsSection,
-    collectionsTree: () => collectionsSection().findByRole("tree"),
-    snippetsSection,
-    snippetsTree: () => snippetsSection().findByRole("tree"),
-    snippetsTreeItem: (name: string) =>
-      snippetsSection()
-        .findByRole("tree")
-        .findByText(name)
-        .closest("[role='menuitem']"),
-    glossarySection,
-    glossaryLink: () => glossarySection().findByText("Glossary"),
-    createCardMenuButton: () =>
-      collectionsSection().findByLabelText("Create metric"),
-    createSnippetButton: () =>
-      snippetsSection().findByLabelText("Create snippet"),
-    snippetCollectionOptionsButton: () =>
-      snippetsSection().findByLabelText("Snippet collection options"),
   },
   Snippets: {
     newPage: newSnippetPage,
@@ -86,22 +63,6 @@ export const DataStudio = {
     dependenciesTab: () =>
       DataStudio.Metrics.header().findByText("Dependencies"),
   },
-  Models: {
-    overviewPage: modelOverviewPage,
-    queryEditor: modelQueryEditor,
-    fieldsPage: modelFieldsPage,
-    nameInput: () => modelQueryEditor().findByPlaceholderText("New model"),
-    saveButton: () => modelQueryEditor().findByRole("button", { name: "Save" }),
-    cancelButton: () =>
-      modelQueryEditor().findByRole("button", { name: "Cancel" }),
-    header: () => cy.findByTestId("model-header"),
-    moreMenu: () => DataStudio.Models.header().icon("ellipsis"),
-    overviewTab: () => DataStudio.Models.header().findByText("Overview"),
-    definitionTab: () => DataStudio.Models.header().findByText("Definition"),
-    fieldsTab: () => DataStudio.Models.header().findByText("Fields"),
-    dependenciesTab: () =>
-      DataStudio.Models.header().findByText("Dependencies"),
-  },
   Tables: {
     overviewPage: () => cy.findByTestId("table-overview-page"),
     fieldsPage: () => cy.findByTestId("table-fields-page"),
@@ -114,7 +75,7 @@ export const DataStudio = {
     dependenciesTab: () =>
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
-      cy.visit(`/data-studio/modeling/tables/${tableId}`),
+      cy.visit(`/data-studio/library/tables/${tableId}`),
     moreMenuViewTable: () =>
       popover()
         .findByRole("menuitem", { name: /View/ })
@@ -132,15 +93,17 @@ export const DataStudio = {
           .findByPlaceholderText("No description"),
     },
   },
-  Modeling: {
-    emptyPage: () => cy.findByTestId("modeling-empty-page"),
-    collectionPage: collectionPage,
-    collectionTitle: () => collectionPage().findByRole("heading"),
+  Library: {
+    emptyPage: () =>
+      libraryPage().findByText("No tables, metrics, or snippets yet"),
+    libraryPage,
     metricItem: (name: string) =>
       cy.findAllByTestId("metric-name").contains(name),
-    modelItem: (name: string) =>
-      cy.findAllByTestId("dataset-name").contains(name),
     tableItem: (name: string) =>
-      cy.findAllByTestId("table-name").contains(name),
+      libraryPage().findAllByTestId("table-name").contains(name),
+    result: (name: string) => libraryPage().findByText(name).closest("tr"),
+    newButton: () => libraryPage().findByRole("button", { name: /New/ }),
+    collectionItem: (name: string) =>
+      libraryPage().findAllByTestId("collection-name").contains(name),
   },
 };

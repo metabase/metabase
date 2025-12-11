@@ -71,11 +71,11 @@ If set to 0, Metabase will keep all rows.")
   :export?    false)
 
 (defsetting analytics-dev-mode
-  "Enable analytics development mode. When true, makes analytics content editable."
+  (str "Setting this environment variable to true will  make the Usage analytics collection editable for"
+       "local development.")
   :type       :boolean
   :default    false
   :visibility :internal
   :audit      :never
   :export?    false
-  :doc        (str "Setting this environment variable to true will  make the Usage analytics collection editable for"
-                   "local development."))
+  :doc        false)
