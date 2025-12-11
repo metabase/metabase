@@ -789,6 +789,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     >
       <DataGrid
         {...tableProps}
+        sorting={sorting}
         styles={dataGridStyles}
         showRowsCount={isDashboard}
         rowsTruncated={data.rows_truncated}

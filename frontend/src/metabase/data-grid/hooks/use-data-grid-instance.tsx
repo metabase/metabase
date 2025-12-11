@@ -1,6 +1,7 @@
 import {
   type ColumnSizingState,
   type PaginationState,
+  type SortingState,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -358,6 +359,7 @@ export const useDataGridInstance = <TData, TValue>({
   const { measureGrid, rowVirtualizer, columnVirtualizer } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
+  const prevSorting = useRef<SortingState>();
 
   // Re-measure grid when column sizing or wrapping changes
   useEffect(() => {
@@ -372,7 +374,10 @@ export const useDataGridInstance = <TData, TValue>({
         prevWrappedColumns.current,
       );
 
-    if (didColumnSizingChange || didColumnWrappingChange) {
+    const didSortingChange =
+      prevSorting.current != null && !_.isEqual(prevSorting.current, sorting);
+
+    if (didColumnSizingChange || didColumnWrappingChange || didSortingChange) {
       measureGrid();
     }
 
@@ -380,7 +385,8 @@ export const useDataGridInstance = <TData, TValue>({
     prevWrappedColumns.current = wrappedColumnsOptions.map(
       (column) => column.id,
     );
-  }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
+    prevSorting.current = sorting;
+  }, [columnSizingMap, measureGrid, wrappedColumnsOptions, sorting]);
 
   // Handle column resize from resize observer
   const handleColumnResize = useCallback(
