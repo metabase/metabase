@@ -20,7 +20,7 @@ interface Props {
   databaseId: DatabaseId;
   editedTransform: WorkspaceTransform;
   transform: WorkspaceTransform;
-  workspaceId: string | number;
+  workspaceId: number;
 }
 
 export const SaveTransformButton = ({
@@ -41,7 +41,7 @@ export const SaveTransformButton = ({
   const hasChanges = hasSourceChanged || hasTargetNameChanged;
 
   const handleClick = async () => {
-    const updated = await updateTransform({
+    let updated = await updateTransform({
       workspaceId,
       transformId: transform.id,
       source: editedTransform.source,
@@ -53,6 +53,7 @@ export const SaveTransformButton = ({
         database: databaseId,
       },
     }).unwrap();
+    updated = { ...updated, id: updated.ref_id };
 
     updateTransformState(updated);
   };
