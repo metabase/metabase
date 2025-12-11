@@ -1,3 +1,4 @@
+import { useDebouncedValue } from "@mantine/hooks";
 import type * as React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -7,7 +8,6 @@ import EmptyState from "metabase/common/components/EmptyState";
 import type { InputProps } from "metabase/common/components/Input";
 import Input from "metabase/common/components/Input";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { delay } from "metabase/lib/delay";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";

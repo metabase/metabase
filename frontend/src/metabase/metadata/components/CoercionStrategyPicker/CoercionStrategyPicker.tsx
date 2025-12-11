@@ -1,8 +1,8 @@
+import { useDebouncedValue } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { coercions_for_type } from "cljs/metabase.types.core";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 

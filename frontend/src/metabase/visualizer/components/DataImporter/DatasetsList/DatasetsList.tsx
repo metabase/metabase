@@ -1,8 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -151,11 +151,24 @@ export function DatasetsList({
       },
     );
 
-  const debouncedIsFetching = useDebouncedValue(
-    isSearchFetching || isListRecentsFetching,
-    300, // Adjust debounce duration as needed
-    (_lastValue, newValue) => newValue === true, // We want instant updates when loading ends
-  );
+  // Handle debouncing of loading state with instant updates when loading ends
+  // When loading starts, we want to delay showing the loading state
+  // When loading ends, we want to hide it immediately
+  const isFetching = isSearchFetching || isListRecentsFetching;
+  const [debouncedIsFetching, setDebouncedIsFetching] = useState(false);
+
+  useEffect(() => {
+    if (isFetching) {
+      // Delay showing loading state
+      const timer = setTimeout(() => {
+        setDebouncedIsFetching(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      // Immediately hide loading state
+      setDebouncedIsFetching(false);
+    }
+  }, [isFetching]);
 
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {

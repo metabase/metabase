@@ -1,8 +1,7 @@
+import { useDebouncedValue } from "@mantine/hooks";
 import { useState } from "react";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
-
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 
 import { useSearch } from "../hooks";
 import type { TreePath } from "../types";
