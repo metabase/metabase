@@ -17,13 +17,16 @@
 
 (ws.tu/ws-fixtures!)
 
+(defn- append-part [url part]
+  (case [(str/starts-with? part "/")
+         (str/ends-with? url "/")]
+    [false false] (str url \/ part)
+    ([true false]
+     [false true]) (str url part)
+    (str url (subs part 1))))
+
 (defn ws-url [id & path]
-  (reduce (fn [url part] (if (or (str/starts-with? part "/")
-                                 (str/ends-with? url "/"))
-                           (str url part)
-                           (str url "/" part)))
-          (str "ee/workspace/" id)
-          (map str path)))
+  (reduce append-part (str "ee/workspace/" id) (map str path)))
 
 (deftest workspace-endpoints-require-superuser-test
   (mt/with-temp [:model/Workspace workspace {:name "Private Workspace"}]
@@ -85,7 +88,19 @@
 
     (testing "workspace can be unarchived"
       (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/unarchive"))]
-        (is (nil? (:archived_at updated)))))))
+        (is (nil? (:archived_at updated)))))
+
+    (testing "workspace cannot be deleted if it is not archived"
+      (let [message (mt/user-http-request :crowberto :delete 400 (str "ee/workspace/" workspace-id))]
+        (is (= "You cannot delete a workspace without first archiving it" message))))
+
+    (testing "workspace can be deleted if it is archived"
+      (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
+        (is (some? (:archived_at updated))))
+      (let [response (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" workspace-id))]
+        (is (= {:ok true} response))
+        ;; todo: check the schema / tables and user are gone
+        (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
 (deftest ^:parallel promote-workspace-test
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
@@ -166,22 +181,26 @@
                                                                  :database_id (mt/id)}))]
           (is (int? ws-id))
           (testing "Can check out a global transform into workspace"
-            (is (=? {:ref_id    string?
-                     :global_id x1-id}
-                    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
-                                          (merge {:global_id x1-id}
-                                                 (select-keys x1 [:name :description :source :target]))))))
+            (let [response (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
+                                                 (merge {:global_id x1-id}
+                                                        (select-keys x1 [:name :description :source :target])))]
+              (is (=? {:ref_id    string?
+                       :global_id x1-id}
+                      response))
+              (is (= response (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/transform" (:ref_id response)))))))
 
           (testing "Can create a new provisional transform"
-            (is (=? {:ref_id    string?
-                     :global_id nil?
-                     :name      "New Transform"}
-                    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
-                                          {:name   "New Transform"
-                                           :source {:type  "query"
-                                                    :query (mt/mbql-query venues)}
-                                           :target {:type "table"
-                                                    :name "new_transform_output"}}))))
+            (let [response (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
+                                                 {:name   "New Transform"
+                                                  :source {:type  "query"
+                                                           :query (mt/mbql-query venues)}
+                                                  :target {:type "table"
+                                                           :name "new_transform_output"}})]
+              (is (=? {:ref_id    string?
+                       :global_id nil?
+                       :name      "New Transform"}
+                      response))
+              (is (= response (mt/user-http-request :crowberto :get 200 (ws-url ws-id "transform" (:ref_id response)))))))
 
           (testing "Cannot add transforms to archived workspace"
             (t2/update! :model/Workspace ws-id {:archived_at (OffsetDateTime/now)})
