@@ -12,15 +12,15 @@ import {
   FixedSizeIcon,
   Flex,
   Group,
-  type GroupProps,
   type IconName,
   Stack,
+  type StackProps,
   Tooltip,
 } from "metabase/ui";
 
 import type { PaneHeaderTab } from "./types";
 
-interface PaneHeaderProps extends Omit<GroupProps, "title"> {
+interface PaneHeaderProps extends Omit<StackProps, "title"> {
   title?: ReactNode;
   icon?: IconName;
   menu?: ReactNode;
@@ -42,37 +42,36 @@ export const PaneHeader = ({
   ...rest
 }: PaneHeaderProps) => {
   return (
-    <Group
-      className={className}
-      gap="sm"
-      justify="space-between"
-      px="lg"
-      py="md"
-      wrap="nowrap"
-      {...rest}
-    >
-      <Stack gap="sm" w="100%">
-        {(breadcrumbs || showMetabotButton) && (
-          <Flex mb="md" mt="md" h="2rem">
-            {breadcrumbs}
-            {showMetabotButton && (
-              <Box ml="auto">
-                <PLUGIN_METABOT.MetabotDataStudioButton />
-              </Box>
-            )}
-          </Flex>
-        )}
-        {title && (
-          <Group align="center" gap="sm" wrap="nowrap">
-            {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
-            {title}
-            {menu}
-          </Group>
-        )}
-        {tabs}
-      </Stack>
-      {actions}
-    </Group>
+    <Stack px="lg" py="md" gap={0} {...rest}>
+      {(breadcrumbs || showMetabotButton) && (
+        <Flex mb="md" mt="md" h="2rem" w="100%">
+          {breadcrumbs}
+          {showMetabotButton && (
+            <Box ml="auto">
+              <PLUGIN_METABOT.MetabotDataStudioButton />
+            </Box>
+          )}
+        </Flex>
+      )}
+      <Group
+        className={className}
+        gap="sm"
+        justify="space-between"
+        wrap="nowrap"
+      >
+        <Stack gap="sm" w="100%">
+          {title && (
+            <Group align="center" gap="sm" wrap="nowrap">
+              {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
+              {title}
+              {menu}
+            </Group>
+          )}
+          {tabs}
+        </Stack>
+        {actions}
+      </Group>
+    </Stack>
   );
 };
 
