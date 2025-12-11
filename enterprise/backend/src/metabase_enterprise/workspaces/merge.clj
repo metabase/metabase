@@ -10,7 +10,7 @@
 (defn merge-transform!
   "Make the given transform in the Changeset public, i.e. create or update the relevant model/Transform entities.
    This should also clear it out from the Changset, as it no longer has any changes."
-  [{:keys [ref_id] :as ws-transform}]
+  [{:keys [global_id ref_id archived_at] :as ws-transform}]
   ;; Problems this may run into:
   ;; It will recalculate and validate the dag greedily as it inserts each items, and this might fail of temporary conflicts.
   ;; Some of these conflicts could be solved by ordering things smartly, but in the general case (e.g. reversing a
@@ -19,16 +19,30 @@
 
   ;; Assume validation has alr
   ;; Ensure the hook
-  (let [*tx-id (atom (:global_id ws-transform))]
-    (if @*tx-id
-      (transforms.api/update-transform! @*tx-id (select-keys ws-transform [:name :description :source :target]))
-      (reset! *tx-id (:id (transforms.api/create-transform!
-                           (select-keys ws-transform [:name :description :source :target])))))
+  (let [[op global-tx] (cond (and global_id archived_at)
+                             (let [tx (t2/select-one :model/Transform :id global_id)]
+                               (transforms.api/delete-transform! global_id)
+                               [:delete tx])
+
+                             global_id
+                             [:update
+                              (transforms.api/update-transform!
+                               global_id (select-keys ws-transform [:name :description :source :target]))]
+
+                             archived_at
+                             [:noop nil]
+
+                             :else
+                             [:create
+                              (transforms.api/create-transform!
+                               (select-keys ws-transform [:name :description :source :target]))])]
 
     ;; There are no longer any changes, so it can be removed from the changeset.
     (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
-    ;
-    {:ref_id ref_id, :global_id @*tx-id}))
+
+    {:op op
+     :ref_id ref_id
+     :global_id (:id global-tx)}))
 
 (defn merge-workspace!
   "Make all the transforms in the Changeset public, i.e. create or update the relevant model/Transform entities.
