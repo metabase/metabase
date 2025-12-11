@@ -8,6 +8,7 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import { getUser } from "metabase/selectors/user";
 
 import { trackMetabotChatOpened } from "../analytics";
+import { METABOT_USE_CASES } from "../constants";
 import { useMetabotAgent } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
@@ -21,7 +22,11 @@ export interface MetabotConfig {
   suggestionModels: SuggestionModel[];
 }
 
-export const DEFAULT_USE_CASES = ["sql", "nlq", "omnibot"];
+export const DEFAULT_USE_CASES = [
+  METABOT_USE_CASES.SQL,
+  METABOT_USE_CASES.NLQ,
+  METABOT_USE_CASES.OMNIBOT,
+];
 
 export interface MetabotProps {
   hide?: boolean;

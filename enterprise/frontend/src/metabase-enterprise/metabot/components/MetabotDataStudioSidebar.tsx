@@ -5,12 +5,15 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocation } from "metabase/selectors/routing";
 
+import { METABOT_USE_CASES } from "../constants";
+
 import { Metabot } from "./Metabot";
 
 export function MetabotDataStudioSidebar() {
   const location = useSelector(getLocation);
   const enabledUseCases = useSetting("metabot-enabled-use-cases");
-  const isTransformsEnabled = enabledUseCases?.includes("transforms") ?? false;
+  const isTransformsEnabled =
+    enabledUseCases?.includes(METABOT_USE_CASES.TRANSFORMS) ?? false;
   const isOnTransformsPage = location.pathname?.startsWith(
     Urls.transformList(),
   );
@@ -19,7 +22,7 @@ export function MetabotDataStudioSidebar() {
   return (
     <Metabot
       hide={disabled}
-      requiredUseCases={["transforms"]}
+      requiredUseCases={[METABOT_USE_CASES.TRANSFORMS]}
       config={{
         preventRetryMessage: true,
         preventClose: true,

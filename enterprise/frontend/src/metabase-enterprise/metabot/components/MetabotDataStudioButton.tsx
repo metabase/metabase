@@ -8,13 +8,15 @@ import { getLocation } from "metabase/selectors/routing";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
+import { METABOT_USE_CASES } from "../constants";
 import { useMetabotAgent } from "../hooks";
 
 export const MetabotDataStudioButton = () => {
   const metabot = useMetabotAgent();
   const location = useSelector(getLocation);
   const enabledUseCases = useSetting("metabot-enabled-use-cases");
-  const isTransformsEnabled = enabledUseCases?.includes("transforms") ?? false;
+  const isTransformsEnabled =
+    enabledUseCases?.includes(METABOT_USE_CASES.TRANSFORMS) ?? false;
   const isOnTransformsPage = location.pathname?.startsWith(
     Urls.transformList(),
   );

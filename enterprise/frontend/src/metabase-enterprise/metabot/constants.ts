@@ -1,5 +1,13 @@
 import { t } from "ttag";
 
+export const METABOT_USE_CASES = {
+  NLQ: "nlq",
+  SQL: "sql",
+  OMNIBOT: "omnibot",
+  TRANSFORMS: "transforms",
+  EMBEDDING: "embedding",
+} as const;
+
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids

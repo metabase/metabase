@@ -37,6 +37,7 @@ import {
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
+  METABOT_USE_CASES,
 } from "metabase-enterprise/metabot/constants";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
@@ -93,7 +94,7 @@ export function MetabotAdminPage() {
             <Box className={S.SectionCard}>
               <MetabotUseCaseSection
                 metabot={metabot}
-                useCase="nlq"
+                useCase={METABOT_USE_CASES.NLQ}
                 title={t`Natural Language Querying`}
                 description={t`Allow users to query data using natural language`}
                 switchLabel={t`Enable NLQ`}
@@ -105,7 +106,7 @@ export function MetabotAdminPage() {
             <Box className={S.SectionCard}>
               <MetabotUseCaseSection
                 metabot={metabot}
-                useCase="sql"
+                useCase={METABOT_USE_CASES.SQL}
                 title={t`SQL Generation`}
                 description={t`Generate SQL queries from natural language inputs`}
                 switchLabel={t`Enable SQL generation`}
@@ -117,7 +118,7 @@ export function MetabotAdminPage() {
             <Box className={S.SectionCard}>
               <MetabotUseCaseSection
                 metabot={metabot}
-                useCase="omnibot"
+                useCase={METABOT_USE_CASES.OMNIBOT}
                 title={t`Omnibot`}
                 description={t`Enable the multi-modal AI assistant`}
                 switchLabel={t`Enable Omnibot`}
@@ -129,7 +130,7 @@ export function MetabotAdminPage() {
             <Box className={S.SectionCard}>
               <MetabotUseCaseSection
                 metabot={metabot}
-                useCase="transforms"
+                useCase={METABOT_USE_CASES.TRANSFORMS}
                 title={t`Transforms`}
                 description={t`Allow Metabot to write and edit transforms`}
                 switchLabel={t`Enable Transforms`}
