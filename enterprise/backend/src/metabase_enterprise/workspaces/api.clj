@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api
   "`/api/ee/workspace/` routes"
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.transforms.api :as transforms.api]
@@ -20,6 +21,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private log-limit "Maximum number of recent workspace log items to show" 20)
 
@@ -505,7 +508,7 @@
       [:map
        ;; TODO: why this was not present, why can we rerturn a string?
        [:merged {:optional true} :any]
-       [:errors [:maybe [:sequential [:map [:id ::ws.t/ref-id] [:name :string] [:error :string]]]]]
+       [:errors [:maybe [:sequential [:map [:id [:maybe ::ws.t/ref-id]] [:name :string] [:error :string]]]]]
        [:workspace [:map [:id ::ws.t/appdb-id] [:name :string]]]
        [:archived_at [:maybe :any]]]
       ;; error message from check-404 or check-400
@@ -521,8 +524,11 @@
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged
-                errors]} {:merged (update-vals (ws.merge/merge-workspace! id) #(map :global_id %))
-                          :errors []}]
+                errors]} (-> (ws.merge/merge-workspace! id)
+                             (update :merged update-vals #(map :global_id %))
+                             (update :errors (partial mapv #(-> %
+                                                                (update :error (fn [e] (.getMessage ^Throwable e)))
+                                                                (set/rename-keys {:error :message})))))]
     (u/prog1
       {:merged      merged
        :errors      errors
@@ -535,7 +541,9 @@
         ;; Most of the APIs and the FE are not respecting when a Workspace is archived yet.
         (t2/delete! :model/Workspace id)))))
 
+;; TODO: Test
 (api.macros/defendpoint :post "/:id/transform/:txid/merge"
+  ;; TODO: move type
   :- [:map
       [:op [:enum :create :delete :update :noop]]
       [:global_id [:maybe ::ws.t/appdb-id]]
@@ -550,9 +558,10 @@
         {:keys [error] :as result} (ws.merge/merge-transform! ws-transform)]
     (if-not error
       result
-      ;; tmp
       {:status 500
-       :body (dissoc result :error)})))
+       :body (-> result
+                 (update :error #(.getMessage ^Throwable %))
+                 (set/rename-keys {:error :message}))})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
