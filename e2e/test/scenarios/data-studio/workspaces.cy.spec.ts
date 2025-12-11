@@ -147,8 +147,6 @@ describe("scenarios > data studio > workspaces", () => {
     Workspaces.getWorkspaceNameInput().clear().type("Renamed workspace").blur();
     // verifyAndCloseToast("Workspace renamed"); // TODO: uncomment when implemented
     Workspaces.getWorkspaceItem(/Renamed workspace/).should("be.visible");
-
-    // TODO: workspace deletion?
   });
 
   it("should be able to check out exisitng transform into a new workspace from the transform page", () => {
