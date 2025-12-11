@@ -124,7 +124,7 @@ export type SearchItem = Pick<SearchResult, "id" | "model" | "name"> &
 
 export type OmniPickerCollectionItem = Pick<
   CollectionItem,
-  "name" | "model" | "here" | "below" | "moderated_status" | "display"
+  "name" | "model" | "here" | "below" | "moderated_status" | "display" | "can_write" | "location"
 > & {
   id: CollectionItem["id"] | CollectionId;
 };

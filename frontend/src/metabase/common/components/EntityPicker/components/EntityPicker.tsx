@@ -13,24 +13,27 @@ import { NestedItemPicker } from "./NestedItemPicker"
 export type EntityPickerProps = {
   models: OmniPickerItem["model"];
   initialValue?: OmniPickerItem;
-  isItemHidden?: (item: OmniPickerItem | unknown) => item is unknown;
-  isItemDisabled?: (item: OmniPickerItem | unknown) => item is OmniPickerItem;
   onChange: (value: OmniPickerItem) => void;
-  hasConfirmButtons?: boolean;
+  onCancel?: () => void;
   options: EntityPickerModalOptions;
+  isFolderItem?: (item: OmniPickerItem) => boolean;
+  isHiddenItem?: (item: OmniPickerItem) => boolean;
+  isDisabledItem?: (item: OmniPickerItem) => boolean;
+  isSelectableItem?: (item: OmniPickerItem) => boolean;
+  hasConfirmButtons?: boolean;
 }
 
 export function EntityPicker({
   models,
   initialValue,
+  onChange,
+  onCancel,
+  options,
   isFolderItem: _isFolderItem,
   isHiddenItem: _isHiddenItem,
   isDisabledItem: _isDisabledItem,
   isSelectableItem: _isSelectableItem,
-  onChange,
-  hasConfirmButtons = false,
-  options,
-}) {
+}: EntityPickerProps) {
   const [path, setPath] = useState<OmniPickerItem[]>([]);
 
   const {
@@ -51,6 +54,7 @@ export function EntityPicker({
     _isDisabledItem,
     _isSelectableItem,
   ]);
+  console.log({ options });
 
   return (
     <OmniPickerContext.Provider value={{
@@ -66,7 +70,15 @@ export function EntityPicker({
       options,
     }}>
       <NestedItemPicker />
-      {hasConfirmButtons && <ButtonBar />}
+      {options.hasConfirmButtons && (
+        <ButtonBar
+          onConfirm={onChange}
+          onCancel={onCancel}
+          actionButtons={options.actionButtons}
+          confirmButtonText={options.confirmButtonText}
+          cancelButtonText={options.cancelButtonText}
+        />
+      )}
     </OmniPickerContext.Provider>
   )
 }
