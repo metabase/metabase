@@ -13,12 +13,12 @@ import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
-import { TransformsSectionHeader } from "metabase-enterprise/transforms/components/TransformsSectionHeader";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PanelHeaderTitle,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { TransformsSectionHeader } from "metabase-enterprise/transforms/components/TransformsSectionHeader";
 
 import { PythonEditor } from "../../components/PythonEditor";
 

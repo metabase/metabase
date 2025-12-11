@@ -34,4 +34,4 @@ export const TransformNameInput = ({ transform }: TransformNameInputProps) => {
       onChange={handleChangeName}
     />
   );
-}
+};

@@ -1,1 +1,1 @@
-export { DataStudioBreadcrumbs } from "./DataStudioBreadcrumbs"
+export { DataStudioBreadcrumbs } from "./DataStudioBreadcrumbs";

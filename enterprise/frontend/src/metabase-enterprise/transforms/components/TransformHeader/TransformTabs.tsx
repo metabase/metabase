@@ -15,7 +15,7 @@ type TransformTabsProps = {
 export const TransformTabs = ({ transform }: TransformTabsProps) => {
   const tabs = getTabs(transform.id);
   return <PaneHeaderTabs tabs={tabs} />;
-}
+};
 
 function getTabs(id: TransformId): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
