@@ -72,8 +72,8 @@
   ;; it as an assumption.
   ;; TODO we'll want this to short-circuit
 
-  ;; WIP: Let the potential exception bubble up
-  (t2/with-transaction [_]
+  ;; Nested transactions mess things up, this does not work
+  (t2/with-transaction [_ #_nil toucan2.connection/*current-connectable* {:nested-transaction-rule :ignore}]
     {:transforms
      (for [ws-tx (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
        (merge-transform! ws-tx))}))
