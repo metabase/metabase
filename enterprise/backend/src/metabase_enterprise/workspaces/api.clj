@@ -182,29 +182,33 @@
   "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (let [isolated-schema       (api/check-404 (t2/select-one-fn :schema [:model/Workspace :schema] id))
-        order-by              {:order-by [:db_id :schema :table]}
-        outputs               (t2/select [:model/WorkspaceOutput :db_id :schema :table :ref_id] :workspace_id id order-by)
-        raw-inputs            (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id] :workspace_id id order-by)
+  (let [isolated-schema (api/check-404 (t2/select-one-fn :schema [:model/Workspace :schema] id))
+        order-by        {:order-by [:db_id :schema :table]}
+        outputs         (t2/select [:model/WorkspaceOutput :db_id :schema :table :ref_id] :workspace_id id order-by)
+        raw-inputs      (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id] :workspace_id id order-by)
         ;; Some of our inputs may be shadowed by the outputs of other transforms. We only want external inputs.
         ;; TODO once the output table has its schema fixed (https://linear.app/metabase/issue/BOT-696) swap this out
         ;shadowed?             (into #{} (for [{d :db_id, {s :schema, t :table} :global} outputs] [d s t]))
-        shadowed?             (into #{} (map dst) outputs)
-        inputs                (remove (comp shadowed? dst) raw-inputs)
-        global-table-ids      (batch-lookup-table-ids outputs)
-        isolated-table-ids    (batch-lookup-isolated-table-ids isolated-schema outputs)]
+        shadowed?       (into #{} (map dst) outputs)
+        inputs          (remove (comp shadowed? dst) raw-inputs)
+        ;; Once we've fixed the WorkspaceOutput table, it should contain both of these ids (eventually), and typically
+        ;; we won't need to do any of the following id look-ups. What we'll want to do is group together all the
+        ;; unknown [d s t] references, and look them all up at once for a single fallback map like this.
+        fallback-map    (merge (batch-lookup-table-ids outputs)
+                               (batch-lookup-isolated-table-ids isolated-schema outputs))]
     {:inputs  inputs
-     :outputs (for [{:keys [ref_id db_id schema table]} outputs
+     ;; Yes, neither _table_id field is in the table yet - but they will (sometimes) be when the above issue is fixed.
+     :outputs (for [{:keys [ref_id db_id schema table global_table_id isolated_table_id]} outputs
                     :let [isolated-name (ws.u/isolated-table-name schema table)]]
                 {:db_id    db_id
                  :global   {:transform_id nil
                             :schema       schema
                             :table        table
-                            :table_id     (get global-table-ids [db_id schema table])}
+                            :table_id     (or global_table_id (get fallback-map [db_id schema table]))}
                  :isolated {:transform_id ref_id
                             :schema       isolated-schema
                             :table        isolated-name
-                            :table_id     (get isolated-table-ids [db_id schema isolated-name])}})}))
+                            :table_id     (or isolated_table_id (get fallback-map [db_id schema isolated-name]))}})}))
 
 (api.macros/defendpoint :get "/:id" :- Workspace
   "Get a single workspace by ID"
