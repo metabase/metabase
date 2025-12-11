@@ -5,11 +5,8 @@ import {
   useGetCloudMigrationQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useStoreUrl } from "metabase/common/hooks";
-import { getPlan } from "metabase/common/utils/plan";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { getSetting } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
@@ -24,6 +21,7 @@ import {
   getStartedVisibleStates,
   isInProgressMigration,
   openCheckoutInNewTab,
+  useGetStoreUrl,
 } from "./utils";
 
 interface CloudPanelProps {
@@ -73,12 +71,7 @@ export const CloudPanel = ({
   const [createCloudMigration, createCloudMigrationResult] =
     useCreateCloudMigrationMutation();
 
-  const plan = useSelector((state) =>
-    getPlan(getSetting(state, "token-features")),
-  );
-  const checkoutUrl = useStoreUrl("checkout");
-  const loginUrl = useStoreUrl("login");
-  const storeUrl = plan === "pro-self-hosted" ? loginUrl : checkoutUrl;
+  const storeUrl = useGetStoreUrl();
 
   const handleCreateMigration = async () => {
     const newMigration = await createCloudMigration().unwrap();
