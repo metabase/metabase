@@ -156,7 +156,6 @@
 
 (deftest merge-workspace-failure-test
   (testing "transactions"
-    ;; add x1 and x2 into a workspace
     (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
                    :model/Table     _table {:schema "public" :name "merge_test_table_2"}
                    :model/Transform x1 {:name        "Upstream Transform 1"
@@ -171,30 +170,29 @@
                                                       :database 1
                                                       :schema   "public"
                                                       :name     "merge_test_table_2"}}]
-      (let [{ws-id :id} (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+      (let [;; Create a workspace
+            {ws-id :id} (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                         {:name        "Merge test"
                                                          :database_id (mt/id)}))
+            ;; Add 2 transforms
             ws-x-1 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                          (merge {:global_id (:id x1)}
                                                 (select-keys x1 [:name :description :source :target])))
             ws-x-2 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                          (merge {:global_id (:id x2)}
                                                 (select-keys x1 [:name :description :source :target])))]
-        ;; temp until i know how to edit thru api
+        ;; Update workspace transforms -- TODO: handle through appropriate api calls
         (t2/update! :model/WorkspaceTransform :ref_id (:ref_id ws-x-1) {:name "UPDATED 1"})
         (t2/update! :model/WorkspaceTransform :ref_id (:ref_id ws-x-2) {:name "UPDATED 2"})
-
         (let [merge-transorm! ws.merge/merge-transform!]
-          #_@(def ahoj (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")))
           (with-redefs [ws.merge/merge-transform! (let [call-count (atom 0)]
                                                     (fn [& args]
-                                                      (metabase.util.log/error "CALLC")
-                                                      (metabase.util.log/error call-count)
                                                       (when (> @call-count 0)
                                                         (throw (Exception. "boom")))
                                                       (swap! call-count inc)
                                                       (apply merge-transorm! args)))]
-            @(def cau (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")))
+            (testing "Merging should atomically rollback on failure"
+              @(def cau (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))))
             @(def yyy (t2/select :model/Transform :id [:in [(:id x1) (:id x2)]]))))))))
 
 (deftest create-workspace-transform-permissions-test
