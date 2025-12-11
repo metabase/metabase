@@ -173,7 +173,7 @@ function TableBodyRow<T>({
       style={{
         position: "absolute",
         transform: `translateY(${virtualRow.start}px)`, //this should always be a `style` as it changes on scroll
-        paddingLeft: `${depth + 1}rem`,
+        paddingLeft: `calc(${depth * 18}px + 1rem)`,
       }}
       onClick={
         canExpand
@@ -208,6 +208,7 @@ const getColumWidthStyle = <T,>(column: ColumnDef<T>): CSSProperties => {
   if (column.meta?.width === "auto") {
     return {
       flexGrow: 1,
+      flexBasis: 0,
     };
   }
   return {

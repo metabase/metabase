@@ -32,6 +32,7 @@ export const DataStudio = {
   },
   Dependencies: {
     content: () => cy.findByTestId("transforms-dependencies-content"),
+    graph: () => cy.findByTestId("dependency-graph"),
   },
   PythonLibrary: {
     header: () => cy.findByTestId("python-library-header"),
