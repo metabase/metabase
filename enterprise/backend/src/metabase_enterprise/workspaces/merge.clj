@@ -5,7 +5,8 @@
    [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.workspaces.types :as ws.types]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -74,7 +75,7 @@
   ;; it as an assumption.
 
   (t2/with-transaction [tx]
-    (let [savepoint ^java.sql.Savepoint (.savepoint ^java.sql.Connection tx)
+    (let [savepoint (.setSavepoint ^Connection tx)
           result (reduce
                   (fn [acc ws-transform]
                     (let [{:keys [error] :as result} (merge-transform! ws-transform)]
@@ -85,5 +86,5 @@
                    :errors []}
                   (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
       (when (seq (:errors result))
-        (.rollback ^java.sql.Connection tx savepoint))
+        (.rollback ^Connection tx savepoint))
       result)))
