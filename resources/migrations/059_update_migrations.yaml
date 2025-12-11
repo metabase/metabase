@@ -72,6 +72,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     unique: true
+              - column:
+                  name: dependency_analysis_version
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Version number for dependency analysis to track when dependencies need recalculation
+                  constraints:
+                    nullable: false
       rollback:
         - dropTable:
             tableName: measure

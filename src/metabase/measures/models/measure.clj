@@ -148,7 +148,7 @@
 
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
   {:copy [:name :archived :description :entity_id]
-   :skip []
+   :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :table_id (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
