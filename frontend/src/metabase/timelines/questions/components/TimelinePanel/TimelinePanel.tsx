@@ -6,7 +6,7 @@ import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import TimelineEmptyState from "../TimelineEmptyState";
 import TimelineList from "../TimelineList";
 
-import { PanelRoot, PanelToolbar } from "./TimelinePanel.styled";
+import S from "./TimelinePanel.module.css";
 
 export interface TimelinePanelProps {
   timelines: Timeline[];
@@ -39,11 +39,11 @@ const TimelinePanel = ({
   const canWrite = collection.can_write;
 
   return (
-    <PanelRoot>
+    <div className={S.PanelRoot}>
       {!isEmpty && canWrite && (
-        <PanelToolbar>
+        <div className={S.PanelToolbar}>
           <Button onClick={onNewEvent}>{t`Create event`}</Button>
-        </PanelToolbar>
+        </div>
       )}
       {!isEmpty ? (
         <TimelineList
@@ -64,7 +64,7 @@ const TimelinePanel = ({
           onNewEvent={onNewEvent}
         />
       )}
-    </PanelRoot>
+    </div>
   );
 };
 
