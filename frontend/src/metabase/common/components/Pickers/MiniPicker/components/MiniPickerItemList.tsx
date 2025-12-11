@@ -15,6 +15,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";
@@ -295,8 +296,10 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 function SearchItemList({ query }: { query: string }) {
   const { onChange, models, isHidden } = useMiniPickerContext();
 
+  const debouncedQuery = useDebouncedValue(query, 500);
+
   const { data: searchResponse, isLoading } = useSearchQuery({
-    q: query,
+    q: debouncedQuery,
     models: models as SearchModel[],
     limit: 50,
   });
@@ -359,10 +362,10 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
       });
 
   return (
-    <Flex gap="xs">
+    <Flex gap="xs" align="center">
       {iconProps && <Icon {...iconProps} size={12} />}
       <Text size="sm" c="text-medium">
-        <Ellipsified maw="12rem">{itemText}</Ellipsified>
+        <Ellipsified maw="18rem">{itemText}</Ellipsified>
       </Text>
     </Flex>
   );
