@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.util
-  (:require [clojure.string :as str]
-            [metabase.system.core :as system]))
+  (:require
+   [clojure.string :as str]
+   [metabase.system.core :as system]))
 
 (defn assert-transform!
   "Test whether we support the given entity type within workspaces yet.

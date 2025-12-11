@@ -7,7 +7,9 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn ws-fixtures! []
+(defn ws-fixtures!
+  "Sets up test fixtures for workspace tests. Must be called at the top level of test namespaces."
+  []
   (use-fixtures :once (fn [tests]
                         (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
                           (mt/with-premium-features [:workspaces :dependencies :transforms]
@@ -23,7 +25,7 @@
                           (tests)))))
 
 (defn ws-ready
-  "Poll until workspace status becomes :ready or timeout"
+  "Poll until workspace status becomes :ready or timeout."
   [ws-or-id]
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]

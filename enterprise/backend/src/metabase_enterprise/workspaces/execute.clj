@@ -11,14 +11,13 @@
   (:require
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.workspaces.isolation :as isolation]
-   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api.common :as api]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn- execution-results
-  "Extract execution metadata from transform_run and synced table/fields.
+  "Extract execution metadata from transform_run and target table info.
    Must be called within the transaction before rollback."
   [{xf-id :id :keys [target]}]
   (let [run (t2/select-one :model/TransformRun :transform_id xf-id)]
@@ -42,7 +41,7 @@
         (let [new-xf  (-> (select-keys transform [:name :description :source])
                           (assoc :creator_id api/*current-user-id*
                                  :target (mapping target)))
-              _       (assert (:target new-xf) "Are you missing mapping or what?")
+              _       (assert (:target new-xf) "Target mapping must not be nil")
               temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
           (transforms.i/execute! temp-xf {:run-method :manual})
           (throw (ex-info "rollback tx!" {::results (execution-results temp-xf)}))))

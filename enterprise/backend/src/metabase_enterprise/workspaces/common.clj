@@ -12,7 +12,7 @@
    [toucan2.core :as t2]))
 
 (defn mock-mapping
-  "This is a mocked mapping for execution, used until we get real mapping integrated"
+  "This is a mocked mapping for execution, used until we get real mapping integrated."
   [ws target]
   (assoc target
          :schema (ws.u/isolation-namespace-name ws)
