@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- query-external-inputs
@@ -36,8 +37,10 @@
   (let [analysis        (ws.deps/analyze-entity :transform transform)
         _               (ws.deps/write-dependencies! workspace-id :transform (:ref_id transform) analysis)
         external-inputs (query-external-inputs workspace-id)]
-    (when (seq external-inputs)
-      (let [database (t2/select-one :model/Database :id (:database_id workspace))
-            tables   (mapv external-input->table external-inputs)]
-        (ws.isolation/grant-read-access-to-tables! database workspace tables)))
+    (if-not (:database_details workspace)
+      (log/warn "No database details, unable to grant read only access to the service account.")
+      (when (seq external-inputs)
+        (let [database (t2/select-one :model/Database :id (:database_id workspace))
+              tables   (mapv external-input->table external-inputs)]
+          (ws.isolation/grant-read-access-to-tables! database workspace tables))))
     external-inputs))

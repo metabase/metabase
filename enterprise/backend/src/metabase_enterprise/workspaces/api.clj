@@ -92,7 +92,6 @@
 (def ^:private WorkspaceListing
   [:map {:closed true}
    [:id ::ws.t/appdb-id]
-   [:global_id ::ws.t/appdb-id]
    [:name :string]
    [:archived :boolean]])
 
@@ -103,7 +102,7 @@
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (t2/select [:model/Workspace :id :global_id :name [[:not= nil :archived_at] :archived]]
+  {:items  (t2/select [:model/Workspace :id :name [[:not= nil :archived_at] :archived]]
                       (cond-> {:order-by [[:created_at :desc]]}
                         (request/limit) (sql.helpers/limit (request/limit))
                         (request/offset) (sql.helpers/offset (request/offset))))
@@ -461,7 +460,7 @@
 
       ;; TODO consider deferring this validation until merge also.
       (internal-target-conflict? ws-id target tx-id)
-      {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table.")}
+      {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table")}
 
       :else
       {:status 200 :body "OK"})))
@@ -524,7 +523,7 @@
                       (api/check-400 (nil? (:archived_at <>)) "Cannot create transforms in an archived workspace"))
           ;; TODO why 400 here and 403 in the validation route? T_T
           _         (api/check-400 (not (internal-target-conflict? id (:target body)))
-                                   (deferred-tru "Another transform in this workspace already targets that table."))
+                                   (deferred-tru "Another transform in this workspace already targets that table"))
           global-id (:global_id body (:id body))
           body      (-> body (dissoc :global_id) (update :target assoc :database (:database_id workspace)))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
@@ -537,6 +536,7 @@
   "Schema for a transform in a workspace"
   [:map {:closed true}
    [:ref_id ::ws.t/ref-id]
+   [:global_id [:maybe ::ws.t/appdb-id]]
    [:name :string]
    [:source_type [:maybe :keyword]]
    ;[:creator_id ::ws.t/appdb-id]
@@ -554,7 +554,7 @@
   "Get all transforms in a workspace."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :name :source] :workspace_id id))})
+  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source] :workspace_id id))})
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
