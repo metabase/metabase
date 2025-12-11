@@ -73,8 +73,8 @@
 
 (defn- custom-backfill-entity!
   [model-kw event id target-version]
-  ;; We don't want to change the card at all, we just want to update the dependency data and
-  ;; mark the card as processed for this dependency analysis version.
+  ;; We don't want to change the entity at all, we just want to update the dependency data and
+  ;; mark the entity as processed for this dependency analysis version.
   (let [update-count (t2/update! model-kw id :dependency_analysis_version [:< target-version]
                                  {:dependency_analysis_version target-version})]
     (when-let [entity (and (pos? update-count)
