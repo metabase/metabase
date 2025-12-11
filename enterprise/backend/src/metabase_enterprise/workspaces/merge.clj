@@ -70,30 +70,18 @@
   ;; This will require reworking the lifecycle for validating and recalculating dependencies for the transforms.
   ;; We need to make sure this is in a transaction too, but perhaps that should already be open, and we can state
   ;; it as an assumption.
-  ;; TODO we'll want this to short-circuit
 
-  ;; Nested transactions mess things up, this does not work
-  (try
-    (t2/with-transaction [tx]
-      (let [result (reduce
-                    (fn [acc ws-transform]
-                      (let [{:keys [error] :as result} (merge-transform! ws-transform)]
-                        (if error
-                          #_(reduced {:errors [result]})
-                          (reduced (update acc :errors conj result))
-                          (update acc :transforms conj result))))
-                    {:transforms []
-                     :errors []}
-                    (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
-        (when (seq (:errors result))
-          (throw (ex-info "dummy rollback"
-                          {:result result})))
-        (def rrr result)
-        #_(when (seq (:errors result))
-            (metabase.util.log/error "ROLLIN")
-            (.rollback ^java.sql.Connection tx))
-        result))
-    (catch Throwable t
-      (if-some [{:keys [result]} (ex-data t)]
-        result
-        (throw t)))))
+  (t2/with-transaction [tx]
+    (let [savepoint ^java.sql.Savepoint (.savepoint ^java.sql.Connection tx)
+          result (reduce
+                  (fn [acc ws-transform]
+                    (let [{:keys [error] :as result} (merge-transform! ws-transform)]
+                      (if error
+                        (reduced (update acc :errors conj result))
+                        (update acc :transforms conj result))))
+                  {:transforms []
+                   :errors []}
+                  (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
+      (when (seq (:errors result))
+        (.rollback ^java.sql.Connection tx savepoint))
+      result)))
