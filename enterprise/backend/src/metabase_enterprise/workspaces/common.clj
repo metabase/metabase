@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.dag :as ws.dag]
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -11,6 +10,13 @@
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
+
+(defn mock-mapping
+  "This is a mocked mapping for execution, used until we get real mapping integrated"
+  [ws target]
+  (assoc target
+         :schema (ws.u/isolation-namespace-name ws)
+         :name (ws.u/isolated-table-name target)))
 
 ;; should be encapsulated in our dag namespace, or dependency module
 (defn check-no-card-dependencies!
@@ -71,7 +77,7 @@
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
                                                 :workspace_id (:id ws)})
-        schema  (driver.common/isolation-namespace-name ws)
+        schema  (ws.u/isolation-namespace-name ws)
         ws      (assoc ws
                        :collection_id (:id coll)
                        :schema schema)]

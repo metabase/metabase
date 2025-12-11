@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
@@ -470,14 +470,17 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/run"
-  :- [:map [:message :string] [:run_id {:optional true} [:maybe :int]]]
-  "Run a transform in a workspace."
+  :- ::ws.t/execution-result
+  "Run a transform in a workspace.
+
+  App DB changes are rolled back. Warehouse DB changes persist."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (let [transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
-    ;; We want to run *this* transform, not its global (which might not exist)
-    ;; ... in order to get this working quickly we'll need to create a temporary global one (scream)
-    (when-let [global-id (:global_id transform)]
-      (transforms.api/run-transform! (t2/select :model/Transform global-id)))))
+  (let [workspace  (api/check-404 (t2/select-one :model/Workspace id))
+        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
+    (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
+    (check-transforms-enabled! (:database_id workspace))
+    (ws.execute/run-workspace-transform! workspace transform
+                                         (partial ws.common/mock-mapping workspace))))
 
 (api.macros/defendpoint :get "/checkout"
   :- [:map
