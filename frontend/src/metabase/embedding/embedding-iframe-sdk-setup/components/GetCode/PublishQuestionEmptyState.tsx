@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
+import EmptyStateImage from "assets/img/empty-states/snippet.svg";
 import EmptyState from "metabase/common/components/EmptyState";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useToggleResourceEmbedding } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-toggle-resource-embedding";
@@ -18,7 +18,7 @@ export const PublishQuestionEmptyState = () => {
 
   return (
     <EmptyState
-      illustrationElement={<img src={EmptyDashboardBot} />}
+      illustrationElement={<img src={EmptyStateImage} />}
       message={
         isFetching ? (
           <Loader size="xs" />
