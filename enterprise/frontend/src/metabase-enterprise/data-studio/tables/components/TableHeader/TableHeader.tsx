@@ -1,8 +1,7 @@
-import { t } from "ttag";
-
 import Link from "metabase/common/components/Link/Link";
 import * as Urls from "metabase/lib/urls";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import type { Table } from "metabase-types/api";
 
 import { PaneHeader } from "../../../common/components/PaneHeader";
@@ -16,6 +15,9 @@ type TableHeaderProps = {
 };
 
 export function TableHeader({ table }: TableHeaderProps) {
+  const { path, isLoadingPath } = useCollectionPath({
+    collectionId: table.collection_id,
+  });
   return (
     <PaneHeader
       data-testid="table-pane-header"
@@ -24,9 +26,17 @@ export function TableHeader({ table }: TableHeaderProps) {
       menu={<TableMoreMenu table={table} />}
       tabs={<TableTabs table={table} />}
       breadcrumbs={
-        <DataStudioBreadcrumbs>
-          <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
-          <span>{t`Data`}</span>
+        <DataStudioBreadcrumbs loading={isLoadingPath}>
+          {path?.map((collection, i) => (
+            <Link
+              key={collection.id}
+              to={Urls.dataStudioLibrary({
+                expandedIds: path.slice(1, i + 1).map((c) => c.id),
+              })}
+            >
+              {collection.name}
+            </Link>
+          ))}
           <span>{table.display_name}</span>
         </DataStudioBreadcrumbs>
       }
