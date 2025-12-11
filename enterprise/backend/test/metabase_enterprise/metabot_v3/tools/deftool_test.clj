@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
    [metabase.util.malli.registry :as mr]))
 
