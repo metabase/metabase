@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
 import * as Urls from "metabase/lib/urls";
@@ -15,6 +15,7 @@ import {
   getNodeLocationInfo,
 } from "../../../utils";
 
+import { ErrorCell } from "./ErrorCell";
 import { LinkCell } from "./LinkCell";
 import { LinkListCell } from "./LinkListCell";
 
@@ -75,11 +76,7 @@ function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
       if (errors.length === 0) {
         return null;
       }
-      return ngettext(
-        msgid`${errors.length} error`,
-        `${errors.length} errors`,
-        errors.length,
-      );
+      return <ErrorCell node={node} />;
     },
   };
 }
