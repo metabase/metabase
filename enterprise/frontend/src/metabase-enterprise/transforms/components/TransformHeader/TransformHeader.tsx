@@ -41,7 +41,7 @@ export function TransformHeader({
         px={0}
         title={
           <Flex align="center" gap="sm">
-            <Icon name="refresh_downstream" />
+            <Icon name="transform" c="brand" />
             <TransformNameInput transform={transform} />
           </Flex>
         }

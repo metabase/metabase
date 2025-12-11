@@ -174,7 +174,7 @@ const DatabaseSelector = ({
       QueryBuilderS.GuiBuilderData,
       CS.flex,
       CS.alignCenter,
-      CS.ml2,
+      CS.ml1,
       readOnly && CS.pointerEventsNone,
     )}
     data-testid="gui-builder-data"
@@ -213,7 +213,7 @@ const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
       QueryBuilderS.GuiBuilderData,
       CS.flex,
       CS.alignCenter,
-      CS.ml2,
+      CS.ml1,
     )}
     data-testid="gui-builder-data"
   >

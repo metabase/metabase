@@ -83,6 +83,7 @@ export function TransformEditor({
         !!transformId && (
           <EditDefinitionButton
             bg="transparent"
+            fz="sm"
             h="1.5rem"
             px="sm"
             size="xs"
