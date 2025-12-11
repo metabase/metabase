@@ -69,10 +69,11 @@
                 (testing "creates records for both transforms"
                   (is (= 2 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace))))
                   (is (= 2 (t2/count :model/WorkspaceInput :workspace_id (:id workspace)))))
-                (testing "grants access to all external inputs"
+                (testing "grants access to all external inputs, not internal outputs"
                   (is (= 2 (count @grant-calls)))
                   (is (contains? (second @grant-calls) "ORDERS"))
-                  (is (contains? (second @grant-calls) "PRODUCTS")))))))))))
+                  (is (contains? (second @grant-calls) "PRODUCTS"))
+                  (is (not (contains? (second @grant-calls) "table_a"))))))))))))
 
 (deftest sync-transform-dependencies-idempotent-test
   (testing "sync-transform-dependencies! is idempotent"
