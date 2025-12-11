@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.util]
    [metabase.lib.core :as lib]
@@ -103,7 +104,7 @@
                  (with-redefs [metabot-v3.client/post! (constantly {:status 200
                                                                     :body {:table_questions []
                                                                            :metric_questions []}})]
-                   (let [metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id
+                   (let [metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.settings/internal-metabot-uuid
                                                                                :entity-id])
                          metabot-id (t2/select-one-fn :id :model/Metabot :entity_id metabot-eid)]
                      (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)

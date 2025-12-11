@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.task.suggested-prompts-generator
     :as metabot-v3.task.suggested-prompts-generator]
    [metabase.lib.convert :as lib.convert]
@@ -18,7 +19,7 @@
     (mt/with-empty-h2-app-db!
       (let [original-metabot (t2/select-one :model/Metabot
                                             :entity_id (get-in metabot-v3.config/metabot-config
-                                                               [metabot-v3.config/internal-metabot-id :entity-id]))
+                                                               [metabot-v3.settings/internal-metabot-uuid :entity-id]))
             mp (mt/metadata-provider)
             query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                       lib.convert/->legacy-MBQL)

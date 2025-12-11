@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -289,7 +290,7 @@
                                                    {:use_verified_content true}))))))
 
         (testing "should prevent updating collection_id on primary metabot instance"
-          (let [metabot-id (metabot-v3.config/normalize-metabot-id metabot-v3.config/internal-metabot-id)]
+          (let [metabot-id (metabot-v3.config/normalize-metabot-id metabot-v3.settings/internal-metabot-uuid)]
             (is (= "Cannot update collection_id for the primary metabot instance."
                    (mt/user-http-request :crowberto :put 400
 

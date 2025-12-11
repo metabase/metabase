@@ -35,7 +35,7 @@
 (defn get-ai-service-token
   "Get the token for the AI service."
   ([]
-   (get-ai-service-token api/*current-user-id* metabot-v3.config/internal-metabot-id))
+   (get-ai-service-token api/*current-user-id* metabot-v3.settings/internal-metabot-uuid))
 
   ([user-id metabot-id]
    (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))

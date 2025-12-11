@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -23,7 +24,7 @@
   (try
     (when (premium-features/has-feature? :metabot-v3)
       (let [metabot-eid (get-in metabot-v3.config/metabot-config
-                                [metabot-v3.config/internal-metabot-id :entity-id])
+                                [metabot-v3.settings/internal-metabot-uuid :entity-id])
             metabot-id (t2/select-one-pk :model/Metabot :entity_id metabot-eid)
             suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
         (if (zero? suggested-prompts-cnt)

@@ -4,20 +4,12 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(def internal-metabot-id
-  "The UUID of the internal Metabot instance."
-  metabot-v3.settings/internal-metabot-uuid)
-
-(def embedded-metabot-id
-  "The UUID of the embedded Metabot instance."
-  metabot-v3.settings/embedded-metabot-uuid)
-
 (def metabot-config
   "Configuration for the built-in metabot instances."
-  {internal-metabot-id {:entity-id metabot-v3.settings/internal-metabot-entity-id
-                        :default-use-case "omnibot"}
-   embedded-metabot-id {:entity-id metabot-v3.settings/embedded-metabot-entity-id
-                        :default-use-case "embedding"}})
+  {metabot-v3.settings/internal-metabot-uuid {:entity-id metabot-v3.settings/internal-metabot-entity-id
+                                              :default-use-case "omnibot"}
+   metabot-v3.settings/embedded-metabot-uuid {:entity-id metabot-v3.settings/embedded-metabot-entity-id
+                                              :default-use-case "embedding"}})
 
 (defn normalize-metabot-id
   "Return the primary key for the metabot instance identified by `metabot-id`.
@@ -39,7 +31,7 @@
   [metabot-id]
   (or metabot-id
       (metabot-v3.settings/metabot-id)
-      internal-metabot-id))
+      metabot-v3.settings/internal-metabot-uuid))
 
 (defn fetch-use-case
   "Fetch the use case configuration for a metabot instance.
