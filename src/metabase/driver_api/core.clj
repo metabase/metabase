@@ -271,11 +271,11 @@
 (def schema.validate.syntax-error
   ::lib.schema.validate/syntax-error)
 
-(def validate.unknown-error
-  lib/unknown-error)
+(def validate.validation-error
+  lib/validation-error)
 
-(def schema.validate.unknown-error
-  ::lib.schema.validate/unknown-error)
+(def schema.validate.validation-error
+  ::lib.schema.validate/validation-error)
 
 (def schema.validate.error
   ::lib.schema.validate/error)

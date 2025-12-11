@@ -497,7 +497,7 @@
   missing-column
   missing-table-alias
   syntax-error
-  unknown-error]
+  validation-error]
  [metabase.lib.walk.util
   all-field-ids
   all-implicitly-joined-field-ids

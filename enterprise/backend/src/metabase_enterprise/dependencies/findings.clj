@@ -39,7 +39,7 @@
           results (try (deps.analysis/check-entity mp (model->dependency-type model) (:id toucan-instance))
                        (catch Exception e
                          (log/error "Error analyzing entity" e)
-                         [(lib/unknown-error (.getMessage e))]))
+                         [(lib/validation-error (.getMessage e))]))
           success (empty? results)]
       (deps.analysis-finding/upsert-analysis! (model->dependency-type model) (:id toucan-instance) success results))))
 

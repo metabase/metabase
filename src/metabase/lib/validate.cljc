@@ -30,9 +30,9 @@
   []
   {:type :query-error/syntax-error})
 
-(mu/defn unknown-error :- [:ref ::lib.schema.validate/unknown-error]
+(mu/defn validation-error :- [:ref ::lib.schema.validate/validation-error]
   [message :- :string]
-  {:type :query-error/unknown-error
+  {:type :query-error/validation-error
    :message message})
 
 (mu/defn find-bad-refs :- [:set [:ref ::lib.schema.validate/error]]

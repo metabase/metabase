@@ -22,9 +22,9 @@
   [:map
    [:type [:= :query-error/syntax-error]]])
 
-(mr/def ::unknown-error
+(mr/def ::validation-error
   [:map
-   [:type [:= :query-error/unknown-error]
+   [:type [:= :query-error/validation-error]
     :message :string]])
 
 (mr/def ::error
@@ -33,4 +33,4 @@
    [:query-error/missing-table-alias [:ref ::missing-table-alias]]
    [:query-error/duplicate-column [:ref ::duplicate-column]]
    [:query-error/syntax-error [:ref ::syntax-error]]
-   [:query-error/unknown-error [:ref ::unknown-error]]])
+   [:query-error/validation-error [:ref ::validation-error]]])
