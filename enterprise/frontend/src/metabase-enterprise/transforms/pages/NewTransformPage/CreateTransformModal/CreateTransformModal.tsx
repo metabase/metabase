@@ -19,6 +19,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { slugify } from "metabase/lib/formatting/url";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
@@ -31,6 +32,7 @@ import type {
 import { trackTransformCreated } from "../../../analytics";
 
 import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
+import { TargetNameInput } from "./TargetNameInput";
 
 function getValidationSchema() {
   return Yup.object({
@@ -162,11 +164,7 @@ function CreateTransformForm({
               data={schemas}
             />
           )}
-          <FormTextInput
-            name="targetName"
-            label={t`Table name`}
-            placeholder={t`descriptive_name`}
-          />
+          <TargetNameInput />
           <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>
@@ -187,9 +185,11 @@ function getInitialValues(
 ): NewTransformValues {
   return {
     name: "",
-    targetName: "",
     targetSchema: schemas?.[0] || null,
     ...defaultValues,
+    targetName: defaultValues.targetName
+      ? slugify(defaultValues.targetName)
+      : "",
     checkpointFilter: null,
     checkpointFilterUniqueKey: null,
     incremental: false,
