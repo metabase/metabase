@@ -80,7 +80,7 @@ interface CardEmbedMenuActions {
     type: string;
     enableFormatting: boolean;
     enablePivot: boolean;
-  }) => void;
+  }) => Promise<void>;
   handleEditVisualizationSettings: () => void;
   setIsModifyModalOpen: (open: boolean) => void;
   handleReplaceQuestion: () => void;
