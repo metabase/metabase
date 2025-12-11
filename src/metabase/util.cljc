@@ -1213,8 +1213,7 @@
   ([kf coll]
    (into {} (index-by kf) coll))
   ([kf vf coll]
-   (for-map [x coll]
-     [(kf x) (vf x)])))
+   (into {} (map (juxt kf vf)) coll)))
 
 (defn rfirst
   "Return first item from Reducible"
