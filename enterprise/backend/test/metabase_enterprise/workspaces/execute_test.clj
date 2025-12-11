@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
-   [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -45,7 +44,7 @@
                    :table      {:name   #(str/includes? % output-table)
                                 :schema ws-schema}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.execute/run-workspace-transform! workspace ws-transform table-map field-map)))))
+                    (ws.execute/run-transform-with-remapping ws-transform table-map field-map)))))
 
         (testing "app DB records are rolled back"
           (is (= before

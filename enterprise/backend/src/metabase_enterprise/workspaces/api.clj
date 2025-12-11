@@ -630,7 +630,7 @@
         field-map nil]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    (ws.execute/run-workspace-transform! workspace transform table-map field-map)))
+    (ws.execute/run-transform-with-remapping transform table-map field-map)))
 
 (api.macros/defendpoint :get "/checkout"
   :- [:map
