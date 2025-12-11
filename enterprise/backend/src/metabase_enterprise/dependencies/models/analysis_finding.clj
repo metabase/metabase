@@ -17,7 +17,7 @@
   "Current version of the analysis logic.
   This should be incremented when the analysis logic changes.
   The background task will re-analyze anything with out-of-date analyses."
-  2)
+  3)
 
 (defn upsert-analysis! [type instance-id result finding-details]
   (let [update {:analyzed_at (mi/now)

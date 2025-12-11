@@ -13,22 +13,22 @@
 
 (mu/defn missing-column :- [:ref ::lib.schema.validate/missing-column]
   [name :- :string]
-  {:type :validate/missing-column
+  {:type :query-error/missing-column
    :name name})
 
 (mu/defn missing-table-alias :- [:ref ::lib.schema.validate/missing-table-alias]
   [name :- :string]
-  {:type :validate/missing-table-alias
+  {:type :query-error/missing-table-alias
    :name name})
 
 (mu/defn duplicate-column :- [:ref ::lib.schema.validate/duplicate-column]
   [name :- :string]
-  {:type :validate/duplicate-column
+  {:type :query-error/duplicate-column
    :name name})
 
 (mu/defn syntax-error :- [:ref ::lib.schema.validate/syntax-error]
   []
-  {:type :validate/syntax-error})
+  {:type :query-error/syntax-error})
 
 (mu/defn find-bad-refs :- [:set [:ref ::lib.schema.validate/error]]
   "Returns a list of bad `:field` refs on this query.
