@@ -59,7 +59,7 @@ describe("scenarios > data studio > library > tables", () => {
     it("should show page breadcrumbs", () => {
       H.DataStudio.breadcrumbs().within(() => {
         cy.findByRole("link", { name: "Library" }).should("be.visible");
-        cy.findByText("Data").should("be.visible");
+        cy.findByRole("link", { name: "Data" }).should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
     });
