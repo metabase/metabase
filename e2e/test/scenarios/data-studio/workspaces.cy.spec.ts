@@ -47,7 +47,7 @@ describe("scenarios > data studio > workspaces", () => {
   //   H.expectNoBadSnowplowEvents();
   // });
 
-  it("should be able to create, navigate, archive, unarchive, and rename workspaces", () => {
+  it("should be able to create, navigate, archive, unarchive, rename, and delete workspaces", () => {
     Workspaces.visitDataStudio();
 
     Workspaces.getWorkspacesSection()
@@ -122,6 +122,21 @@ describe("scenarios > data studio > workspaces", () => {
     Workspaces.getWorkspacesPage().within(() => {
       cy.findByText("Workspaces").should("be.visible");
       cy.findByText("Workspace A").should("be.visible");
+      cy.log("can navigate from workspaces list to a workspace");
+      cy.findByText("Workspace B").should("be.visible").click();
+    });
+
+    cy.log("can delete a workspace");
+    Workspaces.getWorkspaceItemActions(/Workspace A/).click();
+    H.popover().findByText("Delete").click();
+    H.modal().findByText("Delete").click();
+    verifyAndCloseToast("Workspace deleted successfully");
+    Workspaces.getWorkspaceItem(/Workspace A/).should("not.exist");
+
+    cy.location("pathname").should("eq", "/data-studio/workspaces");
+    Workspaces.getWorkspacesPage().within(() => {
+      cy.findByText("Workspaces").should("be.visible");
+      cy.findByText("Workspace A").should("not.exist");
       cy.log("can navigate from workspaces list to a workspace");
       cy.findByText("Workspace B").should("be.visible").click();
     });
