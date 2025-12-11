@@ -156,8 +156,8 @@ export function DatasetsList({
   // When loading ends, we want to hide it immediately
   const isFetching = isSearchFetching || isListRecentsFetching;
   const debouncedIsFetching = useDebouncedValue(isFetching, 300);
-  // Use instant value when hiding (false), debounced value when showing (true)
-  const shouldShowLoading = !isFetching ? false : debouncedIsFetching;
+  // Use instant value when hiding, debounced value when showing
+  const shouldShowLoading = isFetching && debouncedIsFetching;
 
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
