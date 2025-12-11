@@ -386,6 +386,8 @@
    [:description [:maybe :string]]
    [:source :map]
    [:target :map]
+   ;; See https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
+   #_[:target_stale :boolean]
    [:workspace_id ::ws.t/appdb-id]
    ;[:creator_id ::ws.t/appdb-id]
    [:archived_at :any]
