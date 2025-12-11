@@ -1,6 +1,11 @@
 import { IndexRoute, Redirect, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { DataModelMeasureLayout } from "metabase-enterprise/data-studio/measures/layouts/DataModelMeasureLayout";
+import { MeasureDependenciesPage } from "metabase-enterprise/data-studio/measures/pages/MeasureDependenciesPage";
+import { MeasureDetailPage } from "metabase-enterprise/data-studio/measures/pages/MeasureDetailPage";
+import { MeasureRevisionHistoryPage } from "metabase-enterprise/data-studio/measures/pages/MeasureRevisionHistoryPage";
+import { NewMeasurePage } from "metabase-enterprise/data-studio/measures/pages/NewMeasurePage";
 import { DataModelSegmentLayout } from "metabase-enterprise/data-studio/segments/layouts/DataModelSegmentLayout";
 import { NewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/NewSegmentPage";
 import { SegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/SegmentDependenciesPage";
@@ -37,6 +42,24 @@ export function getDataStudioMetadataRoutes() {
         <Route path="revisions" component={SegmentRevisionHistoryPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={SegmentDependenciesPage}>
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          </Route>
+        )}
+      </Route>
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
+        component={DataModelMeasureLayout}
+      >
+        <IndexRoute component={NewMeasurePage} />
+      </Route>
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId"
+        component={DataModelMeasureLayout}
+      >
+        <IndexRoute component={MeasureDetailPage} />
+        <Route path="revisions" component={MeasureRevisionHistoryPage} />
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route path="dependencies" component={MeasureDependenciesPage}>
             <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
           </Route>
         )}

@@ -163,6 +163,17 @@
                                   :user-id user-id
                                   :details (when revision-message {:revision-message revision-message})}))
 
+(derive ::measure-event ::event)
+(derive :event/measure-create ::measure-event)
+(derive :event/measure-update ::measure-event)
+(derive :event/measure-delete ::measure-event)
+
+(methodical/defmethod events/publish-event! ::measure-event
+  [topic {:keys [object user-id revision-message] :as _event}]
+  (audit-log/record-event! topic {:object  object
+                                  :user-id user-id
+                                  :details (when revision-message {:revision-message revision-message})}))
+
 (derive ::user-event ::event)
 (derive :event/user-invited ::user-event)
 (derive :event/user-deactivated ::user-event)
