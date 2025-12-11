@@ -22,12 +22,11 @@ import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
 
 import { useMiniPickerContext } from "../context";
-import {
-  type MiniPickerCollectionItem,
-  type MiniPickerDatabaseItem,
-  type MiniPickerPickableItem,
-  type MiniPickerSchemaItem,
-  isTableItem,
+import type {
+  MiniPickerCollectionItem,
+  MiniPickerDatabaseItem,
+  MiniPickerPickableItem,
+  MiniPickerSchemaItem,
 } from "../types";
 
 import { MiniPickerItem } from "./MiniPickerItem";
@@ -339,27 +338,33 @@ export const MiniPickerListLoader = () => (
   </Box>
 );
 
+const isInCollection = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerCollectionItem => {
+  return "collection" in item && !!item.name;
+};
+
 const ItemList = ({ children }: { children: React.ReactNode[] }) => {
   return <VirtualizedList extraPadding={2}>{children}</VirtualizedList>;
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
-  const isTable = isTableItem(item);
+  const isCollectionItem = isInCollection(item);
 
-  const itemText = isTable
-    ? `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`
-    : item?.collection?.name;
+  const itemText = isCollectionItem
+    ? item?.collection?.name
+    : `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`;
 
   if (!itemText) {
     return null;
   }
 
-  const iconProps = isTable
-    ? null
-    : getIcon({
+  const iconProps = isCollectionItem
+    ? getIcon({
         ...item.collection,
         model: "collection",
-      });
+      })
+    : null;
 
   return (
     <Flex gap="xs" align="center">
