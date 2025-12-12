@@ -58,9 +58,9 @@
   [{:keys [metabot_id use_case profile_id message context history conversation_id state]}]
   (let [message       (metabot-v3.envelope/user-message message)
         metabot-id    (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        use-case      (or use_case (metabot-v3.config/default-use-case metabot-id))
-        use-case-info (metabot-v3.config/fetch-use-case metabot-id use-case)
         metabot-pk    (metabot-v3.config/normalize-metabot-id metabot-id)
+        use-case      (or use_case (metabot-v3.config/default-use-case metabot-id))
+        use-case-info (metabot-v3.config/fetch-use-case metabot-pk use-case)
         _             (api/check-400 use-case-info (format "Unknown use case: %s" use_case))
         _             (api/check-400 (:enabled use-case-info) (format "The %s use case is not enabled" use_case))
         profile       (or profile_id (:profile use-case-info))
