@@ -407,7 +407,7 @@
             (catch Throwable e
               (log/debug e "Error setting connection autoCommit to false"))))
     (try
-      (.setNetworkTimeout conn (Executors/newSingleThreadExecutor) driver.settings/*query-timeout-ms*)
+      (.setNetworkTimeout conn (Executors/newSingleThreadExecutor) driver.settings/*network-timeout-ms*)
       (catch Throwable e
         (log/debug e "Error setting network timeout for connection")))
     (try

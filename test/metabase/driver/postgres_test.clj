@@ -2115,8 +2115,8 @@
 
 (deftest set-network-timeout-test
   (mt/test-driver :postgres
-    (testing "network hangs are interrupted after *query-timeout-ms*"
-      (binding [driver.settings/*query-timeout-ms* 3000]
+    (testing "network hangs are interrupted after *network-timeout-ms*"
+      (binding [driver.settings/*network-timeout-ms* 3000]
         (is (thrown-with-msg?
              org.postgresql.util.PSQLException
              #"An I/O error occurred while sending to the backend"
@@ -2129,7 +2129,7 @@
                (catch Exception e
                  (is (caused-by? java.net.SocketTimeoutException e))
                  (throw e)))))))
-    (testing "network hangs are not interrupted before *query-timeout-ms*"
+    (testing "network hangs are not interrupted before *network-timeout-ms*"
       (is (true?
            (sql-jdbc.execute/do-with-connection-with-options
             driver/*driver* (mt/id) nil
