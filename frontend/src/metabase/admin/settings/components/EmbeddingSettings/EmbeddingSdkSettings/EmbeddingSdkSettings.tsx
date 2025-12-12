@@ -185,7 +185,7 @@ export function EmbeddingSdkSettings() {
                       </HoverCard.Target>
 
                       <HoverCard.Dropdown>
-                        <Box p="md" w={270} bg="white">
+                        <Box p="md" w={270}>
                           <Text lh="lg" c="text-medium">
                             {corsHintText}
                           </Text>
