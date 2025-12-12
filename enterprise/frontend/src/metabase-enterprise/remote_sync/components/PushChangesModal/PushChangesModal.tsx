@@ -61,7 +61,7 @@ export const PushChangesModal = ({
     });
 
     trackPushChanges({
-      triggeredFrom: "sidebar",
+      triggeredFrom: "app-bar",
       force: false,
     });
   }, [commitMessage, exportChanges, currentBranch]);
