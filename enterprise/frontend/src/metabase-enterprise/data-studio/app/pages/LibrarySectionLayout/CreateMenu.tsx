@@ -12,12 +12,15 @@ import {
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
+import { PublishTableModal } from "./PublishTableModal";
+
 export const CreateMenu = ({
   metricCollectionId,
 }: {
   metricCollectionId?: CollectionId;
 }) => {
-  const [creatingSnippetFolder, setCreatingSnippetFolder] = useState(false);
+  const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
+  const closeModal = () => setModal(undefined);
 
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
@@ -25,6 +28,15 @@ export const CreateMenu = ({
   const canCreateMetric = hasDataAccess && metricCollectionId;
 
   const menuItems = [
+    hasDataAccess && (
+      <Menu.Item
+        key="publish-table"
+        leftSection={<FixedSizeIcon name="publish" />}
+        onClick={() => setModal("publish-table")}
+      >
+        {t`Publish a table`}
+      </Menu.Item>
+    ),
     canCreateMetric && (
       <Menu.Item
         key="metric"
@@ -52,7 +64,7 @@ export const CreateMenu = ({
       <Menu.Item
         key="snippet-folder"
         leftSection={<FixedSizeIcon name="folder" />}
-        onClick={() => setCreatingSnippetFolder(true)}
+        onClick={() => setModal("snippet-folder")}
       >
         {t`New snippet folder`}
       </Menu.Item>
@@ -72,13 +84,17 @@ export const CreateMenu = ({
         <Menu.Dropdown>{menuItems}</Menu.Dropdown>
       </Menu>
       <PLUGIN_SNIPPET_FOLDERS.CollectionFormModal
-        opened={creatingSnippetFolder}
+        opened={modal === "snippet-folder"}
         collection={{
           name: "",
           description: null,
         }}
-        onClose={() => setCreatingSnippetFolder(false)}
-        onSaved={() => setCreatingSnippetFolder(false)}
+        onClose={closeModal}
+        onSaved={closeModal}
+      />
+      <PublishTableModal
+        opened={modal === "publish-table"}
+        onClose={closeModal}
       />
     </>
   );

@@ -34,6 +34,7 @@ export const TableList = ({
       name: table.display_name,
       database: { id: table.db_id },
       database_id: table.db_id,
+      is_published: table.is_published,
     }));
   }, [tables]);
 
