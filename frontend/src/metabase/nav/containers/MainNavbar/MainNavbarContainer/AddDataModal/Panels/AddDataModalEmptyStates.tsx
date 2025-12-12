@@ -3,9 +3,8 @@ import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSetting } from "metabase/common/hooks";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
-import { getSetting } from "metabase/selectors/settings";
 import {
   Alert,
   Box,
@@ -30,7 +29,7 @@ type ContactReason =
   | "enable-google-sheets";
 
 export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
-  const adminEmail = useSelector((state) => getSetting(state, "admin-email"));
+  const adminEmail = useSetting("admin-email");
   const adminEmailElement = <b key="admin-email">{adminEmail}</b>;
 
   const hasAdminEmail = !!adminEmail;
