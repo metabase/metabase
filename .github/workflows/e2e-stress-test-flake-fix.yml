@@ -116,7 +116,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Prepare back-end environment
-        if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         uses: ./.github/actions/prepare-backend
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
