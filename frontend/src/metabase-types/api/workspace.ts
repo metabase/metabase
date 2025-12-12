@@ -14,6 +14,8 @@ export type Workspace = {
   id: WorkspaceId;
   name: string;
   archived: boolean;
+  archived_at?: string | null;
+  status?: WorkspaceSetupStatus;
   collection_id?: CollectionId | null;
   database_id?: DatabaseId | null;
   created_at?: string;
@@ -62,6 +64,7 @@ export type WorkspaceOutputTableRef = {
 export type WorkspaceTransform = Omit<Transform, "id"> & {
   id: string;
   ref_id: string;
+  workspace_id: number;
   stale: boolean;
   global_id: TransformId | null;
   target_stale: boolean;
@@ -82,6 +85,16 @@ export type TransformDownstreamMapping = {
   transforms: DownstreamTransformInfo[];
 };
 
+export type WorkspaceCheckoutItem = {
+  id: string;
+  name: string;
+  workspace: WorkspaceItem;
+};
+
+export type WorkspaceCheckoutResponse = {
+  transforms: WorkspaceCheckoutItem[];
+};
+
 export type WorkspaceMergeResponse = {
   promoted: WorkspaceTransformItem[];
   errors?: (WorkspaceTransformItem & { error: string })[];
@@ -93,16 +106,6 @@ export type WorkspaceTransformMergeResponse = {
   // I have no idea atm how are we going to use this
   workspace: WorkspaceItem;
   archived_at: string | null;
-};
-
-export type WorkspaceUpdateContentsRequest = {
-  id: WorkspaceId;
-  add?: {
-    transforms?: TransformId[];
-  };
-  remove?: {
-    transforms?: TransformId[];
-  };
 };
 
 export type ValidateTableNameRequest = {
@@ -153,7 +156,7 @@ export type WorkspaceInputTable = {
 };
 
 export type WorkspaceOutputTableEntry = {
-  id: number | null;
+  transform_id: number | null;
   db_id: DatabaseId;
   schema: string;
   table: string;

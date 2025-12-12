@@ -5,7 +5,7 @@
 
 (mr/def ::appdb-id ms/PositiveInt)
 
-(mr/def ::ref-id [:string {:min 1}])
+(mr/def ::ref-id [:string {:min 1 :api/regex #".+"}])
 
 (def entity-types
   "The kinds of entities we can store within a Workspace."

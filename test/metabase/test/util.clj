@@ -366,7 +366,7 @@
    (fn [_]
      (default-timestamped
       {:name (str "Test Workspace " (u/generate-nano-id))
-       :schema (str "mb__isolate_" (u/generate-nano-id))}))
+       :schema (str "mb__isolation_" (u/generate-nano-id))}))
 
    :model/WorkspaceTransform
    (fn [_]

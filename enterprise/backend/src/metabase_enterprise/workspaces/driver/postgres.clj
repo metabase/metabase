@@ -2,6 +2,7 @@
   "Postgres-specific implementations for workspace isolation."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
@@ -13,12 +14,12 @@
 (defmethod isolation/grant-read-access-to-tables! :postgres
   [database workspace tables]
   (let [username (-> workspace :database_details :user)
-        schemas  (distinct (map :schema tables))
-        sqls     (concat
-                  (for [schema schemas]
-                    (format "GRANT USAGE ON SCHEMA %s TO %s" schema username))
-                  (for [table tables]
-                    (format "GRANT SELECT ON TABLE %s.%s TO %s" (:schema table) (:name table) username)))]
+        sqls     (cons
+                  (format "GRANT USAGE ON SCHEMA %s TO %s" (:schema workspace) username)
+                  (for [{s :schema, t :name} tables]
+                    (if (str/blank? s)
+                      (format "GRANT SELECT ON TABLE \"%s\" TO %s" t username)
+                      (format "GRANT SELECT ON TABLE %s.%s TO %s" s t username))))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

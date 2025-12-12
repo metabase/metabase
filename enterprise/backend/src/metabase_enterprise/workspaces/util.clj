@@ -58,11 +58,11 @@
 
 (defn isolated-table-name
   "Generate name for a table mirroring transform target table in the isolated database namespace."
-  [{:keys [schema name] :as _source-table}]
+  [schema table]
   ;; TODO: This naming scheme is not guaranteed to give a unique name, even if it's likely
   ;; to always be unique in practice. Consider adding a hash suffix or conflict detection
   ;; before merging to master.
-  (format "%s__%s" schema name))
+  (format "%s__%s" schema table))
 
 (defn isolation-user-name
   "Generate username for workspace isolation."

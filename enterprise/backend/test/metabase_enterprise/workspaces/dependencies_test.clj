@@ -126,7 +126,7 @@
 
 (deftest analyze-entity-asserts-transform-type-test
   (testing "analyze-entity asserts entity-type is :transform"
-    (is (thrown-with-msg? Exception #"Entity type not supported"
+    (is (thrown-with-msg? Exception #"Only transform entity type is supported"
                           (ws.deps/analyze-entity :card {})))))
 
 ;;; ---------------------------------------- write-dependencies! tests ----------------------------------------

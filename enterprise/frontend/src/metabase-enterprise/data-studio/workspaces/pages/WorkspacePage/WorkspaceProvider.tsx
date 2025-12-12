@@ -73,7 +73,7 @@ export interface WorkspaceContextValue {
   ) => void;
   removeEditedTransform: (transformId: number) => void;
   runTransforms: Set<number>;
-  updateTransformState: (transform: Transform) => void;
+  updateTransformState: (transform: WorkspaceTransform) => void;
   hasUnsavedChanges: () => boolean;
   hasTransformEdits: (originalTransform: Transform) => boolean;
   isWorkspaceExecuting: boolean;
@@ -93,7 +93,7 @@ interface WorkspaceState {
   activeEditedTransform?: Transform;
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
-  editedTransforms: Map<number, EditedTransform>;
+  editedTransforms: Map<number | string, EditedTransform>;
   runTransforms: Set<number>;
   unsavedTransforms: Transform[];
   nextUnsavedTransformIndex: number;
@@ -109,8 +109,8 @@ const createEmptyWorkspaceState = (): WorkspaceState => ({
   activeTransform: undefined,
   activeTable: undefined,
   activeTab: undefined,
-  editedTransforms: new Map(),
-  runTransforms: new Set(),
+  editedTransforms: new Map<number | string, EditedTransform>(),
+  runTransforms: new Set<number>(),
   unsavedTransforms: [],
   nextUnsavedTransformIndex: 0,
 });
@@ -397,7 +397,7 @@ export const WorkspaceProvider = ({
   );
 
   const updateTransformState = useCallback(
-    (transform: Transform) => {
+    (transform: WorkspaceTransform) => {
       updateWorkspaceState((state) => {
         const newOpenedTabs = state.openedTabs.map((tab) => {
           if (tab.type === "transform" && tab.transform.id === transform.id) {

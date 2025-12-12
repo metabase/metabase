@@ -3,6 +3,9 @@
    and edited within a workspace."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -75,12 +78,52 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+;; TODO (chris 2025/12/11) we need to share a bunch of stuff with transforms, i think we'll need to reorganize modules
+;;      suggestion: add a transforms-interfaces module which both transforms and workspaces depend on.
+
+(defn- transform-source-out-DUPLICATED [m]
+  (-> m
+      mi/json-out-without-keywordization
+      (update-keys keyword)
+      (m/update-existing :query lib-be/normalize-query)
+      (m/update-existing :type keyword)
+      (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
+
+(defn- transform-source-in-DUPLICATED [m]
+  (-> m
+      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
+      mi/json-in))
+
 (t2/deftransforms :model/WorkspaceTransform
   {:ref_id {:in identity :out str/trim}
-   :source mi/transform-json
+   :source {:out transform-source-out-DUPLICATED, :in transform-source-in-DUPLICATED}
    :target mi/transform-json})
 
 (t2/define-before-insert :model/WorkspaceTransform
   [instance]
   (cond-> instance
     (not (:ref_id instance)) (assoc :ref_id (generate-ref-id))))
+
+(methodical/defmethod t2/batched-hydrate [:model/WorkspaceTransform :last_run_at]
+  "Batch hydrate last run timestamps for transforms by looking up their output tables via WorkspaceOutput.
+   Uses a single query that joins workspace_output with metabase_table."
+  [_model k xs]
+  (let [ref-ids (mapv :ref_id xs)]
+    (mi/instances-with-hydrated-data
+     xs k
+     #(when (seq ref-ids)
+        (let [results (t2/query {:select    [:wo.ref_id
+                                             :t.updated_at]
+                                 :from      [[:workspace_output :wo]]
+                                 :join      [[:workspace :w] [:= :wo.workspace_id :w.id]]
+                                 :left-join [[:metabase_table :t]
+                                             [:and
+                                              [:= :wo.db_id :t.db_id]
+                                              #_;; TODO (sanya): figure out where to get the schema
+                                                [:= :w.schema :t.schema] ;; use workspace isolation schema
+                                              ;; this is ws.u/isolated-table-name
+                                              [:= [:|| :wo.schema [:inline "__"] :wo.table] :t.name]]]
+                                 :where     [:in :wo.ref_id ref-ids]})]
+          (into {} (map (juxt (comp str/trim :ref_id) :updated_at)) results)))
+     :ref_id
+     {:default nil})))
