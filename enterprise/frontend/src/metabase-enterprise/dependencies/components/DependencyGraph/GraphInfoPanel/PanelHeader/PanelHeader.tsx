@@ -11,6 +11,7 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { ACTION_ICON_PADDING } from "../../../../constants";
 import {
   getNodeIcon,
   getNodeLabel,
@@ -19,7 +20,6 @@ import {
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
-import { ACTION_ICON_PADDING } from "../../constants";
 
 import S from "./PanelHeader.module.css";
 

@@ -11,7 +11,7 @@ import {
 } from "metabase/ui";
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
-import { ACTION_ICON_PADDING } from "../../constants";
+import { ACTION_ICON_PADDING } from "../../../../constants";
 import type { FilterOption, SortOptions } from "../types";
 import { canFilter } from "../utils";
 

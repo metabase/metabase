@@ -5,8 +5,8 @@ import { t } from "ttag";
 
 import { Button, Card, FixedSizeIcon, Select, Tooltip } from "metabase/ui";
 
+import { TOOLTIP_OPEN_DELAY } from "../../../constants";
 import { getNodeIcon, getNodeLabel } from "../../../utils";
-import { TOOLTIP_OPEN_DELAY } from "../constants";
 import type { NodeType } from "../types";
 
 type GraphSelectInputProps = {

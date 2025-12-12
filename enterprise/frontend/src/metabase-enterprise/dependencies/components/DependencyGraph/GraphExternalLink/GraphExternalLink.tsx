@@ -1,7 +1,7 @@
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ActionIcon, FixedSizeIcon, Tooltip, rem } from "metabase/ui";
 
-import { ACTION_ICON_PADDING, TOOLTIP_OPEN_DELAY } from "../constants";
+import { ACTION_ICON_PADDING, TOOLTIP_OPEN_DELAY } from "../../../constants";
 
 type GraphExternalLinkProps = {
   label: string;
