@@ -40,7 +40,7 @@
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
     (try
-      (tu/poll-until 700 (or (t2/select-one :model/Workspace :id ws-id :status :ready)
+      (tu/poll-until 300 (or (t2/select-one :model/Workspace :id ws-id :status :ready)
                              (Thread/sleep 10)))
       (catch Exception e
         (if (:timeout-ms (ex-data e))
