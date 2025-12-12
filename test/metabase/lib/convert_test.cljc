@@ -1210,6 +1210,26 @@
   (is (=? [:datetime {:lib/uuid string?} ""]
           (lib.convert/->pMBQL [:datetime ""]))))
 
+(deftest ^:parallel ->pMBQL-relative-datetime-test
+  (testing "Convert legacy relative-datetime with string unit to pMBQL with keyword unit"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :quarter]
+            (lib.convert/->pMBQL [:relative-datetime -1 "quarter"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :month]
+            (lib.convert/->pMBQL [:relative-datetime -1 "month"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} 0 :day]
+            (lib.convert/->pMBQL [:relative-datetime 0 "day"]))))
+  (testing "Convert legacy relative-datetime with keyword unit to pMBQL"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :quarter]
+            (lib.convert/->pMBQL [:relative-datetime -1 :quarter]))))
+  (testing "Convert legacy relative-datetime without unit to pMBQL"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1]
+            (lib.convert/->pMBQL [:relative-datetime -1]))))
+  (testing "Convert legacy relative-datetime with :current amount"
+    (is (=? [:relative-datetime {:lib/uuid string?} :current :month]
+            (lib.convert/->pMBQL [:relative-datetime :current "month"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} :current]
+            (lib.convert/->pMBQL [:relative-datetime :current])))))
+
 (deftest ^:parallel ->legacy-MBQL-test
   (is (= [:datetime 10 {:mode :unix-seconds}]
          (lib.convert/->legacy-MBQL [:datetime {:mode :unix-seconds, :lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} 10])))
