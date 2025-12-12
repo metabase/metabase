@@ -2,6 +2,7 @@ import { c, msgid, t } from "ttag";
 
 import { getIcon } from "metabase/lib/icon";
 import {
+  type CollectionItemModel,
   type DatabaseId,
   SEARCH_MODELS,
   type SearchModel,
@@ -274,8 +275,8 @@ export function getItemFunctions({
       return false;
     }
 
-    if (isFolderItem && !isFolderItem(item)) {
-      return false;
+    if (isFolderItem) {
+      return isFolderItem(item);
     }
 
     if (
@@ -305,29 +306,6 @@ export function getItemFunctions({
     );
   };
 
-  const isHidden = (item: OmniPickerItem | unknown): item is unknown => {
-    if (!isValidItem(item)) {
-      return false;
-    }
-
-    if (isHiddenItem && isHiddenItem(item)) {
-      return true;
-    }
-
-    return (
-      !modelSet.has(item.model as OmniPickerItem["model"]) &&
-      !isFolder(item)
-    );
-  };
-
-  const isDisabled = (item: OmniPickerItem | unknown): item is OmniPickerItem => {
-    if (isDisabledItem && isDisabledItem(item)) {
-      return true;
-    }
-
-    return false;
-  };
-
   const isSelectable = (item: OmniPickerItem | unknown): item is OmniPickerItem => {
     if (isSelectableItem && isSelectableItem(item)) {
       return true;
@@ -340,6 +318,29 @@ export function getItemFunctions({
     return modelSet.has(item.model);
   }
 
+  const isHidden = (item: OmniPickerItem | unknown): item is unknown => {
+    if (!isValidItem(item)) {
+      return true;
+    }
+
+    if (isHiddenItem) {
+      return isHiddenItem(item);
+    }
+
+    return (
+      !isSelectable(item) &&
+      !isFolder(item)
+    );
+  };
+
+  const isDisabled = (item: OmniPickerItem | unknown): item is OmniPickerItem => {
+    if (isDisabledItem && isDisabledItem(item)) {
+      return true;
+    }
+
+    return false;
+  };
+
   return {
     isFolderItem: isFolder,
     isHiddenItem: isHidden,
@@ -347,3 +348,21 @@ export function getItemFunctions({
     isSelectableItem: isSelectable,
   };
 }
+
+export const validCollectionModels = new Set<CollectionItemModel>([
+  "collection",
+  "dashboard",
+  "document",
+  "card",
+  "dataset",
+  "metric",
+  // "table", FIXME: api should support this
+]);
+
+const isValidModel = (model: OmniPickerItem['model']): model is CollectionItemModel =>
+  validCollectionModels.has(model);
+
+export const getValidCollectionItemModels = (models: OmniPickerItem['model'][]): CollectionItemModel[] =>
+  models
+  .filter(isValidModel)
+  .concat(["collection"]); // always show folder models, TODO: what about dashboards?

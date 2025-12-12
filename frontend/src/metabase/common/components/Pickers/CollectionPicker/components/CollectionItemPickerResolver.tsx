@@ -1,18 +1,14 @@
-import _ from "underscore";
-
 import type { OmniPickerFolderItem, OmniPickerItem } from "metabase/common/components/EntityPicker";
-import { useOmniPickerContext } from "metabase/common/components/EntityPicker/context";
-import { TablePicker } from "metabase/common/components/Pickers/TablePicker";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
-import { RootItemList } from "../../../EntityPicker/components/ItemList/RootItemList";
-import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 import { CollectionItemList } from "./CollectionItemList";
 import { DashboardItemList } from "./DashboardItemList";
 import { DbItemList } from "./DbItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
+import { RecentsItemList } from "./RecentsItemList";
+import { SearchResultsItemList } from "./SearchResultsItemList";
 
 const isDbItem = (item: OmniPickerItem): item is OmniPickerFolderItem => {
   return (
@@ -87,6 +83,18 @@ export const CollectionItemPickerResolver = ({
         parentItem={parentItem}
         pathIndex={pathIndex}
       />
+    );
+  }
+
+  if (parentItem.id === "search-results") {
+    return (
+      <SearchResultsItemList />
+    );
+  }
+
+  if (parentItem.id === "recents") {
+    return (
+      <RecentsItemList />
     );
   }
 

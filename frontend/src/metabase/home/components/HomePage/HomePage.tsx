@@ -30,6 +30,27 @@ export const HomePage = (): JSX.Element => {
         <EntityPickerModal
           models={["table", "dashboard", "card", "dataset", "metric", "document"]}
           onClose={close}
+          // initialValue={{
+          //   id: 1671,
+          //   model: "dataset",
+          // }}
+          // initialValue={{
+          //   id: 1642,
+          //   model: "card",
+          // }}
+          // initialValue={{
+          //   id: 7783,
+          //   model: "table",
+          // }}
+          // initialValue={{
+          //   id: 19,
+          //   model: "dashboard",
+          // }}
+          initialValue={{
+            id: 2,
+            model: "database",
+          }}
+
           onChange={console.log}
           onConfirm={console.log}
           options={{
@@ -39,6 +60,7 @@ export const HomePage = (): JSX.Element => {
             confirmButtonText: t`Yes Please`,
             showRootCollection: true,
             showPersonalCollections: true,
+            showRecents: true,
           }}
         />
       )}

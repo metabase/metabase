@@ -5,12 +5,13 @@ import type {
   CollectionId,
   CollectionItem,
   CollectionType,
-
-    DatabaseId,
-    SchemaName,
-    SearchResult,
-    SearchResultId,
-    TableId} from "metabase-types/api";
+  DatabaseId,
+  NativeQuerySnippet,
+  SchemaName,
+  SearchResult,
+  SearchResultId,
+  TableId,
+} from "metabase-types/api";
 
 import type {
   TablePickerStatePath,
@@ -124,7 +125,7 @@ export type SearchItem = Pick<SearchResult, "id" | "model" | "name"> &
 
 export type OmniPickerCollectionItem = Pick<
   CollectionItem,
-  "name" | "model" | "here" | "below" | "moderated_status" | "display" | "can_write" | "location"
+  "name" | "model" | "here" | "below" | "moderated_status" | "display" | "can_write" | "location" | "collection"
 > & {
   id: CollectionItem["id"] | CollectionId;
 };
@@ -161,6 +162,10 @@ export type OmniPickerDatabaseItem = {
   name: string;
 };
 
+export type OmniPickerSnippetItem = Pick<NativeQuerySnippet, "id" | "name"> & {
+  model: "snippet";
+};
+
 export enum OmniPickerFolderModel {
   Database = "database",
   Schema = "schema",
@@ -186,6 +191,12 @@ export type OmniPickerItem =
   | OmniPickerSchemaItem
   | OmniPickerTableItem
   | OmniPickerDatabaseItem;
+
+export type OmniPickerDbValue = Pick<DbTreeItem, "model" | "id">;
+export type OmniPickerTableValue = Pick<OmniPickerTableItem, "model" | "id">;
+export type OmniPickerCollectionItemValue = Pick<OmniPickerCollectionItem, "model" | "id">;
+
+export type OmniPickerValue = OmniPickerDbValue | OmniPickerCollectionItemValue;
 
 // this is only the intermediate/folder types that cannot ultimately be picked
 export type OmniPickerFolderItem =

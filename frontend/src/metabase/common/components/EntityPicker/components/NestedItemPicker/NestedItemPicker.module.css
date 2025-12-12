@@ -1,8 +1,7 @@
 .ListBox {
   border-right: 1px solid var(--mb-color-border);
   height: 100%;
-  width: 365px;
-  flex-basis: 365px;
+  min-width: 365px;
   background-color: var(--mb-color-bg-light);
 
   &:last-child {
