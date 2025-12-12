@@ -1,8 +1,9 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { Flex } from "metabase/ui";
 import { useListUnreferencedGraphNodesQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
@@ -10,9 +11,15 @@ import type {
   DependencyNode,
 } from "metabase-types/api";
 
+import { DependencyListPanel } from "../../components/DependencyListPanel";
 import { DependencyListView } from "../../components/DependencyListView";
 import type { DependencyFilterOptions } from "../../types";
-import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
+import {
+  getCardTypes,
+  getDependencyTypes,
+  getSearchQuery,
+  isSameNode,
+} from "../../utils";
 
 const EMPTY_NODES: DependencyNode[] = [];
 
@@ -20,6 +27,7 @@ export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = [
   "question",
   "model",
   "metric",
+  "transform",
 ];
 
 export function UnreferencedDependencyListPage() {
@@ -41,7 +49,7 @@ export function UnreferencedDependencyListPage() {
       : AVAILABLE_GROUP_TYPES;
 
   const {
-    data = EMPTY_NODES,
+    data: nodes = EMPTY_NODES,
     isFetching,
     isLoading,
     error,
@@ -51,20 +59,33 @@ export function UnreferencedDependencyListPage() {
     card_types: getCardTypes(groupTypes),
   });
 
+  const selectedNode = useMemo(() => {
+    return selectedEntry != null
+      ? nodes.find((node) => isSameNode(node, selectedEntry))
+      : null;
+  }, [nodes, selectedEntry]);
+
   return (
-    <DependencyListView
-      nodes={data}
-      selectedEntry={selectedEntry}
-      searchValue={searchValue}
-      filterOptions={filterOptions}
-      availableGroupTypes={AVAILABLE_GROUP_TYPES}
-      nothingFoundMessage={t`No unreferenced entities found.`}
-      error={error}
-      isFetching={isFetching}
-      isLoading={isLoading}
-      onSelect={setSelectedEntry}
-      onSearchValueChange={setSearchValue}
-      onFilterOptionsChange={setFilterOptions}
-    />
+    <Flex h="100%">
+      <DependencyListView
+        nodes={nodes}
+        searchValue={searchValue}
+        filterOptions={filterOptions}
+        availableGroupTypes={AVAILABLE_GROUP_TYPES}
+        nothingFoundMessage={t`No unreferenced entities found.`}
+        error={error}
+        isFetching={isFetching}
+        isLoading={isLoading}
+        onSelect={setSelectedEntry}
+        onSearchValueChange={setSearchValue}
+        onFilterOptionsChange={setFilterOptions}
+      />
+      {selectedNode != null && (
+        <DependencyListPanel
+          node={selectedNode}
+          onClose={() => setSelectedEntry(null)}
+        />
+      )}
+    </Flex>
   );
 }

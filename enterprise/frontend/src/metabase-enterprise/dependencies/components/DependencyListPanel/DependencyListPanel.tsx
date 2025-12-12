@@ -7,12 +7,15 @@ import { LocationSection } from "./LocationSection";
 import { PanelHeader } from "./PanelHeader";
 import { getDependencyErrorGroups } from "./utils";
 
-type DependencyPanelProps = {
+type DependencyListPanelProps = {
   node: DependencyNode;
   onClose: () => void;
 };
 
-export function DependencyPanel({ node, onClose }: DependencyPanelProps) {
+export function DependencyListPanel({
+  node,
+  onClose,
+}: DependencyListPanelProps) {
   const errorGroups = getDependencyErrorGroups(node.errors ?? []);
 
   return (

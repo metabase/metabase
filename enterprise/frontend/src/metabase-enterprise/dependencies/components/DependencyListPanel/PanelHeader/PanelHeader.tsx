@@ -4,8 +4,8 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { ActionIcon, FixedSizeIcon, Group, Title, Tooltip } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { TOOLTIP_OPEN_DELAY } from "../../../../constants";
-import { getNodeLabel, getNodeLink } from "../../../../utils";
+import { TOOLTIP_OPEN_DELAY } from "../../../constants";
+import { getNodeLabel, getNodeLink } from "../../../utils";
 
 type PanelHeaderProps = {
   node: DependencyNode;

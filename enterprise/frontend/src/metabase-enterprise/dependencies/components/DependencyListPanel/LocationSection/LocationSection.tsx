@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { Anchor, Box, Card, Group, Icon, Stack, Title } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeLocationInfo } from "../../../../utils";
+import { getNodeLocationInfo } from "../../../utils";
 
 type LocationSectionProps = {
   node: DependencyNode;

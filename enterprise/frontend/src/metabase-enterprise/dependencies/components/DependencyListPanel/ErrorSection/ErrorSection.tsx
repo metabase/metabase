@@ -5,7 +5,7 @@ import type { DependencyError, DependencyErrorType } from "metabase-types/api";
 import {
   getDependencyErrorDetail,
   getDependencyErrorTypeCountMessage,
-} from "../../../../utils";
+} from "../../../utils";
 
 import S from "./ErrorSection.module.css";
 
