@@ -3,7 +3,6 @@
   (:require
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- query-external-inputs
