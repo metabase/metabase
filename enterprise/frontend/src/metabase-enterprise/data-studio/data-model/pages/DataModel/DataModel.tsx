@@ -20,6 +20,7 @@ import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import { hasLibraryCollection } from "metabase-enterprise/data-studio/common/utils";
 
 import { trackMetadataChange } from "../../analytics";
 import {
@@ -105,8 +106,12 @@ function DataModelContent({ params }: Props) {
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
   const error = databasesError ?? tableError ?? libraryError;
-  // TODO Alex P 12/05/2025 Fix the endpoint to return sensible data
-  const hasLibrary = libraryCollection != null && "name" in libraryCollection;
+
+  const hasLibrary = hasLibraryCollection(libraryCollection);
+
+  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
+    null,
+  );
 
   useWindowEvent(
     "keydown",
@@ -148,13 +153,12 @@ function DataModelContent({ params }: Props) {
 
   return (
     <Flex
-      bg="accent-gray-light"
+      bg="bg-light"
       data-testid="data-model"
       h="100%"
       style={{ overflow: "auto" }}
     >
       <Stack
-        bg="bg-white"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}
@@ -167,6 +171,7 @@ function DataModelContent({ params }: Props) {
           schemaName={schemaName}
           tableId={navigationTableId}
           params={params}
+          setOnUpdateCallback={setOnUpdateCallback}
         />
       </Stack>
 
@@ -194,7 +199,10 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <TableAttributesEditBulk hasLibrary={hasLibrary} />
+            <TableAttributesEditBulk
+              hasLibrary={hasLibrary}
+              onUpdate={() => onUpdateCallback?.()}
+            />
           </Stack>
         )}
 

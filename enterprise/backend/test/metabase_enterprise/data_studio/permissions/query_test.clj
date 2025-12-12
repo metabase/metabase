@@ -14,41 +14,40 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest published-table-test
-  (testing "Published tables grant query access via collection permissions only with data-studio enabled"
+  (testing "Published tables grant query access via collection permissions only with data-studio enabled\n"
     (doseq [features             [#{} #{:data-studio}]
             collection-readable? [false true]
             view-data            [:unrestricted :blocked]]
-      (mt/with-premium-features features
-        (let [mbql-query (mt/mbql-query venues)]
-          (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
-            (t2/with-transaction [_conn nil {:rollback-only true}]
-              (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                             :model/User {user-id :id} {}
-                             :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                             :model/Collection {collection-id :id} {}]
-                ;; Ensure All Users group has no create-queries permission and matching view-data
-                ;; (user is automatically in this group)
-                (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/view-data      view-data)
-                (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/create-queries :no)
-                (perms/set-table-permission!    (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
-                ;; Set up permissions on custom group: user cannot create queries, view-data varies
-                (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
-                (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
-                ;; Publish the table and grant/revoke collection read permissions
-                (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
-                (if collection-readable?
-                  (perms/grant-collection-read-permissions! group-id collection-id)
-                  (do
-                    ;; Revoke from both groups since user is in All Users automatically
-                    (perms/revoke-collection-permissions! group-id collection-id)
-                    (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
-                (binding [*current-user-id*              user-id
-                          *current-user-permissions-set* (atom (if collection-readable?
-                                                                 #{(perms/collection-read-path collection-id)}
-                                                                 #{}))]
-                  (testing (str "with features " (pr-str features)
-                                ", collection-readable? " collection-readable?
-                                ", view-data " view-data)
+      (testing (format "with features %s, collection-readable? %s, view-data %s"
+                       (pr-str features) collection-readable? view-data)
+        (mt/with-premium-features features
+          (let [mbql-query (mt/mbql-query venues)]
+            (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+              (t2/with-transaction [_conn nil {:rollback-only true}]
+                (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                               :model/User {user-id :id} {}
+                               :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
+                               :model/Collection {collection-id :id} {}]
+                  ;; Ensure All Users group has no create-queries permission and matching view-data
+                  ;; (user is automatically in this group)
+                  (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/view-data      view-data)
+                  (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/create-queries :no)
+                  (perms/set-table-permission!    (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+                  ;; Set up permissions on custom group: user cannot create queries, view-data varies
+                  (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
+                  (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+                  ;; Publish the table and grant/revoke collection read permissions
+                  (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
+                  (if collection-readable?
+                    (perms/grant-collection-read-permissions! group-id collection-id)
+                    (do
+                      ;; Revoke from both groups since user is in All Users automatically
+                      (perms/revoke-collection-permissions! group-id collection-id)
+                      (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
+                  (binding [*current-user-id*              user-id
+                            *current-user-permissions-set* (delay (if collection-readable?
+                                                                    #{(perms/collection-read-path collection-id)}
+                                                                    #{}))]
                     (perms/disable-perms-cache
                       ;; Query is only runnable when: data-studio enabled AND collection readable AND view-data unrestricted
                       (is (= (and (contains? features :data-studio)

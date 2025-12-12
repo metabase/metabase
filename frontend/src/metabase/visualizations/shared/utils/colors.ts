@@ -11,7 +11,7 @@ export const getSeriesColors = <TDatum, TSeriesInfo>(
     settings.series_settings ?? {},
   ).reduce(
     (mapping, [seriesName, seriesSettings]) => {
-      if (typeof seriesSettings.color === "string") {
+      if (typeof seriesSettings?.color === "string") {
         mapping[seriesName] = seriesSettings.color;
       }
 

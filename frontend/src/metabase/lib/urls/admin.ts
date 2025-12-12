@@ -1,35 +1,52 @@
 import type {
+  BaseUser,
   DatabaseId,
   FieldId,
   SchemaName,
   SegmentId,
   TableId,
-  UserId,
 } from "metabase-types/api";
+
+export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
 
 export function newUser() {
   return `/admin/people/new`;
 }
-
-export function editUser(userId: UserId) {
-  return `/admin/people/${userId}/edit`;
+export function newTenantUser() {
+  return "/admin/tenants/people/new";
 }
 
-export function resetPassword(userId: UserId) {
-  return `/admin/people/${userId}/reset`;
+export function editUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/edit`
+    : `/admin/tenants/people/${user.id}/edit`;
 }
 
-export function newUserSuccess(userId: UserId) {
-  return `/admin/people/${userId}/success`;
+export function resetPassword(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reset`
+    : `/admin/tenants/people/${user.id}/reset`;
 }
 
-export function deactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/deactivate`;
+export function newUserSuccess(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/success`
+    : `/admin/tenants/people/${user.id}/success`;
 }
 
-export function reactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/reactivate`;
+export function deactivateUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/deactivate`
+    : `/admin/tenants/people/${user.id}/deactivate`;
 }
+
+export function reactivateUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reactivate`
+    : `/admin/tenants/people/${user.id}/reactivate`;
+}
+
+// TODO: move to EE urls
 
 export function newDatabase() {
   return `/admin/databases/create`;

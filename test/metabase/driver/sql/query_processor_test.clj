@@ -1526,7 +1526,7 @@
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
-;;; see also [[metabase.query-processor-test.order-by-test/order-by-aggregate-fields-test-6]]
+;;; see also [[metabase.query-processor.order-by-test/order-by-aggregate-fields-test-6]]
 (deftest ^:parallel order-by-aggregation-reference-test
   (testing "Should order by aggregation references correctly (#62885)"
     (let [mp    meta/metadata-provider

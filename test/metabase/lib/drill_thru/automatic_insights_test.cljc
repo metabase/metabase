@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.automatic-insights-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -12,6 +12,8 @@
    [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel returns-automatic-insights-test-1
   (lib.drill-thru.tu/test-returns-drill

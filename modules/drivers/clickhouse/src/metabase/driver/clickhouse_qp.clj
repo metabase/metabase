@@ -15,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.performance :refer [some]])
+   [metabase.util.performance :refer [some]]
+   [metabase.util.string :as string])
   (:import
    [java.net Inet4Address Inet6Address]
    [java.sql ResultSet ResultSetMetaData Types]
@@ -357,48 +358,64 @@
         :type/IPAddress [:'toIPv4 value]
         (sql.qp/->honeysql driver value)))))
 
+(defn- text-val? [value]
+  (let [[qual valuevalue fieldinfo] value]
+    (and (isa? qual :value)
+         (isa? (:base_type fieldinfo) :type/Text)
+         (nil? valuevalue))))
+
+(defn- uuid-comp? [field value]
+  (let [[qual valuevalue fieldinfo] value]
+    (and (isa? qual :value)
+         (isa? (:base_type fieldinfo) :type/UUID)
+         (isa? (:base-type (nth field 2)) :type/UUID)
+         (string? valuevalue))))
+
 (defmethod sql.qp/->honeysql [:clickhouse :=]
   [driver [op field value]]
-  (let [[qual valuevalue fieldinfo] value
-        hsql-field (sql.qp/->honeysql driver field)
+  (let [hsql-field (sql.qp/->honeysql driver field)
         hsql-value (sql.qp/->honeysql driver value)]
     (cond
-      (and (isa? qual :value)
-           (isa? (:base_type fieldinfo) :type/Text)
-           (nil? valuevalue))
+      (text-val? value)
       [:or
        [:= hsql-field hsql-value]
        [:= [:'empty hsql-field] 1]]
 
       ;; UUID fields can be compared directly with strings in ClickHouse.
-      (and (isa? qual :value)
-           (isa? (:base_type fieldinfo) :type/UUID)
-           (isa? (:base-type (nth field 2)) :type/UUID)
-           (string? valuevalue))
-      [:= hsql-field hsql-value]
+      ;; If the string is not a valid UUID (ie due to is-empty desugaring),
+      ;; then direct comparison will cause an error, so just return false
+      (uuid-comp? field value)
+      (if (string/valid-uuid? hsql-value)
+        [:= hsql-field hsql-value]
+        false)
 
       :else ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
   [driver [op field value]]
-  (let [[qual valuevalue fieldinfo] value
-        hsql-field (sql.qp/->honeysql driver field)
+  (let [hsql-field (sql.qp/->honeysql driver field)
         hsql-value (sql.qp/->honeysql driver value)]
-    (if (and (isa? qual :value)
-             (isa? (:base_type fieldinfo) :type/Text)
-             (nil? valuevalue))
+    (cond
+      (text-val? value)
       [:and
        [:!= hsql-field hsql-value]
        [:= [:'notEmpty hsql-field] 1]]
-      ((get-method sql.qp/->honeysql [:sql :!=]) driver [op field value]))))
+
+      (uuid-comp? field value)
+      (if (string/valid-uuid? hsql-value)
+        [:or [:!= hsql-field hsql-value]
+         [:isNull hsql-field]]
+        true)
+
+      :else ((get-method sql.qp/->honeysql [:sql :!=]) driver [op field value]))))
 
 ;; I do not know why the tests expect nil counts for empty results
 ;; but that's how it is :-)
 ;;
 ;; It would even be better if we could use countIf and sumIf directly
 ;;
-;; metabase.query-processor-test.count-where-test
-;; metabase.query-processor-test.share-test
+;; metabase.query-processor.count-where-test
+;; metabase.query-processor.share-test
 (defmethod sql.qp/->honeysql [:clickhouse :count-where]
   [driver [_ pred]]
   [:case
@@ -417,7 +434,9 @@
 
 (defn- clickhouse-string-fn
   [fn-name field value options]
-  (let [hsql-field (sql.qp/->honeysql :clickhouse field)
+  (let [[_ _ {:keys [base-type]}] field
+        hsql-field (cond->> (sql.qp/->honeysql :clickhouse field)
+                     (= base-type :type/UUID) (conj [:'toString]))
         hsql-value (sql.qp/->honeysql :clickhouse value)]
     (if (get options :case-sensitive true)
       [fn-name hsql-field hsql-value]
@@ -439,7 +458,9 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :contains]
   [_ [_ field value options]]
-  (let [hsql-field (sql.qp/->honeysql :clickhouse field)
+  (let [[_ _ {:keys [base-type]}] field
+        hsql-field (cond->> (sql.qp/->honeysql :clickhouse field)
+                     (= base-type :type/UUID) (conj [:'toString]))
         hsql-value (sql.qp/->honeysql :clickhouse value)
         position-fn (if (get options :case-sensitive true)
                       :'positionUTF8

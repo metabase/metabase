@@ -10,12 +10,13 @@ import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
 
 import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
-import S from "./RunListPage.module.css";
 import { PAGE_SIZE } from "./constants";
 import { getParsedParams } from "./utils";
 
@@ -27,10 +28,23 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <Stack className={S.body} p="lg" h="100%" bg="bg-light">
-      <Box>{t`A list of when each transform ran.`}</Box>
-      <RunListPageBody params={params} />
-    </Stack>
+    <>
+      <PaneHeader
+        breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+        px="3.5rem"
+        py={0}
+        showMetabotButton
+      />
+      <Stack
+        px="3.5rem"
+        h="100%"
+        data-testid="transforms-run-list"
+        style={{ overflow: "hidden" }}
+      >
+        <Box>{t`A list of when each transform ran.`}</Box>
+        <RunListPageBody params={params} />
+      </Stack>
+    </>
   );
 }
 
@@ -96,7 +110,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   return (
-    <Stack data-testid="run-list-page">
+    <Stack>
       <RunFilterList params={params} transforms={transforms} tags={tags} />
       <RunList
         runs={data.data}

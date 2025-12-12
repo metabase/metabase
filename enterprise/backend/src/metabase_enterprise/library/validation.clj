@@ -12,12 +12,12 @@
   [content-type collection-id]
   (when collection-id
     (when-let [{collection-type :type collection-ns :namespace} (t2/select-one [:model/Collection :type :namespace] :id collection-id)]
-      (when (and (= collection-type collection/library-collection-type) (not (contains? #{collection/library-models-collection-type
+      (when (and (= collection-type collection/library-collection-type) (not (contains? #{collection/library-data-collection-type
                                                                                           collection/library-metrics-collection-type}
                                                                                         content-type)))
         (throw (ex-info "Cannot add anything to the Library collection" {})))
-      (when (and (= collection-type collection/library-models-collection-type) (not (= :model content-type)))
-        (throw (ex-info "Can only add models to the 'Models' collection" {})))
+      (when (and (= collection-type collection/library-data-collection-type) (not (= :table content-type)))
+        (throw (ex-info "Can only add tables to the 'Data' collection" {})))
       (when (and (= collection-type collection/library-metrics-collection-type) (not (= :metric content-type)))
         (throw (ex-info "Can only add metrics to the 'Metrics' collection" {})))
       (when (and (= collection-ns collection/transforms-ns) (not (= :model/Transform content-type)))
@@ -36,7 +36,7 @@
   :feature :data-studio
   [collection]
   (when (and (contains? #{collection/library-collection-type
-                          collection/library-models-collection-type
+                          collection/library-data-collection-type
                           collection/library-metrics-collection-type} (:type collection))
              (seq (set/intersection (set (keys (t2/changes collection)))
                                     #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))

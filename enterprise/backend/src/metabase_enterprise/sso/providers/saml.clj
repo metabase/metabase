@@ -5,6 +5,7 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -18,6 +19,7 @@
 ;; Register SAML provider
 (derive :provider/saml :metabase.auth-identity.provider/provider)
 (derive :provider/saml :metabase.auth-identity.provider/create-user-if-not-exists)
+(derive :provider/saml :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
 
 (defn- acs-url
   "Get the Assertion Consumer Service URL."
@@ -115,7 +117,10 @@
             first-name (get attrs (sso-settings/saml-attribute-firstname))
             last-name (get attrs (sso-settings/saml-attribute-lastname))
             groups (get attrs (sso-settings/saml-attribute-group))
-            user-attributes (sso-utils/filter-non-stringable-attributes attrs)]
+            tenant-slug (when (and (not-empty (sso-settings/saml-attribute-tenant))
+                                   (setting/get :use-tenants))
+                          (get attrs (sso-settings/saml-attribute-tenant)))
+            user-attributes (sso-utils/stringify-valid-attributes attrs)]
         (when-not email
           (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email. We tried looking for {0}, but couldn''t find the attribute. Please make sure your SAML IdP is properly configured."
                                     (sso-settings/saml-attribute-email)))
@@ -128,6 +133,7 @@
                      :last_name last-name
                      :sso_source :saml
                      :login_attributes user-attributes}
+         :tenant-slug tenant-slug
          :saml-data {:group-names groups
                      :user-attributes user-attributes}
          :provider-id email})

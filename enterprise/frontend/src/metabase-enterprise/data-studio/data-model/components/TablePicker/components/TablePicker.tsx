@@ -30,6 +30,7 @@ interface TablePickerProps {
   path: TreePath;
   className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
 export function TablePicker({
@@ -37,6 +38,7 @@ export function TablePicker({
   path,
   className,
   onChange,
+  setOnUpdateCallback,
 }: TablePickerProps) {
   const { resetSelection } = useSelection();
   const [query, setQuery] = useState("");
@@ -130,7 +132,11 @@ export function TablePicker({
 
       <Box mih={0} flex="1 1 auto">
         {deferredQuery === "" && filtersCount === 0 ? (
-          <Tree path={path} onChange={onChange} />
+          <Tree
+            path={path}
+            onChange={onChange}
+            setOnUpdateCallback={setOnUpdateCallback}
+          />
         ) : (
           <SearchNew query={deferredQuery} params={params} filters={filters} />
         )}

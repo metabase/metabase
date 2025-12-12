@@ -29,7 +29,7 @@ export function SnippetHeader({ snippet, actions }: SnippetHeaderProps) {
   const dispatch = useDispatch();
 
   const handleDelete = () => {
-    dispatch(push(Urls.dataStudioModeling()));
+    dispatch(push(Urls.dataStudioLibrary()));
   };
 
   return (

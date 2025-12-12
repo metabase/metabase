@@ -1,5 +1,6 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import type { TagType } from "metabase/api/tags";
 import {
   TAG_TYPES,
   provideCollectionTags,
@@ -12,7 +13,6 @@ import type {
   BulkTableInfo,
   BulkTableSelectionInfo,
   CardDependencyNode,
-  Comment,
   DashboardDependencyNode,
   DependencyGraph,
   DependencyNode,
@@ -37,9 +37,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",
-  "document",
-  "public-document",
-  "comment",
   "sandbox",
   "transform-tag",
   "transform-job",
@@ -57,7 +54,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "library-collection",
 ] as const;
 
-export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
+export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
 
 export function tag(
   type: EnterpriseTagType,
@@ -141,22 +138,6 @@ export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
-}
-
-export function provideCommentListTags(
-  comments: Comment[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
-}
-
-export function provideCommentTags(
-  comment: Comment,
-): TagDescription<EnterpriseTagType>[] {
-  if (comment.creator) {
-    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
-  }
-
-  return [idTag("comment", comment.id)];
 }
 
 export function providePythonLibraryTags(
