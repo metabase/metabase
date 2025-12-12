@@ -1621,7 +1621,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       source: birthday_source,
     },
     external: { component: share_component, source: share_source },
-    table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
     collection2: {
       component: collection2_component,
@@ -1908,7 +1907,6 @@ export type IconName =
   | "scalar"
   | "cake"
   | "external"
-  | "table_spaced"
   | "collection"
   | "beaker"
   | "test_tube"
