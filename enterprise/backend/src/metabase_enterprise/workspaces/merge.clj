@@ -80,10 +80,10 @@
                       (if error
                         (reduced (-> acc
                                      (update :errors conj result)
-                                     (assoc :merged [])
+                                     (assoc-in [:merged :transforms] [])
                                      #_(assoc :short_circuit true)))
-                        (update acc :merged conj result))))
-                  {:merged []
+                        (update-in acc [:merged :transforms] conj result))))
+                  {:merged {:transforms []}
                    :errors []
                    #_#_:short_circuit false}
                   (t2/select :model/WorkspaceTransform :workspace_id ws-id))]

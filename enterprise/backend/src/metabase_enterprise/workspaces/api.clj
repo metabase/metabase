@@ -681,16 +681,19 @@
 (api.macros/defendpoint :post "/:id/merge"
   :- [:or
       [:map
-       [:merged [:sequential
-                 [:map
-                  [:op [:enum :create :delete :update :noop]]
-                  [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
-                  [:ref_id ::ws.t/ref-id]]]]
-       [:errors [:sequential
-                 [:map
-                  [:op [:enum :create :delete :update :noop]]
-                  [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
-                  [:ref_id ::ws.t/ref-id]]]]
+       [:merged
+        [:map
+         [:transforms [:sequential
+                       [:map
+                        [:op [:enum :create :delete :update :noop]]
+                        [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
+                        [:ref_id ::ws.t/ref-id]]]]]]
+       [:errors
+        [:sequential
+         [:map
+          [:op [:enum :create :delete :update :noop]]
+          [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
+          [:ref_id ::ws.t/ref-id]]]]
        [:workspace [:map [:id ::ws.t/appdb-id] [:name :string]]]
        [:archived_at [:maybe :any]]]
       ;; error message from check-404 or check-400
@@ -705,9 +708,10 @@
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged
                 errors]} (-> (ws.merge/merge-workspace! id)
-                             (update :errors (partial mapv #(-> %
-                                                                (update :error (fn [e] (.getMessage ^Throwable e)))
-                                                                (set/rename-keys {:error :message})))))]
+                             (update :errors
+                                     (partial mapv #(-> %
+                                                        (update :error (fn [e] (.getMessage ^Throwable e)))
+                                                        (set/rename-keys {:error :message})))))]
     (u/prog1
       {:merged      merged
        :errors      errors

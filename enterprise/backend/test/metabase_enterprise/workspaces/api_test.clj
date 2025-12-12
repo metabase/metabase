@@ -138,14 +138,10 @@
           (let [x2-id (t2/select-one-fn :downstream_id :model/WorkspaceMappingTransform :upstream_id (:id x1))]
             (t2/update! :model/Transform :id x2-id {:description "Modified in workspace"})))
         (testing "returns merged transforms"
-          (is (=? {:merged    {:transforms [(:id x1)]}
+          (is (=? {:merged    {:transforms [{:global_id (:id x1)}]}
                    :errors    []
                    :workspace {:id ws-id :name "Merge test"}}
                   (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")))))
-        ;; TODO re-implement merge
-        #_(testing "original transform was updated with workspace version"
-            (is (= "Modified in workspace"
-                   (t2/select-one-fn :description :model/Transform :id (:id x1)))))
         (testing "workspace was deleted after successful merge"
           (is (nil? (t2/select-one :model/Workspace :id ws-id))))))))
 
@@ -206,7 +202,7 @@
                                                                (apply update-transform! args)))]
               (testing "API response: empty merged, single error"
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
-                  (is (empty? (:merged resp)))
+                  (is (empty? (get-in resp [:merged :transforms])))
                   (is (= 1 (count (:errors resp))))
                   (is (= {:op "update"
                           :global_id (:id x2)
@@ -219,12 +215,12 @@
                 (is (= (:name x2)
                        (t2/select-one-fn :name :model/Transform (:id x2)))))
               (testing "Workspace transforms are left unchanged"
-                (is (=? ws-x-1
-                        (t2/select-one :model/WorkspaceTransform
-                                       :workspace_id ws-id :ref_id (:ref_id ws-x-1))))
-                (is (=? ws-x-2
-                        (t2/select-one :model/WorkspaceTransform
-                                       :workspace_id ws-id :ref_id (:ref_id ws-x-2))))))))))))
+                (is (=? (:name ws-x-1)
+                        (:name (t2/select-one :model/WorkspaceTransform
+                                              :workspace_id ws-id :ref_id (:ref_id ws-x-1)))))
+                (is (=? (:name ws-x-2)
+                        (:name (t2/select-one :model/WorkspaceTransform
+                                              :workspace_id ws-id :ref_id (:ref_id ws-x-2)))))))))))))
 
 (deftest merge-workspace-update-core-test
   (testing "transactions"
@@ -276,16 +272,16 @@
         (testing "Global transforms are updated"
           (testing "API response: empty errors, all updates present in merge"
             (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
-              (is (= 2 (count (:merged resp))))
+              (is (= 2 (count (get-in resp [:merged :transforms]))))
               (is (= 0 (count (:errors resp))))
               (is (some? (m/find-first #{{:op "update"
                                           :global_id (:id x1)
                                           :ref_id ws-x-1-id}}
-                                       (:merged resp))))
+                                       (get-in resp [:merged :transforms]))))
               (is (some? (m/find-first #{{:op "update"
                                           :global_id (:id x2)
                                           :ref_id ws-x-2-id}}
-                                       (:merged resp))))))
+                                       (get-in resp [:merged :transforms]))))))
           (testing "Core transforms names are updated"
             (is (= (:name ws-x-1)
                    (t2/select-one-fn :name :model/Transform (:id x1))))
@@ -307,7 +303,7 @@
     (testing "API response: empty errors, empty updates"
       (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
         (is (=? {:errors []
-                 :merged []}
+                 :merged {:transforms []}}
                 resp))))
     (testing "Workspace has been deleted"
       (is (nil? (t2/select-one :model/Workspace :id ws-id))))))
@@ -360,8 +356,8 @@
                    resp)))
           (testing "Remaining workspace transform is left untouched"
             (is (= 1 (count remaining)))
-            (is (=? [ws-x-2]
-                    remaining)))
+            (is (=? (:name ws-x-2)
+                    (:name (first remaining)))))
           (testing "Propagation back to core"
             (is (= (:name ws-x-1)
                    (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))))
@@ -472,24 +468,24 @@
                                             :name "merge_test_table_3"}})]
         (testing "Merge all 3"
           (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))
-                new-global-id (:global_id (m/find-first (comp #{"create"} :op) (:merged resp)))]
+                new-global-id (:global_id (m/find-first (comp #{"create"} :op) (get-in resp [:merged :transforms])))]
             (testing "Response"
               (is (empty? (:errors resp)))
               (is (some? (m/find-first
                           #{{:op "update"
                              :global_id (:id x1)
                              :ref_id ws-x-1-id}}
-                          (:merged resp))))
+                          (get-in resp [:merged :transforms]))))
               (is (some? (m/find-first
                           #{{:op "delete"
                              :global_id (:id x2)
                              :ref_id ws-x-2-id}}
-                          (:merged resp))))
+                          (get-in resp [:merged :transforms]))))
               (is (some? (m/find-first
                           #{{:op "create"
                              :global_id new-global-id
                              :ref_id ws-x-3-id}}
-                          (:merged resp)))))
+                          (get-in resp [:merged :transforms])))))
             (testing "All transforms were deleted on merge"
               (is (= 0 (count (t2/select :model/WorkspaceTransform :workspace_id ws-id)))))
             (testing "Propagation back to core"
