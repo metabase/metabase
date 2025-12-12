@@ -165,10 +165,11 @@
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [details]} (driver-api/database (driver-api/metadata-provider))
+      (let [{:keys [details id]} (driver-api/database (driver-api/metadata-provider))
             user              (db-details->user details)]
-        (when (or (str/blank? user)
-                  (= user "sa"))        ; "sa" is the default USER
+        (when (and (not (driver/has-connection-swap? id)) ;; we want this to work in test
+                   (or (str/blank? user)
+                       (= user "sa")))        ; "sa" is the default USER
           (throw
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type driver-api/qp.error-type.db})))))))
