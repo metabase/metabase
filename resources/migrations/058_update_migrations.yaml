@@ -2969,6 +2969,31 @@ databaseChangeLog:
             tableName: workspace_transform
             columnName: stale
 
+  - changeSet:
+      id: v58.2025-12-12T10:00:00
+      author: piranha
+      comment: Add last_run_at column to workspace_transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_transform
+                columnName: last_run_at
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: last_run_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this transform was last run
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: last_run_at
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
