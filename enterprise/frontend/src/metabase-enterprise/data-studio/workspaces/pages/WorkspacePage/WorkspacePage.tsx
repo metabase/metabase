@@ -33,6 +33,7 @@ import {
   Text,
 } from "metabase/ui";
 import {
+  DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
   useGetExternalTransformsQuery,
   useGetWorkspaceQuery,
   useGetWorkspaceTablesQuery,
@@ -129,7 +130,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { data: externalTransforms } = useGetExternalTransformsQuery(id);
   const availableTransforms = externalTransforms ?? [];
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
-  const { data: workspaceTables = { inputs: [], outputs: [] } } =
+  const { data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE } =
     useGetWorkspaceTablesQuery(id);
   const openedTabsRef = useLatest(openedTabs);
   useEffect(() => {
