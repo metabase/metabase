@@ -356,6 +356,42 @@ describe("user > settings", () => {
           });
       });
     });
+
+    it("should apply user's color scheme preference immediately after login (metabase#66874)", () => {
+      // First, set the color scheme preference while logged in
+      cy.intercept("PUT", "/api/setting/color-scheme").as("saveColorScheme");
+
+      cy.visit("/account/profile", stubSystemColorScheme("dark"));
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Light").click();
+      cy.wait("@saveColorScheme");
+      assertLightMode();
+
+      // Sign out
+      cy.signOut();
+      cy.visit("/", stubSystemColorScheme("dark"));
+
+      // Verify that the theme is restored to "auto" after sign out
+      assertDarkMode();
+
+      // Intercept the session properties call that happens during login
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+      // Sign in - this triggers refreshSession which should apply the theme
+      cy.signInAsNormalUser();
+      cy.visit("/", stubSystemColorScheme("dark"));
+
+      // Wait for session properties to be fetched (this happens in refreshSession)
+      cy.wait("@sessionProperties");
+
+      // Verify light mode is applied immediately after login
+      // The theme should be applied before we even navigate anywhere
+      assertLightMode();
+
+      // Verify the theme selector shows the correct value
+      cy.visit("/account/profile", stubSystemColorScheme("dark"));
+      cy.findByDisplayValue("Light").should("exist");
+    });
   });
 });
 
@@ -380,4 +416,28 @@ function stubCurrentUser(authenticationMethod) {
       Object.assign({}, user, authenticationMethod),
     ).as("getUser");
   });
+}
+
+/**
+ * Stub the system color scheme preference
+ *
+ * @param {boolean} prefersDark - Whether the system prefers dark mode
+ * @returns {Object} - The stub object
+ */
+function stubSystemColorScheme(preferredColorScheme = "light") {
+  return {
+    onBeforeLoad: (win) => {
+      cy.stub(win, "matchMedia").callsFake((query) => {
+        return {
+          matches: query === `(prefers-color-scheme: ${preferredColorScheme})`,
+          media: query,
+          addEventListener: cy.stub(),
+          removeEventListener: cy.stub(),
+          addListener: cy.stub(), // deprecated but sometimes needed
+          removeListener: cy.stub(),
+          dispatchEvent: cy.stub(),
+        };
+      });
+    },
+  };
 }
