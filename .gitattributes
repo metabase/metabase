@@ -3,5 +3,5 @@
 # Execute this in your shell to enable custom merge driver:
 # echo '\n[include]\npath=../.gitconfig' >> .git/config
 #
-# TODO: double check that this works and re-enable it:
+# TODO (Bryan 12/12/25) -- reenable this when we can completely verify correctness
 # resources/migrations/*.yaml merge=yaml-migrations
