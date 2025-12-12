@@ -853,3 +853,83 @@ describe("issue 63711", () => {
       });
   });
 });
+
+describe("issue 66745", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.intercept("PUT", "/api/card/*").as("saveCard");
+  });
+
+  ["row", "bar"].forEach((vizType) => {
+    it(`should not break visualization on native query column rename (metabase#63711) - ${vizType}`, () => {
+      H.createNativeQuestion(
+        {
+          name: `66745 - ${vizType}`,
+          native: {
+            query:
+              'SELECT \'Category 1\' AS CATEGORY_NAME, \'Category 2\' AS CATEGORY_NAME2, 100 AS "Total", 60 AS "Hello", 40 AS "World"',
+          },
+          display: vizType,
+          visualization_settings: {
+            "graph.dimensions": ["CATEGORY_NAME"],
+            "graph.metrics": ["Total", "World"],
+          },
+        },
+        {
+          wrapId: true,
+          visitQuestion: true,
+        },
+      );
+
+      cy.findByTestId("query-builder-main")
+        .findByText("Open Editor")
+        .should("be.visible")
+        .click();
+
+      H.NativeEditor.focus().type('{backspace}2"');
+
+      getRunQueryButton().click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Total").should("be.visible");
+        cy.findByText("World").should("not.exist");
+      });
+
+      cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+
+      H.modal().findByText("Save").click();
+
+      cy.wait("@saveCard");
+
+      cy.findByTestId("qb-header-action-panel")
+        .findByText("Save")
+        .should("not.exist");
+
+      H.visitQuestion("@questionId");
+
+      cy.wait("@getCard");
+      cy.wait("@cardQuery");
+
+      // eslint-disable-next-line no-unscoped-text-selectors
+      cy.findByText("Something’s gone wrong").should("not.exist");
+
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Total").should("be.visible");
+        cy.findByText("World").should("not.exist");
+      });
+
+      H.openVizSettingsSidebar();
+      H.leftSidebar().within(() => {
+        cy.findAllByPlaceholderText("Select a field").should("have.length", 2);
+        cy.findAllByPlaceholderText("Select a field")
+          .eq(1)
+          .should("have.value", "Total");
+      });
+    });
+  });
+});

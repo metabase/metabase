@@ -1,4 +1,4 @@
-.Row {
+.row {
   display: flex;
   width: 100%;
   border-bottom: 1px solid var(--mb-color-border);
@@ -16,25 +16,25 @@
   }
 }
 
-.Cell {
+.cell {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.Table {
+.table {
   background: inherit;
   display: grid;
 }
 
-.Header {
+.header {
   background: inherit;
   display: grid;
   position: sticky;
   top: 0;
   z-index: 1;
 
-  .Row {
+  .row {
     cursor: unset;
     padding-left: 1rem;
 
@@ -44,13 +44,24 @@
   }
 }
 
-.HeaderBadge {
+.headerBadge {
   cursor: pointer;
   user-select: none;
 }
 
-.ScrollContainer {
+.headerBadgeLabel {
+  text-transform: none;
+  font-size: 0.75rem;
+}
+
+.scrollContainer {
   background: inherit;
   overflow: auto;
   position: relative;
+}
+
+.body {
+  .row:last-of-type {
+    border-bottom: none;
+  }
 }
