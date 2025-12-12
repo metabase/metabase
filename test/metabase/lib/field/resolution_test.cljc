@@ -723,7 +723,7 @@
                    {:display-name "Sum of Total"}]
                   (lib/returned-columns query))))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-model-metadata-test
   (let [mp        (metabase.lib.card-test/preserve-edited-metadata-test-mock-metadata-provider
                    {:result-metadata-style :metabase.lib.card-test/legacy-snake-case-qp})

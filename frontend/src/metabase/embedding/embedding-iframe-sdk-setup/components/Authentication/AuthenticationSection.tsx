@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { UPSELL_CAMPAIGN_AUTH } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
-import { TooltipWarning } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/TooltipWarning";
-import { WithSimpleEmbeddingFeatureUpsellTooltip } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/WithSimpleEmbeddingFeatureUpsellTooltip";
+import { TooltipWarning } from "metabase/embedding/embedding-iframe-sdk-setup/components/Common/TooltipWarning";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import {
   DEFAULT_EXPERIENCE,
@@ -61,21 +59,14 @@ export const AuthenticationSection = () => {
               )}
             </WithGuestEmbedsDisabledWarning>
 
-            <WithSimpleEmbeddingFeatureUpsellTooltip
-              enableTooltip={!isSimpleEmbedFeatureAvailable}
-              campaign={UPSELL_CAMPAIGN_AUTH}
-            >
-              {({ disabled }) => (
-                <Radio
-                  value="sso"
-                  label={
-                    // eslint-disable-next-line no-literal-metabase-strings -- Public Facing string
-                    t`Metabase account (SSO)`
-                  }
-                  disabled={disabled}
-                />
-              )}
-            </WithSimpleEmbeddingFeatureUpsellTooltip>
+            <Radio
+              value="sso"
+              label={
+                // eslint-disable-next-line no-literal-metabase-strings -- Public Facing string
+                t`Metabase account (SSO)`
+              }
+              disabled={!isSimpleEmbedFeatureAvailable}
+            />
           </Stack>
         </Radio.Group>
       </Stack>

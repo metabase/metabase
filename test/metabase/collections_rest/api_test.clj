@@ -14,7 +14,7 @@
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.collection.graph :as graph]
    [metabase.permissions.models.collection.graph-test :as graph.test]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]

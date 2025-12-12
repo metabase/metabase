@@ -59,9 +59,8 @@ describe("Table editing", () => {
       H.DataModel.TableSection.get()
         .findByRole("link", { name: "Dependency graph" })
         .click();
-      cy.findByRole("heading", { name: "Dependency graph" }).should(
-        "be.visible",
-      );
+
+      H.DataStudio.Dependencies.graph().should("be.visible");
     });
   });
 

@@ -574,7 +574,8 @@
    (for [dep deps]
      (-> dep
          (cond-> (= (:namespace dep) old-namespace)
-           (assoc :namespace new-namespace))
+           (assoc :namespace new-namespace
+                  :module (module new-namespace)))
          (update :deps (fn [deps]
                          (for [dep deps]
                            (if (= (:namespace dep) old-namespace)
@@ -667,6 +668,8 @@
 
 (defn- indirect-dependents
   "Set of modules that either directly or indirectly depend on `module`."
+  ([module]
+   (indirect-dependents (dependencies) module))
   ([deps module]
    (indirect-dependents deps module (sorted-set)))
   ([deps module acc]

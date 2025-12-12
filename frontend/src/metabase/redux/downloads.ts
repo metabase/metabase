@@ -161,7 +161,7 @@ export const downloadQueryResults = createAsyncThunk(
         dispatch(downloadToImage(false));
       }
     } else {
-      dispatch(downloadDataset({ opts, id: Date.now() }));
+      await dispatch(downloadDataset({ opts, id: Date.now() }));
     }
   },
 );

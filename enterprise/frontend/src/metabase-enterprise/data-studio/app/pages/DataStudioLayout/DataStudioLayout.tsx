@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useSelector } from "metabase/lib/redux";
@@ -223,12 +224,7 @@ function DataStudioNavbarToggle({
         bdrs="md"
         onClick={() => !isNavbarOpened && onNavbarToggle(true)}
       >
-        <FixedSizeIcon
-          name="data_studio"
-          size={27}
-          mx="-5px"
-          className={cx(S.hideOnHover)}
-        />
+        <img src={DataStudioLogo} className={cx(S.hideOnHover, S.logo)} />
         <FixedSizeIcon
           name="sidebar_open"
           className={S.showOnHover}

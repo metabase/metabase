@@ -37,6 +37,14 @@ function getTabs(table: Table, location: Location): PaneHeaderTab[] {
     ),
   });
 
+  tabs.push({
+    label: t`Segments`,
+    to: Urls.dataStudioTableSegments(table.id),
+    isSelected: location.pathname.startsWith(
+      Urls.dataStudioTableSegments(table.id),
+    ),
+  });
+
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
       label: t`Dependencies`,

@@ -236,7 +236,7 @@
                {:display_name "Sum of Total"}]
               (qp.preprocess/query->expected-cols query))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 ;;; and [[metabase.lib.card-test/preserve-edited-metadata-test]]
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"

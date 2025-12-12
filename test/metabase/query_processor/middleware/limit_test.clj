@@ -130,3 +130,45 @@
                          :constraints (when limit {:max-results-bare-rows limit})
                          :info        {:context context}})
                        [:query :limit])))))))
+
+(deftest embedded-download-row-limit-test
+  (testing "Apply custom download row limits for embedded contexts"
+    (doseq [[limit expected context] [[1100000 1100000 :embedded-csv-download]
+                                      [1100000 1100000 :embedded-json-download]
+                                      [1100000 qp.settings/absolute-max-results :embedded-xlsx-download]
+                                      [nil qp.settings/absolute-max-results :embedded-csv-download]
+                                      [nil qp.settings/absolute-max-results :embedded-json-download]
+                                      [nil qp.settings/absolute-max-results :embedded-xlsx-download]]]
+      (testing (format "%s the absolute limit for %s"
+                       (if (< expected qp.settings/absolute-max-results)
+                         "below"
+                         "above")
+                       context)
+        (mt/with-temp-env-var-value! [mb-download-row-limit limit]
+          (is (= expected
+                 (get-in (add-default-limit
+                          {:type  :query
+                           :query {:source-table (meta/id :venues)}
+                           :info  {:context context}})
+                         [:query :limit]))))))))
+
+(deftest public-download-row-limit-test
+  (testing "Apply custom download row limits for public contexts"
+    (doseq [[limit expected context] [[1100000 1100000 :public-csv-download]
+                                      [1100000 1100000 :public-json-download]
+                                      [1100000 qp.settings/absolute-max-results :public-xlsx-download]
+                                      [nil qp.settings/absolute-max-results :public-csv-download]
+                                      [nil qp.settings/absolute-max-results :public-json-download]
+                                      [nil qp.settings/absolute-max-results :public-xlsx-download]]]
+      (testing (format "%s the absolute limit for %s"
+                       (if (< expected qp.settings/absolute-max-results)
+                         "below"
+                         "above")
+                       context)
+        (mt/with-temp-env-var-value! [mb-download-row-limit limit]
+          (is (= expected
+                 (get-in (add-default-limit
+                          {:type  :query
+                           :query {:source-table (meta/id :venues)}
+                           :info  {:context context}})
+                         [:query :limit]))))))))

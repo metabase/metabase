@@ -310,7 +310,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 });
 
-describe("scenarios > embedding > embedded analytics JS", () => {
+describe("scenarios > embedding > Modular embedding", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.prepareSdkIframeEmbedTest({
@@ -320,7 +320,7 @@ describe("scenarios > embedding > embedded analytics JS", () => {
     H.enableTracking();
   });
 
-  it("should send an Embedded Analytics JS usage event", () => {
+  it("should send an modular embedding usage event", () => {
     cy.signOut();
     cy.visit("http://localhost:4000");
     const frame = H.loadSdkIframeEmbedTestPage({
@@ -410,7 +410,7 @@ describe("scenarios > embedding > embedded analytics JS", () => {
     });
   });
 
-  it("should not send an Embedded Analytics JS usage event in the preview", () => {
+  it("should not send an modular embedding usage event in the preview", () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();

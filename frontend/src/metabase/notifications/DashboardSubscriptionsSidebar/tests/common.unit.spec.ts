@@ -202,6 +202,11 @@ describe("DashboardSubscriptionsSidebar", () => {
       // Create the first subscription
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
+      // (EMB-1099) The subscription channel options sidebar shouldn't be shown
+      expect(
+        screen.queryByText("Set up a dashboard subscription"),
+      ).not.toBeInTheDocument();
+
       expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
       expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
       expect(await screen.findByText("John Doe")).toBeInTheDocument();
@@ -227,6 +232,11 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       // Create the first subscription
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      // (EMB-1099) The subscription channel options sidebar shouldn't be shown
+      expect(
+        screen.queryByText("Set up a dashboard subscription"),
+      ).not.toBeInTheDocument();
 
       expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
       expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();

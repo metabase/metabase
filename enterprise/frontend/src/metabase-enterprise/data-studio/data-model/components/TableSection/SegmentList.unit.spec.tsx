@@ -1,22 +1,27 @@
 import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { Segment, TableId } from "metabase-types/api";
-import { createMockSegment } from "metabase-types/api/mocks";
+import type { Segment, Table } from "metabase-types/api";
+import { createMockSegment, createMockTable } from "metabase-types/api/mocks";
 
 import { SegmentList } from "./SegmentList";
 
 type SetupOpts = {
   segments?: Segment[];
-  tableId?: TableId;
+  table?: Partial<Table>;
 };
 
-function setup({ segments = [], tableId = 1 }: SetupOpts = {}) {
+function setup({ segments = [], table = {} }: SetupOpts = {}) {
+  const mockTable = createMockTable({
+    id: 1,
+    db_id: 1,
+    schema: "PUBLIC",
+    segments,
+    ...table,
+  });
+
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <SegmentList segments={segments} tableId={tableId} />}
-    />,
+    <Route path="/" component={() => <SegmentList table={mockTable} />} />,
     { withRouter: true },
   );
 }
@@ -51,6 +56,9 @@ describe("SegmentList", () => {
     expect(screen.getByText("Active Users")).toBeInTheDocument();
     expect(
       screen.getByRole("listitem", { name: "High Value" }),
-    ).toHaveAttribute("href", "/data-studio/library/segments/1");
+    ).toHaveAttribute(
+      "href",
+      "/data-studio/data/database/1/schema/1:PUBLIC/table/1/segments/1",
+    );
   });
 });

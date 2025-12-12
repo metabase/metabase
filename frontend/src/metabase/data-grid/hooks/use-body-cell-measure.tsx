@@ -1,6 +1,8 @@
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -99,11 +101,13 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
   } = useCellMeasure(bodyCellToMeasure, "[data-grid-cell-content]");
 
   const measureRoot = useMemo(
-    () => (
-      <EmotionCacheProvider>
-        <ThemeProvider>{measureBodyCellRoot}</ThemeProvider>
-      </EmotionCacheProvider>
-    ),
+    () =>
+      createPortal(
+        <EmotionCacheProvider>
+          <ThemeProvider>{measureBodyCellRoot}</ThemeProvider>
+        </EmotionCacheProvider>,
+        getPortalRootElement(),
+      ),
     [measureBodyCellRoot],
   );
 

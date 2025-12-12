@@ -158,7 +158,7 @@ const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
 const getTitle = () => {
   if (isEmbeddingEajs()) {
     // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.
-    return "This embed is powered by the Metabase Embedded Analytics JS";
+    return "This embed is powered by Metabase";
   }
 
   // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.

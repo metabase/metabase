@@ -17,7 +17,7 @@ import { SnippetFormModal } from "./SnippetFormModal";
 
 const TOP_SNIPPETS_FOLDER = {
   id: "root",
-  name: "Top folder",
+  name: "SQL snippets",
   can_write: true,
 };
 

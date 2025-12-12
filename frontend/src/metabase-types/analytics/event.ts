@@ -552,6 +552,12 @@ export type DataStudioEvent =
   | DataStudioGlossaryEditedEvent
   | DataStudioGlossaryDeletedEvent;
 
+export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
+  event: "unsaved_changes_warning_displayed";
+  triggered_from: "document";
+  target_id: number | null;
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -604,4 +610,5 @@ export type SimpleEvent =
   | BookmarkEvent
   | RemoteSyncEvent
   | ClickActionPerformedEvent
-  | DataStudioEvent;
+  | DataStudioEvent
+  | UnsavedChangesWarningDisplayedEvent;

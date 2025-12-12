@@ -5,6 +5,16 @@ description: Guide Clojure and ClojureScript development using REPL-driven workf
 
 # Clojure Development Skill
 
+## Tool Preference
+
+When `clojure-mcp` tools are available (e.g., `clojure_eval`, `clojure_edit`), **always use them**
+instead of shell commands like `./bin/mage -repl`. The MCP tools provide:
+- Direct REPL integration without shell escaping issues
+- Better error messages and feedback
+- Structural Clojure editing that prevents syntax errors
+
+Only fall back to `./bin/mage` commands when clojure-mcp is not available.
+
 @./../_shared/development-workflow.md
 @./../_shared/clojure-style-guide.md
 @./../_shared/clojure-commands.md

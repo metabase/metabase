@@ -36,7 +36,7 @@
    [metabase.product-feedback.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
-   [metabase.queries.api]
+   [metabase.queries-rest.api]
    [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
@@ -141,8 +141,8 @@
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
    "/cache"                (+auth 'metabase.cache.api)
-   "/card"                 (+auth metabase.queries.api/card-routes)
-   "/cards"                (+auth metabase.queries.api/cards-routes)
+   "/card"                 (+auth metabase.queries-rest.api/card-routes)
+   "/cards"                (+auth metabase.queries-rest.api/cards-routes)
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)

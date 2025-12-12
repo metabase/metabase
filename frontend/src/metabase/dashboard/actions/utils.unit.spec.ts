@@ -7,7 +7,8 @@ import {
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 
-import { createMockCard } from "./../../../metabase-types/api/mocks/card";
+import { createMockCard } from "../../../metabase-types/api/mocks/card";
+
 import {
   getDashCardMoveToTabUndoMessage,
   hasDashboardChanged,

@@ -1,4 +1,4 @@
-import type { TableId } from "metabase-types/api";
+import type { SegmentId, TableId } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
@@ -11,10 +11,12 @@ const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
 
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
+  breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
   Transforms: {
     header: () => cy.findByTestId("transforms-header"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
+    editDefinition: () => cy.findByRole("link", { name: "Edit definition" }),
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
@@ -32,6 +34,7 @@ export const DataStudio = {
   },
   Dependencies: {
     content: () => cy.findByTestId("transforms-dependencies-content"),
+    graph: () => cy.findByTestId("dependency-graph"),
   },
   PythonLibrary: {
     header: () => cy.findByTestId("python-library-header"),
@@ -64,15 +67,23 @@ export const DataStudio = {
     overviewPage: () => cy.findByTestId("table-overview-page"),
     fieldsPage: () => cy.findByTestId("table-fields-page"),
     dependenciesPage: () => cy.findByTestId("table-dependencies-page"),
+    segmentsPage: () => cy.findByTestId("table-segments-page"),
     header: () => cy.findByTestId("table-pane-header"),
     nameInput: () => cy.findByTestId("table-name-input"),
     moreMenu: () => DataStudio.Tables.header().icon("ellipsis"),
     overviewTab: () => DataStudio.Tables.header().findByText("Overview"),
     fieldsTab: () => DataStudio.Tables.header().findByText("Fields"),
+    segmentsTab: () => DataStudio.Tables.header().findByText("Segments"),
     dependenciesTab: () =>
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}`),
+    visitSegmentsPage: (tableId: TableId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/segments`),
+    visitSegmentPage: (tableId: TableId, segmentId: SegmentId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/segments/${segmentId}`),
+    visitNewSegmentPage: (tableId: TableId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/segments/new`),
     moreMenuViewTable: () =>
       popover()
         .findByRole("menuitem", { name: /View/ })

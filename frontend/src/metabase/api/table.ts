@@ -174,6 +174,14 @@ export const {
   useDiscardTableFieldValuesMutation,
 } = tableApi;
 
+/**
+ * Fetches metadata for all foreign tables referenced by the given table's foreign key fields.
+ * Dispatches queries to load metadata for each related table.
+ *
+ * @param table - The table containing foreign key fields
+ * @param params - Optional parameters to pass to the metadata query (excluding 'id')
+ * @returns A thunk function that dispatches metadata fetch actions for all foreign tables
+ */
 export const fetchForeignTablesMetadata = (
   table: Table,
   params?: Omit<GetTableQueryMetadataRequest, "id">,

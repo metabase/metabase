@@ -137,7 +137,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Guest").should("be.visible").should("be.checked");
 
-        cy.findByTestId("upsell-gem").should("not.exist");
+        cy.findByTestId("upsell-card").should("not.exist");
 
         cy.findByText("Chart").click();
         cy.findByText("Next").click();
@@ -186,7 +186,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       cy.findAllByTestId("parameter-widget").find("input").type("Foo Bar Baz");
 
       getEmbedSidebar().within(() => {
-        cy.findByTestId("upsell-gem").should("not.exist");
+        cy.findByTestId("upsell-card").should("not.exist");
       });
 
       H.publishChanges("card");

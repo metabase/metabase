@@ -153,7 +153,7 @@ function DataModelContent({ params }: Props) {
 
   return (
     <Flex
-      bg="accent-gray-light"
+      bg="bg-light"
       data-testid="data-model"
       h="100%"
       style={{ overflow: "auto" }}

@@ -191,11 +191,23 @@ describe("documents", () => {
     H.documentSaveButton().should("exist");
 
     H.newButton("Document").click();
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "unsaved_changes_warning_displayed",
+      },
+      1,
+    );
     H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
 
     H.documentContent().should("have.text", "This is some content");
 
     H.newButton("Document").click();
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "unsaved_changes_warning_displayed",
+      },
+      2,
+    );
     H.leaveConfirmationModal()
       .findByRole("button", { name: "Discard changes" })
       .click();

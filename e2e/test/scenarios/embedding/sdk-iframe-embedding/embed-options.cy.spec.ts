@@ -7,7 +7,7 @@ import {
 const { H } = cy;
 
 describe("OSS", { tags: "@OSS" }, () => {
-  describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
+  describe("scenarios > embedding > Modular embedding (ex EAJS)", () => {
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({
         withToken: false,
@@ -45,7 +45,7 @@ describe("OSS", { tags: "@OSS" }, () => {
 });
 
 describe("EE without license", () => {
-  describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
+  describe("scenarios > embedding > Modular embedding (EAJS)", () => {
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({
         withToken: "starter",
@@ -83,7 +83,7 @@ describe("EE without license", () => {
 });
 
 describe("EE", () => {
-  describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
+  describe("scenarios > embedding > Modular embedding (EAJS)", () => {
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
       H.setupSMTP();

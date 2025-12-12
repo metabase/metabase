@@ -77,7 +77,11 @@ export const useRootCollectionPickerItems = (
   const items = useMemo(() => {
     const collectionItems: CollectionPickerItem[] = [];
 
-    if (options.showLibrary && libraryCollection) {
+    if (
+      options.showLibrary &&
+      libraryCollection &&
+      options.namespace !== "snippets"
+    ) {
       collectionItems.push({
         ...libraryCollection,
         model: "collection",
@@ -106,7 +110,7 @@ export const useRootCollectionPickerItems = (
           location: "/",
           name:
             options.namespace === "snippets"
-              ? t`Top folder`
+              ? t`SQL snippets`
               : rootCollection.name,
         });
       } else if (rootCollectionError) {
