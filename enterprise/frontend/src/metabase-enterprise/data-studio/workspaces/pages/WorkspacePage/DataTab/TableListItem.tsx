@@ -57,6 +57,8 @@ export const TableListItem = ({
   };
 
   const isClickable = tableId && onTableClick;
+  const hasResults = type === "output" && !!tableId;
+  const displayTooltip = type !== "input" && !hasResults;
 
   return (
     <Box
@@ -72,9 +74,19 @@ export const TableListItem = ({
         size={14}
         c={type === "input" ? "saturated-green" : "saturated-yellow"}
       />
-      <Text className={S.name} c="text-dark" truncate>
-        {displayName}
-      </Text>
+      <Tooltip
+        label={t`Run transform to see the results`}
+        position="top"
+        disabled={!displayTooltip}
+      >
+        <Text
+          className={S.name}
+          c={displayTooltip ? "text-light" : "text-dark"}
+          truncate
+        >
+          {displayName}
+        </Text>
+      </Tooltip>
       {hasChanges && <StatusDot status="changed" />}
       {type === "output" && transform && (
         <Tooltip label={t`Open transform`} position="top">

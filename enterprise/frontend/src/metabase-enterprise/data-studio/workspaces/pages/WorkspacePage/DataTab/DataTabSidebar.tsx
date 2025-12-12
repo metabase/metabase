@@ -49,7 +49,7 @@ export const DataTabSidebar = ({
             const hasChanges = originalTransform
               ? hasTransformEdits(originalTransform)
               : false;
-            const tableId = table.isolated.id;
+            const tableId = table.isolated.table_id;
 
             return (
               <TableListItem

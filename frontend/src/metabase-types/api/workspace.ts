@@ -149,21 +149,22 @@ export type WorkspaceTransformRef = {
 export type CreateWorkspaceTransformResponse = WorkspaceTransform;
 
 export type WorkspaceInputTable = {
-  id: number | null;
   db_id: DatabaseId;
   schema: string;
+  table_id: number | null;
   table: string;
 };
 
 export type WorkspaceOutputTableEntry = {
-  transform_id: number | null;
-  db_id: DatabaseId;
+  transform_id: string;
   schema: string;
   table: string;
+  table_id: number | null;
 };
 
 export type WorkspaceOutputTable = {
-  external: WorkspaceOutputTableEntry;
+  db_id: DatabaseId;
+  global: WorkspaceOutputTableEntry;
   isolated: WorkspaceOutputTableEntry;
 };
 
