@@ -49,7 +49,11 @@
   (into {} (map (fn [[k v]] [(u/qualified-name k)
                              ;; Preserve nils and don't stringify maps/lists so existing error handling
                              ;; catches those
-                             (cond-> v (and (some? v) (not (seq v))) str)]) m)))
+                             (cond-> v
+                               (and (some? v)
+                                    (not (or (seq? v)
+                                             (map? v)))) str)]))
+        m))
 
 (def ^:private transform-attributes
   "Transform user attributes, which are maps of strings->strings. There may be some existing values in the database
