@@ -399,10 +399,17 @@
    :data       {:a [:b :c] :b [:d]}}
 
   -test {:doc      "run all mage tests"
-         :requires [[mage.core-test] ;; loads the actual tests
-                    [mage.util :as u]
-                    [clojure.test]]
-         :task     (let [results (clojure.test/run-all-tests (re-pattern "^mage\\..*"))]
+         :requires [[clojure.string :as str]
+                    [clojure.test]
+                    [mage.core-test] ;; loads the actual tests
+                    [mage.util :as u]]
+         :arg-schema [:sequential [:string {:name "test-matching-pattern"}]]
+         :task     (let [{:keys [arguments]} (task! parsed)
+                         pattern (if (seq arguments)
+                                   (str "^mage\\..*(" (str/join "|" arguments) ").*")
+                                   "^mage\\..*")
+                         _ (u/debug ["test regex matching pattern" pattern])
+                         results (clojure.test/run-all-tests (re-pattern pattern))]
                      (if (zero? (+ (:fail results) (:error results)))
                        (println (c/green "All mage tests passed!"))
                        (do
