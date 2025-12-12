@@ -102,6 +102,10 @@ export const DataStudio = {
     },
   },
   Library: {
+    visit: () => {
+      cy.visit("/data-studio/library");
+      DataStudio.Library.libraryPage().should("be.visible");
+    },
     emptyPage: () =>
       libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
