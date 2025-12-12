@@ -161,6 +161,9 @@ describe(suiteTitle, () => {
       H.setEmbeddingParameter("PK->Name", "Editable");
 
       H.getSimpleEmbedIframeContent().within(() => {
+        // Wait for the last parameter widget is rendered
+        cy.findByText("PK->Name").should("be.visible");
+
         cy.log("internal remapping - select N5 and verify it shows N5");
         cy.findAllByTestId("parameter-widget")
           .filter(':contains("Internal")')
@@ -299,6 +302,9 @@ describe(suiteTitle, () => {
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.findByText("Question with Remapping").should("be.visible");
+
+        // Wait for the last parameter widget is rendered
+        cy.findByText("PK->Name").should("be.visible");
 
         cy.log("internal remapping - select N5 and verify it shows N5");
         cy.findAllByTestId("parameter-widget")
