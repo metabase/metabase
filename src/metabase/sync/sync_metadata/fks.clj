@@ -165,41 +165,6 @@
                                                                     :schema (:fk-table-schema fk-metadata))
                                   (sync-util/field-name-for-logging :name (:fk-column-name fk-metadata))))))))
 
-(mu/defn- clear-fk!
-  "Clears FK relationship for a field that no longer has an FK constraint in the database.
-  Updates fk_target_field_id to NULL and resets semantic_type to a sensible default."
-  [database :- i/DatabaseInstance
-   fk-metadata :- i/FKMetadataEntry]
-  (let [field-query {:select [:f.id]
-                     :from [[:metabase_field :f]]
-                     :join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                     :left-join [[:metabase_field_user_settings :u] [:= :f.id :u.field_id]]
-                     :where [:and
-                             ;; ensure we are not overriding user-set fks
-                             [:= :u.fk_target_field_id nil]
-                             [:= :u.semantic_type nil]
-
-                             [:= :t.db_id (:id database)]
-                             [:= [:lower :f.name] (u/lower-case-en (:fk-column-name fk-metadata))]
-                             [:= [:lower :t.name] (u/lower-case-en (:fk-table-name fk-metadata))]
-                             [:= [:lower :t.schema] (some-> (:fk-table-schema fk-metadata) u/lower-case-en)]
-                             [:= :f.active true]
-                             [:not= :f.visibility_type "retired"]
-                             [:= :t.active true]
-                             [:= :t.visibility_type nil]
-                             ;; Only clear fields that currently have FK relationships
-                             [:not= :f.fk_target_field_id nil]]}
-        update-query {:update :metabase_field
-                      :set {:fk_target_field_id nil
-                            :semantic_type "type/Category"}
-                      :where [:in :id field-query]}]
-    (u/prog1 (t2/query update-query)
-      (when (pos? <>)
-        (log/info (u/format-color 'yellow "Clearing dropped foreign key from %s %s"
-                                  (sync-util/table-name-for-logging :name (:fk-table-name fk-metadata)
-                                                                    :schema (:fk-table-schema fk-metadata))
-                                  (sync-util/field-name-for-logging :name (:fk-column-name fk-metadata))))))))
-
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
   ([table :- i/TableInstance]
