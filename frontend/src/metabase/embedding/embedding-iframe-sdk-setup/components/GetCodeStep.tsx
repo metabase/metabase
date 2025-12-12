@@ -46,11 +46,8 @@ export const GetCodeStep = () => {
 
   const handleServerSnippetCopied = () => trackSnippetCopied("server");
 
-  // We center content when embedding is not enabled to show empty state text
-  const justify = !resource?.enable_embedding ? "center" : undefined;
-
   return (
-    <Stack gap="md" align="center" justify={justify} flex={1}>
+    <Stack gap="md" align="center" flex={1}>
       {!isGuestEmbed && <MetabaseAccountSection />}
 
       {!isGuestEmbed || resource?.enable_embedding ? (
