@@ -8,6 +8,9 @@ import type {
   ItemType,
   NodeKey,
   RootNode,
+  SchemaNode,
+  TableNode,
+  TablePickerTreeNode,
   TreeNode,
   TreePath,
 } from "./types";
@@ -235,4 +238,88 @@ export function getFiltersCount(filters: FilterState): number {
   }
 
   return count;
+}
+
+export function transformToTreeTableFormat(
+  tree: RootNode,
+  canFlattenSingleSchema = true,
+): TablePickerTreeNode[] {
+  return sort(tree.children).map((database) =>
+    transformDatabaseNode(database, canFlattenSingleSchema),
+  );
+}
+
+function transformDatabaseNode(
+  database: DatabaseNode,
+  canFlattenSingleSchema: boolean,
+): TablePickerTreeNode {
+  const { databaseId } = database.value;
+  const isSingleSchema = database.children.length === 1;
+  const shouldFlattenSchema = canFlattenSingleSchema && isSingleSchema;
+
+  let children: TablePickerTreeNode[];
+  if (shouldFlattenSchema && database.children[0]) {
+    const singleSchema = database.children[0];
+    if (singleSchema.label === UNNAMED_SCHEMA_NAME || isSingleSchema) {
+      children = sort(singleSchema.children).map((table) =>
+        transformTableNode(table),
+      );
+    } else {
+      children = sort(database.children).map((schema) =>
+        transformSchemaNode(schema),
+      );
+    }
+  } else {
+    children = sort(database.children).map((schema) =>
+      transformSchemaNode(schema),
+    );
+  }
+
+  return {
+    id: `db:${databaseId}`,
+    type: "database",
+    name: database.label,
+    nodeKey: database.key,
+    databaseId,
+    children,
+  };
+}
+
+function transformSchemaNode(schema: SchemaNode): TablePickerTreeNode {
+  const { databaseId, schemaName } = schema.value;
+
+  return {
+    id: `schema:${databaseId}:${schemaName}`,
+    type: "schema",
+    name: schema.label,
+    nodeKey: schema.key,
+    databaseId,
+    schemaName,
+    children: sort(schema.children).map((table) => transformTableNode(table)),
+  };
+}
+
+function transformTableNode(table: TableNode): TablePickerTreeNode {
+  const { databaseId, schemaName, tableId } = table.value;
+
+  return {
+    id: `table:${tableId}`,
+    type: "table",
+    name: table.label,
+    nodeKey: table.key,
+    databaseId,
+    schemaName,
+    tableId,
+    table: table.table,
+    isDisabled: table.disabled,
+    children: [],
+  };
+}
+
+export function nodeToTreePath(node: TablePickerTreeNode): TreePath {
+  return {
+    databaseId: node.databaseId,
+    schemaName: node.schemaName,
+    tableId: node.tableId,
+  };
 }

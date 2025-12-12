@@ -7,3 +7,4 @@ export * from "./Indicator";
 export * from "./Kbd";
 export * from "./Stepper";
 export * from "./Timeline";
+export * from "./TreeTable";

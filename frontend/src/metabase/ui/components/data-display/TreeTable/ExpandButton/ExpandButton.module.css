@@ -1,0 +1,21 @@
+.expandButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.expandButtonHidden {
+  visibility: hidden;
+}
+
+.expandIcon {
+  transition: transform 0.15s ease;
+}
+
+.expandIconExpanded {
+  transform: rotate(90deg);
+}

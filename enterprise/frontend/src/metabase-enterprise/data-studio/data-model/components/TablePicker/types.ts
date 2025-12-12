@@ -1,3 +1,4 @@
+import type { TreeNodeData } from "metabase/ui";
 import type {
   DatabaseId,
   SchemaName,
@@ -9,6 +10,19 @@ import type {
 } from "metabase-types/api";
 
 export type NodeKey = string;
+
+export interface TablePickerTreeNode extends TreeNodeData {
+  id: string;
+  type: "database" | "schema" | "table";
+  name: string;
+  nodeKey: string;
+  databaseId?: DatabaseId;
+  schemaName?: SchemaName;
+  tableId?: TableId;
+  table?: Table;
+  isDisabled?: boolean;
+  children?: TablePickerTreeNode[];
+}
 
 export type TreePath = {
   databaseId?: DatabaseId;

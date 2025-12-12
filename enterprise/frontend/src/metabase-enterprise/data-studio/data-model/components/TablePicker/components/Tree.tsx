@@ -7,22 +7,17 @@ import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext
 import {
   getSchemaId,
   getSchemaTableIds,
-  isItemSelected,
   noManuallySelectedDatabaseChildrenTables,
   noManuallySelectedSchemas,
   noManuallySelectedTables,
-  toggleDatabaseSelection,
-  toggleSchemaSelection,
 } from "../bulk-selection.utils";
 import { useExpandedState, useTableLoader } from "../hooks";
 import type {
   ChangeOptions,
   DatabaseNode,
-  ExpandedItem,
   ExpandedSchemaItem,
-  FlatItem,
+  RootNode,
   SchemaItem,
-  TreeNode,
   TreePath,
 } from "../types";
 import {
@@ -31,12 +26,11 @@ import {
   isSchemaItem,
   isSchemaNode,
   isTableNode,
-  isTableOrSchemaNode,
 } from "../types";
 import { flatten } from "../utils";
 
 import { EmptyState } from "./EmptyState";
-import { TablePickerResults } from "./Results";
+import { TablePickerTreeTable } from "./TablePickerTreeTable";
 
 interface Props {
   path: TreePath;
@@ -57,11 +51,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader();
 
-  /**
-   * onUpdateCallback depends on the items, and they are changing very often.
-   * We don't want to re-register it each time items changed.
-   * Otherwise, it causes an infinity loop.
-   */
   const items = useMemo(
     () =>
       flatten(tree, {
@@ -77,9 +66,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     [tree, isExpanded, selectedTables, selectedSchemas, selectedDatabases],
   );
 
-  /**
-   * Initial loading of all databases, schemas, tables for the current path
-   */
   useEffect(() => {
     reload(path);
   }, [reload, path]);
@@ -87,9 +73,16 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   const refetchSelectedTables = useCallback(() => {
     const selectedTableNodes = items
       .filter((item) => isTableNode(item))
-      .filter((tableNode) => selectedTables.has(tableNode.value.tableId));
+      .filter((tableNode) => {
+        const tableId = tableNode.value?.tableId;
+        return tableId != null && selectedTables.has(tableId as TableId);
+      });
 
-    selectedTableNodes.forEach((tableNode) => reload(tableNode.value));
+    selectedTableNodes.forEach((tableNode) => {
+      if (tableNode.value) {
+        reload(tableNode.value);
+      }
+    });
   }, [items, reload, selectedTables]);
 
   useEffect(() => {
@@ -112,7 +105,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   }, [items, reload]);
 
   useEffect(() => {
-    // Load tables when schemas are expanded
     const expandedSchemas = items.filter(
       (item) =>
         item.type === "schema" && item.isExpanded && item.children.length === 0,
@@ -129,7 +121,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   const isEmpty = items.length === 0;
 
   useEffect(() => {
-    // When we detect only one database, we automatically select and expand it.
     const databases = tree.children.filter((node) => isDatabaseNode(node));
 
     if (databases.length !== 1) {
@@ -148,8 +139,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
 
   useEffect(() => {
-    // When we detect a database with just one schema, we automatically
-    // select and expand that schema.
     const database = tree.children.find(
       (node) => isDatabaseNode(node) && node.value.databaseId === databaseId,
     );
@@ -177,7 +166,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
 
     expandedSelectedSchemaItems.forEach((schemaItem) => {
       if (noManuallySelectedTables(schemaItem, items, selectedTables)) {
-        // when expanding a schema, let's select all the tables in that schema
         const tableIds = getSchemaTableIds(schemaItem, items);
         if (tableIds.length === 0) {
           return;
@@ -220,7 +208,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         noManuallySelectedSchemas(dbNode, items, selectedSchemas) &&
         noManuallySelectedDatabaseChildrenTables(dbNode, selectedTables)
       ) {
-        // single schema that's not rendered and it's not part of flattened list
         if (dbNode.children.length === 1) {
           setSelectedTables((prev) => {
             const newSet = new Set(prev);
@@ -230,7 +217,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
             return newSet;
           });
         } else {
-          // when expanding a db, let's select all the schemas in that db
           const schemaIds = dbNode.children.map((schemaNode) =>
             getSchemaId(schemaNode),
           );
@@ -270,117 +256,14 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     return <EmptyState title={t`No data to show`} />;
   }
 
-  function onItemToggle(item: FlatItem) {
-    const selection = {
-      tables: selectedTables,
-      schemas: selectedSchemas,
-      databases: selectedDatabases,
-    };
-    const isSelected = isItemSelected(item as TreeNode, selection);
-
-    if (isTableNode(item)) {
-      const tableId = item.value?.tableId ?? -1;
-      if (tableId === -1) {
-        return;
-      }
-      setSelectedTables((prev) => {
-        const newSet = new Set(prev);
-        isSelected === "yes" ? newSet.delete(tableId) : newSet.add(tableId);
-
-        // Navigate to the table when checking/unchecking in multi-select mode
-        // This keeps it active in the URL without expanding it
-        if (item.value) {
-          onChange(item.value);
-        }
-
-        return newSet;
-      });
-    }
-    if (isDatabaseItem(item)) {
-      if (item.children.length > 0) {
-        const { schemas, tables, databases } = toggleDatabaseSelection(
-          item,
-          selection,
-        );
-        setSelectedSchemas(schemas);
-        setSelectedTables(tables);
-        setSelectedDatabases(databases);
-      } else {
-        const databaseId = item.value?.databaseId;
-        if (databaseId) {
-          setSelectedDatabases((prev) => toggleInSet(prev, databaseId));
-        }
-      }
-    }
-    if (isSchemaItem(item)) {
-      if (item.children.length > 0) {
-        const { tables } = toggleSchemaSelection(item, selection);
-        setSelectedTables(tables);
-      } else {
-        setSelectedSchemas((prev) => {
-          const newSet = new Set(prev);
-          const schemaId = getSchemaId(item);
-          if (!schemaId) {
-            return newSet;
-          }
-          if (schemaId && newSet.has(schemaId)) {
-            newSet.delete(schemaId);
-          } else {
-            newSet.add(schemaId);
-          }
-          return newSet;
-        });
-      }
-    }
-  }
-
-  function onItemRangeSelect(rangeItems: FlatItem[], targetItem: FlatItem) {
-    const tableIds = rangeItems
-      .filter(
-        (rangeItem): rangeItem is ExpandedItem =>
-          rangeItem.isLoading === undefined,
-      )
-      .filter(isTableOrSchemaNode)
-      .map((rangeItem) =>
-        rangeItem.value?.tableId ? rangeItem.value.tableId : null,
-      )
-      .filter((tableId): tableId is TableId => tableId != null);
-
-    if (tableIds.length === 0) {
-      return;
-    }
-
-    setSelectedTables((prev) => {
-      const newSet = new Set(prev);
-      tableIds.forEach((tableId) => {
-        newSet.add(tableId);
-      });
-      return newSet;
-    });
-
-    if (isTableNode(targetItem) && targetItem.value) {
-      onChange(targetItem.value);
-    }
-  }
-
   return (
-    <TablePickerResults
-      items={items}
+    <TablePickerTreeTable
+      tree={tree as RootNode}
       path={path}
-      toggle={toggle}
-      onItemClick={onChange}
-      onItemToggle={onItemToggle}
-      onRangeSelect={onItemRangeSelect}
+      isExpanded={isExpanded}
+      onToggle={toggle}
+      onChange={onChange}
+      reload={reload}
     />
   );
-}
-
-function toggleInSet<T>(set: Set<T>, item: T) {
-  const newSet = new Set(set);
-  if (newSet.has(item)) {
-    newSet.delete(item);
-  } else {
-    newSet.add(item);
-  }
-  return newSet;
 }
