@@ -15,7 +15,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
-import { Box, Center, Flex, Stack } from "metabase/ui";
+import { Card, Center, Flex, Stack } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
@@ -100,13 +100,9 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
     <>
       <PageContainer
         pos="relative"
-        gap={0}
         data-testid="edit-snippet-page"
-        px={0}
         header={
           <SnippetHeader
-            px="3.5rem"
-            style={{ borderBottom: "1px solid var(--mb-color-border)" }}
             snippet={snippet}
             actions={
               <PaneHeaderActions
@@ -120,8 +116,16 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
           />
         }
       >
-        <Flex flex={1} w="100%">
-          <Box flex={1} className={S.editorContainer}>
+        <Flex flex={1} w="100%" gap="sm">
+          <Card
+            withBorder
+            p={0}
+            w="100%"
+            flex={1}
+            style={{
+              overflow: "hidden",
+            }}
+          >
             <CodeMirror
               value={content}
               onChange={setContent}
@@ -136,14 +140,16 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
                 highlightActiveLine: true,
               }}
             />
-          </Box>
-          <Stack w={320} gap="lg" p="md" bg="bg-white" className={S.sidebar}>
-            <SnippetDescriptionSection snippet={snippet} />
-            <EntityCreationInfo
-              createdAt={snippet.created_at}
-              creator={snippet.creator}
-            />
-          </Stack>
+          </Card>
+          <Card withBorder p="md" bg="bg-white" flex="0 0 320px">
+            <Stack gap="lg">
+              <SnippetDescriptionSection snippet={snippet} />
+              <EntityCreationInfo
+                createdAt={snippet.created_at}
+                creator={snippet.creator}
+              />
+            </Stack>
+          </Card>
         </Flex>
       </PageContainer>
       <LeaveRouteConfirmModal
