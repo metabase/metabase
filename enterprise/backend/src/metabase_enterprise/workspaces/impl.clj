@@ -21,9 +21,9 @@
                                               [:= :wo.workspace_id :workspace_input.workspace_id]
                                               [:= :wo.db_id :workspace_input.db_id]
                                               [:or
-                                               [:and [:= :wo.schema nil] [:= :workspace_input.schema nil]]
-                                               [:= :wo.schema :workspace_input.schema]]
-                                              [:= :wo.table :workspace_input.table]]}]]}))
+                                               [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
+                                               [:= :wo.global_schema :workspace_input.schema]]
+                                              [:= :wo.global_table :workspace_input.table]]}]]}))
 
 (defn- external-input->table
   [{:keys [schema table]}]
@@ -33,12 +33,12 @@
 (defn sync-transform-dependencies!
   "Analyze and persist dependencies for a workspace transform, then grant
    read access to external input tables."
-  [{workspace-id :id :as workspace} transform]
+  [{workspace-id :id, isolated-schema :schema :as workspace} transform]
   (let [analysis        (ws.deps/analyze-entity :transform transform)
-        _               (ws.deps/write-dependencies! workspace-id :transform (:ref_id transform) analysis)
+        _               (ws.deps/write-dependencies! workspace-id isolated-schema :transform (:ref_id transform) analysis)
         external-inputs (query-external-inputs workspace-id)]
     (if-not (:database_details workspace)
-      (log/warn "No database details, unable to grant read only access to the service account.")
+      (throw (ex-info "No database details, unable to grant read only access to the service account." {}))
       (when (seq external-inputs)
         (let [database (t2/select-one :model/Database :id (:database_id workspace))
               tables   (mapv external-input->table external-inputs)]
