@@ -2,6 +2,7 @@ import type {
   CreateWorkspaceRequest,
   CreateWorkspaceTransformRequest,
   CreateWorkspaceTransformResponse,
+  ExternalTransformsResponse,
   TransformDownstreamMapping,
   TransformId,
   TransformUpstreamMapping,
@@ -77,6 +78,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           idTag("workspace", id),
           idTag("workspace-transforms", id),
+          idTag("external-transforms", id),
           listTag("transform"),
           ...(global_id != null ? [idTag("transform", global_id)] : []),
         ]),
@@ -214,6 +216,18 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       transformResponse: (response: WorkspaceTransformsResponse) =>
         response.transforms,
     }),
+    getExternalTransforms: builder.query<
+      ExternalTransformsResponse["transforms"],
+      WorkspaceId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/external/transform`,
+      }),
+      providesTags: (_, __, id) => [idTag("external-transforms", id)],
+      transformResponse: (response: ExternalTransformsResponse) =>
+        response.transforms,
+    }),
     getWorkspaceTransform: builder.query<
       WorkspaceTransform,
       { workspaceId: WorkspaceId; transformId: string }
@@ -324,6 +338,7 @@ export const {
   useGetWorkspacesQuery,
   useGetWorkspaceQuery,
   useGetWorkspaceTransformsQuery,
+  useGetExternalTransformsQuery,
   useGetWorkspaceTransformQuery,
   useLazyGetWorkspaceTransformQuery,
   useCreateWorkspaceMutation,

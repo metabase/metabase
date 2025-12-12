@@ -54,6 +54,17 @@ export type WorkspaceTransformsResponse = {
   transforms: WorkspaceTransformItem[];
 };
 
+export type ExternalTransform = {
+  id: TransformId;
+  name: string;
+  source_type: Transform["source_type"];
+  checkout_disabled: string;
+};
+
+export type ExternalTransformsResponse = {
+  transforms: ExternalTransform[];
+};
+
 export type WorkspaceOutputTableRef = {
   transform_id: number | string | null;
   schema: string;

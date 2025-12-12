@@ -33,6 +33,7 @@ import {
   Text,
 } from "metabase/ui";
 import {
+  useGetExternalTransformsQuery,
   useGetWorkspaceQuery,
   useGetWorkspaceTablesQuery,
   useGetWorkspaceTransformsQuery,
@@ -115,7 +116,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
   const { data: workspaceTransforms = [] } = useGetWorkspaceTransformsQuery(id);
+  const { data: externalTransforms } = useGetExternalTransformsQuery(id);
+  const availableTransforms = externalTransforms ?? [];
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
+  const { data: aaallTransforms = [] } = useListTransformsQuery({});
   useRegisterMetabotContextProvider(async () => {
     if (!workspace?.database_id) {
       return;
@@ -139,22 +143,9 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     (db) => db.id === workspace?.database_id,
   );
 
-  const workspaceGlobalIds = useMemo(
-    () =>
-      new Set(
-        workspaceTransforms
-          .map((t) => t.global_id)
-          .filter((id): id is number => id != null),
-      ),
-    [workspaceTransforms],
-  );
-
   const dbTransforms = useMemo(
     () =>
       allDbTransforms.filter((t) => {
-        if (workspaceGlobalIds.has(t.id)) {
-          return false;
-        }
         // TODO: @uladzimirdev add guards
         if (t.source_type === "python") {
           return (
@@ -169,7 +160,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         }
         return false;
       }),
-    [allDbTransforms, sourceDb, workspaceGlobalIds],
+    [allDbTransforms, sourceDb],
   );
 
   const {
@@ -674,10 +665,18 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             <Tabs.Panel value="code" p="md">
               <CodeTab
                 activeTransformId={activeTransform?.id}
-                transforms={dbTransforms}
+                availableTransforms={availableTransforms}
                 workspaceId={workspace.id}
-                workspaceTransforms={allTransforms}
-                onTransformClick={(transform) => {
+                workspaceTransforms={workspaceTransforms}
+                onTransformClick={(externalTransform) => {
+                  const transform = aaallTransforms.find(
+                    (t) => "id" in t && t.id === externalTransform.id,
+                  );
+
+                  if (!transform) {
+                    return;
+                  }
+
                   addOpenedTransform(transform);
                   if (activeTable) {
                     setActiveTable(undefined);
