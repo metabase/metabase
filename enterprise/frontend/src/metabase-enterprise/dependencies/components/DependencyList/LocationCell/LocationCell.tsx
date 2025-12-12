@@ -3,7 +3,7 @@ import { Fragment } from "react";
 import { Box, FixedSizeIcon, Flex } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeLocationInfo } from "../../../../utils";
+import { getNodeLocationInfo } from "../../../utils";
 
 type LocationCellProps = {
   node: DependencyNode;

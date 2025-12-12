@@ -10,7 +10,7 @@ import {
   getNodeLabel,
   getNodeLastEditInfo,
   getNodeLocationInfo,
-} from "../../../utils";
+} from "../../utils";
 
 import { ErrorsCell } from "./ErrorsCell";
 import { LocationCell } from "./LocationCell";

@@ -7,7 +7,7 @@ import {
   PaneHeaderTabs,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
-export function ListHeader() {
+export function DependencyListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Broken`,
@@ -23,7 +23,7 @@ export function ListHeader() {
 
   return (
     <Stack gap="md">
-      <Title order={1} fz="sm" lh="1rem" fw="normal">{t`Tasks`}</Title>
+      <Title order={1} py="sm" fz="sm" lh="1rem" fw="normal">{t`Tasks`}</Title>
       <PaneHeaderTabs tabs={tabs} />
     </Stack>
   );

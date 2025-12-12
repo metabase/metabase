@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { Flex } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import { useListUnreferencedGraphNodesQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
@@ -11,8 +11,11 @@ import type {
   DependencyNode,
 } from "metabase-types/api";
 
+import { DependencyList } from "../../components/DependencyList";
+import { DependencyListBar } from "../../components/DependencyListBar";
+import { DependencyListEmptyState } from "../../components/DependencyListEmptyState";
+import { DependencyListHeader } from "../../components/DependencyListHeader";
 import { DependencyListPanel } from "../../components/DependencyListPanel";
-import { DependencyListView } from "../../components/DependencyListView";
 import type { DependencyFilterOptions } from "../../types";
 import {
   getCardTypes,
@@ -68,19 +71,32 @@ export function UnreferencedDependencyListPage() {
 
   return (
     <Flex h="100%">
-      <DependencyListView
-        nodes={nodes}
-        searchValue={searchValue}
-        filterOptions={filterOptions}
-        availableGroupTypes={AVAILABLE_GROUP_TYPES}
-        nothingFoundMessage={t`No unreferenced entities found.`}
-        error={error}
-        isFetching={isFetching}
-        isLoading={isLoading}
-        onSelect={setSelectedEntry}
-        onSearchValueChange={setSearchValue}
-        onFilterOptionsChange={setFilterOptions}
-      />
+      <Stack flex={1} px="3.5rem" py="md" gap="md">
+        <DependencyListHeader />
+        <DependencyListBar
+          searchValue={searchValue}
+          filterOptions={filterOptions}
+          availableGroupTypes={AVAILABLE_GROUP_TYPES}
+          isFetching={isFetching}
+          isLoading={isLoading}
+          onSearchValueChange={setSearchValue}
+          onFilterOptionsChange={setFilterOptions}
+        />
+        {isLoading || error != null || nodes.length === 0 ? (
+          <DependencyListEmptyState
+            label={t`No unreferenced dependencies found`}
+            isLoading={isLoading}
+            error={error}
+          />
+        ) : (
+          <DependencyList
+            nodes={nodes}
+            withErrorsColumn
+            withDependentsCountColumn
+            onSelect={setSelectedEntry}
+          />
+        )}
+      </Stack>
       {selectedNode != null && (
         <DependencyListPanel
           node={selectedNode}
