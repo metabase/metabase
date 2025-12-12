@@ -17,9 +17,10 @@
   (testing "Published tables grant query access via collection permissions only with data-studio enabled\n"
     (doseq [features             [#{} #{:data-studio}]
             collection-readable? [false true]
+            table-is-published?  [false true]
             view-data            [:unrestricted :blocked]]
-      (testing (format "with features %s, collection-readable? %s, view-data %s"
-                       (pr-str features) collection-readable? view-data)
+      (testing (format "with features %s, collection-readable? %s, table-is-published? %s, view-data %s"
+                       (pr-str features) collection-readable? table-is-published? view-data)
         (mt/with-premium-features features
           (let [mbql-query (mt/mbql-query venues)]
             (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
@@ -36,8 +37,8 @@
                   ;; Set up permissions on custom group: user cannot create queries, view-data varies
                   (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
                   (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
-                  ;; Publish the table and grant/revoke collection read permissions
-                  (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
+                  (when table-is-published?
+                    (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id}))
                   (if collection-readable?
                     (perms/grant-collection-read-permissions! group-id collection-id)
                     (do
@@ -49,9 +50,10 @@
                                                                     #{(perms/collection-read-path collection-id)}
                                                                     #{}))]
                     (perms/disable-perms-cache
-                      ;; Query is only runnable when: data-studio enabled AND collection readable AND view-data unrestricted
+                      ;; Query is only runnable when: data-studio enabled AND collection readable AND table published AND view-data unrestricted
                       (is (= (and (contains? features :data-studio)
                                   collection-readable?
+                                  table-is-published?
                                   (not= view-data :blocked))
                              (query-perms/can-run-query? mbql-query))))))))))))))
 
