@@ -56,5 +56,5 @@
                                         :metabot_id metabot-pk
                                         :name use-case)]
           (when-not profile
-            (log/warnf "No use case found for metabot %d with name %s" metabot-pk use-case))
+            (log/warnf "No profile found for metabot %d with use-case %s" metabot-pk use-case))
           profile))))
