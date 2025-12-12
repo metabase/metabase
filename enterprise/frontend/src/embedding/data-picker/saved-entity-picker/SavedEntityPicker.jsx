@@ -173,7 +173,11 @@ export const SavedEntityPicker = _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true, "exclude-archived": true }),
+    query: () => ({
+      tree: true,
+      "exclude-archived": true,
+      namespaces: ["", "shared-tenant-collection", "tenant-specific"],
+    }),
   }),
   connect(mapStateToProps),
 )(InnerSavedEntityPicker);

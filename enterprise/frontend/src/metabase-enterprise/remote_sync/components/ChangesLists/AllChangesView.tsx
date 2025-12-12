@@ -44,17 +44,29 @@ export const AllChangesView = ({
 }: AllChangesViewProps) => {
   const { data: collectionTree = [] } = useListCollectionsTreeQuery();
 
-  const collectionMap = useMemo(() => {
-    const map = buildCollectionMap(collectionTree);
+  // Fetch collection tree for shared-tenant-collections namespace
+  // This is needed to show changes in tenant collections that have is_remote_synced=true
+  const { data: tenantCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "shared-tenant-collection",
+  });
 
+  const collectionMap = useMemo(() => {
+    const map = new Map([
+      ...buildCollectionMap(collectionTree),
+      ...buildCollectionMap(tenantCollectionTree),
+    ]);
+
+    // Add all synced collections to the map, including those from namespaces.
+    // This ensures that collections from namespaces like "shared-tenant-collection"
+    // are available when building collection path segments.
     collections.forEach((c) => {
-      if (typeof c.id === "number" && !map.has(c.id)) {
+      if (typeof c.id === "number") {
         map.set(c.id, c);
       }
     });
 
     return map;
-  }, [collectionTree, collections]);
+  }, [collectionTree, tenantCollectionTree, collections]);
 
   const hasRemovals = useMemo(() => {
     return (

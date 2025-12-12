@@ -49,3 +49,8 @@ export const canUserCreateNativeQueries = createSelector(
   [getUser],
   (user) => user?.permissions?.can_create_native_queries ?? false,
 );
+
+export const getUserCanWriteToCollections = createSelector(
+  [getUser],
+  (user) => user?.can_write_any_collection,
+);

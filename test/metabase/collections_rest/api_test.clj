@@ -74,7 +74,7 @@
                  :name                "Our analytics"
                  :authority_level     nil
                  :is_personal         false
-                 :is_remote_synced    nil
+                 :is_remote_synced    false
                  :id                  "root"
                  :can_restore         false
                  :can_delete          false}
@@ -363,6 +363,7 @@
           (testing "Make sure we get the expected collections when collection-id is nil"
             (let [collections (#'api.collection/select-collections {:archived                       false
                                                                     :exclude-other-user-collections false
+                                                                    :namespaces #{nil}
                                                                     :shallow                        true
                                                                     :permissions-set                #{"/"}})]
               (is (= #{{:name "A"}
@@ -376,6 +377,7 @@
           (testing "Make sure we get the expected collections when collection-id is an integer"
             (let [collections (#'api.collection/select-collections {:archived                       false
                                                                     :exclude-other-user-collections false
+                                                                    :namespaces #{nil}
                                                                     :shallow                        true
                                                                     :collection-id                  (:id a)
                                                                     :permissions-set                #{"/"}})]
@@ -499,6 +501,39 @@
             (testing "?namespace=stamps"
               (is (= []
                      (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=stamps")))))))))))
+
+(deftest collection-tree-namespaces-parameter-test
+  (testing "GET /api/collection/tree"
+    (testing "namespaces parameter allows specifying multiple namespaces"
+      (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Collection"}
+                     :model/Collection {coins-id :id} {:name "Coin Collection", :namespace "currency"}
+                     :model/Collection {stamps-id :id} {:name "Stamp Collection", :namespace "stamps"}]
+        (let [ids [normal-id coins-id stamps-id]]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coins-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) stamps-id)
+
+          (testing "single namespace via namespaces param"
+            (is (= [{:name "Coin Collection", :children []}]
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree?namespaces=currency")))))
+
+          (testing "multiple namespaces via repeated namespaces param"
+            (is (= [{:name "Coin Collection", :children []}
+                    {:name "Stamp Collection", :children []}]
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree" :namespaces ["currency" "stamps"])))))
+
+          (testing "empty string in namespaces matches nil namespace (default collections)"
+            (is (= [{:name "Normal Collection", :children []}]
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree?namespaces=")))))
+
+          (testing "combining nil namespace with other namespaces"
+            (is (= [{:name "Coin Collection", :children []}
+                    {:name "Normal Collection", :children []}]
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree" :namespaces ["currency" ""]))
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree" :namespaces ["currency" nil])))))
+
+          (testing "namespace and namespaces params are mutually exclusive"
+            (is (= "Invalid Request."
+                   (mt/user-http-request :rasta :get 400 "collection/tree?namespace=currency&namespaces=stamps")))))))))
 
 (deftest collection-tree-elide-collections-with-no-permissions-test
   (testing "GET /api/collection/tree"
@@ -680,6 +715,7 @@
                   :can_write           true
                   :can_delete          false
                   :can_restore         false
+                  :collection_namespace nil
                   :id                  card-id
                   :archived            false
                   :location            nil
@@ -1350,6 +1386,7 @@
                            :id                                       "root"
                            :authority_level                          nil
                            :can_write                                true
+                           :is_remote_synced false
                            :is_personal                              false}]
     :effective_location  "/"
     :parent_id           nil
@@ -1542,6 +1579,7 @@
                  :name                                     "Our analytics",
                  :id                                       false,
                  :can_write                                true
+                 :is_remote_synced false
                  :is_personal                              false}
                 {:name              "Rasta Toucan's Personal Collection",
                  :id                true,
@@ -1566,6 +1604,7 @@
               :authority_level     nil
               :parent_id           nil
               :is_personal         false
+              :is_remote_synced false
               :can_delete          false}
              (with-some-children-of-collection! nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
@@ -2360,6 +2399,33 @@
               (is (contains? collection-names "Normal Collection Test"))
               (is (contains? collection-names "Remote Synced Collection Test")))))))))
 
+(deftest fetch-root-items-shared-tenant-collection-namespace-test
+  (testing "GET /api/collection/root/items"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (testing "collections with namespace 'shared-tenant-collection' at root are returned when namespace parameter is set"
+          (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Root Collection"
+                                                            :location "/"}
+                         :model/Collection {tenant-id :id} {:name "Shared Tenant Collection"
+                                                            :location "/"
+                                                            :namespace "shared-tenant-collection"}]
+            (letfn [(collection-names [items]
+                      (->> (:data items)
+                           (filter #(and (= (:model %) "collection")
+                                         (#{normal-id tenant-id} (:id %))))
+                           (map :name)))]
+              (mt/with-temporary-setting-values [use-tenants true]
+                (testing "should only show collections in the default namespace by default"
+                  (is (= ["Normal Root Collection"]
+                         (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items")))))
+                (testing "should show shared-tenant-collection namespace when requested"
+                  (is (= ["Shared Tenant Collection"]
+                         (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items?namespace=shared-tenant-collection"))))))
+              (mt/with-temporary-setting-values [use-tenants false]
+                (testing "should not show shared tenant collection when setting is off"
+                  (is (empty?
+                       (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items?namespace=shared-tenant-collection")))))))))))))
+
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
 (defn- api-get-root-collection-children
@@ -2538,7 +2604,7 @@
                    :namespace "snippets"}
                   (mt/user-http-request :crowberto :post 200 "collection"
                                         {:name       collection-name
-                                         :descrption "My SQL Snippets"
+                                         :description "My SQL Snippets"
                                          :namespace  "snippets"})))
           (finally
             (t2/delete! :model/Collection :name collection-name)))))))
@@ -2576,19 +2642,18 @@
 
 (deftest create-child-collection-explicit-namespace-fails-test
   (testing "POST /api/collection"
-    (testing "Child collection should use explicit namespace when provided (even if nil)"
+    (testing "Child collection should use explicit namespace when provided (unless nil)"
       (mt/with-model-cleanup [:model/Collection]
         (let [;; Create a parent collection with snippets namespace
               parent-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                       {:name "Parent Snippets Collection"
                                                        :namespace "snippets"})
               parent-id (:id parent-collection)]
-          ;; Create child collection with explicit nil namespace should use nil (not inherit)
           (is (= {:errors {:location "Collection must be in the same namespace as its parent"}}
                  (mt/user-http-request :crowberto :post 400 "collection"
                                        {:name "Child Collection"
                                         :parent_id parent-id
-                                        :namespace nil}))
+                                        :namespace "not-snippets"}))
               "Child namespace validation is still enforced"))))))
 
 (deftest create-root-collection-namespace-test
@@ -2988,7 +3053,7 @@
                  :model/Card card {}]
     (testing "Collections can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id collection)) {:parent_id (collection/trash-collection-id)})
-      (is (not (t2/exists? :model/Collection :location (collection/trash-path)))))
+      (is (not (t2/exists? :model/Collection :id (u/the-id collection) :location (collection/trash-path)))))
     (testing "Dashboards can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "dashboard/" (u/the-id dashboard)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Dashboard :collection_id (collection/trash-collection-id)))))

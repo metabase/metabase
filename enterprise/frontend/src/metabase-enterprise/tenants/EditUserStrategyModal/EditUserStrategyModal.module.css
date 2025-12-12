@@ -1,0 +1,8 @@
+.radioCard {
+  cursor: pointer;
+  border: 1px solid var(--mb-color-border);
+}
+
+.radioCard[data-checked] {
+  border-color: var(--mb-color-brand);
+}
