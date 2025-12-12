@@ -47,7 +47,7 @@ export const GetCodeStep = () => {
   const handleServerSnippetCopied = () => trackSnippetCopied("server");
 
   return (
-    <Stack gap="md" align="center" flex={1}>
+    <Stack gap="md" flex={1}>
       {!isGuestEmbed && <MetabaseAccountSection />}
 
       {!isGuestEmbed || resource?.enable_embedding ? (
