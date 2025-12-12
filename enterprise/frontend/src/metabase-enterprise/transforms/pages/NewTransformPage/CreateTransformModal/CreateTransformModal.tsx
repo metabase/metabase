@@ -188,8 +188,10 @@ function getInitialValues(
     targetSchema: schemas?.[0] || null,
     ...defaultValues,
     targetName: defaultValues.targetName
-      ? slugify(defaultValues.targetName)
-      : "",
+      ? defaultValues.targetName
+      : defaultValues.name
+        ? slugify(defaultValues.name)
+        : "",
     checkpointFilter: null,
     checkpointFilterUniqueKey: null,
     incremental: false,
