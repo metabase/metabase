@@ -3,7 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
        :clj  ([java-time.api :as t]
               [metabase.util.malli.fn :as mu.fn]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru :as lib.drill-thru]
@@ -20,6 +20,8 @@
    [metabase.lib.underlying :as lib.underlying]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel underlying-records-availability-test
   (testing "underlying-records is available for non-header clicks with at least one breakout"
