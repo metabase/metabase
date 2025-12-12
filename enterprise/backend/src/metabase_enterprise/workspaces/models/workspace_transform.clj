@@ -75,9 +75,23 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+;; copied from transforms model
+(defn- transform-source-in [m]
+  (-> m
+      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
+      mi/json-in))
+
+(defn- transform-source-out [m]
+  (-> m
+      mi/json-out-without-keywordization
+      (update-keys keyword)
+      (m/update-existing :query lib-be/normalize-query)
+      (m/update-existing :type keyword)
+      (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
+
 (t2/deftransforms :model/WorkspaceTransform
   {:ref_id {:in identity :out str/trim}
-   :source mi/transform-json
+   :source {:out transform-source-out, :in transform-source-in}
    :target mi/transform-json})
 
 (t2/define-before-insert :model/WorkspaceTransform
