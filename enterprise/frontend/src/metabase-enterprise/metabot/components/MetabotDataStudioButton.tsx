@@ -29,14 +29,17 @@ export const MetabotDataStudioButton = () => {
   return (
     <Tooltip label={label}>
       <ActionIcon
-        p="sm"
-        h="2.25rem"
-        w="2.25rem"
+        h="2rem"
+        w="2rem"
         disabled={disabled}
         aria-label={label}
         onClick={handleClick}
       >
-        <Icon c={disabled ? undefined : "text-primary"} name="metabot" />
+        <Icon
+          c={disabled ? undefined : "text-primary"}
+          name="metabot"
+          size={16}
+        />
       </ActionIcon>
     </Tooltip>
   );

@@ -35,9 +35,7 @@ describe("OSS", { tags: "@OSS" }, () => {
         resourceName: DASHBOARD_NAME,
       });
 
-      assertUpsellForOption("Allow people to drill through on data points");
-      assertUpsellForOption("Allow downloads");
-      assertUpsellForOption("Allow subscriptions");
+      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
     });
   });
 });
@@ -58,33 +56,16 @@ describe("EE without license", () => {
       mockEmbedJsToDevServer();
     });
 
-    it("should show upsell for Allow subscriptions option", () => {
+    it("should show upsell banner", () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: DASHBOARD_NAME,
       });
 
-      assertUpsellForOption("Allow people to drill through on data points");
-      assertUpsellForOption("Allow downloads");
-      assertUpsellForOption("Allow subscriptions");
+      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
     });
   });
 });
-
-function assertUpsellForOption(label: string) {
-  getEmbedSidebar()
-    .findByLabelText(label)
-    .closest("[data-testid=tooltip-warning]")
-    .icon("gem")
-    .realHover();
-
-  H.hovercard().should("contain.text", "Get more powerful embedding");
-  H.hovercard().should(
-    "contain.text",
-    "Upgrade to get access to embeds with single sign-on, drill through, advanced theming, the SDK for React, and more.",
-  );
-  H.hovercard().should("contain.text", "Upgrade to Metabase Pro");
-}
 
 describe(suiteTitle, () => {
   beforeEach(() => {
