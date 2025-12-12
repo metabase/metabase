@@ -24,7 +24,7 @@
   (t/to-millis-from-epoch (t/instant)))
 
 (def ^:private entities
-  [:card :transform])
+  [:card :transform :segment])
 
 (defn- check-entities!
   []

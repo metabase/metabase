@@ -11,7 +11,8 @@
 
 (def ^:private model->dependency-type
   {:model/Card :card
-   :model/Transform :transform})
+   :model/Transform :transform
+   :model/Segment :segment})
 
 (defmulti ^:private get-db-id
   "Gets the database id for a toucan instance"
@@ -24,7 +25,11 @@
 
 (defmethod get-db-id :model/Transform
   [toucan-instance]
-  (some-> toucan-instance :source :query :database))
+  (some-> toucan-instance :source :query lib/database-id))
+
+(defmethod get-db-id :model/Segment
+  [toucan-instance]
+  (some-> toucan-instance :definition lib/database-id))
 
 (defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
@@ -52,7 +57,7 @@
                        (t2/model instance) (:id instance))))))
 
 (mu/defn analyze-batch! :- :int
-  [type :- [:enum :card :transform]
+  [type :- [:enum :card :transform :segment]
    batch-size :- :int]
   (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
     (lib-be/with-metadata-provider-cache

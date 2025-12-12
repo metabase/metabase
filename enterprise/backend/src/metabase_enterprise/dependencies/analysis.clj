@@ -35,7 +35,7 @@
     entity-type))
 
 (defmethod check-entity :default
-  [_entity-type _entity-id]
+  [_metadata-provider _entity-type _entity-id]
   nil)
 
 (mu/defmethod check-entity :card :- [:set [:ref ::lib.schema.validate/error]]
@@ -69,3 +69,13 @@
                                seq)]
     (cond-> (check-query driver query)
       duplicated-fields (into duplicated-fields))))
+
+(mu/defmethod check-entity :segment :- [:set [:ref ::lib.schema.validate/error]]
+  [metadata-provider :- ::lib.schema.metadata/metadata-provider
+   _entity-type
+   segment-id        :- pos-int?]
+  (let [query (->> (lib.metadata/segment metadata-provider segment-id)
+                   :definition
+                   (lib/query metadata-provider))
+        driver (:engine (lib.metadata/database query))]
+    (check-query driver query)))

@@ -288,6 +288,18 @@
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object))))
 
+(derive ::check-segment-dependents :metabase/event)
+(derive :event/segment-create ::check-segment-dependents)
+(derive :event/segment-update ::check-segment-dependents)
+(derive :event/segment-delete ::check-segment-dependents)
+
+(methodical/defmethod events/publish-event! ::check-segment-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object)
+      (check-dependents :segment object))))
+
 (derive ::check-transform-dependents :metabase/event)
 (derive :event/transform-run-complete ::check-transform-dependents)
 

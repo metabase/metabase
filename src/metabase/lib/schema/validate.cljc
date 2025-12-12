@@ -24,8 +24,8 @@
 
 (mr/def ::validation-error
   [:map
-   [:type [:= :validate/validation-error]
-    :message :string]])
+   [:type [:= :validate/validation-error]]
+   [:message :string]])
 
 (mr/def ::error
   [:multi {:dispatch :type}

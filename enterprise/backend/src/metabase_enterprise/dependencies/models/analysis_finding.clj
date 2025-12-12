@@ -36,7 +36,8 @@
 
 (def ^:private table-info
   {:card [:model/Card :report_card :report_card.* :report_card.id]
-   :transform [:model/Transform :transform :transform.* :transform.id]})
+   :transform [:model/Transform :transform :transform.* :transform.id]
+   :segment [:model/Segment :segment :segment.* :segment.id]})
 
 (defn instances-for-analysis [type batch-size]
   (let [[model table-name table-wildcard table-id] (table-info type)]
