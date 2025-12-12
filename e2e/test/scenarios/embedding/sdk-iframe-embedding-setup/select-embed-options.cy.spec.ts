@@ -285,11 +285,10 @@ describe(suiteTitle, () => {
         expect(
           dashboardWidth,
           "EAJS preview should scale when opening a dashboard sidebar (EMB-1120)",
-        ).to.be.greaterThan(EXPECTED_APPROX_WIDTH - ERROR_TOLERANCE);
-        expect(
-          dashboardWidth,
-          "EAJS preview should scale when opening a dashboard sidebar (EMB-1120)",
-        ).to.be.lessThan(EXPECTED_APPROX_WIDTH + ERROR_TOLERANCE);
+        ).to.be.within(
+            EXPECTED_APPROX_WIDTH - ERROR_TOLERANCE,
+            EXPECTED_APPROX_WIDTH + ERROR_TOLERANCE
+        );
       });
     });
 
