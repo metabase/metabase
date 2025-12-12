@@ -40,6 +40,46 @@ is_sample: false
           name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")
           (or parent-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
+(defn generate-v58-collection-yaml
+  "Generates YAML content for a collection in v58 format.
+
+  In v58, remote-synced collections use `is_remote_synced: true` instead of
+  `type: remote-synced`. This helper is used to test backward compatibility
+  when importing exports from v58 Metabase instances into v57.
+
+  Args:
+    entity-id: The unique identifier for the collection.
+    name: The name of the collection.
+    parent-id: Optional parent collection ID.
+    is-remote-synced: Optional boolean for is_remote_synced field (default false).
+
+  Returns:
+    A string containing the v58-format YAML representation of the collection."
+  [entity-id name & {:keys [parent-id is-remote-synced]}]
+  (format "name: %s
+description: null
+entity_id: %s
+slug: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+archived: false
+type: null
+parent_id: %s
+personal_owner_id: null
+namespace: null
+authority_level: null
+serdes/meta:
+- id: %s
+  label: %s
+  model: Collection
+archive_operation_id: null
+archived_directly: null
+is_sample: false
+is_remote_synced: %s
+"
+          name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")
+          (or parent-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")
+          (if is-remote-synced "true" "false")))
+
 (defn generate-card-yaml
   "Generates YAML content for a card.
 
