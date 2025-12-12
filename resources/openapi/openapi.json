@@ -13417,7 +13417,7 @@
     },
     "/api/card/{card-id}/params/{param-key}/search/{query}" : {
       "get" : {
-        "description" : "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.\n\n    ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';\n     GET /api/card/1/params/abc/search/Orange\n\n  Currently limited to first 1000 results.",
+        "description" : "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.\n\n    ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';\n     GET /api/queries/1/params/abc/search/Orange\n\n  Currently limited to first 1000 results.",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -13460,7 +13460,7 @@
     },
     "/api/card/{card-id}/params/{param-key}/values" : {
       "get" : {
-        "description" : "Fetch possible values of the parameter whose ID is `:param-key`.\n\n    ;; fetch values for Card 1 parameter 'abc' that are possible\n    GET /api/card/1/params/abc/values",
+        "description" : "Fetch possible values of the parameter whose ID is `:param-key`.\n\n    ;; fetch values for Card 1 parameter 'abc' that are possible\n    GET /api/queries/1/params/abc/values",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -13681,7 +13681,7 @@
     },
     "/api/card/{id}" : {
       "delete" : {
-        "description" : "Hard delete a Card. To soft delete, use `PUT /api/card/:id`",
+        "description" : "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -14015,7 +14015,7 @@
     },
     "/api/card/{id}/params/{param-key}/remapping" : {
       "get" : {
-        "description" : "Fetch the remapped value for a given value of the parameter with ID `:param-key`.\n\n    ;; fetch the remapped value for Card 1 parameter 'abc' for value 100\n    GET /api/card/1/params/abc/remapping?value=100",
+        "description" : "Fetch the remapped value for a given value of the parameter with ID `:param-key`.\n\n    ;; fetch the remapped value for Card 1 parameter 'abc' for value 100\n    GET /api/queries/1/params/abc/remapping?value=100",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
