@@ -327,6 +327,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           idTag("workspace", workspaceId),
           idTag("workspace-transforms", workspaceId),
+          idTag("external-transforms", workspaceId),
           idTag("workspace-transform", transformId),
           tag("transform"),
         ]),
