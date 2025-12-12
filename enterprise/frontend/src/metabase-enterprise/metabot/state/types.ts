@@ -142,7 +142,7 @@ export interface MetabotState {
     MetabotUniqueConvoId,
     MetabotConverstationState | undefined
   >;
-  domainConversationIds: Record<MetabotFixedConvoId, MetabotUniqueConvoId>;
+  fixedConversationIds: Record<MetabotFixedConvoId, MetabotUniqueConvoId>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
 }

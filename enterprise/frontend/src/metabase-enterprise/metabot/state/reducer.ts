@@ -1,4 +1,5 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
@@ -10,16 +11,19 @@ import { sendAgentRequest } from "./actions";
 import {
   type ConvoPayloadAction,
   convoReducer,
-  createConversationId,
-  getConversation,
+  createConversation,
+  findFixedConversationId,
   getMetabotInitialState,
+  getRequestConversation,
+  getUniqueConversationId,
 } from "./reducer-utils";
-import type {
-  MetabotAgentChatMessage,
-  MetabotConvoId,
-  MetabotErrorMessage,
-  MetabotSuggestedTransform,
-  MetabotUserChatMessage,
+import {
+  type MetabotAgentChatMessage,
+  type MetabotConvoId,
+  type MetabotErrorMessage,
+  type MetabotSuggestedTransform,
+  type MetabotUserChatMessage,
+  isMetabotChatDomainId,
 } from "./types";
 import { createMessageId } from "./utils";
 
@@ -37,7 +41,7 @@ export const metabot = createSlice({
         convo,
         action: ConvoPayloadAction<Omit<MetabotUserChatMessage, "role">>,
       ) => {
-        const { id, message, ...rest } = action.payload;
+        const { id, message, convoId, ...rest } = action.payload;
         convo.errorMessages = [];
         convo.messages.push({ id, role: "user", ...rest, message } as any);
         convo.history.push({ id, role: "user", content: message });
@@ -143,45 +147,65 @@ export const metabot = createSlice({
     rewindStateToMessageId: convoReducer(
       (convo, action: ConvoPayloadAction<{ messageId: string }>) => {
         convo.isProcessing = false;
+
+        const id = action.payload.messageId;
         const messageIndex = convo.messages.findLastIndex((m) => id === m.id);
         if (messageIndex > -1) {
           convo.messages = convo.messages.slice(0, messageIndex);
         }
 
-        const id = action.payload.messageId;
         const historyIndex = convo.history.findLastIndex((h) => id === h.id);
         if (historyIndex > -1) {
           convo.history = convo.history.slice(0, historyIndex);
         }
       },
     ),
-    // TODO: implement a removeConversation method...
-    resetConversation: convoReducer((convo, _, state) => {
-      const oldConvoId = convo.conversationId;
-      const newConvId = createConversationId();
-      convo.conversationId = newConvId;
+    newConversation: (
+      state,
+      action: PayloadAction<{
+        convoId: MetabotConvoId;
+        visible: boolean;
+      }>,
+    ) => {
+      const { convoId, visible } = action.payload;
+      const isChatDomainId = isMetabotChatDomainId(convoId);
 
-      delete state.conversations[oldConvoId];
-      state.conversations[newConvId] = convo;
-      Object.entries(state.domainConversationIds).forEach(([key, value]) => {
-        if (value === oldConvoId) {
-          state.domainConversationIds[
-            key as keyof typeof state.domainConversationIds
-          ] = newConvId;
-        }
+      const newConvo = createConversation({
+        conversationId: isChatDomainId ? undefined : convoId,
+        visible,
       });
 
-      convo.messages = [];
-      convo.errorMessages = [];
-      convo.history = [];
-      convo.state = {};
-      convo.isProcessing = false;
-      convo.activeToolCalls = [];
-      convo.experimental.metabotReqIdOverride = undefined;
-      convo.experimental.developerMessage = "";
-      // TODO: think through how clearing / resetting conversations should clear certain resources
-      state.reactions.suggestedTransforms = [];
-    }),
+      state.conversations[newConvo.conversationId] = castDraft(newConvo);
+      if (isChatDomainId) {
+        const old_conversation_id = state.fixedConversationIds[convoId];
+        delete state.conversations[old_conversation_id];
+        state.fixedConversationIds[convoId] = newConvo.conversationId;
+      }
+    },
+    removeConversation: (
+      state,
+      action: PayloadAction<{
+        convoId: MetabotConvoId;
+      }>,
+    ) => {
+      const { convoId } = action.payload;
+      const conversation_id = getUniqueConversationId(state, convoId);
+      const fixedConvoId = findFixedConversationId(state, convoId);
+      if (fixedConvoId) {
+        const newConvo = createConversation();
+        state.conversations[newConvo.conversationId] = castDraft(newConvo);
+        state.fixedConversationIds[fixedConvoId] = newConvo.conversationId;
+      }
+      delete state.conversations[conversation_id];
+
+      // NOTE: let's eventually move this out
+      if (convoId === "omnibot") {
+        state.reactions.navigateToPath = null;
+        state.reactions.suggestedTransforms = [];
+      } else if (convoId === "inline_sql") {
+        state.reactions.suggestedCodeEdits = [];
+      }
+    },
     setIsProcessing: convoReducer(
       (state, action: ConvoPayloadAction<{ processing: boolean }>) => {
         state.isProcessing = action.payload.processing;
@@ -271,21 +295,14 @@ export const metabot = createSlice({
       .addCase(logout.pending, getMetabotInitialState)
       // streamed response handlers
       .addCase(sendAgentRequest.pending, (state, action) => {
-        // TODO: consolidate this
-        const convoId = action.meta.arg
-          .conversation_id as string as unknown as MetabotConvoId;
-        const convo = getConversation(state as any, convoId);
-
+        const convo = getRequestConversation(state, action);
         if (convo) {
           convo.isProcessing = true;
           convo.errorMessages = [];
         }
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
-        const convoId = action.meta.arg
-          .conversation_id as string as unknown as MetabotConvoId;
-        const convo = getConversation(state as any, convoId);
-
+        const convo = getRequestConversation(state, action);
         if (convo) {
           convo.state = { ...(action.payload?.state ?? {}) };
           convo.history = action.payload?.history?.slice() ?? [];
@@ -295,10 +312,7 @@ export const metabot = createSlice({
         }
       })
       .addCase(sendAgentRequest.rejected, (state, action) => {
-        const convoId = action.meta.arg
-          .conversation_id as string as unknown as MetabotConvoId;
-        const convo = getConversation(state as any, convoId);
-
+        const convo = getRequestConversation(state, action);
         if (convo) {
           // aborted requests needs special state adjustments
           if (action.payload?.type === "abort") {

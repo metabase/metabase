@@ -75,7 +75,7 @@ function setup(
   setupEnterprisePlugins();
 
   const _metabotState = getMetabotInitialState();
-  const metabotConvoId = _metabotState.domainConversationIds.omnibot;
+  const metabotConvoId = _metabotState.fixedConversationIds.omnibot;
   const metabotState = assocIn(
     _metabotState,
     ["conversations", metabotConvoId, "visible"],
@@ -117,7 +117,7 @@ function setup(
     store,
     rerender,
     conversationIds: Object.keys(metabotState.conversations),
-    domainConversationIds: metabotState.domainConversationIds,
+    fixedConversationIds: metabotState.fixedConversationIds,
   };
 }
 
@@ -156,14 +156,10 @@ const assertNotVisible = async () =>
   });
 
 // NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
-const hideMetabot = (
-  dispatch: any,
-  conversation_id: MetabotConvoId = "omnibot",
-) => act(() => dispatch(setVisible({ conversation_id, visible: false })));
-const showMetabot = (
-  dispatch: any,
-  conversation_id: MetabotConvoId = "omnibot",
-) => act(() => dispatch(setVisible({ conversation_id, visible: true })));
+const hideMetabot = (dispatch: any, convoId: MetabotConvoId = "omnibot") =>
+  act(() => dispatch(setVisible({ convoId, visible: false })));
+const showMetabot = (dispatch: any, convoId: MetabotConvoId = "omnibot") =>
+  act(() => dispatch(setVisible({ convoId, visible: true })));
 
 const assertConversation = async (
   expectedMessages: ["user" | "agent", string][],
@@ -1126,16 +1122,12 @@ describe("metabot-streaming", () => {
       ]);
 
       const beforeResetState = getState();
-      expect(
-        _.omit(beforeResetState.messages[0], ["id", "conversation_id"]),
-      ).toStrictEqual({
+      expect(_.omit(beforeResetState.messages[0], ["id"])).toStrictEqual({
         role: "user",
         type: "text",
         message: "Who is your favorite?",
       });
-      expect(
-        _.omit(beforeResetState.messages[1], ["id", "conversation_id"]),
-      ).toStrictEqual({
+      expect(_.omit(beforeResetState.messages[1], ["id"])).toStrictEqual({
         role: "agent",
         type: "text",
         message: "You, but don't tell anyone.",
@@ -1161,7 +1153,7 @@ describe("metabot-streaming", () => {
             id: "1",
             type: "text",
             message: longMsg,
-            conversation_id: "omnibot",
+            convoId: "omnibot",
           }),
         );
       });
@@ -1176,7 +1168,7 @@ describe("metabot-streaming", () => {
             id: "2",
             type: "text",
             message: longMsg,
-            conversation_id: "omnibot",
+            convoId: "omnibot",
           }),
         );
       });

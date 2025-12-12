@@ -11,7 +11,7 @@ export const getMetabotQuickLinks = () => {
       key="metabot"
       path="metabot/new"
       component={(props) => {
-        const { startNewConversation } = useMetabotAgent();
+        const { submitInput } = useMetabotAgent("omnibot");
         const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();
 
@@ -19,7 +19,7 @@ export const getMetabotQuickLinks = () => {
           dispatch(replace("/"));
 
           if (prompt) {
-            startNewConversation(prompt);
+            submitInput(prompt, { focusInput: true });
           }
         });
 

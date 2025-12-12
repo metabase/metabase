@@ -21,22 +21,29 @@ import {
   getMetabotRequestId,
   getMetabotVisible,
   getProfileOverride,
-  getUniqueConversationId,
-  resetConversation as resetConversationAction,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
 
-export const useMetabotAgent = (convoId: MetabotConvoId = "omnibot") => {
+import { useMetaboConversationManager } from "./use-metabot-conversation-manager";
+
+export const useMetabotConversation = (
+  initialConvoId: MetabotConvoId = "omnibot",
+) => {
   const dispatch = useDispatch();
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();
 
-  const conversation_id = useSelector((state) =>
-    getUniqueConversationId(state as any, convoId),
-  );
+  // TODO startNewConversation kinda sucks because calling this will get make a new
+  // conversation_id BUT all the methods that were returned from useMetabotConversation
+  // will still have a stale reference to the old value. on the flipside moving this to
+  // a also screws things up... you could update all the methods to use a ref, but then
+  // your selector values will be from a different conversation than your new one :(
+  const { conversationId: conversation_id, startNewConversation } =
+    useMetaboConversationManager(initialConvoId);
+
   const metabotRequestId = useSelector((state: any) =>
     getMetabotRequestId(state, conversation_id),
   );
@@ -46,19 +53,14 @@ export const useMetabotAgent = (convoId: MetabotConvoId = "omnibot") => {
 
   const setVisible = useCallback(
     (visible: boolean) =>
-      dispatch(setVisibleAction({ conversation_id, visible })),
+      dispatch(setVisibleAction({ convoId: conversation_id, visible })),
     [dispatch, conversation_id],
   );
 
   const setProfileOverride = useCallback(
     (profile: string | undefined) => {
-      dispatch(setProfileOverrideAction({ conversation_id, profile }));
+      dispatch(setProfileOverrideAction({ convoId: conversation_id, profile }));
     },
-    [dispatch, conversation_id],
-  );
-
-  const resetConversation = useCallback(
-    () => dispatch(resetConversationAction(conversation_id)),
     [dispatch, conversation_id],
   );
 
@@ -78,6 +80,7 @@ export const useMetabotAgent = (convoId: MetabotConvoId = "omnibot") => {
       options?: {
         profile?: string | undefined;
         preventOpenSidebar?: boolean;
+        focusInput?: boolean;
       },
     ) => {
       setProfileOverride(options?.profile);
@@ -86,14 +89,17 @@ export const useMetabotAgent = (convoId: MetabotConvoId = "omnibot") => {
         setVisible(true);
       }
 
-      const context = await getChatContext();
+      if (options?.focusInput) {
+        promptInputRef?.current?.focus();
+      }
+
       const action = await dispatch(
         submitInputAction({
           ...(typeof prompt === "string"
             ? { type: "text", message: prompt }
             : prompt),
-          context,
-          conversation_id,
+          context: await getChatContext(),
+          conversationId: conversation_id,
           metabot_id: metabotRequestId,
         }),
       );
@@ -115,6 +121,7 @@ export const useMetabotAgent = (convoId: MetabotConvoId = "omnibot") => {
       setVisible,
       visible,
       conversation_id,
+      promptInputRef,
     ],
   );
 
@@ -126,7 +133,7 @@ export const useMetabotAgent = (convoId: MetabotConvoId = "omnibot") => {
           messageId,
           context,
           metabot_id: metabotRequestId,
-          conversation_id,
+          conversationId: conversation_id,
         }),
       );
       if (isFulfilled(action)) {
@@ -146,24 +153,11 @@ export const useMetabotAgent = (convoId: MetabotConvoId = "omnibot") => {
     dispatch(cancelInflightAgentRequests(conversation_id));
   }, [dispatch, conversation_id]);
 
-  const startNewConversation = useCallback(
-    async (message: string) => {
-      await resetConversation();
-      setVisible(true);
-      if (message) {
-        submitInput(message);
-      }
-      promptInputRef?.current?.focus();
-    },
-    [resetConversation, setVisible, promptInputRef, submitInput],
-  );
-
   return {
     prompt,
     setPrompt,
     promptInputRef,
     visible,
-    resetConversation,
     setVisible,
     startNewConversation,
     submitInput,

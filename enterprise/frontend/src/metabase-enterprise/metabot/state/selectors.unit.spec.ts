@@ -11,7 +11,7 @@ function setup(messages: MetabotChatMessage[]) {
   setupEnterprisePlugins();
 
   const state = getMetabotInitialState();
-  const convoId = state.domainConversationIds.omnibot;
+  const convoId = state.fixedConversationIds.omnibot;
   const visibleState = assocIn(
     state,
     ["conversations", convoId, "visible"],

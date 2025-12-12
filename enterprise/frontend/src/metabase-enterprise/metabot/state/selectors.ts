@@ -101,7 +101,7 @@ export const getUniqueConversationId = createSelector(
   [getMetabotState, getConversationId],
   (state, convoId): MetabotUniqueConvoId => {
     return isMetabotChatDomainId(convoId)
-      ? state.domainConversationIds[convoId]
+      ? state.fixedConversationIds[convoId]
       : convoId;
   },
 );

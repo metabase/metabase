@@ -15,7 +15,7 @@ export const MetabotResetLongChatButton = () => {
           display="inline"
           c="brand"
           td="underline"
-          onClick={() => metabot.resetConversation()}
+          onClick={() => metabot.startNewConversation()}
         >{c("'it' refers to a chat with an AI agent")
           .t`clear it`}</UnstyledButton>
       )}.`}

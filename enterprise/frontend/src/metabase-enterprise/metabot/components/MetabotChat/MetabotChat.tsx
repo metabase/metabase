@@ -62,6 +62,11 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
+  const handleResetChat = () => {
+    metabot.startNewConversation();
+    suggestedPromptsReq.refetch();
+  };
+
   const handleClose = () => {
     handleResetInput();
     metabot.setVisible(false);
@@ -111,7 +116,7 @@ export const MetabotChat = ({
           <Flex gap="sm">
             <Tooltip label={t`Clear conversation`} position="bottom">
               <ActionIcon
-                onClick={() => metabot.resetConversation()}
+                onClick={handleResetChat}
                 data-testid="metabot-reset-chat"
               >
                 <Icon c="text-primary" name="revert" />

@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import type { MetabotConfig } from "../components/Metabot";
 
-import { useMetabotAgent } from "./use-metabot-agent";
+import { useMetabotConversation } from "./use-metabot-agent";
 
 export const useMetabotChatHandlers = (
   config?: Partial<Pick<MetabotConfig, "preventRetryMessage">>,
@@ -13,7 +13,7 @@ export const useMetabotChatHandlers = (
     promptInputRef,
     submitInput,
     retryMessage,
-  } = useMetabotAgent();
+  } = useMetabotConversation();
 
   const handleSubmitInput = useCallback(
     (input: string) => {
