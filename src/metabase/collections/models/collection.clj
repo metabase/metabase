@@ -1528,18 +1528,18 @@
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
-  (assert-valid-remote-synced-parent collection)
   (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   ;; Inherit is_remote_synced from parent if not explicitly set
   (let [parent-is-remote-synced? (when-let [parent-id (and location (location-path->parent-id location))]
                                    (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id))]
-    (-> collection
-        (assoc :slug (slugify collection-name))
-        (cond->
-         (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
-         (and (not (contains? collection :is_remote_synced))
-              parent-is-remote-synced?)
-         (assoc :is_remote_synced true)))))
+    (u/prog1 (-> collection
+                 (assoc :slug (slugify collection-name))
+                 (cond->
+                  (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+                  (and (not (contains? collection :is_remote_synced))
+                       parent-is-remote-synced?)
+                  (assoc :is_remote_synced true)))
+      (assert-valid-remote-synced-parent <>))))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -1708,10 +1708,7 @@
         (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
-    ;; (3.5) Check remote-synced validation rules
-    (when-not *clearing-remote-sync*
-      (let [merged-collection (merge collection-before-updates collection-updates)]
-        (assert-valid-remote-synced-parent merged-collection)))
+
     ;; (3.6) Check that the parent collection allows this collection to be there
     (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (3.7) Check if it's a semantic-library collection that can't be updated
@@ -1723,9 +1720,11 @@
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; slugify the collection name in case it's changed in the output; the results of this will get passed along
     ;; to Toucan's `update!` impl
-    (cond-> collection-updates
-      (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
-      collection-name (assoc :slug (slugify collection-name)))))
+    (u/prog1 (cond-> collection-updates
+               (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+               collection-name (assoc :slug (slugify collection-name)))
+      (when-not *clearing-remote-sync*
+        (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
