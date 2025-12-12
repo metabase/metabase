@@ -7,19 +7,29 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { Box, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { DatabaseId, TableId, Transform } from "metabase-types/api";
+import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { useTablePreview } from "./useTablePreview";
 
 interface DataTabProps {
+  workspaceId: number;
   databaseId: DatabaseId | null;
   tableId: TableId | null;
-  transform?: Transform;
+  transformId?: string;
 }
 
-export function DataTab({ databaseId, tableId }: DataTabProps) {
+export function DataTab({
+  workspaceId,
+  databaseId,
+  tableId,
+  transformId,
+}: DataTabProps) {
   const { data: table } = useGetTableQuery(
     tableId ? { id: tableId } : skipToken,
+  );
+  const { data: transform } = useGetWorkspaceTransformQuery(
+    transformId ? { workspaceId, transformId } : skipToken,
   );
   const metadata = useMemo(
     () =>
@@ -40,6 +50,7 @@ export function DataTab({ databaseId, tableId }: DataTabProps) {
     databaseId,
     tableId,
     metadata,
+    last_transform_run_time: transform?.last_run_at,
   });
 
   if (!databaseId || !tableId) {

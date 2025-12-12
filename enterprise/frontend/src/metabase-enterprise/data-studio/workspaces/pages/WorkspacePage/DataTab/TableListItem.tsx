@@ -52,7 +52,7 @@ export const TableListItem = ({
 
   const handleTableClick = () => {
     if (tableId && onTableClick) {
-      onTableClick({ tableId, name, schema });
+      onTableClick({ tableId, name, schema, transformId: transform?.ref_id });
     }
   };
 

@@ -22,6 +22,7 @@ export interface OpenTable {
   tableId: TableId;
   name: string;
   schema?: string | null;
+  transformId?: string;
 }
 
 export interface EditedTransform {
