@@ -8,11 +8,16 @@ import {
 } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { parseNumber } from "metabase/lib/number";
 import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
-import type { DashboardId, QuestionDashboardCard } from "metabase-types/api";
+import {
+  type DashboardId,
+  type QuestionDashboardCard,
+  isBaseEntityID,
+} from "metabase-types/api";
 import type { StoreDashboard } from "metabase-types/store";
 
 export const useCommonDashboardParams = ({
@@ -126,13 +131,9 @@ const findDashboardById = (
   dashboardId: DashboardId,
   dashboards: Record<DashboardId, StoreDashboard>,
 ): StoreDashboard | null => {
-  if (typeof dashboardId === "number") {
-    return dashboards[dashboardId] ?? null;
-  }
-
   // Lookup via entity ids.
   // Dashboards are a mapping of numeric id to dashboard.
-  if (typeof dashboardId === "string") {
+  if (isBaseEntityID(dashboardId)) {
     return (
       Object.values(dashboards).find(
         (dashboard) => dashboard.entity_id === dashboardId,
@@ -140,5 +141,13 @@ const findDashboardById = (
     );
   }
 
+  if (isNumericStringOrNumber(dashboardId)) {
+    return dashboards[dashboardId] ?? null;
+  }
+
   return null;
 };
+
+function isNumericStringOrNumber(value: string | number): boolean {
+  return parseNumber(String(value)) !== null;
+}
