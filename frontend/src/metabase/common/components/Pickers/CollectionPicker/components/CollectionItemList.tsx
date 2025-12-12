@@ -1,24 +1,8 @@
 import { useListCollectionItemsQuery } from "metabase/api";
 import { useOmniPickerContext } from "metabase/common/components/EntityPicker/context";
-import type { CollectionItemModel } from "metabase-types/api";
 
 import { ItemList, type OmniPickerItem } from "../../../EntityPicker";
-
-const validCollectionModels = new Set([
-  "collection",
-  "dashboard",
-  "document",
-  "card",
-  "dataset",
-  "metric",
-  "table",
-]);
-
-const isValidModel = (model: OmniPickerItem['model']): model is CollectionItemModel =>
-  validCollectionModels.has(model);
-
-const getValidCollectionItemModels = (models: OmniPickerItem['model'][]): CollectionItemModel[] =>
-  models.filter(isValidModel);
+import { getValidCollectionItemModels } from "../../../EntityPicker/utils";
 
 export const CollectionItemList = ({
   parentItem,
@@ -30,7 +14,7 @@ export const CollectionItemList = ({
   const { models } = useOmniPickerContext();
 
   const {
-    data: items,
+    data: collectionItems,
     error,
     isLoading,
   } = useListCollectionItemsQuery({

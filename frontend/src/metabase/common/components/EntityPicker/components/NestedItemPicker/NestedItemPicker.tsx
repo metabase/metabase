@@ -3,6 +3,7 @@ import { CollectionItemPickerResolver } from "metabase/common/components/Pickers
 import { Box, Flex } from "metabase/ui";
 
 import { useOmniPickerContext } from "../../context";
+import { useSwitchToSearchFolder } from "../../hooks/use-switch-to-search-folder";
 import { AutoScrollBox } from "../AutoScrollBox";
 import { RootItemList } from "../ItemList/RootItemList";
 
@@ -16,6 +17,7 @@ export function NestedItemPicker() {
   } = useOmniPickerContext();
 
   const folderPath = path.filter(isFolderItem);
+  useSwitchToSearchFolder();
 
   return (
     <div

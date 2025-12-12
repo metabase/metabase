@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react"
-
-import { Box } from "metabase/ui"
+import { useMemo } from "react"
 
 import { OmniPickerContext } from "../context"
+import { useGetPathFromValue } from "../hooks/use-get-path-from-value"
 import type { OmniPickerItem } from "../types"
 import { getItemFunctions } from "../utils"
 
@@ -12,6 +11,7 @@ import { NestedItemPicker } from "./NestedItemPicker"
 
 export type EntityPickerProps = {
   models: OmniPickerItem["model"];
+  searchQuery?: string;
   initialValue?: OmniPickerItem;
   onChange: (value: OmniPickerItem) => void;
   onCancel?: () => void;
@@ -25,6 +25,7 @@ export type EntityPickerProps = {
 
 export function EntityPicker({
   models,
+  searchQuery,
   initialValue,
   onChange,
   onCancel,
@@ -34,7 +35,9 @@ export function EntityPicker({
   isDisabledItem: _isDisabledItem,
   isSelectableItem: _isSelectableItem,
 }: EntityPickerProps) {
-  const [path, setPath] = useState<OmniPickerItem[]>([]);
+  const [path, setPath, { isLoadingPath }] = useGetPathFromValue({
+      value: initialValue
+  });
 
   const {
     isFolderItem,
@@ -54,11 +57,12 @@ export function EntityPicker({
     _isDisabledItem,
     _isSelectableItem,
   ]);
-  console.log({ options });
+
 
   return (
     <OmniPickerContext.Provider value={{
       models,
+      searchQuery,
       initialValue,
       isFolderItem,
       isHiddenItem,

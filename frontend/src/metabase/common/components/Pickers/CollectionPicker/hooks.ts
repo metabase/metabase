@@ -8,16 +8,17 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
+import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, CollectionNamespace, Dashboard } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "../../EntityPicker";
 import { useOmniPickerContext } from "../../EntityPicker/context";
 import type { OmniPickerItem } from "../../EntityPicker/types";
-
+import { getValidCollectionItemModels } from "../../EntityPicker/utils";
 
 const personalCollectionsRoot: OmniPickerItem = {
   ...PERSONAL_COLLECTIONS,
@@ -48,8 +49,7 @@ const getNamespacesFromModels = (models: OmniPickerItem["model"][]): CollectionN
  * c) a top level folder including all personal collections (admin only)
  */
 export const useRootCollectionPickerItems = () => {
-  const { options, models } = useOmniPickerContext();
-  const currentUser = useSelector(getUser);
+  const { options, models, searchQuery } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
   const namespaces = getNamespacesFromModels(models);
 
@@ -57,12 +57,8 @@ export const useRootCollectionPickerItems = () => {
     useListDatabasesQuery(undefined, { skip: !options.showDatabases });
   const databases = databaseData?.data ?? [];
 
-  const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
-    useGetCollectionQuery(
-      currentUser?.personal_collection_id
-        ? { id: currentUser.personal_collection_id }
-        : skipToken,
-    );
+  const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
+    useGetPersonalCollection();
 
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection({
@@ -73,15 +69,16 @@ export const useRootCollectionPickerItems = () => {
     data: personalCollectionItems,
     isLoading: isLoadingPersonalCollectionItems,
   } = useListCollectionItemsQuery(
-    currentUser?.personal_collection_id
+    personalCollection
       ? {
-          id: currentUser?.personal_collection_id,
+          id: personalCollection.id,
           models: ["collection", "dashboard"],
           limit: 0, // we only want total number of items
         }
       : skipToken,
   );
   const totalPersonalCollectionItems = personalCollectionItems?.total ?? 0;
+
 
   const {
     data: rootCollection,
@@ -91,6 +88,16 @@ export const useRootCollectionPickerItems = () => {
 
   const items = useMemo(() => {
     const collectionItems: OmniPickerItem[] = [];
+    const validCollectionModels = getValidCollectionItemModels(models);
+
+    if (searchQuery) {
+      collectionItems.push({
+        id: "search-results",
+        model: "collection",
+        name: t`Search results for "${searchQuery}"`,
+        below: validCollectionModels,
+      })
+    }
 
     if (
       options.showLibrary &&
@@ -102,6 +109,17 @@ export const useRootCollectionPickerItems = () => {
         model: "collection",
         can_write: false,
         location: "/",
+      });
+    }
+
+    if(options.showRecents) {
+      collectionItems.push({
+        id: "recents",
+        name: t`Recent items`,
+        model: "collection",
+        can_write: true,
+        location: "/",
+        here: validCollectionModels,
       });
     }
 
@@ -124,6 +142,7 @@ export const useRootCollectionPickerItems = () => {
           model: "collection",
           here: ["collection"],
           location: "/",
+          below: validCollectionModels,
           name:
             namespaces.includes("snippets")
               ? t`SQL snippets`
@@ -143,25 +162,30 @@ export const useRootCollectionPickerItems = () => {
 
     if (
       options.showPersonalCollections &&
-      namespaces.includes("snippets") &&
-      currentUser &&
+      !namespaces.includes("snippets") &&
       !!personalCollection
     ) {
       collectionItems.push({
         ...personalCollection,
         here: totalPersonalCollectionItems ? ["collection"] : [],
+        below: totalPersonalCollectionItems ? validCollectionModels : [],
         model: "collection",
         can_write: true,
       });
 
       if (isAdmin) {
-        collectionItems.push(personalCollectionsRoot);
+        collectionItems.push({
+          ...personalCollectionsRoot,
+          here: ["collection"],
+          below: validCollectionModels,
+          location: "/",
+        });
       }
     }
 
     return collectionItems;
   }, [
-    currentUser,
+    searchQuery,
     personalCollection,
     rootCollection,
     isAdmin,
@@ -171,18 +195,19 @@ export const useRootCollectionPickerItems = () => {
     totalPersonalCollectionItems,
     libraryCollection,
     namespaces,
+    models,
   ]);
 
   const isLoading =
     isLoadingDatabases ||
     isLoadingRootCollecton ||
-    isLoadingPersonalCollecton ||
+    isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
 
   return { items, isLoading };
 };
 
-export const useEnsureCollectionSelected = ({
+export const useEnsureCollectionSelected = ({ // TODO: figure out if we need this or if it can just be part of backparsing logic
   currentCollection,
   currentDashboard,
   enabled,

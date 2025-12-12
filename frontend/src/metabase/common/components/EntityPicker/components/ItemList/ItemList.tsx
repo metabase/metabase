@@ -20,7 +20,11 @@ import type { OmniPickerItem } from "../../types";
 import { getEntityPickerIcon, isSelectedItem } from "../../utils";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
-import { PickerColumn } from "./ItemList.styled";
+const PickerColumn = ({ children, ...props }: { children: React.ReactNode }) => (
+  <Box w="345px" p="1rem" {...props}>
+    {children}
+  </Box>
+);
 
 interface ItemListProps {
   pathIndex: number;
@@ -71,7 +75,7 @@ export function ItemList ({
 
   if (isLoading && !filteredItems) {
     return (
-      <Box miw={310} h="100%" aria-label={t`Loading...`}>
+      <Box w={310} h="100%" aria-label={t`Loading...`}>
         <Center p="lg" h="100%">
           <DelayedLoadingSpinner delay={300} />
         </Center>

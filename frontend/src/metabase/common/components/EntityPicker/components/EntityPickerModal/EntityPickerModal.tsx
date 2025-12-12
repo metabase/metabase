@@ -16,6 +16,7 @@ import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import resizeObserver from "metabase/lib/resize-observer";
 import {
+  ActionIcon,
   Box,
   Flex,
   Icon,
@@ -140,6 +141,7 @@ export function EntityPickerModal<
   recentsContext = DEFAULT_RECENTS_CONTEXT,
   onClose,
   onConfirm,
+  onChange,
   onItemSelect,
   isLoadingTabs = false,
   disableCloseOnEscape = false,
@@ -328,34 +330,6 @@ export function EntityPickerModal<
     [tabFolderState],
   );
 
-  const handleQueryChange = useCallback(
-    (newSearchQuery: string) => {
-      setSearchQuery(newSearchQuery);
-
-      // automatically switch to search tab
-      if (newSearchQuery) {
-        handleTabChange(SEARCH_TAB_ID);
-
-        if (!searchQuery) {
-          setSearchScope(selectedFolder ? "folder" : "everywhere");
-        }
-      }
-
-      // restore previous tab when clearing search while on search tab
-      if (searchQuery && !newSearchQuery && selectedTabId === SEARCH_TAB_ID) {
-        handleTabChange(previousTabId ?? initialTabId);
-      }
-    },
-    [
-      selectedFolder,
-      searchQuery,
-      selectedTabId,
-      previousTabId,
-      initialTabId,
-      handleTabChange,
-    ],
-  );
-
   useEffect(() => {
     setSelectedTabId(initialTabId);
   }, [initialTabId]);
@@ -429,10 +403,10 @@ export function EntityPickerModal<
         <Modal.Header
           px="2.5rem"
           pt="1rem"
-          pb={hasTabs ? "1rem" : "1.5rem"}
+          pb="1rem"
           bg="var(--mb-color-background)"
         >
-          <Modal.Title id={titleId} lh="2.5rem">
+          <Modal.Title id={titleId} fz="lg">
             {title}
           </Modal.Title>
           <Modal.CloseButton size={21} pos="relative" top="1px" />
@@ -448,18 +422,28 @@ export function EntityPickerModal<
                 miw={400}
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
                 value={searchQuery}
-                onChange={(e) => handleQueryChange(e.target.value ?? "")}
+                onChange={(e) => setSearchQuery(e.target.value ?? "")}
+                rightSection={searchQuery.length ? (
+                  <ActionIcon onClick={() => setSearchQuery("")}>
+                    <Icon
+                      name="close"
+                      size={16}
+                    />
+                  </ActionIcon>
+                ): null}
               />
             </Box>
           )}
           {!isLoadingTabs && !isLoadingRecentItems ? (
             <ErrorBoundary>
-                <EntityPicker
-                  models={models}
-                  initialValue={initialValue}
-                  onChange={handleSelectItem}
-                  options={hydratedOptions}
-                />
+              <EntityPicker
+                searchQuery={searchQuery}
+                models={models}
+                initialValue={initialValue}
+                onChange={onChange}
+                onCancel={onClose}
+                options={hydratedOptions}
+              />
               {/* {hasTabs ? (
                 <TabsView
                   selectedTabId={selectedTabId}
