@@ -42,6 +42,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
+   "MetabotUseCase"
    "TimelineEvent"
    "TransformJobTransformTag"
    "TransformTransformTag"])
