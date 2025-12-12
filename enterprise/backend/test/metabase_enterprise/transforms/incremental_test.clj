@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.u]
@@ -71,8 +71,8 @@
   [transform transform-type checkpoint-field run-opts]
   (if (= transform-type :python)
     (with-python-order-by! checkpoint-field
-      (transforms.i/execute! transform run-opts))
-    (transforms.i/execute! transform run-opts)))
+      (transforms.execute/execute! transform run-opts))
+    (transforms.execute/execute! transform run-opts)))
 
 (defn- make-incremental-source-query
   "Create a native query with optional checkpoint template tag."
@@ -447,7 +447,7 @@
                                                   :target-incremental-strategy {:type "append"}}}]
                   (mt/with-temp [:model/Transform transform transform-payload]
                     (testing "First run processes all existing data"
-                      (transforms.i/execute! transform {:run-method :manual})
+                      (transforms.execute/execute! transform {:run-method :manual})
                       (transforms.tu/wait-for-table target-table 10000)
                       (let [row-count (get-table-row-count target-table)
                             checkpoint (get-checkpoint-value (:id transform))]
@@ -456,7 +456,7 @@
                             (format "Checkpoint should be MAX(%s) = %s" (:field-name checkpoint-config) expected-second-checkpoint))))
 
                     (testing "Second run without new data adds nothing"
-                      (transforms.i/execute! transform {:run-method :manual})
+                      (transforms.execute/execute! transform {:run-method :manual})
                       (let [row-count (get-table-row-count target-table)]
                         (is (= 16 row-count) "Should still have 16 rows, no new data")))
 
@@ -472,7 +472,7 @@
                             :price 319.99
                             :created-at "2024-01-21T11:00:00"}]
 
-                          (transforms.i/execute! transform {:run-method :manual})
+                          (transforms.execute/execute! transform {:run-method :manual})
                           (let [row-count (get-table-row-count target-table)
                                 checkpoint (get-checkpoint-value (:id transform))]
                             (is (= 18 row-count) "Should append 2 new rows (16 + 2 = 18)")
@@ -515,7 +515,7 @@
                                               :target-incremental-strategy {:type "append"}}}]
               (mt/with-temp [:model/Transform transform transform-payload]
                 (testing "First run processes first batch"
-                  (transforms.i/execute! transform {:run-method :manual})
+                  (transforms.execute/execute! transform {:run-method :manual})
                   (transforms.tu/wait-for-table target-table 10000)
                   (let [row-count (get-table-row-count target-table)
                         distinct-timestamps (get-distinct-timestamp-count target-table)
@@ -526,7 +526,7 @@
                         (format "Checkpoint should be MAX(%s) from first 10 rows" field-name))))
 
                 (testing "Second run processes remaining data"
-                  (transforms.i/execute! transform {:run-method :manual})
+                  (transforms.execute/execute! transform {:run-method :manual})
                   (let [row-count (get-table-row-count target-table)
                         distinct-timestamps (get-distinct-timestamp-count target-table)
                         checkpoint (get-checkpoint-value (:id transform))]
@@ -536,7 +536,7 @@
                         (format "Checkpoint should be MAX(%s) from all 16 rows" field-name))))
 
                 (testing "Third run without new data adds nothing"
-                  (transforms.i/execute! transform {:run-method :manual})
+                  (transforms.execute/execute! transform {:run-method :manual})
                   (let [row-count (get-table-row-count target-table)]
                     (is (= 16 row-count) "Should still have 16 rows, no new data")))
 
@@ -547,7 +547,7 @@
                       :price 299.99
                       :created-at "2024-01-21T10:00:00"}]
 
-                    (transforms.i/execute! transform {:run-method :manual})
+                    (transforms.execute/execute! transform {:run-method :manual})
                     (let [row-count (get-table-row-count target-table)
                           checkpoint (get-checkpoint-value (:id transform))]
                       (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
