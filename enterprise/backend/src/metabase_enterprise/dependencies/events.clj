@@ -1,8 +1,11 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
+   [metabase.graph.core :as graph]
+   [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -151,6 +154,8 @@
 (derive ::dashboard-deps :metabase/event)
 (derive :event/dashboard-create ::dashboard-deps)
 (derive :event/dashboard-update ::dashboard-deps)
+;; Backfill-only event that triggers dependency calculation without creating a revision
+(derive :event/dashboard-dependency-backfill ::dashboard-deps)
 
 (methodical/defmethod events/publish-event! ::dashboard-deps
   [_ {:keys [object]}]
@@ -247,3 +252,47 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))))
+
+(defn- check-dependents [type object]
+  (let [graph (models.dependency/filtered-graph-dependents
+               nil
+               (fn [type-field _id-field]
+                 [:not= type-field "transform"]))
+        {child-cards :card
+         child-transforms :transform} (models.dependency/transitive-dependents graph {type [object]})]
+    (doseq [instances (partition 50 50 nil child-cards)]
+      (deps.findings/analyze-instances! (t2/select :model/Card :id [:in instances])))
+    (doseq [instances (partition 50 50 nil child-transforms)]
+      (deps.findings/analyze-instances! (t2/select :model/Transform :id [:in instances])))))
+
+(derive ::check-card-dependents :metabase/event)
+(derive :event/card-create ::check-card-dependents)
+(derive :event/card-update ::check-card-dependents)
+(derive :event/card-delete ::check-card-dependents)
+
+(methodical/defmethod events/publish-event! ::check-card-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object)
+      (check-dependents :card object))))
+
+(derive ::check-transform :metabase/event)
+(derive :event/create-transform ::check-transform)
+(derive :event/update-transform ::check-transform)
+(derive :event/delete-transform ::check-transform)
+
+(methodical/defmethod events/publish-event! ::check-transform
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object))))
+
+(derive ::check-transform-dependents :metabase/event)
+(derive :event/transform-run-complete ::check-transform-dependents)
+
+(methodical/defmethod events/publish-event! ::check-transform-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (check-dependents :transform {:id (:transform-id object)}))))

@@ -1,6 +1,6 @@
 import { useDebouncedValue } from "@mantine/hooks";
 import type { ColumnDef } from "@tanstack/react-table";
-import { type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -42,35 +42,42 @@ export const TransformListPage = () => {
     );
   }, [transforms, debouncedSearchQuery]);
 
-  const transformColumnDef = useMemo<ColumnDef<Transform, ReactNode>[]>(
+  const transformColumnDef = useMemo<ColumnDef<Transform>[]>(
     () => [
       {
-        accessorKey: "name",
-        meta: {
-          width: "auto",
-        },
         header: t`Name`,
-        cell: ({ getValue }) => (
-          <Group data-testid="transform-name" gap="sm">
-            <Icon name="transform" c="brand" />
-            {getValue()}
-          </Group>
-        ),
-      },
-      {
-        accessorKey: "updated_at",
-        cell: ({ getValue }) => {
-          const value = getValue() as string;
-          return value && <DateTime value={value} />;
+        accessorKey: "name",
+        cell: ({ row }) => {
+          const transform = row.original;
+          return (
+            <Group data-testid="transform-name" gap="sm">
+              <Icon name="transform" c="brand" />
+              {transform.name}
+            </Group>
+          );
         },
         meta: {
           width: "auto",
         },
-        header: t`Last Modified`,
       },
       {
-        accessorFn: (transform: Transform) => transform.target.name,
+        header: t`Last Modified`,
+        accessorKey: "updated_at",
+        cell: ({ row }) => {
+          const transform = row.original;
+          return <DateTime value={transform.updated_at} />;
+        },
+        meta: {
+          width: "auto",
+        },
+      },
+      {
         header: t`Output table`,
+        accessorFn: (transform: Transform) => transform.target.name,
+        cell: ({ row }) => {
+          const transform = row.original;
+          return transform.target.name;
+        },
       },
     ],
     [],

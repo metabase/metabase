@@ -7,10 +7,10 @@ import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
+import { getNodeDescription } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
 import { GraphLink } from "../../GraphLink";
-import { getNodeDescription } from "../../utils";
 
 import S from "./PanelBody.module.css";
 import {
@@ -121,7 +121,7 @@ function TableSection({ node, getGraphUrl }: TableSectionProps) {
         />
       </Group>
       {info.location && (
-        <GraphBreadcrumbs location={info.location} ml="1rem" pl="sm" />
+        <GraphBreadcrumbs links={info.location} ml="1rem" pl="sm" />
       )}
     </Stack>
   );

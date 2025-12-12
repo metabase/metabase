@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.graph.core :as graph]
@@ -21,7 +22,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.util :as u]))
 
 (mr/def ::card-body
   [:merge
@@ -148,48 +150,51 @@
     (broken-cards-response breakages)))
 
 (def ^:private entity-keys
-  {:table     [:name :description :display_name :db_id :db :schema :fields]
-   :card      [:name :type :display :database_id :view_count
-               :created_at :creator :creator_id :description
-               :result_metadata :last-edit-info
-               :collection :collection_id :dashboard :dashboard_id
-               :document :document_id
-               :moderation_reviews]
-   :snippet   [:name :description]
-   :transform [:name :description :creator :table]
+  {:table [:name :description :display_name :db_id :db :schema :fields]
+   :card [:name :type :display :database_id :view_count
+          :created_at :creator :creator_id :description
+          :result_metadata :last-edit-info
+          :collection :collection_id :dashboard :dashboard_id :document :document_id
+          :moderation_reviews]
+   :snippet [:name :description]
+   :transform [:name :description :creator :table :last_run]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
                :collection :collection_id
                :moderation_reviews]
-   :document  [:name :description :view_count
-               :created_at :creator
-               :collection :collection_id]
-   :sandbox   [:table :table_id]
+   :document [:name :description :view_count
+              :created_at :creator
+              :collection :collection_id]
+   :sandbox [:table :table_id]
    :segment   [:name :description :created_at :creator :creator_id :table :table_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
     :model/Collection (select-keys entity [:id :name :authority_level :is_personal])
-    :model/Dashboard  (select-keys entity [:id :name])
-    :model/Document   (select-keys entity [:id :name])
+    :model/Dashboard (select-keys entity [:id :name])
+    :model/Document (select-keys entity [:id :name])
     entity))
 
-(defn- entity-value [entity-type {:keys [id] :as entity} usages]
-  {:id               id
-   :type             entity-type
-   :data             (->> (select-keys entity (entity-keys entity-type))
-                          (m/map-vals format-subentity))
-   :dependents_count (usages [entity-type id])})
+(defn- entity-value [entity-type {:keys [id] :as entity} usages errors]
+  (cond-> {:id id
+           :type entity-type
+           :data (->> (select-keys entity (entity-keys entity-type))
+                      (m/map-vals format-subentity))
+           :dependents_count (usages [entity-type id])}
+    errors (assoc :errors (get errors [entity-type id]))))
 
 (def ^:private entity-model
-  {:table     :model/Table
-   :card      :model/Card
-   :snippet   :model/NativeQuerySnippet
+  {:table :model/Table
+   :card :model/Card
+   :snippet :model/NativeQuerySnippet
    :transform :model/Transform
    :dashboard :model/Dashboard
-   :document  :model/Document
-   :sandbox   :model/Sandbox
+   :document :model/Document
+   :sandbox :model/Sandbox
    :segment   :model/Segment})
+
+(def ^:private card-types
+  [:question :model :metric])
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -200,18 +205,18 @@
 ;; and others (like :last-edit-info, :view_count) are computed/added separately.
 ;; This map only lists the base database columns to SELECT.
 (def ^:private entity-select-fields
-  {:card      [:id :name :description :type :display :database_id :collection_id :dashboard_id :document_id :result_metadata
-               :created_at :creator_id
+  {:card [:id :name :description :type :display :database_id :collection_id :dashboard_id :document_id :result_metadata
+          :created_at :creator_id
                ;; :card_schema always has to be selected
-               :card_schema]
+          :card_schema]
    :dashboard [:id :name :description :created_at :creator_id :collection_id]
-   :document  [:id :name :created_at :creator_id :collection_id]
-   :table     [:id :name :description :display_name :db_id :schema]
+   :document [:id :name :created_at :creator_id :collection_id]
+   :table [:id :name :description :display_name :db_id :schema]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source]
-   :snippet   [:id :name :description]
-   :sandbox   [:id :table_id]
+   :snippet [:id :name :description]
+   :sandbox [:id :table_id]
    :segment   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- visible-entities-filter-clause
@@ -265,12 +270,12 @@
                                                          (keyword (name table-name) "collection_id")
                                                          {:include-archived-items include-archived-items}
                                                          {:current-user-id api/*current-user-id*
-                                                          :is-superuser?   api/*is-superuser?*})
+                                                          :is-superuser? api/*is-superuser?*})
                                                         ;; Filter by entity archived status
                                                         (case include-archived-items
                                                           :exclude [:= archived-column false]
-                                                          :only    [:= archived-column true]
-                                                          :all     nil)]}]]))
+                                                          :only [:= archived-column true]
+                                                          :all nil)]}]]))
 
                      ;; Table with visible-filter-clause and active/visibility_type filtering
                      :model/Table
@@ -284,14 +289,14 @@
                                                       (mi/visible-filter-clause
                                                        model
                                                        id-column
-                                                       {:user-id       api/*current-user-id*
+                                                       {:user-id api/*current-user-id*
                                                         :is-superuser? api/*is-superuser?*}
-                                                       {:perms/view-data      :unrestricted
+                                                       {:perms/view-data :unrestricted
                                                         :perms/create-queries :query-builder})
                                                       (case include-archived-items
-                                                        :exclude     [:and
-                                                                      [:= active-column true]
-                                                                      [:= visibility-type-column nil]]
+                                                        :exclude [:and
+                                                                  [:= active-column true]
+                                                                  [:= visibility-type-column nil]]
                                                         (:only :all) nil)]}]])
 
                      ;; Segment with table permissions and archived filtering
@@ -358,28 +363,46 @@
                        (apply merge-with +)))
                 children-map)))
 
-(defn- expanded-nodes [downstream-graph nodes]
+(defn- calc-errors [nodes-by-type]
+  (-> (into {}
+            (mapcat (fn [[type ids]]
+                      (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :finding_details]
+                                      :analyzed_entity_type type
+                                      :analyzed_entity_id [:in ids])
+                           (map (fn [{:keys [analyzed_entity_id finding_details]}]
+                                  [[type analyzed_entity_id] finding_details])))))
+            nodes-by-type)
+      not-empty))
+
+(defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
   (let [usages (calc-usages downstream-graph nodes)
         nodes-by-type (->> (group-by first nodes)
-                           (m/map-vals #(map second %)))]
-    (mapcat (fn [[entity-type entity-ids]]
-              (let [model (entity-model entity-type)
-                    fields (entity-select-fields entity-type)]
-                (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
-                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal] :moderation_reviews)
-                                                 (->> (map collection.root/hydrate-root-collection))
-                                                 (revisions/with-last-edit-info :card))
-                       (= entity-type :table) (t2/hydrate :fields :db)
-                       (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields)
-                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
-                                                      (->> (map collection.root/hydrate-root-collection))
-                                                      (revisions/with-last-edit-info :dashboard))
-                       (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
-                                                     (->> (map collection.root/hydrate-root-collection)))
-                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
-                       (= entity-type :segment) (t2/hydrate :creator [:table :db]))
-                     (mapv #(entity-value entity-type % usages)))))
-            nodes-by-type)))
+                           (m/map-vals #(map second %)))
+        errors (when include-errors?
+                 (calc-errors nodes-by-type))
+        nodes-by-type-and-id
+        (into {}
+              (mapcat (fn [[entity-type entity-ids]]
+                        (let [model (entity-model entity-type)
+                              fields (entity-select-fields entity-type)]
+                          (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
+                                 (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal] :moderation_reviews)
+                                                           (->> (map collection.root/hydrate-root-collection))
+                                                           (revisions/with-last-edit-info :card))
+                                 (= entity-type :table) (t2/hydrate :fields :db)
+                                 (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields :last_run)
+                                 (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
+                                                                (->> (map collection.root/hydrate-root-collection))
+                                                                (revisions/with-last-edit-info :dashboard))
+                                 (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
+                                                               (->> (map collection.root/hydrate-root-collection)))
+                                 (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
+                                 (= entity-type :segment) (t2/hydrate :creator [:table :db]))
+                               (map (fn [entity]
+                                      [[entity-type (:id entity)]
+                                       (entity-value entity-type entity usages errors)]))))))
+              nodes-by-type)]
+    (keep nodes-by-type-and-id nodes)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -409,7 +432,7 @@
           nodes (into (set starting-nodes)
                       (graph/transitive upstream-graph starting-nodes))
           edges (graph/calc-edges-between downstream-graph nodes)]
-      {:nodes (expanded-nodes downstream-graph nodes)
+      {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
        :edges edges})))
 
 (def ^:private dependents-args
@@ -417,8 +440,7 @@
    [:id ms/PositiveInt]
    [:type (ms/enum-decode-keyword (vec (keys entity-model)))]
    [:dependent_type (ms/enum-decode-keyword (vec (keys entity-model)))]
-   [:dependent_card_type {:optional true} (ms/enum-decode-keyword
-                                           [:question :model :metric])]
+   [:dependent_card_type {:optional true} (ms/enum-decode-keyword card-types)]
    [:archived {:optional true} :boolean]])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -441,10 +463,131 @@
           downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
           nodes (-> (graph/children-of downstream-graph [[type id]])
                     (get [type id]))]
-      (->> (expanded-nodes downstream-graph nodes)
+      (->> (expanded-nodes downstream-graph nodes {:include-errors? false})
            (filter #(and (= (:type %) dependent_type)
                          (or (not= dependent_type :card)
                              (= (-> % :data :type) dependent_card_type))))))))
+
+(defn- unreferenced-query [entity-type card-types query]
+  (let [table-name (case entity-type
+                     :card :report_card
+                     :table :metabase_table
+                     :transform :transform
+                     :snippet :native_query_snippet
+                     :dashboard :report_dashboard
+                     :document :document
+                     :sandbox :sandboxes)
+        name-column (case entity-type
+                      :table :entity.display_name
+                      :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                      :entity.name)]
+    {:select [[[:inline (name entity-type)] :entity_type]
+              [:entity.id :entity_id]
+              [name-column :sort_key]]
+     :from [[table-name :entity]]
+     :left-join [:dependency [:and
+                              [:= :dependency.to_entity_id :entity.id]
+                              [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
+     :where (cond->> [:= :dependency.id nil]
+              (and (= entity-type :card)
+                   (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
+              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
+
+(def ^:private unreferenced-items-args
+  [:map
+   [:types {:optional true} [:or
+                             (ms/enum-decode-keyword (vec (keys entity-model)))
+                             [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
+   [:card_types {:optional true} [:or
+                                  (ms/enum-decode-keyword card-types)
+                                  [:sequential (ms/enum-decode-keyword card-types)]]]
+   [:query {:optional true} :string]])
+
+(api.macros/defendpoint :get "/graph/unreferenced"
+  "Returns a list of all unreferenced items in the instance.
+   An unreferenced item is one that is not a dependency of any other item.
+
+   Accepts optional parameters for filtering:
+   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
+   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
+   - query: Search string to filter by name or location
+
+   Returns a list of unreferenced items, each with :id, :type, and :data fields."
+  [_route-params
+   {:keys [types card_types query]
+    :or {types (vec (keys entity-model))
+         card_types card-types}} :- unreferenced-items-args]
+  (let [selected-types (cond->> (if (sequential? types) types [types])
+                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
+                         query (remove #{:sandbox}))
+        card-types (if (sequential? card_types) card_types [card_types])
+        union-queries (map #(unreferenced-query % card-types query) selected-types)
+        union-query {:union-all union-queries}
+        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
+                     (map (fn [{:keys [entity_id entity_type]}]
+                            [(keyword entity_type) entity_id])))
+        downstream-graph (graph/cached-graph (readable-graph-dependents))]
+    (expanded-nodes downstream-graph all-ids {:include-errors? false})))
+
+(def ^:private broken-items-args
+  [:map
+   [:types {:optional true} [:or
+                             (ms/enum-decode-keyword (vec (keys entity-model)))
+                             [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
+   [:card_types {:optional true} [:or
+                                  (ms/enum-decode-keyword card-types)
+                                  [:sequential (ms/enum-decode-keyword card-types)]]]
+   [:query {:optional true} :string]])
+
+(defn- broken-query [entity-type card-types query]
+  (let [table-name (case entity-type
+                     :card :report_card
+                     :table :metabase_table
+                     :transform :transform
+                     :snippet :native_query_snippet
+                     :dashboard :report_dashboard
+                     :document :document
+                     :sandbox :sandboxes)
+        name-column (case entity-type
+                      :table :entity.display_name
+                      :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                      :entity.name)]
+    {:select [[[:inline (name entity-type)] :entity_type]
+              [:entity.id :entity_id]
+              [name-column :sort_key]]
+     :from [[table-name :entity]]
+     :left-join [:analysis_finding [:and
+                                    [:= :analysis_finding.analyzed_entity_id :entity.id]
+                                    [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
+     :where (cond->> [:= :analysis_finding.result false]
+              (and (= entity-type :card)
+                   (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
+              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
+
+(api.macros/defendpoint :get "/graph/broken"
+  "Returns a list of all items with broken queries.
+
+   Accepts optional parameters for filtering:
+   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
+   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
+   - query: Search string to filter by name or location
+
+   Returns a list of broken items, each with :id, :type, :data, and :errors fields."
+  [_route-params
+   {:keys [types card_types query]
+    :or {types (vec (keys entity-model))
+         card_types card-types}} :- broken-items-args]
+  (let [selected-types (cond->> (if (sequential? types) types [types])
+                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
+                         query (remove #{:sandbox}))
+        card-types (if (sequential? card_types) card_types [card_types])
+        union-queries (map #(broken-query % card-types query) selected-types)
+        union-query {:union-all union-queries}
+        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
+                     (map (fn [{:keys [entity_id entity_type]}]
+                            [(keyword entity_type) entity_id])))
+        downstream-graph (graph/cached-graph (readable-graph-dependents))]
+    (expanded-nodes downstream-graph all-ids {:include-errors? true})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

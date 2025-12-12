@@ -263,6 +263,10 @@ export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
     listTag("table"),
     listTag("transform"),
     listTag("snippet"),
+    listTag("dashboard"),
+    listTag("document"),
+    listTag("sandbox"),
+    listTag("segment"),
     ...nodes.flatMap(provideDependencyNodeTags),
   ];
 }

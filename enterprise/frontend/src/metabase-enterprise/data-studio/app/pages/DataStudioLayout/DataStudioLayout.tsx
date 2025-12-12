@@ -125,6 +125,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <DataStudioTab
+            label={t`Tasks`}
+            icon="list"
+            to={Urls.dataStudioTasks()}
+            isSelected={currentTab === "tasks"}
+            showLabel={isNavbarOpened}
+          />
+        )}
         {canAccessTransforms && (
           <DataStudioTab
             label={t`Transforms`}

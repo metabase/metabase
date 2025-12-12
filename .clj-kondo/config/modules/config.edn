@@ -1930,6 +1930,7 @@
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
+           app-db
            collections
            documents
            driver
@@ -1943,6 +1944,7 @@
            premium-features
            queries
            query-processor
+           request
            revisions
            settings
            task

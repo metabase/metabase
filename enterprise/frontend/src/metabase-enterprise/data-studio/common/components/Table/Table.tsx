@@ -13,7 +13,7 @@ import {
   type Virtualizer,
   useVirtualizer,
 } from "@tanstack/react-virtual";
-import { type CSSProperties, type ReactNode, useState } from "react";
+import { type CSSProperties, useState } from "react";
 
 import { Badge, Icon } from "metabase/ui";
 
@@ -29,7 +29,7 @@ export const TableComponent = <
   onSelect,
 }: {
   data: T[];
-  columns: ColumnDef<T, ReactNode>[];
+  columns: ColumnDef<T>[];
   onSelect: (item: T) => void;
 }) => {
   const [scrollRef, setScrollRef] = useState<HTMLDivElement | null>(null);
@@ -182,7 +182,7 @@ function TableBodyRow<T>({
       onClick={
         canExpand
           ? row.getToggleExpandedHandler()
-          : () => onSelect?.(row.original)
+          : () => onSelect(row.original)
       }
     >
       {row.getVisibleCells().map((cell, index) => {

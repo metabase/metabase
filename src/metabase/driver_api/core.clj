@@ -27,6 +27,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.logger.core :as logger]
@@ -245,6 +246,39 @@
 (def schema.parameter.type
   "::lib.schema.parameter/type"
   ::lib.schema.parameter/type)
+
+(def validate.missing-column
+  lib/missing-column)
+
+(def schema.validate.missing-column
+  ::lib.schema.validate/missing-column)
+
+(def validate.missing-table-alias
+  lib/missing-table-alias)
+
+(def schema.validate.missing-table-alias
+  ::lib.schema.validate/missing-table-alias)
+
+(def validate.duplicate-column
+  lib/duplicate-column)
+
+(def schema.validate.duplicate-column
+  ::lib.schema.validate/duplicate-column)
+
+(def validate.syntax-error
+  lib/syntax-error)
+
+(def schema.validate.syntax-error
+  ::lib.schema.validate/syntax-error)
+
+(def validate.validation-error
+  lib/validation-error)
+
+(def schema.validate.validation-error
+  ::lib.schema.validate/validation-error)
+
+(def schema.validate.error
+  ::lib.schema.validate/error)
 
 (def mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"
