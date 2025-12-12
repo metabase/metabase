@@ -17,7 +17,6 @@ export interface FormattingSettings {
 
 export interface DateFormattingSettings {
   date_style?: string;
-  date_separator?: string;
   date_abbreviate?: boolean;
   time_style?: string;
 }

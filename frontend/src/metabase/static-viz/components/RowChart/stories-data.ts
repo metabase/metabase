@@ -80,7 +80,6 @@ export const MULTIPLE_SERIES: StaticChartProps = {
             name: "CREATED_AT",
             settings: {
               date_style: "D MMMM, YYYY",
-              date_separator: "-",
             },
             source: "breakout",
             field_ref: [
@@ -149,7 +148,6 @@ export const MULTIPLE_SERIES: StaticChartProps = {
               name: "CREATED_AT",
               settings: {
                 date_style: "D MMMM, YYYY",
-                date_separator: "-",
               },
               field_ref: [
                 "field",
@@ -277,7 +275,6 @@ export const METRIC_COLUMN_WITH_SCALING: StaticChartProps = {
             name: "CREATED_AT",
             settings: {
               date_style: "D MMMM, YYYY",
-              date_separator: "-",
             },
             source: "breakout",
             field_ref: [
@@ -346,7 +343,6 @@ export const METRIC_COLUMN_WITH_SCALING: StaticChartProps = {
               name: "CREATED_AT",
               settings: {
                 date_style: "D MMMM, YYYY",
-                date_separator: "-",
               },
               field_ref: [
                 "field",
