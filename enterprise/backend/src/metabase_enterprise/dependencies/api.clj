@@ -18,7 +18,6 @@
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
-   [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -193,6 +192,9 @@
    :document :model/Document
    :sandbox :model/Sandbox
    :segment   :model/Segment})
+
+(def ^:private card-types
+  [:question :model :metric])
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -433,8 +435,7 @@
    [:id ms/PositiveInt]
    [:type (ms/enum-decode-keyword (vec (keys entity-model)))]
    [:dependent_type (ms/enum-decode-keyword (vec (keys entity-model)))]
-   [:dependent_card_type {:optional true} (ms/enum-decode-keyword
-                                           [:question :model :metric])]
+   [:dependent_card_type {:optional true} (ms/enum-decode-keyword card-types)]
    [:archived {:optional true} :boolean]])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -462,156 +463,30 @@
                          (or (not= dependent_type :card)
                              (= (-> % :data :type) dependent_card_type))))))))
 
-(defn- unreferenced-entity-queries [sort_column card-types query]
-  (let [lower-query (when query (u/lower-case-en query))]
-    {:card {:select [[[:inline "card"] :entity_type]
-                     [:report_card.id :entity_id]
-                     [(case sort_column
-                        :name :report_card.name
-                        :view_count :report_card.view_count
-                        :location [:coalesce :report_dashboard.name :collection.name]
-                        :report_card.name) :sort_key]]
-            :from [:report_card]
-            :left-join [:report_dashboard [:= :report_dashboard.id :report_card.dashboard_id]
-                        :collection [:= :collection.id :report_card.collection_id]]
-            :where (let [unreffed-where [:not [:exists
-                                               {:select [1]
-                                                :from [:dependency]
-                                                :where [:and
-                                                        [:= :dependency.to_entity_id :report_card.id]
-                                                        [:= :dependency.to_entity_type [:inline "card"]]]}]]
-                         card-types-where (if (seq card-types)
-                                            [:and unreffed-where
-                                             [:in :report_card.type (mapv name card-types)]]
-                                            unreffed-where)]
-                     (if query
-                       [:and card-types-where [:like [:lower :report_card.name] (str "%" lower-query "%")]]
-                       card-types-where))}
-     :table {:select [[[:inline "table"] :entity_type]
-                      [:metabase_table.id :entity_id]
-                      [(case sort_column
-                         :name :metabase_table.display_name
-                         :view_count :metabase_table.view_count
-                         :location [:concat :metabase_database.name "/" [:coalesce :metabase_table.schema ""]]
-                         :metabase_table.display_name) :sort_key]]
-             :from [:metabase_table]
-             :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]
-             :where (let [unreffed-where [:not [:exists
-                                                {:select [1]
-                                                 :from [:dependency]
-                                                 :where [:and
-                                                         [:= :dependency.to_entity_id :metabase_table.id]
-                                                         [:= :dependency.to_entity_type [:inline "table"]]]}]]]
-                      (if query
-                        [:and unreffed-where [:like [:lower :metabase_table.display_name] (str "%" lower-query "%")]]
-                        unreffed-where))}
-     :transform {:select [[[:inline "transform"] :entity_type]
-                          [:transform.id :entity_id]
-                          [(case sort_column
-                             :name :transform.name
-                             :view_count [:coalesce
-                                          {:select [[[:count :*]]]
-                                           :from [:transform_run]
-                                           :where [:= :transform_run.transform_id :transform.id]}
-                                          0]
-                             :location [:inline nil]
-                             :transform.name) :sort_key]]
-                 :from [:transform]
-                 :where (let [unreffed-where [:not [:exists
-                                                    {:select [1]
-                                                     :from [:dependency]
-                                                     :where [:and
-                                                             [:= :dependency.to_entity_id :transform.id]
-                                                             [:= :dependency.to_entity_type [:inline "transform"]]]}]]]
-                          (if query
-                            [:and unreffed-where [:like [:lower :transform.name] (str "%" lower-query "%")]]
-                            unreffed-where))}
-     :snippet {:select [[[:inline "snippet"] :entity_type]
-                        [:native_query_snippet.id :entity_id]
-                        [(case sort_column
-                           :name :native_query_snippet.name
-                           :view_count [:inline 0]
-                           :location :collection.name
-                           :native_query_snippet.name) :sort_key]]
-               :from [:native_query_snippet]
-               :left-join [:collection [:= :collection.id :native_query_snippet.collection_id]]
-               :where (let [unreffed-where [:not [:exists
-                                                  {:select [1]
-                                                   :from [:dependency]
-                                                   :where [:and
-                                                           [:= :dependency.to_entity_id :native_query_snippet.id]
-                                                           [:= :dependency.to_entity_type [:inline "snippet"]]]}]]]
-                        (if query
-                          [:and unreffed-where [:like [:lower :native_query_snippet.name] (str "%" lower-query "%")]]
-                          unreffed-where))}
-     :dashboard {:select [[[:inline "dashboard"] :entity_type]
-                          [:report_dashboard.id :entity_id]
-                          [(case sort_column
-                             :name :report_dashboard.name
-                             :view_count :report_dashboard.view_count
-                             :location :collection.name
-                             :report_dashboard.name) :sort_key]]
-                 :from [:report_dashboard]
-                 :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]
-                 :where (let [unreffed-where [:not [:exists
-                                                    {:select [1]
-                                                     :from [:dependency]
-                                                     :where [:and
-                                                             [:= :dependency.to_entity_id :report_dashboard.id]
-                                                             [:= :dependency.to_entity_type [:inline "dashboard"]]]}]]]
-                          (if query
-                            [:and unreffed-where [:like [:lower :report_dashboard.name] (str "%" lower-query "%")]]
-                            unreffed-where))}
-     :document {:select [[[:inline "document"] :entity_type]
-                         [:document.id :entity_id]
-                         [(case sort_column
-                            :name :document.name
-                            :view_count :document.view_count
-                            :location :collection.name
-                            :document.name) :sort_key]]
-                :from [:document]
-                :left-join [:collection [:= :collection.id :document.collection_id]]
-                :where (let [unreffed-where [:not [:exists
-                                                   {:select [1]
-                                                    :from [:dependency]
-                                                    :where [:and
-                                                            [:= :dependency.to_entity_id :document.id]
-                                                            [:= :dependency.to_entity_type [:inline "document"]]]}]]]
-                         (if query
-                           [:and unreffed-where [:like [:lower :document.name] (str "%" lower-query "%")]]
-                           unreffed-where))}
-     :sandbox {:select [[[:inline "sandbox"] :entity_type]
-                        [:sandboxes.id :entity_id]
-                        [(let [sort-col [:cast :sandboxes.id (if (= :mysql (mdb/db-type)) :char :text)]]
-                           (case sort_column
-                             :name sort-col
-                             :view_count [:inline 0]
-                             :location [:inline nil]
-                             sort-col)) :sort_key]]
-               :from [:sandboxes]
-               :where [:not [:exists
-                             {:select [1]
-                              :from [:dependency]
-                              :where [:and
-                                      [:= :dependency.to_entity_id :sandboxes.id]
-                                      [:= :dependency.to_entity_type [:inline "sandbox"]]]}]]}}))
-
-(defn- get-paginated-items [union-queries {:keys [sort-direction limit offset include-errors?]}]
-  (let [union-query {:union-all union-queries}
-        total (-> (t2/query {:select [[:%count.* :total]]
-                             :from [[union-query :subquery]]})
-                  first
-                  :total)
-        paginated-ids (->> (t2/query (assoc union-query
-                                            :order-by [[:sort_key sort-direction]]
-                                            :limit limit
-                                            :offset offset))
-                           (map (fn [{:keys [entity_id entity_type]}]
-                                  [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents))
-        paginated-items (expanded-nodes downstream-graph paginated-ids {:include-errors? include-errors?})]
-    {:paginated-items paginated-items
-     :total total}))
+(defn- unreferenced-query [entity-type card-types query]
+  (let [table-name (case entity-type
+                     :card :report_card
+                     :table :metabase_table
+                     :transform :transform
+                     :snippet :native_query_snippet
+                     :dashboard :report_dashboard
+                     :document :document
+                     :sandbox :sandboxes)
+        name-column (case entity-type
+                      :table :entity.display_name
+                      :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                      :entity.name)]
+    {:select [[[:inline (name entity-type)] :entity_type]
+              [:entity.id :entity_id]
+              [name-column :sort_key]]
+     :from [[table-name :entity]]
+     :left-join [:dependency [:and
+                              [:= :dependency.to_entity_id :entity.id]
+                              [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
+     :where (cond->> [:= :dependency.id nil]
+              (and (= entity-type :card)
+                   (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
+              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
 
 (def ^:private unreferenced-items-args
   [:map
@@ -619,140 +494,95 @@
                              (ms/enum-decode-keyword (vec (keys entity-model)))
                              [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
    [:card_types {:optional true} [:or
-                                  (ms/enum-decode-keyword [:question :model :metric])
-                                  [:sequential (ms/enum-decode-keyword [:question :model :metric])]]]
-   [:query {:optional true} :string]
-   [:sort_column {:optional true} (ms/enum-decode-keyword [:name :location :view_count])]
-   [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
+                                  (ms/enum-decode-keyword card-types)
+                                  [:sequential (ms/enum-decode-keyword card-types)]]]
+   [:query {:optional true} :string]])
 
 (api.macros/defendpoint :get "/graph/unreferenced"
-  "Returns a paginated list of all unreferenced items in the instance.
+  "Returns a list of all unreferenced items in the instance.
    An unreferenced item is one that is not a dependency of any other item.
 
-   Accepts optional parameters for filtering, sorting, and pagination:
-   - limit: Number of items per page (default: 50)
-   - offset: Number of items to skip (default: 0)
+   Accepts optional parameters for filtering:
    - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
    - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
    - query: Search string to filter by name or location
-   - sort_column: Field to sort by (:name, :location, :view_count) (default: :name)
-   - sort_direction: Sort direction (:asc or :desc) (default: :asc)
 
-   Returns a map with:
-   - data: List of unreferenced items, each with :id, :type, and :data fields
-   - limit: The limit used for pagination
-   - offset: The offset used for pagination
-   - total: Total count of unreferenced items matching the filters
-   - sort_column: The sort column used
-   - sort_direction: The sort direction used"
+   Returns a list of unreferenced items, each with :id, :type, and :data fields."
   [_route-params
-   {:keys [types card_types query sort_column sort_direction]
-    :or {sort_column :name
-         sort_direction :asc
-         types [:card :transform :snippet]
-         card_types [:model :metric]}} :- unreferenced-items-args]
-  (let [limit (or (request/limit) 50)
-        offset (or (request/offset) 0)
-        selected-types (cond->> (if (sequential? types) types [types])
+   {:keys [types card_types query]
+    :or {types (vec (keys entity-model))
+         card_types card-types}} :- unreferenced-items-args]
+  (let [selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        entity-queries (unreferenced-entity-queries sort_column card-types query)
-        union-queries (keep #(get entity-queries %) selected-types)
-        {:keys [total paginated-items]} (get-paginated-items union-queries
-                                                             {:sort-direction sort_direction
-                                                              :limit limit
-                                                              :offset offset})]
-    {:data paginated-items
-     :limit limit
-     :offset offset
-     :total total
-     :sort_column sort_column
-     :sort_direction sort_direction}))
+        union-queries (map #(unreferenced-query % card-types query) selected-types)
+        union-query {:union-all union-queries}
+        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
+                     (map (fn [{:keys [entity_id entity_type]}]
+                            [(keyword entity_type) entity_id])))
+        downstream-graph (graph/cached-graph (readable-graph-dependents))]
+    (expanded-nodes downstream-graph all-ids {:include-errors? false})))
 
 (def ^:private broken-items-args
   [:map
    [:types {:optional true} [:or
-                             (ms/enum-decode-keyword [:card :transform])
-                             [:sequential (ms/enum-decode-keyword [:card :transform])]]]
+                             (ms/enum-decode-keyword (vec (keys entity-model)))
+                             [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
    [:card_types {:optional true} [:or
-                                  (ms/enum-decode-keyword [:question :model :metric])
-                                  [:sequential (ms/enum-decode-keyword [:question :model :metric])]]]
-   [:query {:optional true} :string]
-   [:sort_column {:optional true} (ms/enum-decode-keyword [:name :location :view_count])]
-   [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
+                                  (ms/enum-decode-keyword card-types)
+                                  [:sequential (ms/enum-decode-keyword card-types)]]]
+   [:query {:optional true} :string]])
 
-(defn- broken-query [entity-type sort card-types query]
-  {:select [[[:inline (name entity-type)] :entity_type]
-            [:entity.id :entity_id]
-            [(case sort
-               :name :entity.name
-               :view_count (case entity-type
-                             :card :entity.view_count
-                             :transform [:coalesce
-                                         {:select [[[:count :*]]]
-                                          :from [:transform_run]
-                                          :where [:= :transform_run.transform_id :entity.id]}
-                                         0])
-               :location (case entity-type
-                           :card [:coalesce :report_dashboard.name :collection.name]
-                           :transform [:inline nil])
-               :entity.name) :sort_key]]
-   :from [[(case entity-type
-             :card :report_card
-             :transform :transform)
-           :entity]]
-   :left-join (cond-> [:analysis_finding [:and
-                                          [:= :analysis_finding.analyzed_entity_id :entity.id]
-                                          [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-                (= entity-type :card) (into [:report_dashboard [:= :report_dashboard.id :entity.dashboard_id]
-                                             :collection [:= :collection.id :entity.collection_id]]))
-   :where (cond->> [:= :analysis_finding.result false]
-            (and (= entity-type :card)
-                 (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
-            query (conj [:and [:like [:lower :entity.name] (str "%" (u/lower-case-en query) "%")]]))})
+(defn- broken-query [entity-type card-types query]
+  (let [table-name (case entity-type
+                     :card :report_card
+                     :table :metabase_table
+                     :transform :transform
+                     :snippet :native_query_snippet
+                     :dashboard :report_dashboard
+                     :document :document
+                     :sandbox :sandboxes)
+        name-column (case entity-type
+                      :table :entity.display_name
+                      :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                      :entity.name)]
+    {:select [[[:inline (name entity-type)] :entity_type]
+              [:entity.id :entity_id]
+              [name-column :sort_key]]
+     :from [[table-name :entity]]
+     :left-join [:analysis_finding [:and
+                                    [:= :analysis_finding.analyzed_entity_id :entity.id]
+                                    [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
+     :where (cond->> [:= :analysis_finding.result false]
+              (and (= entity-type :card)
+                   (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
+              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
 
 (api.macros/defendpoint :get "/graph/broken"
-  "Returns a paginated list of all items (cards or transforms) with broken queries.
+  "Returns a list of all items with broken queries.
 
-   Accepts optional parameters for filtering, sorting, and pagination:
-   - limit: Number of items per page (default: 50)
-   - offset: Number of items to skip (default: 0)
-   - types: List of entity types to include (e.g., [:card :transform])
+   Accepts optional parameters for filtering:
+   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
    - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
    - query: Search string to filter by name or location
-   - sort_column: Field to sort by (:name, :location, :view_count) (default: :name)
-   - sort_direction: Sort direction (:asc or :desc) (default: :asc)
 
-   Returns a map with:
-   - data: List of unreferenced items, each with :id, :type, and :data fields
-   - limit: The limit used for pagination
-   - offset: The offset used for pagination
-   - total: Total count of unreferenced items matching the filters
-   - sort_column: The sort column used
-   - sort_direction: The sort direction used"
+   Returns a list of broken items, each with :id, :type, :data, and :errors fields."
   [_route-params
-   {:keys [types card_types query sort_column sort_direction]
-    :or {sort_column :name
-         sort_direction :asc
-         types [:card :transform]
-         card_types [:model :metric]}} :- broken-items-args]
-  (let [limit (or (request/limit) 50)
-        offset (or (request/offset) 0)
-        selected-types (if (sequential? types) types [types])
+   {:keys [types card_types query]
+    :or {types (vec (keys entity-model))
+         card_types card-types}} :- broken-items-args]
+  (let [selected-types (cond->> (if (sequential? types) types [types])
+                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
+                         query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(broken-query % sort_column card-types query) selected-types)
-        {:keys [total paginated-items]} (get-paginated-items union-queries
-                                                             {:sort-direction sort_direction
-                                                              :limit limit
-                                                              :offset offset
-                                                              :include-errors? true})]
-    {:data paginated-items
-     :limit limit
-     :offset offset
-     :total total
-     :sort_column sort_column
-     :sort_direction sort_direction}))
+        union-queries (map #(broken-query % card-types query) selected-types)
+        union-query {:union-all union-queries}
+        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
+                     (map (fn [{:keys [entity_id entity_type]}]
+                            [(keyword entity_type) entity_id])))
+        downstream-graph (graph/cached-graph (readable-graph-dependents))]
+    (expanded-nodes downstream-graph all-ids {:include-errors? true})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
