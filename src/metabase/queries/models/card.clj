@@ -992,12 +992,20 @@
 
   throws an exception, `before` is missing keys from `after`:
   (changed? {:collection_id 1}
-            {:collection_id 1 :description \"foobar\"})"
+            {:collection_id 1 :description \"foobar\"})
+
+  For keys that will be transformed before we insert them in the database, automatically runs
+  `(out-transform (in-transform ...))` before comparing to make sure we are comparing the canonical form."
   [card-before updates]
   ;; normalize the query before comparison
-  (let [after (-> updates
-                  (m/update-existing :dataset_query lib-be/normalize-query)
-                  (m/update-existing :query_type keyword))
+  (let [transforms (t2/transforms :model/Card)
+        after (->> updates
+                   (map (fn [[k v]]
+                          (let [tvi (get-in transforms [k :in] identity)
+                                tvo (get-in transforms [k :out] identity)
+                                tv (tvo (tvi v))]
+                            [k tv])))
+                   (into {}))
         before  (select-keys card-before (keys after))]
     (when-not (set/subset? (set (keys after))
                            (set (keys before)))
