@@ -14,7 +14,7 @@
 (mu/defn merge-transform! :- [:map
                               [:op [:enum :create :delete :noop :update]]
                               [:ref_id ::ws.types/ref-id]
-                              [:global_id {:optional true} ::ws.types/appdb-id]
+                              [:global_id {:optional true} [:maybe ::ws.types/appdb-id]]
                               [:error {:optional true} :any]]
   "Make the given transform in the Changeset public, i.e. create or update the relevant model/Transform entities.
    This should also clear it out from the Changset, as it no longer has any changes."
