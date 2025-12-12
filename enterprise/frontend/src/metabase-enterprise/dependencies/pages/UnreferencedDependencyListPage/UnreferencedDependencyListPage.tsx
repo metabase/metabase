@@ -89,12 +89,7 @@ export function UnreferencedDependencyListPage() {
             error={error}
           />
         ) : (
-          <DependencyList
-            nodes={nodes}
-            withErrorsColumn
-            withDependentsCountColumn
-            onSelect={setSelectedEntry}
-          />
+          <DependencyList nodes={nodes} onSelect={setSelectedEntry} />
         )}
       </Stack>
       {selectedNode != null && (

@@ -8,15 +8,15 @@ import { getColumns } from "./utils";
 
 type DependencyListProps = {
   nodes: DependencyNode[];
-  withErrorsColumn: boolean;
-  withDependentsCountColumn: boolean;
+  withErrorsColumn?: boolean;
+  withDependentsCountColumn?: boolean;
   onSelect: (node: DependencyNode) => void;
 };
 
 export const DependencyList = memo(function DependencyList({
   nodes,
-  withErrorsColumn,
-  withDependentsCountColumn,
+  withErrorsColumn = false,
+  withDependentsCountColumn = false,
   onSelect,
 }: DependencyListProps) {
   const columns = useMemo(
