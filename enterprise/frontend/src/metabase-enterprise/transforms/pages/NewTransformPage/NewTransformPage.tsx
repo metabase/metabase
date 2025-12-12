@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
+import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -16,7 +16,9 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Center, Stack } from "metabase/ui";
+import { Center } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import {
   PaneHeader,
   PaneHeaderActions,
@@ -117,34 +119,45 @@ function NewTransformPageBody({
 
   return (
     <>
-      <Stack
+      <PageContainer
         pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
         data-testid="transform-query-editor"
         gap={0}
+        px={0}
+        header={
+          <PaneHeader
+            title={
+              <PaneHeaderInput
+                initialValue={name}
+                placeholder={t`New transform`}
+                maxLength={NAME_MAX_LENGTH}
+                isOptional
+                onChange={setName}
+              />
+            }
+            actions={
+              <PaneHeaderActions
+                errorMessage={validationResult.errorMessage}
+                isValid={validationResult.isValid}
+                isDirty
+                onSave={openModal}
+                onCancel={handleCancel}
+              />
+            }
+            breadcrumbs={
+              <DataStudioBreadcrumbs>
+                {[
+                  <Link key="transform-list" to={Urls.transformList()}>
+                    {t`Transforms`}
+                  </Link>,
+                  t`New transform`,
+                ]}
+              </DataStudioBreadcrumbs>
+            }
+            px="2rem"
+          />
+        }
       >
-        <PaneHeader
-          title={
-            <PaneHeaderInput
-              initialValue={name}
-              placeholder={t`New transform`}
-              maxLength={NAME_MAX_LENGTH}
-              isOptional
-              onChange={setName}
-            />
-          }
-          actions={
-            <PaneHeaderActions
-              errorMessage={validationResult.errorMessage}
-              isValid={validationResult.isValid}
-              isDirty
-              onSave={openModal}
-              onCancel={handleCancel}
-            />
-          }
-        />
         {source.type === "python" ? (
           <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
             source={source}
@@ -170,7 +183,7 @@ function NewTransformPageBody({
             onRejectProposed={rejectProposed}
           />
         )}
-      </Stack>
+      </PageContainer>
       {isModalOpened && isNotDraftSource(source) && (
         <CreateTransformModal
           source={source}

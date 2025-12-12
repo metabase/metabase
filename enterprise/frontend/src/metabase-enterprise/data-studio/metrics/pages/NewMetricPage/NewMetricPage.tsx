@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Stack } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
@@ -90,42 +90,41 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
 
   return (
     <>
-      <Stack
+      <PageContainer
         pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
         data-testid="metric-query-editor"
         gap={0}
+        header={
+          <PaneHeader
+            title={
+              <PaneHeaderInput
+                initialValue={name}
+                placeholder={t`New metric`}
+                maxLength={NAME_MAX_LENGTH}
+                isOptional
+                onChange={setName}
+              />
+            }
+            icon="metric"
+            actions={
+              <PaneHeaderActions
+                errorMessage={validationResult.errorMessage}
+                isValid={validationResult.isValid}
+                isDirty
+                onSave={openModal}
+                onCancel={handleCancel}
+              />
+            }
+          />
+        }
       >
-        <PaneHeader
-          title={
-            <PaneHeaderInput
-              initialValue={name}
-              placeholder={t`New metric`}
-              maxLength={NAME_MAX_LENGTH}
-              isOptional
-              onChange={setName}
-            />
-          }
-          icon="metric"
-          actions={
-            <PaneHeaderActions
-              errorMessage={validationResult.errorMessage}
-              isValid={validationResult.isValid}
-              isDirty
-              onSave={openModal}
-              onCancel={handleCancel}
-            />
-          }
-        />
         <MetricQueryEditor
           query={query}
           uiState={uiState}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
         />
-      </Stack>
+      </PageContainer>
       {isModalOpened && (
         <CreateMetricModal
           query={query}

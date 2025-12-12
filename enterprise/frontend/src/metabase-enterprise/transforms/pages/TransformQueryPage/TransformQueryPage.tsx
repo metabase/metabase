@@ -15,11 +15,12 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import type { Database, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
@@ -159,34 +160,28 @@ function TransformQueryPageBody({
 
   return (
     <>
-      <Stack
-        align="stretch"
+      <PageContainer
         data-testid="transform-query-editor"
-        gap={0}
-        h="100%"
-        mx="auto"
-        pb="sm"
-        pos="relative"
-        px="3.5rem"
-        w="100%"
+        header={
+          <TransformHeader
+            transform={transform}
+            actions={
+              <TransformPaneHeaderActions
+                source={source}
+                isSaving={isSaving}
+                isDirty={isDirty}
+                handleSave={handleSave}
+                handleCancel={handleCancel}
+                transformId={transform.id}
+                isEditMode={isEditMode}
+              />
+            }
+            hasMenu={!isEditMode && !isDirty}
+            isEditMode={isEditMode}
+            pb="lg"
+          />
+        }
       >
-        <TransformHeader
-          transform={transform}
-          actions={
-            <TransformPaneHeaderActions
-              source={source}
-              isSaving={isSaving}
-              isDirty={isDirty}
-              handleSave={handleSave}
-              handleCancel={handleCancel}
-              transformId={transform.id}
-              isEditMode={isEditMode}
-            />
-          }
-          hasMenu={!isEditMode && !isDirty}
-          isEditMode={isEditMode}
-          pb="lg"
-        />
         <Flex gap={0} className={S.visualization}>
           <Box w="100%">
             {source.type === "python" ? (
@@ -218,7 +213,7 @@ function TransformQueryPageBody({
             )}
           </Box>
         </Flex>
-      </Stack>
+      </PageContainer>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}

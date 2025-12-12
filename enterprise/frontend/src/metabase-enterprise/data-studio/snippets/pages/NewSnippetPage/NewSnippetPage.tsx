@@ -14,6 +14,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Box, Flex, Stack } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import type { RegularCollectionId } from "metabase-types/api";
 
 import {
@@ -82,34 +83,38 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
 
   return (
     <>
-      <Stack
+      <PageContainer
         pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
         gap={0}
         data-testid="new-snippet-page"
+        px={0}
+        header={
+          <PaneHeader
+            px="2rem"
+            style={{
+              borderBottom: "1px solid var(--mb-color-border)",
+            }}
+            title={
+              <PaneHeaderInput
+                initialValue={name}
+                placeholder={t`New SQL snippet`}
+                maxLength={SNIPPET_NAME_MAX_LENGTH}
+                isOptional
+                onContentChange={setName}
+              />
+            }
+            actions={
+              <PaneHeaderActions
+                isValid={isValid}
+                isDirty={true}
+                isSaving={isSaving}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            }
+          />
+        }
       >
-        <PaneHeader
-          title={
-            <PaneHeaderInput
-              initialValue={name}
-              placeholder={t`New SQL snippet`}
-              maxLength={SNIPPET_NAME_MAX_LENGTH}
-              isOptional
-              onContentChange={setName}
-            />
-          }
-          actions={
-            <PaneHeaderActions
-              isValid={isValid}
-              isDirty={true}
-              isSaving={isSaving}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          }
-        />
         <Flex flex={1} w="100%">
           <Box flex={1} className={S.editorContainer}>
             <CodeMirror
@@ -138,7 +143,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
             </Box>
           </Stack>
         </Flex>
-      </Stack>
+      </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={!isSaving} />
       <PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal
         isOpen={isCollectionPickerOpen}

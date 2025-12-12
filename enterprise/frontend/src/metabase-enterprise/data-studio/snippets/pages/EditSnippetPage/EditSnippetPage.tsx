@@ -16,6 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Stack } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
@@ -97,26 +98,28 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
 
   return (
     <>
-      <Stack
+      <PageContainer
         pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
         gap={0}
         data-testid="edit-snippet-page"
+        px={0}
+        header={
+          <SnippetHeader
+            px="3.5rem"
+            style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+            snippet={snippet}
+            actions={
+              <PaneHeaderActions
+                isValid={true}
+                isDirty={isDirty}
+                isSaving={isSaving}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            }
+          />
+        }
       >
-        <SnippetHeader
-          snippet={snippet}
-          actions={
-            <PaneHeaderActions
-              isValid={true}
-              isDirty={isDirty}
-              isSaving={isSaving}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          }
-        />
         <Flex flex={1} w="100%">
           <Box flex={1} className={S.editorContainer}>
             <CodeMirror
@@ -142,7 +145,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
             />
           </Stack>
         </Flex>
-      </Stack>
+      </PageContainer>
       <LeaveRouteConfirmModal
         key={snippetId}
         route={route}

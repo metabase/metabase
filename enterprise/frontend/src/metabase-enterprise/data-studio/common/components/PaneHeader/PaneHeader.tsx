@@ -20,7 +20,7 @@ import {
 
 import type { PaneHeaderTab } from "./types";
 
-interface PaneHeaderProps extends Omit<StackProps, "title"> {
+export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   title?: ReactNode;
   icon?: IconName;
   menu?: ReactNode;
@@ -42,7 +42,7 @@ export const PaneHeader = ({
   ...rest
 }: PaneHeaderProps) => {
   return (
-    <Stack px="lg" py="md" gap={0} {...rest}>
+    <Stack gap={0} {...rest}>
       {(breadcrumbs || showMetabotButton) && (
         <Flex mb="md" mt="md" h="2rem" w="100%">
           {breadcrumbs}
