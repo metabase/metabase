@@ -4,7 +4,20 @@ title: Dependency graph
 
 # Dependency graph
 
-The dependency graph provides a visual representation of how your Metabase content connects together. It maps the relationships between tables, models, snippets, transforms, questions, metrics, dashboards, and documents, so you can follow how data flows and understand the impact of any changes.
+The dependency graph provides a visual representation of how your Metabase content is connected.  You can use it to follow how data flows through your Metabase to better understand the impact of any changes you make.
+
+## What the dependency graph tracks
+
+ The dependency graph tracks the relationships between:
+ 
+- Tables
+- Models
+- Snippets
+- Transforms
+- Questions
+- Metrics
+- Dashboards
+- Documents
 
 ## Accessing the dependency graph
 
