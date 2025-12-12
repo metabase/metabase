@@ -684,5 +684,200 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
         });
       });
     });
+
+    it("should show remapped parameter values and trigger proper `/embed remapping endpoint", () => {
+      signInAsAdminAndSetupGuestEmbedding({
+        token: "starter",
+      });
+
+      // Set up internal remapping for ORDERS.QUANTITY
+      cy.request("POST", `/api/field/${ORDERS.QUANTITY}/dimension`, {
+        name: "Quantity",
+        type: "internal",
+        human_readable_field_id: null,
+      });
+
+      cy.request("GET", `/api/field/${ORDERS.QUANTITY}/values`).then(
+        ({ body }: { body: { values: [number][] } }) => {
+          cy.request("POST", `/api/field/${ORDERS.QUANTITY}/values`, {
+            values: body.values.map(([value]) => [value, `N${value}`]),
+          });
+        },
+      );
+
+      // Set up external remapping: ORDERS.PRODUCT_ID -> PRODUCTS.TITLE
+      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+        name: "Product ID",
+        type: "external",
+        human_readable_field_id: PRODUCTS.TITLE,
+      });
+
+      const dashboardTemplateTags: TemplateTags = {
+        quantity: {
+          id: "quantity",
+          name: "quantity",
+          "display-name": "Internal",
+          type: "dimension",
+          "widget-type": "number/=",
+          dimension: ["field", ORDERS.QUANTITY, null],
+        },
+        product_id_fk: {
+          id: "product_id_fk",
+          name: "product_id_fk",
+          "display-name": "FK",
+          type: "dimension",
+          "widget-type": "id",
+          dimension: ["field", ORDERS.PRODUCT_ID, null],
+        },
+        user_id_pk: {
+          id: "user_id_pk",
+          name: "user_id_pk",
+          "display-name": "PK->Name",
+          type: "dimension",
+          "widget-type": "id",
+          dimension: ["field", PEOPLE.ID, null],
+        },
+      };
+
+      const dashboardParameters = [
+        createMockParameter({
+          id: "quantity",
+          name: "Internal",
+          slug: "quantity",
+          type: "number/=",
+        }),
+        createMockParameter({
+          id: "product_id_fk",
+          name: "FK",
+          slug: "product_id_fk",
+          type: "id",
+        }),
+        createMockParameter({
+          id: "user_id_pk",
+          name: "PK->Name",
+          slug: "user_id_pk",
+          type: "id",
+        }),
+      ];
+
+      createNativeQuestionAndDashboard({
+        questionDetails: {
+          name: "Orders native question",
+          native: {
+            query:
+              "SELECT * " +
+              "FROM ORDERS " +
+              "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
+              "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+            "template-tags": dashboardTemplateTags,
+          },
+        },
+        dashboardDetails: {
+          name: "Embedding SDK Test Dashboard",
+          embedding_type: "guest-embed",
+          parameters: dashboardParameters,
+          enable_embedding: true,
+          embedding_params: {
+            quantity: "enabled",
+            product_id_fk: "enabled",
+            user_id_pk: "enabled",
+          },
+        },
+      }).then(({ body: { id: dashcardId, card_id, dashboard_id } }) => {
+        // Connect dashboard parameters to the card's template-tags
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id: dashcardId,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: "quantity",
+                  card_id,
+                  target: ["dimension", ["template-tag", "quantity"]],
+                },
+                {
+                  parameter_id: "product_id_fk",
+                  card_id,
+                  target: ["dimension", ["template-tag", "product_id_fk"]],
+                },
+                {
+                  parameter_id: "user_id_pk",
+                  card_id,
+                  target: ["dimension", ["template-tag", "user_id_pk"]],
+                },
+              ],
+            },
+          ],
+        });
+
+        cy.wrap(dashboard_id).as("dashboardId");
+      });
+
+      cy.signOut();
+
+      cy.intercept("GET", "/api/embed/dashboard/*/params/*/remapping*").as(
+        "parameterRemappingApiRequest",
+      );
+
+      cy.get("@dashboardId").then(async (dashboardId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: dashboardId as unknown as number,
+          resourceType: "dashboard",
+        });
+
+        mountGuestEmbedDashboard({ token });
+
+        getSdkRoot().within(() => {
+          cy.findAllByTestId("parameter-widget").should("have.length", 3);
+        });
+
+        cy.log("internal remapping");
+        getSdkRoot()
+          .findAllByTestId("parameter-widget")
+          .filter(':contains("Internal")')
+          .click();
+        cy.findByText("N5").click();
+        cy.findByText("Add filter").click();
+        getSdkRoot()
+          .findAllByTestId("parameter-widget")
+          .filter(':contains("Internal")')
+          .should("contain.text", "N5");
+
+        cy.log("FK remapping");
+        getSdkRoot()
+          .findAllByTestId("parameter-widget")
+          .filter(':contains("FK")')
+          .click();
+        cy.findByPlaceholderText("Enter an ID").type("1,");
+        cy.findByText("Rustic Paper Wallet").should("exist");
+        cy.findByText("Add filter").click();
+        getSdkRoot()
+          .findAllByTestId("parameter-widget")
+          .filter(':contains("FK")')
+          .should("contain.text", "Rustic Paper Wallet");
+
+        cy.log("PK->Name remapping");
+        getSdkRoot()
+          .findAllByTestId("parameter-widget")
+          .filter(':contains("PK->Name")')
+          .click();
+        cy.findByPlaceholderText("Enter an ID").type("1,");
+        cy.findByText("Hudson Borer").should("exist");
+        cy.findByText("Add filter").click();
+        getSdkRoot()
+          .findAllByTestId("parameter-widget")
+          .filter(':contains("PK->Name")')
+          .should("contain.text", "Hudson Borer");
+
+        cy.get("@parameterRemappingApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length.greaterThan(0);
+        });
+      });
+    });
   });
 });
