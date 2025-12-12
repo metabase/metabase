@@ -694,10 +694,13 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 onTransformClick={async (
                   workspaceTransform: WorkspaceTransformItem,
                 ) => {
-                  const { data: transform } = await fetchWorkspaceTransform({
-                    workspaceId: workspace.id,
-                    transformId: workspaceTransform.ref_id,
-                  });
+                  const { data: transform } = await fetchWorkspaceTransform(
+                    {
+                      workspaceId: workspace.id,
+                      transformId: workspaceTransform.ref_id,
+                    },
+                    true,
+                  );
                   if (transform) {
                     addOpenedTransform(transform);
                   }
