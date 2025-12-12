@@ -55,9 +55,8 @@ export function DependencyListView({
   withDependentsCountColumn = false,
   onParamsChange,
 }: DependencyListViewProps) {
-  const [searchValue, setSearchValue] = useState("");
-
-  const { pageIndex = 0 } = params;
+  const { query = "", pageIndex = 0 } = params;
+  const [searchValue, setSearchValue] = useState(query);
   const pageNumber = pageIndex + 1;
   const totalPages = Math.ceil(totalNodes / pageSize);
 
