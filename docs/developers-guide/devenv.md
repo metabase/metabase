@@ -21,7 +21,7 @@ Both components are built and assembled together into a single JAR file. In the 
 
 This installs [mise](https://mise.jdx.dev) (a tool version manager), sets up your shell, and installs all required tools (Node.js, Java, Clojure, Yarn, Babashka) at the correct versions. Follow the prompts, then open a new terminal.
 
-**Already have your own setup?** You can check that it meets the requirements with `./bin/dev-requirements`.
+**Already have your own setup?** You can check that it meets the requirements with `./bin/mage doctor`.
 
 To spin up a development environment, run:
 

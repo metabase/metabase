@@ -144,6 +144,9 @@
     (cache-value! cache k v))
   (has-cache? [_this]
     true)
+  (clear-cache! [_this]
+    (reset! cache {})
+    nil)
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

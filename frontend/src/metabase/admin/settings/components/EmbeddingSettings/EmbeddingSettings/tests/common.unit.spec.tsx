@@ -50,17 +50,17 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     expect(await screen.findByText("Appearance")).toBeInTheDocument();
   });
 
-  it("does not show the Embedded Analytics JS toggle when token features are missing", () => {
+  it("does not show the modular embedding toggle when token features are missing", () => {
     setup({ tokenFeatures: { embedding_simple: false } });
 
     expect(
-      screen.queryByText("Enable Embedded Analytics JS"),
+      screen.queryByText("Enable modular embedding"),
     ).not.toBeInTheDocument();
   });
 
   it("shows the Guest Embeds toggle when token features are missing", () => {
     setup({ tokenFeatures: { embedding_simple: false } });
 
-    expect(screen.getByText("Guest embeds")).toBeInTheDocument();
+    expect(screen.getByText("Enable guest embeds")).toBeInTheDocument();
   });
 });

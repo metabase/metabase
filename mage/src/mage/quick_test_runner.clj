@@ -20,7 +20,7 @@
 (defn- gather-file-tests []
   (->> (concat
         (fs/glob test-path "**.clj{,c}")
-        (fs/glob enterprise-path "**.clj?c"))
+        (fs/glob enterprise-path "**.clj{,c}"))
        (mapv (fn [f] (str (fs/relativize u/project-root-directory f))))
        (remove #(str/includes? % "mage"))
        vec))

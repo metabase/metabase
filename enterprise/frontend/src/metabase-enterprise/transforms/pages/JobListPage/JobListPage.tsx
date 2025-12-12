@@ -11,8 +11,8 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
-import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
@@ -75,15 +75,19 @@ export const JobListPage = () => {
 
   return (
     <>
-      <TransformsSectionHeader
-        leftSection={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
+      <PaneHeader
+        breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
+        px="3.5rem"
+        py={0}
+        showMetabotButton
       />
       <Stack
-        px="3.5rem"
-        data-testid="transforms-job-list"
-        pb="2rem"
         bg="background-light"
+        data-testid="transforms-job-list"
         h="100%"
+        pb="2rem"
+        px="3.5rem"
+        style={{ overflow: "hidden" }}
       >
         <Flex gap="0.5rem">
           <TextInput

@@ -10,8 +10,8 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Card, Flex, Group, Icon, Stack, TextInput } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
-import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
@@ -95,17 +95,20 @@ export const TransformListPage = () => {
 
   return (
     <>
-      <TransformsSectionHeader
-        leftSection={
+      <PaneHeader
+        breadcrumbs={
           <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
         }
+        px="3.5rem"
+        showMetabotButton
+        py={0}
       />
       <Stack
-        px="3.5rem"
+        bg="background-light"
         data-testid="transforms-list"
         pb="2rem"
-        bg="background-light"
-        h="100%"
+        px="3.5rem"
+        style={{ overflow: "hidden" }}
       >
         <Flex gap="md">
           <TextInput
