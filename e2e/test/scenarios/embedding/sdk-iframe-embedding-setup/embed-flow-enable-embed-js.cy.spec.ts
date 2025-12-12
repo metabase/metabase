@@ -88,12 +88,18 @@ describe(
         .should("be.visible")
         .should("be.disabled");
 
+      // Going to the next step adn selecting "Orders in a dashboard" explicitely
+      // because sometimes it selects another one that's been used recently
+      // see EMB-1106
+      cy.findByRole("button", { name: "Next" }).click();
+      cy.get('[data-testid="embed-recent-item-card"]')
+        .contains("Orders in a dashboard")
+        .click();
+
       cy.log("Preview should load after embedding is enabled");
       H.waitForSimpleEmbedIframesToLoad();
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText("Orders in a dashboard", { timeout: 40_000 }).should(
-          "be.visible",
-        );
+        cy.findByText("Orders in a dashboard").should("be.visible");
       });
     });
 
