@@ -65,14 +65,14 @@
 
 
    Returns an ::ws.t/execution-result map with status, timing, and table metadata."
-  [{:keys [source target] :as transform} table-map field-map]
+  [{:keys [source target] :as transform} remapping]
   (try
     (t2/with-transaction [_conn]
       (let [s-type (transforms/transform-source-type source)
-            new-xf  (-> (select-keys transform [:name :description :source])
+            new-xf  (-> (select-keys transform [:name :description])
                         (assoc :creator_id api/*current-user-id*
-                               :source (remap-source table-map field-map s-type source)
-                               :target (remap-target table-map target)))
+                               :source (remap-source (:tables remapping) (:fields remapping) s-type source)
+                               :target (remap-target (:tables remapping) target)))
             _       (assert (:target new-xf) "Target mapping must not be nil")
             temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
         (transforms.i/execute! temp-xf {:run-method :manual})

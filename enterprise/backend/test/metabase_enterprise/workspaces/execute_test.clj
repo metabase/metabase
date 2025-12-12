@@ -34,8 +34,7 @@
             table-map    {[db-id nil output-table] {:db-id  db-id
                                                     :schema ws-schema
                                                     :table  (ws.u/isolated-table-name nil output-table)
-                                                    :id     ::todo}}
-            field-map    nil]
+                                                    :id     ::todo}}]
 
         (testing "execution returns expected result structure"
           (is (=? {:status     :succeeded
@@ -44,7 +43,7 @@
                    :table      {:name   #(str/includes? % output-table)
                                 :schema ws-schema}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.execute/run-transform-with-remapping ws-transform table-map field-map)))))
+                    (ws.execute/run-transform-with-remapping ws-transform {:tables table-map :fields nil})))))
 
         (testing "app DB records are rolled back"
           (is (= before
