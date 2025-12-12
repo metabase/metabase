@@ -177,7 +177,7 @@ export const waitForTask = (
   if (retries > 3) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  cy.wait("@currentTask", { timeout: 10000 }).then(({ response }) => {
+  cy.wait("@currentTask").then(({ response }) => {
     const { body } = response;
     if (body.sync_task_type !== taskName) {
       waitForTask({ taskName });
