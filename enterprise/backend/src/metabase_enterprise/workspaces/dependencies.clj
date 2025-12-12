@@ -216,20 +216,27 @@
 
 (defn- upsert-workspace-output!
   "Upsert a workspace_output record for the transform's target table.
+   Stores both global (original) and isolated (workspace-specific) table identifiers.
    Returns the workspace_output id."
-  [workspace-id ref-id {:keys [db_id schema table]}]
+  [workspace-id ref-id isolated-schema {:keys [db_id schema table]}]
   (app-db/update-or-insert! :model/WorkspaceOutput
                             {:workspace_id workspace-id
                              :ref_id       ref-id}
-                            (constantly {:db_id db_id
-                                         :schema schema
-                                         :table  table})))
+                            (constantly {:db_id           db_id
+                                         :global_schema   schema
+                                         :global_table    table
+                                         :global_table_id (t2/select-one-fn :id [:model/Table :id]
+                                                                            :db_id db_id
+                                                                            :schema schema
+                                                                            :name table)
+                                         :isolated_schema isolated-schema
+                                         :isolated_table  (ws.u/isolated-table-name schema table)})))
 
 (defn- build-output-lookup
-  "Build a lookup map for workspace outputs: [db_id schema table] -> output_id.
+  "Build a lookup map for workspace outputs: [db_id global_schema global_table] -> output_id.
    Single query to fetch all outputs for the workspace."
   [workspace-id]
-  (t2/select-fn->fn (juxt :db_id :schema :table) :id
+  (t2/select-fn->fn (juxt :db_id :global_schema :global_table) :id
                     :model/WorkspaceOutput
                     :workspace_id workspace-id))
 
@@ -315,25 +322,27 @@
 
    Arguments:
    - workspace-id: int
+   - isolated-schema: string, the workspace's isolated schema name
    - entity-type: keyword, must be :transform
    - ref-id: string, the workspace_transform.ref_id
    - analysis: result from analyze-entity
 
    Side effects:
-   - Upserts workspace_output for this transform
+   - Upserts workspace_output for this transform (with both global and isolated identifiers)
    - Upserts workspace_input for each external table dependency
    - Creates workspace_dependency edges
    - Deletes stale edges"
-  [workspace-id :- :int
-   entity-type  :- :keyword
-   ref-id       :- :string
+  [workspace-id    :- :int
+   isolated-schema :- :string
+   entity-type     :- :keyword
+   ref-id          :- :string
    {:keys [output inputs]} :- ::analysis]
   (ws.u/assert-transform! entity-type)
   (t2/with-transaction [_conn]
     (let [output-lookup         (build-output-lookup workspace-id)
           existing-input-lookup (build-input-lookup workspace-id)
           current-edges         (current-edge-specs workspace-id ref-id)]
-      (upsert-workspace-output! workspace-id ref-id output)
+      (upsert-workspace-output! workspace-id ref-id isolated-schema output)
       (let [{internal-inputs true external-inputs false} (group-by (fn [{:keys [db_id schema table]}]
                                                                      (contains? output-lookup [db_id schema table]))
                                                                    inputs)

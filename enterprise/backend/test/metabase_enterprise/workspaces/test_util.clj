@@ -21,7 +21,10 @@
                                                 :model/Transform
                                                 :model/TransformRun
                                                 :model/Workspace
-                                                :model/WorkspaceTransform]
+                                                :model/WorkspaceTransform
+                                                :model/WorkspaceInput
+                                                :model/WorkspaceOutput
+                                                :model/WorkspaceDependency]
                           (tests)))))
 
 (defn ws-ready

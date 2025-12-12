@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -329,13 +330,13 @@
         query       (lib/native-query mp "select * from orders limit 10;")
         orig-schema "public"]
     (with-transform-cleanup! [orig-name "ws_tables_test"]
-      (mt/with-temp [:model/Transform x1 {:name        "My X1"
-                                          :source      {:type  "query"
-                                                        :query query}
-                                          :target      {:type     "table"
-                                                        :database (mt/id)
-                                                        :schema   "public"
-                                                        :name     orig-name}}]
+      (mt/with-temp [:model/Transform x1 {:name   "My X1"
+                                          :source {:type  "query"
+                                                   :query query}
+                                          :target {:type     "table"
+                                                   :database (mt/id)
+                                                   :schema   "public"
+                                                   :name     orig-name}}]
         ;; create the global table
         (transforms.i/execute! x1 {:run-method :manual})
         (let [workspace    (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
@@ -359,7 +360,8 @@
                                   :table_id orig-id}
                        :isolated {:transform_id ref-id
                                   :schema       (:schema workspace)
-                                  :table        string?}}]}
+                                  :table        string?
+                                  :table_id     nil}}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
           (testing "and after we run the transform, id for isolated table appears"
             (is (=? {:status "succeeded"}
@@ -372,7 +374,8 @@
                                   :table_id orig-id}
                        :isolated {:transform_id ref-id
                                   :schema       (:schema workspace)
-                                  :table        string?
+                                  ;; maybe this is a bit too specific, but gives me a peace of mind for now
+                                  :table        (ws.u/isolated-table-name orig-schema orig-name)
                                   :table_id     int?}}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))))))))))
 
@@ -692,13 +695,14 @@
                                            :schema "ws2"}
                      :model/Transform x1  {:name   "Transform in WS1"
                                            :source {:type  "query"
-                                                    :query (mt/native-query {:query "SELECT 42 as answer"})}
+                                                    :query (mt/native-query {:query "SELECT count(*) from orders"})}
                                            :target {:type     "table"
                                                     :database (mt/id)
                                                     :schema   "public"
                                                     :name     output-table}}]
-        (let [ref-id (:ref_id
-                      (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "/transform") x1))]
+        (let [ref-id        (:ref_id
+                             (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "/transform") x1))
+              isolated-name (ws.u/isolated-table-name "public" output-table)]
           (testing "returns 404 if transform not in workspace"
             (is (= "Not found."
                    (mt/user-http-request :crowberto :post 404
@@ -707,13 +711,14 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403
                                          (ws-url (:id ws1) "/transform/" ref-id "/run")))))
-          (testing "successful execution"
-            (is (=? {:status     "succeeded"
-                     :start_time some?
-                     :end_time   some?
-                     :table      {:name   #(str/includes? % output-table)
-                                  :schema "ws1"}}
-                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "run"))))
+          (testing "successful execution with remapped target"
+            (let [result (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "run"))]
+              (is (=? {:status     "succeeded"
+                       :start_time some?
+                       :end_time   some?
+                       :table      {:schema (:schema ws1)
+                                    :name   isolated-name}}
+                      result)))
             (testing "and we don't get any excessive transforms in the db"
               (is (= (:id x1)
                      (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]})))))

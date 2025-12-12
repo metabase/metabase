@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
+   [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -9,17 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fn [tests]
-                      (mt/with-premium-features [:workspaces :dependencies :transforms]
-                        (tests))))
-
-(use-fixtures :each (fn [tests]
-                      (mt/with-model-cleanup [:model/Workspace
-                                              :model/WorkspaceTransform
-                                              :model/WorkspaceInput
-                                              :model/WorkspaceOutput
-                                              :model/WorkspaceDependency]
-                        (tests))))
+(ws.tu/ws-fixtures!)
 
 ;;; ---------------------------------------- analyze-entity tests ----------------------------------------
 
@@ -42,7 +33,7 @@
         (let [inputs (:inputs result)
               table-names (set (map :table inputs))]
           (is (= 1 (count inputs)))
-          (is (contains? table-names "ORDERS"))
+          (is (contains? table-names (mt/format-name :orders)))
           ;; MBQL queries have table_id since the tables must exist
           (is (every? #(and (:db_id %)
                             (:table %)
@@ -119,8 +110,8 @@
         (let [inputs (:inputs result)
               table-names (set (map :table inputs))]
           (is (= 2 (count inputs)))
-          (is (contains? table-names "ORDERS"))
-          (is (contains? table-names "PRODUCTS"))
+          (is (contains? table-names (mt/format-name :orders)))
+          (is (contains? table-names (mt/format-name :products)))
           ;; Python transforms have table_ids since source-tables maps to existing table IDs
           (is (every? :table_id inputs)))))))
 
@@ -134,7 +125,8 @@
 (deftest write-dependencies-creates-output-test
   (testing "write-dependencies! creates workspace_output record"
     (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
-                                               :database_id (mt/id)}
+                                               :database_id (mt/id)
+                                               :schema      "test_isolated_schema"}
                    :model/WorkspaceTransform wt {:workspace_id (:id workspace)
                                                  :name         "Test Transform"
                                                  :source       {:type "query" :query {}}
@@ -145,69 +137,76 @@
                                :schema "public"
                                :table  "test_output"}
                       :inputs []}]
-        (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
+        (ws.deps/write-dependencies! (:id workspace) "test_isolated_schema" :transform (:ref_id wt) analysis)
         (let [output (t2/select-one :model/WorkspaceOutput
                                     :workspace_id (:id workspace)
                                     :ref_id (:ref_id wt))]
           (is (some? output))
           (is (= (mt/id) (:db_id output)))
-          (is (= "public" (:schema output)))
-          (is (= "test_output" (:table output))))))))
+          (is (= "public" (:global_schema output)))
+          (is (= "test_output" (:global_table output)))
+          (is (= "test_isolated_schema" (:isolated_schema output)))
+          (is (= "public__test_output" (:isolated_table output))))))))
 
 (deftest write-dependencies-creates-inputs-test
   (testing "write-dependencies! creates workspace_input records for external dependencies"
-    (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
-                                               :database_id (mt/id)}
-                   :model/WorkspaceTransform wt {:workspace_id (:id workspace)
-                                                 :name         "Test Transform"
-                                                 :source       {:type "query" :query {}}
-                                                 :target       {:database (mt/id)
-                                                                :schema   "public"
-                                                                :name     "test_output"}}]
-      (let [orders-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :orders))
-            analysis     {:output {:db_id  (mt/id)
-                                   :schema "public"
-                                   :table  "test_output"}
-                          :inputs [{:db_id  (:db_id orders-table)
-                                    :schema (:schema orders-table)
-                                    :table  (:name orders-table)}]}]
-        (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
-        (let [input (t2/select-one :model/WorkspaceInput
-                                   :workspace_id (:id workspace)
-                                   :table (:name orders-table))]
-          (is (some? input))
-          (is (= (:db_id orders-table) (:db_id input)))
-          (is (= (:name orders-table) (:table input))))))))
+    (let [iso-schema "test_isolated_schema"]
+      (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
+                                                 :database_id (mt/id)
+                                                 :schema      iso-schema}
+                     :model/WorkspaceTransform wt {:workspace_id (:id workspace)
+                                                   :name         "Test Transform"
+                                                   :source       {:type "query" :query {}}
+                                                   :target       {:database (mt/id)
+                                                                  :schema   "public"
+                                                                  :name     "test_output"}}]
+        (let [orders-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :orders))
+              analysis     {:output {:db_id  (mt/id)
+                                     :schema "public"
+                                     :table  "test_output"}
+                            :inputs [{:db_id  (:db_id orders-table)
+                                      :schema (:schema orders-table)
+                                      :table  (:name orders-table)}]}]
+          (ws.deps/write-dependencies! (:id workspace) iso-schema :transform (:ref_id wt) analysis)
+          (let [input (t2/select-one :model/WorkspaceInput
+                                     :workspace_id (:id workspace)
+                                     :table (:name orders-table))]
+            (is (some? input))
+            (is (= (:db_id orders-table) (:db_id input)))
+            (is (= (:name orders-table) (:table input)))))))))
 
 (deftest write-dependencies-creates-edges-test
   (testing "write-dependencies! creates workspace_dependency edges"
-    (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
-                                               :database_id (mt/id)}
-                   :model/WorkspaceTransform wt {:workspace_id (:id workspace)
-                                                 :name         "Test Transform"
-                                                 :source       {:type "query" :query {}}
-                                                 :target       {:database (mt/id)
-                                                                :schema   "public"
-                                                                :name     "test_output"}}]
-      (let [orders-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :orders))
-            analysis     {:output {:db_id  (mt/id)
-                                   :schema "public"
-                                   :table  "test_output"}
-                          :inputs [{:db_id  (:db_id orders-table)
-                                    :schema (:schema orders-table)
-                                    :table  (:name orders-table)}]}]
-        (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
-        (let [edges (t2/select :model/WorkspaceDependency
-                               :workspace_id (:id workspace)
-                               :from_entity_type :transform
-                               :from_entity_id (:ref_id wt))]
-          (is (= 1 (count edges)))
-          (is (= :input (:to_entity_type (first edges)))))))))
+    (let [iso-schema "test_isolated_schema"]
+      (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
+                                                 :database_id (mt/id)
+                                                 :schema      iso-schema}
+                     :model/WorkspaceTransform wt {:workspace_id (:id workspace)
+                                                   :name         "Test Transform"
+                                                   :source       {:type "query" :query {}}
+                                                   :target       {:database (mt/id)
+                                                                  :schema   "public"
+                                                                  :name     "test_output"}}]
+        (let [orders-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :orders))
+              analysis     {:output {:db_id  (mt/id)
+                                     :schema "public"
+                                     :table  "test_output"}
+                            :inputs [{:db_id  (:db_id orders-table)
+                                      :schema (:schema orders-table)
+                                      :table  (:name orders-table)}]}]
+          (ws.deps/write-dependencies! (:id workspace) iso-schema :transform (:ref_id wt) analysis)
+          (let [edges (t2/select :model/WorkspaceDependency
+                                 :workspace_id (:id workspace)
+                                 :from_entity_type :transform
+                                 :from_entity_id (:ref_id wt))]
+            (is (= 1 (count edges)))
+            (is (= :input (:to_entity_type (first edges))))))))))
 
 (deftest write-dependencies-internal-dependency-test
   (testing "write-dependencies! links to workspace_output for internal dependencies"
     (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
-                                               :database_id (mt/id)}
+                                               :database_id (mt/id)
+                                               :schema      "test_isolated_schema"}
                    :model/WorkspaceTransform wt1 {:workspace_id (:id workspace)
                                                   :name         "Upstream Transform"
                                                   :source       {:type "query" :query {}}
@@ -221,14 +220,14 @@
                                                                  :schema   "public"
                                                                  :name     "downstream_output"}}]
       ;; First, write dependencies for the upstream transform (creates the output)
-      (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt1)
+      (ws.deps/write-dependencies! (:id workspace) "test_isolated_schema" :transform (:ref_id wt1)
                                    {:output {:db_id  (mt/id)
                                              :schema "public"
                                              :table  "upstream_output"}
                                     :inputs []})
 
       ;; Now write dependencies for downstream that depends on upstream's output
-      (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt2)
+      (ws.deps/write-dependencies! (:id workspace) "test_isolated_schema" :transform (:ref_id wt2)
                                    {:output {:db_id  (mt/id)
                                              :schema "public"
                                              :table  "downstream_output"}
@@ -251,7 +250,8 @@
 (deftest write-dependencies-updates-on-change-test
   (testing "write-dependencies! updates records and removes stale edges"
     (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
-                                               :database_id (mt/id)}
+                                               :database_id (mt/id)
+                                               :schema      "test_isolated_schema"}
                    :model/WorkspaceTransform wt {:workspace_id (:id workspace)
                                                  :name         "Test Transform"
                                                  :source       {:type "query" :query {}}
@@ -261,7 +261,7 @@
       (let [orders-table   (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :orders))
             products-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :products))]
         ;; First write with orders dependency
-        (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt)
+        (ws.deps/write-dependencies! (:id workspace) "test_isolated_schema" :transform (:ref_id wt)
                                      {:output {:db_id  (mt/id)
                                                :schema "public"
                                                :table  "test_output"}
@@ -271,7 +271,7 @@
         (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace))))
 
         ;; Update to depend on products instead
-        (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt)
+        (ws.deps/write-dependencies! (:id workspace) "test_isolated_schema" :transform (:ref_id wt)
                                      {:output {:db_id  (mt/id)
                                                :schema "public"
                                                :table  "test_output"}
@@ -293,7 +293,8 @@
     (let [mp    (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (mt/with-temp [:model/Workspace workspace {:name        "Integration Test Workspace"
-                                                 :database_id (mt/id)}
+                                                 :database_id (mt/id)
+                                                 :schema      "test_isolated_schema"}
                      :model/WorkspaceTransform wt {:workspace_id (:id workspace)
                                                    :name         "Orders Analysis"
                                                    :source       {:type "query" :query {}}
@@ -307,7 +308,7 @@
                                          :schema   "analytics"
                                          :name     "orders_analysis"}}
               analysis         (ws.deps/analyze-entity :transform transform-entity)]
-          (ws.deps/write-dependencies! (:id workspace) :transform (:ref_id wt) analysis)
+          (ws.deps/write-dependencies! (:id workspace) "test_isolated_schema" :transform (:ref_id wt) analysis)
 
           (testing "output record created"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace)))))

@@ -58,16 +58,27 @@
      :name     (:table replacement)}
     target))
 
+(defn- update-isolated-table-id!
+  "After successful transform execution, look up the isolated table and update workspace_output.
+   The isolated table should now exist in the metabase Table model after sync."
+  [ref-id]
+  (when-let [table-id (:id (t2/query-one
+                            {:from   [[:workspace_output :wo]]
+                             :join   [[:metabase_table :t] [:and
+                                                            [:= :t.db_id :wo.db_id]
+                                                            [:= :t.schema :wo.isolated_schema]
+                                                            [:= :t.name :wo.isolated_table]]]
+                             :select [:t.id]}))]
+    (t2/update! :model/WorkspaceOutput {:ref_id ref-id} {:isolated_table_id table-id})))
+
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.
 
   This is used by Workspaces to re-route the output of each transform to a non-production table, and
   to re-write their queries where these outputs transitively become inputs to other transforms.
 
-
-
    Returns an ::ws.t/execution-result map with status, timing, and table metadata."
-  [workspace {:keys [source target] :as transform} remapping]
+  [workspace {:keys [source target ref_id] :as transform} remapping]
   (isolation/with-workspace-isolation workspace
     (try
       (t2/with-transaction [_conn]
@@ -80,7 +91,9 @@
               temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
           (transforms.i/execute! temp-xf {:run-method :manual})
           (u/prog1 (execution-results temp-xf)
-            (t2/update! :model/WorkspaceTransform (:ref_id transform) {:last_run_at (t/offset-date-time)})
+            (when (= :succeeded (:status <>))
+              (t2/update! :model/WorkspaceTransform ref_id {:last_run_at (t/offset-date-time)})
+              (update-isolated-table-id! ref_id))
             (t2/delete! :model/Transform (:id temp-xf)))
           #_ ;; this just deletes also writes to :model/Table and actual output table too
             (throw (ex-info "rollback tx!" {::results (execution-results temp-xf)}))))
