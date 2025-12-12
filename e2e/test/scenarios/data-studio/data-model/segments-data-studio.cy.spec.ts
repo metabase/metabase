@@ -2,7 +2,7 @@ import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
-const { SegmentList, SegmentEditor } = H.DataModel;
+const { SegmentList, SegmentEditor, SegmentRevisionHistory } = H.DataModel;
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
@@ -31,10 +31,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.log("verify new segment link and navigation");
       SegmentList.getNewSegmentLink().scrollIntoView().click();
 
-      cy.url().should(
-        "include",
-        `/data-studio/library/segments/new?tableId=${ORDERS_ID}`,
-      );
+      cy.url().should("include", `${getSegmentsBaseUrl(ORDERS_ID)}/new`);
     });
 
     it("should display segments and allow navigation to edit page", () => {
@@ -57,7 +54,7 @@ describe("scenarios > data studio > data model > segments", () => {
       cy.get<number>("@segmentId").then((segmentId) => {
         cy.url().should(
           "include",
-          `/data-studio/library/segments/${segmentId}`,
+          `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}`,
         );
       });
     });
@@ -109,11 +106,10 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.button("Add filter").click();
       });
 
-      cy.log("verify row count preview");
-      SegmentEditor.getRowCount().should("be.visible");
-
-      cy.log("verify preview link");
-      SegmentEditor.getPreviewLink().should("be.visible");
+      cy.log("verify filter was added");
+      SegmentEditor.get()
+        .findByText(/Total is greater than 100/i)
+        .should("exist");
 
       cy.log("save segment");
       SegmentEditor.getSaveButton().click();
@@ -121,13 +117,18 @@ describe("scenarios > data studio > data model > segments", () => {
 
       cy.log("verify redirect to edit page and toast");
       H.undoToast().should("contain.text", "Segment created");
-      cy.url().should("match", /\/data-studio\/library\/segments\/\d+$/);
+      cy.url().should(
+        "match",
+        new RegExp(
+          `${getSegmentsBaseUrl(ORDERS_ID).replace(/\//g, "\\/")}\/\\d+$`,
+        ),
+      );
 
       cy.log("verify segment in query builder");
       verifySegmentInQueryBuilder("Premium Orders");
     });
 
-    it("should show row count when filters are added", () => {
+    it("should add filter and show preview in menu", () => {
       visitDataStudioSegments(PRODUCTS_ID);
 
       SegmentList.getNewSegmentLink().scrollIntoView().click();
@@ -140,7 +141,14 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.button("Add filter").click();
       });
 
-      SegmentEditor.getRowCount().should("be.visible");
+      cy.log("verify filter was added");
+      SegmentEditor.get()
+        .findByText(/Price is less than 50/i)
+        .should("exist");
+
+      cy.log("verify preview is available in menu");
+      SegmentEditor.getActionsButton().click();
+      H.popover().findByText("Preview").should("be.visible");
     });
   });
 
@@ -151,7 +159,7 @@ describe("scenarios > data studio > data model > segments", () => {
         description: "Test description",
       });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/library/segments/${segmentId}`);
+        visitDataModelSegment(ORDERS_ID, segmentId);
       });
 
       cy.log("verify existing data displayed");
@@ -163,16 +171,20 @@ describe("scenarios > data studio > data model > segments", () => {
         "Test description",
       );
 
-      cy.log("update segment name");
+      cy.log("update segment name (saves immediately on blur/enter)");
       SegmentEditor.get()
         .findByDisplayValue("Test Segment")
         .click()
         .type(" Updated{enter}");
-      SegmentEditor.getSaveButton().click();
       cy.wait("@updateSegment");
 
-      cy.log("verify toast (stays on edit page)");
-      H.undoToast().should("contain.text", "Segment updated");
+      cy.log("verify toast for name update");
+      H.undoToast().should("contain.text", "Segment name updated");
+
+      cy.log("update description");
+      SegmentEditor.getDescriptionInput().clear().type("Updated description");
+      SegmentEditor.getSaveButton().click();
+      cy.wait("@updateSegment");
 
       cy.log("verify updated segment in query builder");
       verifySegmentInQueryBuilder("Test Segment Updated");
@@ -181,7 +193,7 @@ describe("scenarios > data studio > data model > segments", () => {
     it("should navigate back to segments tab via breadcrumb", () => {
       createTestSegment({ name: "Breadcrumb Test Segment" });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/library/segments/${segmentId}`);
+        visitDataModelSegment(ORDERS_ID, segmentId);
       });
 
       SegmentEditor.getBreadcrumb("Orders").click();
@@ -200,7 +212,7 @@ describe("scenarios > data studio > data model > segments", () => {
     it("should remove segment via more menu", () => {
       createTestSegment({ name: "Segment to Delete" });
       cy.get<number>("@segmentId").then((segmentId) => {
-        cy.visit(`/data-studio/library/segments/${segmentId}`);
+        visitDataModelSegment(ORDERS_ID, segmentId);
       });
 
       cy.log("delete via more menu");
@@ -264,8 +276,10 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.button("Add filter").click();
       });
 
-      cy.log("verify row count and save");
-      SegmentEditor.getRowCount().should("be.visible");
+      cy.log("verify filter was added and save");
+      SegmentEditor.get()
+        .findByText(/Product → Category is Widget/i)
+        .should("exist");
       SegmentEditor.getSaveButton().click();
       cy.wait("@createSegment");
 
@@ -354,8 +368,10 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.button("Add filter").click();
       });
 
-      cy.log("save segment");
-      SegmentEditor.getRowCount().should("be.visible");
+      cy.log("verify filter was added and save segment");
+      SegmentEditor.get()
+        .findByText(/Product → Category is Gadget/i)
+        .should("exist");
       SegmentEditor.getSaveButton().click();
       cy.wait("@createSegment");
 
@@ -466,7 +482,7 @@ describe("scenarios > data studio > data model > segments", () => {
         });
 
         cy.log("edit Segment A via UI and try to add Segment B as filter");
-        cy.visit(`/data-studio/modeling/segments/${segmentA.id}`);
+        visitDataModelSegment(ORDERS_ID, segmentA.id);
         cy.wait("@metadata");
 
         SegmentEditor.get().icon("add").click();
@@ -480,6 +496,114 @@ describe("scenarios > data studio > data model > segments", () => {
           "Unable to save segments with circular dependencies",
         );
       });
+    });
+  });
+
+  describe("Revision history", () => {
+    it("should display revision history with changes to name, description, and filter", () => {
+      createTestSegment({
+        name: "Original Name",
+        description: "Original description",
+        filter: ["<", ["field", ORDERS.TOTAL, null], 50],
+      });
+      cy.get<number>("@segmentId").then((segmentId) => {
+        cy.log("update segment name");
+        cy.request("PUT", `/api/segment/${segmentId}`, {
+          name: "Updated Name",
+          description: "Original description",
+          revision_message: "Updated from Data Studio",
+          definition: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              filter: ["<", ["field", ORDERS.TOTAL, null], 50],
+            },
+          },
+        });
+
+        cy.log("update segment description");
+        cy.request("PUT", `/api/segment/${segmentId}`, {
+          name: "Updated Name",
+          description: "Updated description",
+          revision_message: "Updated from Data Studio",
+          definition: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              filter: ["<", ["field", ORDERS.TOTAL, null], 50],
+            },
+          },
+        });
+
+        cy.log("update segment filter");
+        cy.request("PUT", `/api/segment/${segmentId}`, {
+          name: "Updated Name",
+          description: "Updated description",
+          revision_message: "Updated from Data Studio",
+          definition: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              filter: [">", ["field", ORDERS.TOTAL, null], 100],
+            },
+          },
+        });
+
+        cy.wait(1000);
+
+        visitDataModelSegment(ORDERS_ID, segmentId);
+      });
+
+      cy.log("navigate to revision history tab");
+      SegmentEditor.getRevisionHistoryTab().click();
+
+      cy.log("verify URL");
+      cy.get<number>("@segmentId").then((segmentId) => {
+        cy.url().should(
+          "include",
+          `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}/revisions`,
+        );
+      });
+
+      cy.log("verify revision history entries");
+      SegmentRevisionHistory.get().within(() => {
+        cy.findByText(/created this segment/i)
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText(/made multiple changes/i)
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText(/updated the description/i)
+          .scrollIntoView()
+          .should("be.visible");
+      });
+    });
+  });
+
+  describe("Dependencies", () => {
+    it("should display dependency graph for a segment", () => {
+      createTestSegment({ name: "Dependencies Test Segment" });
+      cy.get<number>("@segmentId").then((segmentId) => {
+        visitDataModelSegment(ORDERS_ID, segmentId);
+      });
+
+      cy.log("navigate to dependencies tab");
+      SegmentEditor.getDependenciesTab().click();
+
+      cy.log("verify URL and dependency graph display");
+      cy.get<number>("@segmentId").then((segmentId) => {
+        cy.url().should(
+          "include",
+          `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}/dependencies`,
+        );
+      });
+      H.DependencyGraph.graph().should("be.visible");
+      H.DependencyGraph.graph()
+        .findByText("Dependencies Test Segment")
+        .should("be.visible");
     });
   });
 });
@@ -498,6 +622,14 @@ function visitDataStudioSegments(tableId: number) {
     schemaId: SAMPLE_DB_SCHEMA_ID,
     tableId,
   });
+}
+
+function getSegmentsBaseUrl(tableId: number) {
+  return `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${tableId}/segments`;
+}
+
+function visitDataModelSegment(tableId: number, segmentId: number) {
+  cy.visit(`${getSegmentsBaseUrl(tableId)}/${segmentId}`);
 }
 
 function createTestSegment(
