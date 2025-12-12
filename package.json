@@ -519,7 +519,7 @@
     ],
     "**/*": [
       "./bin/mage -token-scan",
-      "./bin/mage -install-merge-drivers"
+      "./bin/mage -uninstall-merge-drivers"
     ]
   },
   "browserslist": [
