@@ -52,7 +52,6 @@ export const HomePage = (): JSX.Element => {
           }}
 
           onChange={console.log}
-          onConfirm={console.log}
           options={{
             showLibrary: true,
             showDatabases: true,

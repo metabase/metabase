@@ -311,6 +311,7 @@ export const CollectionPickerModal = ({
   return (
     <>
       <EntityPickerModal
+        models={["collection"]}
         title={title}
         onItemSelect={handleItemSelect}
         canSelectItem={
@@ -318,10 +319,9 @@ export const CollectionPickerModal = ({
           !isCreateDashboardDialogOpen &&
           canSelectItem(selectedItem)
         }
-        onConfirm={handleConfirm}
+        onChange={handleChange}
+        initialValue={value}
         onClose={onClose}
-        selectedItem={selectedItem}
-        tabs={tabs}
         options={options}
         searchResultFilter={composedSearchResultFilter}
         recentFilter={composedRecentFilter}

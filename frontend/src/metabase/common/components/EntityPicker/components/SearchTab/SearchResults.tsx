@@ -12,6 +12,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Icon, NavLink, Stack, Text } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
+import type { OmniPickerCollectionItem } from "../..";
 import { useOmniPickerContext } from "../../context";
 import { getEntityPickerIcon, isSelectedItem } from "../../utils";
 
@@ -49,13 +50,15 @@ export const SearchResults = ({
           >
             {searchResults?.map((item) => {
               const isSelected = isSelectedItem(item, selectedItem);
+              const isSelectable = isSelectableItem(item);
+
               return (
                 <Box key={`${item.model}-${item.id}`} pb="xs" px="sm">
                   <NavLink
                     w={"auto"}
-                    disabled={isDisabledItem(item)}
+                    disabled={isDisabledItem(item) || !isSelectable}
                     rightSection={
-                    <LocationInfo item={item} isSelected={isSelected} />
+                      <LocationInfo item={item} isSelected={isSelected} />
                     }
                     mb={0}
                     label={
@@ -85,14 +88,20 @@ export const SearchResults = ({
                       //   entityId: typeof item.id === "number" ? item.id : null,
                       //   searchTerm,
                       // });
+                      if (isSelectable) {
+                        setPath((prevPath) => [
+                          ...prevPath.slice(0, 1),
+                          {
+                            id: item.id,
+                            model: item.model as OmniPickerCollectionItem["model"],
+                            name: item.name,
+                            db_id: "db_id" in item ? item.db_id : undefined,
+                          },
+                        ]);
 
-                      setPath((prevPath) => [
-                        ...prevPath.slice(0, 1),
-                        item,
-                      ]);
-
-                      if (!options?.hasConfirmButtons && isSelectableItem(item)) {
-                        onChange(item);
+                        if (!options?.hasConfirmButtons) {
+                          onChange(item);
+                        }
                       }
                     }}
                     variant="default"
@@ -115,39 +124,52 @@ export const SearchResults = ({
   );
 };
 
-const isInCollection = (
-  item: SearchResult | RecentItem,
+const isTableInDb = (
+  item: SearchResult,
 ) => {
-  return !["database", "schema", "table"].includes(item.model) || item?.collection?.name || item?.parent_collection?.name;
+  return item.model === "table" &&
+    "collection" in item &&
+    !!item.collection &&
+    !item.collection.name
 };
 
-const isTableItem = (
+const isRecentItem = (
   item: SearchResult | RecentItem,
-) => {
-  return item.model === "table" && "database_name" in item;
+): item is RecentItem => {
+  return !("collection" in item);
 };
 
-const LocationInfo = ({ item, isSelected }: { item: SearchResult, isSelected: boolean }) => {
-  const isCollectionItem = isInCollection(item);
-  const isTable = isTableItem(item);
+const getRecentItemText = (item: RecentItem) => {
+  if ("parent_collection" in item) {
+    return item.parent_collection.name ?? t`Our analytics`;
+  }
 
-  const collection = item.collection ?? item.parent_collection;
+  return `${item.database.name} ${item.table_schema ? `(${item.table_schema})` : ""}`;
+};
 
-  const itemText = match({ isCollectionItem, isTable })
-    .with({ isCollectionItem: true }, () => collection?.name ?? t`Our analytics`)
-    .with({ isTable: true }, () => `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`)
-    .otherwise(() => null);
+const getSearchItemText = (item: SearchResult) => {
+  const isTable = isTableInDb(item);
+
+  return isTable
+    ? `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`
+    : (item?.collection?.name ?? t`Our analytics`);
+};
+
+const LocationInfo = ({ item, isSelected }: { item: SearchResult | RecentItem, isSelected: boolean }) => {
+  const itemText = isRecentItem(item)
+    ? getRecentItemText(item)
+    : getSearchItemText(item);
 
   if (!itemText) {
     return null;
   }
 
-  const iconProps = isCollectionItem
-    ? getIcon({
-        ...item.collection,
+  const iconProps = item.model === "table"
+    ? null
+    : getIcon({
+        ...("collection" in item ? item.collection : item?.parent_collection),
         model: "collection",
-      })
-    : null;
+      });
 
   return (
     <Flex gap="xs" align="center">
