@@ -52,8 +52,8 @@ export const SqlParametersList = () => {
     const uiParameters = getCardUiParameters(
       question.card(),
       metadataRef.current,
-      {},
-      question.card().parameters || undefined,
+      parameterValues,
+      question.parameters() || undefined,
     );
 
     return uiParameters.filter(
@@ -62,7 +62,13 @@ export const SqlParametersList = () => {
           (originalParameter) => originalParameter.id === id,
         ) && !hiddenParameters?.includes(slug),
     );
-  }, [question, originalQuestion, metadataRef, hiddenParameters]);
+  }, [
+    question,
+    originalQuestion,
+    metadataRef,
+    parameterValues,
+    hiddenParameters,
+  ]);
 
   if (!question || !isNativeQuestion || !parameters.length) {
     return null;
