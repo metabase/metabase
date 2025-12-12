@@ -216,13 +216,11 @@
       (println "Will modify <ours>!"))
     (u/exit 2))
 
-  (let [;; MB_DIR allows resolving relative paths when mage changes to a different directory
-        mb-dir (System/getenv "MB_DIR")
+  (let [;; Resolve relative paths against project root (where git creates temp files)
         resolve-path (fn [p]
-                       (if (and mb-dir
-                                (not (str/starts-with? p "/")))
-                         (str mb-dir "/" p)
-                         p))
+                       (if (str/starts-with? p "/")
+                         p
+                         (str u/project-root-directory "/" p)))
         [base ours theirs marker-size filepath] arguments
         base (resolve-path base)
         ours (resolve-path ours)
