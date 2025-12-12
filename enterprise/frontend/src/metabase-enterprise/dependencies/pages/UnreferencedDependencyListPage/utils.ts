@@ -10,9 +10,9 @@ export function parseRawParams(
 ): Urls.UnreferencedDependencyListParams {
   return {
     query: parseString(rawParams?.query),
-    page: parseNumber(rawParams?.page),
     types: parseList(rawParams?.types, (value) =>
       parseEnum(value, DEPENDENCY_GROUP_TYPES),
     ),
+    pageIndex: parseNumber(rawParams?.pageIndex),
   };
 }

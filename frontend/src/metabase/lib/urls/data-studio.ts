@@ -189,14 +189,14 @@ export function dataStudioTasks() {
 
 export type UnreferencedDependencyListParams = {
   query?: string;
-  page?: number;
   types?: DependencyGroupType[];
+  pageIndex?: number;
 };
 
 export function dataStudioUnreferencedItems({
   query,
-  page,
   types,
+  pageIndex,
 }: UnreferencedDependencyListParams = {}) {
   const baseUrl = `${dataStudioTasks()}/unreferenced`;
   const searchParams = new URLSearchParams();
@@ -204,11 +204,11 @@ export function dataStudioUnreferencedItems({
   if (query != null) {
     searchParams.set("query", query);
   }
-  if (page != null) {
-    searchParams.set("page", page.toString());
-  }
   if (types != null) {
     types.forEach((type) => searchParams.append("types", type));
+  }
+  if (pageIndex != null) {
+    searchParams.set("pageIndex", pageIndex.toString());
   }
 
   const queryString = searchParams.toString();
@@ -217,14 +217,14 @@ export function dataStudioUnreferencedItems({
 
 export type BrokenDependencyListParams = {
   query?: string;
-  page?: number;
   types?: DependencyGroupType[];
+  pageIndex?: number;
 };
 
 export function dataStudioBrokenItems({
   query,
-  page,
   types,
+  pageIndex,
 }: BrokenDependencyListParams = {}) {
   const baseUrl = `${dataStudioTasks()}/broken`;
   const searchParams = new URLSearchParams();
@@ -232,11 +232,11 @@ export function dataStudioBrokenItems({
   if (query != null) {
     searchParams.set("query", query);
   }
-  if (page != null) {
-    searchParams.set("page", page.toString());
-  }
   if (types != null) {
     types.forEach((type) => searchParams.append("types", type));
+  }
+  if (pageIndex != null) {
+    searchParams.set("pageIndex", pageIndex.toString());
   }
 
   const queryString = searchParams.toString();

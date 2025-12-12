@@ -1,14 +1,22 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import type { Location } from "history";
 import { type ChangeEvent, useCallback, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box, Center, Flex, Icon, Loader, Stack, TextInput } from "metabase/ui";
+import {
+  Center,
+  Flex,
+  Icon,
+  Loader,
+  Pagination,
+  Stack,
+  TextInput,
+} from "metabase/ui";
 import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 
 import { DependencyList } from "../../components/DependencyList";
@@ -31,7 +39,7 @@ export function BrokenDependencyListPage({
   location,
 }: BrokenDependencyListPageProps) {
   const params = parseRawParams(location.query);
-  const { query = "", page = 0, types } = params;
+  const { query = "", types, pageIndex = 0 } = params;
   const [searchValue, setSearchValue] = useState("");
   const dispatch = useDispatch();
 
@@ -39,20 +47,19 @@ export function BrokenDependencyListPage({
     query,
     types: getDependencyTypes(types ?? AVAILABLE_GROUP_TYPES),
     card_types: getCardTypes(types ?? AVAILABLE_GROUP_TYPES),
-    offset: page * PAGE_SIZE,
+    offset: pageIndex * PAGE_SIZE,
     limit: PAGE_SIZE,
   });
 
-  const filterOptions = useMemo(
-    () => ({
-      groupTypes: types ?? [],
-    }),
-    [types],
-  );
+  const pageNumber = pageIndex + 1;
+  const totalPages = Math.ceil((data?.total ?? 0) / PAGE_SIZE);
+  const filterOptions = useMemo(() => ({ groupTypes: types ?? [] }), [types]);
 
   const handleSearchDebounce = useDebouncedCallback(
     (query: string | undefined) => {
-      dispatch(replace(Urls.dataStudioBrokenItems({ ...params, query })));
+      dispatch(
+        replace(Urls.dataStudioBrokenItems({ ...params, query, pageIndex: 0 })),
+      );
     },
     SEARCH_DEBOUNCE_DURATION,
   );
@@ -73,6 +80,21 @@ export function BrokenDependencyListPage({
           Urls.dataStudioBrokenItems({
             ...params,
             types: filterOptions.groupTypes,
+            pageIndex: 0,
+          }),
+        ),
+      );
+    },
+    [params, dispatch],
+  );
+
+  const handlePageChange = useCallback(
+    (pageNumber: number) => {
+      dispatch(
+        push(
+          Urls.dataStudioBrokenItems({
+            ...params,
+            pageIndex: pageNumber - 1,
           }),
         ),
       );
@@ -109,13 +131,20 @@ export function BrokenDependencyListPage({
           )}
         </Center>
       ) : (
-        <Box flex={1} mih={0}>
+        <Stack flex={1} mih={0}>
           <DependencyList
             nodes={data.data}
             withErrorsColumn
             withDependentsCountColumn
           />
-        </Box>
+          <Center>
+            <Pagination
+              value={pageNumber}
+              total={totalPages}
+              onChange={handlePageChange}
+            />
+          </Center>
+        </Stack>
       )}
     </Stack>
   );
