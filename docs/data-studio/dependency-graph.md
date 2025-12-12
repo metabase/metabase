@@ -38,7 +38,7 @@ The graph shows two types of relationships:
 
 **Upstream dependencies** are the items your selection relies on.
 
-For example, a question’s upstream dependencies might include the table it queries, the models it references, or SQL snippets it uses.
+For example, a question’s upstream dependencies might include the table the question queries, the models it references, or SQL snippets it uses.
 
 **Downstream dependents** are the items that rely on your selection.
 
