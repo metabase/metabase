@@ -123,7 +123,7 @@ export const downloadQueryResults = createAsyncThunk(
       const includeBranding = !isWhitelabeled;
       downloadChart({ opts, includeBranding });
     } else {
-      dispatch(downloadDataset({ opts, id: Date.now() }));
+      await dispatch(downloadDataset({ opts, id: Date.now() }));
     }
   },
 );
