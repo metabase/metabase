@@ -542,7 +542,7 @@
   `(do-with-new-secret-key! (fn [] ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
+  `(mt/with-temporary-setting-values [~'enable-embedding true]
      (with-new-secret-key!
        ~@body)))
 
@@ -552,17 +552,13 @@
                 :params   {}}
                additional-token-params)))
 
-(defn card-token
-  [card-or-id & [additional-token-params]]
-  (sign (merge {:resource {:question (u/the-id card-or-id)}
-                :params   {}}
-               additional-token-params)))
-
 ;;; ----------------------------- GET /api/preview_embed/card/:token/params/:param-key/values --------------------------
 
 (deftest card-params-values-test
   (testing "GET /api/preview_embed/card/:token/params/:param-key/values"
-    (with-embedding-enabled-and-new-secret-key!
+    ;; Card endpoint uses check-and-unsign which requires enable-embedding-static,
+    ;; unlike dashboard endpoints which skip the check in preview mode
+    (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)
                                        :parameters    [{:name                 "Static Category"
                                                         :slug                 "static_category"
@@ -570,7 +566,7 @@
                                                         :type                 "category"
                                                         :values_source_type   "static-list"
                                                         :values_source_config {:values ["African" "American" "Asian"]}}]}]
-        (let [signed-token (card-token card {:_embedding_params {:static_category "enabled"}})]
+        (let [signed-token (embed-test/card-token card {:_embedding_params {:static_category "enabled"}})]
           (testing "Should work if the param we're fetching values for is enabled"
             (is (= {:values          [["African"] ["American"] ["Asian"]]
                     :has_more_values false}
