@@ -10,18 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fn [tests]
-                      (mt/with-premium-features [:workspaces :dependencies :transforms]
-                        (tests))))
-
-(use-fixtures :each (fn [tests]
-                      (mt/with-model-cleanup [:model/Workspace
-                                              :model/WorkspaceTransform
-                                              :model/WorkspaceInput
-                                              :model/WorkspaceOutput
-                                              :model/WorkspaceDependency]
-                        (tests))))
-
 (deftest sync-transform-dependencies-test
   (testing "sync-transform-dependencies! writes dependencies and grants access to external inputs"
     (let [mp      (mt/metadata-provider)

@@ -56,3 +56,27 @@
       (doseq [[schema-name table-name] s+t-tuples]
         (jdbc/execute! conn-spec [(format "IF OBJECT_ID('[%s].[%s]', 'U') IS NOT NULL DROP TABLE [%s].[%s]"
                                           schema-name table-name schema-name table-name)])))))
+
+(defmethod isolation/destroy-workspace-isolation! :sqlserver
+  [database workspace]
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
+        login-name  (isolation-login-name workspace)
+        username    (ws.u/isolation-user-name workspace)
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; SQL Server requires dropping objects in schema before dropping schema
+    (doseq [sql [;; Drop all tables in the schema first
+                 (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+                              "SELECT @sql += 'DROP TABLE [%s].[' + name + ']; ' "
+                              "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                              "EXEC sp_executesql @sql")
+                         schema-name schema-name)
+                 ;; Drop schema (must be empty)
+                 (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s]"
+                         schema-name schema-name)
+                 ;; Drop database user
+                 (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
+                         username username)
+                 ;; Drop server login
+                 (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
+                         login-name login-name)]]
+      (jdbc/execute! conn-spec [sql]))))

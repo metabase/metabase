@@ -75,3 +75,15 @@
                      ^String (format "DROP TABLE IF EXISTS \"%s\".\"%s\""
                                      schema-name table-name)))
         (.executeBatch ^java.sql.Statement stmt)))))
+
+(defmethod isolation/destroy-workspace-isolation! :h2
+  [database workspace]
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
+        username    (ws.u/isolation-user-name workspace)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
+                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                     (format "DROP USER IF EXISTS \"%s\"" username)]]
+          (.addBatch ^java.sql.Statement stmt ^String sql))
+        (.executeBatch ^java.sql.Statement stmt)))))

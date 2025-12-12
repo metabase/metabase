@@ -54,3 +54,15 @@
                      ^String (format "DROP TABLE IF EXISTS \"%s\".\"%s\""
                                      schema-name table-name)))
         (.executeBatch ^Statement stmt)))))
+
+(defmethod isolation/destroy-workspace-isolation! :postgres
+  [database workspace]
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
+        username    (ws.u/isolation-user-name workspace)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
+                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                     (format "DROP USER IF EXISTS \"%s\"" username)]]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))

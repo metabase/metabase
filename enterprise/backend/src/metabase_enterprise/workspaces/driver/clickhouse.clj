@@ -48,3 +48,15 @@
                      ^String (format "DROP TABLE IF EXISTS `%s`.`%s`"
                                      db-name table-name)))
         (.executeBatch ^java.sql.Statement stmt)))))
+
+(defmethod isolation/destroy-workspace-isolation! :clickhouse
+  [database workspace]
+  (let [db-name  (ws.u/isolation-namespace-name workspace)
+        username (ws.u/isolation-user-name workspace)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [sql [;; DROP DATABASE cascades to all tables within it
+                     (format "DROP DATABASE IF EXISTS `%s`" db-name)
+                     (format "DROP USER IF EXISTS %s" username)]]
+          (.addBatch ^java.sql.Statement stmt ^String sql))
+        (.executeBatch ^java.sql.Statement stmt)))))
