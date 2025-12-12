@@ -374,3 +374,9 @@ export const {
   useRunWorkspaceMutation,
   useRunWorkspaceTransformMutation,
 } = workspaceApi;
+
+export const DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE: WorkspaceTablesResponse =
+  {
+    inputs: [],
+    outputs: [],
+  };
