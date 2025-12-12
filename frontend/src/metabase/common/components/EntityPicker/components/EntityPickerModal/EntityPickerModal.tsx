@@ -76,6 +76,7 @@ export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
   hasRecents: true,
+  showRecents: true, // oops
   showLibrary: true,
 };
 
@@ -190,8 +191,6 @@ export function EntityPickerModal<
     () => ({ ...defaultOptions, ...options }),
     [options],
   );
-
-  assertValidProps(hydratedOptions, onConfirm);
 
   const { open } = useModalOpen();
 
@@ -482,17 +481,6 @@ export function EntityPickerModal<
     </Modal.Root>
   );
 }
-
-const assertValidProps = (
-  options: EntityPickerModalOptions,
-  onConfirm: (() => void) | undefined,
-) => {
-  if (options.hasConfirmButtons && !onConfirm) {
-    throw new Error(
-      "onConfirm prop is required when hasConfirmButtons is true",
-    );
-  }
-};
 
 const EntityPickerLoadingSkeleton = () => (
   <Box data-testid="loading-indicator" className={S.loadingSkeleton}>
