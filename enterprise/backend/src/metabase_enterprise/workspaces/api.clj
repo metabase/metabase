@@ -712,13 +712,12 @@
         ;; Most of the APIs and the FE are not respecting when a Workspace is archived yet.
         (t2/delete! :model/Workspace id)))))
 
-;; TODO: Test
 (api.macros/defendpoint :post "/:id/transform/:txid/merge"
-  ;; TODO: move type
   :- [:map
       [:op [:enum :create :delete :update :noop]]
       [:global_id [:maybe ::ws.t/appdb-id]]
-      [:ref_id ::ws.t/ref-id]]
+      [:ref_id ::ws.t/ref-id]
+      [:message {:optional true} :string]]
   "Merge single transform from workspace back to the core. If workspace transform is archived
   the corresponding core transform is deleted."
   [{:keys [id txid]} :- [:map
@@ -727,12 +726,13 @@
   (let [ws-transform (u/prog1 (t2/select-one :model/WorkspaceTransform :workspace_id id :ref_id txid)
                        (api/check-404 <>))
         {:keys [error] :as result} (ws.merge/merge-transform! ws-transform)]
-    (if-not error
-      result
-      {:status 500
-       :body (-> result
-                 (update :error #(.getMessage ^Throwable %))
-                 (set/rename-keys {:error :message}))})))
+    (if error
+      (throw (ex-info "Failed to merge transform."
+                      (-> result
+                          (dissoc :error)
+                          (assoc :status-code 500))
+                      error))
+      result)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
