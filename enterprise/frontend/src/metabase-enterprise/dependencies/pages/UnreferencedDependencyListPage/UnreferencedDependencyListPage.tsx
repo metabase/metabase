@@ -19,7 +19,7 @@ export function UnreferencedDependencyListPage() {
   );
 
   const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>({
-    groupTypes: AVAILABLE_GROUP_TYPES,
+    groupTypes: [],
   });
   const groupTypes =
     filterOptions.groupTypes.length > 0
