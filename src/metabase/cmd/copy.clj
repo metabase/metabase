@@ -123,6 +123,7 @@
     :model/CommentReaction]
    (when config/ee-available?
      [:model/Sandbox
+      :model/Tenant
       :model/ConnectionImpersonation
       :model/Metabot
       :model/MetabotConversation

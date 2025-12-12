@@ -65,8 +65,16 @@ describe("scenarios > admin > transforms", () => {
       });
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.findByLabelText("Name").clear().type("MBQL");
+
+        cy.log("should auto-populate table name based on transform name...");
+        cy.findByLabelText("Table name").should("have.value", "mbql");
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
+
+        cy.log("...unless user has manually modified the table name");
+        cy.findByLabelText("Name").type(" transform");
+        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
@@ -445,7 +453,7 @@ LIMIT
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").type(SOURCE_TABLE);
+        cy.findByLabelText("Table name").clear().type(SOURCE_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
@@ -467,7 +475,7 @@ LIMIT
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
         cy.findByLabelText("Schema").clear().type(CUSTOM_SCHEMA);
       });
       H.popover().findByText("Create new schema").click();
@@ -505,7 +513,7 @@ LIMIT
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should be able to create a new table in an existing when saving a transform", () => {
+    it("should be able to create a new table in an existing transform when saving a transform", () => {
       visitTransformListPage();
       cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
@@ -517,7 +525,7 @@ LIMIT
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
       });

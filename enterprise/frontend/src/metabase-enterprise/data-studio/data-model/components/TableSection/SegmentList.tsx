@@ -4,22 +4,34 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import type { Segment, TableId } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import { SegmentItem } from "./SegmentItem";
 
 type SegmentListProps = {
-  segments: Segment[];
-  tableId: TableId;
+  table: Table;
 };
 
-export function SegmentList({ segments, tableId }: SegmentListProps) {
+export function SegmentList({ table }: SegmentListProps) {
+  const segments = table.segments ?? [];
+  const getSegmentHref = (segmentId: number) =>
+    Urls.dataStudioDataModelSegment({
+      databaseId: table.db_id,
+      schemaName: table.schema,
+      tableId: table.id,
+      segmentId,
+    });
+
   return (
-    <Stack gap="md">
+    <Stack gap="md" data-testid="table-segments-page">
       <Group gap="md" justify="flex-start" wrap="nowrap">
         <Button
           component={ForwardRefLink}
-          to={Urls.newDataStudioSegment(tableId)}
+          to={Urls.newDataStudioDataModelSegment({
+            databaseId: table.db_id,
+            schemaName: table.schema,
+            tableId: table.id,
+          })}
           h={32}
           px="sm"
           py="xs"
@@ -42,7 +54,7 @@ export function SegmentList({ segments, tableId }: SegmentListProps) {
             <SegmentItem
               key={segment.id}
               segment={segment}
-              href={Urls.dataStudioSegment(segment.id)}
+              href={getSegmentHref(segment.id)}
             />
           ))}
         </Stack>

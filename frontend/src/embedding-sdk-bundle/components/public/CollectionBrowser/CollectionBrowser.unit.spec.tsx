@@ -93,6 +93,64 @@ describe("CollectionBrowser", () => {
 
     expect(columnNames).toStrictEqual(["Type", "Name"]);
   });
+
+  it("should NOT include description column by default", async () => {
+    await setup();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
+    });
+
+    const columnNames: (string | null)[] = [];
+
+    within(screen.getByTestId("items-table-head"))
+      .getAllByRole("button")
+      .forEach((el) => {
+        columnNames.push(el.textContent);
+      });
+
+    expect(columnNames).not.toContain("Description");
+  });
+
+  it("should show description column when explicitly included", async () => {
+    await setup({
+      props: {
+        visibleColumns: ["type", "name", "description"],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
+    });
+
+    const columnNames: (string | null)[] = [];
+
+    within(screen.getByTestId("items-table-head"))
+      .getAllByRole("button")
+      .forEach((el) => {
+        columnNames.push(el.textContent);
+      });
+
+    expect(columnNames).toStrictEqual(["Type", "Name", "Description"]);
+  });
+
+  it("should display description column as configured", async () => {
+    await setup({
+      props: {
+        visibleColumns: ["type", "name", "description"],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
+    });
+
+    const headerRow = screen.getByTestId("items-table-head");
+    const columnHeaders = within(headerRow).getAllByRole("button");
+    const columnTexts = columnHeaders.map((header) => header.textContent);
+
+    expect(columnTexts).toContain("Description");
+  });
 });
 
 async function setup({

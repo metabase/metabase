@@ -122,12 +122,6 @@ jobs:
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         run: yarn build-embedding-sdk-package
 
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
-
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
