@@ -335,7 +335,7 @@
                  [:last_name {:optional true} [:maybe :string]]
                  [:sso_source {:optional true} :keyword]
                  [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:login_attributes {:optional true} [:map-of :string [:maybe :string]]]
+                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
                  [:provider-id {:optional true} [:maybe :string]]
                  [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
    provider :- :keyword]
