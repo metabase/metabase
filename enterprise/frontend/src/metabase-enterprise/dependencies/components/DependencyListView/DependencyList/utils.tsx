@@ -12,7 +12,6 @@ import {
   getNodeLocationInfo,
 } from "../../../utils";
 
-import { DependentsCountCell } from "./DependentsCountCell";
 import { ErrorsCell } from "./ErrorsCell";
 import { LocationCell } from "./LocationCell";
 import { NameCell } from "./NameCell";
@@ -77,7 +76,7 @@ function getNodeDependentsCountColumn(): ColumnDef<DependencyNode> {
     accessorFn: (node) => getNodeDependentsCount(node),
     cell: ({ row }) => {
       const node = row.original;
-      return <DependentsCountCell node={node} />;
+      return getNodeDependentsCount(node);
     },
   };
 }

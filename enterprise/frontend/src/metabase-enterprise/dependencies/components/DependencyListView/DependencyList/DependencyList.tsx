@@ -10,12 +10,14 @@ type DependencyListProps = {
   nodes: DependencyNode[];
   withErrorsColumn: boolean;
   withDependentsCountColumn: boolean;
+  onSelect: (node: DependencyNode) => void;
 };
 
 export const DependencyList = memo(function DependencyList({
   nodes,
   withErrorsColumn,
   withDependentsCountColumn,
+  onSelect,
 }: DependencyListProps) {
   const columns = useMemo(
     () => getColumns({ withErrorsColumn, withDependentsCountColumn }),
@@ -24,7 +26,7 @@ export const DependencyList = memo(function DependencyList({
 
   return (
     <Card flex={1} mih={0} p={0} withBorder>
-      <Table data={nodes} columns={columns} />
+      <Table data={nodes} columns={columns} onSelect={onSelect} />
     </Card>
   );
 });

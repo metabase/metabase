@@ -1,15 +1,35 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { Flex } from "metabase/ui";
 import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
+import type {
+  DependencyEntry,
+  DependencyGroupType,
+  DependencyNode,
+} from "metabase-types/api";
 
 import { DependencyListView } from "../../components/DependencyListView";
 import type { DependencyFilterOptions } from "../../types";
-import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
+import {
+  getCardTypes,
+  getDependencyTypes,
+  getSearchQuery,
+  isSameNode,
+} from "../../utils";
 
-import { AVAILABLE_GROUP_TYPES } from "./constants";
+import { BrokenNodePanel } from "./BrokenNodePanel";
+
+const EMPTY_NODES: DependencyNode[] = [];
+
+export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = [
+  "question",
+  "model",
+  "metric",
+  "transform",
+];
 
 export function BrokenDependencyListPage() {
   const [searchValue, setSearchValue] = useState("");
@@ -17,17 +37,20 @@ export function BrokenDependencyListPage() {
     getSearchQuery(searchValue),
     SEARCH_DEBOUNCE_DURATION,
   );
-
   const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>({
     groupTypes: [],
   });
+  const [selectedEntry, setSelectedEntry] = useState<DependencyEntry | null>(
+    null,
+  );
+
   const groupTypes =
     filterOptions.groupTypes.length > 0
       ? filterOptions.groupTypes
       : AVAILABLE_GROUP_TYPES;
 
   const {
-    data = [],
+    data = EMPTY_NODES,
     isFetching,
     isLoading,
     error,
@@ -37,20 +60,30 @@ export function BrokenDependencyListPage() {
     card_types: getCardTypes(groupTypes),
   });
 
+  const selectedNode = useMemo(() => {
+    return selectedEntry != null
+      ? data.find((node) => isSameNode(node, selectedEntry))
+      : null;
+  }, [data, selectedEntry]);
+
   return (
-    <DependencyListView
-      nodes={data}
-      searchValue={searchValue}
-      filterOptions={filterOptions}
-      availableGroupTypes={AVAILABLE_GROUP_TYPES}
-      nothingFoundMessage={t`No broken entities found.`}
-      error={error}
-      isFetching={isFetching}
-      isLoading={isLoading}
-      withErrorsColumn
-      withDependentsCountColumn
-      onSearchValueChange={setSearchValue}
-      onFilterOptionsChange={setFilterOptions}
-    />
+    <Flex h="100%">
+      <DependencyListView
+        nodes={data}
+        searchValue={searchValue}
+        filterOptions={filterOptions}
+        availableGroupTypes={AVAILABLE_GROUP_TYPES}
+        nothingFoundMessage={t`No broken entities found.`}
+        error={error}
+        isFetching={isFetching}
+        isLoading={isLoading}
+        withErrorsColumn
+        withDependentsCountColumn
+        onSelect={setSelectedEntry}
+        onSearchValueChange={setSearchValue}
+        onFilterOptionsChange={setFilterOptions}
+      />
+      {selectedNode != null && <BrokenNodePanel node={selectedNode} />}
+    </Flex>
   );
 }

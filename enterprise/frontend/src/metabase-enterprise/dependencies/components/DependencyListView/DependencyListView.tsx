@@ -23,6 +23,7 @@ type DependencyListViewProps = {
   isLoading: boolean;
   withErrorsColumn?: boolean;
   withDependentsCountColumn?: boolean;
+  onSelect: (node: DependencyNode) => void;
   onSearchValueChange: (searchValue: string) => void;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
@@ -38,6 +39,7 @@ export function DependencyListView({
   error,
   withErrorsColumn = false,
   withDependentsCountColumn = false,
+  onSelect,
   onSearchValueChange,
   onFilterOptionsChange,
 }: DependencyListViewProps) {
@@ -46,7 +48,7 @@ export function DependencyListView({
   };
 
   return (
-    <Stack px="3.5rem" py="md" gap="md" h="100%">
+    <Stack flex={1} px="3.5rem" py="md" gap="md">
       <ListHeader />
       <Flex gap="md" align="center">
         <TextInput
@@ -78,6 +80,7 @@ export function DependencyListView({
           nodes={nodes}
           withErrorsColumn={withErrorsColumn}
           withDependentsCountColumn={withDependentsCountColumn}
+          onSelect={onSelect}
         />
       )}
     </Stack>
