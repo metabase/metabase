@@ -28,6 +28,7 @@ export type FormattedParameterValueProps = {
   value: string | number | number[] | ParameterValue;
   cardId?: CardId;
   dashboardId?: DashboardId;
+  token?: string | null;
   placeholder?: string;
   isPopoverOpen?: boolean;
   dataTestId?: string;
@@ -38,6 +39,7 @@ function FormattedParameterValue({
   value,
   cardId,
   dashboardId,
+  token,
   placeholder,
   isPopoverOpen = false,
 }: FormattedParameterValueProps) {
@@ -69,6 +71,7 @@ function FormattedParameterValue({
           parameter={parameter}
           cardId={cardId}
           dashboardId={dashboardId}
+          token={token}
           displayValue={label}
         />
       );

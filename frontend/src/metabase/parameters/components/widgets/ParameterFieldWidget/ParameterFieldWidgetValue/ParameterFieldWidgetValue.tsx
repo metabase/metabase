@@ -11,6 +11,7 @@ type ParameterFieldWidgetValueProps = {
   parameter: Parameter;
   cardId?: CardId;
   dashboardId?: DashboardId;
+  token?: string | null;
   displayValue?: string;
 };
 
@@ -20,6 +21,7 @@ export function ParameterFieldWidgetValue({
   parameter,
   cardId,
   dashboardId,
+  token,
   displayValue,
 }: ParameterFieldWidgetValueProps) {
   const values = normalizeValue(value);
@@ -37,6 +39,7 @@ export function ParameterFieldWidgetValue({
       parameter={parameter}
       cardId={cardId}
       dashboardId={dashboardId}
+      token={token}
       displayValue={displayValue}
     />
   );
