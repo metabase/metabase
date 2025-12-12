@@ -80,7 +80,8 @@ export const useRootCollectionPickerItems = (
     if (
       options.showLibrary &&
       libraryCollection &&
-      options.namespace !== "snippets"
+      options.namespace !== "snippets" &&
+      options.namespace !== "transforms"
     ) {
       collectionItems.push({
         ...libraryCollection,
@@ -101,7 +102,11 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showRootCollection || options.namespace === "snippets") {
+    if (
+      options.showRootCollection ||
+      options.namespace === "snippets" ||
+      options.namespace === "transforms"
+    ) {
       if (rootCollection && !rootCollectionError) {
         collectionItems.push({
           ...rootCollection,
@@ -111,7 +116,9 @@ export const useRootCollectionPickerItems = (
           name:
             options.namespace === "snippets"
               ? t`SQL snippets`
-              : rootCollection.name,
+              : options.namespace === "transforms"
+                ? t`Transforms`
+                : rootCollection.name,
         });
       } else if (rootCollectionError) {
         collectionItems.push({
@@ -129,6 +136,7 @@ export const useRootCollectionPickerItems = (
     if (
       options.showPersonalCollections &&
       options.namespace !== "snippets" &&
+      options.namespace !== "transforms" &&
       currentUser &&
       !!personalCollection
     ) {

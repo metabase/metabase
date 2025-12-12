@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import Link from "metabase/common/components/Link/Link";
 import * as Urls from "metabase/lib/urls";
 import type { StackProps } from "metabase/ui";
@@ -26,6 +27,18 @@ export function TransformHeader({
   isEditMode = false,
   ...restProps
 }: TransformHeaderProps) {
+  const { data: collection } = useGetCollectionQuery(
+    transform.collection_id
+      ? { id: transform.collection_id, namespace: "transforms" }
+      : skipToken,
+  );
+
+  const folderPath = collection?.effective_ancestors
+    ? [...collection.effective_ancestors.slice(1), collection]
+    : collection
+      ? [collection]
+      : [];
+
   return (
     <PaneHeader
       px={0}
@@ -39,6 +52,14 @@ export function TransformHeader({
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+          {folderPath.map((folder) => (
+            <Link
+              key={folder.id}
+              to={`${Urls.transformList()}?collectionId=${folder.id}`}
+            >
+              {folder.name}
+            </Link>
+          ))}
           {transform.name}
         </DataStudioBreadcrumbs>
       }

@@ -16,7 +16,7 @@ import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
-export type CollectionNamespace = null | "snippets";
+export type CollectionNamespace = null | "snippets" | "transforms";
 
 // Collection ID can be either a numeric or entity id
 export type RegularCollectionId = number | string;
@@ -169,7 +169,7 @@ export interface CollectionListQuery {
 
 export type getCollectionRequest = {
   id: CollectionId;
-  namespace?: "snippets";
+  namespace?: "snippets" | "transforms";
   ignore_error?: boolean;
 };
 
@@ -184,7 +184,7 @@ export type ListCollectionItemsRequest = {
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  namespace?: "snippets";
+  namespace?: "snippets" | "transforms";
   collection_type?: CollectionType;
   include_can_run_adhoc_query?: boolean;
 } & PaginationRequest &

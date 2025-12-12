@@ -22,6 +22,7 @@ import * as Errors from "metabase/lib/errors";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
+import { FormTransformCollectionPicker } from "metabase-enterprise/transforms/components/TransformCollectionPicker";
 import type {
   CreateTransformRequest,
   Transform,
@@ -37,10 +38,9 @@ function getValidationSchema() {
     name: Yup.string().required(Errors.required),
     targetName: Yup.string().required(Errors.required),
     targetSchema: Yup.string().nullable().defined(),
+    collection_id: Yup.number().nullable().defined(),
     incremental: Yup.boolean().required(),
-    // For native queries, use checkpointFilter (plain string)
     checkpointFilter: Yup.string().nullable(),
-    // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
     checkpointFilterUniqueKey: Yup.string().nullable(),
     sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
     targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
@@ -167,6 +167,7 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`descriptive_name`}
           />
+          <FormTransformCollectionPicker name="collection_id" />
           <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>
@@ -189,6 +190,7 @@ function getInitialValues(
     name: "",
     targetName: "",
     targetSchema: schemas?.[0] || null,
+    collection_id: null,
     ...defaultValues,
     checkpointFilter: null,
     checkpointFilterUniqueKey: null,
@@ -204,6 +206,7 @@ function getCreateRequest(
     name,
     targetName,
     targetSchema,
+    collection_id,
     incremental,
     checkpointFilter,
     checkpointFilterUniqueKey,
@@ -212,11 +215,8 @@ function getCreateRequest(
   }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
-  // Build the source with incremental strategy if enabled
   let transformSource: TransformSource;
   if (incremental) {
-    // For native queries, use checkpoint-filter (plain string)
-    // For MBQL/Python queries, use checkpoint-filter-unique-key (prefixed format)
     const strategyFields = checkpointFilter
       ? { "checkpoint-filter": checkpointFilter }
       : checkpointFilterUniqueKey
@@ -234,7 +234,6 @@ function getCreateRequest(
     transformSource = source;
   }
 
-  // Build the target with incremental strategy if enabled
   const transformTarget: CreateTransformRequest["target"] = incremental
     ? {
         type: "table-incremental",
@@ -256,5 +255,6 @@ function getCreateRequest(
     name,
     source: transformSource,
     target: transformTarget,
+    collection_id: collection_id ?? null,
   };
 }

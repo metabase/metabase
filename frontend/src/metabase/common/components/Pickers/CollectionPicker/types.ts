@@ -70,7 +70,7 @@ export type CollectionPickerValueItem =
     });
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
-  namespace?: "snippets";
+  namespace?: "snippets" | "transforms";
   allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;

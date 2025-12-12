@@ -72,7 +72,7 @@ export const getStateFromIdPath = ({
   models,
 }: {
   idPath: CollectionId[];
-  namespace?: "snippets";
+  namespace?: "snippets" | "transforms";
   models: CollectionItemModel[];
 }): CollectionPickerStatePath => {
   const statePath: PickerState<

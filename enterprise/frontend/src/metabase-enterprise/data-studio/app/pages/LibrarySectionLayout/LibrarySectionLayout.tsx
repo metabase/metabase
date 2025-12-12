@@ -1,5 +1,4 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -10,6 +9,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import type { TreeColumnDef } from "metabase/ui";
 import {
   Button,
   Card,
@@ -20,11 +20,12 @@ import {
   Menu,
   Stack,
   TextInput,
+  TreeTable,
+  useTreeTable,
 } from "metabase/ui";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { useTreeFilter } from "metabase-enterprise/data-studio/common/components/Table/useTreeFilter";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
@@ -115,36 +116,38 @@ export function LibrarySectionLayout() {
   const showEmptyState =
     !isLoading && (!libraryHasContent || filterReturnedEmpty);
 
-  const libraryColumnDef = useMemo<ColumnDef<TreeItem, ReactNode>[]>(
+  const libraryColumnDef = useMemo<TreeColumnDef<TreeItem>[]>(
     () => [
       {
-        accessorKey: "name",
+        id: "name",
         header: t`Name`,
-        meta: { width: "auto" },
-        cell: ({ getValue, row }) => {
-          const data = row.original;
-          return (
-            <Group data-testid={`${data.model}-name`} gap="sm">
-              {data.icon && <Icon name={data.icon} c="brand" />}
-              {getValue()}
-            </Group>
-          );
-        },
+        grow: true,
+        enableSorting: true,
+        accessorKey: "name",
+        cell: ({ node }) => (
+          <Group data-testid={`${node.data.model}-name`} gap="sm">
+            {node.data.icon && <Icon name={node.data.icon} c="brand" />}
+            {node.data.name}
+          </Group>
+        ),
       },
       {
-        accessorKey: "updatedAt",
+        id: "updatedAt",
         header: t`Updated At`,
-        cell: ({ getValue }) => {
-          const value = getValue() as string;
-          return value && <DateTime value={value} />;
+        accessorKey: "updatedAt",
+        enableSorting: true,
+        sortingFn: "datetime",
+        minSize: 120,
+        cell: ({ value }) => {
+          const dateValue = value as string | undefined;
+          return dateValue ? <DateTime value={dateValue} /> : null;
         },
       },
       {
         id: "actions",
-        header: "",
-        size: 24,
-        cell: ({ row: { original } }) => {
-          const { data } = original;
+        size: 48,
+        cell: ({ node }) => {
+          const { data } = node.data;
           if (
             isCollection(data) &&
             data.model === "collection" &&
@@ -173,6 +176,13 @@ export function LibrarySectionLayout() {
     ],
     [],
   );
+
+  const treeTableInstance = useTreeTable({
+    data: filteredTree,
+    columns: libraryColumnDef,
+    getChildren: (node) => node.children,
+    getNodeId: (node) => node.id,
+  });
 
   return (
     <>
@@ -214,10 +224,15 @@ export function LibrarySectionLayout() {
               />
             )}
             {!isLoading && !showEmptyState && (
-              <Table
-                data={filteredTree}
-                columns={libraryColumnDef}
-                onSelect={handleItemSelect}
+              <TreeTable
+                instance={treeTableInstance}
+                onRowClick={(node) => {
+                  if (node.hasChildren) {
+                    treeTableInstance.expansion.toggle(node.id);
+                  } else {
+                    handleItemSelect(node.data);
+                  }
+                }}
               />
             )}
           </Card>

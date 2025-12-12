@@ -1,0 +1,86 @@
+.row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--mb-color-border);
+  color: var(--mb-color-text-dark);
+  font-size: 14px;
+  line-height: 20px;
+  background: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-brand-light);
+  }
+
+  &:focus {
+    outline: none;
+    background-color: var(--mb-color-brand-light);
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--mb-color-focus);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.rowActive {
+  background-color: var(--mb-color-brand-light);
+
+  &:hover {
+    background-color: var(--mb-color-brand-light);
+  }
+}
+
+.rowDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.75rem 0.5rem;
+}
+
+.cell:last-child {
+  padding-right: 1rem;
+}
+
+.treeCell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.75rem 0.5rem;
+}
+
+.treeCellContent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkboxWrapper {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-left: 0.75rem;
+}
