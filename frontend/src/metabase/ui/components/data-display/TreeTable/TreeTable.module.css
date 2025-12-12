@@ -1,0 +1,40 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: inherit;
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: inherit;
+}
+
+.bodyInner {
+  position: relative;
+}
+
+.loadingRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-bottom: 1px solid var(--mb-color-border);
+  background: inherit;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--spacing-xl);
+  color: var(--mb-color-text-light);
+}

@@ -1,5 +1,4 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -10,6 +9,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import type { TreeColumnDef } from "metabase/ui";
 import {
   Button,
   Card,
@@ -115,36 +115,38 @@ export function LibrarySectionLayout() {
   const showEmptyState =
     !isLoading && (!libraryHasContent || filterReturnedEmpty);
 
-  const libraryColumnDef = useMemo<ColumnDef<TreeItem, ReactNode>[]>(
+  const libraryColumnDef = useMemo<TreeColumnDef<TreeItem>[]>(
     () => [
       {
-        accessorKey: "name",
+        id: "name",
         header: t`Name`,
-        meta: { width: "auto" },
-        cell: ({ getValue, row }) => {
-          const data = row.original;
-          return (
-            <Group data-testid={`${data.model}-name`} gap="sm">
-              {data.icon && <Icon name={data.icon} c="brand" />}
-              {getValue()}
-            </Group>
-          );
-        },
+        grow: true,
+        enableSorting: true,
+        accessorKey: "name",
+        cell: ({ node }) => (
+          <Group data-testid={`${node.data.model}-name`} gap="sm">
+            {node.data.icon && <Icon name={node.data.icon} c="brand" />}
+            {node.data.name}
+          </Group>
+        ),
       },
       {
-        accessorKey: "updatedAt",
+        id: "updatedAt",
         header: t`Updated At`,
-        cell: ({ getValue }) => {
-          const value = getValue() as string;
-          return value && <DateTime value={value} />;
+        accessorKey: "updatedAt",
+        enableSorting: true,
+        sortingFn: "datetime",
+        minSize: 120,
+        cell: ({ value }) => {
+          const dateValue = value as string | undefined;
+          return dateValue ? <DateTime value={dateValue} /> : null;
         },
       },
       {
         id: "actions",
-        header: "",
-        size: 24,
-        cell: ({ row: { original } }) => {
-          const { data } = original;
+        size: 48,
+        cell: ({ node }) => {
+          const { data } = node.data;
           if (
             isCollection(data) &&
             data.model === "collection" &&

@@ -1,30 +1,40 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import type { ReactNode } from "react";
-
+import type { IconName, TreeColumnDef } from "metabase/ui";
 import { Card, Group, Icon, ThemeProvider } from "metabase/ui";
 
 import { Table } from "..";
 
 import data from "./data.json";
 
-const columns: ColumnDef<Record<string, any>, ReactNode>[] = [
+interface StoryTreeItem {
+  id: number | string;
+  name: string;
+  icon?: string;
+  model?: string;
+  updatedAt?: string;
+  children?: StoryTreeItem[];
+}
+
+const columns: TreeColumnDef<StoryTreeItem>[] = [
   {
-    accessorKey: "name",
+    id: "name",
     header: "Name",
-    meta: { width: "auto" },
-    cell: ({ getValue, row }) => {
-      const data = row.original;
-      return (
-        <Group data-testid={`${data.model}-name`} gap="sm">
-          {data.icon && <Icon name={data.icon} c="brand" />}
-          {getValue()}
-        </Group>
-      );
-    },
+    grow: true,
+    enableSorting: true,
+    accessorKey: "name",
+    cell: ({ node }) => (
+      <Group data-testid={`${node.data.model}-name`} gap="sm">
+        {node.data.icon && <Icon name={node.data.icon as IconName} c="brand" />}
+        {node.data.name}
+      </Group>
+    ),
   },
   {
-    accessorKey: "updatedAt",
+    id: "updatedAt",
     header: "Updated At",
+    accessorKey: "updatedAt",
+    enableSorting: true,
+    sortingFn: "datetime",
+    minSize: 120,
   },
 ];
 
@@ -32,7 +42,11 @@ const Template = () => {
   return (
     <ThemeProvider>
       <Card p={0} withBorder h={600} w={600}>
-        <Table data={data} columns={columns} onSelect={() => {}} />
+        <Table
+          data={data as StoryTreeItem[]}
+          columns={columns}
+          onSelect={() => {}}
+        />
       </Card>
     </ThemeProvider>
   );
