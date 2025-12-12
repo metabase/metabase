@@ -6,8 +6,8 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
+   [metabase.events.core :as events]
    [metabase.product-feedback.settings :as product-feedback.settings]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
@@ -29,7 +29,8 @@
     ;; TODO - Does it make to send to this user instead of `(system/admin-email)`?
     (when-let [admin (t2/select-one :model/User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
       (try
-        (messages/send-follow-up-email! (:email admin))
+        (events/publish-event! :event/email.follow-up
+                               {:email (:email admin)})
         (catch Throwable e
           (log/error e "Problem sending follow-up email:"))
         (finally

@@ -3,7 +3,6 @@
   (:require
    [java-time.api :as t]
    [metabase.auth-identity.provider :as provider]
-   [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -190,7 +189,7 @@
   (when (:success? result)
     (if (:last_login user)
       (events/publish-event! :event/password-reset-successful {:object (assoc user :token (t2/select-one-fn :reset_token :model/User (:id user)))})
-      (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User (:id user))))
+      (events/publish-event! :event/email.user-joined-admin-notification {:new-user (t2/select-one :model/User (:id user))}))
     (t2/with-transaction [_]
       (t2/update! :model/AuthIdentity (:id auth-identity) (mark-token-consumed auth-identity))
       (t2/update! :model/User (:id user) {:password password})))
