@@ -9,7 +9,8 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Flex } from "metabase/ui";
+import { Button } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
 
@@ -95,31 +96,28 @@ export function NewSegmentPage({
   ]);
 
   return (
-    <Flex
-      direction="column"
-      pos="relative"
-      w="100%"
-      h="100%"
-      bg="bg-white"
+    <PageContainer
       data-testid="new-segment-page"
+      header={
+        <NewSegmentHeader
+          previewUrl={previewUrl}
+          onNameChange={setName}
+          breadcrumbs={breadcrumbs}
+          actions={
+            isDirty && (
+              <Button
+                variant="filled"
+                disabled={!isValid}
+                loading={isSaving}
+                onClick={handleSave}
+              >
+                {t`Save`}
+              </Button>
+            )
+          }
+        />
+      }
     >
-      <NewSegmentHeader
-        previewUrl={previewUrl}
-        onNameChange={setName}
-        breadcrumbs={breadcrumbs}
-        actions={
-          isDirty && (
-            <Button
-              variant="filled"
-              disabled={!isValid}
-              loading={isSaving}
-              onClick={handleSave}
-            >
-              {t`Save`}
-            </Button>
-          )
-        }
-      />
       <SegmentEditor
         query={query}
         description={description}
@@ -127,6 +125,6 @@ export function NewSegmentPage({
         onDescriptionChange={setDescription}
       />
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
-    </Flex>
+    </PageContainer>
   );
 }

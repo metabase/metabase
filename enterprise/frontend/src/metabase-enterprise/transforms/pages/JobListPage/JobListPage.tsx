@@ -9,9 +9,10 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
+import { Button, Card, Flex, Icon, TextInput } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
@@ -74,55 +75,49 @@ export const JobListPage = () => {
   }
 
   return (
-    <>
-      <PaneHeader
-        breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
-        px="3.5rem"
-        py={0}
-        showMetabotButton
-      />
-      <Stack
-        bg="background-light"
-        data-testid="transforms-job-list"
-        h="100%"
-        pb="2rem"
-        px="3.5rem"
-        style={{ overflow: "hidden" }}
-      >
-        <Flex gap="0.5rem">
-          <TextInput
-            placeholder={t`Search...`}
-            leftSection={<Icon name="search" />}
-            bdrs="md"
-            flex="1"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Button
-            leftSection={<Icon name="add" />}
-            component={ForwardRefLink}
-            to={Urls.newTransformJob()}
-          >{t`New`}</Button>
-        </Flex>
+    <PageContainer
+      header={
+        <PaneHeader
+          breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
+          py={0}
+          showMetabotButton
+        />
+      }
+      data-testid="transforms-job-list"
+    >
+      <Flex gap="0.5rem">
+        <TextInput
+          placeholder={t`Search...`}
+          leftSection={<Icon name="search" />}
+          bdrs="md"
+          flex="1"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <Button
+          leftSection={<Icon name="add" />}
+          component={ForwardRefLink}
+          to={Urls.newTransformJob()}
+        >{t`New`}</Button>
+      </Flex>
 
-        <Flex direction="column" flex={1} mih={0}>
-          {isLoading ? (
-            <ListLoadingState />
-          ) : filteredJobs.length === 0 ? (
-            <ListEmptyState
-              label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
+      <Flex direction="column" flex={1} mih={0}>
+        {isLoading ? (
+          <ListLoadingState />
+        ) : filteredJobs.length === 0 ? (
+          <ListEmptyState
+            label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
+          />
+        ) : (
+          <Card withBorder p={0}>
+            <Table
+              data={filteredJobs}
+              columns={jobColumnDef}
+              onSelect={handleSelect}
             />
-          ) : (
-            <Card withBorder p={0}>
-              <Table
-                data={filteredJobs}
-                columns={jobColumnDef}
-                onSelect={handleSelect}
-              />
-            </Card>
-          )}
-        </Flex>
-      </Stack>
-    </>
+          </Card>
+        )}
+      </Flex>
+    </PageContainer>
   );
 };

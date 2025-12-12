@@ -12,7 +12,8 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Center, Stack } from "metabase/ui";
+import { Center } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
@@ -129,27 +130,26 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
 
   return (
     <>
-      <Stack
+      <PageContainer
         pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
         data-testid="metric-query-editor"
         gap={0}
+        header={
+          <MetricHeader
+            card={card}
+            actions={
+              <PaneHeaderActions
+                errorMessage={validationResult.errorMessage}
+                isValid={validationResult.isValid}
+                isDirty={isDirty}
+                isSaving={isSaving || isCheckingDependencies}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            }
+          />
+        }
       >
-        <MetricHeader
-          card={card}
-          actions={
-            <PaneHeaderActions
-              errorMessage={validationResult.errorMessage}
-              isValid={validationResult.isValid}
-              isDirty={isDirty}
-              isSaving={isSaving || isCheckingDependencies}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          }
-        />
         <MetricQueryEditor
           query={question.query()}
           uiState={uiState}
@@ -157,7 +157,7 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
         />
-      </Stack>
+      </PageContainer>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}

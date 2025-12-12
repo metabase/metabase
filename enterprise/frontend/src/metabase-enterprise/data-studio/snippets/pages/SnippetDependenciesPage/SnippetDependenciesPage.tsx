@@ -4,7 +4,8 @@ import { skipToken, useGetSnippetQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Center, Flex } from "metabase/ui";
+import { Card, Center } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 
 import { SnippetHeader } from "../../components/SnippetHeader";
 
@@ -38,16 +39,17 @@ export function SnippetDependenciesPage({
   }
 
   return (
-    <Flex direction="column" h="100%">
-      <SnippetHeader snippet={snippet} />
+    <PageContainer header={<SnippetHeader snippet={snippet} />}>
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.dataStudioSnippetDependencies(snippet.id),
           defaultEntry: { id: snippet.id, type: "snippet" },
         }}
       >
-        {children}
+        <Card p={0} withBorder flex={1}>
+          {children}
+        </Card>
       </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
-    </Flex>
+    </PageContainer>
   );
 }

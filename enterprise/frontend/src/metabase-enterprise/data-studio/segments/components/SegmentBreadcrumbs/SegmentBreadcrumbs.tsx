@@ -25,7 +25,7 @@ export function PublishedTableSegmentBreadcrumbs({
   const ancestors = collection ? getCollectionList({ collection }) : [];
 
   return (
-    <Group c="text-secondary" gap="sm" wrap="nowrap" px="lg" pt="md">
+    <Group c="text-secondary" gap="sm" wrap="nowrap" my="md">
       {ancestors.map((ancestor, index) => (
         <Fragment key={ancestor.id}>
           {index > 0 && <Separator />}
@@ -68,7 +68,7 @@ export function DataModelSegmentBreadcrumbs({
   const showSchema = schemas && schemas.length > 1 && table.schema;
 
   return (
-    <Group c="text-secondary" gap="sm" wrap="nowrap" px="lg" pt="md">
+    <Group c="text-secondary" gap="sm" wrap="nowrap" my="md">
       {table.db && (
         <BreadcrumbLink to={Urls.dataStudioData({ databaseId: table.db_id })}>
           <Ellipsified>{table.db.name}</Ellipsified>

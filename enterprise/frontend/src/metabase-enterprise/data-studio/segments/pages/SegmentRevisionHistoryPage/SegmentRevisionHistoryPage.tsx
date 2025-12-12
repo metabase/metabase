@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Flex, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
@@ -24,21 +25,21 @@ export function SegmentRevisionHistoryPage({
   onRemove,
 }: SegmentRevisionHistoryPageProps) {
   return (
-    <Flex
-      direction="column"
-      h="100%"
+    <PageContainer
       data-testid="segment-revision-history-page"
+      header={
+        <SegmentHeader
+          segment={segment}
+          tabUrls={tabUrls}
+          previewUrl={getSegmentPreviewUrl(segment)}
+          onRemove={onRemove}
+          breadcrumbs={breadcrumbs}
+        />
+      }
     >
-      <SegmentHeader
-        segment={segment}
-        tabUrls={tabUrls}
-        previewUrl={getSegmentPreviewUrl(segment)}
-        onRemove={onRemove}
-        breadcrumbs={breadcrumbs}
-      />
       <Stack flex={1} className={S.scrollable}>
         <SegmentRevisionHistory segment={segment} />
       </Stack>
-    </Flex>
+    </PageContainer>
   );
 }

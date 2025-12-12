@@ -11,6 +11,7 @@ import {
   useListTransformsQuery,
 } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
@@ -28,23 +29,22 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <>
-      <PaneHeader
-        breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-        px="3.5rem"
-        py={0}
-        showMetabotButton
-      />
-      <Stack
-        px="3.5rem"
-        h="100%"
-        data-testid="transforms-run-list"
-        style={{ overflow: "hidden" }}
-      >
+    <PageContainer
+      data-testid="transforms-run-list"
+      header={
+        <PaneHeader
+          breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+          py={0}
+          showMetabotButton
+        />
+      }
+      gap={0}
+    >
+      <Stack>
         <Box>{t`A list of when each transform ran.`}</Box>
         <RunListPageBody params={params} />
       </Stack>
-    </>
+    </PageContainer>
   );
 }
 
