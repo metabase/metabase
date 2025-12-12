@@ -286,3 +286,14 @@ export type WorkspaceRunResponse = {
   failed: TransformId[];
   not_run: TransformId[];
 };
+
+export type WorkspaceTransformRunResponse = {
+  status: "succeeded" | "failed";
+  start_time?: string | null;
+  end_time?: string | null;
+  message?: string | null;
+  table: {
+    name: string;
+    schema?: string | null;
+  };
+};

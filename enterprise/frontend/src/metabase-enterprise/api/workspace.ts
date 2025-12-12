@@ -24,6 +24,7 @@ import type {
   WorkspaceTransformItem,
   WorkspaceTransformMergeResponse,
   WorkspaceTransformRef,
+  WorkspaceTransformRunResponse,
   WorkspaceTransformsResponse,
 } from "metabase-types/api";
 
@@ -259,9 +260,17 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         params: stale_only ? { stale_only: 1 } : undefined,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("workspace", id), tag("transform")]),
+        invalidateTags(error, [
+          idTag("workspace", id),
+          idTag("workspace-transforms", id),
+          tag("workspace-transform"),
+          tag("transform"),
+        ]),
     }),
-    runWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
+    runWorkspaceTransform: builder.mutation<
+      WorkspaceTransformRunResponse,
+      WorkspaceTransformRef
+    >({
       query: ({ workspaceId, transformId }) => ({
         method: "POST",
         url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/run`,
