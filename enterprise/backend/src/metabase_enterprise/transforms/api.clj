@@ -130,13 +130,14 @@
 
 (def create-transform-body-schema
   "Schema of a body for transform creation."
-  [:map
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:source ::transforms.schema/transform-source]
-   [:target ::transforms.schema/transform-target]
-   [:run_trigger {:optional true} ::run-trigger]
-   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]])
+  :any
+  #_[:map
+     [:name :string]
+     [:description {:optional true} [:maybe :string]]
+     [:source ::transforms.schema/transform-source]
+     [:target ::transforms.schema/transform-target]
+     [:run_trigger {:optional true} ::run-trigger]
+     [:tag_ids {:optional true} [:sequential ms/PositiveInt]]])
 
 (mu/defn create-transform!
   "Create new transform in the appdb."
