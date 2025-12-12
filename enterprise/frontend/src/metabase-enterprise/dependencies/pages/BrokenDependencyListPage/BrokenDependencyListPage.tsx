@@ -83,7 +83,12 @@ export function BrokenDependencyListPage() {
         onSearchValueChange={setSearchValue}
         onFilterOptionsChange={setFilterOptions}
       />
-      {selectedNode != null && <BrokenNodePanel node={selectedNode} />}
+      {selectedNode != null && (
+        <BrokenNodePanel
+          node={selectedNode}
+          onClose={() => setSelectedEntry(null)}
+        />
+      )}
     </Flex>
   );
 }
