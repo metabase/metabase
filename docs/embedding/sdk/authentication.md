@@ -56,12 +56,12 @@ Example using Next.js Pages Router:
 {% include_file "{{ dirname }}/snippets/next-js/pages-router-authentication-api-route.ts" %}
 ```
 
-#### Handling interactive and SDK embeds with the same endpoint
+#### Handling full app and SDK embeds with the same endpoint
 
-If you have an existing backend endpoint configured for interactive embedding and want to use the same endpoint for SDK embedding, you can differentiate between the requests by checking for the `response=json` query parameter that the SDK adds to its requests.
+If you have an existing backend endpoint configured for full app embedding and want to use the same endpoint for SDK embedding, you can differentiate between the requests by checking for the `response=json` query parameter that the SDK adds to its requests.
 
 - For SDK requests, you should return a JSON object with the JWT (`{ jwt: string }`).
-- For interactive embedding requests, you would proceed with the redirect.
+- For full app embedding requests, you would proceed with the redirect.
 
 Here's an example of an Express.js endpoint that handles both:
 
@@ -243,7 +243,7 @@ const authConfig = defineMetabaseAuthConfig({
 
 ### Update your JWT endpoint to handle SDK requests
 
-Your JWT endpoint must now handle both SDK requests and interactive embedding requests. The SDK adds a `response=json` query parameter to distinguish its requests. For SDK requests, return a JSON object with the JWT. For interactive embedding, continue redirecting as before.
+Your JWT endpoint must now handle both SDK requests and full app embedding requests. The SDK adds a `response=json` query parameter to distinguish its requests. For SDK requests, return a JSON object with the JWT. For full app embedding, continue redirecting as before.
 
 If you were using a custom `fetchRequestToken`, you'll need to update the endpoint to detect `req.query.response === "json"` for SDK requests.
 
@@ -269,7 +269,7 @@ app.get("/sso/metabase", async (req, res) => {
     // For SDK requests, return JSON object with jwt property
     res.status(200).json({ jwt: token });
   } else {
-    // For interactive embedding, redirect as before
+    // For full app embedding, redirect as before
     const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
     res.redirect(ssoUrl);
   }
