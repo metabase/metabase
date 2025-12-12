@@ -44,6 +44,11 @@ describe(
     });
 
     it("shows the Enable to Continue button and enables embedding on click", () => {
+      cy.intercept("GET", "api/preview_embed/dashboard/*").as("previewEmbed");
+      cy.intercept("PUT", "api/setting/sdk-iframe-embed-setup-settings").as(
+        "updateEmbedSettings",
+      );
+
       H.updateSetting(embeddingSettingName, false);
       H.updateSetting(showTermsSettingName, true);
 
@@ -97,6 +102,8 @@ describe(
         .click();
 
       cy.log("Preview should load after embedding is enabled");
+      cy.wait("@previewEmbed");
+      cy.wait("@updateEmbedSettings");
       H.waitForSimpleEmbedIframesToLoad();
       H.getSimpleEmbedIframeContent().within(() => {
         cy.findByText("Orders in a dashboard").should("be.visible");
