@@ -7,10 +7,9 @@ import {
   useUnsubscribeFromNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
-import { addUndo } from "metabase/redux/undo";
 import type Question from "metabase-lib/v1/Question";
 import type { Notification } from "metabase-types/api";
 
@@ -34,7 +33,7 @@ export const QuestionAlertListModal = ({
 }) => {
   const [editingItem, setEditingItem] = useState<Notification | null>(null);
 
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const { data: questionNotifications } = useListNotificationsQuery({
     card_id: question.id(),
@@ -67,17 +66,15 @@ export const QuestionAlertListModal = ({
     });
 
     if (result.error) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`An error occurred`,
-        }),
-      );
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`An error occurred`,
+      });
       return;
     }
 
-    dispatch(addUndo({ message: t`The alert was successfully deleted.` }));
+    sendToast({ message: t`The alert was successfully deleted.` });
 
     const alertCount = questionNotifications?.length || 0;
     // if we have just unsubscribed from the last alert, close the popover
@@ -92,17 +89,15 @@ export const QuestionAlertListModal = ({
     const result = await unsubscribe(alert.id);
 
     if (result.error) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`An error occurred`,
-        }),
-      );
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`An error occurred`,
+      });
       return;
     }
 
-    dispatch(addUndo({ message: t`Successfully unsubscribed.` }));
+    sendToast({ message: t`Successfully unsubscribed.` });
 
     const alertCount = questionNotifications?.length || 0;
     // if we have just unsubscribed from the last alert, close the popover
