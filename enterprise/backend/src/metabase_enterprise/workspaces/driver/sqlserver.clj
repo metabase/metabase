@@ -57,7 +57,7 @@
         (jdbc/execute! conn-spec [(format "IF OBJECT_ID('[%s].[%s]', 'U') IS NOT NULL DROP TABLE [%s].[%s]"
                                           schema-name table-name schema-name table-name)])))))
 
-(defmethod isolation/cleanup-workspace-isolation! :sqlserver
+(defmethod isolation/destroy-workspace-isolation! :sqlserver
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)
         login-name  (isolation-login-name workspace)

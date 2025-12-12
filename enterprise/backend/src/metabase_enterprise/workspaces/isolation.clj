@@ -28,8 +28,8 @@
   {:added "0.59.0" :arglists '([database s+t-tuples])}
   #'dispatch-on-engine)
 
-(defmulti cleanup-workspace-isolation!
-  "Clean up all database resources created for workspace isolation.
+(defmulti destroy-workspace-isolation!
+  "Destroy all database resources created for workspace isolation.
   This includes dropping tables, schemas/databases, users, roles, and logins.
   Fails fast on first error. Should be called when deleting a workspace."
   {:added "0.59.0" :arglists '([database workspace])}

@@ -76,7 +76,7 @@
                                      schema-name table-name)))
         (.executeBatch ^java.sql.Statement stmt)))))
 
-(defmethod isolation/cleanup-workspace-isolation! :h2
+(defmethod isolation/destroy-workspace-isolation! :h2
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)
         username    (ws.u/isolation-user-name workspace)]

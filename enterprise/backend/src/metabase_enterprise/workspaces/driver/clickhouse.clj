@@ -49,7 +49,7 @@
                                      db-name table-name)))
         (.executeBatch ^java.sql.Statement stmt)))))
 
-(defmethod isolation/cleanup-workspace-isolation! :clickhouse
+(defmethod isolation/destroy-workspace-isolation! :clickhouse
   [database workspace]
   (let [db-name  (ws.u/isolation-namespace-name workspace)
         username (ws.u/isolation-user-name workspace)]

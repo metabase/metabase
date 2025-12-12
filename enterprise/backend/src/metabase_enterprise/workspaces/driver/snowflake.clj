@@ -62,7 +62,7 @@
       (doseq [[schema-name table-name] s+t-tuples]
         (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS \"%s\".\"%s\".\"%s\"" db-name schema-name table-name)])))))
 
-(defmethod isolation/cleanup-workspace-isolation! :snowflake
+(defmethod isolation/destroy-workspace-isolation! :snowflake
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)
         db-name     (-> database :details :db)

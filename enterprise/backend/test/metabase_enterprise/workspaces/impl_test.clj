@@ -1,4 +1,4 @@
-(ns metabase-enterprise.workspaces.impl-test
+(ns ^:mb/driver-tests metabase-enterprise.workspaces.impl-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.impl :as ws.impl]

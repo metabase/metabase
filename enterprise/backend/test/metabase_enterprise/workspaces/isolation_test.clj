@@ -91,7 +91,7 @@
 
 ;;; Tests
 
-(deftest cleanup-workspace-isolation-test
+(deftest destroy-workspace-isolation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
     (let [workspace {:id (random-uuid)}
           database  (mt/db)]
@@ -101,12 +101,12 @@
           (is (every? true? (vals resources))
               (str "All resources should exist after init: " resources))))
 
-      (testing "cleanup removes all isolation resources"
-        (isolation/cleanup-workspace-isolation! database workspace)
+      (testing "destroy removes all isolation resources"
+        (isolation/destroy-workspace-isolation! database workspace)
         (let [resources (workspace-isolation-resources-exist? database workspace)]
           (is (every? false? (vals resources))
-              (str "All resources should be gone after cleanup: " resources))))
+              (str "All resources should be gone after destroy: " resources))))
 
-      (testing "cleanup is idempotent"
-        (is (nil? (isolation/cleanup-workspace-isolation! database workspace))
-            "Calling cleanup again should not throw")))))
+      (testing "destroy is idempotent"
+        (is (nil? (isolation/destroy-workspace-isolation! database workspace))
+            "Calling destroy again should not throw")))))

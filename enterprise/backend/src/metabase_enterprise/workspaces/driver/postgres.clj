@@ -55,7 +55,7 @@
                                      schema-name table-name)))
         (.executeBatch ^Statement stmt)))))
 
-(defmethod isolation/cleanup-workspace-isolation! :postgres
+(defmethod isolation/destroy-workspace-isolation! :postgres
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)
         username    (ws.u/isolation-user-name workspace)]
