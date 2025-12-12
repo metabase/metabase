@@ -101,6 +101,15 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ANALYTICS_DEV_MODE`
+
+- Type: boolean
+- Default: `false`
+
+Enable analytics development mode. When true, makes analytics content editable.
+
+Setting this environment variable to true will  make the Usage analytics collection editable forlocal development.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean

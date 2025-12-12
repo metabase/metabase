@@ -92,6 +92,7 @@ config:
       linkedin.com,
       twitter.com,
       x.com
+    analytics-dev-mode: false
     anon-tracking-enabled: true
     api-key: null
     application-colors: {}
