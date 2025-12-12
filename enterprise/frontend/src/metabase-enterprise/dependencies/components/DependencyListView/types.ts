@@ -2,6 +2,6 @@ import type { DependencyGroupType } from "metabase-types/api";
 
 export type DependencyListViewParams = {
   query?: string;
-  types?: DependencyGroupType[];
+  groupTypes?: DependencyGroupType[];
   pageIndex?: number;
 };

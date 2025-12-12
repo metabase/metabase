@@ -53,15 +53,15 @@ function ListFilterPopover({
   availableGroupTypes,
   onParamsChange,
 }: ListFilterPopoverProps) {
-  const handleTypesChange = (types: DependencyGroupType[]) => {
-    onParamsChange({ ...params, types });
+  const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
+    onParamsChange({ ...params, groupTypes });
   };
 
   return (
     <Box w="20rem" p="md">
       <Stack>
         <TypeFilterPicker
-          groupTypes={params.types ?? []}
+          groupTypes={params.groupTypes ?? []}
           availableGroupTypes={availableGroupTypes}
           onChange={handleTypesChange}
         />
