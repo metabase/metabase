@@ -19,7 +19,7 @@ The dependency graph provides a visual representation of how your Metabase conte
 - Dashboards
 - Documents
 
-## Accessing the dependency graph
+## Viewing the dependency graph
 
 To open the full dependency graph:
 
