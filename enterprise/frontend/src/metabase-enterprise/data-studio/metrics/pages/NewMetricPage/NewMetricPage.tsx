@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
+import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -11,6 +11,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
@@ -114,6 +115,12 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
                 onSave={openModal}
                 onCancel={handleCancel}
               />
+            }
+            breadcrumbs={
+              <DataStudioBreadcrumbs>
+                <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
+                {t`New Metric`}
+              </DataStudioBreadcrumbs>
             }
           />
         }

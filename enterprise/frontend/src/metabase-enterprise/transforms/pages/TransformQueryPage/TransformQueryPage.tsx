@@ -15,7 +15,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { Box, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -30,7 +30,6 @@ import { useSourceState } from "../../hooks/use-source-state";
 import { isNotDraftSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
-import S from "./TransformQueryPage.module.css";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -182,37 +181,44 @@ function TransformQueryPageBody({
           />
         }
       >
-        <Flex gap={0} className={S.visualization}>
-          <Box w="100%">
-            {source.type === "python" ? (
-              <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-                source={source}
-                proposedSource={
-                  proposedSource?.type === "python" ? proposedSource : undefined
-                }
-                isDirty={isDirty}
-                onChangeSource={setSourceAndRejectProposed}
-                onAcceptProposed={acceptProposed}
-                onRejectProposed={rejectProposed}
-              />
-            ) : (
-              <TransformEditor
-                source={source}
-                proposedSource={
-                  proposedSource?.type === "query" ? proposedSource : undefined
-                }
-                uiState={uiState}
-                readOnly={!isEditMode}
-                databases={databases}
-                onChangeSource={setSourceAndRejectProposed}
-                onChangeUiState={setUiState}
-                onAcceptProposed={acceptProposed}
-                onRejectProposed={rejectProposed}
-                transformId={transform.id}
-              />
-            )}
-          </Box>
-        </Flex>
+        <Box
+          w="100%"
+          bg="bg-white"
+          bdrs="md"
+          bd="1px solid var(--mb-color-border)"
+          flex={1}
+          style={{
+            overflow: "hidden",
+          }}
+        >
+          {source.type === "python" ? (
+            <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+              source={source}
+              proposedSource={
+                proposedSource?.type === "python" ? proposedSource : undefined
+              }
+              isDirty={isDirty}
+              onChangeSource={setSourceAndRejectProposed}
+              onAcceptProposed={acceptProposed}
+              onRejectProposed={rejectProposed}
+            />
+          ) : (
+            <TransformEditor
+              source={source}
+              proposedSource={
+                proposedSource?.type === "query" ? proposedSource : undefined
+              }
+              uiState={uiState}
+              readOnly={!isEditMode}
+              databases={databases}
+              onChangeSource={setSourceAndRejectProposed}
+              onChangeUiState={setUiState}
+              onAcceptProposed={acceptProposed}
+              onRejectProposed={rejectProposed}
+              transformId={transform.id}
+            />
+          )}
+        </Box>
       </PageContainer>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal

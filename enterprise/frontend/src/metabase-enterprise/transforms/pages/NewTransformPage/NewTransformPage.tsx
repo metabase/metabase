@@ -16,7 +16,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Center } from "metabase/ui";
+import { Box, Center } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import {
@@ -122,8 +122,6 @@ function NewTransformPageBody({
       <PageContainer
         pos="relative"
         data-testid="transform-query-editor"
-        gap={0}
-        px={0}
         header={
           <PaneHeader
             title={
@@ -154,35 +152,45 @@ function NewTransformPageBody({
                 ]}
               </DataStudioBreadcrumbs>
             }
-            px="2rem"
           />
         }
       >
-        {source.type === "python" ? (
-          <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-            source={source}
-            proposedSource={
-              proposedSource?.type === "python" ? proposedSource : undefined
-            }
-            isDirty={isDirty}
-            onChangeSource={setSourceAndRejectProposed}
-            onAcceptProposed={acceptProposed}
-            onRejectProposed={rejectProposed}
-          />
-        ) : (
-          <TransformEditor
-            source={source}
-            proposedSource={
-              proposedSource?.type === "query" ? proposedSource : undefined
-            }
-            uiState={uiState}
-            databases={databases}
-            onChangeSource={setSourceAndRejectProposed}
-            onChangeUiState={setUiState}
-            onAcceptProposed={acceptProposed}
-            onRejectProposed={rejectProposed}
-          />
-        )}
+        <Box
+          w="100%"
+          bg="bg-white"
+          bdrs="md"
+          bd="1px solid var(--mb-color-border)"
+          flex={1}
+          style={{
+            overflow: "hidden",
+          }}
+        >
+          {source.type === "python" ? (
+            <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+              source={source}
+              proposedSource={
+                proposedSource?.type === "python" ? proposedSource : undefined
+              }
+              isDirty={isDirty}
+              onChangeSource={setSourceAndRejectProposed}
+              onAcceptProposed={acceptProposed}
+              onRejectProposed={rejectProposed}
+            />
+          ) : (
+            <TransformEditor
+              source={source}
+              proposedSource={
+                proposedSource?.type === "query" ? proposedSource : undefined
+              }
+              uiState={uiState}
+              databases={databases}
+              onChangeSource={setSourceAndRejectProposed}
+              onChangeUiState={setUiState}
+              onAcceptProposed={acceptProposed}
+              onRejectProposed={rejectProposed}
+            />
+          )}
+        </Box>
       </PageContainer>
       {isModalOpened && isNotDraftSource(source) && (
         <CreateTransformModal
