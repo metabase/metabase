@@ -58,6 +58,7 @@ function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
     meta: {
       width: "auto",
     },
+    accessorFn: (node) => node.errors?.length ?? 0,
     cell: ({ row }) => {
       const node = row.original;
       const errors = node.errors ?? [];
