@@ -43,9 +43,23 @@
   (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id))
 
+(defn- stringify-keys-and-values
+  "Given a map, convert all the keys and values to strings."
+  [m]
+  (into {} (map (fn [[k v]] [(u/qualified-name k)
+                             ;; Preserve nils and don't stringify maps/lists so existing error handling
+                             ;; catches those
+                             (cond-> v (and (some? v) (not (seq v))) str)]) m)))
+
+(def ^:private transform-attributes
+  "Transform user attributes, which are maps of strings->strings. There may be some existing values in the database
+  which are not, so convert on the way out."
+  {:in (comp mi/json-in stringify-keys-and-values)
+   :out (comp stringify-keys-and-values mi/json-out-without-keywordization)})
+
 (t2/deftransforms :model/User
-  {:login_attributes mi/transform-attributes
-   :jwt_attributes   mi/transform-attributes
+  {:login_attributes transform-attributes
+   :jwt_attributes   transform-attributes
    :settings         mi/transform-encrypted-json
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})
