@@ -277,7 +277,7 @@
   []
   (perms/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types
-                       (assoc-in [:slack :configured] (channel.slack/slack-configured?))
+                       (assoc-in [:slack :configured] (channel.settings/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond

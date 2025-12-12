@@ -20,7 +20,7 @@ export const EmbeddingHubAdminSettingsPage = () => {
           c="var(--mb-color-text-primary)"
         >{t`Embedding setup guide`}</Title>
 
-        <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
+        <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with modular embedding`}</Text>
       </Stack>
 
       <EmbeddingHub />

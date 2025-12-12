@@ -63,7 +63,7 @@
              ;; when an entity is a string that means it's a path to delete
              {:path entity
               :remove? true}
-             {:path (remote-sync-path opts entity)
+             {:path (remote-sync-path opts (serialization/serialization-deep-sort entity))
               :content (yaml/generate-string entity {:dumper-options {:flow-style :block :split-lines false}})})
     (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
 

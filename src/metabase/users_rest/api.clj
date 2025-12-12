@@ -686,9 +686,9 @@
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
-  (api/check-500
-   (when (pos? (t2/update! :model/User id {:type :personal} {:is_active false}))
-     (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User :id id) :user-id api/*current-user-id*})))
+  (api/check-404 (t2/exists? :model/User :id id))
+  (t2/update! :model/User id {:type :personal} {:is_active false})
+  (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User :id id) :user-id api/*current-user-id*})
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
