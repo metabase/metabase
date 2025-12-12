@@ -75,10 +75,9 @@ function setup(
   setupEnterprisePlugins();
 
   const _metabotState = getMetabotInitialState();
-  const metabotConvoId = _metabotState.fixedConversationIds.omnibot;
   const metabotState = assocIn(
     _metabotState,
-    ["conversations", metabotConvoId, "visible"],
+    ["conversations", "omnibot", "visible"],
     true,
   );
 
@@ -117,7 +116,6 @@ function setup(
     store,
     rerender,
     conversationIds: Object.keys(metabotState.conversations),
-    fixedConversationIds: metabotState.fixedConversationIds,
   };
 }
 

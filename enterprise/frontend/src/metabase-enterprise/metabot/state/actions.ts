@@ -10,7 +10,7 @@ import { getUser } from "metabase/selectors/user";
 import {
   type JSONValue,
   aiStreamingQuery,
-  getInflightRequestsForUrl,
+  findMatchingInflightAiStreamingRequests,
 } from "metabase-enterprise/api/ai-streaming";
 import type {
   MetabotAgentRequest,
@@ -31,7 +31,6 @@ import {
   getHistory,
   getIsProcessing,
   getLastMessage,
-  getUniqueConversationId,
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
@@ -40,7 +39,6 @@ import type {
   MetabotConvoId,
   MetabotErrorMessage,
   MetabotStoreState,
-  MetabotUniqueConvoId,
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
@@ -113,10 +111,10 @@ export const setVisible =
 
 export const executeSlashCommand = createAsyncThunk<
   void,
-  { command: SlashCommand; conversationId: MetabotUniqueConvoId }
+  { command: SlashCommand; convoId: MetabotConvoId }
 >(
   "metabase-enterprise/metabot/executeSlashCommand",
-  async ({ command, conversationId }, { dispatch, getState }) => {
+  async ({ command, convoId: conversationId }, { dispatch, getState }) => {
     match(command)
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
@@ -163,29 +161,29 @@ export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
   Omit<MetabotUserChatMessage, "id" | "role"> & {
     context: MetabotChatContext;
-    conversationId: MetabotUniqueConvoId;
+    convoId: MetabotConvoId;
     metabot_id?: string;
   }
 >(
   "metabase-enterprise/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
     const state = getState() as any;
-    const { conversationId, ...data } = payload;
+    const { convoId, ...data } = payload;
 
     try {
-      const isProcessing = getIsProcessing(state, conversationId);
+      const isProcessing = getIsProcessing(state, convoId);
       if (isProcessing) {
         console.error("Metabot is actively serving a request");
         return { prompt: data.message, success: false, shouldRetry: false };
       }
 
       // if there were from the last prompt, remove the last prompt from the history
-      const errors = getAgentErrorMessages(state, conversationId);
-      const lastMessageId = getLastMessage(state, conversationId)?.id;
+      const errors = getAgentErrorMessages(state, convoId);
+      const lastMessageId = getLastMessage(state, convoId)?.id;
       if (errors.length > 0 && lastMessageId) {
         dispatch(
           rewindConversation({
-            conversationId: conversationId,
+            convoId: convoId,
             messageId: lastMessageId,
           }),
         );
@@ -196,7 +194,7 @@ export const submitInput = createAsyncThunk<
         await dispatch(
           executeSlashCommand({
             command,
-            conversationId: conversationId,
+            convoId,
           }),
         );
         return { prompt: data.message, success: true };
@@ -204,17 +202,14 @@ export const submitInput = createAsyncThunk<
 
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
-      const agentMetadata = getAgentRequestMetadata(
-        getState() as any,
-        conversationId,
-      );
+      const agentMetadata = getAgentRequestMetadata(getState() as any, convoId);
       const messageId = createMessageId();
-      const message = getDeveloperMessage(state, conversationId) + data.message;
+      const message = getDeveloperMessage(state, convoId) + data.message;
       dispatch(
         addUserMessage({
           id: messageId,
           ..._.omit(data, ["context", "metabot_id"]),
-          convoId: conversationId,
+          convoId: convoId,
           message,
         }),
       );
@@ -223,7 +218,7 @@ export const submitInput = createAsyncThunk<
         sendAgentRequest({
           ...data,
           message,
-          conversation_id: conversationId,
+          conversation_id: convoId,
           ...agentMetadata,
         }),
       );
@@ -236,7 +231,7 @@ export const submitInput = createAsyncThunk<
       if (isRejected(result) && result.payload?.type === "error") {
         dispatch(
           stopProcessingAndNotify({
-            convoId: conversationId,
+            convoId: convoId,
             message: result.payload?.errorMessage,
           }),
         );
@@ -275,7 +270,7 @@ export const sendAgentRequest = createAsyncThunk<
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
     const isEmbedding = getIsEmbedding(getState() as any);
-    const conversationId = request.conversation_id as MetabotUniqueConvoId;
+    const conversationId = request.conversation_id as MetabotConvoId;
 
     try {
       let state = {};
@@ -407,11 +402,11 @@ export const sendAgentRequest = createAsyncThunk<
 // TODO: this needs to be scoped for a conversation
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
-  (convoId: MetabotConvoId, { getState }) => {
-    const conversation_id = getUniqueConversationId(getState() as any, convoId);
-    getInflightRequestsForUrl("/api/ee/metabot-v3/agent-streaming")
-      .filter((req) => req.conversation_id === conversation_id)
-      .forEach((req) => req.abortController.abort());
+  (convoId: MetabotConvoId) => {
+    findMatchingInflightAiStreamingRequests(
+      "/api/ee/metabot-v3/agent-streaming",
+      convoId,
+    ).forEach((req) => req.abortController.abort());
   },
 );
 
@@ -440,16 +435,16 @@ const rewindConversation = createAsyncThunk(
   "metabase-enterprise/metabot/rewindConversation",
   (
     payload: {
-      conversationId: MetabotUniqueConvoId;
+      convoId: MetabotConvoId;
       messageId: string;
     },
     { dispatch, getState },
   ) => {
-    dispatch(cancelInflightAgentRequests(payload.conversationId));
+    dispatch(cancelInflightAgentRequests(payload.convoId));
 
     const promptMessage = getUserPromptForMessageId(
       getState(),
-      payload.conversationId,
+      payload.convoId,
       payload.messageId,
     );
     if (!promptMessage) {
@@ -457,7 +452,7 @@ const rewindConversation = createAsyncThunk(
     }
     dispatch(
       metabot.actions.rewindStateToMessageId({
-        convoId: payload.conversationId,
+        convoId: payload.convoId,
         messageId: promptMessage.id,
       }),
     );
@@ -470,17 +465,17 @@ export const retryPrompt = createAsyncThunk<
     messageId: string;
     context: MetabotChatContext;
     metabot_id?: string;
-    conversationId: MetabotUniqueConvoId;
+    convoId: MetabotConvoId;
   }
 >(
   "metabase-enterprise/metabot/retryPrompt",
   async (
-    { messageId, context, metabot_id, conversationId },
+    { messageId, context, metabot_id, convoId },
     { getState, dispatch },
   ) => {
     const prompt = getUserPromptForMessageId(
       getState() as any,
-      conversationId,
+      convoId,
       messageId,
     );
     if (!prompt) {
@@ -489,21 +484,21 @@ export const retryPrompt = createAsyncThunk<
 
     dispatch(
       rewindConversation({
-        conversationId,
+        convoId,
         messageId: prompt.id,
       }),
     );
-    dispatch(cancelInflightAgentRequests(conversationId));
+    dispatch(cancelInflightAgentRequests(convoId));
     dispatch(
       metabot.actions.rewindStateToMessageId({
-        convoId: conversationId,
+        convoId: convoId,
         messageId: messageId,
       }),
     );
 
     return await dispatch(
       submitInput({
-        conversationId: conversationId,
+        convoId,
         type: "text",
         message: prompt.message,
         context,

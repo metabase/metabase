@@ -9,12 +9,21 @@ import type { JSONValue } from "./types";
 // places in the app w/o passing references to the abort controller directly
 export const inflightAiStreamingRequests = new Map<
   string,
-  { conversation_id: string; abortController: AbortController }
+  {
+    sourceId: string;
+    abortController: AbortController;
+  }
 >();
 
-export const getInflightRequestsForUrl = (url: string) => {
+export const findMatchingInflightAiStreamingRequests = (
+  url: string,
+  sourceId?: string,
+) => {
   return [...inflightAiStreamingRequests.entries()]
-    .filter(([reqId]) => reqId.startsWith(`${url}-`))
+    .filter(
+      ([reqId, req]) =>
+        reqId.startsWith(`${url}-`) && (!sourceId || sourceId === req.sourceId),
+    )
     .map(([_reqId, reqInfo]) => reqInfo);
 };
 
@@ -43,7 +52,7 @@ export async function aiStreamingQuery(
       });
     }
     inflightAiStreamingRequests.set(reqId, {
-      conversation_id,
+      sourceId: conversation_id,
       abortController,
     });
 

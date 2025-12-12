@@ -1,5 +1,6 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
@@ -12,10 +13,8 @@ import {
   type ConvoPayloadAction,
   convoReducer,
   createConversation,
-  findFixedConversationId,
   getMetabotInitialState,
   getRequestConversation,
-  getUniqueConversationId,
 } from "./reducer-utils";
 import {
   type MetabotAgentChatMessage,
@@ -23,7 +22,7 @@ import {
   type MetabotErrorMessage,
   type MetabotSuggestedTransform,
   type MetabotUserChatMessage,
-  isMetabotChatDomainId,
+  isFixedMetabotConvoId,
 } from "./types";
 import { createMessageId } from "./utils";
 
@@ -167,19 +166,15 @@ export const metabot = createSlice({
         visible: boolean;
       }>,
     ) => {
-      const { convoId, visible } = action.payload;
-      const isChatDomainId = isMetabotChatDomainId(convoId);
-
-      const newConvo = createConversation({
-        conversationId: isChatDomainId ? undefined : convoId,
-        visible,
-      });
-
-      state.conversations[newConvo.conversationId] = castDraft(newConvo);
-      if (isChatDomainId) {
-        const old_conversation_id = state.fixedConversationIds[convoId];
-        delete state.conversations[old_conversation_id];
-        state.fixedConversationIds[convoId] = newConvo.conversationId;
+      const { convoId, ...options } = action.payload;
+      if (isFixedMetabotConvoId(convoId)) {
+        state.conversations[convoId] = castDraft(createConversation(options));
+      } else {
+        const newConvo = createConversation({
+          ...options,
+          conversationId: convoId,
+        });
+        state.conversations[newConvo.conversationId] = castDraft(newConvo);
       }
     },
     removeConversation: (
@@ -189,21 +184,19 @@ export const metabot = createSlice({
       }>,
     ) => {
       const { convoId } = action.payload;
-      const conversation_id = getUniqueConversationId(state, convoId);
-      const fixedConvoId = findFixedConversationId(state, convoId);
-      if (fixedConvoId) {
-        const newConvo = createConversation();
-        state.conversations[newConvo.conversationId] = castDraft(newConvo);
-        state.fixedConversationIds[fixedConvoId] = newConvo.conversationId;
-      }
-      delete state.conversations[conversation_id];
-
-      // NOTE: let's eventually move this out
-      if (convoId === "omnibot") {
-        state.reactions.navigateToPath = null;
-        state.reactions.suggestedTransforms = [];
-      } else if (convoId === "inline_sql") {
-        state.reactions.suggestedCodeEdits = [];
+      if (isFixedMetabotConvoId(convoId)) {
+        state.conversations[convoId] = castDraft(createConversation());
+        match(convoId)
+          .with("omnibot", () => {
+            state.reactions.navigateToPath = null;
+            state.reactions.suggestedTransforms = [];
+          })
+          .with("inline_sql", () => {
+            state.reactions.suggestedCodeEdits = [];
+          })
+          .otherwise(() => {});
+      } else {
+        delete state.conversations[convoId];
       }
     },
     setIsProcessing: convoReducer(

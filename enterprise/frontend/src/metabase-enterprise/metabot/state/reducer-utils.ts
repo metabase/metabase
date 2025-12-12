@@ -3,53 +3,23 @@ import type { WritableDraft } from "immer";
 
 import { uuid } from "metabase/lib/uuid";
 
-import {
-  type MetabotConverstationState,
-  type MetabotConvoId,
-  type MetabotFixedConvoId,
-  type MetabotState,
-  type MetabotUniqueConvoId,
-  isMetabotChatDomainId,
+import type {
+  MetabotConverstationState,
+  MetabotConvoId,
+  MetabotState,
+  MetabotUniqueConvoId,
 } from "./types";
 
 export type ConvoPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
 > = PayloadAction<{ convoId: MetabotConvoId } & Value>;
 
-export const getUniqueConversationId = (
-  state: WritableDraft<MetabotState>,
-  id: MetabotConvoId,
-): MetabotUniqueConvoId => {
-  return isMetabotChatDomainId(id) ? state.fixedConversationIds[id] : id;
-};
-
-export const findFixedConversationId = (
-  state: WritableDraft<MetabotState>,
-  id: MetabotConvoId,
-): MetabotFixedConvoId | undefined => {
-  if (isMetabotChatDomainId(id)) {
-    return id;
-  }
-
-  type Key = keyof MetabotState["fixedConversationIds"];
-  type Value = MetabotState["fixedConversationIds"][Key];
-  const kvs = Object.entries(state.fixedConversationIds) as [Key, Value][];
-  return kvs.find((kv) => kv[1] === id)?.[0];
-};
-
-export const getConversation = (
-  state: WritableDraft<MetabotState>,
-  id: MetabotConvoId,
-): WritableDraft<MetabotConverstationState> | undefined => {
-  return state.conversations[getUniqueConversationId(state, id)];
-};
-
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
   action: { meta: { arg: { conversation_id: string } } },
 ) => {
   const convoId = action.meta.arg.conversation_id as unknown as MetabotConvoId;
-  return getConversation(state as any, convoId);
+  return state.conversations[convoId];
 };
 
 // Create a unique id for a metabot conversations
@@ -82,10 +52,7 @@ export const getConversationOrThrow = (
   state: WritableDraft<MetabotState>,
   convoId: MetabotConvoId,
 ): WritableDraft<MetabotConverstationState> => {
-  const conversationId = isMetabotChatDomainId(convoId)
-    ? state.fixedConversationIds[convoId]
-    : convoId;
-  const convo = getConversation(state, conversationId);
+  const convo = state.conversations[convoId];
   if (!convo) {
     throw new Error(
       `Could not find metabot conversation with convo id: ${convoId}`,
@@ -115,17 +82,10 @@ export const convoReducer =
   };
 
 export const getMetabotInitialState = (): MetabotState => {
-  const omnibotConvo = createConversation();
-  const inlineSqlConvo = createConversation();
-
   return {
     conversations: {
-      [omnibotConvo.conversationId]: omnibotConvo,
-      [inlineSqlConvo.conversationId]: inlineSqlConvo,
-    },
-    fixedConversationIds: {
-      omnibot: omnibotConvo.conversationId,
-      inline_sql: inlineSqlConvo.conversationId,
+      omnibot: createConversation(),
+      inline_sql: createConversation(),
     },
     reactions: {
       navigateToPath: null,

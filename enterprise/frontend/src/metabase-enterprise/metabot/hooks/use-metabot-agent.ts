@@ -41,27 +41,27 @@ export const useMetabotConversation = (
   // will still have a stale reference to the old value. on the flipside moving this to
   // a also screws things up... you could update all the methods to use a ref, but then
   // your selector values will be from a different conversation than your new one :(
-  const { conversationId: conversation_id, startNewConversation } =
+  const { convoId, startNewConversation } =
     useMetaboConversationManager(initialConvoId);
 
   const metabotRequestId = useSelector((state: any) =>
-    getMetabotRequestId(state, conversation_id),
+    getMetabotRequestId(state, convoId),
   );
   const visible = useSelector((state: any) =>
-    getMetabotVisible(state, conversation_id),
+    getMetabotVisible(state, convoId),
   );
 
   const setVisible = useCallback(
     (visible: boolean) =>
-      dispatch(setVisibleAction({ convoId: conversation_id, visible })),
-    [dispatch, conversation_id],
+      dispatch(setVisibleAction({ convoId: convoId, visible })),
+    [dispatch, convoId],
   );
 
   const setProfileOverride = useCallback(
     (profile: string | undefined) => {
-      dispatch(setProfileOverrideAction({ convoId: conversation_id, profile }));
+      dispatch(setProfileOverrideAction({ convoId: convoId, profile }));
     },
-    [dispatch, conversation_id],
+    [dispatch, convoId],
   );
 
   const prepareRetryIfUnsuccesful = useCallback(
@@ -99,7 +99,7 @@ export const useMetabotConversation = (
             ? { type: "text", message: prompt }
             : prompt),
           context: await getChatContext(),
-          conversationId: conversation_id,
+          convoId,
           metabot_id: metabotRequestId,
         }),
       );
@@ -120,7 +120,7 @@ export const useMetabotConversation = (
       setProfileOverride,
       setVisible,
       visible,
-      conversation_id,
+      convoId,
       promptInputRef,
     ],
   );
@@ -133,7 +133,7 @@ export const useMetabotConversation = (
           messageId,
           context,
           metabot_id: metabotRequestId,
-          conversationId: conversation_id,
+          convoId,
         }),
       );
       if (isFulfilled(action)) {
@@ -145,13 +145,13 @@ export const useMetabotConversation = (
       getChatContext,
       metabotRequestId,
       prepareRetryIfUnsuccesful,
-      conversation_id,
+      convoId,
     ],
   );
 
   const cancelRequest = useCallback(() => {
-    dispatch(cancelInflightAgentRequests(conversation_id));
-  }, [dispatch, conversation_id]);
+    dispatch(cancelInflightAgentRequests(convoId));
+  }, [dispatch, convoId]);
 
   return {
     prompt,
@@ -165,22 +165,22 @@ export const useMetabotConversation = (
     cancelRequest,
     setProfileOverride,
     metabotId: useSelector((state: any) => getMetabotId(state)),
-    messages: useSelector((state: any) => getMessages(state, conversation_id)),
+    messages: useSelector((state: any) => getMessages(state, convoId)),
     errorMessages: useSelector((state: any) =>
-      getAgentErrorMessages(state, conversation_id),
+      getAgentErrorMessages(state, convoId),
     ),
     isDoingScience: useSelector((state: any) =>
-      getIsProcessing(state, conversation_id),
+      getIsProcessing(state, convoId),
     ),
     isLongConversation: useSelector((state: any) =>
-      getIsLongMetabotConversation(state, conversation_id),
+      getIsLongMetabotConversation(state, convoId),
     ),
     activeToolCalls: useSelector((state: any) =>
-      getActiveToolCalls(state, conversation_id),
+      getActiveToolCalls(state, convoId),
     ),
     debugMode: useSelector((state: any) => getDebugMode(state)),
     profileOverride: useSelector((state: any) =>
-      getProfileOverride(state, conversation_id),
+      getProfileOverride(state, convoId),
     ),
     reactions: useSelector((state: any) => getMetabotReactionsState(state)),
   };

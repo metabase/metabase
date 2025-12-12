@@ -108,10 +108,10 @@ export type MetabotUniqueConvoId = Opaque<string, "MetabotConvoId">;
 // area of the app this conversation belongs to its used as a developer friendly
 // identifier for conversations and, while not yet implmented, useful for
 // distinguishing the origin of a conversation when dealing with persisted convos
-export const metabotFixedConvoIds = ["omnibot", "inline_sql"] as const;
+const metabotFixedConvoIds = ["omnibot", "inline_sql"] as const;
 export type MetabotFixedConvoId = (typeof metabotFixedConvoIds)[number];
 
-export const isMetabotChatDomainId = (
+export const isFixedMetabotConvoId = (
   id: string,
 ): id is MetabotFixedConvoId => {
   return (metabotFixedConvoIds as unknown as string[]).includes(id);
@@ -138,11 +138,7 @@ export interface MetabotConverstationState {
 }
 
 export interface MetabotState {
-  conversations: Record<
-    MetabotUniqueConvoId,
-    MetabotConverstationState | undefined
-  >;
-  fixedConversationIds: Record<MetabotFixedConvoId, MetabotUniqueConvoId>;
+  conversations: Record<MetabotConvoId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
 }

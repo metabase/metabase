@@ -11,15 +11,14 @@ function setup(messages: MetabotChatMessage[]) {
   setupEnterprisePlugins();
 
   const state = getMetabotInitialState();
-  const convoId = state.fixedConversationIds.omnibot;
   const visibleState = assocIn(
     state,
-    ["conversations", convoId, "visible"],
+    ["conversations", "omnibot", "visible"],
     true,
   );
   const withMessages = assocIn(
     visibleState,
-    ["conversations", convoId, "messages"],
+    ["conversations", "omnibot", "messages"],
     messages,
   );
 

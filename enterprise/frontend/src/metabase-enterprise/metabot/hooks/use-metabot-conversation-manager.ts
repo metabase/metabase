@@ -1,12 +1,10 @@
 import { useCallback, useState } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 
 import {
   type MetabotConvoId,
-  type MetabotUniqueConvoId,
-  getUniqueConversationId,
-  isMetabotChatDomainId,
+  isFixedMetabotConvoId,
   newConversation,
   removeConversation,
 } from "../state";
@@ -14,7 +12,6 @@ import { createConversationId } from "../state/reducer-utils";
 
 export function useMetaboConversationManager(initialConvoId: MetabotConvoId): {
   convoId: MetabotConvoId;
-  conversationId: MetabotUniqueConvoId;
   startNewConversation: () => MetabotConvoId;
 } {
   const dispatch = useDispatch();
@@ -22,12 +19,9 @@ export function useMetaboConversationManager(initialConvoId: MetabotConvoId): {
   const [convoId, setConvoId] = useState(
     initialConvoId ?? createConversationId(),
   );
-  const conversation_id = useSelector((state) =>
-    getUniqueConversationId(state as any, convoId),
-  );
 
   const refreshConvoId = useCallback(() => {
-    if (convoId && isMetabotChatDomainId(convoId)) {
+    if (convoId && isFixedMetabotConvoId(convoId)) {
       return convoId;
     } else {
       const newId = createConversationId();
@@ -46,7 +40,6 @@ export function useMetaboConversationManager(initialConvoId: MetabotConvoId): {
 
   return {
     convoId,
-    conversationId: conversation_id,
     startNewConversation,
   };
 }
