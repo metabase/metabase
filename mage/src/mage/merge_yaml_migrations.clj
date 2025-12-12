@@ -17,17 +17,6 @@
         (println (.getMessage e)))
       (u/exit 2))))
 
-(defn- read-working-tree-file
-  "Read the file from the working tree (actual file on disk).
-   During rebase, the working tree contains the correctly merged state from
-   previous cherry-picks, even before git commits it."
-  [filepath]
-  (try
-    (let [content (slurp filepath)]
-      (when (seq content)
-        content))
-    (catch Exception _ nil)))
-
 (def ^:private FOOTER-PREFIX
   "# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<")
 
@@ -148,7 +137,7 @@
         theirs-text (slurp theirs)
         ;; Read from working tree to get the actual current state during rebase
         ;; This contains migrations correctly merged in previous cherry-picks
-        working-tree-text (when filepath (read-working-tree-file filepath))
+        working-tree-text (try (slurp filepath) (catch Exception _ nil))
         ;; Parse yaml
         base-data (parse-yaml base)
         ours-data (parse-yaml ours)
@@ -183,7 +172,7 @@
                                   (get ours-cs-texts (:id cs))
                                   (get theirs-cs-texts (:id cs))))]
             ;; Remove trailing blank lines from each changeset
-            (str/replace text #"\n+$" "")))]
+            (some-> text (str/replace #"\n+$" ""))))]
     {:result (str header
                   "\n"
                   (str/join "\n\n" (filter some? changeset-texts))
@@ -192,8 +181,6 @@
                   (when-not (str/ends-with? footer "\n") "\n"))
      :conflicts (vec (keep #(when (= (:source %) :conflict) (:id %)) sorted-merged))
      :cnt (count sorted-merged)}))
-
-;; 
 
 ;;
 ;; Usage (called by git):
