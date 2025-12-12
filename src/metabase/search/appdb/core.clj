@@ -69,6 +69,7 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))

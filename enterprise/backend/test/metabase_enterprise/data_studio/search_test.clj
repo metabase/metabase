@@ -121,13 +121,14 @@
             name-2 (str search-term " 2")]
         (mt/with-temp [:model/Table {unpub-table :id} {:collection_id nil :is_published false :name name-1}
                        :model/Table {pub-table :id} {:collection_id nil :is_published true :name name-2}]
-          (search/reindex! {:async? false :in-place? true})
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (let [results (mt/user-http-request :rasta :get 200 "search"
-                                                :q search-term :models "table")
-                  our-result (->> (filter (comp #{pub-table unpub-table} :id) (:data results))
-                                  (sort-by :id)
-                                  (map #(select-keys % [:id])))]
-              (testing "only the unpublished table appears"
-                (is (= [{:id unpub-table}]
-                       our-result))))))))))
+          (doseq [engine ["in-place" "appdb"]]
+            (search/reindex! {:async? false :in-place? true})
+            (mt/with-non-admin-groups-no-root-collection-perms
+              (let [results (mt/user-http-request :rasta :get 200 "search"
+                                                  :q search-term :models "table" :search_engine engine)
+                    our-result (->> (filter (comp #{pub-table unpub-table} :id) (:data results))
+                                    (sort-by :id)
+                                    (map #(select-keys % [:id])))]
+                (testing "only the unpublished table appears"
+                  (is (= [{:id unpub-table}]
+                         our-result)))))))))))
