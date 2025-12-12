@@ -76,6 +76,7 @@ export const DataTabSidebar = ({
               schema={table.schema}
               icon="table"
               type="input"
+              isSelected={table.table_id === selectedTableId}
               tableId={table.table_id ?? undefined}
               onTransformClick={onTransformClick}
               onTableClick={onTableSelect}
