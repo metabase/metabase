@@ -63,7 +63,7 @@
   :type       :json
   :visibility :public
   :feature    :metabot-v3
-  :export?    true
+  :export?    false
   :doc        false
   :setter     :none
   :getter     (fn []

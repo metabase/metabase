@@ -34,42 +34,40 @@
                                                                              json/decode+kw))
                                                  ((client-test/mock-post! mock-response) url opts))]
         (testing "Streaming request"
-          (doseq [metabot-id [nil (str (random-uuid))]]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (reset! ai-requests [])
-              (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
-                                                   (-> {:message         (:content question)
-                                                        :context         {}
-                                                        :conversation_id conversation-id
-                                                        :history         [historical-message]
-                                                        :state           {}
-                                                        :use_case        "nlq"}
-                                                       (m/assoc-some :metabot_id metabot-id)))
-                    conv     (t2/select-one :model/MetabotConversation :id conversation-id)
-                    messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-                (is (=? [{:messages        [historical-message question]
-                          :conversation_id conversation-id
-                          :use_case        "nlq"}]
-                        @ai-requests))
-                (is (=? [{:_type   :TEXT
-                          :role    "assistant"
-                          :content "Hello from streaming!"}
-                         {:_type         :FINISH_MESSAGE
-                          :finish_reason "stop"
-                          :usage         {:some-model {:prompt 12 :completion 3}}}]
-                        (metabot.u/aisdk->messages "assistant" (str/split-lines response))))
-                (is (=? {:user_id (mt/user->id :rasta)}
-                        conv))
-                (is (=? [{:total_tokens 0
-                          :role         :user
-                          :use_case     "nlq"
-                          :data         [{:role "user" :content (:content question)}]}
-                         {:total_tokens 15
-                          :role         :assistant
-                          :use_case     "nlq"
-                          :data         [{:role "assistant" :content "Hello from streaming!"}]}]
-                        messages))))))))))
+          ;; Uses the internal metabot by default which should have the omnibot use case enabled
+          (mt/with-model-cleanup [:model/MetabotMessage
+                                  [:model/MetabotConversation :created_at]]
+            (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                                 {:message         (:content question)
+                                                  :context         {}
+                                                  :conversation_id conversation-id
+                                                  :history         [historical-message]
+                                                  :state           {}
+                                                  :use_case        "nlq"})
+                  conv     (t2/select-one :model/MetabotConversation :id conversation-id)
+                  messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+              (is (=? [{:messages        [historical-message question]
+                        :conversation_id conversation-id
+                        :use_case        "nlq"}]
+                      @ai-requests))
+              (is (=? [{:_type   :TEXT
+                        :role    "assistant"
+                        :content "Hello from streaming!"}
+                       {:_type         :FINISH_MESSAGE
+                        :finish_reason "stop"
+                        :usage         {:some-model {:prompt 12 :completion 3}}}]
+                      (metabot.u/aisdk->messages "assistant" (str/split-lines response))))
+              (is (=? {:user_id (mt/user->id :rasta)}
+                      conv))
+              (is (=? [{:total_tokens 0
+                        :role         :user
+                        :use_case     "nlq"
+                        :data         [{:role "user" :content (:content question)}]}
+                       {:total_tokens 15
+                        :role         :assistant
+                        :use_case     "nlq"
+                        :data         [{:role "assistant" :content "Hello from streaming!"}]}]
+                      messages)))))))))
 
 (deftest closing-connection-test
   (let [messages   (atom nil)
