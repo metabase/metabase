@@ -27,7 +27,7 @@ export const PublishQuestionEmptyState = () => {
           ) : (
             c(
               "{0} is a link that publishes an entity to be embeddable via Guest Embedding",
-            ).jt`The get the embedding code, ${(
+            ).jt`To get the embedding code, ${(
               <Anchor
                 key="publish-guest-embed-question"
                 target="_blank"
