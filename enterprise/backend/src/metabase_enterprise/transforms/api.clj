@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -80,13 +81,15 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids database_id type]}]
   (api/check-superuser)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (transforms.util/->database-id-filter-xf database_id)
+                (transforms.util/->type-filter-xf type)
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
 
@@ -100,7 +103,9 @@
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:database_id {:optional true} [:maybe ms/PositiveInt]]
+    [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
   (get-transforms query-params))
 
 (api.macros/defendpoint :post "/"
@@ -186,19 +191,10 @@
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
-(api.macros/defendpoint :put "/:id"
-  "Update a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   body :- [:map
-            [:name {:optional true} :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transforms.schema/transform-source]
-            [:target {:optional true} ::transforms.schema/transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
+(defn update-transform!
+  "Update a transform. Validates features, database support, cycles, and target conflicts.
+   Returns the updated transform with hydrated associations."
+  [id body]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -223,17 +219,36 @@
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     transform))
 
+(api.macros/defendpoint :put "/:id"
+  "Update a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name {:optional true} :string]
+            [:description {:optional true} [:maybe :string]]
+            [:source {:optional true} ::transforms.schema/transform-source]
+            [:target {:optional true} ::transforms.schema/transform-target]
+            [:run_trigger {:optional true} ::run-trigger]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+  (api/check-superuser)
+  (update-transform! id body))
+
+(defn delete-transform!
+  "Delete a transform and publish the delete event."
+  [transform]
+  (t2/delete! :model/Transform (:id transform))
+  (events/publish-event! :event/transform-delete
+                         {:object transform
+                          :user-id api/*current-user-id*})
+  nil)
+
 (api.macros/defendpoint :delete "/:id"
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (t2/delete! :model/Transform id)
-    (events/publish-event! :event/transform-delete
-                           {:object transform
-                            :user-id api/*current-user-id*}))
-  nil)
+  (delete-transform! (api/check-404 (t2/select-one :model/Transform id))))
 
 (api.macros/defendpoint :delete "/:id/table"
   "Delete a transform's output table."
@@ -255,17 +270,15 @@
       (transforms.canceling/cancel-run! (:id run))))
   nil)
 
-(api.macros/defendpoint :post "/:id/run"
-  "Run a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        _         (check-feature-enabled! transform)
-        start-promise (promise)]
+(defn run-transform!
+  "Run a transform. Returns a 202 response with run_id.
+   The transform must already be fetched and validated."
+  [transform]
+  (check-feature-enabled! transform)
+  (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
-     (transforms.i/execute! transform {:start-promise start-promise
-                                       :run-method :manual}))
+     (transforms.execute/execute! transform {:start-promise start-promise
+                                             :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise
@@ -274,6 +287,13 @@
       (-> (response/response {:message (deferred-tru "Transform run started")
                               :run_id run-id})
           (assoc :status 202)))))
+
+(api.macros/defendpoint :post "/:id/run"
+  "Run a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (run-transform! (api/check-404 (t2/select-one :model/Transform id))))
 
 (defn- extract-columns-from-query
   "Attempts to extract column names from an MBQL query without executing it.

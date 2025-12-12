@@ -436,33 +436,49 @@
 (defn- matching-timestamp?
   [job field-path {:keys [start end]}]
   (when-let [field-instant (->instant (get-in job field-path))]
-    (let [start-instant (some-> start u.date/parse ->instant)
-          end-instant (some-> end u.date/parse ->instant)]
-      (and (or (nil? start)
-               (not (.isBefore field-instant start-instant)))
-           (or (nil? end)
-               (.isAfter end-instant field-instant))))))
+    (let [parse #(-> % u.date/parse ->instant)]
+      ;; logic here is to find when it's not matching and invert this
+      (not (or (and start (.isBefore field-instant (parse start)))
+               (and end   (.isAfter field-instant (parse end))))))))
 
 (defn ->date-field-filter-xf
   "Returns an xform for a date filter."
   [field-path filter-value]
-  (let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
-    (if range
-      (filter #(matching-timestamp? % field-path range))
-      identity)))
+  (if-let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
+    (filter #(matching-timestamp? % field-path range))
+    identity))
 
 (defn ->status-filter-xf
   "Returns an xform for a transform run status filter."
   [field-path statuses]
-  (let [statuses (->> statuses (map keyword) set not-empty)]
-    (if statuses
-      (filter #(statuses (get-in % field-path)))
-      identity)))
+  (if-let [statuses (->> statuses (map keyword) set not-empty)]
+    (filter #(statuses (get-in % field-path)))
+    identity))
 
 (defn ->tag-filter-xf
   "Returns an xform for a transform tag filter."
   [field-path tag-ids]
-  (let [tag-ids (-> tag-ids set not-empty)]
-    (if tag-ids
-      (filter #(some tag-ids (get-in % field-path)))
-      identity)))
+  (if-let [tag-ids (-> tag-ids set not-empty)]
+    (filter #(some tag-ids (get-in % field-path)))
+    identity))
+
+(defn ->type-filter-xf
+  "Returns an xform for a transform source type filter."
+  ;; TODO: Ngoc - 2025-12-05 We have transform.source_type column so we can just use it to query
+  [types]
+  (if-let [types (->> types (map keyword) set not-empty)]
+    (filter (fn [transform]
+              (contains? types (:source_type transform))))
+    identity))
+
+(defn ->database-id-filter-xf
+  "Returns an xform for a transform database ID filter.
+   Matches transforms where the source database OR target database matches the given database-id."
+  [database-id]
+  (if database-id
+    (filter (fn [transform]
+              (let [python-source-db-id (transforms.i/source-db-id transform)
+                    target-db-id        (transforms.i/target-db-id transform)]
+                (or (= database-id python-source-db-id)
+                    (= database-id target-db-id)))))
+    identity))

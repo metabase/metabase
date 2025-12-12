@@ -89,6 +89,7 @@ export function QueryEditor({
             modalSnippet={uiState.modalSnippet}
             nativeEditorSelectedText={selectedText}
             readOnly={uiOptions?.readOnly}
+            canChangeDatabase={uiOptions?.canChangeDatabase}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}
@@ -108,6 +109,7 @@ export function QueryEditor({
             onChangeNativeEditorSelection={setSelectionRange}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
+            editorHeight={uiOptions?.editorHeight}
           />
           <QueryEditorVisualization
             question={question}

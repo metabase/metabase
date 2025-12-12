@@ -75,7 +75,11 @@ export function entityPickerModalItem(level, name) {
 }
 
 export function entityPickerModalTab(name) {
-  return cy.findAllByRole("tab").filter(`:contains(${name})`);
+  if (typeof name === "string") {
+    return cy.findAllByRole("tab").filter(`:contains(${name})`);
+  } else {
+    return cy.findAllByRole("tab").first().parent().findByText(name);
+  }
 }
 
 // displays at least these tabs:

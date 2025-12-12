@@ -23,7 +23,7 @@ import { ResizeHandle } from "../ResizeHandle";
 
 import S from "./QueryEditorBody.module.css";
 
-const EDITOR_HEIGHT = 550;
+const DEFAULT_EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
 const HEADER_HEIGHT = 65 + 50;
 
@@ -45,6 +45,7 @@ type QueryEditorBodyProps = {
     | null;
   nativeEditorSelectedText?: string | null;
   readOnly?: boolean;
+  canChangeDatabase?: boolean;
   isNative: boolean;
   isRunnable: boolean;
   isRunning: boolean;
@@ -66,6 +67,7 @@ type QueryEditorBodyProps = {
   onOpenModal: (type: QueryModalType) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  editorHeight?: number;
 };
 
 export function QueryEditorBody({
@@ -74,6 +76,7 @@ export function QueryEditorBody({
   modalSnippet,
   nativeEditorSelectedText,
   readOnly,
+  canChangeDatabase,
   isNative,
   isRunnable,
   isRunning,
@@ -93,10 +96,11 @@ export function QueryEditorBody({
   onOpenModal,
   onAcceptProposed,
   onRejectProposed,
+  editorHeight: editorHeightOverride,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
-  const editorHeight = useInitialEditorHeight(isNative);
+  const editorHeight = useInitialEditorHeight(isNative, editorHeightOverride);
 
   const dataPickerOptions = useMemo(
     () => ({ shouldDisableItem, shouldDisableDatabase }),
@@ -136,6 +140,7 @@ export function QueryEditorBody({
       isInitiallyOpen
       isNativeEditorOpen
       readOnly={readOnly}
+      canChangeDatabase={canChangeDatabase}
       hasParametersList={false}
       isRunnable={isRunnable}
       isRunning={isRunning}
@@ -193,8 +198,12 @@ function getHeaderHeight(isNative: boolean) {
   return HEADER_HEIGHT;
 }
 
-function useInitialEditorHeight(isNative: boolean) {
+function useInitialEditorHeight(
+  isNative: boolean,
+  editorHeightOverride?: number,
+) {
   const { height: windowHeight } = useWindowSize();
   const headerHeight = getHeaderHeight(isNative);
-  return Math.min(0.8 * (windowHeight - headerHeight), EDITOR_HEIGHT);
+  const targetHeight = editorHeightOverride ?? DEFAULT_EDITOR_HEIGHT;
+  return Math.min(0.8 * (windowHeight - headerHeight), targetHeight);
 }

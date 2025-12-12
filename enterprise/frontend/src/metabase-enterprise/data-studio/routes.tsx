@@ -15,12 +15,14 @@ import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
+import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
+import { getDataStudioWorkspaceRoutes } from "./workspaces/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -54,6 +56,9 @@ export function getDataStudioRoutes(
           {getDataStudioMetricRoutes()}
           {getDataStudioSnippetRoutes()}
           {getDataStudioGlossaryRoutes()}
+        </Route>
+        <Route path="workspaces" component={WorkspacesSectionLayout}>
+          {getDataStudioWorkspaceRoutes()}
         </Route>
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>

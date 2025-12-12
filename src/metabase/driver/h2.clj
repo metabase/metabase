@@ -140,7 +140,7 @@
   :monday)
 
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
-(defn- connection-string->file+options
+(defn connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
 
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
@@ -149,7 +149,7 @@
   {:pre [(string? connection-string)]}
   (let [[file & options] (str/split connection-string #";+")
         options          (into {} (for [option options]
-                                    (str/split option #"=")))]
+                                    (str/split option #"=" 2)))]
     [file options]))
 
 (defn- db-details->user [{:keys [db], :as details}]
@@ -165,10 +165,11 @@
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [details]} (driver-api/database (driver-api/metadata-provider))
+      (let [{:keys [details id]} (driver-api/database (driver-api/metadata-provider))
             user              (db-details->user details)]
-        (when (or (str/blank? user)
-                  (= user "sa"))        ; "sa" is the default USER
+        (when (and (not (driver/has-connection-swap? id)) ;; we want this to work in test
+                   (or (str/blank? user)
+                       (= user "sa")))        ; "sa" is the default USER
           (throw
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type driver-api/qp.error-type.db})))))))
@@ -517,7 +518,7 @@
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
 ;; options users might try to put in their connection string, like INIT=...
 
-(defn- file+options->connection-string
+(defn file+options->connection-string
   "Implode the results of `connection-string->file+options` back into a connection string."
   [file options]
   (apply str file (for [[k v] options]

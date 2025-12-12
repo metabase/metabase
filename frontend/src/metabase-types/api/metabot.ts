@@ -24,6 +24,7 @@ export type MetabotFeedbackType =
 export type MetabotChatContext = {
   user_is_viewing: MetabotEntityInfo[];
   current_time_with_timezone: string;
+  default_database_id?: number;
 };
 
 export type MetabotTool = {

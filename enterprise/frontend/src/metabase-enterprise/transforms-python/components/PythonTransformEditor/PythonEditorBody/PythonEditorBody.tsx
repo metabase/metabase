@@ -24,6 +24,7 @@ import { ResizableBoxHandle } from "./ResizableBoxHandle";
 import { hasImport, insertImport, removeImport } from "./utils";
 
 type PythonEditorBodyProps = {
+  disabled?: boolean;
   source: string;
   proposedSource?: string;
   isRunnable: boolean;
@@ -41,6 +42,7 @@ type PythonEditorBodyProps = {
 const EDITOR_HEIGHT = 400;
 
 export function PythonEditorBody({
+  disabled,
   source,
   proposedSource,
   onChange,
@@ -57,6 +59,7 @@ export function PythonEditorBody({
     <MaybeResizableBox resizable={withDebugger}>
       <Flex h="100%" align="end" bg="bg-light" pos="relative">
         <PythonEditor
+          readOnly={disabled}
           value={source}
           proposedValue={proposedSource}
           onChange={onChange}
@@ -106,7 +109,11 @@ export function PythonEditorBody({
             </Box>
           )}
         </Stack>
-        <SharedLibraryActions source={source} onChange={onChange} />
+        <SharedLibraryActions
+          disabled={disabled}
+          source={source}
+          onChange={onChange}
+        />
       </Flex>
     </MaybeResizableBox>
   );
@@ -140,24 +147,32 @@ function MaybeResizableBox({
 }
 
 function SharedLibraryActions({
+  disabled,
   source,
   onChange,
 }: {
+  disabled?: boolean;
   source: string;
   onChange: (source: string) => void;
 }) {
   return (
     <Group className={S.libraryActions} p="md" gap="sm">
-      <SharedLibraryImportButton source={source} onChange={onChange} />
+      <SharedLibraryImportButton
+        disabled={disabled}
+        source={source}
+        onChange={onChange}
+      />
       <SharedLibraryEditLink />
     </Group>
   );
 }
 
 function SharedLibraryImportButton({
+  disabled,
   source,
   onChange,
 }: {
+  disabled?: boolean;
   source: string;
   onChange: (source: string) => void;
 }) {
@@ -173,7 +188,11 @@ function SharedLibraryImportButton({
 
   return (
     <Tooltip label={label}>
-      <ActionIcon aria-label={label} onClick={handleToggleSharedLib}>
+      <ActionIcon
+        aria-label={label}
+        disabled={disabled}
+        onClick={handleToggleSharedLib}
+      >
         <Icon name="reference" c="text-dark" />
       </ActionIcon>
     </Tooltip>

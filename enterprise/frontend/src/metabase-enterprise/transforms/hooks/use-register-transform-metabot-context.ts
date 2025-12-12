@@ -1,16 +1,19 @@
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import type {
-  PythonTransformSourceDraft,
+  DraftTransformSource,
   SuggestedTransform,
   Transform,
-  TransformSource,
 } from "metabase-types/api";
 
 export const useRegisterMetabotTransformContext = (
   transform: Transform | SuggestedTransform | undefined,
-  source: TransformSource | PythonTransformSourceDraft,
+  source?: DraftTransformSource,
 ) => {
   useRegisterMetabotContextProvider(async () => {
+    if (!source) {
+      return {};
+    }
+
     return {
       user_is_viewing: [{ type: "transform", ...(transform || {}), source }],
     };

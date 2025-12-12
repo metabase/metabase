@@ -2,7 +2,11 @@ import { useHotkeys } from "@mantine/hooks";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
-import type { PythonTransformTableAliases, Table } from "metabase-types/api";
+import type {
+  DatabaseId,
+  PythonTransformTableAliases,
+  Table,
+} from "metabase-types/api";
 
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
@@ -17,6 +21,7 @@ import {
 export function PythonTransformEditor({
   source,
   proposedSource,
+  uiOptions,
   isDirty,
   onChangeSource,
   onAcceptProposed,
@@ -34,7 +39,7 @@ export function PythonTransformEditor({
   };
 
   const handleDataChange = (
-    database: number,
+    database: DatabaseId,
     sourceTables: PythonTransformTableAliases,
     tableInfo: Table[],
   ) => {
@@ -71,12 +76,15 @@ export function PythonTransformEditor({
   return (
     <Flex h="100%" w="100%">
       <PythonDataPicker
+        disabled={uiOptions?.readOnly}
         database={source["source-database"]}
+        canChangeDatabase={uiOptions?.canChangeDatabase}
         tables={source["source-tables"]}
         onChange={handleDataChange}
       />
       <Stack w="100%" h="100%" gap={0}>
         <PythonEditorBody
+          disabled={uiOptions?.readOnly}
           isRunnable={isPythonTransformSource(source)}
           isRunning={isRunning}
           isDirty={isDirty}

@@ -25,6 +25,7 @@ import type {
   TransformJob,
   TransformRun,
   TransformTag,
+  Workspace,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -42,6 +43,10 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "workspace-transforms",
+  "workspace-transform",
+  "workspace-tables",
+  "external-transforms",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
@@ -49,6 +54,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "python-transform-library",
+  "workspace",
   "support-access-grant",
   "support-access-grant-current",
   "library-collection",
@@ -80,6 +86,24 @@ export function invalidateTags(
   tags: TagDescription<EnterpriseTagType>[],
 ): TagDescription<EnterpriseTagType>[] {
   return !error ? tags : [];
+}
+
+export function provideWorkspacesTags(
+  workspaces: Workspace[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
+}
+
+export function provideWorkspaceTags(
+  workspace: Workspace,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("workspace", workspace.id)];
+}
+
+export function provideWorkspaceContentItemsTags(
+  items: WorkspaceContentItem[],
+): TagDescription<EnterpriseTagType>[] {
+  return items.flatMap((transform) => idTag("transform", transform.id));
 }
 
 export function provideTransformTags(

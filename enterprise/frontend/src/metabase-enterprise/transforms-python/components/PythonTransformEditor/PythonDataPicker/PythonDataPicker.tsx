@@ -30,6 +30,8 @@ import {
 
 type PythonDataPickerProps = {
   database?: DatabaseId;
+  disabled?: boolean;
+  canChangeDatabase?: boolean;
   tables: PythonTransformTableAliases;
   onChange: (
     database: number,
@@ -40,8 +42,10 @@ type PythonDataPickerProps = {
 
 export function PythonDataPicker({
   database,
+  disabled,
   tables,
   onChange,
+  canChangeDatabase = true,
 }: PythonDataPickerProps) {
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),
@@ -150,22 +154,25 @@ export function PythonDataPicker({
       className={S.dataPicker}
       data-testid="python-data-picker"
     >
-      <Box>
-        <Text fw="bold">{t`Source database`}</Text>
-        <Text size="sm" c="text-light" mb="sm">
-          {t`Select the database that contains your source data.`}
-        </Text>
+      {canChangeDatabase && (
+        <Box>
+          <Text fw="bold">{t`Source database`}</Text>
+          <Text size="sm" c="text-light" mb="sm">
+            {t`Select the database that contains your source data.`}
+          </Text>
 
-        <DatabaseDataSelector
-          className={S.databaseSelector}
-          selectedDatabaseId={database}
-          setDatabaseFn={handleDatabaseChange}
-          databases={databases?.data ?? []}
-          databaseIsDisabled={(database: Database) =>
-            !hasFeature(database, "transforms/python")
-          }
-        />
-      </Box>
+          <DatabaseDataSelector
+            className={S.databaseSelector}
+            readOnly={disabled}
+            selectedDatabaseId={database}
+            setDatabaseFn={handleDatabaseChange}
+            databases={databases?.data ?? []}
+            databaseIsDisabled={(database: Database) =>
+              !hasFeature(database, "transforms/python")
+            }
+          />
+        </Box>
+      )}
       {database && (
         <Box>
           <Text fw="bold">{t`Pick tables and alias them`}</Text>
@@ -185,12 +192,12 @@ export function PythonDataPicker({
                   handleSelectionChange(index, selection)
                 }
                 onRemove={() => handleRemoveTable(index)}
-                disabled={isLoadingTables}
+                disabled={disabled || isLoadingTables}
               />
             ))}
             <AddTableButton
               onClick={handleAddTable}
-              disabled={availableTables.length === 0}
+              disabled={disabled || availableTables.length === 0}
             />
           </Stack>
         </Box>

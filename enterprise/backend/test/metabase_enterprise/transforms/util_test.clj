@@ -108,3 +108,81 @@
                 (catch Exception _e
                   ;; Ignore cleanup errors
                   nil)))))))))
+
+;;; ------------------------------------------------------------
+;;; Filter xf tests
+;;; ------------------------------------------------------------
+
+(deftest ^:parallel type-filter-xf-test
+  (testing "->type-filter-xf filters transforms by source type"
+    ;; Note: :query :type "query" = MBQL, :query :type "native" = native SQL
+    (let [mbql-transform   {:id 1 :source {:type "query" :query {:type "query"}}}
+          native-transform {:id 2 :source {:type "query" :query {:type "native"}}}
+          python-transform {:id 3 :source {:type "python"}}
+          transforms       [mbql-transform native-transform python-transform]]
+
+      (are [x y] (= x (into [] (transforms.util/->type-filter-xf y) transforms))
+        transforms                         nil
+        transforms                         []
+        [mbql-transform]                   ["query"]
+        [native-transform]                 ["native"]
+        [python-transform]                 ["python"]
+        [mbql-transform native-transform]  ["query" "native"]
+        transforms                         ["query" "native" "python"]
+        []                                 ["whatever"]))))
+
+(deftest ^:parallel database-id-filter-xf-test
+  (testing "->database-id-filter-xf filters transforms by database ID"
+    (let [db1-query-x  {:id     1
+                        :name   "Query on DB1"
+                        :source {:type "query" :query {:database 10}}
+                        :target {:type "table" :name "t1" :database 1}}
+          db2-target-x {:id     2
+                        :name   "Python targeting DB4"
+                        :source {:type "python" :body "" :source-tables {}}
+                        :target {:type "table" :name "t4" :database 2}}
+          transforms   [db1-query-x db2-target-x]]
+
+      (are [x y] (= x (into [] (transforms.util/->database-id-filter-xf y) transforms))
+        transforms     nil
+        [db1-query-x]  1
+        []             10               ; source does not match
+        [db2-target-x] 2
+        []             999))))
+
+(deftest ^:parallel matching-timestamp?-test
+  (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
+    (let [matching-timestamp? #'transforms.util/matching-timestamp?
+          field-path          [:start_time]
+          range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
+          range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
+          range-end-only      {:start nil :end "2024-02-01T00:00:00Z"}]
+
+      (testing "with both start and end bounds"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-jan-feb))
+          nil   nil                       ; missing field returns nil
+          true  "2024-01-15T12:00:00Z"    ; timestamp in middle of range
+          false "2023-12-15T12:00:00Z"    ; timestamp before range
+          false "2024-02-15T12:00:00Z"    ; timestamp after range
+          true  "2024-01-01T00:00:00Z"    ; start boundary is inclusive
+          true  "2024-02-01T00:00:00Z"))  ; end boundary is inclusive too 🤷
+
+      (testing "with only start bound"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-start-only))
+          true  "2024-01-15T12:00:00Z"    ; timestamp after start
+          true  "2024-02-15T12:00:00Z"    ; any timestamp after start
+          false "2023-12-15T12:00:00Z"))  ; timestamp before start
+
+      (testing "with only end bound"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-end-only))
+          true  "2024-01-15T12:00:00Z"    ; timestamp before end
+          true  "2023-12-15T12:00:00Z"    ; any timestamp before end
+          false "2024-02-15T12:00:00Z"))  ; timestamp after end
+
+      (testing "returns nil when field value is missing"
+        (are [job] (nil? (matching-timestamp? job field-path range-jan-feb))
+          {}
+          {:other "value"})))))

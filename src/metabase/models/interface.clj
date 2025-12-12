@@ -246,6 +246,11 @@
   {:in  u/qualified-name
    :out keyword})
 
+(def transform-trim
+  "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
+  {:in  str/trim
+   :out str/trim})
+
 (def transform-json-no-keywordization
   "Transform for json-no-keywordization"
   {:in  json-in
