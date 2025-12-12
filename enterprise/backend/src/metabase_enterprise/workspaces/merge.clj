@@ -32,7 +32,7 @@
               (merge
                {:op :delete :global_id global_id :ref_id ref_id}
                (try
-                 (transforms.api/delete-transform! global_id)
+                 (transforms.api/delete-transform! (t2/select-one :model/Transform :id global_id))
                  nil
                  (catch Throwable e
                    {:error e})))
