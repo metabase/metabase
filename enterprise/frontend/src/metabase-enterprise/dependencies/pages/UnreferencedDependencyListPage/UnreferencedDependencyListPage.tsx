@@ -4,7 +4,7 @@ import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -18,6 +18,7 @@ import { ListEmptyState } from "../../components/ListEmptyState";
 import type { DependencyListFilterOptions } from "../../types";
 import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
 
+import S from "./UnreferencedDependencyListPage.module.css";
 import { AVAILABLE_GROUP_TYPES, PAGE_SIZE } from "./constants";
 import type { UnreferencedDependencyListRawParams } from "./types";
 import { parseRawParams } from "./utils";
@@ -81,7 +82,7 @@ export function UnreferencedDependencyListPage({
   );
 
   return (
-    <Stack flex={1} px="3.5rem" py="md" gap="md" mih={0}>
+    <Stack className={S.page} flex={1} px="3.5rem" py="md" gap="md" h="100%">
       <DependencyListHeader />
       <Flex gap="md" align="center">
         <TextInput
@@ -100,19 +101,19 @@ export function UnreferencedDependencyListPage({
           onFilterOptionsChange={handleFilterOptionsChange}
         />
       </Flex>
-      <Box flex={1} mih={0}>
-        {isLoading || !data || data.data.length === 0 ? (
-          <Center h="100%">
-            {isLoading ? (
-              <LoadingAndErrorWrapper loading={isLoading} error={error} />
-            ) : (
-              <ListEmptyState label={t`No unreferenced entities found.`} />
-            )}
-          </Center>
-        ) : (
+      {isLoading || !data || data.data.length === 0 ? (
+        <Center flex={1}>
+          {isLoading ? (
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+          ) : (
+            <ListEmptyState label={t`No broken entities found.`} />
+          )}
+        </Center>
+      ) : (
+        <Box flex={1} mih={0}>
           <DependencyList nodes={data.data} />
-        )}
-      </Box>
+        </Box>
+      )}
     </Stack>
   );
 }
