@@ -1,10 +1,13 @@
 (ns metabase-enterprise.audit-app.analytics-dev-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.audit-app.analytics-dev :as analytics-dev]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.app-db.core :as mdb]
-   [metabase.test :as mt]))
+   [metabase.driver :as driver]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest postgres-only-requirement-test
   (testing "Analytics dev mode requires PostgreSQL"
@@ -98,3 +101,112 @@
                                         :engine "postgres"
                                         :is_audit true}]
         (is (nil? (analytics-dev/find-analytics-dev-database)))))))
+
+(def expected-view-schemas
+  "Expected schema for each analytics usage view (v_* tables).
+  This mapping serves as the source of truth for what fields should exist in each view.
+  If a migration changes a view's schema, this map must be updated accordingly."
+  {"v_alerts" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
+                "creator_id" "card_id" "card_qualified_id" "alert_condition"
+                "schedule_type" "schedule_day" "schedule_hour" "archived"
+                "recipient_type" "recipients" "recipient_external"}
+
+   "v_audit_log" #{"id" "topic" "timestamp" "end_timestamp" "user_id"
+                   "entity_type" "entity_id" "entity_qualified_id" "details"}
+
+   "v_content" #{"entity_id" "entity_qualified_id" "entity_type" "created_at"
+                 "updated_at" "creator_id" "name" "description" "collection_id"
+                 "made_public_by_user" "is_embedding_enabled" "is_verified"
+                 "archived" "action_type" "action_model_id" "collection_is_official"
+                 "collection_is_personal" "question_viz_type" "question_database_id"
+                 "question_is_native" "event_timestamp"}
+
+   "v_dashboardcard" #{"entity_id" "entity_qualified_id" "dashboard_qualified_id"
+                       "dashboardtab_id" "card_qualified_id" "created_at" "updated_at"
+                       "size_x" "size_y" "visualization_settings" "parameter_mappings"}
+
+   "v_databases" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
+                   "name" "description" "database_type" "metadata_sync_schedule"
+                   "cache_field_values_schedule" "timezone" "is_on_demand"
+                   "auto_run_queries" "cache_ttl" "creator_id" "db_version"}
+
+   "v_fields" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
+                "name" "display_name" "description" "base_type" "visibility_type"
+                "fk_target_field_id" "has_field_values" "active" "table_id"}
+
+   "v_group_members" #{"user_id" "group_id" "group_name"}
+
+   "v_query_log" #{"entity_id" "started_at" "running_time_seconds" "result_rows"
+                   "is_native" "query_source" "error" "user_id" "card_id"
+                   "card_qualified_id" "dashboard_id" "dashboard_qualified_id"
+                   "pulse_id" "database_id" "database_qualified_id" "cache_hit"
+                   "action_id" "action_qualified_id" "query"}
+
+   "v_subscriptions" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
+                       "creator_id" "archived" "dashboard_qualified_id" "schedule_type"
+                       "schedule_day" "schedule_hour" "recipient_type" "recipients"
+                       "recipient_external" "parameters"}
+
+   "v_tables" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
+                "name" "display_name" "description" "active" "database_id"
+                "schema" "is_upload" "entity_type" "visibility_type"
+                "estimated_row_count" "view_count" "owner_email" "owner_user_id"}
+
+   "v_tasks" #{"id" "task" "status" "database_qualified_id" "started_at"
+               "ended_at" "duration_seconds" "details"}
+
+   "v_users" #{"user_id" "entity_qualified_id" "type" "email" "first_name"
+               "last_name" "full_name" "date_joined" "last_login" "updated_at"
+               "is_admin" "is_active" "sso_source" "locale"}
+
+   "v_view_log" #{"id" "timestamp" "user_id" "entity_type" "entity_id"
+                  "entity_qualified_id"}})
+
+(defn- get-synced-field-names
+  "Get the set of field names that Metabase has synced for a given table."
+  [table-id]
+  (into #{}
+        (map :name)
+        (t2/select :model/Field :table_id table-id :active true)))
+
+(defn- get-actual-field-names
+  "Get the set of field names that actually exist in the database for a given table."
+  [database table]
+  (let [table-metadata (driver/describe-table (driver/the-initialized-driver (:engine database))
+                                              database
+                                              table)]
+    (into #{} (map :name) (:fields table-metadata))))
+
+(deftest analytics-views-schema-test
+  (testing "Analytics usage views (v_* tables) have expected schema"
+    (mt/test-drivers #{:postgres :h2 :mysql}
+      (let [analytics-db (t2/select-one :model/Database :is_audit true)]
+        (when analytics-db
+          (doseq [[view-name expected-fields] expected-view-schemas]
+            (testing (str "View: " view-name)
+              (let [table (t2/select-one :model/Table
+                                         :db_id (:id analytics-db)
+                                         :name view-name)
+                    _ (is (some? table))
+
+                    synced-fields (when table (get-synced-field-names (:id table)))
+                    actual-fields (when table (get-actual-field-names analytics-db table))]
+
+                (when table
+                  (testing "Expected vs Actual"
+                    (let [missing-from-actual (set/difference expected-fields actual-fields)
+                          extra-in-actual (set/difference actual-fields expected-fields)]
+                      (is (empty? missing-from-actual))
+                      (is (empty? extra-in-actual))))
+
+                  (testing "Synced vs Actual"
+                    (let [missing-from-sync (set/difference actual-fields synced-fields)
+                          extra-in-sync (set/difference synced-fields actual-fields)]
+                      (is (empty? missing-from-sync))
+                      (is (empty? extra-in-sync))))
+
+                  (testing "Expected vs Synced"
+                    (let [missing-from-sync (set/difference expected-fields synced-fields)
+                          extra-in-sync (set/difference synced-fields expected-fields)]
+                      (is (empty? missing-from-sync))
+                      (is (empty? extra-in-sync)))))))))))))

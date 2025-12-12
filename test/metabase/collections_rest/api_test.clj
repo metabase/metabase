@@ -14,7 +14,7 @@
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.collection.graph :as graph]
    [metabase.permissions.models.collection.graph-test :as graph.test]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -1288,6 +1288,27 @@
            (api.collection/children-sort-clause {:sort-column :model
                                                  :sort-direction :desc
                                                  :official-collections-first? true} :mysql)))))
+
+(deftest ^:parallel children-sort-clause-description-test
+  (testing "Sorting by description"
+    (testing "ascending"
+      (is (= [[:authority_level :asc :nulls-last]
+              [:type :asc :nulls-first]
+              [:%lower.description :asc :nulls-last]
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:sort-column :description
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres))))
+    (testing "descending"
+      (is (= [[:authority_level :asc :nulls-last]
+              [:type :asc :nulls-first]
+              [:%lower.description :desc :nulls-last]
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:sort-column :description
+                                                   :sort-direction :desc
+                                                   :official-collections-first? true} :postgres))))))
 
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"

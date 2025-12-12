@@ -105,7 +105,6 @@
    :uses #{api
            app-db
            appearance
-           channel
            config
            driver
            eid-translation
@@ -709,6 +708,7 @@
            metabase.lib.field.resolution
            metabase.lib.filter
            metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
+           metabase.lib.hierarchy
            metabase.lib.init
            metabase.lib.join.util
            metabase.lib.metadata
@@ -1020,11 +1020,10 @@
 
   queries
   {:team "Querying"
-   :api  #{metabase.queries.api
-           metabase.queries.core
+   :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema} ; TODO FIXME
+           metabase.queries.schema}
    :uses #{analytics
            analyze
            api
@@ -1036,10 +1035,7 @@
            config
            content-verification
            dashboards
-           eid-translation
-           embedding
            events
-           legacy-mbql
            lib
            lib-be
            models
@@ -1051,11 +1047,33 @@
            query-permissions
            query-processor
            request
-           revisions
            search
            util
            view-log
            warehouse-schema}}
+
+  queries-rest
+  {:team "Querying"
+   :api  #{metabase.queries-rest.api}
+   :uses #{analyze
+           api
+           collections
+           eid-translation
+           embedding
+           events
+           lib
+           lib-be
+           models
+           parameters
+           permissions
+           public-sharing
+           queries
+           query-permissions
+           query-processor
+           request
+           revisions
+           search
+           util}}
 
   query-permissions
   {:team "UX West"

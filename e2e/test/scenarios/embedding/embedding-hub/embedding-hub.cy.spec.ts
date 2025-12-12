@@ -191,7 +191,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/");
 
-      cy.findAllByText("Get started with Embedded Analytics JS")
+      cy.findAllByText("Get started with modular embedding")
         .first()
         .should("be.visible");
 
@@ -211,7 +211,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/");
 
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("not.exist");
     });
 
@@ -244,7 +244,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/");
 
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("be.visible");
 
       cy.log("Click overflow menu button on the embedding homepage");
@@ -256,7 +256,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Verify guide is dismissed and no longer visible");
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("not.exist");
     });
   });

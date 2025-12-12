@@ -262,6 +262,12 @@
                   (analytics/export!)
                   (analytics/teardown!)))}
 
+  doctor
+  {:doc "Check your development environment for issues"
+   :examples [["./bin/mage doctor" "Run all health checks"]]
+   :requires [[mage.doctor :as doctor]]
+   :task (task! (doctor/doctor!))}
+  
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.

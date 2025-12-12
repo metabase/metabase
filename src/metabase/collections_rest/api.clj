@@ -281,7 +281,7 @@
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
   #{"all" "is_pinned" "is_not_pinned"})
 
-(def ^:private valid-sort-columns #{"name" "last_edited_at" "last_edited_by" "model"})
+(def ^:private valid-sort-columns #{"name" "last_edited_at" "last_edited_by" "model" "description"})
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
 
@@ -979,7 +979,9 @@
                                     [:last_edit_first_name :desc]
                                     [:%lower.name :asc]]
            [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-           [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]])
+           [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]
+           [:description :asc]     [[:%lower.description :asc :nulls-last] [:%lower.name :asc]]
+           [:description :desc]    [[:%lower.description :desc :nulls-last] [:%lower.name :asc]])
          ;; add a fallback sort order so paging is still deterministic even if collection have the same name or
          ;; whatever
          [[:id :asc]]]))

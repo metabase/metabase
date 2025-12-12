@@ -16,6 +16,8 @@ import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
+export type CollectionNamespace = null | "snippets";
+
 // Collection ID can be either a numeric or entity id
 export type RegularCollectionId = number | string;
 
@@ -77,6 +79,7 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
+  namespace: CollectionNamespace;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -136,12 +139,13 @@ export interface CollectionItem {
   can_write?: boolean;
   can_restore?: boolean;
   can_delete?: boolean;
+  can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  getIcon: () => IconProps;
+  getIcon?: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (
     isArchived: boolean,
@@ -171,6 +175,7 @@ export type getCollectionRequest = {
 
 export type ListCollectionItemsSortColumn =
   | "name"
+  | "description"
   | "last_edited_at"
   | "last_edited_by"
   | "model";
@@ -182,6 +187,7 @@ export type ListCollectionItemsRequest = {
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: "snippets";
   collection_type?: CollectionType;
+  include_can_run_adhoc_query?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
@@ -258,3 +264,13 @@ export interface MoveCollectionDashboardCandidatesRequest {
 export interface MoveCollectionDashboardCandidatesResult {
   moved: CardId[];
 }
+
+type LibraryChild = {
+  description: string;
+  id: number;
+  name: string;
+};
+
+export type GetLibraryCollectionResponse =
+  | (CollectionItem & { effective_children: LibraryChild[] })
+  | { data: null };
