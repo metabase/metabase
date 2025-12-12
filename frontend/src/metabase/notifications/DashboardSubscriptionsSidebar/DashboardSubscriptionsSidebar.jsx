@@ -481,7 +481,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
       );
     }
 
-    if (shouldDisplayNewPulse(editingMode, pulses)) {
+    if (shouldDisplayNewPulse(editingMode, pulses) && !isEmbeddingSdk()) {
       const emailConfigured = formInput?.channels?.email?.configured || false;
       const slackConfigured = formInput?.channels?.slack?.configured || false;
 
