@@ -1298,10 +1298,13 @@
       (is (= :question
              (t2/select-one-fn :type :model/Card :id (:id card)))))))
 
+(def fuzzings
+  [{:name (str (rand-int 10000))}
+   {:dataset_query "{}"}
+   {:dataset_query "{fsdfs"}])
+
 (deftest fuzz-card-test
-  (doseq [fuzz [{:name (str (rand-int 10000))}
-                {:dataset_query "{}"}
-                {:dataset_query "{fsdfs"}]]
+  (doseq [fuzz fuzzings]
     (testing (str "Fuzz: " (pr-str fuzz))
       (mt/with-temp [:model/Card card {:name "ABC"
                                        :type "model"
