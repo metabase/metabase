@@ -304,7 +304,8 @@
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id ws-id))]
-    (api/check-400 (some? (:archived_at ws)) "You cannot delete a workspace without first archiving it")
+    ;; See https://metaboat.slack.com/archives/C099RKNLP6U/p1765529507251079
+    #_(api/check-400 (some? (:archived_at ws)) "You cannot delete a workspace without first archiving it")
     ;; TODO delete actual schema and user too (we shouldn't rely on our metadata for all the table names)
     ;;      see: https://linear.app/metabase/issue/BOT-690/workspacesisolation-delete-workspace-isolation
     (let [database (t2/select-one :model/Database (:database_id ws))
