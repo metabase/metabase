@@ -49,10 +49,13 @@ export function useWorkspaceTransformRun({
 
   // Fetch workspace transform to get updated last_run_at
   const { data: fetchedWorkspaceTransform, isFetching } =
-    useGetWorkspaceTransformQuery({
-      workspaceId,
-      transformId: transform.ref_id,
-    });
+    useGetWorkspaceTransformQuery(
+      {
+        workspaceId,
+        transformId: transform.ref_id,
+      },
+      { skip: !transform.ref_id },
+    );
 
   // Get the latest last_run_at from fetched data or prop
   const lastRunAt =
