@@ -175,6 +175,7 @@ export type getCollectionRequest = {
 
 export type ListCollectionItemsSortColumn =
   | "name"
+  | "description"
   | "last_edited_at"
   | "last_edited_by"
   | "model";
