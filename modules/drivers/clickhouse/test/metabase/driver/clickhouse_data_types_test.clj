@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
@@ -337,22 +338,72 @@
                     array_of_tuples_test
                     {})))))))))
 
-(deftest ^:parallel uuid-literals-test
+(deftest ^:parallel uuid-filtering-test
   (mt/test-driver :clickhouse
     (mt/dataset
       (mt/dataset-definition
-       "metabase_tests_uuids_nullable"
-       [["uuids_nullable"
+       "nullable_uuids_dataset"
+       [["nullable_uuids"
          [{:field-name "uuid1", :base-type {:native "Nullable(UUID)"}}]
-         [[#uuid "550e8400-e29b-41d4-a716-446655440000"]
+         [[#uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+          [#uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
           [nil]]]])
-      (let [mp (mt/metadata-provider)]
-        (is (= [[1 #uuid "550e8400-e29b-41d4-a716-446655440000"]]
-               (-> (lib/query mp (lib.metadata/table mp (mt/id :uuids_nullable)))
-                   (lib/filter (lib/= (lib.metadata/field mp (mt/id :uuids_nullable :uuid1))
-                                      "550e8400-e29b-41d4-a716-446655440000"))
-                   mt/process-query
-                   mt/rows)))))))
+      (let [mp (mt/metadata-provider)
+            uuid-field (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+            filter-rows (fn [filter]
+                          (-> (lib/query mp (lib.metadata/table mp (mt/id :nullable_uuids)))
+                              (lib/filter filter)
+                              mt/process-query
+                              mt/rows))]
+        (testing "can filter nullable uuids with equals and not equals"
+          (are [filter-fn exp-rows]
+               (= exp-rows (filter-rows (filter-fn uuid-field "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")))
+            lib/=  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            lib/!= [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                    [3 nil]]))
+        (testing "can filter nullable uuids with empty and not empty"
+          (are [filter-fn exp-rows]
+               (= exp-rows (filter-rows (filter-fn uuid-field)))
+            lib/is-empty  [[3 nil]]
+            lib/not-empty [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                           [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]]))
+        (testing "can filter nullable uuids with contains"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (-> (lib/contains uuid-field filter-str)
+                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        (testing "can filter nullable uuids with does not contain"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (-> (lib/does-not-contain uuid-field filter-str)
+                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+            "aaa" true  [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "aaa" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "AAA" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                         [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "AAA" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]))
+        (testing "can filter nullable uuids with starts with"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (-> (lib/starts-with uuid-field filter-str)
+                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        (testing "can filter nullable uuids with ends with"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (-> (lib/ends-with uuid-field filter-str)
+                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))))))
 
 #_(deftest ^:parallel clickhouse-array-of-uuids
     (mt/test-driver :clickhouse
