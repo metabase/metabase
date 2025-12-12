@@ -42,7 +42,7 @@ For example, a question’s upstream dependencies might include the table it que
 
 **Downstream dependents** are the items that rely on your selection.
 
-For a table, this might include questions built on it, models that reference it, and dashboards that include those questions.
+For a table, dependent items might include questions built on the table, models that reference the table, and dashboards that include questions built on the model.
 
 Each item in the graph shows:
 
