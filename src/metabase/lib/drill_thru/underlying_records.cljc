@@ -28,7 +28,7 @@
   Question transformation:
 
   - Set display \"table\""
-  (:refer-clojure :exclude [mapv empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [mapv empty? #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -50,7 +50,7 @@
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv empty? #?(:clj for)]]))
 
 (mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
   "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
