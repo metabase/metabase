@@ -45,7 +45,9 @@
 (defn- instance-uuid-slug
   "Create a slug from the site UUID, taking the first character of each section."
   [site-uuid-string]
-  (apply str (map first (str/split site-uuid-string #"-"))))
+  (->> (str/split site-uuid-string #"-")
+       (map first)
+       (apply str)))
 
 (defn isolation-namespace-name
   "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.

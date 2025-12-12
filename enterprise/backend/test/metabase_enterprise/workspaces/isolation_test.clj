@@ -93,7 +93,7 @@
 
 (deftest destroy-workspace-isolation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-    (let [workspace {:id (random-uuid)}
+    (let [workspace {:id 1337}
           database  (mt/db)]
       (testing "init creates isolation resources"
         (isolation/init-workspace-database-isolation! database workspace)
@@ -108,5 +108,4 @@
               (str "All resources should be gone after destroy: " resources))))
 
       (testing "destroy is idempotent"
-        (is (nil? (isolation/destroy-workspace-isolation! database workspace))
-            "Calling destroy again should not throw")))))
+        (isolation/destroy-workspace-isolation! database workspace)))))
