@@ -681,8 +681,16 @@
 (api.macros/defendpoint :post "/:id/merge"
   :- [:or
       [:map
-       [:merged {:optional true} :any]
-       [:errors :any #_[:maybe [:sequential [:map [:id [:maybe ::ws.t/ref-id]] [:name :string] [:error :string]]]]]
+       [:merged [:sequential
+                 [:map
+                  [:op [:enum :create :delete :update :noop]]
+                  [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
+                  [:ref_id ::ws.t/ref-id]]]]
+       [:errors [:sequential
+                 [:map
+                  [:op [:enum :create :delete :update :noop]]
+                  [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
+                  [:ref_id ::ws.t/ref-id]]]]
        [:workspace [:map [:id ::ws.t/appdb-id] [:name :string]]]
        [:archived_at [:maybe :any]]]
       ;; error message from check-404 or check-400
