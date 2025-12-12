@@ -633,13 +633,15 @@
   "Get all downstream transforms for a transform that is not in a workspace.
    Returns the transforms that were mirrored from this upstream transform, with workspace info."
   [_route-params
-   {:keys [transform-id]} :- [:map {:closed true} [:transform-id ::ws.t/appdb-id]]]
-  (let [transforms       (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id] :global_id transform-id)
+   {:keys [transform_id]} :- [:map {:closed true} [:transform_id ms/PositiveInt]]]
+  (let [transforms       (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id] :global_id transform_id)
         workspace-ids    (map :workspace_id transforms)
         workspaces-by-id (when (seq transforms)
                            (t2/select-fn->fn :id identity [:model/Workspace :id :name] :id [:in workspace-ids]))]
-    {:transforms (for [transform transforms]
-                   (assoc transform :workspace (get workspaces-by-id (:workspace_id transform))))}))
+    {:transforms (for [{:keys [ref_id name workspace_id]} transforms]
+                   {:id        ref_id
+                    :name      name
+                    :workspace (get workspaces-by-id workspace_id)})}))
 
 (api.macros/defendpoint :post "/:id/merge"
   :- [:or
