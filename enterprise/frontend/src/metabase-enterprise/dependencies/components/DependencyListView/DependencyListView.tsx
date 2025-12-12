@@ -2,7 +2,7 @@ import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { Box, Center, Flex, Icon, Loader, Stack, TextInput } from "metabase/ui";
+import { Center, Flex, Icon, Loader, Stack, TextInput } from "metabase/ui";
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
 import type { DependencyFilterOptions } from "../../types";
@@ -46,7 +46,7 @@ export function DependencyListView({
   };
 
   return (
-    <Stack flex={1} px="3.5rem" py="md" gap="md" h="100%">
+    <Stack px="3.5rem" py="md" gap="md" h="100%">
       <ListHeader />
       <Flex gap="md" align="center">
         <TextInput
@@ -74,13 +74,11 @@ export function DependencyListView({
           )}
         </Center>
       ) : (
-        <Box flex={1} mih={0}>
-          <DependencyList
-            nodes={nodes}
-            withErrorsColumn={withErrorsColumn}
-            withDependentsCountColumn={withDependentsCountColumn}
-          />
-        </Box>
+        <DependencyList
+          nodes={nodes}
+          withErrorsColumn={withErrorsColumn}
+          withDependentsCountColumn={withDependentsCountColumn}
+        />
       )}
     </Stack>
   );

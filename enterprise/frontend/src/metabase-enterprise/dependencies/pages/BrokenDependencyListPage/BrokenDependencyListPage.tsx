@@ -47,6 +47,8 @@ export function BrokenDependencyListPage() {
       error={error}
       isFetching={isFetching}
       isLoading={isLoading}
+      withErrorsColumn
+      withDependentsCountColumn
       onSearchValueChange={setSearchValue}
       onFilterOptionsChange={setFilterOptions}
     />

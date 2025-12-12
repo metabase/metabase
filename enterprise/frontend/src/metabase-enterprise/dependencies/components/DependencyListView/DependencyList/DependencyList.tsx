@@ -23,7 +23,7 @@ export const DependencyList = memo(function DependencyList({
   );
 
   return (
-    <Card withBorder p={0}>
+    <Card flex={1} mih={0} p={0} withBorder>
       <Table data={nodes} columns={columns} />
     </Card>
   );
