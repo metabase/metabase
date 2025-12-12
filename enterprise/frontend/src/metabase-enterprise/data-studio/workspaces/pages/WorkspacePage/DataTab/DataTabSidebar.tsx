@@ -40,31 +40,27 @@ export const DataTabSidebar = ({
         <Text fw={600}>{t`Data active in this workspace`}</Text>
         <Stack gap={0}>
           {tables.outputs.map((table, index: number) => {
-            const workspaceTransform = table.workspace
-              ? workspaceTransforms.find(
-                  (t) => t.id === table.workspace?.["transform-id"],
-                )
-              : undefined;
-            const originalTransform = workspaceTransform
-              ? dbTransforms.find(
-                  (t) => t.id === workspaceTransform.upstream_id,
-                )
+            const workspaceTransform = workspaceTransforms.find(
+              (t) => t["ref_id"] === table.isolated.transform_id,
+            );
+            const originalTransform = workspaceTransform?.global_id
+              ? dbTransforms.find((t) => t.id === workspaceTransform.global_id)
               : undefined;
             const hasChanges = originalTransform
               ? hasTransformEdits(originalTransform)
               : false;
-            const tableId = table.workspace?.["table-id"];
+            const tableId = table.isolated.table_id;
 
             return (
               <TableListItem
                 key={`output-${index}`}
-                name={table.workspace?.table || ""}
-                schema={table.workspace?.schema}
+                name={table.global.table}
+                schema={table.global.schema}
                 icon="pivot_table"
                 type="output"
                 hasChanges={hasChanges}
                 transform={workspaceTransform}
-                tableId={tableId}
+                tableId={tableId ?? undefined}
                 isSelected={tableId === selectedTableId}
                 onTransformClick={onTransformClick}
                 onTableClick={onTableSelect}
@@ -76,11 +72,12 @@ export const DataTabSidebar = ({
           {tables.inputs.map((table, index) => (
             <TableListItem
               key={`input-${index}`}
-              name={table.table || ""}
+              name={table.table}
               schema={table.schema}
               icon="table"
               type="input"
-              tableId={table.id}
+              isSelected={table.table_id === selectedTableId}
+              tableId={table.table_id ?? undefined}
               onTransformClick={onTransformClick}
               onTableClick={onTableSelect}
             />

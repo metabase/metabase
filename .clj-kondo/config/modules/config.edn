@@ -2302,9 +2302,13 @@
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
+           app-db
            driver
+           enterprise/dependencies
            enterprise/transforms
            events
+           lib
+           lib-be
            models
            queries
            request

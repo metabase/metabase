@@ -1,9 +1,18 @@
-import { useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
 import { Stack, Text } from "metabase/ui";
-import type { Transform, WorkspaceId } from "metabase-types/api";
+import {
+  useLazyGetTransformQuery,
+  useLazyGetWorkspaceTransformQuery,
+} from "metabase-enterprise/api";
+import type {
+  ExternalTransform,
+  Transform,
+  WorkspaceId,
+  WorkspaceTransform,
+} from "metabase-types/api";
 
 import { useWorkspace } from "../WorkspaceProvider";
 
@@ -11,39 +20,72 @@ import { TransformListItem } from "./TransformListItem";
 import { TransformListItemMenu } from "./TransformListItemMenu";
 
 type CodeTabProps = {
-  activeTransformId?: number;
-  transforms: Transform[];
+  activeTransformId?: number | string;
+  availableTransforms: ExternalTransform[];
   workspaceId: WorkspaceId;
-  workspaceTransforms: Transform[];
-  onTransformClick: (transform: Transform) => void;
+  workspaceTransforms: WorkspaceTransform[];
+  onTransformClick: (transform: Transform | WorkspaceTransform) => void;
 };
 
 export const CodeTab = ({
   activeTransformId,
-  transforms,
+  availableTransforms,
   workspaceId,
   workspaceTransforms,
   onTransformClick,
 }: CodeTabProps) => {
   const { editedTransforms, hasTransformEdits } = useWorkspace();
 
-  const workspaceTransformsUpstreamIds = useMemo(
-    () => new Set(workspaceTransforms.map((t) => t.upstream_id)),
-    [workspaceTransforms],
-  );
-  const availableTransforms = useMemo(() => {
-    return transforms.filter((transform) => {
-      return !workspaceTransformsUpstreamIds.has(transform.id);
-    });
-  }, [workspaceTransformsUpstreamIds, transforms]);
+  const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
+  const [fetchTransform] = useLazyGetTransformQuery();
 
-  const handleTransformClick = (transform: Transform) => {
-    const edited = editedTransforms.get(transform.id);
-    const transformToOpen = edited
-      ? ({ ...transform, ...edited } as Transform)
-      : transform;
-    onTransformClick(transformToOpen);
-  };
+  const normalizeTransformId = useCallback(
+    (transform: Transform | WorkspaceTransform) =>
+      "ref_id" in transform ? transform.ref_id : transform.id,
+    [],
+  );
+
+  const handleTransformClick = useCallback(
+    (transform: Transform | WorkspaceTransform) => {
+      const transformId = normalizeTransformId(transform);
+      const edited = editedTransforms.get(transformId);
+      const transformToOpen =
+        edited != null ? { ...transform, ...edited } : transform;
+
+      onTransformClick(transformToOpen);
+    },
+    [editedTransforms, normalizeTransformId, onTransformClick],
+  );
+
+  const handleExternalTransformClick = useCallback(
+    async (externalTransform: ExternalTransform) => {
+      const { data: transform } = await fetchTransform(
+        externalTransform.id,
+        true,
+      );
+      if (transform) {
+        handleTransformClick(transform);
+      }
+    },
+    [fetchTransform, handleTransformClick],
+  );
+
+  const handleWorkspaceTransformClick = useCallback(
+    async (workspaceTransform: WorkspaceTransform) => {
+      const { data: transform } = await fetchWorkspaceTransform(
+        {
+          workspaceId,
+          transformId: workspaceTransform.ref_id,
+        },
+        true,
+      );
+
+      if (transform) {
+        handleTransformClick(transform);
+      }
+    },
+    [fetchWorkspaceTransform, workspaceId, handleTransformClick],
+  );
 
   return (
     <Stack h="100%" gap={0}>
@@ -59,14 +101,17 @@ export const CodeTab = ({
           <Text fw={600}>{t`Workspace transforms`}</Text>
           {workspaceTransforms.map((transform) => {
             const isEdited = hasTransformEdits(transform);
+            const isActive =
+              typeof activeTransformId === "string" &&
+              activeTransformId === transform.ref_id;
 
             return (
               <TransformListItem
-                key={transform.id}
+                key={transform.ref_id}
                 name={transform.name}
                 icon="pivot_table"
                 fw={600}
-                isActive={activeTransformId === transform.id}
+                isActive={isActive}
                 isEdited={isEdited}
                 menu={
                   <TransformListItemMenu
@@ -74,7 +119,9 @@ export const CodeTab = ({
                     workspaceId={workspaceId}
                   />
                 }
-                onClick={() => handleTransformClick(transform)}
+                onClick={() => {
+                  handleWorkspaceTransformClick(transform);
+                }}
               />
             );
           })}
@@ -93,9 +140,14 @@ export const CodeTab = ({
             name={transform.name}
             isActive={activeTransformId === transform.id}
             isEdited={editedTransforms.has(transform.id)}
-            onClick={() => handleTransformClick(transform)}
+            onClick={() => {
+              handleExternalTransformClick(transform);
+            }}
           />
         ))}
+        {availableTransforms.length === 0 && (
+          <EmptyState message={t`No available transforms`} />
+        )}
       </Stack>
     </Stack>
   );

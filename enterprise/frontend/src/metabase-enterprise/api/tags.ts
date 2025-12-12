@@ -26,8 +26,6 @@ import type {
   TransformRun,
   TransformTag,
   Workspace,
-  WorkspaceContentItem,
-  WorkspaceContents,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -45,6 +43,9 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "workspace-transforms",
+  "workspace-transform",
+  "external-transforms",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
@@ -96,14 +97,6 @@ export function provideWorkspaceTags(
   workspace: Workspace,
 ): TagDescription<EnterpriseTagType>[] {
   return [idTag("workspace", workspace.id)];
-}
-
-export function provideWorkspaceContentsTags(
-  workspaceContents: WorkspaceContents,
-): TagDescription<EnterpriseTagType>[] {
-  return provideWorkspaceContentItemsTags(
-    workspaceContents.contents.transforms,
-  );
 }
 
 export function provideWorkspaceContentItemsTags(

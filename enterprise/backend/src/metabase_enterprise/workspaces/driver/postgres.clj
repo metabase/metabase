@@ -2,8 +2,9 @@
   "Postgres-specific implementations for workspace isolation."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
   (:import
    (java.sql Connection Statement)))
@@ -13,12 +14,12 @@
 (defmethod isolation/grant-read-access-to-tables! :postgres
   [database workspace tables]
   (let [username (-> workspace :database_details :user)
-        schemas  (distinct (map :schema tables))
-        sqls     (concat
-                  (for [schema schemas]
-                    (format "GRANT USAGE ON SCHEMA %s TO %s" schema username))
-                  (for [table tables]
-                    (format "GRANT SELECT ON TABLE %s.%s TO %s" (:schema table) (:name table) username)))]
+        sqls     (cons
+                  (format "GRANT USAGE ON SCHEMA %s TO %s" (:schema workspace) username)
+                  (for [{s :schema, t :name} tables]
+                    (if (str/blank? s)
+                      (format "GRANT SELECT ON TABLE \"%s\" TO %s" t username)
+                      (format "GRANT SELECT ON TABLE %s.%s TO %s" s t username))))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
@@ -27,9 +28,9 @@
 
 (defmethod isolation/init-workspace-database-isolation! :postgres
   [database workspace]
-  (let [schema-name (driver.common/isolation-namespace-name workspace)
-        read-user   {:user     (driver.common/isolation-user-name workspace)
-                     :password (driver.common/random-isolated-password)}]
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
+        read-user   {:user     (ws.u/isolation-user-name workspace)
+                     :password (ws.u/random-isolated-password)}]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [(format "CREATE SCHEMA %s" schema-name)
@@ -52,4 +53,16 @@
           (.addBatch ^Statement stmt
                      ^String (format "DROP TABLE IF EXISTS \"%s\".\"%s\""
                                      schema-name table-name)))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod isolation/destroy-workspace-isolation! :postgres
+  [database workspace]
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
+        username    (ws.u/isolation-user-name workspace)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
+                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                     (format "DROP USER IF EXISTS \"%s\"" username)]]
+          (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))

@@ -109,6 +109,7 @@ export function QueryEditor({
             onChangeNativeEditorSelection={setSelectionRange}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
+            editorHeight={uiOptions?.editorHeight}
           />
           <QueryEditorVisualization
             question={question}

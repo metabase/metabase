@@ -78,13 +78,10 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-;; copied from transforms model
-(defn- transform-source-in [m]
-  (-> m
-      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
-      mi/json-in))
+;; TODO (chris 2025/12/11) we need to share a bunch of stuff with transforms, i think we'll need to reorganize modules
+;;      suggestion: add a transforms-interfaces module which both transforms and workspaces depend on.
 
-(defn- transform-source-out [m]
+(defn- transform-source-out-DUPLICATED [m]
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
@@ -92,9 +89,14 @@
       (m/update-existing :type keyword)
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
 
+(defn- transform-source-in-DUPLICATED [m]
+  (-> m
+      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
+      mi/json-in))
+
 (t2/deftransforms :model/WorkspaceTransform
   {:ref_id {:in identity :out str/trim}
-   :source {:out transform-source-out, :in transform-source-in}
+   :source {:out transform-source-out-DUPLICATED, :in transform-source-in-DUPLICATED}
    :target mi/transform-json})
 
 (t2/define-before-insert :model/WorkspaceTransform

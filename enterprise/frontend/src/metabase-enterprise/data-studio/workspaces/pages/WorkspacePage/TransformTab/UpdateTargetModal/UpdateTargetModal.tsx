@@ -1,0 +1,177 @@
+import { useMemo, useState } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+
+import { hasFeature } from "metabase/admin/databases/utils";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
+import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import {
+  useUpdateWorkspaceTransformMutation,
+} from "metabase-enterprise/api";
+import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
+import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
+import type {
+  UpdateWorkspaceTransformRequest,
+  WorkspaceTransform,
+} from "metabase-types/api";
+
+type UpdateTargetModalProps = {
+  transform: WorkspaceTransform;
+  onUpdate: (transform?: WorkspaceTransform) => void;
+  onClose: () => void;
+};
+
+export function UpdateTargetModal({
+  transform,
+  onUpdate,
+  onClose,
+}: UpdateTargetModalProps) {
+  return (
+    <Modal
+      title={t`Change the target for this transform`}
+      opened
+      padding="xl"
+      onClose={onClose}
+    >
+      <FocusTrap.InitialFocus />
+      <UpdateTargetForm
+        transform={transform}
+        onUpdate={onUpdate}
+        onClose={onClose}
+      />
+    </Modal>
+  );
+}
+
+type EditTransformValues = {
+  name: string;
+  schema: string | null;
+};
+
+const EDIT_TRANSFORM_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required),
+  schema: Yup.string().nullable(),
+});
+
+type UpdateTargetFormProps = {
+  transform: WorkspaceTransform;
+  onUpdate: (transform?: WorkspaceTransform) => void;
+  onClose: () => void;
+};
+
+function UpdateTargetForm({
+  transform,
+  onUpdate,
+  onClose,
+}: UpdateTargetFormProps) {
+  const { source } = transform;
+  const databaseId = sourceDatabaseId(source);
+  const [updateWorkspaceTransform] = useUpdateWorkspaceTransformMutation();
+  const initialValues = useMemo(() => getInitialValues(transform), [transform]);
+  // console.log(transform);
+
+  const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
+
+  const {
+    data: schemas = [],
+    isLoading: isSchemasLoading,
+    error: schemasError,
+  } = useListDatabaseSchemasQuery(
+    databaseId ? { id: databaseId, include_hidden: true } : skipToken,
+  );
+
+  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const error = databaseError ?? schemasError;
+  const supportsSchemas = database && hasFeature(database, "schemas");
+
+  if (isLoading || error != null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  const handleSubmit = async (values: EditTransformValues) => {
+    if (!databaseId) {
+      throw new Error("Database ID is required");
+    }
+    const updatedTransform = await updateWorkspaceTransform(
+      getUpdateRequest(transform, values, databaseId),
+    ).unwrap();
+
+    onUpdate(updatedTransform);
+  };
+
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={EDIT_TRANSFORM_SCHEMA}
+      onSubmit={handleSubmit}
+      enableReinitialize
+    >
+      {({ dirty }) => (
+        <Form>
+          <Stack gap="lg">
+            {supportsSchemas && (
+              <SchemaFormSelect
+                name="schema"
+                label={t`Schema`}
+                data={schemas}
+              />
+            )}
+            <FormTextInput name="name" label={t`New table name`} />
+            <Group>
+              <Box flex={1}>
+                <FormErrorMessage />
+              </Box>
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton
+                label={t`Change target`}
+                variant="filled"
+                disabled={!dirty}
+              />
+            </Group>
+          </Stack>
+        </Form>
+      )}
+    </FormProvider>
+  );
+}
+
+function getInitialValues({ target }: WorkspaceTransform): EditTransformValues {
+  return {
+    name: target.name,
+    schema: target.schema ?? null,
+  };
+}
+
+function getUpdateRequest(
+  { id, workspace_id }: WorkspaceTransform,
+  { name, schema }: EditTransformValues,
+  databaseId: number,
+): UpdateWorkspaceTransformRequest {
+  return {
+    workspaceId: workspace_id,
+    transformId: id,
+    target: {
+      type: "table",
+      name,
+      schema,
+      database: databaseId,
+    },
+  };
+}

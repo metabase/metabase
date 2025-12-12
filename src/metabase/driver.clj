@@ -1352,6 +1352,31 @@
                      :args args}))
     #{}))
 
+(mr/def ::native-query-table-refs.table-ref
+  [:map
+   {:closed true}
+   [:schema {:optional true} [:maybe :string]]
+   [:table :string]])
+
+(mr/def ::native-query-table-refs
+  [:set ::native-query-table-refs.table-ref])
+
+(defmulti native-query-table-refs
+  "Gets the raw table references from a native query without resolving them to IDs.
+
+  Unlike [[native-query-deps]] which looks up tables in the database to return IDs,
+  this method returns just the schema and table names as they appear in the query.
+  This is useful for workspace dependency tracking where referenced tables may not
+  exist yet.
+
+  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use
+  [[metabase.driver-api.core/raw-native-query]] to get the raw native query as needed.
+
+  The return value should match the `:metabase.driver/native-query-table-refs` schema."
+  {:added "0.58.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
   going to the database).
