@@ -4,40 +4,38 @@ import type { WritableDraft } from "immer";
 import { uuid } from "metabase/lib/uuid";
 
 import {
-  type MetabotConversationId,
   type MetabotConverstationState,
-  type MetabotFriendlyConversationId,
+  type MetabotConvoId,
   type MetabotState,
+  type MetabotUniqueConvoId,
   isMetabotChatDomainId,
 } from "./types";
 
-export type ConvoPayloadAction<Value extends Record<string, any>> =
-  PayloadAction<{ conversation_id: MetabotFriendlyConversationId } & Value>;
+export type ConvoPayloadAction<
+  Value extends Record<string, any> = Record<string, any>,
+> = PayloadAction<{ conversation_id: MetabotConvoId } & Value>;
 
-// TODO: this should move into the selectors file probably
-// Access an existing conversation in the state
-export const getConversationId = (
-  state: MetabotState,
-  id: MetabotFriendlyConversationId,
-): MetabotConversationId | undefined => {
+export const getUniqueConversationId = (
+  state: WritableDraft<MetabotState>,
+  id: MetabotConvoId,
+): MetabotUniqueConvoId => {
   return isMetabotChatDomainId(id) ? state.domainConversationIds[id] : id;
 };
 
 export const getConversation = (
-  state: MetabotState,
-  id: MetabotFriendlyConversationId,
-): MetabotConverstationState | undefined => {
-  const convoId = getConversationId(state, id);
-  return convoId ? state.conversations[convoId] : undefined;
+  state: WritableDraft<MetabotState>,
+  id: MetabotConvoId,
+): WritableDraft<MetabotConverstationState> | undefined => {
+  return state.conversations[getUniqueConversationId(state, id)];
 };
 
 // Create a unique id for a metabot conversations
-export const createConversationId = (): MetabotConversationId => {
-  return uuid() as MetabotConversationId;
+export const createConversationId = (): MetabotUniqueConvoId => {
+  return uuid() as MetabotUniqueConvoId;
 };
 
 // Create a new empty conversation
-export const createConversation = (): MetabotConverstationState => ({
+const createConversation = (): MetabotConverstationState => ({
   isProcessing: false,
   conversationId: createConversationId(),
   messages: [],
@@ -53,31 +51,26 @@ export const createConversation = (): MetabotConverstationState => ({
   },
 });
 
-// Access an existing conversation if it exists, otherwise fallback to creating it
-export const getOrCreateConversation = (
+export const getConversationOrThrow = (
   state: WritableDraft<MetabotState>,
-  id: MetabotFriendlyConversationId,
+  convoId: MetabotConvoId,
 ): WritableDraft<MetabotConverstationState> => {
-  const convo = getConversation(state as MetabotState, id);
-  if (convo) {
-    return convo as WritableDraft<MetabotConverstationState>;
+  const conversationId = isMetabotChatDomainId(convoId)
+    ? state.domainConversationIds[convoId]
+    : convoId;
+  const convo = getConversation(state, conversationId);
+  if (!convo) {
+    throw new Error(
+      `Could not find metabot conversation with convo id: ${convoId}`,
+    );
   }
-
-  const newConvo = createConversation();
-  Object.assign(state.conversations, { [newConvo.conversationId]: newConvo });
-  if (isMetabotChatDomainId(id)) {
-    state.domainConversationIds[id] = newConvo.conversationId;
-  }
-
-  return state.conversations[
-    newConvo.conversationId
-  ] as WritableDraft<MetabotConverstationState>;
+  return convo;
 };
 
 export const convoReducer =
   <
     Action extends {
-      payload: { conversation_id: MetabotFriendlyConversationId };
+      payload: { conversation_id: MetabotConvoId };
     },
   >(
     convoReducerFn: (
@@ -88,7 +81,7 @@ export const convoReducer =
   ) =>
   (state: WritableDraft<MetabotState>, action: Action) => {
     convoReducerFn(
-      getOrCreateConversation(state, action.payload.conversation_id),
+      getConversationOrThrow(state, action.payload.conversation_id),
       action,
       state,
     );
@@ -96,7 +89,6 @@ export const convoReducer =
 
 export const getMetabotInitialState = (): MetabotState => {
   const omnibotConvo = createConversation();
-  // TODO: remove this
   const inlineSqlConvo = createConversation();
 
   return {

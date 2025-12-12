@@ -103,28 +103,26 @@ export type MetabotReactionsState = {
 };
 
 // unique identifier for a particular chat id
-export type MetabotConversationId = Opaque<string, "MetabotConversationId">;
+export type MetabotUniqueConvoId = Opaque<string, "MetabotConvoId">;
 
 // area of the app this conversation belongs to its used as a developer friendly
 // identifier for conversations and, while not yet implmented, useful for
 // distinguishing the origin of a conversation when dealing with persisted convos
-export const metabotChatDomainIds = ["omnibot", "inline_sql"] as const;
-export type MetabotChatDomainId = (typeof metabotChatDomainIds)[number];
+export const metabotFixedConvoIds = ["omnibot", "inline_sql"] as const;
+export type MetabotFixedConvoId = (typeof metabotFixedConvoIds)[number];
 
 export const isMetabotChatDomainId = (
   id: string,
-): id is MetabotChatDomainId => {
-  return (metabotChatDomainIds as unknown as string[]).includes(id);
+): id is MetabotFixedConvoId => {
+  return (metabotFixedConvoIds as unknown as string[]).includes(id);
 };
 
 // it's nicer to not have to know/keep track of dynamic ids as a developer, so
 // in some cases we're able to accept the domain id and look up the conversation id
-export type MetabotFriendlyConversationId =
-  | MetabotConversationId
-  | MetabotChatDomainId;
+export type MetabotConvoId = MetabotUniqueConvoId | MetabotFixedConvoId;
 
 export interface MetabotConverstationState {
-  conversationId: MetabotConversationId;
+  conversationId: MetabotUniqueConvoId;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
@@ -141,12 +139,10 @@ export interface MetabotConverstationState {
 
 export interface MetabotState {
   conversations: Record<
-    MetabotConversationId,
+    MetabotUniqueConvoId,
     MetabotConverstationState | undefined
   >;
-  domainConversationIds: Partial<
-    Record<MetabotChatDomainId, MetabotConversationId>
-  >;
+  domainConversationIds: Record<MetabotFixedConvoId, MetabotUniqueConvoId>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
 }

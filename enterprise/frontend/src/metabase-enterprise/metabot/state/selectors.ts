@@ -12,11 +12,12 @@ import {
   METABOT_REQUEST_IDS,
 } from "../constants";
 
-import { getConversation } from "./reducer-utils";
-import type {
-  MetabotFriendlyConversationId,
-  MetabotStoreState,
-  MetabotUserChatMessage,
+import {
+  type MetabotConvoId,
+  type MetabotStoreState,
+  type MetabotUniqueConvoId,
+  type MetabotUserChatMessage,
+  isMetabotChatDomainId,
 } from "./types";
 
 /*
@@ -91,18 +92,27 @@ export const getMetabotSuggestedCodeEdit = createSelector(
 
 const getConversationId = (
   _state: MetabotStoreState,
-  conversationId: MetabotFriendlyConversationId,
+  conversationId: MetabotConvoId,
 ) => {
   return conversationId;
 };
 
-const getMetabotConversation = createSelector(
+export const getUniqueConversationId = createSelector(
   [getMetabotState, getConversationId],
+  (state, convoId): MetabotUniqueConvoId => {
+    return isMetabotChatDomainId(convoId)
+      ? state.domainConversationIds[convoId]
+      : convoId;
+  },
+);
+
+export const getMetabotConversation = createSelector(
+  [getMetabotState, getUniqueConversationId],
   (state, conversationId) => {
-    const convo = getConversation(state, conversationId);
+    const convo = state.conversations[conversationId];
     if (!convo) {
       throw new Error(
-        `TODO: Tried to access a Metabot converation that does not exist: ${conversationId}`,
+        `You tried to access a metabot conversation that does not exist: ${conversationId}`,
       );
     }
     return convo;

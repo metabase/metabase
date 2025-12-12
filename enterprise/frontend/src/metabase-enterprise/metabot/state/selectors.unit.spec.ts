@@ -1,20 +1,31 @@
+import { assocIn } from "icepick";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { getMetabotInitialState } from "./reducer-utils";
 
-import { type MetabotState, getUserPromptForMessageId } from "./index";
+import { type MetabotChatMessage, getUserPromptForMessageId } from "./index";
 
-function setup(metabotState: Partial<MetabotState>) {
+function setup(messages: MetabotChatMessage[]) {
   setupEnterprisePlugins();
+
+  const state = getMetabotInitialState();
+  const convoId = state.domainConversationIds.omnibot;
+  const visibleState = assocIn(
+    state,
+    ["conversations", convoId, "visible"],
+    true,
+  );
+  const withMessages = assocIn(
+    visibleState,
+    ["conversations", convoId, "messages"],
+    messages,
+  );
 
   return createMockState({
     plugins: {
-      metabotPlugin: {
-        ...getMetabotInitialState(),
-        visible: true,
-        ...metabotState,
-      },
+      metabotPlugin: withMessages,
     },
   } as any);
 }
@@ -22,13 +33,11 @@ function setup(metabotState: Partial<MetabotState>) {
 describe("metabot selectors", () => {
   describe("getUserPromptForMessageId", () => {
     it("should return the message with the matching id if id is for a user message", () => {
-      const state = setup({
-        messages: [
-          { id: "1", role: "user", type: "text", message: "bleh" },
-          { id: "2", role: "agent", type: "text", message: "blah" },
-        ],
-      });
-      const message = getUserPromptForMessageId(state as any, "1");
+      const state = setup([
+        { id: "1", role: "user", type: "text", message: "bleh" },
+        { id: "2", role: "agent", type: "text", message: "blah" },
+      ]);
+      const message = getUserPromptForMessageId(state as any, "omnibot", "1");
       expect(message).toEqual({
         id: "1",
         role: "user",
@@ -38,22 +47,20 @@ describe("metabot selectors", () => {
     });
 
     it("should return the message with the matching id if id is for an agent message", () => {
-      const state = setup({
-        messages: [
-          { id: "1", type: "text", role: "user", message: "bleh" },
-          { id: "2", type: "text", role: "agent", message: "blah" },
-          { id: "3", type: "text", role: "user", message: "bleh bleh" },
-          { id: "4", type: "text", role: "agent", message: "blah blah" },
-        ],
-      });
-      const message1 = getUserPromptForMessageId(state as any, "2");
+      const state = setup([
+        { id: "1", type: "text", role: "user", message: "bleh" },
+        { id: "2", type: "text", role: "agent", message: "blah" },
+        { id: "3", type: "text", role: "user", message: "bleh bleh" },
+        { id: "4", type: "text", role: "agent", message: "blah blah" },
+      ]);
+      const message1 = getUserPromptForMessageId(state as any, "omnibot", "2");
       expect(message1).toEqual({
         id: "1",
         role: "user",
         type: "text",
         message: "bleh",
       });
-      const message2 = getUserPromptForMessageId(state as any, "4");
+      const message2 = getUserPromptForMessageId(state as any, "omnibot", "4");
       expect(message2).toEqual({
         id: "3",
         role: "user",

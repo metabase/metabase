@@ -24,7 +24,6 @@ import type { Dispatch } from "metabase-types/store";
 import { METABOT_ERR_MSG } from "../constants";
 
 import { metabot } from "./reducer";
-import { getConversationId } from "./reducer-utils";
 import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
@@ -33,17 +32,15 @@ import {
   getHistory,
   getIsProcessing,
   getLastMessage,
-  getMetabotState,
-  getProfile,
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
   MetabotAgentEditSuggestionChatMessage,
   MetabotAgentTodoListChatMessage,
-  MetabotConversationId,
+  MetabotConvoId,
   MetabotErrorMessage,
-  MetabotFriendlyConversationId,
   MetabotStoreState,
+  MetabotUniqueConvoId,
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
@@ -65,6 +62,7 @@ export const {
   deactivateSuggestedTransform,
   addSuggestedCodeEdit,
   deactivateSuggestedCodeEdit,
+  setProfileOverride,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -99,10 +97,7 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
 };
 
 export const setVisible =
-  (payload: {
-    conversation_id: MetabotFriendlyConversationId;
-    visible: boolean;
-  }) =>
+  (payload: { conversation_id: MetabotConvoId; visible: boolean }) =>
   (dispatch: Dispatch, getState: any) => {
     const currentUser = getUser(getState());
     if (!currentUser) {
@@ -115,31 +110,9 @@ export const setVisible =
     dispatch(metabot.actions.setVisible(payload));
   };
 
-export const setProfileOverride =
-  ({
-    profile,
-    conversation_id,
-  }: {
-    profile: string | undefined;
-    conversation_id: MetabotConversationId;
-  }) =>
-  (dispatch: Dispatch, getState: any) => {
-    const currentProfile = getProfile(getState() as any, conversation_id);
-    if (profile && currentProfile !== profile) {
-      dispatch(resetConversation(conversation_id));
-      const nextProfile = profile === "unset" ? undefined : profile;
-      dispatch(
-        metabot.actions.setProfileOverride({
-          conversation_id,
-          profile: nextProfile,
-        }),
-      );
-    }
-  };
-
 export const executeSlashCommand = createAsyncThunk<
   void,
-  { command: SlashCommand; conversation_id: MetabotConversationId }
+  { command: SlashCommand; conversation_id: MetabotUniqueConvoId }
 >(
   "metabase-enterprise/metabot/executeSlashCommand",
   async ({ command, conversation_id }, { dispatch, getState }) => {
@@ -185,22 +158,15 @@ export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
   Omit<MetabotUserChatMessage, "id" | "role"> & {
     context: MetabotChatContext;
+    conversation_id: MetabotUniqueConvoId;
     metabot_id?: string;
-    conversation_id: MetabotFriendlyConversationId;
   }
 >(
   "metabase-enterprise/metabot/submitInput",
   async (data, { dispatch, getState, signal }) => {
     try {
       const state = getState() as any;
-      const metabotState = getMetabotState(state);
-      const conversation_id = getConversationId(
-        metabotState,
-        data.conversation_id,
-      );
-      if (!conversation_id) {
-        throw new Error("TODO: handle this case");
-      }
+      const { conversation_id } = data;
 
       const isProcessing = getIsProcessing(state, conversation_id);
       if (isProcessing) {
@@ -304,7 +270,7 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const isEmbedding = getIsEmbedding(getState() as any);
     // TODO: fix type cast
-    const conversation_id = request.conversation_id as MetabotConversationId;
+    const conversation_id = request.conversation_id as MetabotUniqueConvoId;
 
     try {
       let state = {};
@@ -429,7 +395,7 @@ export const sendAgentRequest = createAsyncThunk<
 // TODO: this needs to be scoped for a conversation
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
-  (conversation_id: MetabotConversationId) => {
+  (conversation_id: MetabotUniqueConvoId) => {
     getInflightRequestsForUrl("/api/ee/metabot-v3/agent-streaming")
       .filter((req) => req.conversation_id === conversation_id)
       .forEach((req) => req.abortController.abort());
@@ -437,7 +403,7 @@ export const cancelInflightAgentRequests = createAsyncThunk(
 );
 
 export const addDeveloperMessage = (payload: {
-  conversation_id: MetabotFriendlyConversationId;
+  conversation_id: MetabotConvoId;
   message: string;
 }) => {
   return (dispatch: Dispatch, getState: any) => {
@@ -461,7 +427,7 @@ const rewindConversation = createAsyncThunk(
   "metabase-enterprise/metabot/rewindConversation",
   (
     payload: {
-      conversation_id: MetabotConversationId;
+      conversation_id: MetabotUniqueConvoId;
       messageId: string;
     },
     { dispatch, getState },
@@ -491,7 +457,7 @@ export const retryPrompt = createAsyncThunk<
     messageId: string;
     context: MetabotChatContext;
     metabot_id?: string;
-    conversation_id: MetabotConversationId;
+    conversation_id: MetabotUniqueConvoId;
   }
 >(
   "metabase-enterprise/metabot/retryPrompt",
@@ -532,7 +498,7 @@ export const retryPrompt = createAsyncThunk<
 // TODO: rethink this
 export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
-  (conversation_id: MetabotConversationId, { dispatch }) => {
+  (conversation_id: MetabotUniqueConvoId, { dispatch }) => {
     dispatch(cancelInflightAgentRequests(conversation_id));
 
     // clear out suggested prompts so the user is shown something fresh
@@ -543,13 +509,13 @@ export const resetConversation = createAsyncThunk(
 );
 
 export const stopProcessing =
-  (conversation_id: MetabotFriendlyConversationId) => (dispatch: Dispatch) => {
+  (conversation_id: MetabotConvoId) => (dispatch: Dispatch) => {
     dispatch(setIsProcessing({ conversation_id, processing: false }));
   };
 
 export const stopProcessingAndNotify =
   (payload: {
-    conversation_id: MetabotFriendlyConversationId;
+    conversation_id: MetabotConvoId;
     message?: MetabotErrorMessage | false | undefined;
   }) =>
   (dispatch: Dispatch) => {

@@ -16,8 +16,8 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotConvoId,
   MetabotErrorMessage,
-  MetabotFriendlyConversationId,
   MetabotSuggestedTransform,
   MetabotUserChatMessage,
 } from "./types";
@@ -157,13 +157,26 @@ export const metabot = createSlice({
     ),
     // TODO: implement a removeConversation method...
     resetConversation: convoReducer((convo, _, state) => {
+      const oldConvoId = convo.conversationId;
+      const newConvId = createConversationId();
+      convo.conversationId = newConvId;
+
+      delete state.conversations[oldConvoId];
+      state.conversations[newConvId] = convo;
+      Object.entries(state.domainConversationIds).forEach(([key, value]) => {
+        if (value === oldConvoId) {
+          state.domainConversationIds[
+            key as keyof typeof state.domainConversationIds
+          ] = newConvId;
+        }
+      });
+
       convo.messages = [];
       convo.errorMessages = [];
       convo.history = [];
       convo.state = {};
       convo.isProcessing = false;
       convo.activeToolCalls = [];
-      convo.conversationId = createConversationId();
       convo.experimental.metabotReqIdOverride = undefined;
       convo.experimental.developerMessage = "";
       // TODO: think through how clearing / resetting conversations should clear certain resources
@@ -260,7 +273,7 @@ export const metabot = createSlice({
       .addCase(sendAgentRequest.pending, (state, action) => {
         // TODO: consolidate this
         const convoId = action.meta.arg
-          .conversation_id as string as unknown as MetabotFriendlyConversationId;
+          .conversation_id as string as unknown as MetabotConvoId;
         const convo = getConversation(state as any, convoId);
 
         if (convo) {
@@ -270,7 +283,7 @@ export const metabot = createSlice({
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
         const convoId = action.meta.arg
-          .conversation_id as string as unknown as MetabotFriendlyConversationId;
+          .conversation_id as string as unknown as MetabotConvoId;
         const convo = getConversation(state as any, convoId);
 
         if (convo) {
@@ -283,7 +296,7 @@ export const metabot = createSlice({
       })
       .addCase(sendAgentRequest.rejected, (state, action) => {
         const convoId = action.meta.arg
-          .conversation_id as string as unknown as MetabotFriendlyConversationId;
+          .conversation_id as string as unknown as MetabotConvoId;
         const convo = getConversation(state as any, convoId);
 
         if (convo) {
