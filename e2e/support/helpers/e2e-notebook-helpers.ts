@@ -3,8 +3,9 @@ import type { CyHttpMessages } from "cypress/types/net-stubbing";
 import {
   entityPickerModal,
   entityPickerModalTab,
+  miniPicker,
+  miniPickerBrowseAll,
   popover,
-  shouldDisplayTabs,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/querying/notebook/types";
 import type { IconName } from "metabase/ui";
@@ -177,8 +178,8 @@ export function joinTable(
   lhsColumnName?: string,
   rhsColumnName?: string,
 ) {
-  entityPickerModal().within(() => {
-    entityPickerModalTab("Tables").click();
+  miniPicker().within(() => {
+    cy.realType(tableName);
     cy.findByText(tableName).click();
   });
 
@@ -204,22 +205,17 @@ export function selectSavedQuestionsToJoin(
   secondQuestionName: string,
 ) {
   cy.intercept("GET", "/api/table/*/query_metadata").as("joinedTableMetadata");
-  entityPickerModal().within(() => {
-    shouldDisplayTabs(["Tables", "Collections"]);
-    entityPickerModalTab("Collections").click();
-    cy.findByText(firstQuestionName).click();
-  });
+  miniPickerBrowseAll().click();
+  entityPickerModal().findByText(firstQuestionName).click();
 
   cy.wait("@joinedTableMetadata");
 
   // join to question b
   cy.icon("join_left_outer").click();
 
-  entityPickerModal().within(() => {
-    shouldDisplayTabs(["Tables", "Collections"]);
-    entityPickerModalTab("Collections").click();
-    cy.findByText(secondQuestionName).click();
-  });
+  miniPickerBrowseAll().click();
+  entityPickerModalTab("Data").click();
+  entityPickerModal().findByText(secondQuestionName).click();
 }
 
 export function selectFilterOperator(operatorName: string) {

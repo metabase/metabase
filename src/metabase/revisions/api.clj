@@ -25,6 +25,10 @@
     (assert (keyword? model))
     [model (t2/select-one model :id id)]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get revisions of an object."
   [_route-params
@@ -35,6 +39,10 @@
     (when (api/read-check instance)
       (revision/revisions+details model id))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/revert"
   "Revert an object to a prior revision."
   [_route-params
@@ -58,6 +66,10 @@
       :user-id     api/*current-user-id*
       :revision-id revision-id})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:id"
   "Fetch `Revisions` for an object with ID."
   [{:keys [id entity]} :- [:map

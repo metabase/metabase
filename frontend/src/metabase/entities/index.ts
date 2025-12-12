@@ -9,8 +9,6 @@ export { IndexedEntities as indexedEntities } from "./indexed-entities";
 export { default as timelines } from "./timelines";
 export { default as timelineEvents } from "./timeline-events";
 
-export { default as revisions } from "./revisions";
-
 export { default as bookmarks } from "./bookmarks";
 export { default as databases } from "./databases";
 export { default as schemas } from "./schemas";
@@ -23,3 +21,4 @@ export { default as groups } from "./groups";
 export { default as search } from "./search";
 export { default as persistedModels } from "./persisted-models";
 export { default as snippets } from "./snippets";
+export { default as documents } from "./documents";

@@ -306,6 +306,25 @@ describe("scenarios > public > dashboard", () => {
       expect(element.href).to.eq("https://metabase.com/");
     });
   });
+
+  it("should support #theme=dark (metabase#65731)", () => {
+    const dashboardName = "Dashboard Theme Test";
+    H.createDashboardWithQuestions({
+      dashboardName,
+      questions: [],
+    }).then(({ dashboard }) => {
+      H.visitPublicDashboard(dashboard.id, {
+        hash: {
+          theme: "dark",
+        },
+      });
+    });
+
+    cy.log("dark theme should have white text");
+    cy.findByRole("heading", {
+      name: dashboardName,
+    }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
+  });
 });
 
 describe("scenarios [EE] > public > dashboard", () => {

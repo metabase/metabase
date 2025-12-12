@@ -193,6 +193,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         id="expression-content"
         expressionMode={expressionMode}
         clause={clause}
+        initialClause={initialClause}
         onChange={handleExpressionChange}
         query={query}
         stageIndex={stageIndex}

@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { moveParameter } from "metabase/dashboard/actions";
-import { getDashcardList, getTabs } from "metabase/dashboard/selectors";
+import { getCurrentDashcards, getTabs } from "metabase/dashboard/selectors";
 import {
   findDashCardForInlineParameter,
   isHeadingDashCard,
@@ -29,13 +29,13 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   const ref = useRef<HTMLInputElement>(null);
 
   const dashcards = useSelector((state) =>
-    getDashcardList(state).filter(
+    getCurrentDashcards(state).filter(
       (dashcard) => isHeadingDashCard(dashcard) || isQuestionDashCard(dashcard),
     ),
   );
 
   const parameterDashcard = useSelector((state) => {
-    const dashcards = getDashcardList(state);
+    const dashcards = getCurrentDashcards(state);
     return findDashCardForInlineParameter(parameterId, dashcards);
   });
 

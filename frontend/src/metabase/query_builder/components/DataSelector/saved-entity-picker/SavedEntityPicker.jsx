@@ -8,6 +8,7 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
+import { findCollectionById } from "metabase/common/utils/collections";
 import CS from "metabase/css/core/index.css";
 import Collections, {
   PERSONAL_COLLECTIONS,
@@ -19,7 +20,6 @@ import { Box, Icon } from "metabase/ui";
 import SavedEntityList from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
-import { findCollectionById } from "./utils";
 
 const propTypes = {
   type: PropTypes.string,

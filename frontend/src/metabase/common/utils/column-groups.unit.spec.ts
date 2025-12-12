@@ -22,7 +22,7 @@ function getQueryWithTableDataSource() {
 function getQueryWithCardDataSource() {
   const cardId = 1;
   const card = Question.create({
-    dataset_query: Lib.toLegacyQuery(getQueryWithTableDataSource()),
+    dataset_query: Lib.toJsQuery(getQueryWithTableDataSource()),
   })
     .setId(cardId)
     .setDisplayName("Card")

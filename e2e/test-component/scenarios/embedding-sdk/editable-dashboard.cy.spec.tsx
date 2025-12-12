@@ -410,6 +410,9 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
 
           H.modal().within(() => {
             cy.findByLabelText("Name").clear().type(ADDED_QUESTION_NAME_3);
+            cy.findByLabelText("Where do you want to save this?").should(
+              "not.exist",
+            );
             // Test saving a question to a different tab
             cy.findByLabelText("Which tab should this go on?")
               .should("be.visible")

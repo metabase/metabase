@@ -14,66 +14,71 @@ import { CleanupCollectionModal } from "./CleanupCollectionModal";
 import { getDateFilterValue } from "./CleanupCollectionModal/utils";
 import { canCleanUp } from "./utils";
 
-if (hasPremiumFeature("collection_cleanup")) {
-  PLUGIN_COLLECTIONS.canCleanUp = canCleanUp;
+/**
+ * Initialize clean_up plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("collection_cleanup")) {
+    PLUGIN_COLLECTIONS.canCleanUp = canCleanUp;
 
-  PLUGIN_COLLECTIONS.useGetCleanUpMenuItems = (collection) => {
-    const canCleanupCollection = canCleanUp(collection);
+    PLUGIN_COLLECTIONS.useGetCleanUpMenuItems = (collection) => {
+      const canCleanupCollection = canCleanUp(collection);
 
-    const { currentData: collectionItems } = useListCollectionItemsQuery(
-      canCleanupCollection
-        ? {
-            id: collection.id,
-            limit: 0, // only fetch pagination info
-          }
-        : skipToken,
-    );
+      const { currentData: collectionItems } = useListCollectionItemsQuery(
+        canCleanupCollection
+          ? {
+              id: collection.id,
+              limit: 0, // only fetch pagination info
+            }
+          : skipToken,
+      );
 
-    const hasCollectionItems = (collectionItems?.total ?? 0) > 0;
+      const hasCollectionItems = (collectionItems?.total ?? 0) > 0;
 
-    const { currentData: staleItems } = useListStaleCollectionItemsQuery(
-      canCleanupCollection && hasCollectionItems
-        ? {
-            id: collection.id,
-            limit: 0, // only fetch pagination info
-            before_date: getDateFilterValue("three-months"), // set to 3 months ago
-          }
-        : skipToken,
-    );
+      const { currentData: staleItems } = useListStaleCollectionItemsQuery(
+        canCleanupCollection && hasCollectionItems
+          ? {
+              id: collection.id,
+              limit: 0, // only fetch pagination info
+              before_date: getDateFilterValue("three-months"), // set to 3 months ago
+            }
+          : skipToken,
+      );
 
-    const hasStaleItems = (staleItems?.total ?? 0) > 0;
+      const hasStaleItems = (staleItems?.total ?? 0) > 0;
 
-    if (!canCleanupCollection || !hasCollectionItems) {
+      if (!canCleanupCollection || !hasCollectionItems) {
+        return {
+          menuItems: [],
+        };
+      }
+
       return {
-        menuItems: [],
+        menuItems: [
+          <UserHasSeen
+            key="collections-cleanup"
+            id="clean-stale-items"
+            withContext={hasStaleItems}
+          >
+            {() => (
+              <Menu.Item
+                leftSection={<Icon name="archive" />}
+                component={ForwardRefLink}
+                to={`${Urls.collection(collection)}/cleanup`}
+                rightSection={
+                  hasStaleItems ? <Badge>{t`Recommended`}</Badge> : null
+                }
+              >
+                {t`Clear out unused items`}
+              </Menu.Item>
+            )}
+          </UserHasSeen>,
+        ],
       };
-    }
-
-    return {
-      menuItems: [
-        <UserHasSeen
-          key="collections-cleanup"
-          id="clean-stale-items"
-          withContext={hasStaleItems}
-        >
-          {() => (
-            <Menu.Item
-              leftSection={<Icon name="archive" />}
-              component={ForwardRefLink}
-              to={`${Urls.collection(collection)}/cleanup`}
-              rightSection={
-                hasStaleItems ? <Badge>{t`Recommended`}</Badge> : null
-              }
-            >
-              {t`Clear out unused items`}
-            </Menu.Item>
-          )}
-        </UserHasSeen>,
-      ],
     };
-  };
 
-  PLUGIN_COLLECTIONS.cleanUpRoute = (
-    <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
-  );
+    PLUGIN_COLLECTIONS.cleanUpRoute = (
+      <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
+    );
+  }
 }

@@ -93,7 +93,7 @@ Click the preview button to see sample data from that field.
 
 _Admin settings > Table Metadata > Database > Table > Field_
 
-To scan or discard field values for a specific field, click on the **Field values** button. Metabase uses these values to populate dropdown menus in filter widgets. (To be clear, values aren't actually dropped from your database.)
+To scan or discard field values for a specific field, click on the **Field values** button. Metabase uses these values to populate dropdown menus in filter widgets. (Values aren't dropped from your database.)
 
 ## Field data
 

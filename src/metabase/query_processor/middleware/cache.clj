@@ -7,12 +7,13 @@
   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
   `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
   about how the cache backends themselves."
+  (:refer-clojure :exclude [get-in])
   (:require
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
-   [metabase.lib.query :as lib.query]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -21,7 +22,8 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]])
   (:import
    (org.eclipse.jetty.io EofException)))
 
@@ -59,7 +61,8 @@
   [object]
   (when *in-fn*
     (*in-fn* (cond-> object
-               (map? object) (m/update-existing :json_query lib.query/serializable)))))
+               (map? object) (-> (m/update-existing :json_query lib/prepare-for-serialization)
+                                 (m/update-existing :preprocessed_query lib/prepare-for-serialization))))))
 
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."

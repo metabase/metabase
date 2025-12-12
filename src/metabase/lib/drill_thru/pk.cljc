@@ -33,6 +33,7 @@
   drills ([[metabase.lib.drill-thru.pk]], [[metabase.lib.drill-thru.fk-details]],
   or [[metabase.lib.drill-thru.zoom]]); see [[metabase.lib.drill-thru.object-details]] for the high-level logic that
   calls out to the individual implementations."
+  (:refer-clojure :exclude [select-keys get-in #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
@@ -41,7 +42,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys get-in #?(:clj for)]]))
 
 (mu/defn pk-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.pk]
   "'View details' drill when you click on a value in a table that has MULTIPLE PKs. There are two subtypes of PK

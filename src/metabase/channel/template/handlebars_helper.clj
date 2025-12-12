@@ -1,6 +1,7 @@
 (ns metabase.channel.template.handlebars-helper
   (:refer-clojure :exclude [hash])
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.channel.urls :as urls]
    [metabase.util.date-2 :as u.date])
@@ -97,6 +98,12 @@
   [_context _params _kparams _options]
   (t/instant))
 
+(defhelper initials
+  "Return up to two uppercased initials from a full name. Splits by whitespace and hyphen."
+  [name _params _kparams _options]
+  #_:clj-kondo/ignore
+  (some->> name (re-seq #"\b(\w)") (take 2) (map second) (str/join "") str/upper-case))
+
 ;; Metabase specifics
 
 (defhelper card-url
@@ -124,5 +131,6 @@
   {"equals"        equals
    "format-date"   format-date
    "now"           now
+   "initials"      initials
    "card-url"      card-url
    "dashboard-url" dashboard-url})

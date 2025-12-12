@@ -177,6 +177,5 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [row-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [row-and-column-security]: ../permissions/row-and-column-security.md
 [static-embedding]: https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards#enable-embedding-in-other-applications
-[row-and-column-security-limitations]: ../permissions/row-and-column-security.md#limitations
 [troubleshooting-permissions]: ./permissions.md
-[unsupported-databases]: ../permissions/row-and-column-security.md#limitations
+[unsupported-databases]: ../permissions/row-and-column-security.md#limitations-of-row-and-column-security

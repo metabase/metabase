@@ -1,4 +1,4 @@
-import type { CollectionId } from "./collection";
+import type { CollectionId, CollectionType } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { ModerationReviewStatus } from "./moderation";
@@ -70,6 +70,7 @@ export type RecentCollectionItem = BaseRecentItem & {
     id: DashboardId;
     moderation_status: ModerationReviewStatus;
   };
+  collection_type?: CollectionType;
 };
 
 export type RecentItem = RecentTableItem | RecentCollectionItem;

@@ -6,7 +6,6 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import type { UserWithApplicationPermissions } from "metabase/plugins";
 import {
   createMockDatabase,
   createMockTokenFeatures,
@@ -30,7 +29,7 @@ function setup({
   });
 
   if (canAccessSettings) {
-    (currentUser as UserWithApplicationPermissions).permissions = {
+    currentUser.permissions = {
       can_access_setting: true,
       can_access_monitoring: false,
       can_access_subscription: false,

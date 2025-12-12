@@ -6,10 +6,13 @@ import { Stack } from "metabase/ui";
 import { trackTrackingPermissionChanged } from "../../analytics";
 import { SettingHeader } from "../SettingHeader";
 
-import { BasicAdminSettingInput } from "./AdminSettingInput";
+import {
+  BasicAdminSettingInput,
+  SetByEnvVarWrapper,
+} from "./AdminSettingInput";
 
 export function AnonymousTrackingInput() {
-  const { value, updateSetting, description } = useAdminSetting(
+  const { value, updateSetting, description, settingDetails } = useAdminSetting(
     "anon-tracking-enabled",
   );
 
@@ -34,12 +37,17 @@ export function AnonymousTrackingInput() {
         title={t`Anonymous tracking`}
         description={description}
       />
-      <BasicAdminSettingInput
-        name="anon-tracking-enabled"
-        inputType="boolean"
-        value={value}
-        onChange={(newValue) => handleChange(Boolean(newValue))}
-      />
+      <SetByEnvVarWrapper
+        settingKey="anon-tracking-enabled"
+        settingDetails={settingDetails}
+      >
+        <BasicAdminSettingInput
+          name="anon-tracking-enabled"
+          inputType="boolean"
+          value={value}
+          onChange={(newValue) => handleChange(Boolean(newValue))}
+        />
+      </SetByEnvVarWrapper>
     </Stack>
   );
 }

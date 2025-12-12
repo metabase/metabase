@@ -1,5 +1,6 @@
 (ns metabase.driver.mongo.connection
   "This namespace contains code responsible for connecting to mongo deployment."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
    [metabase.driver-api.core :as driver-api]
@@ -9,7 +10,8 @@
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (com.mongodb
     ConnectionString

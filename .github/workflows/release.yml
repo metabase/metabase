@@ -211,13 +211,15 @@ jobs:
           return version_path;
 
     - name: Upload to S3
-      run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
+      run: |
+        aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
+        aws s3 cp ./SHA256.sum s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.sha256
 
     - name: Create cloudfront invalidation
       run: |
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_DOWNLOADS_ID }} \
-        --paths /${{ steps.version_path.outputs.result }}/metabase.jar
+        --paths "/${{ steps.version_path.outputs.result }}/*"
 
   verify-s3-download:
     runs-on: ubuntu-22.04

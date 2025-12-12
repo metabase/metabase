@@ -1,3 +1,5 @@
+import type { PropsWithChildren } from "react";
+
 import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -19,7 +21,7 @@ import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButton
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
 import type { SidebarFeatures } from "../types";
 
-interface NativeQueryEditorTopBarProps {
+interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   question: Question;
   query: NativeQuery;
 
@@ -30,7 +32,6 @@ interface NativeQueryEditorTopBarProps {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isNativeEditorOpen: boolean;
-  nativeEditorSelectedText?: string;
   canChangeDatabase: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar: boolean;
@@ -43,11 +44,11 @@ interface NativeQueryEditorTopBarProps {
 
   toggleEditor?: () => void;
   toggleDataReference?: () => void;
+  toggleSnippetSidebar?: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
   onOpenModal?: (modalType: QueryModalType) => void;
-  onChange: (queryText: string) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
@@ -56,9 +57,9 @@ interface NativeQueryEditorTopBarProps {
 
 const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
   const {
+    children,
     query,
     question,
-    onChange,
     canChangeDatabase,
     isNativeEditorOpen,
     readOnly,
@@ -77,10 +78,10 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     isShowingSnippetSidebar,
     onFormatQuery,
     onOpenModal,
-    nativeEditorSelectedText,
     setIsNativeEditorOpen,
     toggleEditor,
     toggleDataReference,
+    toggleSnippetSidebar,
     onSetDatabaseId,
     hasParametersList = true,
     setDatasetQuery,
@@ -101,7 +102,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     parameterIndex: number,
   ) => {
     const newQuery = query.setParameterIndex(parameterId, parameterIndex);
-
     dispatch(updateQuestion(question.setDatasetQuery(newQuery.datasetQuery())));
   };
 
@@ -137,21 +137,21 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
       )}
       {hasParametersList && setParameterValue && (
         <ResponsiveParametersList
-          question={question}
+          cardId={question.id()}
+          dashboardId={question.getDashboardProps().dashboardId}
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}
           enableParameterRequiredBehavior
         />
       )}
-      <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px" pl="md">
+      <Flex ml="auto" gap="lg" mr="lg" align="center" h="3rem" pl="md">
+        {children}
         {isNativeEditorOpen && hasEditingSidebar && !readOnly && (
           <NativeQueryEditorActionButtons
             features={sidebarFeatures}
             onFormatQuery={onFormatQuery}
-            onGenerateQuery={onChange}
             question={question}
-            nativeEditorSelectedText={nativeEditorSelectedText}
             snippetCollections={snippetCollections}
             snippets={snippets}
             isRunnable={isRunnable}
@@ -161,6 +161,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
             isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
             isShowingSnippetSidebar={isShowingSnippetSidebar}
             toggleDataReference={toggleDataReference}
+            toggleSnippetSidebar={toggleSnippetSidebar}
             onOpenModal={onOpenModal}
           />
         )}

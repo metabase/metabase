@@ -13,7 +13,7 @@
 
 (deftest list-collections-instance-analytics-test
   (mt/with-premium-features #{:audit-app}
-    (audit-test/with-audit-db-restoration
+    (audit-test/with-audit-db-restoration!
       (mt/with-temp [:model/Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should be the last collection."
           (testing "GET /api/collection"
@@ -27,7 +27,7 @@
                         last
                         :type))))))))
   (mt/with-premium-features #{}
-    (audit-test/with-audit-db-restoration
+    (audit-test/with-audit-db-restoration!
       (mt/with-temp [:model/Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
           (testing "GET /api/collection"
@@ -70,7 +70,7 @@
     (testing "You should only see your collection and public collections"
       ;; Set audit-app feature so that we can assert that audit collections are also visible when running EE
       (mt/with-premium-features #{:audit-app}
-        (audit-test/with-audit-db-restoration
+        (audit-test/with-audit-db-restoration!
           (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
                 crowberto-root (t2/select-one :model/Collection :personal_owner_id admin-user-id)]
             (mt/with-temp [:model/Collection collection          {}

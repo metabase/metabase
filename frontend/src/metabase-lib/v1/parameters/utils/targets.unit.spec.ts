@@ -15,6 +15,7 @@ import {
   getParameterColumns,
   getParameterTargetField,
   getTemplateTagFromTarget,
+  getTextTagFromTarget,
   isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
 import type {
@@ -207,6 +208,18 @@ describe("parameters/utils/targets", () => {
       expect(
         getTemplateTagFromTarget(["dimension", ["field", 123, null]]),
       ).toBe(null);
+    });
+  });
+
+  describe("getTextTagFromTarget", () => {
+    it("should return the tag of a text tag target", () => {
+      expect(getTextTagFromTarget(["text-tag", "foo"])).toBe("foo");
+    });
+
+    it("should return null for targets that are not text tags", () => {
+      expect(getTextTagFromTarget(["dimension", ["field", 123, null]])).toBe(
+        null,
+      );
     });
   });
 
@@ -709,7 +722,7 @@ function getModelVirtualTable(card: Card) {
     db_id: savedQuestionsDb.id,
     name: card.name,
     display_name: card.name,
-    fields: card.result_metadata,
+    fields: card.result_metadata ?? [],
   });
 }
 

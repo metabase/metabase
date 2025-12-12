@@ -70,13 +70,16 @@ export const getMigrationEventTime = (isoString: string) =>
   dayjs(isoString).format("MMMM DD, YYYY, hh:mm A");
 
 export const openCheckoutInNewTab = (
-  storeUrl: string,
+  checkoutUrl: string,
   migration: CloudMigration,
 ) => {
-  window
-    .open(
-      `${storeUrl}/checkout?migration-id=${migration.external_id}`,
-      "_blank",
-    )
-    ?.focus();
+  const migrationUrl = getMigrationUrl(checkoutUrl, migration);
+  window.open(migrationUrl, "_blank")?.focus();
 };
+
+export function getMigrationUrl(
+  checkoutUrl: string,
+  migration: CloudMigration,
+) {
+  return `${checkoutUrl}?migration-id=${migration.external_id}`;
+}

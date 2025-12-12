@@ -15,8 +15,9 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { initializeIframeResizer } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -25,9 +26,10 @@ import {
   getErrorPage,
   getIsAdminApp,
   getIsAppBarVisible,
-  getIsEmbeddingSetup,
+  getIsDataStudioApp,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import StatusListing from "metabase/status/components/StatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
@@ -56,7 +58,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
-  isEmbeddingSetup: boolean;
+  isDataStudioApp: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
@@ -79,7 +81,7 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
-  isEmbeddingSetup: getIsEmbeddingSetup(state, props),
+  isDataStudioApp: getIsDataStudioApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
@@ -91,21 +93,21 @@ const mapDispatchToProps: AppDispatchProps = {
 function App({
   errorPage,
   isAdminApp,
-  isEmbeddingSetup,
+  isDataStudioApp,
   isAppBarVisible,
   isNavBarEnabled,
   children,
   onError,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
+  const applicationName = useSelector(getApplicationName);
+
+  usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
 
   useEffect(() => {
     initializeIframeResizer();
   }, []);
-
-  const isAppBannerVisible = !isEmbeddingSetup;
-  const isStatusListingVisible = !isEmbeddingSetup;
 
   return (
     <ErrorBoundary onError={onError}>
@@ -113,7 +115,7 @@ function App({
         <KBarProvider>
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
-            {isAppBannerVisible && <AppBanner />}
+            <AppBanner />
             {isAppBarVisible && <AppBar />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
@@ -125,9 +127,9 @@ function App({
                 </ContentViewportContext.Provider>
               </AppContent>
               <UndoListing />
-              {isStatusListingVisible && <StatusListing />}
+              <StatusListing />
               <NewModals />
-              <PLUGIN_METABOT.Metabot hide={isAdminApp} />
+              <PLUGIN_METABOT.Metabot hide={isAdminApp || isDataStudioApp} />
             </AppContentContainer>
           </AppContainer>
           <Palette />

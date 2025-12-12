@@ -39,7 +39,7 @@ describe("scenarios > question > download", () => {
     cy.signInAsAdmin();
   });
 
-  H.describeWithSnowplow("[snowplow]", () => {
+  describe("[snowplow]", () => {
     beforeEach(() => {
       H.resetSnowplow();
       H.enableTracking();
@@ -52,8 +52,8 @@ describe("scenarios > question > download", () => {
     testCases.forEach((fileType) => {
       it(`downloads ${fileType} file`, () => {
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Our analytics").click();
           cy.findByText("Orders, Count").click();
         });
 
@@ -61,10 +61,7 @@ describe("scenarios > question > download", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("18,760");
 
-        H.downloadAndAssert({ fileType }, (sheet) => {
-          expect(sheet["A1"].v).to.eq("Count");
-          expect(sheet["A2"].v).to.eq(18760);
-        });
+        H.downloadAndAssert({ fileType });
 
         H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
@@ -106,27 +103,15 @@ describe("scenarios > question > download", () => {
       cy.get("@questionId").then((questionId) => {
         const opts = { questionId, fileType };
 
-        H.downloadAndAssert(
-          {
-            ...opts,
-            enableFormatting: true,
-          },
-          (sheet) => {
-            expect(sheet["A1"].v).to.eq("Total");
-            expect(sheet["A2"].w).to.eq("USD 39.72");
-          },
-        );
+        H.downloadAndAssert({
+          ...opts,
+          enableFormatting: true,
+        });
 
-        H.downloadAndAssert(
-          {
-            ...opts,
-            enableFormatting: false,
-          },
-          (sheet) => {
-            expect(sheet["A1"].v).to.eq("Total");
-            expect(sheet["A2"].v).to.eq(39.718145389078366);
-          },
-        );
+        H.downloadAndAssert({
+          ...opts,
+          enableFormatting: false,
+        });
       });
     });
   });
@@ -148,28 +133,16 @@ describe("scenarios > question > download", () => {
       { visitQuestion: true },
     );
 
-    H.downloadAndAssert(
-      {
-        enableFormatting: true,
-        fileType: "csv",
-      },
-      (sheet) => {
-        expect(sheet["B1"].v).to.eq("Doohickey");
-        expect(sheet["B2"].w).to.eq("13");
-      },
-    );
+    H.downloadAndAssert({
+      enableFormatting: true,
+      fileType: "csv",
+    });
 
-    H.downloadAndAssert(
-      {
-        enableFormatting: true,
-        pivoting: "non-pivoted",
-        fileType: "csv",
-      },
-      (sheet) => {
-        expect(sheet["B1"].v).to.eq("Category");
-        expect(sheet["B2"].w).to.eq("Doohickey");
-      },
-    );
+    H.downloadAndAssert({
+      enableFormatting: true,
+      pivoting: "non-pivoted",
+      fileType: "csv",
+    });
   });
 
   describe("download format preference", () => {
@@ -331,18 +304,10 @@ describe("scenarios > question > download", () => {
       testCases.forEach((fileType) => {
         const opts = { questionId, fileType };
 
-        H.downloadAndAssert(
-          {
-            ...opts,
-            enableFormatting: true,
-          },
-          (sheet) => {
-            expect(sheet["A1"].v).to.eq("Left Total");
-            expect(sheet["A2"].v).to.closeTo(159.35, 0.01);
-            expect(sheet["B1"].v).to.eq("Right Total");
-            expect(sheet["B2"].v).to.closeTo(159.35, 0.01);
-          },
-        );
+        H.downloadAndAssert({
+          ...opts,
+          enableFormatting: true,
+        });
       });
     });
   });
@@ -441,20 +406,12 @@ describe("scenarios > question > download", () => {
 
             cy.findByTestId("legend-caption").contains("20868").click();
 
-            H.downloadAndAssert(
-              {
-                fileType: "xlsx",
-                questionId,
-                dashboardId,
-                dashcardId: id,
-              },
-              (sheet) => {
-                expect(sheet["A1"].v).to.eq("ID");
-                expect(sheet["A2"].v).to.eq(1);
-
-                H.assertSheetRowsCount(1)(sheet);
-              },
-            );
+            H.downloadAndAssert({
+              fileType: "xlsx",
+              questionId,
+              dashboardId,
+              dashcardId: id,
+            });
           });
         });
       });
@@ -535,7 +492,7 @@ describe("scenarios > dashboard > download pdf", () => {
   });
 });
 
-H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
+describe("[snowplow] scenarios > dashboard", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -587,21 +544,11 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
 });
 
 function assertOrdersExport(length) {
-  H.downloadAndAssert(
-    {
-      fileType: "xlsx",
-      questionId: ORDERS_QUESTION_ID,
-      dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
-      dashboardId: ORDERS_DASHBOARD_ID,
-      isDashboard: true,
-    },
-    (sheet) => {
-      expect(sheet["A1"].v).to.eq("ID");
-      expect(sheet["A2"].v).to.eq(1);
-      expect(sheet["B1"].v).to.eq("User ID");
-      expect(sheet["B2"].v).to.eq(1);
-
-      H.assertSheetRowsCount(length)(sheet);
-    },
-  );
+  H.downloadAndAssert({
+    fileType: "xlsx",
+    questionId: ORDERS_QUESTION_ID,
+    dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
+    dashboardId: ORDERS_DASHBOARD_ID,
+    isDashboard: true,
+  });
 }

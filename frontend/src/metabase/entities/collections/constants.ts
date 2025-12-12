@@ -34,3 +34,12 @@ export const PERSONAL_COLLECTIONS = {
   can_write: false,
   is_personal: true,
 };
+
+export const DATABASES_COLLECTION = {
+  id: "databases" as const,
+  get name() {
+    return t`Databases`;
+  },
+  location: "/",
+  can_write: false,
+};

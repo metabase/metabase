@@ -80,7 +80,10 @@ const EventForm = ({
 
   return (
     <FormProvider
-      initialValues={initialValues}
+      initialValues={{
+        ...initialValues,
+        timestamp: initialValues.timestamp || dayjs().utc(true).toISOString(),
+      }}
       validationSchema={EVENT_SCHEMA}
       onSubmit={onSubmit}
     >
@@ -99,6 +102,19 @@ const EventForm = ({
                 title={t`Date`}
                 flex={1}
                 valueFormat={dateSettings?.date_style}
+                onChange={(date) => {
+                  if (values.time_matters) {
+                    // if time matters, preserve the time part of the timestamp
+                    // when changing the date part
+                    const timePart = dayjs.tz(values.timestamp);
+                    const newDate = parseTimestamp(date)
+                      .set("hour", timePart.hour())
+                      .set("minute", timePart.minute());
+                    setFieldValue("timestamp", newDate.toISOString());
+                  } else {
+                    setFieldValue("timestamp", dayjs(date).toISOString());
+                  }
+                }}
               />
               {values.time_matters ? (
                 <Flex gap="xs" align="end">

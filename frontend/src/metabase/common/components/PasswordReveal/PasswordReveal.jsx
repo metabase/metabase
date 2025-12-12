@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 import { PasswordCopyButton } from "./PasswordReveal.styled";
 

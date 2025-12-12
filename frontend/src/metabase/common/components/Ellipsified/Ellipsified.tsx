@@ -13,6 +13,7 @@ interface EllipsifiedProps extends TextProps {
   lines?: number;
   multiline?: boolean;
   placement?: FloatingPosition;
+  ignoreHeightTruncation?: boolean;
 }
 
 export const Ellipsified = ({
@@ -24,11 +25,13 @@ export const Ellipsified = ({
   lines = 1,
   multiline = false,
   placement = "top",
+  ignoreHeightTruncation = false,
   ...textProps
 }: EllipsifiedProps) => {
   const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
   const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
     disabled: canSkipTooltipRendering,
+    ignoreHeightTruncation,
   });
   const isEnabled =
     (showTooltip && (isTruncated || alwaysShowTooltip)) || false;

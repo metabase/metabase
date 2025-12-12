@@ -2,6 +2,7 @@
 
 exports[`ai requests aiStreamingQuery should return full result of a successful request 1`] = `
 {
+  "aborted": false,
   "data": [
     {
       "type": "state",

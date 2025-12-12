@@ -10,6 +10,7 @@ import { createMockDashboardState } from "./dashboard";
 import { createMockEmbedState } from "./embed";
 import { createMockEmbeddingDataPickerState } from "./embedding-data-picker";
 import { createMockNormalizedEntitiesState } from "./entities";
+import { createMockModalState } from "./modal";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
 import { createMockRequestsState } from "./requests";
@@ -47,7 +48,7 @@ export function createMockState(opts: any) {
       present: createMockVisualizerState(),
       future: [],
     },
-    modal: null,
+    modal: createMockModalState(),
     ...opts,
   };
 }

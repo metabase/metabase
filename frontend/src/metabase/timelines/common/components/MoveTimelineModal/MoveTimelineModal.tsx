@@ -12,7 +12,6 @@ export interface MoveTimelineModalProps {
   timeline: Timeline;
   onSubmit: (timeline: Timeline, collectionId: CollectionId) => void;
   onSubmitSuccess?: () => void;
-  onCancel?: () => void;
   onClose: () => void;
 }
 

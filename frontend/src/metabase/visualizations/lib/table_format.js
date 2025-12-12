@@ -1,6 +1,8 @@
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
+import Color from "color";
+
 import { alpha } from "metabase/lib/colors";
 import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
 
@@ -140,7 +142,13 @@ export function compileFormatter(
 
     const scale = getColorScale(
       [min, max],
-      format.colors.map((c) => alpha(c, GRADIENT_ALPHA)),
+      format.colors.map((c) => {
+        const color = Color(c);
+        const alpha = color.alpha();
+        return color
+          .alpha(alpha > GRADIENT_ALPHA ? GRADIENT_ALPHA : alpha)
+          .toString();
+      }),
     ).clamp(true);
     return (value) => {
       const colorValue = scale(value);

@@ -43,6 +43,7 @@ import { hasActiveSnippet, useInitialClause } from "./utils";
 type EditorProps = {
   id?: string;
   clause?: Lib.Expressionable | null;
+  initialClause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
@@ -254,6 +255,7 @@ function useExpression({
   availableColumns,
   metadata,
   onChange,
+  initialClause,
 }: EditorProps & {
   metadata: Metadata;
 }) {
@@ -346,7 +348,7 @@ function useExpression({
   useMount(() => {
     // format the source when the component mounts
     formatExpression({
-      initial: true,
+      initial: clause === initialClause,
     });
   });
 

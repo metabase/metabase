@@ -1,0 +1,10 @@
+.root {
+  border-bottom: 1px solid var(--mb-color-border);
+  position: relative;
+}
+
+.libraryActions {
+  position: absolute;
+  top: 0;
+  right: 0;
+}

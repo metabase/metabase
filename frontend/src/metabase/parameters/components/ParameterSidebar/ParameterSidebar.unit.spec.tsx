@@ -185,9 +185,12 @@ describe("ParameterSidebar", () => {
 
       await clickNextParameterButton();
 
-      // verify Linked filters tab is not rendered
+      // verify tabs are not rendered if there's only 1 tab
       expect(
         screen.queryByRole("tab", { name: "Linked filters" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("tab", { name: "Filter settings" }),
       ).not.toBeInTheDocument();
 
       // verify tab content corresponds to Filter settings

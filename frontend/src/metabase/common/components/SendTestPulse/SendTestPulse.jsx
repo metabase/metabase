@@ -36,7 +36,6 @@ export default class SendTestPulse extends Component {
         activeText={t`Sending…`}
         failedText={t`Sending failed`}
         successText={successText}
-        forceActiveStyle={true}
       />
     );
   }

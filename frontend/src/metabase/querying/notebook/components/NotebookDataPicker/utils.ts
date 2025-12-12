@@ -36,3 +36,16 @@ export const getUrl = ({
     return Urls.tableRowsQuery(databaseId, tableId);
   }
 };
+
+export const isObjectWithModel = (
+  item: unknown,
+): item is { model: string; id: number } => {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    "model" in item &&
+    "id" in item &&
+    typeof (item as any).model === "string" &&
+    typeof (item as any).id === "number"
+  );
+};

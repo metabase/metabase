@@ -35,6 +35,7 @@
 
  [metabase.analytics.sdk
 
+  embedding-context?
   embedding-mw
   include-sdk-info
   with-client! get-client

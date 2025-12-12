@@ -54,9 +54,9 @@ export const useSlowCardNotification = () => {
         addUndo({
           id: slowToastId,
           timeout: false,
-          message: t`Would you like to be notified when this dashboard is done loading?`,
+          message: t`Want to get notified when this dashboard loads?`,
           action: onConfirmToast,
-          actionLabel: t`Turn on`,
+          actionLabel: t`Notify me`,
         }),
       );
     }

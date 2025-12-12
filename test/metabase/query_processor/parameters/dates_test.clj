@@ -196,15 +196,15 @@
         (is (=? [:!=
                  {}
                  [:field {:base-type :type/DateTime, :temporal-unit :hour-of-day} "field"]
-                 "2016-06-07T00:00:00Z"]
+                 "2016-06-07T00:00:00"]
                 (params.dates/date-string->filter
                  "exclude-hours-0"
                  [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
         (is (=? [:!=
                  {}
                  [:field {:base-type :type/DateTime, :temporal-unit :hour-of-day} "field"]
-                 "2016-06-07T00:00:00Z"
-                 "2016-06-07T23:00:00Z"]
+                 "2016-06-07T00:00:00"
+                 "2016-06-07T23:00:00"]
                 (params.dates/date-string->filter
                  "exclude-hours-0-23"
                  [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))

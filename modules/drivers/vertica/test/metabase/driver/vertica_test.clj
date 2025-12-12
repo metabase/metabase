@@ -46,7 +46,8 @@
   (mt/test-driver :vertica
     (testing "Columns with dots in the name should be properly quoted (#13932)"
       (mt/dataset dots-in-names
-        (is (= {:query  ["SELECT"
+        (is (= {:lib/type :mbql.stage/native
+                :query  ["SELECT"
                          "  *"
                          "FROM"
                          "  table"

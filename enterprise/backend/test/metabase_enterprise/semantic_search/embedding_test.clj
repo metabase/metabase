@@ -2,10 +2,20 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [environ.core :as env]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.gate :as semantic.gate]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
+   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
    [metabase.test :as mt]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
   (:import
    [java.nio ByteBuffer ByteOrder]
    [java.util Base64]))
@@ -206,6 +216,9 @@
                {:provider "ollama"
                 :mock-response {:embedding mock-embedding}
                 :counts-tokens? false}]]
+
+        (t2/delete! :model/SemanticSearchTokenTracking)
+
         (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
                                                      (swap! analytics-calls conj [metric args]))
                                     http/post (fn post-mock [_url & _options]
@@ -229,4 +242,54 @@
                         :model "some-model"}
                        (-> tokens-calls first second first)))
                 (is (= (get-in mock-response [:usage :total_tokens])
-                       (-> tokens-calls first second second)))))))))))
+                       (-> tokens-calls first second second)))
+                (is (= 2 (t2/count :model/SemanticSearchTokenTracking)))))))))))
+
+(deftest token-tracking-write-test
+  (mt/with-premium-features #{:semantic-search}
+    (when (string? (not-empty (:mb-pgvector-db-url env/env)))
+      (doseq [provider ["openai" "ai-service"]]
+        (semantic.tu/with-test-db! {:mode :blank}
+          (let [mock-embedding (repeat 1024 1.0)
+                mock-response {:data [{:object "embedding"
+                                       :embedding (encode-floats-to-base64 mock-embedding)
+                                       :index 0}]
+                               :model "some-model"
+                               :usage {:prompt_tokens 1
+                                       :total_tokens 13}}]
+            (with-redefs [semantic.settings/ee-embedding-provider (constantly provider)
+                          semantic.settings/ee-embedding-model (constantly "mock-model")
+                          semantic.settings/openai-api-key (constantly "xyz")
+                          semantic.settings/openai-api-base-url (constantly "xyz")
+                          http/post (fn post-mock [_url & _options]
+                                      {:status 200
+                                       :headers {"Content-Type" "application/json"}
+                                       :body (json/encode mock-response)})]
+              (let [pgvector (semantic.env/get-pgvector-datasource!)
+                    index-metadata (semantic.env/get-index-metadata)
+                    embedding-model (semantic.env/get-configured-embedding-model)
+                    _ (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+                    {:keys [index metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+                    indexing-state (semantic.indexer/init-indexing-state metadata-row)
+                    gate-docs (mapv #(semantic.gate/search-doc->gate-doc % (java.sql.Timestamp. 1000))
+                                    (semantic.tu/mock-documents))]
+
+                (semantic.gate/gate-documents! pgvector index-metadata gate-docs)
+                (t2/delete! :model/SemanticSearchTokenTracking)
+
+                (testing "Indexing tokens are tracked"
+                  (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
+                  (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
+                  (let [{:keys [request_type total_tokens]}
+                        (t2/select-one :model/SemanticSearchTokenTracking)]
+                    (is (= :index request_type))
+                    (is (= 13 total_tokens))))
+
+                (testing "Querying tokens are tracked"
+                  (t2/delete! :model/SemanticSearchTokenTracking)
+                  (semantic.index/query-index pgvector index {:search-string "elephant"})
+                  (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
+                  (let [{:keys [request_type total_tokens]}
+                        (t2/select-one :model/SemanticSearchTokenTracking)]
+                    (is (= :query request_type))
+                    (is (= 13 total_tokens))))))))))))

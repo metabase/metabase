@@ -157,7 +157,7 @@ describe("Visualization", () => {
           },
         ]);
 
-        expect(chartPathsWithColor(color("brand"))).toHaveLength(2);
+        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2);
       });
     });
 
@@ -180,7 +180,7 @@ describe("Visualization", () => {
           },
         ]);
 
-        expect(chartPathsWithColor(color("brand"))).toHaveLength(2); // "count"
+        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "count"
         expect(chartPathsWithColor(color("accent1"))).toHaveLength(2); // "sum"
       });
     });
@@ -242,9 +242,21 @@ describe("Visualization", () => {
           },
         ]);
 
-        expect(chartPathsWithColor(color("brand"))).toHaveLength(2); // "count"
+        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "count"
         expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "Card2"
       });
     });
+  });
+
+  it("should not show loader and error at the same time (metabase#63410)", async () => {
+    await renderViz(undefined, {
+      error: new Error("This is my error message"),
+      isRunning: true,
+    });
+
+    expect(
+      screen.queryByText("This is my error message"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 });

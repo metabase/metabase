@@ -400,6 +400,7 @@ describe("issue 52806", () => {
     cy.visit("/");
     H.newButton("SQL query").click();
     H.NativeEditor.focus().type("select {{x}}");
+    cy.location().should((location) => expect(location.search).to.eq("?x="));
     cy.findByTestId("main-logo-link").click();
     H.modal().button("Discard changes").click();
     cy.findByTestId("home-page");
@@ -815,5 +816,120 @@ describe("issue 59356", () => {
     getLoader().should("not.exist");
     getEmptyStateMessage().should("be.visible");
     cy.get("@dataset.all").should("have.length", 2);
+  });
+});
+
+describe("issue 63711", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Completions should be visible when there are a lot of options (metabase#63711)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("s");
+
+    cy.log("completions should be scrollable");
+    H.NativeEditor.completions()
+      .findByLabelText("Completions")
+      .then(($el) => {
+        const element = $el[0];
+        cy.wrap(element.scrollHeight).should("be.gt", element.clientHeight);
+      });
+
+    cy.log("completions should not cut off the height of the inner element");
+    H.NativeEditor.completion("SAVEPOINT")
+      .should("be.visible")
+      .then(($outerElement) => {
+        cy.wrap($outerElement)
+          .findByText("AVEPOINT")
+          .should("be.visible")
+          .then(($innerElement) => {
+            cy.wrap($innerElement[0].offsetHeight).should(
+              "be.eq",
+              $outerElement[0].clientHeight,
+            );
+          });
+      });
+  });
+});
+
+describe("issue 66745", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.intercept("PUT", "/api/card/*").as("saveCard");
+  });
+
+  ["row", "bar"].forEach((vizType) => {
+    it(`should not break visualization on native query column rename (metabase#63711) - ${vizType}`, () => {
+      H.createNativeQuestion(
+        {
+          name: `66745 - ${vizType}`,
+          native: {
+            query:
+              'SELECT \'Category 1\' AS CATEGORY_NAME, \'Category 2\' AS CATEGORY_NAME2, 100 AS "Total", 60 AS "Hello", 40 AS "World"',
+          },
+          display: vizType,
+          visualization_settings: {
+            "graph.dimensions": ["CATEGORY_NAME"],
+            "graph.metrics": ["Total", "World"],
+          },
+        },
+        {
+          wrapId: true,
+          visitQuestion: true,
+        },
+      );
+
+      cy.findByTestId("query-builder-main")
+        .findByText("Open Editor")
+        .should("be.visible")
+        .click();
+
+      H.NativeEditor.focus().type('{backspace}2"');
+
+      getRunQueryButton().click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Total").should("be.visible");
+        cy.findByText("World").should("not.exist");
+      });
+
+      cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+
+      H.modal().findByText("Save").click();
+
+      cy.wait("@saveCard");
+
+      cy.findByTestId("qb-header-action-panel")
+        .findByText("Save")
+        .should("not.exist");
+
+      H.visitQuestion("@questionId");
+
+      cy.wait("@getCard");
+      cy.wait("@cardQuery");
+
+      // eslint-disable-next-line no-unscoped-text-selectors
+      cy.findByText("Something’s gone wrong").should("not.exist");
+
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Total").should("be.visible");
+        cy.findByText("World").should("not.exist");
+      });
+
+      H.openVizSettingsSidebar();
+      H.leftSidebar().within(() => {
+        cy.findAllByPlaceholderText("Select a field").should("have.length", 2);
+        cy.findAllByPlaceholderText("Select a field")
+          .eq(1)
+          .should("have.value", "Total");
+      });
+    });
   });
 });

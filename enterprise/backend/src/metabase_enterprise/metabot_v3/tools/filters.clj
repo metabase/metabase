@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -148,18 +148,18 @@
 (defn- query-metric*
   [{:keys [metric-id filters group-by] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
-        mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+        mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                         lib/remove-all-breakouts)
+        field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
-        filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         query (as-> base-query $q
                 (reduce add-filter
                         $q
-                        (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) filters))
+                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) filters))
                 (reduce add-breakout
                         $q
-                        (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) group-by)))
+                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
@@ -232,11 +232,11 @@
 (defn- query-model*
   [{:keys [model-id fields filters aggregations group-by order-by limit] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card model-id)
-        mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+        mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
+        field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
-        filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
-        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -278,18 +278,86 @@
         {:output (str "No model found with model_id " model-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
+(defn- resolve-datasource
+  "Resolve datasource parameters to [field-id-prefix base-query] tuple.
+   Accepts either {:table-id id} or {:model-id id}."
+  [{:keys [table-id model-id]}]
+  (cond
+    model-id
+    [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
+
+    table-id
+    [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
+
+    :else
+    (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true}))))
+
+(defn- query-datasource*
+  [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
+  (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
+        visible-cols (lib/visible-columns base-query)
+        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
+        projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
+                                                             (let [column (cond-> column
+                                                                            bucket (assoc :unit bucket))]
+                                                               (lib/display-name base-query -1 column :long))))
+                              resolve-visible-column)
+                        fields)
+        reduce-query (fn [query f coll] (reduce f query coll))
+        query (-> base-query
+                  (reduce-query (fn [query [expr-or-column expr-name]]
+                                  (lib/expression query expr-name expr-or-column))
+                                (filter (comp expression? first) projection))
+                  (add-fields projection)
+                  (reduce-query add-filter (map resolve-visible-column filters))
+                  (reduce-query add-aggregation (map resolve-visible-column aggregations))
+                  (reduce-query add-breakout (map resolve-visible-column group-by))
+                  (reduce-query add-order-by (map resolve-order-by-column order-by))
+                  (add-limit limit))
+        query-id (u/generate-nano-id)
+        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        returned-cols (lib/returned-columns query)]
+    {:type :query
+     :query-id query-id
+     ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
+     :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
+     :result-columns (into []
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           returned-cols)}))
+
+(defn query-datasource
+  "Create a query based on a datasource (table or model)."
+  [{:keys [table-id model-id] :as arguments}]
+  (try
+    (cond
+      (and table-id model-id) (throw (ex-info "Cannot provide both table_id and model_id" {:agent-error? true}))
+      (int? model-id) {:structured-output (query-datasource* arguments)}
+      (int? table-id) {:structured-output (query-datasource* arguments)}
+      model-id        {:output (str "Invalid model_id " model-id)}
+      table-id        {:output (str "Invalid table_id " table-id)}
+      :else           {:output "Either table_id or model_id must be provided"})
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (cond
+                   table-id (str "No table found with table_id " table-id)
+                   model-id (str "No model found with model_id " model-id)
+                   :else "Resource not found")}
+        (metabot-v3.tools.u/handle-agent-error e)))))
+
 (defn- base-query
   [data-source]
   (let [{:keys [table-id query query-id report-id]} data-source
         model-id (lib.util/legacy-string-table-id->card-id table-id)
         handle-query (fn [query query-id]
-                       (let [database-id (:database query)
+                       (let [normalized-query (lib-be/normalize-query query)
+                             database-id (:database normalized-query)
                              _ (api/read-check :model/Database database-id)
-                             mp (lib.metadata.jvm/application-database-metadata-provider database-id)]
+                             mp (lib-be/application-database-metadata-provider database-id)]
                          [(if query-id
                             (metabot-v3.tools.u/query-field-id-prefix query-id)
                             metabot-v3.tools.u/any-prefix-pattern)
-                          (-> (lib/query mp query) lib/append-stage)]))]
+                          (-> (lib/query mp normalized-query) lib/append-stage)]))]
     (cond
       model-id
       (if-let [model-query (metabot-v3.tools.u/card-query model-id)]
@@ -347,12 +415,12 @@
             api/*is-superuser?* true]
     (-> (filter-records #_{:data-source {:tabl-id 3}
                            :filters [{:operation "number-greater-than"
-                                      :field-id "t3/6"
+                                      :field-id "t3-6"
                                       :value 50}]}
          {:data-source {:table-id 1}
           :filters [{:operation "greater-than"
                      :bucket "month-of-year"
-                     :field-id "t1/3"
+                     :field-id "t1-3"
                      :value #_"2020-01-01" 1}]})
         :structured-output :query qp/process-query :data :native_form :query))
   -)

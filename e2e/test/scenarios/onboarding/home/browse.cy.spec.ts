@@ -61,13 +61,13 @@ describe("browse > models", () => {
     cy.get("@open").should("have.been.calledOnce");
     cy.get("@open").should(
       "have.been.calledOnceWithExactly",
-      `/question/${ORDERS_MODEL_ID}-orders-model`,
+      `/model/${ORDERS_MODEL_ID}-orders-model`,
       "_blank",
     );
   });
 });
 
-H.describeWithSnowplow("scenarios > browse", () => {
+describe("scenarios > browse", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -102,6 +102,25 @@ H.describeWithSnowplow("scenarios > browse", () => {
     });
   });
 
+  it("can generate x-ray dashboard from a browse page", () => {
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    cy.findByTestId("browse-schemas").within(() => {
+      cy.findAllByRole("link")
+        .filter(":contains(People)")
+        .should("be.visible")
+        .realHover();
+      cy.findAllByLabelText("X-ray this table").filter(":visible").click();
+    });
+
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "x-ray_clicked",
+      event_detail: "table",
+      triggered_from: "browse_database",
+    });
+  });
+
   it("tracks when a new model creation is initiated", () => {
     cy.visit("/browse/models");
     cy.findByTestId("browse-models-header")
@@ -122,7 +141,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
       .findByLabelText("Create a new metric")
       .should("be.visible")
       .click();
-    cy.findByTestId("entity-picker-modal").should("be.visible");
+    H.miniPicker().should("be.visible");
 
     H.expectNoBadSnowplowEvents();
     H.expectUnstructuredSnowplowEvent({
@@ -152,6 +171,10 @@ H.describeWithSnowplow("scenarios > browse", () => {
     H.browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "learn_about_our_data_clicked",
+    });
     cy.go("back");
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
@@ -187,7 +210,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
   });
 });
 
-H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
+describe("scenarios > browse (EE)", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -302,6 +325,9 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
     cy.log("Visit Model 1");
     cy.findByRole("heading", { name: "Model 1" }).click();
+
+    cy.log("make sure data is loaded");
+    H.tableInteractive().findByText("Rustic Paper Wallet").should("be.visible");
 
     browseModels();
 

@@ -7,7 +7,7 @@ import {
 } from "metabase/admin/performance/utils";
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
-import { has24HourModeSetting } from "metabase/lib/time";
+import { has24HourModeSetting } from "metabase/lib/time-dayjs";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Group, SegmentedControl, Tooltip } from "metabase/ui";
 import type {

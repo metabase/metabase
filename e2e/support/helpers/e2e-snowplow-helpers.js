@@ -1,14 +1,8 @@
 import { updateSetting } from "e2e/support/helpers";
 
-const { IS_ENTERPRISE } = Cypress.env();
-const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
-const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
+const SNOWPLOW_URL = "http://localhost:9090";
 const SNOWPLOW_INTERVAL = 100;
 const SNOWPLOW_TIMEOUT = 1000;
-
-export const describeWithSnowplow = HAS_SNOWPLOW ? describe : describe.skip;
-export const describeWithSnowplowEE =
-  HAS_SNOWPLOW && IS_ENTERPRISE ? describe : describe.skip;
 
 export const enableTracking = () => {
   updateSetting("anon-tracking-enabled", true);
@@ -108,6 +102,7 @@ export const expectNoBadSnowplowEvents = () => {
 };
 
 const sendSnowplowRequest = (url) => {
+  cy.log("Send a Snowplow micro request");
   return cy.request({
     url: `${SNOWPLOW_URL}/${url}`,
     json: true,

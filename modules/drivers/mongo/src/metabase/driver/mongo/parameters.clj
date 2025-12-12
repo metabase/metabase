@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.parameters
+  (:refer-clojure :exclude [get-in])
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
@@ -15,7 +15,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [get-in]])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
@@ -212,4 +213,4 @@
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."
   [_driver inner-query]
   (let [param->value (params.values/query->params-map inner-query)]
-    (update inner-query :query (partial walk/postwalk (partial parse-and-substitute param->value)))))
+    (update inner-query :query (partial perf/postwalk (partial parse-and-substitute param->value)))))

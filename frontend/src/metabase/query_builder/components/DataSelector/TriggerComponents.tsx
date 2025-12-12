@@ -44,8 +44,7 @@ export function Trigger({
       component="span"
       align="center"
       className={
-        className ||
-        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, CS.textDefault)
+        className || cx(CS.px2, CS.py2, CS.cursorPointer, CS.textDefault)
       }
       data-testid="trigger"
       style={style}

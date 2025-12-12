@@ -5,6 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -12,6 +14,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new [[TimelineEvent]]."
   [_route-params
@@ -33,7 +39,7 @@
     (when-not timeline
       (throw (ex-info (tru "Timeline with id {0} not found" timeline_id)
                       {:status-code 404})))
-    (collection/check-write-perms-for-collection (:collection_id timeline))
+    (api/create-check :model/TimelineEvent {:timeline timeline})
     ;; todo: revision system
     (let [parsed   (if (nil? timestamp)
                      (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
@@ -49,14 +55,26 @@
                                        :collection_id (:collection_id timeline)}
                                 (boolean source)      (assoc :source source)
                                 (boolean question_id) (assoc :question_id question_id)))
-      (first (t2/insert-returning-instances! :model/TimelineEvent tl-event)))))
+      (u/prog1 (first (t2/insert-returning-instances! :model/TimelineEvent tl-event))
+        ;; We need to check if ee-code relying on these events are present otherwise this call will throw
+        ;; because the event is not defined.
+        (when config/ee-available?
+          (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/TimelineEvent id))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a [[TimelineEvent]]."
   [{:keys [id]} :- [:map
@@ -81,12 +99,21 @@
                 (u/select-keys-when timeline-event-updates
                                     :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
                                     :non-nil #{:name}))
-    (t2/select-one :model/TimelineEvent :id id)))
+    (u/prog1 (t2/select-one :model/TimelineEvent :id id)
+      (when config/ee-available?
+        (events/publish-event! :event/timeline-update {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*})))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[TimelineEvent]]."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TimelineEvent id)
-  (t2/delete! :model/TimelineEvent :id id)
+  (let [timeline-event (api/write-check :model/TimelineEvent id)]
+    (t2/delete! :model/TimelineEvent :id id)
+    (when config/ee-available?
+      (events/publish-event! :event/timeline-delete {:object (t2/select-one :model/Timeline :id (:timeline_id timeline-event)) :user-id api/*current-user-id*})))
   api/generic-204-no-content)

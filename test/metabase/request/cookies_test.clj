@@ -210,3 +210,77 @@
                                                   :path      "/"
                                                   :http-only true}}}
                    (request/set-session-cookies request response session request-time)))))))))
+
+(deftest cookie-expires-with-session-expiration-test
+  (testing "Cookie max-age respects session expires_at"
+    (mt/with-temp-env-var-value! [:max-session-age "20160"]
+      (mt/with-temporary-setting-values [session-timeout nil]
+        (let [now (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+              expires-in-1-hour (t/plus now (t/hours 1))
+              session {:key (random-uuid)
+                       :type :normal
+                       :expires_at expires-in-1-hour}
+              request {}
+              response {}
+              result (request.cookies/set-session-cookies request response session now)
+              cookie-options (get-in result [:cookies "metabase.SESSION"])]
+          (is (some? (:max-age cookie-options))
+              "Cookie should have max-age set")
+          ;; Should be ~3600 seconds (1 hour), allow some variance for test execution time
+          (is (< 3595 (:max-age cookie-options) 3605)
+              "Cookie max-age should be approximately 1 hour"))))))
+
+(deftest cookie-max-age-minimum-of-session-and-default-test
+  (testing "Cookie max-age is minimum of session expires_at and default max-session-age"
+    (mt/with-temp-env-var-value! [:max-session-age "20160"]
+      (mt/with-temporary-setting-values [session-timeout nil]
+        (let [now (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+              ;; Session expires in 30 days, but max-session-age is 14 days
+              expires-in-30-days (t/plus now (t/days 30))
+              session {:key (random-uuid)
+                       :type :normal
+                       :expires_at expires-in-30-days}
+              request {:body {:remember true}} ; Request permanent cookies
+              response {}
+              result (request.cookies/set-session-cookies request response session now)
+              cookie-options (get-in result [:cookies "metabase.SESSION"])
+              default-max-age (* 60 20160)] ; 14 days in seconds
+          (is (some? (:max-age cookie-options))
+              "Cookie should have max-age set")
+          ;; Should use default max-age since it's shorter
+          (is (= default-max-age (:max-age cookie-options))
+              "Cookie max-age should use default since it's shorter than session expiration"))))))
+
+(deftest cookie-expires-overrides-permanent-setting-test
+  (testing "Session expires_at overrides permanent cookie settings"
+    (mt/with-temp-env-var-value! [:max-session-age "20160"]
+      (mt/with-temporary-setting-values [session-timeout nil]
+        (let [now (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+              expires-in-1-day (t/plus now (t/days 1))
+              session {:key (random-uuid)
+                       :type :normal
+                       :expires_at expires-in-1-day}
+              request {:body {:remember true}} ; User requested permanent cookies
+              response {}
+              result (request.cookies/set-session-cookies request response session now)
+              cookie-options (get-in result [:cookies "metabase.SESSION"])]
+          (is (some? (:max-age cookie-options))
+              "Cookie should have max-age set")
+          ;; Should use session expiration (~86400 seconds = 1 day), not default 14 days
+          (is (< 86390 (:max-age cookie-options) 86410)
+              "Cookie max-age should use session expiration (1 day), not default (14 days)"))))))
+
+(deftest cookie-no-max-age-without-session-expiration-test
+  (testing "Cookie has no max-age when session has no expires_at and remember is false"
+    (mt/with-temp-env-var-value! [:max-session-age "20160"]
+      (mt/with-temporary-setting-values [session-timeout nil]
+        (let [now (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+              session {:key (random-uuid)
+                       :type :normal
+                       :expires_at nil}
+              request {:body {:remember false}} ; Don't remember
+              response {}
+              result (request.cookies/set-session-cookies request response session now)
+              cookie-options (get-in result [:cookies "metabase.SESSION"])]
+          (is (nil? (:max-age cookie-options))
+              "Cookie should not have max-age when no expiration and remember is false"))))))

@@ -1,5 +1,8 @@
 const { embeddingSdkComponentTestConfig } = require("./config");
 
 module.exports = {
-  component: embeddingSdkComponentTestConfig,
+  component: {
+    ...embeddingSdkComponentTestConfig,
+    baseUrl: undefined, // baseUrl is not a valid *component* config option,
+  },
 };

@@ -1,0 +1,92 @@
+{{> metabase/channel/email/_dashsub_alert_header.hbs }}
+  <body style="padding: 0px; margin: 0px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 48px; table-layout: fixed;">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 40px; border: 1px solid rgba(7, 23, 34, 0.14)">
+            <div style="text-align: center; height: 45px; margin-bottom: 32px;">
+              <img width="35.55" height="45" src="{{context.application_logo_url}}" alt="Metabase logo"/>
+            </div>
+
+            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 8px 0; color: #2F3C45;">
+              {{#if payload.event_info.parent_comment}}
+                {{payload.event_info.author}} replied to a thread
+              {{else}}
+                {{payload.event_info.author}} left a comment on a {{payload.event_info.entity_type}}
+              {{/if}}
+            </h1>
+
+            {{!-- Document link --}}
+            <div style="text-align: center; margin-bottom: 32px;">
+              <a href="{{context.site_url}}{{payload.event_info.document_href}}" style="font-size: 15px; line-height: 165%; font-weight: 700; color: {{context.application_color}}; text-decoration: none;">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentcolor" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                  <path d="M8.848 1.25c.451 0 .886.175 1.212.487l3.152 3.027c.344.33.538.786.538 1.262V12.8c0 .527-.219 1.026-.597 1.39-.377.362-.882.56-1.403.56h-7.5c-.52 0-1.026-.199-1.403-.56-.331-.318-.54-.74-.587-1.194l-.01-.196V3.2c0-.527.218-1.026.597-1.39.377-.361.882-.56 1.403-.56h4.598zM4.25 2.75a.528.528 0 0 0-.364.143.427.427 0 0 0-.136.307v9.6l.009.082c.017.081.059.16.127.225a.528.528 0 0 0 .364.143h7.5a.528.528 0 0 0 .364-.143.428.428 0 0 0 .136-.307V6.575H9.249A.575.575 0 0 1 8.674 6V2.75H4.25zm6.4 7.425a.576.576 0 0 1 0 1.15H5.4a.575.575 0 0 1 0-1.15h5.25zm0-2.25a.576.576 0 0 1 0 1.15H5.4a.575.575 0 0 1 0-1.15h5.25zm-3.651-2.25a.576.576 0 0 1 0 1.15h-1.6a.575.575 0 0 1 0-1.15H7zm2.825-.25h1.91L9.824 3.59v1.834z" />
+                </svg>
+
+                <span style="margin-left: 4px; vertical-align: middle;">{{payload.event_info.entity_title}}</span>
+              </a>
+            </div>
+
+            {{!-- Comment block --}}
+            <div style="background-color: #FAFAFB; border-radius: 12px; padding: 24px; margin: 0 auto 32px auto;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+                {{#if payload.event_info.parent_comment}}
+                <tr style="opacity: 0.5;" class="comment-row">
+                  <td width="40" valign="top" style="padding-right: 16px;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #A989C5; color: #ffffff; font-weight: 700; font-size: 12px; line-height: 36px; text-align: center; text-transform: uppercase; overflow: hidden;">
+                      {{initials payload.event_info.parent_author}}
+                    </div>
+                  </td>
+                  <td valign="top" style="padding-bottom: 24px;">
+                    <div style="font-weight: 700; font-size: 0.875rem; color: #656F76; margin-bottom: 6px; padding-top: 9px;">{{payload.event_info.parent_author}}</div>
+                    <div style="font-size: 0.875rem; color: #656F76; line-height: 20px;">{{{payload.event_info.parent_comment}}}</div>
+                  </td>
+                </tr>
+                {{/if}}
+                <tr class="comment-row">
+                  <td width="40" valign="top" style="padding-right: 16px;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #A6CF57; color: #ffffff; font-weight: 700; font-size: 12px; line-height: 36px; text-align: center; text-transform: uppercase; overflow: hidden;">
+                      {{initials payload.event_info.author}}
+                    </div>
+                  </td>
+                  <td valign="top">
+                    <div style="font-weight: 700; font-size: 0.875rem; color: #2F3C45; margin-bottom: 6px; padding-top: 9px;">{{payload.event_info.author}}</div>
+                    <div style="font-size: 0.875rem; color: #2F3C45; line-height: 20px;">{{{payload.event_info.comment}}}</div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            {{!-- CTA button --}}
+            <div style="text-align: center; margin: 12px 0 32px 0;">
+              <a href="{{context.site_url}}{{payload.event_info.comment_href}}"
+                 style="display: inline-block; background-color: {{context.application_color}}; color: #ffffff !important; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 12px 16px; text-decoration: none;">
+                 Open in Metabase
+              </a>
+            </div>
+            <hr style="margin-top: 32px; margin-bottom: 32px;">
+            <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: #656F76; text-align: center;">
+              Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
+            </div>
+          </div>
+
+          <div style="margin-top: 40px;">
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              Metabase, Inc.
+            </div>
+
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              9740 Campo Rd., Suite 1029, Spring Valley, CA 91977
+            </div>
+
+            <div style="text-align: center; margin-top: 8px;">
+              <a href="https://www.metabase.com" style="color: #656F76 !important; font-size: 13px;">
+                www.metabase.com
+              </a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

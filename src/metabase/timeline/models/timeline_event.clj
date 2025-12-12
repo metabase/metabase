@@ -46,6 +46,10 @@
                      (t2/select-one 'Timeline :id (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
+(defmethod mi/can-create? :model/TimelineEvent
+  [_ {:keys [timeline]}]
+  (mi/can-create? :model/Timeline {:collection_id (:collection_id timeline)}))
+
 ;;;; hydration
 
 (methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :timeline]

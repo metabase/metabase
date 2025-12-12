@@ -1,6 +1,5 @@
 (ns metabase-enterprise.metabot-v3.client.schema
   (:require
-   [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -11,13 +10,14 @@
    :system :user :assistant :tool])
 
 (mr/def ::message
-  [:and
-   [:map
-    {:decode/api-response #(update-keys % metabot-v3.u/safe->kebab-case-en)}
-    [:role                         ::role]
-    [:content     {:optional true} [:maybe :string]]
-    [:navigate-to {:optional true} [:maybe :string]]]
-   [:map {:encode/api-request #(update-keys % metabot-v3.u/safe->snake_case_en)}]])
+  [:map
+   [:role                          ::role]
+   [:content    {:optional true}   [:maybe :string]]
+   [:tool_calls {:optional true}   [:maybe [:vector [:map
+                                                     [:id :string]
+                                                     [:name :string]
+                                                     [:arguments :string]]]]]
+   [:tool_call_id {:optional true} [:maybe :string]]])
 
 (mr/def ::messages
   [:sequential ::message])
@@ -29,8 +29,15 @@
    [:name :string]
    [:description [:maybe :string]]])
 
+(mr/def ::usage
+  "Usage information with break down by model"
+  [:map-of :string [:map
+                    [:prompt number?]
+                    [:completion number?]]])
+
 (mr/def ::ai-service.response
   "Schema of the AI agent response."
   [:map
    [:messages ::messages]
-   [:state :map]])
+   [:state :map]
+   [:usage ::usage]])

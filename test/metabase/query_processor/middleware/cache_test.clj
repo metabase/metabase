@@ -4,12 +4,14 @@
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -21,7 +23,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -134,7 +136,11 @@
    :min-duration-ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
-  (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :database 1, :stages [{:abc :def}]} query-kvs))
+  (merge {:cache-strategy (ttl-strategy)
+          :lib/type       :mbql/query
+          :database       1
+          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2, :abc :def}]}
+         query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
@@ -234,7 +240,7 @@
 (deftest max-ttl-test
   (testing (str "Check that `query-caching-max-ttl` is respected. Whenever a new query is cached the cache should "
                 "evict any entries older that `query-caching-max-ttl`. Set max-ttl to 100 ms, run query `:abc`, "
-                "then wait 200 ms, and run `:def`. This should trigger the cache flush for entries past "
+                "then wait 200 ms, and run the query. This should trigger the cache flush for entries past "
                 "`:max-ttl`; and the cached entry for `:abc` should be deleted. Running `:abc` a subsequent time "
                 "should not return cached results")
     (with-mock-cache! [purge-chan]
@@ -242,7 +248,7 @@
         (run-query)
         (mt/wait-for-result purge-chan)
         (Thread/sleep 200)
-        (run-query :query :def)
+        (run-query :stages [{:lib/type :mbql.stage/native, :native "SELECT abc;"}])
         (mt/wait-for-result purge-chan)
         (is (= :not-cached
                (run-query)))))))
@@ -329,17 +335,58 @@
                                      :hash   some?}
                      :row_count     1
                      :status        :completed}
-                    (dissoc original-result :data)))
+                    original-result))
             (is (=? {:cache/details {:cached     true
                                      :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
                                      :hash       some?}
                      :row_count     1
                      :status        :completed}
-                    (dissoc cached-result :data)))
+                    cached-result))
             (is (= (seq (-> original-result :cache/details :hash))
                    (seq (-> cached-result :cache/details :hash))))
             (is (= (dissoc original-result :cache/details)
                    (dissoc cached-result :cache/details)))))))))
+
+(deftest postgres-domain-can-be-cached-test
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+  (mt/test-driver :postgres
+    (mt/dataset (mt/dataset-definition
+                 "domain_dataset"
+                 [["placeholder"
+                   [{:field-name "foo", :base-type :type/Integer}]
+                   [[1]]]])
+      (let [spec (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
+            dom-name (str "dom_" (mt/random-name))]
+        (jdbc/execute! spec [(format "CREATE DOMAIN %s AS text CHECK (VALUE <> '')" dom-name)])
+        (with-mock-cache! [save-chan]
+          (mt/with-temporary-setting-values [enable-query-caching true]
+            (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
+              (let [query           (mt/native-query {:query (format "SELECT 'foo'::%s;" dom-name)})
+                    query           (assoc query :cache-strategy (ttl-strategy))
+                    original-result (qp/process-query query)
+                                    ;; clear any existing values in the `save-chan`
+                    _               (while (a/poll! save-chan))
+                    _               (mt/wait-for-result save-chan)
+                    cached-result   (qp/process-query query)]
+                (is (= [["foo"]]
+                       (mt/rows original-result)))
+                (is (= [["foo"]]
+                       (mt/rows cached-result)))
+                (is (=? {:cache/details {:stored true
+                                         :hash   some?}
+                         :row_count     1
+                         :status        :completed}
+                        original-result))
+                (is (=? {:cache/details {:cached     true
+                                         :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
+                                         :hash       some?}
+                         :row_count     1
+                         :status        :completed}
+                        cached-result))
+                (is (= (seq (-> original-result :cache/details :hash))
+                       (seq (-> cached-result :cache/details :hash))))
+                (is (= (dissoc original-result :cache/details)
+                       (dissoc cached-result :cache/details)))))))))))
 
 (deftest e2e-test
   (testing "Test that the caching middleware actually working in the context of the entire QP"
@@ -465,7 +512,8 @@
                           (is (=? {:cache/details {:cached     true
                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
                                                    :hash       some?
-                                                   ;; TODO: this check is not working if the key is not present in the data
+                                                   ;; TODO: this check is not working if the key is not present in the
+                                                   ;; data
                                                    :cache-hash some?}
                                    :row_count     5
                                    :status        :completed}

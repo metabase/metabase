@@ -27,6 +27,7 @@ import {
 import type {
   RecentContexts,
   RecentItem,
+  SearchModel,
   SearchRequest,
   SearchResult,
   SearchResultId,
@@ -63,12 +64,15 @@ export type EntityPickerModalOptions = {
   confirmButtonText?: string | ((model?: string) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
+  showDatabases?: boolean;
+  showLibrary?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
   hasRecents: true,
+  showLibrary: true,
 };
 
 export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
@@ -108,6 +112,7 @@ export interface EntityPickerModalProps<
   searchExtraButtons?: ReactNode[];
   children?: ReactNode;
   disableCloseOnEscape?: boolean;
+  searchModels?: (SearchModel | "table")[];
 }
 
 export function EntityPickerModal<
@@ -134,6 +139,7 @@ export function EntityPickerModal<
   isLoadingTabs = false,
   disableCloseOnEscape = false,
   children,
+  searchModels: _searchModels,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
@@ -147,7 +153,10 @@ export function EntityPickerModal<
         refetchOnMountOrArgChange: true,
       },
     );
-  const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+  const searchModels = useMemo(
+    () => _searchModels || getSearchModels(passedTabs),
+    [passedTabs, _searchModels],
+  );
 
   const folderModels = useMemo(
     () => getSearchFolderModels(passedTabs),

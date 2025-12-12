@@ -8,7 +8,7 @@ const SDK_CLI_DIST_PATH = path.join(__dirname, "/resources/embedding-sdk/dist");
 const SDK_PACKAGE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-package";
 const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
+  __dirname + "/frontend/src/embedding-sdk-bundle";
 const SDK_CLI_PATH = path.join(
   __dirname,
   "/enterprise/frontend/src/embedding-sdk-package/cli",

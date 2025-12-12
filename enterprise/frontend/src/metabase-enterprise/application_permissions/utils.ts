@@ -1,17 +1,16 @@
+import type { User } from "metabase-types/api";
 import type { AdminPathKey } from "metabase-types/store";
 
-import type { UserWithApplicationPermissions } from "./types/user";
-
-const canAccessMonitoringItems = (user?: UserWithApplicationPermissions) =>
+const canAccessMonitoringItems = (user?: User) =>
   user?.permissions?.can_access_monitoring ?? false;
 
-const canAccessSettings = (user?: UserWithApplicationPermissions) =>
+const canAccessSettings = (user?: User) =>
   user?.permissions?.can_access_setting ?? false;
 
 export const monitoringPermissionAllowedPathGetter = (
-  user?: UserWithApplicationPermissions,
+  user?: User,
 ): AdminPathKey[] => (canAccessMonitoringItems(user) ? ["tools"] : []);
 
 export const settingsPermissionAllowedPathGetter = (
-  user?: UserWithApplicationPermissions,
+  user?: User,
 ): AdminPathKey[] => (canAccessSettings(user) ? ["settings"] : []);

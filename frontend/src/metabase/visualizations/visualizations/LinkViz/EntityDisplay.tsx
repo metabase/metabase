@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import Markdown from "metabase/common/components/Markdown";
-import { color } from "metabase/lib/colors";
+import { getIcon } from "metabase/lib/icon";
 import { isEmpty } from "metabase/lib/validate";
 import { Icon } from "metabase/ui";
 
@@ -56,7 +56,7 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon color={color("brand")} name={urlIcon} />
+        <Icon c={"brand"} name={urlIcon} />
         <EllipsifiedEntityContainer>
           {!isEmpty(url) ? url : t`Choose a link`}
         </EllipsifiedEntityContainer>
@@ -66,7 +66,7 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
 };
 
 function getSearchIconName(entity: WrappedUnrestrictedLinkEntity) {
-  const entityIcon = entity.getIcon?.() ?? { name: "link" };
+  const entityIcon = getIcon(entity) ?? { name: "link" };
 
   // we need to change this icon to make it match the icon in the search results
   if (entity.model === "table") {

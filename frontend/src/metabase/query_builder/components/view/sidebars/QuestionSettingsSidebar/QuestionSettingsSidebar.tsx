@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -8,7 +7,7 @@ import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { onCloseQuestionSettings } from "metabase/query_builder/actions";
-import { Stack } from "metabase/ui";
+import { Stack, useModalsStack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { ModelCacheManagementSection } from "../ModelCacheManagementSection";
@@ -32,24 +31,26 @@ export const QuestionSettingsSidebar = ({
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionSettings());
 
-  const [page, setPage] = useState<"default" | "caching">("default");
-  const [isOpen, setIsOpen] = useState(false);
+  const { open, state, close } = useModalsStack(["default", "caching"]);
+
+  const currentModal: keyof typeof state = state.caching
+    ? "caching"
+    : "default";
 
   useMount(() => {
-    // this component is not rendered until it is "open"
-    // but we want to set isOpen after it mounts to get
+    // the modal is not rendered until it is "open"
+    // but we want to set it open after it mounts to get
     // pretty animations
-    setIsOpen(true);
+    open("default");
   });
-
-  const title = useMemo(() => getTitle(question), [question]);
 
   return (
     <>
       <Sidesheet
-        title={title}
+        title={getTitle(question)}
+        isOpen={state.default}
         onClose={handleClose}
-        isOpen={isOpen}
+        closeOnEscape={currentModal === "default"}
         data-testid="question-settings-sidebar"
       >
         {question.type() === "model" && (
@@ -64,19 +65,21 @@ export const QuestionSettingsSidebar = ({
               <PLUGIN_CACHING.SidebarCacheSection
                 model="question"
                 item={question}
-                setPage={setPage}
-                key={page}
+                setPage={() => open("caching")}
+                key={currentModal}
               />
             </Stack>
           </SidesheetCard>
         )}
       </Sidesheet>
-      {page === "caching" && (
+      {currentModal === "caching" && (
         <PLUGIN_CACHING.SidebarCacheForm
           item={question}
           model="question"
-          onBack={() => setPage("default")}
+          isOpen={state.caching}
           onClose={handleClose}
+          overlayProps={{ bg: "transparent" }}
+          onBack={() => close("caching")}
           pt="md"
         />
       )}

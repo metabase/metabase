@@ -166,3 +166,8 @@
     (sql/format
      {(if materialized? :drop-materialized-view :drop-view) [[:if-exists [:raw qualified-view]]]}
      :dialect (sql.qp/quote-style driver))))
+
+(defmethod sql.tx/generated-column-sql :sqlserver [_ expr]
+  (format "AS (%s)" expr))
+
+(defmethod sql.tx/generated-column-infers-type? :sqlserver [_] true)

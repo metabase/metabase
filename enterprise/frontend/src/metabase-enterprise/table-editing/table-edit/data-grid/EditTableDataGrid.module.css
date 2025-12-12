@@ -2,7 +2,7 @@
 
 .tableRow {
   &:hover .tableBodyCell {
-    background-color: var(--mb-base-color-blue-5);
+    background-color: var(--mb-color-brand-alpha-04);
   }
 
   &:hover .tableHeaderCell {
@@ -11,15 +11,15 @@
   }
 
   &[data-row-selected="true"] .tableBodyCell {
-    background-color: var(--mb-base-color-blue-5);
+    background-color: var(--mb-color-brand-alpha-04);
   }
 }
 
 .tableHeaderContainer {
-  --cell-bg-color: var(--mb-base-color-orion-5);
-  --cell-hover-bg-color: var(--mb-base-color-orion-5);
+  --cell-bg-color: var(--mb-color-background-light);
+  --cell-hover-bg-color: var(--mb-color-background-light);
 
-  background-color: var(--mb-base-color-orion-5);
+  background-color: var(--mb-color-background-light);
 
   & .tableRow {
     background-color: transparent;

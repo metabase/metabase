@@ -3,6 +3,7 @@
 
   Drill-thrus are not part of MBQL; they are a set of actions one can take to transform a query.
   For example, adding a filter like `created_at < 2022-01-01`, or following a foreign key."
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.schema :as-alias lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
@@ -16,7 +17,8 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (mr/def ::pivot-types
   [:enum :category :location :time])
@@ -193,8 +195,8 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type     [:= :drill-thru/automatic-insights]]
-    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]
+    [:type       [:= :drill-thru/automatic-insights]]
+    [:lib/type   [:= :metabase.lib.drill-thru/drill-thru]]
     [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
     [:dimensions [:ref ::context.row]]]])
 

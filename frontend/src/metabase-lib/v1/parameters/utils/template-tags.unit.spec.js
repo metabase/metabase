@@ -16,6 +16,17 @@ describe("parameters/utils/cards", () => {
       expect(getTemplateTags(card)).toEqual([]);
     });
 
+    it("should return an empty array for an internal query", () => {
+      const card = {
+        dataset_query: {
+          type: "internal",
+          fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
+          args: [],
+        },
+      };
+      expect(getTemplateTags(card)).toEqual([]);
+    });
+
     it("should return an empty array for a non-parameterized query", () => {
       const card = {
         dataset_query: {

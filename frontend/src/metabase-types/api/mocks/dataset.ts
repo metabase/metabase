@@ -5,9 +5,12 @@ import type {
   EmbedDataset,
   EmbedDatasetData,
   ErrorEmbedDataset,
+  Field,
   ResultsMetadata,
   TemplateTag,
-} from "metabase-types/api/dataset";
+} from "metabase-types/api";
+
+import { createMockField } from "./field";
 
 export const createMockColumn = (
   data: Partial<DatasetColumn> = {},
@@ -64,7 +67,7 @@ export const createMockDatasetData = ({
   rows: [],
   cols,
   rows_truncated: 0,
-  results_metadata: createMockResultsMetadata(cols),
+  results_metadata: createMockResultsMetadata(cols?.map(createMockField)),
   native_form: { query: "" },
   ...opts,
 });
@@ -137,7 +140,7 @@ export const createMockTemplateTag = (
 });
 
 export const createMockResultsMetadata = (
-  columns: DatasetColumn[] = [createMockColumn()],
+  columns: Field[] = [createMockField()],
   opts?: Partial<ResultsMetadata>,
 ): ResultsMetadata => ({
   columns,

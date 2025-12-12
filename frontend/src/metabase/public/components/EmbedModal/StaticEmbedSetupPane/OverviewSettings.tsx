@@ -6,12 +6,13 @@ import { jt, t } from "ttag";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { MoreServerSnippetExamplesLink } from "metabase/embedding/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";
 import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbedResourceType,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
-import { Box, Center, Stack, Text } from "metabase/ui";
+import { Stack, Text } from "metabase/ui";
 
 import { ClientEmbedCodePane } from "./ClientEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
@@ -92,18 +93,7 @@ export const OverviewSettings = ({
             onCopy={() => onClientCodeCopy(selectedClientCodeOptionId)}
           />
 
-          <Box my="1rem">
-            <Center>
-              <h4>{jt`More ${(
-                <ExternalLink
-                  key="examples"
-                  href="https://github.com/metabase/embedding-reference-apps"
-                >
-                  {t`examples on GitHub`}
-                </ExternalLink>
-              )}`}</h4>
-            </Center>
-          </Box>
+          <MoreServerSnippetExamplesLink />
         </Stack>
       }
     />

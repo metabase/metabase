@@ -27,12 +27,6 @@ export const DashboardLeaveConfirmationModal = withRouter(
       router,
     });
 
-    const onSave = async () => {
-      dispatch(dismissAllUndo());
-      await dispatch(updateDashboardAndCards());
-      confirm?.();
-    };
-
     const content = isNavigatingToCreateADashboardQuestion(nextLocation)
       ? {
           title: t`Save your changes?`,
@@ -40,6 +34,7 @@ export const DashboardLeaveConfirmationModal = withRouter(
           actionBtn: {
             message: t`Save changes`,
           },
+          onConfirm: () => dispatch(updateDashboardAndCards()),
         }
       : {
           title: t`Discard your changes?`,
@@ -77,7 +72,11 @@ export const DashboardLeaveConfirmationModal = withRouter(
             <Button
               color={content.actionBtn.color}
               variant="filled"
-              onClick={onSave}
+              onClick={async () => {
+                dispatch(dismissAllUndo());
+                await content.onConfirm?.();
+                confirm?.();
+              }}
             >
               {content.actionBtn.message}
             </Button>

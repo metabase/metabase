@@ -1,12 +1,13 @@
 (ns metabase.driver.druid-jdbc
+  (:refer-clojure :exclude [mapv])
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -14,7 +15,8 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (java.sql ResultSet Types)
    (java.time LocalDate LocalDateTime ZonedDateTime)))
@@ -153,6 +155,10 @@
                    ::json_value)]
     [operator parent-identifier (h2x/literal (str/join "." (cons "$" (rest nfc-path))))]))
 
+(defmethod driver.sql/json-field-length :druid-jdbc
+  [_driver json-field-identifier]
+  [:length [:to_json_string json-field-identifier]])
+
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
   [driver [_ id-or-name opts :as clause]]
   (let [stored-field  (when (integer? id-or-name)
@@ -164,7 +170,7 @@
       (if (or (::sql.qp/forced-alias opts)
               (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
         (keyword (driver-api/qp.add.source-alias opts))
-        (walk/postwalk #(if (h2x/identifier? %)
+        (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)
                        identifier)))))

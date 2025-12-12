@@ -8,17 +8,12 @@ import S from "./TagEditorParam.module.css";
 
 type BoxPropsWithChildren = BoxProps & { children: React.ReactNode };
 interface ContainerLabelProps extends BoxPropsWithChildren {
-  paddingTop?: boolean;
   id?: string | undefined;
 }
 
-const ContainerLabel = ({
-  paddingTop,
-  children,
-  ...props
-}: ContainerLabelProps) => {
+const ContainerLabel = ({ children, ...props }: ContainerLabelProps) => {
   return (
-    <Box className={S.ContainerLabel} pt={paddingTop ? "sm" : 0} {...props}>
+    <Box className={S.ContainerLabel} {...props}>
       {children}
     </Box>
   );

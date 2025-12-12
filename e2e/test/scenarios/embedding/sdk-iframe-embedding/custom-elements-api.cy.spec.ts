@@ -14,7 +14,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   beforeEach(() => {
     cy.signInAsAdmin();
     H.prepareSdkIframeEmbedTest({
-      withTokenFeatures: true,
+      withToken: "bleeding-edge",
     });
   });
 
@@ -389,6 +389,56 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
   });
 
+  describe("<metabase-metabot>", () => {
+    it("should load the embedded Metabot component", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot />
+      `);
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("metabot chat should be interactive");
+        cy.findByText("Ask questions to AI.").should("be.visible");
+        cy.findByPlaceholderText("Ask AI a question...").type("Foo{enter}");
+        cy.findByText(
+          "Metabot is currently offline. Please try again later.",
+        ).should("be.visible");
+
+        cy.log(
+          "uses sidebar layout by default when no layout attribute is provided",
+        );
+        cy.findByTestId("metabot-question-container").should(
+          "have.attr",
+          "data-layout",
+          "sidebar",
+        );
+
+        cy.log("should show disclaimer text in sidebar layout");
+        cy.findAllByText("AI isn't perfect. Double-check results.").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("should apply the data-layout attribute when layout is set to stacked", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot layout="stacked" />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("metabot-question-container")
+        .should("have.attr", "data-layout", "stacked");
+
+      cy.log("should show disclaimer text in stacked layout");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("AI isn't perfect. Double-check results.")
+        .should("be.visible");
+    });
+  });
+
   describe("common checks", () => {
     describe("should be permissive with json attributes", () => {
       // NOTE: pay attention if you use initialFilters for these tests, as when the filters are not parsed correctly
@@ -414,6 +464,26 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         H.getSimpleEmbedIframeContent().should("contain", "Orders");
         H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
       });
+    });
+
+    it("should not define color-scheme meta tag on embeds (metabase#65533)", () => {
+      H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="new" />
+      `);
+
+      H.waitForSimpleEmbedIframesToLoad();
+
+      cy.get("iframe[data-metabase-embed]")
+        .its("0.contentDocument")
+        .within(() => {
+          cy.log("a generic meta tag should exist");
+          cy.get("meta[name='viewport']").should("exist");
+
+          cy.log("the color-scheme tag should not exist on EAJS embeds");
+          cy.get("meta[name='color-scheme']").should("not.exist");
+        });
     });
   });
 

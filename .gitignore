@@ -111,6 +111,7 @@ dev/serialization_deltas/
 /frontend/src/cljs_release
 .shadow-cljs
 .clerk
+mise.local.toml
 
 # lsp: ignore all but the config file
 .lsp/*

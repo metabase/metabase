@@ -1,5 +1,5 @@
 import { Text } from "@mantine/core";
-import { type Ref, forwardRef } from "react";
+import { type ReactNode, type Ref, forwardRef } from "react";
 
 import { Icon, type IconName } from "metabase/ui";
 
@@ -7,7 +7,7 @@ import { SelectItem, type SelectItemProps } from "./SelectItem";
 
 export interface DefaultSelectItemProps extends SelectItemProps {
   icon?: IconName;
-  label?: string | JSX.Element;
+  label?: ReactNode;
   value: string;
 }
 

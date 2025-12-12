@@ -1,0 +1,11 @@
+.dataPicker {
+  border-right: 1px solid var(--mb-color-border);
+  overflow: auto;
+}
+
+.databaseSelector {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-xs);
+  cursor: pointer;
+}

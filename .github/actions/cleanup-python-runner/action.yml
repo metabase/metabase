@@ -1,0 +1,36 @@
+name: Cleanup Python Runner
+description: Cleanup python-runner services and upload logs as artifacts
+
+inputs:
+  upload-logs:
+    description: 'Whether to upload logs (typically on failure)'
+    required: false
+    default: 'false'
+  logs-artifact-suffix:
+    description: 'The unique name of the .zip artifact containing the logs'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Cleanup python-runner services
+      if: always()
+      run: |
+        echo "Stopping python-runner services..."
+        if [ -d "python-runner" ]; then
+          cd python-runner
+          make stop || echo "WARNING: Failed to stop python runner"
+        fi
+      shell: bash
+
+    - name: Upload python-runner logs
+      if: ${{inputs.upload-logs == 'true' && inputs.logs-artifact-suffix != ''}}
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-runner-logs-${{inputs.logs-artifact-suffix}}
+        path: |
+          python-runner.out.log
+          python-runner.err.log
+        retention-days: 1
+        if-no-files-found: warn

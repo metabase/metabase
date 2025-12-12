@@ -3,7 +3,6 @@ import { c, t } from "ttag";
 
 import FormTextArea from "metabase/common/components/FormTextArea";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import {
   Box,
   Button,
@@ -69,7 +68,7 @@ export const BugReportModal = ({
               placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
             />
             <Box
-              bg={color("accent-gray-light")}
+              bg={"accent-gray-light"}
               p="lg"
               my="md"
               style={{ borderRadius: "0.5rem" }}

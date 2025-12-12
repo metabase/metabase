@@ -41,7 +41,22 @@ export interface BaseUser {
   updated_at: string;
 }
 
+export interface UserPermissions {
+  can_create_queries?: boolean;
+  can_create_native_queries?: boolean;
+
+  // requires advanced_permissions feature
+  is_group_manager?: boolean;
+  can_access_data_model?: boolean;
+  can_access_db_details?: boolean;
+  can_access_monitoring?: boolean;
+  can_access_setting?: boolean;
+  can_access_subscription?: boolean;
+  can_access_data_studio?: boolean;
+}
+
 export interface User extends BaseUser {
+  attributes: UserAttributeMap | null;
   login_attributes: UserAttributeMap | null;
   structured_attributes?: StructuredUserAttributes;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
@@ -53,6 +68,7 @@ export interface User extends BaseUser {
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
+  permissions?: UserPermissions;
 }
 
 export interface UserListResult {
@@ -152,6 +168,16 @@ export type UserKeyValue =
         last_download_format: "csv" | "xlsx" | "json" | "png";
         last_table_download_format: "csv" | "xlsx" | "json";
       };
+    }
+  | {
+      namespace: "transforms";
+      key: string;
+      value: "tree" | "alphabetical" | "last-modified";
+    }
+  | {
+      namespace: "data_studio";
+      key: string;
+      value: boolean;
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

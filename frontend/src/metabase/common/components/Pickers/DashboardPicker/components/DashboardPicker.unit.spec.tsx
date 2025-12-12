@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   setupCollectionItemsEndpoint,
+  setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -172,6 +173,7 @@ const commonSetup = () => {
   setupRecentViewsAndSelectionsEndpoints([]);
   mockGetBoundingClientRect();
   setupSearchEndpoints([]);
+  setupDatabasesEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,

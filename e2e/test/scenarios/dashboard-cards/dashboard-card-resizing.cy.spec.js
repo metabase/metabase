@@ -287,6 +287,81 @@ describe(
   },
 );
 
+describe("trend charts", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("comparisons that do not fit should only be shown in a tooltip", () => {
+    H.createDashboardWithQuestions({
+      dashboardDetails: {},
+      questions: [
+        {
+          display: "smartscalar",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["count"],
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              [
+                "aggregation-options",
+                ["*", ["count"], 10000],
+                { name: "Mega Count", "display-name": "Mega Count" },
+              ],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          visualization_settings: {
+            "scalar.comparisons": [
+              {
+                id: "fecd2c69-4d43-57d0-6d60-6781a54beceb",
+                type: "previousPeriod",
+              },
+              {
+                id: "e8b8d831-d2a9-9fd7-17a7-db8b4834ac5a",
+                type: "periodsAgo",
+                value: 2,
+              },
+              {
+                id: "9712f309-6849-20ba-7cef-54ae899a0e41",
+                type: "anotherColumn",
+                label: "Sum of Total",
+                column: "sum",
+              },
+            ],
+          },
+        },
+      ],
+    }).then(({ dashboard, questions: cards }) => {
+      const [card] = cards;
+
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [{ card_id: card.id, size_x: 4, size_y: 3 }],
+      });
+
+      H.visitDashboard(dashboard.id);
+    });
+
+    H.getDashboardCard().within(() => {
+      cy.findByText("34.72%").should("be.visible");
+      cy.findByText("36.65%").should("not.exist");
+      cy.findByText("98.88%").should("not.exist");
+
+      cy.findByText("34.72%").realHover();
+    });
+
+    H.tooltip().within(() => {
+      cy.findByText("34.72%").should("be.visible");
+      cy.findByText("36.65%").should("be.visible");
+      cy.findByText("98.88%").should("be.visible");
+    });
+  });
+});
+
 describe("issue 31701", () => {
   const entityCard = () => H.getDashboardCard(0);
   const customCard = () => H.getDashboardCard(1);

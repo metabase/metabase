@@ -60,7 +60,10 @@ interface TableProps extends VisualizationProps {
 }
 
 interface TableState {
-  data: Pick<DatasetData, "cols" | "rows" | "results_timezone"> | null;
+  data: Pick<
+    DatasetData,
+    "cols" | "rows" | "results_timezone" | "rows_truncated"
+  > | null;
   question: Question | null;
 }
 
@@ -198,7 +201,7 @@ class Table extends Component<TableProps, TableState> {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
-    ...tableColumnSettings,
+    ...tableColumnSettings({ isShowingDetailsOnlyColumns: false }),
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       get section() {
@@ -392,16 +395,23 @@ class Table extends Component<TableProps, TableState> {
     this._updateData(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(newProps: VisualizationProps) {
+  UNSAFE_componentWillReceiveProps(newProps: TableProps) {
     if (
       newProps.series !== this.props.series ||
-      !_.isEqual(newProps.settings, this.props.settings)
+      !_.isEqual(newProps.settings, this.props.settings) ||
+      newProps.isShowingDetailsOnlyColumns !==
+        this.props.isShowingDetailsOnlyColumns
     ) {
       this._updateData(newProps);
     }
   }
 
-  _updateData({ series, settings, metadata }: VisualizationProps) {
+  _updateData({
+    series,
+    settings,
+    metadata,
+    isShowingDetailsOnlyColumns,
+  }: TableProps) {
     const [{ card, data }] = series;
     // construct a Question that is in-sync with query results
     const question = new Question(card, metadata);
@@ -424,7 +434,7 @@ class Table extends Component<TableProps, TableState> {
         question,
       });
     } else {
-      const { cols, rows, results_timezone } = data;
+      const { cols, rows, results_timezone, rows_truncated } = data;
       const columnSettings = settings["table.columns"] ?? [];
       const columnIndexes = findColumnIndexesForColumnSettings(
         cols,
@@ -432,7 +442,7 @@ class Table extends Component<TableProps, TableState> {
       ).filter(
         (columnIndex, settingIndex) =>
           columnIndex >= 0 &&
-          (this.props.isShowingDetailsOnlyColumns ||
+          (isShowingDetailsOnlyColumns ||
             (cols[columnIndex].visibility_type !== "details-only" &&
               columnSettings[settingIndex].enabled)),
       );
@@ -442,6 +452,7 @@ class Table extends Component<TableProps, TableState> {
           cols: columnIndexes.map((i) => cols[i]),
           rows: rows.map((row) => columnIndexes.map((i) => row[i])),
           results_timezone,
+          rows_truncated,
         },
         question,
       });

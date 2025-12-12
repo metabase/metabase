@@ -23,7 +23,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
-          script: |
+          script: | #js
             const fs = require('fs');
             const teamConfig = JSON.parse(fs.readFileSync('.github/team.json', 'utf-8'));
             const prAuthor = context.payload.pull_request.user.login;
@@ -65,10 +65,3 @@ jobs:
               issue_number: prNumber,
               labels: [team.label]
             });
-
-            return team.projectUrl || null;
-      - uses: actions/add-to-project@v0.5.0
-        if: ${{ steps.auto-assign.outputs.result != 'null' }}
-        with:
-          project-url: ${{ steps.auto-assign.outputs.result }}
-          github-token: ${{ steps.generate-token.outputs.token }}

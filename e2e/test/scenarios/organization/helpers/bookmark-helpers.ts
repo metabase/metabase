@@ -7,10 +7,8 @@ import {
 } from "e2e/support/helpers";
 
 export const toggleQuestionBookmarkStatus = ({ wasSelected = false } = {}) => {
-  const iconName = wasSelected ? "bookmark_filled" : "bookmark";
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon(iconName).click();
-  });
+  const labelText = wasSelected ? "Remove from bookmarks" : "Bookmark";
+  cy.findByTestId("qb-header-action-panel").findByLabelText(labelText).click();
   cy.wait("@toggleBookmark");
 };
 
@@ -33,7 +31,7 @@ export const createSimpleQuestion = (name: string) =>
 
 export const verifyBookmarksOrder = (expectedOrder: string[]) => {
   navigationSidebar()
-    .findByLabelText(/Bookmarks/)
+    .findByRole("section", { name: "Bookmarks" })
     .within(() => {
       cy.get("li")
         .should("have.length", expectedOrder.length)
@@ -53,7 +51,7 @@ export const moveBookmark = (
 ) => {
   moveDnDKitElement(
     navigationSidebar()
-      .findByLabelText(/Bookmarks/)
+      .findByRole("section", { name: "Bookmarks" })
       .findByText(name),
     { vertical: verticalDistance },
   );

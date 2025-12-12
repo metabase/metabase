@@ -548,7 +548,8 @@ describe("scenarios > question > settings", () => {
       H.pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
       H.entityPickerModal().findByText("Select this collection").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
-      H.modal().findByText("Yes please!").click();
+      H.checkSavedToCollectionQuestionToast(true);
+
       H.entityPickerModal().within(() => {
         cy.findByText("Orders in a dashboard").click();
         cy.findByText("Cancel").click();

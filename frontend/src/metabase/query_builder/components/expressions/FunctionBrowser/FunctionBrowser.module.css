@@ -2,6 +2,8 @@
   background-color: var(--mb-color-bg-light);
   border-left: 1px solid var(--mb-color-border);
   height: 100%;
+  border-top-right-radius: var(--mantine-radius-md);
+  border-bottom-right-radius: var(--mantine-radius-md);
 }
 
 .results {

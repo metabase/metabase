@@ -36,7 +36,7 @@ export function getOptionType(value: DatePickerValue | undefined): OptionType {
       if (value.value === 0) {
         return "current";
       } else {
-        return value.value < 0 ? "last" : "next";
+        return value.value < 0 ? "past" : "future";
       }
     case "exclude":
       if (value.operator !== "!=") {
@@ -61,8 +61,8 @@ export function setOptionType(
       return value?.type === "specific"
         ? setOperator(value, optionType)
         : getOperatorDefaultValue(optionType);
-    case "last":
-    case "next":
+    case "past":
+    case "future":
     case "current":
       return value?.type === "relative"
         ? setDirectionAndCoerceUnit(value, optionType)

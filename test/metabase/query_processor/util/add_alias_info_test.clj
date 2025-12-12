@@ -15,10 +15,9 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]))
 
@@ -362,31 +361,31 @@
 (deftest ^:parallel custom-escape-alias-filtering-aggregation-test
   (driver/with-driver ::custom-escape
     (is (=? (lib.tu.macros/$ids venues
-              (let [price [:field %price {::add/source-table  $$venues
-                                          ::add/source-alias  "PRICE"
-                                          ::add/desired-alias "COOL.PRICE"}]
-                    outer-price (-> price
-                                    (assoc-in [2 ::add/source-table] ::add/source)
-                                    (update-in [2 ::add/source-alias] prefix-alias))
-                    count-opts {::add/source-alias "strange count" ; TODO (Cam 8/7/25) -- doesn't even really make sense for an aggregation to have a source alias
-                                ::add/desired-alias "COOL.strange count"}
-                    outer-count-opts (-> count-opts
-                                         (assoc :base-type :type/Integer
-                                                ::add/source-table ::add/source)
-                                         (update ::add/source-alias prefix-alias))]
-                {:source-query {:source-table $$venues
-                                :breakout     [price]
-                                :aggregation  [[:aggregation-options [:count] count-opts]]
-                                :order-by     [[:asc price]]}
-                 :fields [outer-price
-                          [:field
-                           "strange count"
-                           outer-count-opts]]
-                 :filter [:<
-                          [:field
-                           "strange count"
-                           outer-count-opts]
-                          [:value 10 {:base_type :type/Integer}]]}))
+              (let [price         [:field %price {::add/source-table  $$venues
+                                                  ::add/source-alias  "PRICE"
+                                                  ::add/desired-alias "COOL.PRICE"}]
+                    source-query  {:source-table $$venues
+                                   :breakout     [price]
+                                   :aggregation  [[:aggregation-options
+                                                   [:count]
+                                                   ;; TODO (Cam 8/7/25) -- doesn't even really make sense for an aggregation to have a source alias
+                                                   {::add/source-alias  "strange count"
+                                                    ::add/desired-alias "COOL.strange count"}]]
+                                   :order-by     [[:asc price]]}
+                    strange-count [:field
+                                   "strange count"
+                                   {:base-type         :type/Integer
+                                    ::add/source-table ::add/source
+                                    ::add/source-alias "COOL.strange count"}]]
+                {:source-query source-query
+                 :fields       [[:field
+                                 any?
+                                 {::add/source-table ::add/source
+                                  ::add/source-alias "COOL.PRICE"}]
+                                strange-count]
+                 :filter       [:<
+                                strange-count
+                                [:value 10 {:base_type :type/Integer}]]}))
             (-> (lib.tu.macros/mbql-query venues
                   {:source-query {:source-table $$venues
                                   :aggregation  [[:aggregation-options
@@ -415,11 +414,11 @@
                                                 :condition
                                                 [:=
                                                  [:field
-                                                  %orders.product-id
+                                                  any?
                                                   {::add/source-alias "PRODUCT_ID"
                                                    ::add/source-table $$orders}]
                                                  [:field
-                                                  %products.id
+                                                  any?
                                                   {::add/source-alias "ID"
                                                    ::add/source-table "Products_Renamed"
                                                    :join-alias        "Products Renamed"}]]
@@ -427,30 +426,27 @@
                                 :expressions  {"CC" [:+ 1 1]}
                                 :fields
                                 [[:field
-                                  %products.id
+                                  any?
                                   {::add/desired-alias "Products_Renamed__ID"
                                    ::add/source-alias  "ID"
-                                   ::add/source-table  "Products_Renamed"
-                                   :join-alias         "Products Renamed"}]
+                                   ::add/source-table  "Products_Renamed"}]
                                  [:expression "CC" {::add/desired-alias "CC"}]]
                                 :filter
                                 [:=
                                  [:field
-                                  %products.category
+                                  any?
                                   {::add/source-alias "CATEGORY"
-                                   ::add/source-table "Products_Renamed"
-                                   :join-alias        "Products Renamed"}]
+                                   ::add/source-table "Products_Renamed"}]
                                  [:value
                                   "Doohickey"
                                   {:base_type     :type/Text
                                    :database_type "CHARACTER VARYING"
                                    :semantic_type :type/Category}]]}
                  :fields       [[:field
-                                 %products.id
+                                 any?
                                  {::add/desired-alias "Products_Renamed__ID"
                                   ::add/source-alias  "Products_Renamed__ID"
-                                  ::add/source-table  ::add/source
-                                  :join-alias         "Products Renamed"}]
+                                  ::add/source-table  ::add/source}]
                                 [:field
                                  "CC"
                                  {::add/desired-alias "CC"
@@ -586,12 +582,12 @@
                                          :expressions  {"PRICE" [:+ $price 2]}
                                          :fields       [$price
                                                         [:expression "PRICE"]]}})]
-      (is (=? {:query {:fields [[:field (meta/id :venues :price) {::add/source-alias  "PRICE"
-                                                                  ::add/desired-alias "PRICE"
-                                                                  ::add/source-table  ::add/source}]
-                                [:field "PRICE_2" {::add/source-alias  "PRICE_2"
-                                                   ::add/desired-alias "PRICE_2"
-                                                   ::add/source-table  ::add/source}]]}}
+      (is (=? {:query {:fields [[:field any? {::add/source-alias  "PRICE"
+                                              ::add/desired-alias "PRICE"
+                                              ::add/source-table  ::add/source}]
+                                [:field any? {::add/source-alias  "PRICE_2"
+                                              ::add/desired-alias "PRICE_2"
+                                              ::add/source-table  ::add/source}]]}}
               (add-alias-info source-query))))))
 
 (defn- metadata-provider-with-two-models []
@@ -645,13 +641,13 @@
 (deftest ^:parallel models-with-joins-and-renamed-columns-test
   (testing "an MBQL model with an explicit join and customized field names generate correct SQL (#40252)"
     (qp.store/with-metadata-provider (metadata-provider-with-two-models)
-      (is (=? {:query {:fields [[:field "A1" {::add/source-table ::add/source
+      (is (=? {:query {:fields [[:field any? {::add/source-table ::add/source
                                               ::add/source-alias "A1"}]
-                                [:field "A2" {::add/source-table ::add/source
+                                [:field any? {::add/source-table ::add/source
                                               ::add/source-alias "A2"}]
-                                [:field "B1" {::add/source-table ::add/source
+                                [:field any? {::add/source-table ::add/source
                                               ::add/source-alias "Model B - A1__B1"}]
-                                [:field "B2" {::add/source-table ::add/source
+                                [:field any? {::add/source-table ::add/source
                                               ::add/source-alias "Model B - A1__B2"}]]}}
               (add-alias-info {:type     :query
                                :database (meta/id)
@@ -818,7 +814,7 @@
                       lib/->legacy-MBQL
                       :query))))))))
 
-;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
+;;; adapted from [[metabase.query-processor.model-test/model-self-join-test]]
 (deftest ^:parallel model-duplicate-joins-test
   (testing "Field references from model joined a second time can be resolved (#48639)"
     (let [mp    meta/metadata-provider
@@ -941,7 +937,7 @@
                                                {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]]}
                       (-> expected :query :source-query (dissoc :source-query)))))))))))
 
-;;; adapted from [[metabase.query-processor-test.uuid-test/joined-uuid-query-test]]
+;;; adapted from [[metabase.query-processor.uuid-test/joined-uuid-query-test]]
 (deftest ^:parallel resolve-field-missing-join-alias-test
   (testing "should resolve broken refs missing join-alias correctly"
     (let [mp      lib.tu.uuid-dogs-metadata-provider/metadata-provider
@@ -1077,7 +1073,7 @@
                                    {::add/desired-alias "Total_number_of_people_from_each_state_separated_by_00028d48"
                                     ::add/source-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
                                     ::add/source-table  ::add/source}
-                                   "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"]]}]}
+                                   "Total_number_of_people_from_each_state_separated_by_00028d48"]]}]}
               (add-alias-info query))))))
 
 ;;; in the future when we remove all the roundtripping that happens inside of the QP then we can remove this test
@@ -1119,8 +1115,12 @@
                                                                :aggregation  [[:sum $orders.quantity]]}
                                                 :alias        "Orders"
                                                 :condition    [:= $id &Orders.orders.product-id]
-                                                ;; we can get title since product_id is remapped to title
-                                                :fields       [&Orders.title
+                                                ;; we can get title since product_id is remapped to title.
+                                                ;;
+                                                ;; TODO (Cam 9/16/25) -- says who? This is not something we support in
+                                                ;; the FE.
+                                                :fields       [[:field %products.title {:join-alias   "Orders"
+                                                                                        :source-field (meta/id :orders :product-id)}]
                                                                &Orders.*sum/Integer]}]
                                     :fields   [$title $category]
                                     :order-by [[:asc $id]]
@@ -1128,7 +1128,7 @@
           ;; this is a basically the same as Oracle's behavior for truncating aliases
           query                 (binding [add/*escape-alias-fn* (fn [_driver s]
                                                                   (let [s (str/replace s #"[\"\u0000]" "_")]
-                                                                    (lib.util/truncate-alias s 30)))]
+                                                                    (lib/truncate-alias s 30)))]
                                   (add-alias-info query))
           stage                 (-> query :stages first)
           stage-join            (-> stage :joins first)
@@ -1265,8 +1265,8 @@
                 :stages
                 first)))))
 
-;;; see also [[metabase.driver.sql.query-processor-test/evil-field-ref-for-an-expression-test]]
-;;; and [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/evil-field-ref-for-an-expression-test]]
+;;; see also [[metabase.driver.sql.query-processor.evil-field-ref-for-an-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test/evil-field-ref-for-an-expression-test]]
 (deftest ^:parallel resolve-incorrect-field-ref-for-expression-test
   (testing "resolve the incorrect use of a :field ref for an expression correctly"
     (let [query (lib/query
@@ -1314,4 +1314,44 @@
                   :stages
                   first
                   :filters
+                  first))))))
+
+(deftest ^:parallel fallback-resolve-in-later-stage-with-join-alias-test
+  (testing "when generating fallback metadata from an earlier stage, include its :join-alias (#66464)"
+    (let [mp    (-> (lib.tu/metadata-provider-with-mock-card
+                     {:id            1
+                      :name          "Orders Model"
+                      :type          :model
+                      :dataset-query (lib/query meta/metadata-provider (meta/table-metadata :orders))})
+                    (lib.tu/metadata-provider-with-mock-card
+                     {:id            2
+                      :name          "Products Model"
+                      :type          :model
+                      :dataset-query (lib/query meta/metadata-provider (meta/table-metadata :products))}))
+          query (-> (lib/query mp (lib.metadata/card mp 1))
+                    (lib/join (lib/join-clause (lib.metadata/card mp 2)))
+                    ;; Deliberately using field IDs rather than names here, and to tables that are not otherwise part
+                    ;; of this query. Some Metrics v2 queries in the wild look like this and we're trying not to break
+                    ;; them; see #66464.
+                    (lib/aggregate (lib// (lib/distinct-where (meta/field-metadata :orders :user-id)
+                                                              (-> (meta/field-metadata :people :name)
+                                                                  lib/ref
+                                                                  (lib/with-join-alias "Products Model - Product")
+                                                                  lib/not-null))
+                                          (lib/distinct (meta/field-metadata :orders :user-id)))))]
+      (is (=? [:/ {}
+               ;; numerator
+               [:distinct-where {}
+                vector?
+                [:!= {}
+                 [:field {:join-alias         "Products Model - Product"
+                          ::add/source-table  "Products Model - Product"
+                          ::add/source-alias  "NAME"
+                          ::add/desired-alias nil}
+                  (meta/id :people :name)]
+                 [:value {} nil]]]
+               ;; denominator
+               [:distinct {} vector?]]
+              (-> (add-alias-info query)
+                  lib/aggregations
                   first))))))

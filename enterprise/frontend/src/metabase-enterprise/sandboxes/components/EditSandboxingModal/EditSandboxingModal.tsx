@@ -37,6 +37,8 @@ import {
   DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
 
+import { shouldDisableItem } from "./utils";
+
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
 
@@ -219,6 +221,7 @@ const EditSandboxingModal = ({
                   hideModal();
                 }}
                 onClose={hideModal}
+                shouldDisableItem={shouldDisableItem}
               />
             )}
           </div>
@@ -268,7 +271,6 @@ const EditSandboxingModal = ({
         <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
-            error={error}
             className={CS.ml1}
             actionFn={savePolicy}
             primary

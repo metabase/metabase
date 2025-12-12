@@ -64,6 +64,7 @@ dashcards:
     model: Dashboard
   - id: AlYMOYAhCXhr1VIiH5umt
     model: DashboardCard
+embedding_type: null
 initially_published_at: null
 tabs: []
 width: fixed

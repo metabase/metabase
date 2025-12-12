@@ -564,7 +564,7 @@
         (testing (str "Stage number = " stage-number)
           (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
                    {:name "coun"}]
-                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {}))))))))
+                  (lib/returned-columns query stage-number stage-number {}))))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (testing "Remapped columns in joined source queries should work (#15578)"
@@ -616,7 +616,7 @@
                              ;; this is already here, DO NOT add a duplicate of it.
                              &CATEGORIES__via__CATEGORY_ID.categories.name]}))]
       (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "CATEGORIES__via__CATEGORY_ID__NAME"]
-             (map :lib/desired-column-alias (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})))))))
+             (map :lib/desired-column-alias (lib/returned-columns query -1 -1 {:include-remaps? true})))))))
 
 (deftest ^:parallel propagate-binning-info-test
   (testing "binning info from previous stages should get propagated"
@@ -753,7 +753,7 @@
                     "Price"]
                    (map :display-name (lib/returned-columns query))))))))))
 
-;;; adapted from [[metabase.query-processor-test.explicit-joins-test/join-against-saved-question-with-sort-test]]
+;;; adapted from [[metabase.query-processor.explicit-joins-test/join-against-saved-question-with-sort-test]]
 (deftest ^:parallel join-against-same-table-returned-columns-test
   (testing "Joining against a query that ultimately have the same source table SHOULD result in 'duplicate' columns being included."
     (let [query (lib/query

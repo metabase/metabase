@@ -35,13 +35,15 @@
 (deftest test-do-not-redirect-healthcheck
   (testing "does not redirect when disabled"
     (tu/with-temporary-setting-values [redirect-all-requests-to-https false]
-      (let [response (handler (ring.mock/request :get "/api/health"))]
-        (is (= 200 (:status response))))))
+      (doseq [uri ["/api/health" "/livez" "/readyz"]]
+        (let [response (handler (ring.mock/request :get uri))]
+          (is (= 200 (:status response)))))))
   (testing "does not redirect when enabled"
     (tu/with-temporary-setting-values [site-url "https://localhost"
                                        redirect-all-requests-to-https true]
-      (let [response (handler (ring.mock/request :get "/api/health"))]
-        (is (= 200 (:status response)))))))
+      (doseq [uri ["/api/health" "/livez" "/readyz"]]
+        (let [response (handler (ring.mock/request :get uri))]
+          (is (= 200 (:status response))))))))
 
 (deftest test-do-not-redirect-loadbalancer-sessions
   (testing "does not redirect"

@@ -9,7 +9,10 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { CustomGeoJSONMap } from "metabase-types/api";
+import type {
+  CustomGeoJSONMap,
+  CustomGeoJSONSetting,
+} from "metabase-types/api";
 import {
   createMockGeoJSONFeatureCollection,
   createMockSettingDefinition,
@@ -19,29 +22,36 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { CustomGeoJSONWidget } from "./CustomGeoJSONWidget";
 
-const setup = async ({ isEnvVar }: { isEnvVar?: boolean }) => {
-  const customGeoJSON = {
-    "666c2779-15ee-0ad9-f5ab-0ccbcc694efa": {
-      name: "Test",
-      url: "https://test.com/download/GeoJSON_one.json",
-      region_key: "POLICY_NO",
-      region_name: "TABLE_NAME",
-    },
-    us_states: {
-      name: "United States",
-      url: "app/assets/geojson/us-states.json",
-      region_key: "STATE",
-      region_name: "NAME",
-      builtin: true,
-    },
-    world_countries: {
-      name: "World",
-      url: "app/assets/geojson/world.json",
-      region_key: "ISO_A2",
-      region_name: "NAME",
-      builtin: true,
-    },
-  };
+const CUSTOM_GEO_JSON = {
+  "666c2779-15ee-0ad9-f5ab-0ccbcc694efa": {
+    name: "Test",
+    url: "https://test.com/download/GeoJSON_one.json",
+    region_key: "POLICY_NO",
+    region_name: "TABLE_NAME",
+  },
+  us_states: {
+    name: "United States",
+    url: "app/assets/geojson/us-states.json",
+    region_key: "STATE",
+    region_name: "NAME",
+    builtin: true,
+  },
+  world_countries: {
+    name: "World",
+    url: "app/assets/geojson/world.json",
+    region_key: "ISO_A2",
+    region_name: "NAME",
+    builtin: true,
+  },
+};
+
+const setup = async ({
+  customGeoJSON = CUSTOM_GEO_JSON,
+  isEnvVar,
+}: {
+  customGeoJSON?: CustomGeoJSONSetting;
+  isEnvVar?: boolean;
+}) => {
   const settings = createMockSettings({
     "custom-geojson": customGeoJSON,
   });
@@ -83,7 +93,7 @@ const setup = async ({ isEnvVar }: { isEnvVar?: boolean }) => {
 };
 
 describe("CustomGeoJSONWIdget", () => {
-  it("render correctly", async () => {
+  it("renders correctly", async () => {
     await setup({});
     const tableRows = screen.getAllByRole("row");
 
@@ -100,6 +110,15 @@ describe("CustomGeoJSONWIdget", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByText("Custom maps")).toBeInTheDocument();
+  });
+
+  it("renders empty state", async () => {
+    const { "666c2779-15ee-0ad9-f5ab-0ccbcc694efa": _, ...customGeoJSON } =
+      CUSTOM_GEO_JSON;
+    await setup({ customGeoJSON });
+
+    expect(screen.queryByRole("row")).not.toBeInTheDocument();
+    expect(screen.getByText("No custom maps yet")).toBeInTheDocument();
   });
 
   it("should remove a saved map", async () => {

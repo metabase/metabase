@@ -183,7 +183,9 @@ describe("scenarios > question > snippets", () => {
     cy.findByTestId("native-query-top-bar")
       .findByLabelText("Preview the query")
       .click();
-    H.modal().findByText("select 'foo'").should("be.visible");
+    H.modal().within(() => {
+      H.codeMirrorValue().should("eq", "select\n  'foo'");
+    });
   });
 });
 
@@ -281,7 +283,7 @@ describe("scenarios > question > snippets (EE)", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    H.modal().within(() => cy.findByText("Top folder").click());
+    H.modal().within(() => cy.findByText("SQL snippets").click());
     H.entityPickerModal().within(() => {
       cy.findByText("my favorite snippets").click();
       cy.findByText("Select").click();
@@ -341,6 +343,31 @@ describe("scenarios > question > snippets (EE)", () => {
       H.rightSidebar().within(() => {
         cy.findByText("Snippet Folder").click();
         cy.findByText("snippet 1").click();
+      });
+    });
+  });
+
+  describe("navigation", () => {
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+      createDoublyNestedSnippet();
+    });
+
+    it("should be possible to go back to parent folders (metabase#63405)", () => {
+      H.startNewNativeQuestion();
+      cy.findByTestId("native-query-top-bar").icon("snippet").click();
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Folder A").click();
+        cy.findByText("Folder B").click();
+
+        cy.log("We should reach the nested folder");
+        cy.findByText("snippet 1").should("be.visible");
+
+        cy.findByText("Folder B").click();
+        cy.findByText("Folder A").click();
+
+        cy.log("We should be back at the root folder");
+        cy.findByText("Snippets").should("be.visible");
       });
     });
   });
@@ -472,4 +499,28 @@ function getPermissionsForUserGroup(userGroup) {
     .findByText(userGroup)
     .closest("tr")
     .find("[data-testid=permissions-select]");
+}
+
+function createDoublyNestedSnippet() {
+  // Create snippet folder via API
+  cy.request("POST", "/api/collection", {
+    name: "Folder A",
+    description: null,
+    parent_id: null,
+    namespace: "snippets",
+  }).then(({ body: { id } }) => {
+    cy.request("POST", "/api/collection", {
+      name: "Folder B",
+      description: null,
+      parent_id: id,
+      namespace: "snippets",
+    }).then(({ body: { id } }) => {
+      // Create snippet in folder via API
+      cy.request("POST", "/api/native-query-snippet", {
+        content: "snippet 1",
+        name: "snippet 1",
+        collection_id: id,
+      });
+    });
+  });
 }

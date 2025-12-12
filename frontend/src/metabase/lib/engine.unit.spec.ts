@@ -38,27 +38,35 @@ describe("getNativeQueryLanguage", () => {
 
 describe("formatNativeQuery", () => {
   it("should return formatted SQL", () => {
-    expect(formatNativeQuery("select 1", "postgres")).toEqual("select 1");
-    expect(
-      formatNativeQuery("SELECT * FROM PUBLIC.ORDERS", "postgres"),
-    ).toEqual("SELECT *\nFROM PUBLIC.ORDERS");
+    expect(formatNativeQuery("select 1")).toEqual("select 1");
+    expect(formatNativeQuery("SELECT * FROM PUBLIC.ORDERS")).toEqual(
+      "SELECT * FROM PUBLIC.ORDERS",
+    );
   });
 
   it("should return any valid string if the engine type is sql", () => {
-    expect(formatNativeQuery("foo", "postgres")).toEqual("foo");
-    expect(formatNativeQuery("FOO BAR baz", "postgres")).toEqual("FOO BAR baz");
-    expect(formatNativeQuery("FOO: BAR, baz.", "postgres")).toEqual(
-      "FOO: BAR, baz.",
+    expect(formatNativeQuery("foo")).toEqual("foo");
+    expect(formatNativeQuery("FOO BAR baz")).toEqual("FOO BAR baz");
+    expect(formatNativeQuery("FOO: BAR, baz.")).toEqual("FOO: BAR, baz.");
+    expect(formatNativeQuery("-- foo")).toEqual("-- foo");
+  });
+
+  it("should not format SQL keywords inside comment lines", () => {
+    expect(
+      formatNativeQuery(
+        "-- SELECT * FROM products WHERE category = 'Widget'\nSELECT * FROM products WHERE category = 'Widget'",
+      ),
+    ).toEqual(
+      "-- SELECT * FROM products WHERE category = 'Widget'\nSELECT * FROM products WHERE category = 'Widget'",
     );
-    expect(formatNativeQuery("-- foo", "postgres")).toEqual("-- foo");
   });
 
   it("should return formatted JSON", () => {
-    expect(formatNativeQuery({}, "mongo")).toEqual("{}");
-    expect(formatNativeQuery([], "mongo")).toEqual("[]");
-    expect(formatNativeQuery(["foo"], "mongo")).toEqual('[\n  "foo"\n]');
-    expect(formatNativeQuery({ a: 1 }, "mongo")).toEqual('{\n  "a": 1\n}');
-    expect(formatNativeQuery('["foo"]', "mongo")).toEqual('["foo"]');
+    expect(formatNativeQuery({})).toEqual("{}");
+    expect(formatNativeQuery([])).toEqual("[]");
+    expect(formatNativeQuery(["foo"])).toEqual('[\n  "foo"\n]');
+    expect(formatNativeQuery({ a: 1 })).toEqual('{\n  "a": 1\n}');
+    expect(formatNativeQuery('["foo"]')).toEqual('["foo"]');
   });
 });
 

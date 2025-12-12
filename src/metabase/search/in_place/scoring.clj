@@ -153,13 +153,19 @@
                 {:is_match is-match
                  :text     (tokens->string text-tokens (not is-match))})))))
 
+(let [resolved-fn (delay (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns))]
+  (defn- searchable-columns-fn
+    "Get searchable columns for a model.
+    Lazily resolves the function from the legacy namespace to avoid circular dependencies."
+    [model search-native-query]
+    (@resolved-fn model search-native-query)))
+
 (defn- text-scores-with
   "Scores a search result. Returns a vector of score maps, each containing `:weight`, `:score`, and other info about
   the text match, if there is one. If there is no match, the score is 0."
   [search-native-query weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
-                              (search-columns-fn (:model search-result) search-native-query))
+  (let [scores (for [column (searchable-columns-fn (:model search-result) search-native-query)
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers
                      :let [matched-text (-> search-result
@@ -356,18 +362,18 @@
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
   [result {:keys [search-string search-native-query]}]
-  (let [text-matches    (-> (text-scores-with-match result {:search-string       search-string
-                                                            :search-native-query search-native-query})
-                            (force-weight text-scores-weight))
+  (let [text-matches (-> (text-scores-with-match result {:search-string search-string
+                                                         :search-native-query search-native-query})
+                         (force-weight text-scores-weight))
         has-text-match? (some (comp pos? :score) text-matches)
-        all-scores      (into (vec (score-result result)) text-matches)
+        all-scores (into (vec (score-result result)) text-matches)
         relevant-scores (remove (comp zero? :score) all-scores)
-        total-score     (compute-normalized-score all-scores)]
+        total-score (compute-normalized-score all-scores)]
     ;; Searches with a blank search string mean "show me everything, ranked";
     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
     ;; If the search string is non-blank, results with no text match have a score of zero.
     (when (or has-text-match? (str/blank? search-string))
-      {:score  total-score
+      {:score total-score
        :result (assoc result :all-scores all-scores :relevant-scores relevant-scores)})))
 
 (defn compare-score

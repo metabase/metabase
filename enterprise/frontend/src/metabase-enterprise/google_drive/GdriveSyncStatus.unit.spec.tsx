@@ -1,10 +1,14 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
+  setupDatabaseListEndpoint,
   setupGdriveGetFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
+  setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { GdrivePayload } from "metabase-types/api";
@@ -22,6 +26,9 @@ function TestComponent() {
   const refresh = () => {
     dispatch(EnterpriseApi.util.invalidateTags(["gsheets-status"]));
   };
+
+  useListDatabasesQuery(); // simulate user browsing the database page
+  useListTablesQuery();
 
   return (
     <>
@@ -57,6 +64,9 @@ const setup = ({
   setupGdriveServiceAccountEndpoint(
     "test-service-account@service-account.metabase.com",
   );
+
+  setupDatabaseListEndpoint([]);
+  setupTablesEndpoints([]);
 
   return renderWithProviders(<TestComponent />, {
     storeInitialState: {
@@ -169,6 +179,27 @@ describe("GsheetsSyncStatus", () => {
 
     screen.getByText("Start exploring");
     screen.getByText("Files sync every 15 minutes");
+  });
+
+  it("should refetch tables when sync completes (UXW-311)", async () => {
+    setup({
+      initialFolderPayload: { status: "syncing" },
+    });
+    fetchMock.get(`path:/api/database`, []);
+    fetchMock.get(`path:/api/table`, []);
+
+    setupGdriveGetFolderEndpoint({
+      status: "active",
+      db_id: 1,
+      created_by_id: USER_ID,
+    });
+
+    await act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+
+    expect(fetchMock.callHistory.called("/api/database")).toBe(true);
+    expect(fetchMock.callHistory.called("/api/table")).toBe(true);
   });
 
   it("should show error from error response", async () => {

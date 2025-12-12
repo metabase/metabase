@@ -3,26 +3,26 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.starburst :as starburst]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouses.api :as api.database]
+   [metabase.warehouses-rest.api :as api.database]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection PreparedStatement ResultSet SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,6 +32,48 @@
 (defmethod tx/before-run :starburst
   [_]
   (alter-var-root #'timezones-test/broken-drivers conj :starburst))
+
+(deftest have-select-privilege-mixed-tables-test
+  (testing "have-select-privilege? correctly handles mixed Hive/Iceberg tables (Issue #63127)"
+    (testing "Returns true when DESCRIBE succeeds (compatible table type)"
+      (let [mock-conn (reify Connection
+                        (getCatalog [_] "hive")
+                        (prepareStatement [_ sql]
+                          (is (= "DESCRIBE \"hive\".\"sales_data\".\"hive_table\"" sql))
+                          (reify PreparedStatement
+                            (executeQuery [_]
+                              (reify ResultSet
+                                (next [_] true)
+                                (close [_] nil)))
+                            (close [_] nil))))]
+        (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                    :starburst mock-conn "sales_data" "hive_table")))))
+
+    (testing "Returns false when DESCRIBE fails with UNSUPPORTED_TABLE_TYPE error (incompatible table type like Iceberg in Hive catalog)"
+      (let [mock-conn (reify Connection
+                        (getCatalog [_] "hive")
+                        (prepareStatement [_ sql]
+                          (is (= "DESCRIBE \"hive\".\"sales_data\".\"iceberg_table\"" sql))
+                          (reify PreparedStatement
+                            (executeQuery [_]
+                              ;; This simulates the actual Trino error when Hive catalog tries to describe an Iceberg table
+                              ;; The error code 133001 corresponds to UNSUPPORTED_TABLE_TYPE in Trino's StandardErrorCode
+                              (throw (SQLException. "Cannot query Iceberg table 'sales_data.iceberg_table'" nil 133001)))
+                            (close [_] nil))))]
+        (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                     :starburst mock-conn "sales_data" "iceberg_table")))))
+
+    (testing "Returns false for non-mixed-catalog errors"
+      (let [mock-conn (reify Connection
+                        (getCatalog [_] "hive")
+                        (prepareStatement [_ sql]
+                          (is (= "DESCRIBE \"hive\".\"sales_data\".\"restricted_table\"" sql))
+                          (reify PreparedStatement
+                            (executeQuery [_]
+                              (throw (SQLException. "Access Denied: Cannot access table restricted_table" nil 42000)))
+                            (close [_] nil))))]
+        (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                     :starburst mock-conn "sales_data" "restricted_table")))))))
 
 (deftest describe-database-test
   (mt/test-driver :starburst
@@ -272,17 +314,6 @@
             (testing description
               (is (= [expected (- expected)] (query x y unit))))))))))
 
-(deftest impersonation-properties-test
-  (testing "Impersonation related properties are set correctly"
-    (let [details {:host                         "starburst-server"
-                   :port                         7778
-                   :catalog                      "my-catalog"
-                   :ssl                          true
-                   :impersonation                true}
-          jdbc-spec (sql-jdbc.conn/connection-details->spec :starburst details)]
-      (is (= "impersonate:true"
-             (:clientInfo jdbc-spec))))))
-
 (defn prepared-statements-helper
   [prepared-optimized]
   (let [details (merge (:details (mt/db))
@@ -328,51 +359,33 @@
       (prepared-statements-helper true)
       (prepared-statements-helper false))))
 
-(deftest impersonation-query
+(deftest optimized-prepared-statement-is-closed-test
   (mt/test-driver :starburst
-    (testing "Make sure the right credentials are used depending on the impersonation checkbox"
-      (binding [api/*current-user* (atom {:email "metabase_user@user.com"})]
-        ;; By default the starburst user should the user defined in the database connection, i.e. "metabase"
-        (is (= [["metabase"]]
-               (mt/rows
-                (qp/process-query
-                 (mt/native-query {:query "SELECT current_user"})))))
+    (testing "can check isClosed on optimized prepared statement"
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* (mt/id) nil
+       (fn [^Connection conn]
+         (let [stmt (.prepareStatement conn "select 1" ResultSet/TYPE_FORWARD_ONLY ResultSet/CONCUR_READ_ONLY)
+               prepared-stmt (#'starburst/proxy-optimized-prepared-statement driver/*driver* conn stmt [])]
+           (is (false? (.isClosed prepared-stmt)))
+           (.close stmt)
+           (is (true? (.isClosed prepared-stmt)))))))))
 
-        (let [details (assoc (:details (mt/db)) :impersonation true)]
-          (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
-            (mt/with-db db
-              (is (= [["metabase_user@user.com"]]
-                     (mt/rows
-                      (qp/process-query
-                       (mt/native-query {:query "SELECT current_user"}))))))))
-
-        ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
-        ;; The role is ignored as Metabase users may not have the role defined in the database connection
-        ;; Because database user = metabase user, the role is passed in the starburst query
-        ;; This is expected to fail as the starburst container doesn't support roles
-        (let [details (assoc (:details (mt/db))
-                             :user "metabase_user@user.com"
-                             :roles "sysadmin"
-                             :impersonation true)]
-          (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
-            (mt/with-db db
-              (is (thrown-with-msg?
-                   Exception
-                   #"Access Denied: Cannot set role sysadmin"
-                   (qp/process-query
-                    (mt/native-query {:query "SELECT current_user"})))))))
-
-        ;; With impersonation disabled the role is passed in the starburst query
-        ;; This is expected to fail as the starburst container doesn't support roles
-        (let [details (assoc (:details (mt/db))
-                             :user "metabase_user@user.com"
-                             :user "admin"
-                             :roles "sysadmin"
-                             :impersonation false)]
-          (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
-            (mt/with-db db
-              (is (thrown-with-msg?
-                   Exception
-                   #"Access Denied: Cannot set role sysadmin"
-                   (qp/process-query
-                    (mt/native-query {:query "SELECT current_user"})))))))))))
+(deftest have-select-privilege-doesnt-throw-test
+  (mt/test-driver :starburst
+    (testing "have-select-privilege? returns true if table exists"
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver*
+       (mt/db)
+       nil
+       (fn [^Connection conn]
+         (is (true?
+              (sql-jdbc.sync.interface/have-select-privilege? driver/*driver* conn "default" "products"))))))
+    (testing "have-select-privilege? returns false if table does not exist"
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver*
+       (mt/db)
+       nil
+       (fn [^Connection conn]
+         (is (false?
+              (sql-jdbc.sync.interface/have-select-privilege? driver/*driver* conn "default" "fake_table"))))))))

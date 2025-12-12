@@ -79,6 +79,7 @@ type TrackSearchClickParams = {
   searchEngine: string;
   requestId?: string | null;
   entityModel?: string | null;
+  entityId?: number | null;
   searchTerm?: string | null;
 };
 
@@ -89,6 +90,7 @@ export const trackSearchClick = ({
   searchEngine,
   requestId = null,
   entityModel = null,
+  entityId = null,
   searchTerm = null,
 }: TrackSearchClickParams) => {
   const dispatchTrackSearchClick = async () => {
@@ -100,6 +102,7 @@ export const trackSearchClick = ({
       search_engine: searchEngine,
       request_id: requestId,
       entity_model: entityModel,
+      entity_id: entityId,
       search_term_hash: searchTerm ? await hashSearchTerm(searchTerm) : null,
       search_term: shouldReportSearchTerm() && searchTerm ? searchTerm : null,
     });

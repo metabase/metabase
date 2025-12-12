@@ -26,7 +26,7 @@
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   [query]
   query)
 
@@ -91,19 +91,6 @@
   (fn [query rff]
     ((check-download-permissions qp) query rff)))
 
-(defenterprise maybe-apply-column-level-perms-check
-  "Execution middleware. Check column-level permissions if applicable."
-  metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check
-  [qp]
-  qp)
-
-(defn maybe-apply-column-level-perms-check-middleware
-  "Helper middleware wrapper for [[maybe-apply-column-level-perms-check]] to make sure we do [[defenterprise]] dispatch
-  correctly on each QP run rather than just once when we combine all of the QP middleware."
-  [qp]
-  (fn [query rff]
-    ((maybe-apply-column-level-perms-check qp) query rff)))
-
 ;;;; Post-processing middleware
 
 ;;; (f query rff) => rff
@@ -118,7 +105,7 @@
 
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   [_query rff]
   rff)
 

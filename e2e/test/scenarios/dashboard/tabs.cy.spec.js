@@ -428,10 +428,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@secondTabQuerySpy").should("not.have.been.called");
     cy.wait("@firstTabQuery").then((r) => {
       firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
+        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (firstQuestion)
       });
       secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
+        expect(r.view_count).to.equal(1); // 1 (previously)
       });
     });
 
@@ -441,10 +441,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@secondTabQuery").then((r) => {
       firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
+        expect(r.view_count).to.equal(2); // 2 (previously)
       });
       secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (secondTabQuery)
+        expect(r.view_count).to.equal(2); // 1(previously) + 1 (secondTabQuery)
       });
     });
 
@@ -455,10 +455,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
 
     firstQuestion().then((r) => {
-      expect(r.view_count).to.equal(5); // 4 (previously) + 1 (firstQuestion)
+      expect(r.view_count).to.equal(2); // 2 (previously)
     });
     secondQuestion().then((r) => {
-      expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
+      expect(r.view_count).to.equal(2); // 2 (previously)
     });
 
     // Go to public dashboard
@@ -488,10 +488,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicSecondTabQuerySpy").should("not.have.been.called");
     cy.wait("@publicFirstTabQuery").then((r) => {
       firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(7); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
+        expect(r.view_count).to.equal(3); // 2 (previously) + 1 (publicFirstTabQuery)
       });
       secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(6); // 5 (previously) + 1 (secondQuestion)
+        expect(r.view_count).to.equal(2); // 2 (previously)
       });
     });
 
@@ -501,25 +501,16 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@publicSecondTabQuery").then((r) => {
       firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(8); // 7 (previously) + 1 (firstQuestion)
+        expect(r.view_count).to.equal(3); // 3 (previously)
       });
       secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(8); // 6 (previously) + 1 (secondQuestion) + 1 (publicSecondTabQuery)
+        expect(r.view_count).to.equal(3); // 2 (previously) + 1 (publicSecondTabQuery)
       });
     });
 
     H.goToTab("Tab 1");
-    // This is a bug. publicFirstTabQuery should not be called again
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledTwice");
+    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@publicFirstTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(10); // 8 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(9); // 8 (previously) + 1 (secondQuestion)
-      });
-    });
   });
 
   it("should only fetch cards on the current tab of an embedded dashboard", () => {
@@ -552,13 +543,6 @@ describe("scenarios > dashboard > tabs", () => {
         .its("body");
     };
 
-    firstQuestion().then((r) => {
-      expect(r.view_count).to.equal(1); // 1 (firstQuestion)
-    });
-    secondQuestion().then((r) => {
-      expect(r.view_count).to.equal(1); // 1 (secondQuestion)
-    });
-
     cy.intercept(
       "GET",
       `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}*`,
@@ -570,7 +554,11 @@ describe("scenarios > dashboard > tabs", () => {
       cy.spy().as("secondTabQuerySpy"),
     ).as("secondTabQuery");
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
+    H.openLegacyStaticEmbeddingModal({
+      resource: "dashboard",
+      resourceId: ORDERS_DASHBOARD_ID,
+      activeTab: "parameters",
+    });
 
     // publish the embedded dashboard so that we can directly navigate to its url
     H.publishChanges("dashboard", () => {});
@@ -587,7 +575,7 @@ describe("scenarios > dashboard > tabs", () => {
         expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
       });
       secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
+        expect(r.view_count).to.equal(1); // 1 (previously)
       });
     });
 
@@ -596,25 +584,16 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@secondTabQuery").then((r) => {
       firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
+        expect(r.view_count).to.equal(3); // 3 (previously)
       });
       secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (second tab query)
+        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (second tab query)
       });
     });
 
     H.goToTab("Tab 1");
-    // This is a bug. firstTabQuery should not be called again
-    cy.get("@firstTabQuerySpy").should("have.been.calledTwice");
+    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@firstTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(6); // 4 (previously) + 1 (firstQuestion) + 1 (first tab query)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
-      });
-    });
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
@@ -741,7 +720,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
+describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

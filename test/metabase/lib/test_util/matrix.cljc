@@ -204,11 +204,11 @@
 
 (defn find-first
   "Finds the column with the matching `:lib/desired-column-alias`"
-  [metadata-providerable desired columns]
+  [query desired columns]
   ;; [[lib/visible-columns]] no longer returns desired column alias (since it's a function of which columns get
   ;; returned), however I don't feel like completely reworking this test so I'm just going to add them here.
   (let [columns (into []
-                      (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
                       columns)]
     (or (m/find-first (comp #(= desired %) :lib/desired-column-alias) columns)
         (throw (ex-info "Failed to find column"

@@ -109,8 +109,7 @@ describe("issue 13751", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText(PG_DB_NAME).should("be.visible").click();
       cy.findByTextEnsureVisible("People").click();
     });
@@ -816,16 +815,10 @@ describe("issue 25189", { tags: "@skip" }, () => {
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "colors",
-        );
-        cy.findByText("Everywhere").click();
+      H.miniPicker().within(() => {
+        cy.realType("colors");
         cy.wait("@search");
-        cy.findByTestId("result-item")
-          .contains(/colors/i)
-          .click();
+        cy.contains(/colors/i).click();
       });
       cy.findByLabelText("Custom column").click();
       H.enterCustomColumnDetails({
@@ -1295,8 +1288,10 @@ describe("issue 49305", () => {
     // This bug does not reproduce if the base question is created via H.createQuestion or H.visitQuestionAdhoc, so create it manually in the UI.
     cy.visit("/");
     H.newButton("Question").click();
-    H.entityPickerModalTab("Tables").click();
-    H.entityPickerModalItem(2, "Products").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Products").click();
+    });
     H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({
       formula: 'concat("49305 ", [Title])',
@@ -2311,7 +2306,7 @@ describe("Issue 38498", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -2341,8 +2336,8 @@ describe("issue 52451", () => {
     });
     H.popover().button("Done").click();
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Reviews").click();
     });
     H.popover().findByText("Expr").click();
@@ -2382,13 +2377,13 @@ describe("issue 56602", () => {
     H.createQuestion(productsModelDetails);
     H.createQuestion(ordersModelDetails);
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.realType(productsModelDetails.name);
       cy.findByText(productsModelDetails.name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.realType(ordersModelDetails.name);
       cy.findByText(ordersModelDetails.name).click();
     });
     H.addCustomColumn();
@@ -2493,5 +2488,69 @@ describe("issue 62987", () => {
       cy.findByText("CountIf").should("be.visible");
       cy.findByText("notEmpty").should("be.visible");
     });
+  });
+});
+
+describe("issue 63180", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Foo: ["+", 1, 2],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+  });
+
+  it("should not be possible to close the custom expression editor when creating a new expression from a combine or extract shortcut (metabase#63180)", () => {
+    function testCombineColumns() {
+      H.getNotebookStep("expression").icon("add").click();
+      H.expressionEditorWidget().within(() => {
+        cy.findByText("Combine columns").click();
+        cy.button("Done").scrollIntoView().click();
+      });
+
+      cy.log("clicking outside the editor should not close it");
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("be.visible");
+      H.modal().should("not.exist");
+
+      cy.log("clearing the expression should allow clicking outside to work");
+      H.CustomExpressionEditor.clear();
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("not.exist");
+      H.modal().should("not.exist");
+    }
+
+    function testExtractColumns() {
+      H.getNotebookStep("expression").icon("add").click();
+      H.expressionEditorWidget().within(() => {
+        cy.findByText("Extract columns").click();
+        cy.findByText("Email").click();
+        cy.findByText("Domain").click();
+      });
+
+      cy.log("clicking outside the editor should not close it");
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("be.visible");
+      H.modal().should("not.exist");
+
+      cy.log("clearing the expression should allow clicking outside to work");
+      H.CustomExpressionEditor.clear();
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("not.exist");
+      H.modal().should("not.exist");
+    }
+
+    testCombineColumns();
+    testExtractColumns();
   });
 });

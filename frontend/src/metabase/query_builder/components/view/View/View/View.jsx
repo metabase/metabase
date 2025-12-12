@@ -275,6 +275,9 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
 const mapDispatchToProps = (dispatch) => ({
   onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: async (question) => {
+    await dispatch(
+      Questions.actions.update({ id: question.id() }, { archived: false }),
+    );
     await dispatch(setArchivedQuestion(question, false));
     await dispatch(Bookmarks.actions.invalidateLists());
   },

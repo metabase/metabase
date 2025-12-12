@@ -1,7 +1,7 @@
 import { screen } from "__support__/ui";
 import type { ScheduleDisplayType } from "metabase-types/api";
 
-import { setup } from "./setup";
+import { setup } from "./setup.spec";
 
 describe("NotificationSchedule", () => {
   ["builder", "raw"].forEach((uiDisplayType) => {

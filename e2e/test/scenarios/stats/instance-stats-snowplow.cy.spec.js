@@ -1,6 +1,6 @@
 const { H } = cy;
 
-H.describeWithSnowplow("scenarios > stats > snowplow", () => {
+describe("scenarios > stats > snowplow", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

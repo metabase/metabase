@@ -15,18 +15,26 @@ import {
   settingsPermissionAllowedPathGetter,
 } from "./utils";
 
-if (hasPremiumFeature("advanced_permissions")) {
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(monitoringPermissionAllowedPathGetter);
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(settingsPermissionAllowedPathGetter);
+/**
+ * Initialize application permissions plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("advanced_permissions")) {
+    PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(
+      monitoringPermissionAllowedPathGetter,
+    );
+    PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(settingsPermissionAllowedPathGetter);
 
-  PLUGIN_APPLICATION_PERMISSIONS.getRoutes = getRoutes;
-  PLUGIN_APPLICATION_PERMISSIONS.tabs = [
-    { name: t`Application`, value: `application` },
-  ];
+    PLUGIN_APPLICATION_PERMISSIONS.getRoutes = getRoutes;
+    PLUGIN_APPLICATION_PERMISSIONS.tabs = [
+      { name: t`Application`, value: `application` },
+    ];
 
-  PLUGIN_APPLICATION_PERMISSIONS.selectors = {
-    canAccessSettings,
-    canManageSubscriptions,
-  };
-  PLUGIN_REDUCERS.applicationPermissionsPlugin = applicationPermissionsReducer;
+    PLUGIN_APPLICATION_PERMISSIONS.selectors = {
+      canAccessSettings,
+      canManageSubscriptions,
+    };
+    PLUGIN_REDUCERS.applicationPermissionsPlugin =
+      applicationPermissionsReducer;
+  }
 }

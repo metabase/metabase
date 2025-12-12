@@ -10,7 +10,7 @@
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
-(deftest diff-keys-test
+(deftest ^:parallel diff-keys-test
   (testing "Detect which keys have changes"
     (is (= [:a :b :c] (#'undo/diff-keys
                        nil

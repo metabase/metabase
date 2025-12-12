@@ -295,8 +295,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket2Name: string;
         }) {
           H.startNewQuestion();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText(tableName).click();
           });
           H.getNotebookStep("summarize")

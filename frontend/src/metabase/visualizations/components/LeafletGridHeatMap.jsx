@@ -104,7 +104,14 @@ export default class LeafletGridHeatMap extends LeafletMap {
     const {
       series: [{ card }],
       metadata,
+      token,
     } = this.props;
+
+    const isStaticEmbedding = !!token;
+
+    if (isStaticEmbedding) {
+      return false;
+    }
 
     const question = new Question(card, metadata);
     const { isNative } = Lib.queryDisplayInfo(question.query());

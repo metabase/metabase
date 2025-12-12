@@ -9,6 +9,7 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
@@ -21,11 +22,10 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
-(use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
 (deftest migration-table-versions-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db! semantic.tu/default-test-db
+    (semantic.tu/with-test-db-defaults!
       (letfn [(migrate-and-get-db-version
                 [attempted-version]
                 (with-redefs [semantic.db.migration.impl/schema-version attempted-version
@@ -56,14 +56,14 @@
 
 (deftest migration-lock-coordination-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db! semantic.tu/default-test-db
+    (semantic.tu/with-test-db-defaults!
       (testing "Migration of simultaneous init attempt is blocked"
         (let [original-write-fn @#'semantic.db.migration/write-successful-migration!
               original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
+              original-maybe-migrate @#'semantic.db.migration/maybe-migrate!
               results (atom {:executed-migrations 0
                              :log []})]
-          (with-redefs-fn {;; TODO: why in ci init index won't succeed -- http on embedding
-                           #'semantic.pgvector-api/index-documents! (constantly nil)
+          (with-redefs-fn {#'semantic.pgvector-api/index-documents! (constantly nil)
                            #'semantic.db.connection/do-with-migrate-tx
                            (fn [& args]
                              (let [tid (.getId (Thread/currentThread))]
@@ -72,6 +72,12 @@
                                (apply original-migrate-fn args)
                                (swap! results update :log conj [tid :ended (t/local-date-time)]))
                              nil)
+                           ;; add delay into migration function to ensure that thread performing migration
+                           ;; finishes earlier
+                           #'semantic.db.migration/maybe-migrate!
+                           (fn [& args]
+                             (Thread/sleep 200)
+                             (apply original-maybe-migrate args))
                            #'semantic.db.migration/write-successful-migration!
                            (fn [& args]
                              (Thread/sleep 2000)
@@ -114,12 +120,12 @@
 (deftest expected-db-schema-after-migration-test
   (try
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-test-db! semantic.tu/default-test-db
+      (semantic.tu/with-test-db-defaults!
         (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
           (semantic.core/init! (semantic.tu/mock-documents) nil)
           (testing "migration table has expected columns"
             (is (map-contains-keys?
-                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                 (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                     (sql/format {:select [:*]
                                                  :from [:migration]}))
                  (qualify :migration [:migrated_at
@@ -127,7 +133,7 @@
                                       :version]))))
           (testing "control table has expected columns"
             (is (map-contains-keys?
-                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                 (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                     (sql/format {:select [:*]
                                                  :from [:index_control]}))
                  (qualify :index_control [:active_id
@@ -136,7 +142,7 @@
                                           :version]))))
           (testing "metadata table has expected columns"
             (is  (map-contains-keys?
-                  (jdbc/execute-one! semantic.tu/db
+                  (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                      (sql/format {:select [:*]
                                                   :from [:index_metadata]}))
                   (qualify :index_metadata [:id
@@ -183,7 +189,7 @@
                         "text_search_with_native_query_vector"
                         "verified"
                         "view_count"}
-                      (->>  (jdbc/execute! semantic.tu/db
+                      (->>  (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                            (sql/format {:select [:column_name]
                                                         :from [:information_schema.columns]
                                                         :where [[:= :table_name [:inline index-table]]]}))
@@ -191,7 +197,7 @@
                             set)))))
           (testing "index table has expected columns"
             (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
-                   (->> (jdbc/execute! semantic.tu/db
+                   (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                        (sql/format {:select [:column_name]
                                                     :from [:information_schema.columns]
                                                     :where [[:= :table_name [:inline "index_gate"]]]}))
@@ -212,7 +218,7 @@
 
 (deftest dynamic-schema-migration-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db! semantic.tu/default-test-db
+    (semantic.tu/with-test-db-defaults!
       (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
         (semantic.core/init! (semantic.tu/mock-documents) nil)
              ;; add column to index table

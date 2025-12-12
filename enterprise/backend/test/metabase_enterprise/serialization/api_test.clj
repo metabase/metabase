@@ -26,7 +26,7 @@
       (GzipCompressorInputStream.)
       (TarArchiveInputStream.)))
 
-(def FILE-TYPES
+(def ^:private file-types
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
    #"/export.log$"                             :log
@@ -37,7 +37,8 @@
    #"/collections/([^/]*)\.yaml$"              :collection
    #"/snippets/(.*)\.yaml"                     :snippet
    #"/databases/.*/schemas/(.*)"               :schema
-   #"/databases/(.*)\.yaml"                    :database])
+   #"/databases/(.*)\.yaml"                    :database
+   #"/transforms/(.*)\.yaml"                   :transform])
 
 (defn- file-type
   "Find out entity type by file path"
@@ -45,7 +46,7 @@
   (some (fn [[re ftype]]
           (when-let [m (re-find re fname)]
             [ftype (when (vector? m) (second m))]))
-        (partition 2 FILE-TYPES)))
+        (partition 2 file-types)))
 
 (defn- log-types
   "Find out entity type by log message"
@@ -73,7 +74,7 @@
       (assoc m k "**ID**")
       m)))
 
-(defn extract-and-sanitize-exception-map [log]
+(defn- extract-and-sanitize-exception-map [log]
   (->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
        second
        read-string
@@ -97,13 +98,13 @@
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
-                  (is (= #{:log :dir :settings}
+                  (is (= #{:log :dir :settings :transform}
                          (tar-file-types f)))))
 
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection}
+                  (is (= #{:log :dir :dashboard :card :collection :transform}
                          (tar-file-types f)))))
 
               (testing "We can export two collections"
@@ -119,18 +120,18 @@
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection}
+                  (is (= #{:log :dir :dashboard :card :collection :transform}
                          (tar-file-types f)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection}
+                  (is (= #{:log :dir :dashboard :card :collection :transform}
                          (tar-file-types f)))))
 
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:log :dir :dashboard :card :collection :settings :schema :database}
+                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database}
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"
@@ -184,7 +185,11 @@
             (testing "POST /api/ee/serialization/export"
               (mt/with-temp [:model/Collection coll  {}
                              :model/Dashboard  dash  {:collection_id (:id coll), :name "thraddash"}
-                             :model/Card       card  {:collection_id (:id coll), :name "frobinate", :type :model}]
+                             :model/Card       card  {:collection_id (:id coll), :name "frobinate", :type :model
+                                                      :query_type    :native
+                                                      :dataset_query {:type     :native
+                                                                      :database (t2/select-one-pk :model/Database)
+                                                                      :native   {:query "SELECT 1"}}}]
 
                 (testing "We clear the card from the search index"
                   (is (= 1 (search-result-count "dashboard" "thraddash")))
@@ -200,7 +205,7 @@
                     ;; we're going to re-use it for import, so a copy is necessary
                       ba  (#'api.serialization/ba-copy res)]
                   (testing "We get only our data and a log file in an archive"
-                    (is (= 4
+                    (is (= 12
                            (with-open [tar (open-tar ba)]
                              (count
                               (for [^TarArchiveEntry e (u.compress/entries tar)
@@ -208,7 +213,7 @@
                                 (do
                                   (condp re-find (.getName e)
                                     #"/export.log$" (testing "Three lines in a log for data files"
-                                                      (is (= (+ #_extract 3 #_store 3)
+                                                      (is (= (+ #_extract 11 #_store 11)
                                                              (count (line-seq (io/reader tar))))))
                                     nil)
                                   (.getName e))))))))
@@ -222,7 +227,7 @@
                              "settings"        false
                              "field_values"    false
                              "duration_ms"     (every-pred number? pos?)
-                             "count"           3
+                             "count"           11
                              "error_count"     0
                              "source"          "api"
                              "secrets"         false
@@ -234,11 +239,13 @@
                     (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
                     (t2/delete! :model/Card (:id card))
 
-                    (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
-                                                    {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                                    {:file ba})]
+                    (let [re-indexed? (atom false)
+                          res         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
+                                        (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
+                                                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                                              {:file ba}))]
                       (testing "We get our data items back"
-                        (is (= #{"Collection" "Dashboard" "Card" "Database"}
+                        (is (= #{"Collection" "Dashboard" "Card" "TransformTag" "TransformJob"}
                                (log-types (line-seq (io/reader (io/input-stream res)))))))
                       (testing "And they hit the db"
                         (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
@@ -248,17 +255,20 @@
                                  "direction"     "import"
                                  "duration_ms"   pos?
                                  "source"        "api"
-                                 "models"        "Card,Collection,Dashboard"
-                                 "count"         3
+                                 "models"        "Card,Collection,Dashboard,TransformJob,TransformTag"
+                                 "count"         11
                                  "error_count"   0
                                  "success"       true
                                  "error_message" nil}
-                                (-> (snowplow-test/pop-event-data-and-user-id!) last :data)))))
+                                (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
 
-                    (testing "The loaded entities are added to the search index"
-                      (is (= 1 (search-result-count "dashboard" "thraddash")))
-                      (is (= 0 (search-result-count "dashboard" "urquan")))
-                      (is (= 1 (search-result-count "dataset" "frobinate")))))
+                      (testing "we did not re-index"
+                        (is (false? @re-indexed?)))
+
+                      (testing "The loaded entities are added to the search index"
+                        (is (= 1 (search-result-count "dashboard" "thraddash")))
+                        (is (= 0 (search-result-count "dashboard" "urquan")))
+                        (is (= 1 (search-result-count "dataset" "frobinate"))))))
 
                   (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                                       (fn [^File file]
@@ -271,16 +281,7 @@
                                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                         {:file ba}))
                             log (slurp (io/input-stream res))]
-                        (testing "3 header lines, then cards+database+collection, then the error"
-                          (is (re-find #"Failed to read file for Collection DoesNotExist" log))
-                          (is (re-find #"Cannot find file" log)) ;; underlying error
-                          (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
-                                  :error      :metabase-enterprise.serialization.v2.load/not-found,
-                                  :model      "Collection",
-                                  :path       [{:id "DoesNotExist", :model "Collection"}],
-                                  :local-id   nil
-                                  :table      :collection}
-                                 (extract-and-sanitize-exception-map log))))
+                        (is (re-find #"Failed to read file \{:path \"Collection DoesNotExist\"}" log))
                         (testing "Snowplow event about error was sent"
                           (is (=? {"success"       false
                                    "event"         "serialization"
@@ -289,7 +290,7 @@
                                    "duration_ms"   int?
                                    "count"         0
                                    "error_count"   0
-                                   "error_message" #"(?s)Failed to read file for Collection DoesNotExist.*"}
+                                   "error_message" "Failed to read file {:path \"Collection DoesNotExist\"}"}
                                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))
 
                     (testing "Skipping errors /api/ee/serialization/import"
@@ -299,18 +300,18 @@
                                                       :continue_on_error true)
                             log (slurp (io/input-stream res))]
                         (testing "3 header lines, then card+database+coll, error, then dashboard+coll"
-                          (is (= #{"Dashboard" "Card" "Database" "Collection"}
+                          (is (= #{"Dashboard" "Card" "Collection" "TransformTag" "TransformJob"}
                                  (log-types (str/split-lines log))))
-                          (is (re-find #"Failed to read file for Collection DoesNotExist" log)))
+                          (is (re-find #"Failed to read file \{:path \"Collection DoesNotExist\"}" log)))
                         (testing "Snowplow event about error was sent"
                           (is (=? {"success"     true
                                    "event"       "serialization"
                                    "direction"   "import"
                                    "source"      "api"
                                    "duration_ms" int?
-                                   "count"       2
+                                   "count"       10
                                    "error_count" 1
-                                   "models"      "Collection,Dashboard"}
+                                   "models"      "Collection,Dashboard,TransformJob,TransformTag"}
                                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
 
                 (testing "Client error /api/ee/serialization/import"
@@ -371,7 +372,7 @@
                         (doseq [^TarArchiveEntry e (u.compress/entries tar)]
                           (condp re-find (.getName e)
                             #"/export.log$" (testing "Three lines in a log for data files"
-                                              (is (= (+ #_extract 3 #_error 1 #_store 2)
+                                              (is (= (+ #_extract 11 #_error 1 #_store 10)
                                                      (count (line-seq (io/reader tar))))))
                             nil))))
                     (testing "Snowplow export event was sent"
@@ -383,7 +384,7 @@
                                "settings"        false
                                "field_values"    false
                                "duration_ms"     pos?
-                               "count"           2
+                               "count"           10
                                "error_count"     1
                                "source"          "api"
                                "secrets"         false

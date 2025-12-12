@@ -1,4 +1,7 @@
-import type { MultipleMetricsChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type {
+  BreakoutChartColumns,
+  MultipleMetricsChartColumns,
+} from "metabase/visualizations/lib/graph/columns";
 import type {
   BarData,
   Series,
@@ -12,7 +15,10 @@ import type {
   TooltipRowModel,
 } from "metabase/visualizations/types";
 import type { SeriesSettings, VisualizationSettings } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockNumericColumn,
+} from "metabase-types/api/mocks";
 
 import { getHoverData, getStackedTooltipRows } from "./events";
 
@@ -52,23 +58,22 @@ const seriesColors = {
   x1: "green",
 };
 
+const SERIES_Y_ACCESSOR = (datum: GroupedDatum) =>
+  typeof datum.dimensionValue === "object"
+    ? JSON.stringify(datum.dimensionValue)
+    : datum.dimensionValue;
+
 const series1 = {
   seriesKey: "x",
   seriesName: "Series 1",
   xAccessor: (datum: GroupedDatum) => datum.metrics["x"],
-  yAccessor: (datum: GroupedDatum) =>
-    typeof datum.dimensionValue === "object"
-      ? JSON.stringify(datum.dimensionValue)
-      : datum.dimensionValue,
+  yAccessor: SERIES_Y_ACCESSOR,
 };
 const series2 = {
   seriesKey: "x1",
   seriesName: "Series 2",
   xAccessor: (datum: GroupedDatum) => datum.metrics["x1"],
-  yAccessor: (datum: GroupedDatum) =>
-    typeof datum.dimensionValue === "object"
-      ? JSON.stringify(datum.dimensionValue)
-      : datum.dimensionValue,
+  yAccessor: SERIES_Y_ACCESSOR,
 };
 
 const barData: BarData<GroupedDatum> = {
@@ -180,6 +185,165 @@ describe("events utils", () => {
       ).stackedTooltipModel;
 
       expect(tooltipModel).not.toBeDefined();
+    });
+
+    it("does handle data with breakout correctly (metabase#64931)", () => {
+      const dataWithBreakout: GroupedDatum[] = [
+        {
+          breakout: {
+            "2025-03-31": {
+              metrics: {
+                FUTURESPEND: 1000,
+              },
+              rawRows: [["2025-03-31", "US", 10, 100, 1000]],
+            },
+            "2024-03-31": {
+              metrics: {
+                FUTURESPEND: 2000,
+              },
+              rawRows: [["2024-03-31", "US", 20, 200, 2000]],
+            },
+            "2023-03-31": {
+              metrics: {
+                FUTURESPEND: 6000,
+              },
+              rawRows: [
+                ["2023-03-31", "US", 30, 300, 3000],
+                ["2023-03-31", "US", 30, 300, 3000],
+              ],
+            },
+          },
+          dimensionValue: "US",
+          metrics: { FUTURESPEND: 9000 },
+          isClickable: true,
+          rawRows: [
+            ["2025-03-31", "US", 10, 100, 1000],
+            ["2024-03-31", "US", 20, 200, 2000],
+            ["2023-03-31", "US", 30, 300, 3000],
+            ["2023-03-31", "US", 30, 300, 3000],
+          ],
+        },
+      ];
+
+      const datasetColumns = [
+        createMockColumn({
+          name: "TIME",
+          display_name: "TIME",
+        }),
+        createMockColumn({
+          name: "COUNTRY",
+          display_name: "COUNTRY",
+        }),
+        createMockNumericColumn({
+          name: "PERCENTAGEOFTOTALSPEND",
+          display_name: "PERCENTAGEOFTOTALSPEND",
+        }),
+        createMockNumericColumn({
+          name: "TOTALSPEND",
+          display_name: "TOTALSPEND",
+        }),
+        createMockNumericColumn({
+          name: "FUTURESPEND",
+          display_name: "FUTURESPEND",
+        }),
+      ];
+
+      const COLUMNS_MAP = {
+        TIME: datasetColumns[0],
+        COUNTRY: datasetColumns[1],
+        PERCENTAGEOFTOTALSPEND: datasetColumns[2],
+        TOTALSPEND: datasetColumns[3],
+        FUTURESPEND: datasetColumns[4],
+      };
+
+      const chartColumns: BreakoutChartColumns = {
+        dimension: {
+          index: 1,
+          column: COLUMNS_MAP.COUNTRY,
+        },
+        breakout: {
+          index: 0,
+          column: COLUMNS_MAP.TIME,
+        },
+        metric: {
+          index: 4,
+          column: COLUMNS_MAP.FUTURESPEND,
+        },
+      };
+
+      const series0: Series<GroupedDatum, SeriesInfo> = {
+        seriesKey: "2025-03-31",
+        seriesName: "2025-03-31",
+        seriesInfo: {
+          metricColumn: COLUMNS_MAP.FUTURESPEND,
+          dimensionColumn: COLUMNS_MAP.COUNTRY,
+          breakoutValue: "2025-03-31",
+        },
+        xAccessor: (datum: GroupedDatum) => datum.metrics["FUTURESPEND"],
+        yAccessor: SERIES_Y_ACCESSOR,
+      };
+      const series1: Series<GroupedDatum, SeriesInfo> = {
+        seriesKey: "2024-03-31",
+        seriesName: "2024-03-31",
+        seriesInfo: {
+          metricColumn: COLUMNS_MAP.FUTURESPEND,
+          dimensionColumn: COLUMNS_MAP.COUNTRY,
+          breakoutValue: "2024-03-31",
+        },
+        xAccessor: (datum: GroupedDatum) => datum.metrics["FUTURESPEND"],
+        yAccessor: SERIES_Y_ACCESSOR,
+      };
+      const series2: Series<GroupedDatum, SeriesInfo> = {
+        seriesKey: "2023-03-31",
+        seriesName: "2023-03-31",
+        seriesInfo: {
+          metricColumn: COLUMNS_MAP.FUTURESPEND,
+          dimensionColumn: COLUMNS_MAP.COUNTRY,
+          breakoutValue: "2023-03-31",
+        },
+        xAccessor: (datum: GroupedDatum) => datum.metrics["FUTURESPEND"],
+        yAccessor: SERIES_Y_ACCESSOR,
+      };
+
+      const barData: BarData<GroupedDatum> = {
+        isNegative: false,
+        xStartValue: 0,
+        xEndValue: 6000,
+        yValue: "US",
+        datum: dataWithBreakout[0],
+        datumIndex: 0,
+        series: series2,
+        seriesIndex: 2,
+      };
+
+      const seriesColors = {
+        "2023-03-31": "#98D9D9",
+        "2024-03-31": "#F2A86F",
+        "2025-03-31": "#F9D45C",
+      };
+
+      const tooltipData = getHoverData(
+        barData,
+        {
+          "graph.dimensions": ["COUNTRY", "TIME"],
+        },
+        chartColumns,
+        datasetColumns,
+        [series0, series1, series2],
+        seriesColors,
+      );
+
+      expect(
+        tooltipData.data?.find(({ col }) => col?.name === "FUTURESPEND")?.value,
+      ).toBe(6000);
+      expect(
+        tooltipData.data?.find(
+          ({ col }) => col?.name === "PERCENTAGEOFTOTALSPEND",
+        )?.value,
+      ).toBe(60);
+      expect(
+        tooltipData.data?.find(({ col }) => col?.name === "TOTALSPEND")?.value,
+      ).toBe(600);
     });
   });
 });

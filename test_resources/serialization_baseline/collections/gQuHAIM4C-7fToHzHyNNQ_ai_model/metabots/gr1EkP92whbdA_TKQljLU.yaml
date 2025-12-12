@@ -1,0 +1,22 @@
+name: Test Metabot
+description: A test metabot
+created_at: '2025-06-09T20:12:13.816701Z'
+entity_id: gr1EkP92whbdA_TKQljLU
+updated_at: '2025-06-09T20:12:13.816701Z'
+serdes/meta:
+- id: gr1EkP92whbdA_TKQljLU
+  model: Metabot
+collection_id: gQuHAIM4C-7fToHzHyNNQ
+prompts:
+- card_id: Mr5p0TE2FSxGeUFaWd9yu
+  created_at: '2025-06-09T20:12:13.816701Z'
+  entity_id: U4V5PzzpaMasl1Kt9BvNy
+  model: model
+  prompt: A sample prompt
+  updated_at: '2025-06-09T20:12:13.816701Z'
+  serdes/meta:
+  - id: gr1EkP92whbdA_TKQljLU
+    model: Metabot
+  - id: U4V5PzzpaMasl1Kt9BvNy
+    model: MetabotPrompt
+use_verified_content: false

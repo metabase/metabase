@@ -1,6 +1,8 @@
 (ns metabase.lib.convert.metadata-to-legacy
   (:require
    [medley.core :as m]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]))
@@ -17,7 +19,7 @@
     [k]
     (f (keyword k))))
 
-(mu/defn lib-metadata-column->legacy-metadata-column :- :map
+(mu/defn lib-metadata-column->legacy-metadata-column :- :metabase.legacy-mbql.schema/legacy-column-metadata
   "Convert a kebab-case Lib results metadata column to a mixed-case legacy results metadata column:
 
   * Convert from all-kebab-case keys to legacy casing (simple keywords use snake case while
@@ -31,4 +33,5 @@
   (-> col
       (update-keys lib-metadata-column-key->legacy-metadata-column-key)
       (m/update-existing :binning_info update-keys lib-metadata-column-key->legacy-metadata-column-key)
-      (dissoc :lib/type)))
+      (dissoc :lib/type)
+      (->> (lib.normalize/normalize :metabase.legacy-mbql.schema/legacy-column-metadata))))

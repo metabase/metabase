@@ -8,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
   getVirtualCardType,
+  isQuestionDashCard,
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
@@ -86,6 +87,18 @@ export const DashCardCardParameterMapperContent = ({
         dashcard.dashboard_tab_id
     );
   }, [editingParameterInlineDashcard, dashcard.dashboard_tab_id]);
+
+  const isInlineParameterOfAnotherQuestionCard = useMemo(() => {
+    return (
+      editingParameterInlineDashcard != null &&
+      isQuestionDashCard(editingParameterInlineDashcard) &&
+      editingParameterInlineDashcard.id !== dashcard.id
+    );
+  }, [editingParameterInlineDashcard, dashcard.id]);
+
+  const hasExistingConnection = useMemo(() => {
+    return target != null;
+  }, [target]);
 
   const headerContent = useMemo(() => {
     if (layoutHeight <= 2) {
@@ -175,9 +188,18 @@ export const DashCardCardParameterMapperContent = ({
 
   if (isInlineParameterFromAnotherTab) {
     return (
-      <Flex className={S.TextCardDefault} gap="sm" ta="center">
+      <Flex className={S.TextCardDefault} gap="sm" align="center" ta="center">
         <Icon name="info" size={12} className={S.InfoIcon} />
         {t`The selected filter is on another tab.`}
+      </Flex>
+    );
+  }
+
+  if (isInlineParameterOfAnotherQuestionCard && !hasExistingConnection) {
+    return (
+      <Flex className={S.TextCardDefault} gap="sm" align="center" ta="center">
+        <Icon name="info" size={12} className={S.InfoIcon} />
+        {t`This filter can only connect to its own card.`}
       </Flex>
     );
   }

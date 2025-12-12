@@ -1,4 +1,3 @@
-import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
@@ -16,12 +15,16 @@ export const CollectionIcon = ({
   question: Question;
 }) => {
   if (!collection?.type) {
-    return <PLUGIN_MODERATION.EntityModerationIcon question={question} />;
+    return (
+      <PLUGIN_MODERATION.EntityModerationIcon
+        moderationReviews={question.getModerationReviews()}
+      />
+    );
   }
 
   return (
     <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-      color={color("brand")}
+      c="brand"
       collection={collection}
       entity={question.type()}
     />

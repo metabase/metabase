@@ -11,7 +11,7 @@ const CATEGORY_FILTER = createMockParameter({
   type: "string/=",
 });
 
-H.describeWithSnowplow("scenarios > dashboard cards > sections", () => {
+describe("scenarios > dashboard cards > sections", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

@@ -25,7 +25,11 @@
 (deftest should-log-request?-test
   (testing "Health check logging can be disabled via env var"
     (mt/with-temp-env-var-value! [mb-health-check-logging-enabled true]
-      (is (#'mw.log/should-log-request? {:uri "/api/health"})))
+      (is (#'mw.log/should-log-request? {:uri "/api/health"}))
+      (is (#'mw.log/should-log-request? {:uri "/livez"}))
+      (is (#'mw.log/should-log-request? {:uri "/readyz"})))
 
     (mt/with-temp-env-var-value! [mb-health-check-logging-enabled false]
-      (is (not (#'mw.log/should-log-request? {:uri "/api/health"}))))))
+      (is (not (#'mw.log/should-log-request? {:uri "/api/health"})))
+      (is (not (#'mw.log/should-log-request? {:uri "/livez"})))
+      (is (not (#'mw.log/should-log-request? {:uri "/readyz"}))))))

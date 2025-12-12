@@ -23,7 +23,7 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { SeriesSettings } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { transformSeries } from "./chart-definition-legacy";
 
@@ -64,11 +64,13 @@ export const getCartesianChartDefinition = (
       }
 
       const newSettings = _.omit(settings, SERIES_SETTING_KEY);
-      const newSeriesSettings: Record<string, SeriesSettings> = {};
+      const newSeriesSettings: VisualizationSettings["series_settings"] = {};
 
       Object.entries(settings[SERIES_SETTING_KEY]).forEach(
         ([key, seriesSettings]) => {
-          const newSingleSeriesSettings = _.omit(seriesSettings, "display");
+          const newSingleSeriesSettings = seriesSettings
+            ? _.omit(seriesSettings, "display")
+            : seriesSettings;
 
           if (!_.isEmpty(newSingleSeriesSettings)) {
             newSeriesSettings[key] = newSingleSeriesSettings;

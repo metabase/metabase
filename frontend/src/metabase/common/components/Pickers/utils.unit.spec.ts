@@ -16,6 +16,22 @@ describe("getCollectionIdPath", () => {
     expect(path).toEqual([1337]);
   });
 
+  it("should handle the library collections", () => {
+    const path = getCollectionIdPath(
+      {
+        id: 5,
+        location: "/6/",
+        effective_location: "/6/",
+        is_personal: true,
+        model: "collection",
+        type: "library-metrics",
+      },
+      1337,
+    );
+
+    expect(path).toEqual([6, 5]);
+  });
+
   it("should handle subcollections of the current user's personal collection", () => {
     const path = getCollectionIdPath(
       {

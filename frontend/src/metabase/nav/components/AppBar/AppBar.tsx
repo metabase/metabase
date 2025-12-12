@@ -16,6 +16,7 @@ export interface AppBarProps {
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
+  isCommentSidebarOpen?: boolean;
   isDocumentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
@@ -26,7 +27,6 @@ export interface AppBarProps {
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBar = (props: AppBarProps): JSX.Element => {

@@ -25,6 +25,7 @@ export const DIMENSIONS = {
   },
   total: {
     valueFontSize: 22,
+    valueFontSizeSm: 17,
     labelFontSize: 14,
     fontWeight: 700,
   },
@@ -38,6 +39,6 @@ export const OTHER_SLICE_KEY = `${NULL_CHAR}___OTHER___`;
 
 export const getOtherSliceName = () => t`Other`;
 
-export const getTotalText = () => t`Total`.toUpperCase();
+export const getTotalText = () => t`Total`;
 
 export const OPTION_NAME_SEPERATOR = `–${NULL_CHAR}–`;

@@ -22,6 +22,7 @@ import {
   createMockRecentCollectionItem,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
@@ -34,7 +35,10 @@ import { PaletteResults } from "../../PaletteResults";
 const TestComponent = withRouter(
   ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
     useCommandPaletteBasicActions(props);
-    useCommandPalette({ locationQuery: props.location.query });
+    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+      disabled: false,
+      locationQuery: props.location.query,
+    });
 
     const { query } = useKBar();
 
@@ -45,7 +49,14 @@ const TestComponent = withRouter(
       }
     }, [q, query]);
 
-    return <PaletteResults />;
+    return (
+      <PaletteResults
+        locationQuery={props.location.query}
+        searchRequestId={searchRequestId}
+        searchResults={searchResults}
+        searchTerm={searchTerm}
+      />
+    );
   },
 );
 
@@ -132,6 +143,10 @@ export const commonSetup = ({
     settings: mockSettings({ ...settings, "token-features": TOKEN_FEATURES }),
     currentUser: createMockUser({
       is_superuser: isAdmin,
+      permissions: createMockUserPermissions({
+        can_create_queries: true,
+        can_create_native_queries: true,
+      }),
     }),
   });
 

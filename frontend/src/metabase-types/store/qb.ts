@@ -6,7 +6,7 @@ import type {
   CollectionItemModel,
   Dataset,
   Field,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   TimelineEventId,
 } from "metabase-types/api";
 
@@ -80,7 +80,7 @@ export interface QueryBuilderState {
   originalCard: Card | null;
   lastRunCard: Card | null;
 
-  parameterValues: Record<string, ParameterValueOrArray>;
+  parameterValues: ParameterValuesMap;
 
   zoomedRowObjectId: number | string | null;
   tableForeignKeyReferences: Record<number, ForeignKeyReference> | null;

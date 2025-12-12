@@ -14,7 +14,7 @@ A **pie chart** can be used when breaking out a metric by a single dimension. In
 
 Pie charts can be used to visualize a metric as part of a whole. Sunburst charts can be used to visualize hierarchical or nested data, or display multiple levels of categorization.
 
-Pie and sunburst charts work best when when the number of possible breakout values is small, like accounts by plan. These charts should only be used to visualize metrics that add up to 100% (like count or sum of total).
+Pie and sunburst charts work best when the number of possible breakout values is small, like accounts by plan. These charts should only be used to visualize metrics that add up to 100% (like count or sum of total).
 
 Pie charts should be used to communicate a general sense of the relative sizes of breakouts. If precise comparison is important so people can see the exact differences between values, or you have more than a few breakouts (like customers per country), it's usually better to use a bar or row chart.
 

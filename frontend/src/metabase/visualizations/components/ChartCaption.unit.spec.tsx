@@ -105,4 +105,70 @@ describe("ChartCaption", () => {
 
     expect(queryIcon("info")).not.toBeInTheDocument();
   });
+
+  describe("title sources", () => {
+    it("should use card.title from settings as highest priority", () => {
+      setup({
+        series: getSeries({
+          card: createMockCard({
+            name: "Card Name",
+            visualization_settings: { "card.title": "Viz Settings Title" },
+          }),
+        }),
+        settings: { "card.title": "Settings Title" },
+      });
+
+      expect(screen.getByTestId("legend-caption")).toHaveTextContent(
+        "Settings Title",
+      );
+    });
+
+    it("should use card.title from visualization_settings when no settings title", () => {
+      setup({
+        series: getSeries({
+          card: createMockCard({
+            name: "Card Name",
+            visualization_settings: { "card.title": "Viz Settings Title" },
+          }),
+        }),
+        settings: {},
+      });
+
+      expect(screen.getByTestId("legend-caption")).toHaveTextContent(
+        "Viz Settings Title",
+      );
+    });
+
+    it("should use card.name when no title in settings or visualization_settings", () => {
+      setup({
+        series: getSeries({
+          card: createMockCard({
+            name: "Card Name",
+            visualization_settings: {},
+          }),
+        }),
+        settings: {},
+      });
+
+      expect(screen.getByTestId("legend-caption")).toHaveTextContent(
+        "Card Name",
+      );
+    });
+
+    it("should render empty title when no title sources available", () => {
+      setup({
+        series: getSeries({
+          card: createMockCard({
+            name: undefined,
+            visualization_settings: {},
+          }),
+        }),
+        settings: {},
+      });
+
+      const caption = screen.getByTestId("legend-caption");
+      expect(caption).toBeInTheDocument();
+      expect(caption).not.toHaveTextContent(/\S/); // Should not contain any non-whitespace characters
+    });
+  });
 });

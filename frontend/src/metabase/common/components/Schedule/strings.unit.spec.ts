@@ -1,8 +1,8 @@
-import { has24HourModeSetting } from "metabase/lib/time";
+import { has24HourModeSetting } from "metabase/lib/time-dayjs";
 
 import { getHours } from "./strings";
 
-jest.mock("metabase/lib/time", () => ({
+jest.mock("metabase/lib/time-dayjs", () => ({
   has24HourModeSetting: jest.fn(),
 }));
 

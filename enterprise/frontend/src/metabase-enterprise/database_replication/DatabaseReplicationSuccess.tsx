@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import MetabotCloudIcon from "assets/img/metabot-cloud-96x96.svg";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { Box, Button, Stack, Text, Title } from "metabase/ui";
 
 export const DatabaseReplicationSuccess = ({
@@ -11,7 +11,7 @@ export const DatabaseReplicationSuccess = ({
   return (
     <Stack align="center" gap="lg" my="4.5rem">
       <Box h={96} w={96}>
-        <img src={MetabotCloudIcon} alt={t`Metabot Cloud`} />
+        <MetabotLogo variant="cloud" />
       </Box>
 
       <Box ta="center">

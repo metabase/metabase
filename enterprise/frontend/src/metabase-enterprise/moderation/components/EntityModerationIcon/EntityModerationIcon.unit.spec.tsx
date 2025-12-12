@@ -1,10 +1,7 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import Question from "metabase-lib/v1/Question";
 import {
-  createMockCard,
-  createMockDashboard,
   createMockModerationReview,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -35,11 +32,7 @@ describe("EntityModerationIcon", () => {
   describe("questions", () => {
     it("verified question", () => {
       setup({
-        question: new Question(
-          createMockCard({
-            moderation_reviews: [createMockModerationReview()],
-          }),
-        ),
+        moderationReviews: [createMockModerationReview()],
       });
 
       expect(screen.getByRole("img", { name: /verified/ })).toBeInTheDocument();
@@ -47,15 +40,11 @@ describe("EntityModerationIcon", () => {
 
     it("not verified question", () => {
       setup({
-        question: new Question(
-          createMockCard({
-            moderation_reviews: [
-              createMockModerationReview({
-                status: null,
-              }),
-            ],
+        moderationReviews: [
+          createMockModerationReview({
+            status: null,
           }),
-        ),
+        ],
       });
 
       expect(
@@ -67,9 +56,7 @@ describe("EntityModerationIcon", () => {
   describe("dashboards", () => {
     it("verified dashboard", () => {
       setup({
-        dashboard: createMockDashboard({
-          moderation_reviews: [createMockModerationReview()],
-        }),
+        moderationReviews: [createMockModerationReview()],
       });
 
       expect(screen.getByRole("img", { name: /verified/ })).toBeInTheDocument();
@@ -77,13 +64,11 @@ describe("EntityModerationIcon", () => {
 
     it("not verified dashboard", () => {
       setup({
-        dashboard: createMockDashboard({
-          moderation_reviews: [
-            createMockModerationReview({
-              status: null,
-            }),
-          ],
-        }),
+        moderationReviews: [
+          createMockModerationReview({
+            status: null,
+          }),
+        ],
       });
 
       expect(

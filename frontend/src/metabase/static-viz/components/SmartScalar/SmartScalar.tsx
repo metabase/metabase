@@ -108,11 +108,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
     percentChange: {
       color: comparison.changeColor || getColor("text-light"),
       fontWeight: 900,
-    },
-    separator: {
-      color: getColor("text-light"),
-      fontSize: "10px",
-      margin: "0 2px",
+      marginRight: 4,
     },
     comparisonDescription: {
       color: getColor("text-medium"),
@@ -129,7 +125,6 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       {!!icon && <span style={styles.icon}>{icon}</span>}
       <span>
         <span style={styles.percentChange}>{changeDisplayValue}</span>
-        <span style={styles.separator}> • </span>
         <span style={styles.comparisonDescription}>
           {`${comparison.comparisonDescStr}: `}
         </span>

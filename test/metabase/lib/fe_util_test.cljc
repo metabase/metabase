@@ -585,7 +585,8 @@
 
 (deftest ^:parallel specific-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
+        column (-> (m/filter-vals some? (meta/field-metadata :checkins :date))
+                   (assoc :base-type :type/DateTime :effective-type :type/DateTime))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
                               {:operator   :=
@@ -971,7 +972,9 @@
                                                :widget-type :text
                                                :display-name "foo"
                                                :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
-               (lib/dependent-metadata nil :question)))))
+               (lib/dependent-metadata nil :question))))))
+
+(deftest ^:parallel dependent-metadata-test-2
   (testing "simple query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -979,7 +982,9 @@
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/venues-query)
-      (lib/append-stage (lib.tu/venues-query))))
+      (lib/append-stage (lib.tu/venues-query)))))
+
+(deftest ^:parallel dependent-metadata-test-3
   (testing "join query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -987,7 +992,9 @@
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-join)
-      (lib/append-stage (lib.tu/query-with-join))))
+      (lib/append-stage (lib.tu/query-with-join)))))
+
+(deftest ^:parallel dependent-metadata-test-4
   (testing "source card based query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -995,7 +1002,9 @@
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-source-card)
-      (lib/append-stage (lib.tu/query-with-source-card))))
+      (lib/append-stage (lib.tu/query-with-source-card)))))
+
+(deftest ^:parallel dependent-metadata-test-5
   (testing "source card based query with result metadata"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -1003,7 +1012,9 @@
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-source-card-with-result-metadata)
-      (lib/append-stage (lib.tu/query-with-source-card-with-result-metadata))))
+      (lib/append-stage (lib.tu/query-with-source-card-with-result-metadata)))))
+
+(deftest ^:parallel dependent-metadata-test-6
   (testing "model based query"
     (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-model)]
       (are [query] (=? [{:type :database, :id (meta/id)}
@@ -1012,7 +1023,9 @@
                         {:type :table,    :id (meta/id :users)}]
                        (lib/dependent-metadata query nil :question))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-7
   (testing "metric based query"
     (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-metric)]
       (are [query] (=? [{:type :database, :id (meta/id)}
@@ -1023,7 +1036,9 @@
                         {:type :table,    :id (meta/id :venues)}]
                        (lib/dependent-metadata query nil :question))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-8
   (testing "editing a model"
     (let [metadata-provider lib.tu/metadata-provider-with-model
           query (->> (lib.metadata/card metadata-provider 1)
@@ -1037,7 +1052,9 @@
                         {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :model))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-9
   (testing "editing a metric"
     (let [metadata-provider lib.tu/metadata-provider-with-metric
           query (->> (lib.metadata/card metadata-provider 1)
@@ -1052,6 +1069,86 @@
                        (lib/dependent-metadata query 1 :metric))
         query
         (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-10
+  (testing "Native query snippets should be included in dependent metadata"
+    (let [;; lib/native-query would try to look up the snippets:
+          query {:lib/type :mbql/query
+                 :database 1
+                 :stages [{:lib/type :mbql.stage/native
+                           :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
+                           :template-tags {"snippet: filter1" {:type :snippet
+                                                               :snippet-id 10
+                                                               :snippet-name "filter1"
+                                                               :name "snippet: filter1"
+                                                               :display-name "Filter 1"
+                                                               :id "def456"}
+                                           "snippet: filter2" {:type :snippet
+                                                               :snippet-id 20
+                                                               :snippet-name "filter2"
+                                                               :name "snippet: filter2"
+                                                               :display-name "Filter 2"
+                                                               :id "ghi789"}}}]}]
+      (is (=? [{:type :database}
+               {:type :schema}
+               {:type :native-query-snippet :id 10}
+               {:type :native-query-snippet :id 20}]
+              (lib/dependent-metadata query nil :question))))))
+
+(deftest ^:parallel recursive-snippet-dependencies-test
+  (testing "Recursive snippet dependencies should be resolved"
+    (let [metadata-provider (lib.tu/mock-metadata-provider
+                             {:native-query-snippets
+                              [{:lib/type :metadata/native-query-snippet
+                                :id 10
+                                :name "filter1"
+                                :template-tags {"snippet: nested1" {:type :snippet
+                                                                    :snippet-id 30
+                                                                    :snippet-name "nested1"
+                                                                    :name "snippet: nested1"
+                                                                    :display-name "Nested 1"
+                                                                    :id "test-id-30"}
+                                                "snippet: nested2" {:type :snippet
+                                                                    :snippet-id 40
+                                                                    :snippet-name "nested2"
+                                                                    :name "snippet: nested2"
+                                                                    :display-name "Nested 2"
+                                                                    :id "test-id-40"}}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 30
+                                :name "nested1"
+                                :template-tags {"snippet: deeply-nested" {:type :snippet
+                                                                          :snippet-id 50
+                                                                          :snippet-name "deeply-nested"
+                                                                          :name "snippet: deeply-nested"
+                                                                          :display-name "Deeply Nested"
+                                                                          :id "test-id-50"}}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 40
+                                :name "nested2"
+                                :template-tags {}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 50
+                                :name "deeply-nested"
+                                :template-tags {}}]})
+          query (lib/query metadata-provider
+                           {:lib/type :mbql/query
+                            :database 1
+                            :stages [{:lib/type :mbql.stage/native
+                                      :native "SELECT * WHERE {{snippet: filter1}}"
+                                      :template-tags {"snippet: filter1" {:type :snippet
+                                                                          :snippet-id 10
+                                                                          :snippet-name "filter1"
+                                                                          :name "snippet: filter1"
+                                                                          :display-name "Filter 1"
+                                                                          :id "test-id-1"}}}]})]
+      (is (=? [{:type :database}
+               {:type :schema}
+               {:type :native-query-snippet :id 10}
+               {:type :native-query-snippet :id 30}
+               {:type :native-query-snippet :id 50}
+               {:type :native-query-snippet :id 40}]
+              (lib/dependent-metadata query nil :question))))))
 
 (deftest ^:parallel table-or-card-dependent-metadata-test
   (testing "start from table"

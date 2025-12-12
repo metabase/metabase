@@ -180,3 +180,11 @@ export const trackFilterMoved = (
     event_detail: destination,
   });
 };
+
+export const trackDashboardBookmarked = () => {
+  trackSimpleEvent({
+    event: "bookmark_added",
+    event_detail: "dashboard",
+    triggered_from: "dashboard_header",
+  });
+};

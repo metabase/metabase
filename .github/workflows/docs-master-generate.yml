@@ -11,6 +11,5 @@ jobs:
     uses: ./.github/workflows/docs-generate-base.yml
     with:
       target_branch: "master"
-      m2_cache_key_suffix: "master"
     secrets:
       automation_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

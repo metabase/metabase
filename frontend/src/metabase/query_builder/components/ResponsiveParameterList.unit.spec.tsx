@@ -3,27 +3,19 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/v1/Question";
-import type { Parameter } from "metabase-types/api";
-import {
-  createMockNativeDatasetQuery,
-  createMockParameter,
-} from "metabase-types/api/mocks";
+import type { CardId, Parameter } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 
 type SetupOpts = {
-  question?: Question;
+  cardId?: CardId;
   parameters?: Parameter[];
   enableParameterRequiredBehavior?: boolean;
 };
 
 function setup({
-  question = Question.create({
-    dataset_query: createMockNativeDatasetQuery(),
-    metadata: SAMPLE_METADATA,
-  }),
+  cardId,
   parameters = [],
   enableParameterRequiredBehavior = false,
 }: SetupOpts) {
@@ -32,7 +24,7 @@ function setup({
 
   renderWithProviders(
     <ResponsiveParametersList
-      question={question}
+      cardId={cardId}
       parameters={parameters}
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}
       setParameterValue={setParameterValue}

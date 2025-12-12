@@ -1419,7 +1419,7 @@ describe("issues 15279 and 24500", () => {
     name: "",
     slug: "",
     id: "af72ce9c",
-    type: "foo",
+    type: "string/=",
     sectionId: "bar",
   };
 
@@ -3260,7 +3260,7 @@ describe("44047", () => {
           parameter_id: parameterDetails.id,
           target: [
             "dimension",
-            ["field", REVIEWS.RATING, { type: "type/Integer" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
           ],
         },
       ],
@@ -3275,7 +3275,10 @@ describe("44047", () => {
         {
           card_id: card.id,
           parameter_id: parameterDetails.id,
-          target: ["dimension", ["field", "RATING", { type: "type/Integer" }]],
+          target: [
+            "dimension",
+            ["field", "RATING", { "base-type": "type/Integer" }],
+          ],
         },
       ],
     };
@@ -3775,6 +3778,92 @@ describe("issue 35852", () => {
       });
     });
   }
+});
+
+describe("issue 47097", () => {
+  const questionDetails = {
+    name: "Products",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const parameterDetails = {
+    id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+    type: "string/=",
+    name: "Category",
+    slug: "category",
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it('should be able to use filters without "create-queries" permissions when coming from a dashboard (metabase#47097)', () => {
+    cy.log("create a dashboard with a parameter mapped to a field with values");
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 12,
+              parameter_mappings: [
+                {
+                  parameter_id: parameterDetails.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+              ],
+            },
+          ],
+        });
+        cy.wrap(dashboard_id).as("dashboardId");
+      },
+    );
+
+    cy.log("verify the field values in a dashboard");
+    cy.signIn("nodata");
+    H.visitDashboard("@dashboardId");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByPlaceholderText("Search the list").type("{esc}");
+    });
+
+    cy.log("drill-thru without filter values and check the dropdown");
+    H.getDashboardCard().findByText("Products").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByPlaceholderText("Search the list").type("{esc}");
+    });
+    H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+    H.getDashboardCard().should("be.visible");
+
+    cy.log("add a filter value, drill-thru, and check the dropdown");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.getDashboardCard().findByText("Products").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.filterWidget().click();
+    H.popover().findByText("Widget").should("be.visible");
+  });
 });
 
 describe("issue 48524", () => {
@@ -4515,7 +4604,10 @@ describe("issue 62627", () => {
 
     cy.log("add an inline card filter");
     H.showDashboardCardActions();
-    H.findDashCardAction(H.getDashboardCard(), "Add a filter").click();
+    H.getDashboardCard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Add a filter")
+      .click();
     H.popover().findByText("Text or Category").click();
     H.selectDashboardFilter(H.getDashboardCard(), "Category");
     H.setDashboardParameterName("Category");
@@ -4695,6 +4787,7 @@ describe("issue 14595", () => {
           },
           {
             name: "Many data types",
+            database: WRITABLE_DB_ID,
             query: { "source-table": tableId },
           },
         ],
@@ -5109,7 +5202,7 @@ describe("Issue 60987", () => {
       cy.findByPlaceholderText("Find...").type("aa");
       cy.findByText("Didn't find any results")
         .should("be.visible")
-        .should("have.css", "color", "rgb(105, 110, 123)"); // the text should be grey
+        .should("have.css", "color", "rgba(7, 23, 34, 0.62)"); // the text "text-medium"
     });
   });
 });

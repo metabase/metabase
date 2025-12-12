@@ -126,7 +126,7 @@ export const MetabotFeedbackModal = ({
               </Button>
               <Button variant="filled" type="submit">{c(
                 "This is a verb, not a noun",
-              ).t`Download`}</Button>
+              ).t`Submit`}</Button>
             </Group>
           </Stack>
         </Form>

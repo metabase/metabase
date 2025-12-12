@@ -213,3 +213,55 @@ describe("scenarios > metrics > question", () => {
     H.modal().findByText("Replace or save as new?").should("not.exist");
   });
 });
+
+describe("metrics", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should bookmark a metric", () => {
+    H.createQuestion({ ...ORDERS_SCALAR_METRIC, name: "Metric Foo" });
+    H.createQuestion({ ...ORDERS_SCALAR_METRIC, name: "Metric Bar" });
+    H.createQuestion(
+      { ...ORDERS_SCALAR_METRIC, name: "Metric Baz" },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header").findByLabelText("Bookmark").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "metric",
+      triggered_from: "qb_action_panel",
+    });
+
+    H.navigationSidebar().findByText("Our analytics").click();
+    cy.findAllByTestId("collection-entry")
+      .filter(":contains(Metric Bar)")
+      .icon("ellipsis")
+      .click();
+    H.popover().findByText("Bookmark").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "metric",
+      triggered_from: "collection_list",
+    });
+
+    H.navigationSidebar().findByText("Metrics").click();
+    cy.findAllByRole("row")
+      .filter(":contains(Metric Foo)")
+      .icon("ellipsis")
+      .click();
+    H.popover().findByText("Bookmark").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "metric",
+      triggered_from: "browse_metrics",
+    });
+  });
+});

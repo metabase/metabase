@@ -1,12 +1,12 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
-import { invalidateNotificationsApiCache } from "metabase/api";
+import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
-import Revisions from "metabase/entities/revisions";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
@@ -29,6 +29,7 @@ import type {
   Database,
   DatasetQuery,
   ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -43,7 +44,11 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../selectors";
-import { clearQueryResult, runQuestionQuery } from "../querying";
+import {
+  clearQueryResult,
+  runDirtyQuestionQuery,
+  runQuestionQuery,
+} from "../querying";
 import { onCloseSidebars } from "../ui";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -111,7 +116,10 @@ export const setCardAndRun = (
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
-        await loadCard(card.original_card_id, { dispatch, getState })
+        await loadCard(
+          { cardId: card.original_card_id },
+          { dispatch, getState },
+        )
       : // Otherwise, use a current card as the original card if the card has been saved
         // This is needed for checking whether the card is in dirty state or not
         card.id
@@ -120,7 +128,7 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl }));
+    dispatch(runDirtyQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -148,7 +156,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
           setCardAndRun(
-            await loadCard(nextCard.id, { dispatch, getState }),
+            await loadCard({ cardId: nextCard.id }, { dispatch, getState }),
             {},
           ),
         );
@@ -333,7 +341,7 @@ export const apiUpdateQuestion = (
 export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: string | string[]) => {
+  (parameterId: ParameterId, value: ParameterValueOrArray | null) => {
     return { id: parameterId, value: normalizeValue(value) };
   },
 );
@@ -354,7 +362,9 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-function normalizeValue(value: string | string[]) {
+function normalizeValue(
+  value: ParameterValueOrArray | null,
+): ParameterValueOrArray | null {
   if (value === "") {
     return null;
   }
@@ -369,11 +379,20 @@ function normalizeValue(value: string | string[]) {
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
-  (revision) => {
+  (cardId, revision) => {
     return async (dispatch) => {
-      await dispatch(Revisions.objectActions.revert(revision));
+      await entityCompatibleQuery(
+        {
+          id: cardId,
+          entity: "card",
+          revision_id: revision.id,
+        },
+        dispatch,
+        revisionApi.endpoints.revertRevision,
+      );
       await dispatch(reloadCard());
       await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+      return { id: cardId };
     };
   },
 );

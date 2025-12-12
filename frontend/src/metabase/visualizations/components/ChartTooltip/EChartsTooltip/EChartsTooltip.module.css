@@ -79,6 +79,7 @@
   padding-left: 0.375rem;
   font-weight: 400;
   text-align: left;
+  max-width: 360px;
 }
 
 .MainValueCell,

@@ -24,14 +24,14 @@
 
   &:hover {
     border-color: var(--mb-color-brand);
-    color: var(--mb-base-color-brand-60);
+    color: var(--mb-color-brand-dark);
 
     .Prefix,
     .parameterIcon,
     .widgetStatus,
     .widgetStatus button {
       transition: all 0.2s ease-in-out;
-      color: var(--mb-base-color-brand-60);
+      color: var(--mb-color-brand-dark);
     }
   }
 }
@@ -91,10 +91,6 @@
   color: var(--mb-color-text-secondary);
 }
 
-.DashboardNight .parameter.noPopover input:focus {
-  color: var(--mb-color-text-white);
-}
-
 .name {
   composes: mr1 from "style";
   font-size: 16px;
@@ -115,10 +111,4 @@
   &.hasValue {
     border-color: var(--mb-color-brand);
   }
-}
-
-.DashboardNight .parameter {
-  --mb-color-border: var(--mb-base-color-orion-60);
-
-  background-color: transparent;
 }

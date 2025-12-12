@@ -2,6 +2,7 @@ import cx from "classnames";
 import { c, t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
+import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import type { CollectionPickerModel } from "metabase/common/components/Pickers/CollectionPicker";
 import { getPlaceholder } from "metabase/common/components/SaveQuestionForm/util";
@@ -123,6 +124,7 @@ export const SaveQuestionForm = ({
                 collectionIdFieldName="collection_id"
                 dashboardIdFieldName="dashboard_id"
                 title={t`Where do you want to save this?`}
+                entityType={getEntityTypeFromCardType(question.type())}
                 collectionPickerModalProps={{
                   models,
                   recentFilter: (items) =>

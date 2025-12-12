@@ -44,10 +44,17 @@ describe("scenarios > embedding > questions", () => {
         display: "scalar",
         enable_embedding: true,
       },
-      { visitQuestion: true },
+      { visitQuestion: true, wrapId: true },
     );
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.get("@questionId").then((questionId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: questionId,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
 
     H.visitIframe();
 
@@ -66,9 +73,13 @@ describe("scenarios > embedding > questions", () => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: id,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
     });
-
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
     H.visitIframe();
 
@@ -106,9 +117,14 @@ describe("scenarios > embedding > questions", () => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
-    });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: id,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
 
     H.visitIframe();
 
@@ -141,10 +157,15 @@ describe("scenarios > embedding > questions", () => {
         cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
 
         H.visitQuestion(nestedId);
+
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: nestedId,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
       });
     });
-
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
     H.visitIframe();
 
@@ -178,9 +199,14 @@ describe("scenarios > embedding > questions", () => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
-    });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: id,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
 
     H.visitIframe();
 
@@ -247,7 +273,7 @@ describe("scenarios [EE] > embedding > questions", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025, 9:40 PM");
+    H.main().findByText("Februar 11, 2025, 9:40 PM").realHover();
     cy.findByRole("button", { name: "Ergebnis downloaden" }).should("exist");
     cy.url().should("include", "locale=de");
   });
@@ -313,7 +339,11 @@ describe("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
-        H.openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "lookAndFeel",
+        });
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
@@ -375,9 +405,10 @@ describe("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
-        H.openStaticEmbeddingModal({
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
           activeTab: "lookAndFeel",
-          acceptTerms: false,
         });
 
         cy.log("Disable downloads");

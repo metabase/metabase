@@ -14,6 +14,8 @@ describe("scenarios > binning > correctness > longitude", () => {
   Object.entries(LONGITUDE_OPTIONS).forEach(
     ([bucketSize, { selected, representativeValues }]) => {
       it(`should return correct values for ${bucketSize}`, () => {
+        // Increase viewport to allow checking x-axis ticks values on dense data
+        cy.viewport(1440, 800);
         H.popover().within(() => {
           cy.findByText("More…").click();
           cy.findByText(bucketSize).click();

@@ -3,8 +3,18 @@
     flex: 1;
   }
 
+  &:hover {
+    .QuestionListItemIcon {
+      color: var(--mb-color-text-primary);
+    }
+  }
+
   .QuestionListItemLabel {
     overflow: hidden;
+  }
+
+  .QuestionListItemIcon {
+    color: var(--mb-color-brand);
   }
 
   .QuestionListItemIcon:last-child {

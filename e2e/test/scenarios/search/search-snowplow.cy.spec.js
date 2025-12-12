@@ -4,7 +4,7 @@ const { H } = cy;
 
 import { commandPaletteInput } from "../../../support/helpers/e2e-command-palette-helpers";
 
-H.describeWithSnowplow("scenarios > search > snowplow", () => {
+describe("scenarios > search > snowplow", () => {
   const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
 
@@ -54,6 +54,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
               search_engine: P.string,
               request_id: P.string,
               entity_model: P.string,
+              entity_id: P.number,
               search_term_hash: P.string,
               search_term: null,
             },

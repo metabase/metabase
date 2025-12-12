@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
@@ -18,14 +19,14 @@
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index!)]
       ;; open-temp-index-table! creates the temp table, so drop it in order to test create!.
-      (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)
+      (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index)
       (testing "index table is not present before create!"
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref)))))
       (testing "index table is present after create!"
-        (semantic.index/create-index-table-if-not-exists! semantic.tu/db semantic.tu/mock-index {:force-reset? false})
+        (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index {:force-reset? false})
         (is (semantic.tu/table-exists-in-db? (:table-name @index-ref)))
         (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref)))
         (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref)))
@@ -37,7 +38,7 @@
       (testing "index table is present before drop!"
         (is (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
       (testing "index table is not present after drop!"
-        (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)
+        (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index)
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))))))
 
 (deftest upsert-index!-test
@@ -212,6 +213,7 @@
                                :id "1"
                                :name "Dog Training Guide"
                                :searchable_text "Dog Training Guide"
+                               :embeddable_text "Dog Training Guide"
                                :creator_id 1
                                :legacy_input {:model "card" :id "1"}
                                :metadata {}}
@@ -219,6 +221,7 @@
                                :id "2"
                                :name "Elephant Migration"
                                :searchable_text "Elephant Migration"
+                               :embeddable_text "Elephant Migration"
                                :creator_id 2
                                :legacy_input {:model "card" :id "2"}
                                :metadata {}}
@@ -226,6 +229,7 @@
                                :id "3"
                                :name "Tiger Conservation"
                                :searchable_text "Tiger Conservation"
+                               :embeddable_text "Tiger Conservation"
                                :creator_id 3
                                :legacy_input {:model "card" :id "3"}
                                :metadata {}}]]
@@ -254,6 +258,7 @@
                          :id "1"
                          :name "Dog Training Guide"
                          :searchable_text "Dog Training Guide"
+                         :embeddable_text "Dog Training Guide"
                          :creator_id 1
                          :legacy_input {:model "card" :id "1"}
                          :metadata {}}
@@ -261,6 +266,7 @@
                          :id "2"
                          :name "Elephant Migration"
                          :searchable_text "Elephant Migration"
+                         :embeddable_text "Elephant Migration"
                          :creator_id 2
                          :legacy_input {:model "card" :id "2"}
                          :metadata {}}
@@ -268,6 +274,7 @@
                          :id "3"
                          :name "Dog Training Guide"
                          :searchable_text "Dog Training Guide"
+                         :embeddable_text "Dog Training Guide"
                          :creator_id 3
                          :legacy_input {:model "card" :id "3"}
                          :metadata {}}]]
@@ -343,7 +350,7 @@
             (testing "Permission filtering metrics"
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto
-                (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
+                (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "dog training"}))
 
               (let [permission-calls (filter #(= :metabase-search/semantic-permission-filter-ms (first %)) @analytics-calls)]
@@ -355,7 +362,7 @@
             (testing "Semantic search timing metrics"
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto
-                (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
+                (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "elephant migration"
                                              :filter-items-in-personal-collection "only"}))
 
@@ -532,6 +539,7 @@
           base-doc {:model "card"
                     :id "123"
                     :searchable_text "test content"
+                    :embeddable_text "test content"
                     :creator_id 1}]
 
       (testing "MySQL-style integer booleans are converted to real booleans"
@@ -586,6 +594,7 @@
                    :id (:id model-1)
                    :name (:name model-1)
                    :searchable_text (:name model-1)
+                   :embeddable_text (:name model-1)
                    :created_at #t "2025-01-01T12:00:00Z"
                    :creator_id (mt/user->id :crowberto)
                    :archived false
@@ -600,6 +609,7 @@
                    :archived false
                    :collection_id coll-id
                    :searchable_text "Antarctic wildlife"
+                   :embeddable_text "Antarctic wildlife"
                    :legacy_input {:id (str (:id model-index-1) ":1234")
                                   :name "Antarctic wildlife"
                                   :model "indexed-entity"}

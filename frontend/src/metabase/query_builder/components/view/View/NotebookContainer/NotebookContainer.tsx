@@ -18,10 +18,11 @@ import {
   Notebook,
   type NotebookProps,
 } from "metabase/querying/notebook/components/Notebook";
-import { NotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { Box, Flex, rem } from "metabase/ui";
 
 import { canShowNativePreview } from "../../ViewHeader/utils";
+
+import { NotebookNativePreview } from "./NotebookNativePreview";
 
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component

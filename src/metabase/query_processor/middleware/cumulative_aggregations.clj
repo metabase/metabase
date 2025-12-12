@@ -17,12 +17,15 @@
   Rather than doing a cumulative sum across the entire set of query results -- see #2862 and #42003 for more
   information."
   (:require
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.lib.walk :as lib.walk]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]))
 
 ;;;; Pre-processing
@@ -36,39 +39,36 @@
                           i)))
         (map not= coll-1 coll-2)))
 
-(mu/defn- replace-cumulative-ags :- mbql.s/Query
-  "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
-  [query]
-  (lib.util.match/replace-in query [:query :aggregation]
-    ;; cumulative count doesn't neccesarily have a field-id arg
-    [:cum-count]       [:count]
-    [:cum-count field] [:count field]
-    [:cum-sum field]   [:sum field]))
+(defn- update-clause [clause]
+  (lib.util.match/match-lite clause
+    ;; cumulative count doesn't necessarily have a field-id arg
+    [:cum-count opts]       [:count opts]
+    [:cum-count opts field] [:count opts field]
+    [:cum-sum   opts field] [:sum   opts field]))
 
-(defn rewrite-cumulative-aggregations
+(defn- update-aggregations [aggregations]
+  (lib.walk/walk-clauses* aggregations update-clause))
+
+(defn- update-stage [{breakouts :breakout, :as stage}]
+  (when-let [updated-stage (m/update-existing stage :aggregation update-aggregations)]
+    ;; figure out which indexes are being changed in the results. Since breakouts always get included in
+    ;; results first we need to offset the indexes to change by the number of breakouts
+    (let [replaced-indexes (set (for [i (diff-indexes (:aggregation stage)
+                                                      (:aggregation updated-stage))]
+                                  (+ (count breakouts) i)))]
+      (assoc updated-stage ::replaced-indexes replaced-indexes))))
+
+(mu/defn rewrite-cumulative-aggregations :- ::lib.schema/query
   "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
   information about the indecies of the replaced aggregations under the `::replaced-indexes` key."
-  [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
-  (cond
+  [query :- ::lib.schema/query]
+  (if (driver.u/supports? driver/*driver*
+                          :window-functions/cumulative
+                          (lib.metadata/database query))
     ;; no need to rewrite `:cum-sum` and `:cum-count` functions, this driver supports native window function versions
-    (driver.u/supports? driver/*driver*
-                        :window-functions/cumulative
-                        (lib.metadata/database (qp.store/metadata-provider)))
     query
-
-    ;; nothing to rewrite
-    (not (lib.util.match/match aggregations #{:cum-count :cum-sum}))
-    query
-
-    :else
-    (let [query'            (replace-cumulative-ags query)
-          ;; figure out which indexes are being changed in the results. Since breakouts always get included in
-          ;; results first we need to offset the indexes to change by the number of breakouts
-          replaced-indexes (set (for [i (diff-indexes (-> query  :query :aggregation)
-                                                      (-> query' :query :aggregation))]
-                                  (+ (count breakouts) i)))]
-      (cond-> query'
-        (seq replaced-indexes) (assoc ::replaced-indexes replaced-indexes)))))
+    (lib.walk/walk-stages query (fn [_query _path stage]
+                                  (update-stage stage)))))
 
 ;;;; Post-processing
 
@@ -119,12 +119,14 @@
        (let [row' (add-values-from-last-partition row)]
          (rf result row'))))))
 
-(defn sum-cumulative-aggregation-columns
+(mu/defn sum-cumulative-aggregation-columns :- ::qp.schema/rff
   "Post-processing middleware. Sum the cumulative count aggregations that were rewritten
   by [[rewrite-cumulative-aggregations]] in Clojure-land."
-  [{::keys [replaced-indexes] inner-query :query, :as _query} rff]
-  (if (seq replaced-indexes)
-    (fn sum-cumulative-aggregation-columns-rff* [metadata]
-      (let [num-breakouts (count (:breakout inner-query))]
-        (cumulative-ags-xform num-breakouts replaced-indexes (rff metadata))))
-    rff))
+  [query :- ::lib.schema/query
+   rff   :- ::qp.schema/rff]
+  (let [replaced-indexes (::replaced-indexes (lib/query-stage query -1))]
+    (if (seq replaced-indexes)
+      (fn sum-cumulative-aggregation-columns-rff* [metadata]
+        (let [num-breakouts (count (lib/breakouts query))]
+          (cumulative-ags-xform num-breakouts replaced-indexes (rff metadata))))
+      rff)))

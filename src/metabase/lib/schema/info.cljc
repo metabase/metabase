@@ -8,8 +8,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
-;;; Schema for `info.context`; used for informational purposes to record how a query was executed.
 (mr/def ::context
+  "Schema for `info.context`; used for informational purposes to record how a query was executed."
   [:enum
    ;; do not decode, since this should not get written to the app DB or come in from the REST API.
    {:decode/normalize identity}

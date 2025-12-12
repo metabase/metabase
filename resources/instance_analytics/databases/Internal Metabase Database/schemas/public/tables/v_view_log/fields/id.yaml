@@ -4,10 +4,7 @@ description: null
 created_at: '2023-10-31T13:16:54.089514Z'
 active: true
 visibility_type: normal
-table_id:
-- Internal Metabase Database
-- public
-- v_view_log
+table_id: [Internal Metabase Database, public, v_view_log]
 database_type: int4
 base_type: type/Integer
 effective_type: type/Integer
@@ -29,14 +26,13 @@ caveats: null
 points_of_interest: null
 nfc_path: null
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_view_log
-  model: Table
-- id: id
-  model: Field
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_view_log, model: Table}
+- {id: id, model: Field}
+database_default: null
 database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
 database_partitioned: null
-entity_id: QJ-dIFA9us3iW0FdCXoR5

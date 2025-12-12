@@ -12,9 +12,13 @@ With database routing, an admin can build a question once using one database, an
 Database routing is useful for:
 
 - Managing interactive embedding setups where each customer has their own database with identical schemas.
+
+  Database routing can't be used with static embedding, because database routing requires people who use the embedded questions and dashboards to have a Metabase account. Without a Metabase account, Metabase can't route the queries because it doesn't know who is viewing the embed.
+
 - Switching between dev and prod data warehouses.
 - Changing the target data warehouse for certain teams.
 - Managing separate connections to the same data warehouse, with each connection having separate privileges. This connection management is akin to [connection impersonation](./impersonation.md) for databases that prevent the same connection from changing roles.
+
 
 ## Database routing limitations
 

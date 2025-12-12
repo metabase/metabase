@@ -3,6 +3,7 @@ import type { Card, CardId } from "./card";
 import type { Collection, CollectionId, CollectionItemId } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { Document } from "./document";
 import type { Field, FieldDimension, FieldId } from "./field";
 import type { Segment, SegmentId } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
@@ -18,6 +19,7 @@ import type { Timeline, TimelineEventId } from "./timeline";
 
 export type NormalizedWritebackAction = WritebackAction;
 export type NormalizedDashboard = Dashboard;
+export type NormalizedDocument = Document;
 export type NormalizedCard = Card;
 export type NormalizedNativeQuerySnippet = NativeQuerySnippet;
 

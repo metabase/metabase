@@ -82,7 +82,8 @@
             (lib/drill-thru query -1 nil drill)))))
 
 (deftest ^:parallel automatic-insights-apply-test
-  (let [filters [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]]]
+  (let [filters [[:between {} [:field {} (meta/id :orders :created-at)]
+                  "2023-12-01" "2023-12-31"]]]
     (testing "breakouts are turned to filters, aggregations dropped"
       (auto-insights (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
@@ -109,7 +110,7 @@
                        (lib/breakout (lib/with-temporal-bucket
                                        (meta/field-metadata :orders :created-at)
                                        :month)))
-                   [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]
+                   [[:between {} [:field {} (meta/id :orders :created-at)] "2023-12-01" "2023-12-31"]
                     [:= {} [:field {} (meta/id :products :category)] "Doohickey"]])))
 
 (deftest ^:parallel automatic-insights-apply-test-3
@@ -129,7 +130,8 @@
                          (lib/breakout (lib/with-temporal-bucket
                                          (meta/field-metadata :orders :created-at)
                                          :month)))
-                     [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]]))))
+                     [[:between {} [:field {} (meta/id :orders :created-at)]
+                       "2023-12-01" "2023-12-31"]]))))
 
 (deftest ^:parallel binned-column-test
   (testing "Automatic insights for a binned column should generate filters for current bin's min/max values"

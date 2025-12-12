@@ -72,12 +72,12 @@
   :visibility :internal
   :export?    false
   :type       :integer
-  ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
+  ;; for TESTS use a timeout time of 5 seconds. This is because we have some tests that check whether
   ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
   ;;
   ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
   :default    (if config/is-test?
-                3000
+                5000
                 10000)
   :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
   In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the

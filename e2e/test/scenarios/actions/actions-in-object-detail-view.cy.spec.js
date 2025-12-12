@@ -148,8 +148,7 @@ describe(
                       assertScoreFormPrefilled(firstScoreRow);
                     });
                   });
-
-                  cy.icon("close").click();
+                  cy.button("Close").click();
                 });
                 objectDetailModal().icon("close").click();
 

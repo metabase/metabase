@@ -1,91 +1,312 @@
-import type { ReactNode } from "react";
+import { useMemo } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Box, Flex, Text } from "metabase/ui";
-import type { DatasetColumn } from "metabase-types/api";
+import {
+  formatNumber,
+  formatValue,
+  getCurrencySymbol,
+} from "metabase/lib/formatting";
+import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
+import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import {
+  isAvatarURL,
+  isBoolean,
+  isCurrency,
+  isEmail,
+  isEntityName,
+  isFK,
+  isFloat,
+  isImageURL,
+  isNumber,
+  isPK,
+  isPercentage,
+  isProduct,
+  isQuantity,
+  isScore,
+  isSource,
+  isState,
+  isTitle,
+  isURL,
+} from "metabase-lib/v1/types/utils/isa";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  RowValues,
+} from "metabase-types/api";
 
 import styles from "./ListView.module.css";
-
-// Light background colors for category values
-const CATEGORY_COLORS = [
-  "color-mix(in srgb, var(--mb-color-brand) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-success) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-warning) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-error) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-filter) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-summarize) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-focus) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-text-medium) 8%, white)",
-];
-
-// Get a consistent color for a category value based on its hash
-const getCategoryColor = (value: any, columnName: string) => {
-  if (value == null || value === "") {
-    return "var(--mb-color-background-light)";
-  }
-
-  const stringValue = String(value);
-
-  // Use a combination of column name and value for more consistent colors
-  const combinedString = `${columnName}:${stringValue}`;
-  const hash = combinedString.split("").reduce((a, b) => {
-    a = (a << 5) - a + b.charCodeAt(0);
-    return a & a;
-  }, 0);
-
-  const colorIndex = Math.abs(hash) % CATEGORY_COLORS.length;
-  return CATEGORY_COLORS[colorIndex];
-};
+import { getCategoryColor } from "./styling";
 
 interface ColumnValueProps {
   column: DatasetColumn;
-  value: ReactNode;
+  settings: ComputedVisualizationSettings;
   rawValue: any;
+  style?: React.CSSProperties;
+  rows: RowValues;
+  cols: DatasetColumn[];
 }
 
-export function ColumnValue({ column, value, rawValue }: ColumnValueProps) {
-  const isBooleanColumn = column.base_type === "type/Boolean";
-  const isCategoryColumn = column.semantic_type === "type/Category";
-  const isScoreColumn = column.semantic_type === "type/Score";
-  const shouldGetCategoryStyling = isCategoryColumn || isScoreColumn;
+const DEFAULT_COLUMN_SETTINGS: ColumnSettings = {};
+export function ColumnValue({
+  column,
+  settings,
+  rawValue,
+  style,
+  rows,
+  cols,
+}: ColumnValueProps) {
+  const columnSettings = useMemo(
+    () => settings.column?.(column),
+    [column, settings],
+  );
+  const value = useMemo(
+    () =>
+      formatValue(rawValue, {
+        ...(columnSettings || DEFAULT_COLUMN_SETTINGS),
+        jsx: true,
+        rich: true,
+      }),
+    [rawValue, columnSettings],
+  );
+  const columnExtent = useMemo(() => {
+    if (isQuantity(column) || isScore(column)) {
+      return getColumnExtent(cols, rows, cols.indexOf(column));
+    }
+    return null;
+  }, [cols, rows, column]);
 
-  if (isBooleanColumn) {
+  // Need to return empty element here to preserve grid column layout in ListViewItem.
+  if (rawValue == null) {
+    return <div />;
+  }
+
+  if (isBoolean(column)) {
     return (
-      <Flex align="center" gap="xs">
-        <Box
-          w={8}
-          h={8}
-          style={{
-            borderRadius: "50%",
-            backgroundColor:
-              rawValue === true
-                ? "var(--mb-color-success)"
-                : "var(--mb-color-error)",
-            flexShrink: 0,
-          }}
-        />
-        <Text fw="bold" size="sm" c="text-secondary">
-          {value}
-        </Text>
-      </Flex>
+      <Badge
+        className={styles.badge}
+        size="lg"
+        c="text-primary"
+        variant="outline"
+        style={{
+          background: "var(--mb-color-bg-white)",
+          textTransform: "capitalize",
+        }}
+        leftSection={
+          <Icon
+            name={rawValue === true ? "check" : "close"}
+            size={12}
+            mr="xs"
+          />
+        }
+      >
+        {value}
+      </Badge>
     );
   }
 
-  if (shouldGetCategoryStyling && rawValue != null && rawValue !== "") {
-    return (
-      <Box
-        className={styles.categoryValue}
-        style={{ backgroundColor: getCategoryColor(rawValue, column.name) }}
-      >
-        <Ellipsified fw="bold" size="sm" c="text-secondary">
+  // switch (column.semantic_type) {
+  switch (true) {
+    case isPK(column):
+    case isFK(column):
+      if (!column.remapped_to_column) {
+        return (
+          <Badge
+            className={styles.badge}
+            size="lg"
+            variant="outline"
+            fw={400}
+            leftSection={<Icon name="label" size={16} />}
+          >
+            {value}
+          </Badge>
+        );
+      }
+      break;
+    // Not using `isCategory` because it incorrectly gives false positive
+    // for many other category subtypes, like Name / Title / City (which we dont' want here).
+    case column.semantic_type === TYPE.Category:
+      return (
+        <Badge
+          className={styles.badge}
+          size="lg"
+          variant="outline"
+          style={{
+            background: "var(--mb-color-bg-white)",
+            color: "var(--mb-color-text-primary)",
+          }}
+          leftSection={
+            <Stack mr="0.25rem">
+              <Box
+                style={{
+                  borderRadius: "50%",
+                  width: "0.5rem",
+                  height: "0.5rem",
+                  backgroundColor: getCategoryColor(rawValue, column.name),
+                }}
+              />
+            </Stack>
+          }
+        >
+          {value}
+        </Badge>
+      );
+    case isState(column):
+      return (
+        <Badge
+          className={styles.badge}
+          size="lg"
+          variant="outline"
+          style={{
+            background: "var(--mb-color-bg-white)",
+          }}
+        >
+          {value}
+        </Badge>
+      );
+    case isEntityName(column):
+    case isTitle(column):
+    case isProduct(column):
+    case isSource(column):
+      return (
+        <Ellipsified
+          size="sm"
+          truncate
+          fw="bold"
+          style={style}
+          c={style?.color || "text-primary"}
+        >
           {value}
         </Ellipsified>
-      </Box>
-    );
+      );
+    case isEmail(column):
+    case isURL(column) && !isImageURL(column) && !isAvatarURL(column):
+      return (
+        <Ellipsified size="sm" fw="bold" style={style} tooltip={rawValue}>
+          {value}
+        </Ellipsified>
+      );
+    case isQuantity(column):
+    case isScore(column): {
+      if (!column?.settings?.["show_mini_bar"]) {
+        return <Text fw="bold">{value}</Text>;
+      }
+
+      return (
+        <Flex direction="row" align="center" gap="sm">
+          <MiniBarCell
+            rowIndex={0}
+            columnId={column.name}
+            value={Number(rawValue)}
+            barWidth="4rem"
+            barHeight="0.25rem"
+            extent={columnExtent}
+            columnSettings={columnSettings || DEFAULT_COLUMN_SETTINGS}
+            style={{
+              paddingInline: 0,
+              marginLeft: 0,
+              width: "auto",
+              border: "none",
+            }}
+          />
+          <Text fw="bold">{value}</Text>
+        </Flex>
+      );
+    }
+    case isPercentage(column): {
+      return (
+        <Badge
+          size="lg"
+          className={styles.badge}
+          variant="outline"
+          style={{
+            background: "var(--mb-color-bg-white)",
+          }}
+        >
+          <Text fw="bold">
+            {String(value).slice(0, -1)}
+            <span
+              style={{
+                color: "var(--mb-color-text-tertiary)",
+                paddingLeft: "0.25rem",
+              }}
+            >
+              %
+            </span>
+          </Text>
+        </Badge>
+      );
+    }
+    case isCurrency(column): {
+      const options = settings.column?.(column) || {};
+      const formattedValue = formatNumber(Number(rawValue), options);
+
+      if (
+        options.currency_style === "symbol" &&
+        typeof options.currency === "string"
+      ) {
+        const currencySymbol = getCurrencySymbol(options?.currency);
+        const currencyValue = formattedValue.replace(currencySymbol, "");
+
+        return (
+          <Text fw="bold">
+            <span
+              style={{
+                color: "var(--mb-color-text-tertiary)",
+                fontWeight: "normal",
+                paddingRight: "0.25rem",
+              }}
+            >
+              {currencySymbol}
+            </span>
+            {currencyValue}
+          </Text>
+        );
+      }
+
+      return <Text fw="bold">{formattedValue}</Text>;
+    }
+    case isImageURL(column):
+    case isAvatarURL(column):
+      return (
+        <Image
+          src={rawValue}
+          w="2rem"
+          h="2rem"
+          style={{
+            objectFit: "cover",
+            borderRadius: "0.5rem",
+            border: "1px solid var(--mb-color-border-secondary)",
+          }}
+        />
+      );
+    case isFloat(column):
+    case isNumber(column):
+      return (
+        <Ellipsified
+          size="sm"
+          truncate
+          style={style}
+          fw="bold"
+          c="text-primary"
+        >
+          {value}
+        </Ellipsified>
+      );
+
+    default:
+      break;
   }
 
   return (
-    <Ellipsified fw="bold" size="sm" c="text-secondary" truncate>
+    <Ellipsified
+      size="sm"
+      truncate
+      style={style}
+      c={style?.color || "text-primary"}
+    >
       {value}
     </Ellipsified>
   );

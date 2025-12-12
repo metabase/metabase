@@ -25,8 +25,9 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
 
       parameters,
       linkedFilterParameters = parameters,
-      question,
-      dashboard,
+      cardId,
+      dashboardId,
+      token,
       editingParameter,
 
       isSortable = true,
@@ -80,8 +81,9 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
         isFullscreen={isFullscreen}
         parameter={valuePopulatedParameter}
         parameters={linkedFilterParameters}
-        question={question}
-        dashboard={dashboard}
+        cardId={cardId}
+        dashboardId={dashboardId}
+        token={token}
         editingParameter={editingParameter}
         setEditingParameter={setEditingParameter}
         setValue={

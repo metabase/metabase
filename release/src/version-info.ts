@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 
+import { getChangelogUrl } from "./release-notes";
 import type {
   ReleaseChannel,
   ReleaseProps,
@@ -7,8 +8,6 @@ import type {
   VersionInfoFile,
 } from "./types";
 import {
-  getMajorVersion,
-  getMinorVersion,
   getVersionType,
   isEnterpriseVersion,
   isPatchVersion,
@@ -19,14 +18,11 @@ const generateVersionInfo = ({
 }: {
   version: string;
 }): VersionInfo => {
-  const majorVersion = getMajorVersion(version);
-  const minorVersion = getMinorVersion(version);
-
   return {
     version,
     released: new Date().toISOString().slice(0, 10),
     patch: ["patch", "minor"].includes(getVersionType(version)),
-    highlights: [ `see https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}}` ],
+    highlights: [ `see ${getChangelogUrl(version)}` ],
   };
 };
 

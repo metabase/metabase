@@ -4,35 +4,22 @@ description: null
 created_at: '2023-10-31T21:26:33.12521Z'
 active: true
 visibility_type: normal
-table_id:
-- Internal Metabase Database
-- public
-- v_query_log
+table_id: [Internal Metabase Database, public, v_query_log]
 database_type: text
 base_type: type/Text
 effective_type: type/Text
 semantic_type: type/FK
 database_is_auto_increment: false
 database_required: false
-fk_target_field_id:
-- Internal Metabase Database
-- public
-- v_content
-- entity_qualified_id
+fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
 dimensions:
 - created_at: '2025-04-01T14:05:14.672087Z'
   entity_id: LFF3bGrmUaqEW9Q650Bfa
-  human_readable_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - name
+  human_readable_field_id: [Internal Metabase Database, public, v_content, name]
   name: Dashboard Qualified ID
   type: external
   serdes/meta:
-  - id: LFF3bGrmUaqEW9Q650Bfa
-    label: dashboard_qualified_id
-    model: Dimension
+  - {id: LFF3bGrmUaqEW9Q650Bfa, label: dashboard_qualified_id, model: Dimension}
 json_unfolding: false
 parent_id: null
 coercion_strategy: null
@@ -46,14 +33,13 @@ caveats: null
 points_of_interest: null
 nfc_path: null
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_query_log
-  model: Table
-- id: dashboard_qualified_id
-  model: Field
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_query_log, model: Table}
+- {id: dashboard_qualified_id, model: Field}
+database_default: null
 database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
 database_partitioned: null
-entity_id: 8THn9Uz32mKIvAo-TFRhw

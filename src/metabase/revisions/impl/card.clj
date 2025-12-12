@@ -12,6 +12,7 @@
     :id
     :initially_published_at
     :last_used_at
+    :legacy_query
     :made_public_by_id
     :metabase_version
     :public_uuid

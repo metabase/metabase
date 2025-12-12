@@ -94,10 +94,7 @@ module.exports = {
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
     "react/forbid-component-props": [2, { forbid: ["sx"] }],
-    "react-hooks/exhaustive-deps": [
-      "warn",
-      { additionalHooks: "(useSafeAsyncFunction)" },
-    ],
+    "react-hooks/exhaustive-deps": ["warn"],
     "prefer-const": [1, { destructuring: "all" }],
     "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
@@ -118,7 +115,6 @@ module.exports = {
           "And",
           "When",
           "Then",
-          "describeWithSnowplow",
         ],
       },
     ],
@@ -136,7 +132,7 @@ module.exports = {
   },
   env: {
     browser: true,
-    es6: true,
+    es2020: true,
     commonjs: true,
     jest: true,
     "jest/globals": true,
@@ -184,6 +180,7 @@ module.exports = {
         "no-unconditional-metabase-links-render": "error",
         "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
+        "no-oss-reinitialize-import": "error",
         "depend/ban-dependencies": [
           "error",
           {
@@ -203,6 +200,7 @@ module.exports = {
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
         "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
+        "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
         "**/.storybook/*",
@@ -243,6 +241,7 @@ module.exports = {
       plugins: ["@typescript-eslint"],
       rules: {
         "prefer-rest-params": "off",
+        "react/prop-types": "off", // TypeScript handles prop validation
         "@typescript-eslint/explicit-module-boundary-types": "off",
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
@@ -345,6 +344,12 @@ module.exports = {
       files: ["frontend/build/**/*.js"],
       rules: {
         "import/no-commonjs": "off",
+      },
+    },
+    {
+      files: ["**/*.stories.tsx", "**/preview.tsx"],
+      rules: {
+        "import/no-default-export": "off",
       },
     },
   ],

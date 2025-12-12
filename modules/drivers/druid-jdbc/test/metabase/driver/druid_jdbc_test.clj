@@ -5,13 +5,15 @@
    [malli.error :as me]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -34,6 +36,7 @@
                             :database-type "TIMESTAMP",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable false
                             :base-type :type/DateTime,
                             :database-position 0,
                             :json-unfolding false}
@@ -41,6 +44,7 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 10,
                             :json-unfolding false}
@@ -48,6 +52,7 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 1,
                             :json-unfolding false}
@@ -55,6 +60,7 @@
                             :database-type "COMPLEX<hyperUnique>",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/DruidHyperUnique,
                             :database-position 11,
                             :json-unfolding false}
@@ -62,6 +68,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 2,
                             :json-unfolding false}
@@ -69,6 +76,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 3,
                             :json-unfolding false}
@@ -76,6 +84,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 4,
                             :json-unfolding false}
@@ -83,6 +92,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 5,
                             :json-unfolding false}
@@ -90,6 +100,7 @@
                             :database-type "DOUBLE",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Float,
                             :database-position 6,
                             :json-unfolding false}
@@ -97,6 +108,7 @@
                             :database-type "DOUBLE",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Float,
                             :database-position 7,
                             :json-unfolding false}
@@ -104,6 +116,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 8,
                             :json-unfolding false}
@@ -111,6 +124,7 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 9,
                             :json-unfolding false}}}
@@ -121,6 +135,80 @@
                        [::success result])
                      (catch Throwable t
                        [::failure t]))))))))
+
+(deftest ^:synchronized new-sync-test
+  (mt/test-driver
+    :druid-jdbc
+    (tqpt/with-flattened-dbdef
+      (mt/with-temporary-setting-values [driver.settings/nested-field-columns-value-length-limit 10]
+        (testing "nested fields when length limit is exceeded"
+          (is (= #{}
+                 (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))
+      (testing "nested fields when length limit is exceeded"
+        (is (= #{{:name "json_bit → noop",
+                  :database-type "timestamp",
+                  :base-type :type/DateTime,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "noop"]}
+                 {:name "json_bit → genres",
+                  :database-type "text",
+                  :base-type :type/Array,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "genres"]}
+                 {:name "json_bit → 1234",
+                  :database-type "decimal",
+                  :base-type :type/Integer,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "1234"]}
+                 {:name "json_bit → doop",
+                  :database-type "text",
+                  :base-type :type/Text,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "doop"]}
+                 {:name "json_bit → published",
+                  :database-type "text",
+                  :base-type :type/Text,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "published"]}
+                 {:name "json_bit → boop",
+                  :database-type "timestamp",
+                  :base-type :type/DateTime,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "boop"]}
+                 {:name "json_bit → zoop",
+                  :database-type "timestamp",
+                  :base-type :type/DateTime,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "zoop"]}
+                 {:name "json_bit → 1234123412314",
+                  :database-type "timestamp",
+                  :base-type :type/DateTime,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "1234123412314"]}
+                 {:name "json_bit → title",
+                  :database-type "text",
+                  :base-type :type/Text,
+                  :database-position 0,
+                  :json-unfolding false,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "title"]}}
+               (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))))
 
 (defn- db-dbms-version [db-or-id]
   (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))

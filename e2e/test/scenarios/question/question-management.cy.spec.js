@@ -437,7 +437,51 @@ describe(
   },
 );
 
-H.describeWithSnowplow("send snowplow question events", () => {
+describe("question moving", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateQuestion");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+  });
+
+  it("should move a question between collections", () => {
+    H.appBar().findByText("Our analytics").should("be.visible");
+    cy.findByTestId("qb-header-action-panel")
+      .icon("ellipsis")
+      .closest("button")
+      .click();
+    H.popover().findByTestId("move-button").click();
+    H.modal().findByText("Second collection").click();
+    H.modal().button("Move").click();
+    cy.wait("@updateQuestion").its("response.statusCode").should("eq", 200);
+    cy.findAllByRole("status").contains("Question moved to Second collection");
+    H.appBar().findByText("Second collection").should("be.visible");
+    H.modal().should("not.exist");
+  });
+
+  it("should show an error when moving a question fails", () => {
+    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      statusCode: 400,
+      body: { message: "Sorry buddy, only cool kids in this collection" },
+    }).as("updateQuestion");
+
+    H.appBar().findByText("Our analytics").should("be.visible");
+    cy.findByTestId("qb-header-action-panel")
+      .icon("ellipsis")
+      .closest("button")
+      .click();
+    H.popover().findByTestId("move-button").click();
+    H.modal().findByText("Second collection").click();
+    H.modal().button("Move").click();
+    cy.wait("@updateQuestion");
+    H.modal()
+      .findByText("Sorry buddy, only cool kids in this collection")
+      .should("be.visible");
+  });
+});
+
+describe("send snowplow question events", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

@@ -1,3 +1,4 @@
+import Color from "color";
 import _ from "underscore";
 
 import { ACCENT_COUNT, color } from "./palette";
@@ -12,8 +13,8 @@ export const getAccentColors = (
     gray = true,
   }: AccentColorOptions = {},
   palette?: ColorPalette,
-): ColorName[] => {
-  const ranges = [];
+): string[] => {
+  const ranges: string[][] = [];
   main && ranges.push(getMainAccentColors(palette, gray));
   light && ranges.push(getLightAccentColors(palette, gray));
   dark && ranges.push(getDarkAccentColors(palette, gray));
@@ -22,7 +23,10 @@ export const getAccentColors = (
 };
 
 const getBaseAccentsNames = (withGray = false) => {
-  const accents = _.times(ACCENT_COUNT, (i) => `accent${i}`);
+  const accents: ColorName[] = _.times(
+    ACCENT_COUNT,
+    (i) => `accent${i}` as ColorName,
+  );
   if (withGray) {
     accents.push("accent-gray");
   }
@@ -33,16 +37,19 @@ const getBaseAccentsNames = (withGray = false) => {
 export const getMainAccentColors = (
   palette?: ColorPalette,
   withGray = false,
-) => {
-  return getBaseAccentsNames(withGray).map((accent) => color(accent, palette));
+): string[] => {
+  // Ensure that colors are defined in hex, not HSLA
+  return getBaseAccentsNames(withGray).map((accent) =>
+    Color(color(accent, palette)).hex(),
+  );
 };
 
 export const getLightAccentColors = (
   palette?: ColorPalette,
   withGray = false,
-) => {
+): string[] => {
   return getBaseAccentsNames(withGray).map((accent) =>
-    color(`${accent}-light`, palette),
+    Color(color(`${accent}-light` as ColorName, palette)).hex(),
   );
 };
 
@@ -51,13 +58,13 @@ export const getDarkAccentColors = (
   withGray = false,
 ) => {
   return getBaseAccentsNames(withGray).map((accent) =>
-    color(`${accent}-dark`, palette),
+    Color(color(`${accent}-dark` as ColorName, palette)).hex(),
   );
 };
 
 export const getStatusColorRanges = (): string[][] => {
   return [
-    [color("error"), color("bg-white"), color("success")],
+    [color("error"), "transparent", color("success")],
     [color("error"), color("warning"), color("success")],
   ];
 };

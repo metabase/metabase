@@ -71,6 +71,7 @@ export const ArchiveDashboardModalConnected = _.compose(
   }),
   Collections.load({
     id: (state, props) => props.dashboard && props.dashboard.collection_id,
+    loadingAndErrorWrapper: false,
   }),
   withRouter,
 )(ArchiveDashboardModal);

@@ -159,7 +159,7 @@ export function MultiAutocomplete({
         </Text>
       }
     >
-      <Icon c="text-light" name="info_filled" />
+      <Icon c="text-light" name="info" />
     </Tooltip>
   );
 

@@ -88,7 +88,8 @@ describe("scenarios > admin > permissions > application", () => {
 
         cy.log("Create a question alert");
         H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openSharingMenu(/alert/i);
+        cy.findByLabelText("Move, trash, and more…").click();
+        H.popover().findByText("Create an alert").click();
         H.modal().findByText("New alert").should("be.visible");
       });
     });

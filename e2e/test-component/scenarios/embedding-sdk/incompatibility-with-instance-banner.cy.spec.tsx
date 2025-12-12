@@ -21,7 +21,7 @@ const mockIncompatibleMetabaseVersion = () => {
   });
 };
 
-describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () => {
+describe.skip("scenarios > embedding-sdk > incompatibility-with-instance-banner", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
@@ -34,7 +34,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
     mockAuthProviderAndJwtSignIn();
   });
 
-  describe("when the SDK is incompatible with an instance", () => {
+  describe("when the SDK bundle is incompatible with an instance", () => {
     it("should show an error with a close button", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>

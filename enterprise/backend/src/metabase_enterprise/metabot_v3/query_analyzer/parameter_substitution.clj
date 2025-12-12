@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.query-analyzer.parameter-substitution
   "Replace {{variable}}s and {{field filters}} in SQL queries with parse-able equivalents."
   (:require
+   [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]))
 
 (def default-values
@@ -56,6 +57,8 @@
   "Given a native dataset_query, return a `{:query \"<SQL string>\"}` where the SQL no longer has Metabase-specific
   template tags."
   [query]
-  (if-let [name->tag (seq (get-in query [:native :template-tags]))]
-    (qp.compile/compile (assoc-in query [:native :template-tags] (update-vals name->tag tag-default)))
-    (:native query)))
+  (if-let [name->tag (seq (lib/template-tags query))]
+    (-> query
+        (lib/with-template-tags (update-vals name->tag tag-default))
+        qp.compile/compile)
+    {:query (lib/raw-native-query query)}))

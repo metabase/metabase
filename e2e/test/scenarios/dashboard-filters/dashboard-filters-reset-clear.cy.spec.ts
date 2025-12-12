@@ -714,7 +714,9 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
         autoApplyFilters: false,
         parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
       });
-      checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: false });
+      checkResetAllFiltersToDefaultWorksAcrossTabs({
+        autoApplyFilters: false,
+      });
     });
   });
 

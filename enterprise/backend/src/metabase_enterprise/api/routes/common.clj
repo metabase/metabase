@@ -36,8 +36,8 @@
   question, rather than a generic 'endpoint does not exist' 404 error.
 
   In general, it's probably better NOT to swap out API endpoints, because it's not obvious at all that it happened,
-  and it makes it hard for us to nicely structure our contexts in [[metabase-enterprise.api.routes/routes]]. So only
-  do this if there's absolutely no other way (which is probably not the case)."
+  and it makes it hard for us to nicely structure our contexts in [[metabase-enterprise.api-routes.routes/routes]]. So
+  only do this if there's absolutely no other way (which is probably not the case)."
   [feature handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]

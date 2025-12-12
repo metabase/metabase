@@ -21,6 +21,7 @@ import { t } from "ttag";
 
 import {
   Combobox,
+  type MantineSize,
   Pill,
   PillsInput,
   ScrollArea,
@@ -37,7 +38,7 @@ interface Props {
   onChange: (next: string[]) => void;
   maxValues?: number;
   placeholder?: string;
-  size?: string;
+  size?: MantineSize;
   miw?: string | number;
   maw?: string | number;
   containerId?: string;
@@ -45,6 +46,7 @@ interface Props {
   draggedItemId?: string | null;
   currentDroppable?: string | null;
   "data-testid"?: string;
+  styles?: { input?: CSSProperties };
 }
 
 export function SortablePill({
@@ -53,12 +55,14 @@ export function SortablePill({
   onRemove,
   containerId,
   style,
+  size,
 }: {
   id: string;
   label: string;
   onRemove?: () => void;
   containerId?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
+  size?: MantineSize;
 }) {
   const {
     attributes,
@@ -84,6 +88,7 @@ export function SortablePill({
 
   return (
     <Pill
+      size={size}
       ref={setNodeRef}
       className={cx(S.pill, { [S.dragging]: isDragging })}
       withRemoveButton
@@ -93,6 +98,15 @@ export function SortablePill({
       {...attributes}
       {...listeners}
       style={combinedStyle}
+      styles={{
+        label: {
+          display: "flex",
+          alignItems: "center",
+        },
+        remove: {
+          marginRight: 0,
+        },
+      }}
       radius="xl"
       draggable
       onDragStart={(e) => {
@@ -116,6 +130,7 @@ export function ReorderableTagsInput({
   draggedItemId,
   currentDroppable,
   "data-testid": dataTestId,
+  styles,
 }: Props) {
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
@@ -192,6 +207,7 @@ export function ReorderableTagsInput({
             [S.dragOver]: isDragOver || currentDroppable === containerId,
           }),
         }}
+        styles={styles}
         onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
           const target = e.target as HTMLElement;
           // Do not open when interacting with a pill (likely starting a drag or clicking remove)
@@ -207,6 +223,7 @@ export function ReorderableTagsInput({
         onDragOver={(e) => {
           // Allow dropping external items
           e.preventDefault();
+          e.stopPropagation();
         }}
         onDragEnter={(e) => {
           const related = e.relatedTarget as Node | null;
@@ -228,6 +245,7 @@ export function ReorderableTagsInput({
         }}
         onDrop={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           const val = e.dataTransfer.getData("text/plain");
           if (!val) {
             return;
@@ -252,6 +270,7 @@ export function ReorderableTagsInput({
 
           return (
             <SortablePill
+              size={size}
               key={v}
               id={v}
               label={data.find((o) => o.value === v)?.label ?? v}
@@ -290,6 +309,7 @@ export function ReorderableTagsInput({
                   removeAt(value.length - 1);
                 }
               }}
+              style={styles?.input}
             />
           </Combobox.EventsTarget>
         ) : null}

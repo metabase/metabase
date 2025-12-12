@@ -77,7 +77,7 @@ const errorPage = handleActions(
 // regexr.com/7r89i
 // A word boundary is added to /model so it doesn't match /browse/models
 const PATH_WITH_COLLAPSED_NAVBAR =
-  /\/(model\b|question|dashboard|metabot|embed-js|document).*/;
+  /\/(model\b|question|dashboard|metabot|document).*/;
 
 export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
   return (

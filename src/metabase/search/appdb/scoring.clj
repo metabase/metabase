@@ -41,8 +41,8 @@
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [{:keys [search-string limit-int] :as search-ctx}]
-  (if (and limit-int (zero? limit-int))
+  [{:keys [search-string] :as search-ctx}]
+  (if (search.scoring/no-scoring-required? search-ctx)
     {:model       [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.

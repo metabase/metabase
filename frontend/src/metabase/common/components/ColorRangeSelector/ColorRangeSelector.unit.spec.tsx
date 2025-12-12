@@ -1,8 +1,13 @@
+import Color from "color";
+
 import { render, screen } from "__support__/ui";
-import { color } from "metabase/lib/colors";
+import { color as libColors } from "metabase/lib/colors";
 
 import { ColorRangeSelector } from "./ColorRangeSelector";
 import { getColorRangeLabel } from "./ColorRangeToggle";
+
+// Color components only speak hex, so we need to convert the values we use for testing to hex
+const color = (name: string) => Color(libColors(name)).hex();
 
 const DEFAULT_VALUE = [color("white"), color("brand")];
 const DEFAULT_COLORS = [color("brand"), color("summarize"), color("filter")];

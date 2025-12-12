@@ -1,6 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.invite-user
   (:require
-   [metabase.users.api :as api.user]))
+   [metabase.users-rest.api :as api.user]))
 
 (defn invite-user
   "Send a Metabase invitation to the address `email`."

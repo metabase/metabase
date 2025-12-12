@@ -73,3 +73,9 @@
   [& body]
   (when config/ee-available?
     `(do ~@body)))
+
+(defn random-token
+  "A random token-like string"
+  []
+  (let [alphabet (into [] (concat (range 0 10) (map char (range (int \a) (int \g)))))]
+    (apply str (repeatedly 64 #(rand-nth alphabet)))))

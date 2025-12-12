@@ -1,6 +1,7 @@
 (ns metabase.lib.temporal-bucket
   "TODO (Cam 6/13/25) -- decide whether things are `unit` or `bucket` and rename functions and args for consistency.
   Confusing to use both as synonyms."
+  (:refer-clojure :exclude [mapv select-keys some])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -14,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv select-keys some]]
    [metabase.util.time :as u.time]))
 
 (mu/defn describe-temporal-unit :- :string
@@ -506,6 +508,7 @@
 
   This is expected to be called after `:unit` is added into column metadata, ie. in terms of annotate middleware, after
   the column metadata coming from a driver are merged with result of `column-info`."
+  {:deprecated "0.57.0"}
   [column-metadata]
   (if-some [temporal-unit (:unit column-metadata)]
     (update column-metadata :display_name ensure-ends-with-temporal-unit temporal-unit)

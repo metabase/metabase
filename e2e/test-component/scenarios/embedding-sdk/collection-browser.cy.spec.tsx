@@ -1,3 +1,4 @@
+const { H } = cy;
 import { CollectionBrowser } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
@@ -68,6 +69,25 @@ describe("scenarios > embedding-sdk > collection browser", () => {
       cy.wait("@getRootCollection");
 
       getSdkRoot().findByText("Our analytics").should("exist");
+    });
+
+    it("should be able to move resources to trash (EMB-892)", () => {
+      mountSdkContent(<CollectionBrowser collectionId="root" />);
+
+      const dashboardName = "Orders in a dashboard";
+
+      getSdkRoot().within(() => {
+        cy.findByText("Our analytics").should("exist");
+        cy.findByText("Orders in a dashboard").should("exist");
+
+        cy.log("move the dashboard to trash");
+        cy.findByText(dashboardName).closest("tr").button("Actions").click();
+      });
+
+      H.popover().findByRole("menuitem", { name: "Move to trash" }).click();
+
+      cy.log("the deleted dashboard should be gone");
+      getSdkRoot().findByText(dashboardName).should("not.exist");
     });
   });
 

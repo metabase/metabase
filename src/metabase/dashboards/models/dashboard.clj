@@ -5,13 +5,17 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
@@ -45,14 +49,13 @@
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
-   (if (and
+   (and (not (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (audit/default-audit-collection)))
+              (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (audit/default-audit-collection))))
-     false
-     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+              (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
@@ -66,7 +69,7 @@
   #{:last_viewed_at})
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       mi/transform-card-parameters-list
+  {:parameters       parameters/transform-parameters
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
@@ -78,8 +81,9 @@
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (merge defaults dashboard)]
+        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
     (u/prog1 dashboard
+      (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 
@@ -90,7 +94,11 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (let [changes (t2/changes dashboard)]
+  (let [changes   (t2/changes dashboard)
+        dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
+        changes   (lib/normalize ::dashboards.schema/dashboard changes)]
+    (collection/check-allowed-content :model/Dashboard (:collection_id changes))
+
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
@@ -99,7 +107,7 @@
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
-(defn- migrate-parameter [p]
+(mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
     ;; It was previously possible for parameters to have empty strings for :name and
     ;; :slug, but these are now required to be non-blank strings. (metabase#24500)
@@ -111,7 +119,7 @@
      ;; but it was previously possible to set :values_source_type to "static-list" or "card" and still
      ;; have linked filters. (metabase#33892)
      (some? (:values_source_type p))
-     (= (:values_query_type p) "none"))
+     (= (:values_query_type p) :none))
      ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
      ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
      ;; (metabase#34657)
@@ -304,44 +312,46 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [{dashcards      :dashcards
-         tabs           :tabs
-         :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-        dashboard  (first (t2/insert-returning-instances!
-                           :model/Dashboard
-                           (-> dashboard
-                               (dissoc :dashcards :tabs :rule :related
-                                       :transient_name :transient_filters :param_fields :more)
-                               (assoc :description description
-                                      :collection_id parent-collection-id))))
-        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
-    (add-dashcards! dashboard
-                    (for [dashcard dashcards]
-                      (let [card     (some-> dashcard :card
-                                             (assoc :dashboard_id (:id dashboard)
-                                                    :collection_id parent-collection-id)
-                                             save-card!)
-                            series   (some->> dashcard
-                                              :series
-                                              (mapv (fn [card]
-                                                      (-> card
-                                                          (assoc :collection_id parent-collection-id)
-                                                          save-card!))))
-                            dashcard (-> dashcard
-                                         (dissoc :card :id :creator_id)
-                                         (update :parameter_mappings
-                                                 (partial map #(assoc % :card_id (:id card))))
-                                         (assoc :series series)
-                                         (update :dashboard_tab_id (or old->new-tab-id {}))
-                                         (assoc :card_id (:id card)))]
-                        dashcard)))
-    dashboard))
+  (t2/with-transaction [_conn]
+    (let [{dashcards      :dashcards
+           tabs           :tabs
+           :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
+          dashboard  (first (t2/insert-returning-instances!
+                             :model/Dashboard
+                             (-> dashboard
+                                 (dissoc :dashcards :tabs :rule :related
+                                         :transient_name :transient_filters :param_fields :more)
+                                 (assoc :description description
+                                        :collection_id parent-collection-id))))
+          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
+      (add-dashcards! dashboard
+                      (for [dashcard dashcards]
+                        (let [card     (some-> dashcard :card
+                                               (assoc :dashboard_id (:id dashboard)
+                                                      :collection_id parent-collection-id)
+                                               save-card!)
+                              series   (some->> dashcard
+                                                :series
+                                                (mapv (fn [card]
+                                                        (-> card
+                                                            (assoc :collection_id parent-collection-id)
+                                                            save-card!))))
+                              dashcard (-> dashcard
+                                           (dissoc :card :id :creator_id)
+                                           (update :parameter_mappings
+                                                   (partial map #(assoc % :card_id (:id card))))
+                                           (assoc :series series)
+                                           (update :dashboard_tab_id (or old->new-tab-id {}))
+                                           (assoc :card_id (:id card)))]
+                          dashcard)))
+      (cond-> dashboard
+        (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
 
 (def ^:private ParamWithMapping
   [:map
    [:id ms/NonBlankString]
    [:name ms/NonBlankString]
-   [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
+   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
 
 (mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
@@ -387,12 +397,13 @@
 
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
-               :description :embedding_params :enable_embedding :entity_id :name
+               :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
-               :cache_ttl]
+               :cache_ttl
+               :dependency_analysis_version]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)
@@ -420,7 +431,7 @@
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps parameters))))
 
-(defmethod serdes/descendants "Dashboard" [_model-name id]
+(defmethod serdes/descendants "Dashboard" [_model-name id _opts]
   (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
         dashboard (t2/select-one :model/Dashboard :id id)
@@ -464,6 +475,7 @@
                   :last-edited-at :r.timestamp
                   :last-viewed-at true
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified       [:= "verified" :mr.status]
                   :view-count     true
                   :created-at     true
                   :updated-at     true}

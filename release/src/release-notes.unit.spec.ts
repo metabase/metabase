@@ -22,13 +22,9 @@ describe("Release Notes", () => {
 
   describe("getReleaseTitle", () => {
     it("should generate generic release title", () => {
-      expect(getReleaseTitle("v1.2.3")).toEqual(
-        "Metabase 2.3",
-      );
+      expect(getReleaseTitle("v1.2.3")).toEqual("Metabase 2.3");
 
-      expect(getReleaseTitle("v0.2.3")).toEqual(
-        "Metabase 2.3",
-      );
+      expect(getReleaseTitle("v0.2.3")).toEqual("Metabase 2.3");
     });
   });
 
@@ -68,6 +64,29 @@ describe("Release Notes", () => {
         title: "A bug fix that lacks a category label",
         labels: [{ name: "Type:Bug" }],
       },
+      {
+        number: 7,
+        title: "SDK Package Bug Issue",
+        labels: [
+          { name: "Type:Bug" },
+          { name: ".team/Embedding" },
+          { name: "no-release-notes" },
+        ],
+      },
+      {
+        number: 8,
+        title: "SDK Bundle Bug Issue",
+        labels: [
+          { name: "Type:Bug" },
+          { name: ".team/Embedding" },
+          { name: "Embedding/SDK" },
+        ],
+      },
+      {
+        number: 9,
+        title: "SDK Bundle Another Bug Issue",
+        labels: [{ name: "Type:Bug" }, { name: "Embedding/SDK" }],
+      },
     ] as Issue[];
 
     it("should generate release notes", () => {
@@ -81,7 +100,7 @@ describe("Release Notes", () => {
         "### Enhancements | 2.3\n\n**Querying**\n\n- Feature Issue (#2)",
       );
       expect(notes).toContain(
-        "### Bug fixes | 2.3\n\n**Embedding**\n\n- Bug Issue (#1)",
+        "### Bug fixes | 2.3\n\n**Embedding**\n\n- Bug Issue (#1)\n- SDK Bundle Bug Issue (#8)\n- SDK Bundle Another Bug Issue (#9)",
       );
       expect(notes).toContain(
         "### Already Fixed | 2.3\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
@@ -98,6 +117,7 @@ describe("Release Notes", () => {
       expect(notes).toContain(
         "https://downloads.metabase.com/v0.2.3.x/metabase.jar",
       );
+      expect(notes).not.toContain("SDK Package Bug Issue");
     });
 
     it("should generate release notes from alternative templates", () => {
@@ -107,9 +127,7 @@ describe("Release Notes", () => {
         issues,
       });
 
-      expect(notes).toContain(
-        "https://www.metabase.com/changelog/"
-      );
+      expect(notes).toContain("https://www.metabase.com/changelog/");
 
       expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
       expect(notes).toContain("metabase/metabase:v0.2.3.x");
@@ -403,18 +421,21 @@ describe("Release Notes", () => {
     });
   });
 
-  describe("markdownIssuelinks",  () => {
+  describe("markdownIssuelinks", () => {
     it("should generate markdown links for a single issue", () => {
-      expect(markdownIssueLinks("(#12345) is done"))
-        .toEqual("([#12345](https://github.com/metabase/metabase/issues/12345)) is done");
+      expect(markdownIssueLinks("(#12345) is done")).toEqual(
+        "([#12345](https://github.com/metabase/metabase/issues/12345)) is done",
+      );
     });
 
     it("should generate markdown links for a multiple issues", () => {
-      expect(markdownIssueLinks(`
+      expect(
+        markdownIssueLinks(`
         (#12345) is done
         (#12346) is not done
         12348 is not an issue
-      `)).toEqual(`
+      `),
+      ).toEqual(`
         ([#12345](https://github.com/metabase/metabase/issues/12345)) is done
         ([#12346](https://github.com/metabase/metabase/issues/12346)) is not done
         12348 is not an issue
@@ -482,9 +503,10 @@ describe("Release Notes", () => {
       });
 
       expect(notes).toContain("### Enhancements");
-      expect(notes).toContain("- Issue That Users Don't Care About ([#4](https://github.com/metabase/metabase/issues/4))");
+      expect(notes).toContain(
+        "- Issue That Users Don't Care About ([#4](https://github.com/metabase/metabase/issues/4))",
+      );
     });
-
   });
 
   it.each([
@@ -495,8 +517,9 @@ describe("Release Notes", () => {
     ["v1.60.0", "60#metabase-600"],
     ["v0.32.0", "32#metabase-320"],
     ["v0.444.1", "444#metabase-4441"],
-
-  ])("getChangelogUrl: %s -> %s", (input, expected)=> {
-    expect(getChangelogUrl(input)).toEqual(`https://www.metabase.com/changelog/${expected}`);
+  ])("getChangelogUrl: %s -> %s", (input, expected) => {
+    expect(getChangelogUrl(input)).toEqual(
+      `https://www.metabase.com/changelog/${expected}`,
+    );
   });
 });

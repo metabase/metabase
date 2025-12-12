@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
@@ -29,11 +30,9 @@ const mapDispatchToProps = {
 };
 
 const _RedirectToAllowedSettings = ({ adminItems, replace }) => {
-  if (adminItems.length === 0) {
-    replace("/unauthorized");
-  } else {
-    replace(adminItems[0].path);
-  }
+  useLayoutEffect(() => {
+    replace(adminItems.length === 0 ? "/unauthorized" : adminItems[0].path);
+  }, [adminItems, replace]);
 
   return null;
 };

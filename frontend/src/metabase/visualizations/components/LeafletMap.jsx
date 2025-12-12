@@ -84,7 +84,14 @@ export default class LeafletMap extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { bounds, settings } = this.props;
+    const { bounds, settings, zoomControl } = this.props;
+
+    if (zoomControl === false) {
+      this.map.removeControl(this.map.zoomControl);
+    } else {
+      this.map.addControl(this.map.zoomControl);
+    }
+
     if (
       !prevProps ||
       prevProps.points !== this.props.points ||
@@ -133,7 +140,14 @@ export default class LeafletMap extends Component {
     const {
       series: [{ card }],
       metadata,
+      token,
     } = this.props;
+
+    const isStaticEmbedding = !!token;
+
+    if (isStaticEmbedding) {
+      return false;
+    }
 
     const question = new Question(card, metadata);
     const { isNative } = Lib.queryDisplayInfo(question.query());

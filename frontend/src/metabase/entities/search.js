@@ -165,13 +165,6 @@ export default createEntity({
         ? (entity?.objectSelectors?.getColor?.(object) ?? null)
         : warnEntityAndReturnObject(object);
     },
-
-    getIcon: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getIcon?.(object) ?? null)
-        : warnEntityAndReturnObject(object);
-    },
   },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {

@@ -13,7 +13,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
-   [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
@@ -130,7 +129,7 @@
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
    :email_configured                     (setting/get :email-configured?)
-   :slack_configured                     (slack/slack-configured?)
+   :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
@@ -142,8 +141,11 @@
    :embedding_app_origin_set             (boolean
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           (setting/get :embedding-app-origin))
+   ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
+   ;; but we still filter it out in stats for compatibility with migrated instances.
    :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (setting/get :embedding-app-origins-sdk)]
-                                                    (and sdk-origins (not= "localhost:*" sdk-origins))))
+                                                    (and (not (str/blank? sdk-origins))
+                                                         (not= "localhost:*" sdk-origins))))
    :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
    :appearance_site_name                 (not= (appearance/site-name) "Metabase")
    :appearance_help_link                 (appearance/help-link)
@@ -170,6 +172,13 @@
                                :admin     (:is_superuser user)
                                :logged_in (:last_login   user)
                                :sso       (= :google (:sso_source user))}))})
+
+(defn- document-metrics
+  "Get metrics based on documents."
+  []
+  {:documents (merge-count-maps (for [document (t2/select [:model/Document :archived])]
+                                  {:total 1
+                                   :archived (true? (:archived document))}))})
 
 (defn- group-metrics
   "Get metrics based on groups:
@@ -297,9 +306,10 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card :collection_id :card_schema] {:where (mi/exclude-internal-content-hsql :model/Card)})]
-    {:collections              (count collections)
+  (let [collections (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+        cards       (t2/select [:model/Card :collection_id :card_schema] {:where
+                                                                          [:and (mi/exclude-internal-content-hsql :model/Card)]})]
+    {:collections              collections
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
      :num_cards_per_collection (medium-histogram cards :collection_id)}))
@@ -346,6 +356,11 @@
   "Get metrics based on Segments."
   []
   {:segments (t2/count :model/Segment)})
+
+(defn- metric-metrics
+  "Get metrics based on Metrics."
+  []
+  {:metrics (t2/count :model/Card :type :metric :archived false)})
 
 ;;; Execution Metrics
 
@@ -474,13 +489,15 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
+                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
                       :segment    (segment-metrics)
                       :system     (system-metrics)
                       :table      (table-metrics)
-                      :user       (user-metrics)}}))
+                      :user       (user-metrics)
+                      :document   (document-metrics)}}))
 
 (defn- ^:deprecated send-stats-deprecated!
   "Send stats to Metabase tracking server."
@@ -757,7 +774,7 @@
     :enabled   (setting/get :email-configured?)}
    {:name      :slack
     :available true
-    :enabled   (slack/slack-configured?)}
+    :enabled   (setting/get :slack-configured?)}
    {:name      :sso-google
     :available true
     :enabled   (setting/get :google-auth-configured)}
@@ -819,9 +836,6 @@
     :enabled   (if (premium-features/enable-database-routing?)
                  (t2/exists? :model/DatabaseRouter)
                  false)}
-   {:name      :documents
-    :available (premium-features/enable-documents?)
-    :enabled   (premium-features/enable-documents?)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
@@ -861,6 +875,9 @@
    {:name      :ai-sql-generation
     :available (premium-features/enable-ai-sql-generation?)
     :enabled   (premium-features/enable-ai-sql-generation?)}
+   {:name      :remote-sync
+    :available (premium-features/enable-remote-sync?)
+    :enabled   (premium-features/enable-remote-sync?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
@@ -874,7 +891,16 @@
     :enabled   (premium-features/table-data-editing?)}
    {:name      :transforms
     :available (premium-features/enable-transforms?)
-    :enabled   (premium-features/enable-transforms?)}])
+    :enabled   (premium-features/enable-transforms?)}
+   {:name      :transforms-python
+    :available (premium-features/enable-python-transforms?)
+    :enabled   (premium-features/enable-python-transforms?)}
+   {:name      :dependencies
+    :available (premium-features/enable-dependencies?)
+    :enabled   (premium-features/enable-dependencies?)}
+   {:name      :support-users
+    :available (premium-features/enable-support-users?)
+    :enabled   (premium-features/enable-support-users?)}])
 
 (defn- snowplow-features
   []

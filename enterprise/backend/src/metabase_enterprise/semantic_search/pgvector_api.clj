@@ -14,6 +14,7 @@
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -104,9 +105,12 @@
 (defn gate-updates!
   "Stages document updates through the gate table to enable async indexing. See gate.clj.
 
+  If passed a repair-table name, document models & IDs are also recorded in that table to enable detection of
+  lost deletes.
+
   NOTE: Returns a frequency map of input {model id-count} for compatibility with existing caller expectations -
   but it is redundant and should otherwise be ignored."
-  [pgvector index-metadata documents]
+  [pgvector index-metadata documents & {:keys [repair-table]}]
   (let [now (Instant/now)]
     (transduce
      (partition-all (min 512 (semantic.settings/ee-search-gate-max-batch-size)))
@@ -115,6 +119,8 @@
         (->> documents
              (mapv #(semantic.gate/search-doc->gate-doc % now))
              (semantic.gate/gate-documents! pgvector index-metadata))
+        (when repair-table
+          (semantic.repair/populate-repair-table! pgvector repair-table documents))
         (merge-with + acc (frequencies (map :model documents)))))
      {}
      documents)))

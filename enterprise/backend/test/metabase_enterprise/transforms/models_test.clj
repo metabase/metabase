@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.models.transform-tag :as transform-tag]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -112,6 +113,9 @@
                      :model/TransformTag tag4 {:name "tag4"}]
         (let [transform-id (:id transform)]
 
+          (testing "Transform created without creator_id defaults to internal user"
+            (is (= config/internal-mb-user-id (:creator_id transform))))
+
           (testing "Initial tag order is preserved"
             (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
@@ -156,3 +160,114 @@
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag1) (:id tag3) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered with new tag added"))))))))
+
+(deftest table-with-db-and-fields-hydration-test
+  (testing "table-with-db-and-fields hydration handles NULL schemas correctly"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   ;; Create tables with different schema values
+                   :model/Table {table-with-schema-id :id} {:db_id db-id
+                                                            :schema "public"
+                                                            :name "test_table_with_schema"}
+                   :model/Table {table-null-schema-id :id} {:db_id db-id
+                                                            :schema nil
+                                                            :name "test_table_null_schema"}
+                   :model/Table {other-table-id :id} {:db_id db-id
+                                                      :schema "other"
+                                                      :name "other_table"}
+                   ;; Create transforms targeting these tables
+                   :model/Transform transform1 {:name "Transform with schema"
+                                                :source {:type "query"
+                                                         :query {:database db-id
+                                                                 :type "native"
+                                                                 :native {:query "SELECT 1"
+                                                                          :template-tags {}}}}
+                                                :target {:type "table"
+                                                         :schema "public"
+                                                         :name "test_table_with_schema"
+                                                         :db_id db-id}}
+                   :model/Transform transform2 {:name "Transform with NULL schema"
+                                                :source {:type "query"
+                                                         :query {:database db-id
+                                                                 :type "native"
+                                                                 :native {:query "SELECT 2"
+                                                                          :template-tags {}}}}
+                                                :target {:type "table"
+                                                         :schema nil
+                                                         :name "test_table_null_schema"
+                                                         :db_id db-id}}]
+
+      (testing "Hydrates table with non-NULL schema"
+        (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
+          (is (some? (:table hydrated))
+              "Transform should have hydrated table")
+          (is (= table-with-schema-id (-> hydrated :table :id))
+              "Should hydrate correct table with schema")))
+
+      (testing "Hydrates table with NULL schema"
+        (let [hydrated (t2/hydrate transform2 :table-with-db-and-fields)]
+          (is (some? (:table hydrated))
+              "Transform with NULL schema should have hydrated table")
+          (is (= table-null-schema-id (-> hydrated :table :id))
+              "Should hydrate correct table with NULL schema")))
+
+      (testing "Hydrates multiple transforms with mixed schemas in single batch"
+        (let [hydrated (t2/hydrate [transform1 transform2] :table-with-db-and-fields)]
+          (is (= 2 (count hydrated))
+              "Should hydrate both transforms")
+          (is (every? (comp some? :table) hydrated)
+              "Both transforms should have hydrated tables")
+          (is (= #{table-with-schema-id table-null-schema-id}
+                 (set (map (comp :id :table) hydrated)))
+              "Should hydrate both tables correctly")))
+
+      (testing "Does not hydrate unrelated tables"
+        (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
+          (is (not= other-table-id (-> hydrated :table :id))
+              "Should not hydrate unrelated table"))))))
+
+(deftest creator-hydration-test
+  (testing "Transform creator hydration returns user details"
+    (let [user1-data {:first_name "Test"
+                      :last_name  "Creator"
+                      :email      "test.creator@example.com"}
+          user2-data {:first_name "Second"
+                      :last_name  "User"
+                      :email      "second.user@example.com"}]
+      (mt/with-temp [:model/User {user1-id :id} user1-data
+                     :model/Database {db-id :id} {}
+                     :model/Transform transform1 {:name       "Transform with creator"
+                                                  :creator_id user1-id
+                                                  :source     {:type  "query"
+                                                               :query {:database db-id
+                                                                       :type     "native"
+                                                                       :native   {:query         "SELECT 1"
+                                                                                  :template-tags {}}}}
+                                                  :target     {:type   "table"
+                                                               :schema "public"
+                                                               :name   "test_table"
+                                                               :db_id  db-id}}
+                     :model/User {user2-id :id} user2-data
+                     :model/Transform transform2 {:name       "Second transform"
+                                                  :creator_id user2-id
+                                                  :source     {:type  "query"
+                                                               :query {:database db-id
+                                                                       :type     "native"
+                                                                       :native   {:query         "SELECT 2"
+                                                                                  :template-tags {}}}}
+                                                  :target     {:type   "table"
+                                                               :schema "public"
+                                                               :name   "test_table2"
+                                                               :db_id  db-id}}]
+        (testing "Hydrates creator with user details"
+          (is (=? (assoc user1-data :id user1-id)
+                  (:creator (t2/hydrate transform1 :creator)))))
+        (testing "Hydrates multiple transforms with creators in batch"
+          (let [hydrated (t2/hydrate [transform1 transform2] :creator)]
+            (is (= 2 (count hydrated))
+                "Should hydrate both transforms")
+            (is (=? (assoc user1-data :id user1-id)
+                    (:creator (first hydrated)))
+                "First hydrated should match the first user's data")
+            (is (=? (assoc user2-data :id user2-id)
+                    (:creator (second hydrated)))
+                "Second hydrated should match the second user's data")))))))

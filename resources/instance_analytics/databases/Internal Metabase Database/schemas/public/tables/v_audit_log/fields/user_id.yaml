@@ -4,35 +4,22 @@ description: null
 created_at: '2023-06-14T14:56:02.702697Z'
 active: true
 visibility_type: normal
-table_id:
-- Internal Metabase Database
-- public
-- v_audit_log
+table_id: [Internal Metabase Database, public, v_audit_log]
 database_type: int4
 base_type: type/Integer
 effective_type: type/Integer
 semantic_type: type/FK
 database_is_auto_increment: false
 database_required: false
-fk_target_field_id:
-- Internal Metabase Database
-- public
-- v_users
-- user_id
+fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
 dimensions:
 - created_at: '2025-04-01T14:02:02.665741Z'
   entity_id: pvLruX9Qkzkb9cLg9eW5J
-  human_readable_field_id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - full_name
+  human_readable_field_id: [Internal Metabase Database, public, v_users, full_name]
   name: User ID
   type: external
   serdes/meta:
-  - id: pvLruX9Qkzkb9cLg9eW5J
-    label: user_id
-    model: Dimension
+  - {id: pvLruX9Qkzkb9cLg9eW5J, label: user_id, model: Dimension}
 json_unfolding: false
 parent_id: null
 coercion_strategy: null
@@ -46,14 +33,13 @@ caveats: null
 points_of_interest: null
 nfc_path: null
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_audit_log
-  model: Table
-- id: user_id
-  model: Field
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_audit_log, model: Table}
+- {id: user_id, model: Field}
+database_default: null
 database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
 database_partitioned: null
-entity_id: mQ85FXLO2CcUZUGJ-uB6O
