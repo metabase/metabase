@@ -51,7 +51,7 @@
                              ;; catches those
                              (cond-> v
                                (and (some? v)
-                                    (not (or (seq? v)
+                                    (not (or (vector? v)
                                              (map? v)))) str)]))
         m))
 
