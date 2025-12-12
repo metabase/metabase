@@ -364,28 +364,29 @@ describe("user > settings", () => {
       cy.visit("/account/profile", stubSystemColorScheme("dark"));
       cy.findByDisplayValue("Use system default").click();
       H.popover().findByText("Light").click();
+
       cy.wait("@saveColorScheme");
+
       assertLightMode();
 
-      // Sign out
       cy.signOut();
       cy.visit("/", stubSystemColorScheme("dark"));
 
       // Verify that the theme is restored to "auto" after sign out
       assertDarkMode();
 
-      // Intercept the session properties call that happens during login
       cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
-      // Sign in - this triggers refreshSession which should apply the theme
-      cy.signInAsNormalUser();
-      cy.visit("/", stubSystemColorScheme("dark"));
+      // Sign-in is done manually in order to test theme replacement throughout
+      // react navigation, where no new metadata is passed or injected into the
+      // window object, and the theme is purely updated from session properties
+      cy.findByLabelText("Email address").type(email);
+      cy.findByLabelText("Password").type(password);
+      cy.button("Sign in").click();
 
-      // Wait for session properties to be fetched (this happens in refreshSession)
       cy.wait("@sessionProperties");
 
       // Verify light mode is applied immediately after login
-      // The theme should be applied before we even navigate anywhere
       assertLightMode();
 
       // Verify the theme selector shows the correct value
