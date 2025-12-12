@@ -68,7 +68,7 @@ export interface WorkspaceContextValue {
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
   removeOpenedTransform: (transformId: number) => void;
-  editedTransforms: Map<number, EditedTransform>;
+  editedTransforms: Map<number | string, EditedTransform>;
   patchEditedTransform: (
     transformId: number,
     patch: Partial<EditedTransform>,
@@ -77,7 +77,9 @@ export interface WorkspaceContextValue {
   runTransforms: Set<number>;
   updateTransformState: (transform: WorkspaceTransform) => void;
   hasUnsavedChanges: () => boolean;
-  hasTransformEdits: (originalTransform: Transform) => boolean;
+  hasTransformEdits: (
+    originalTransform: Transform | WorkspaceTransform,
+  ) => boolean;
   isWorkspaceExecuting: boolean;
   setIsWorkspaceExecuting: (value: boolean) => void;
   unsavedTransforms: Transform[];

@@ -119,7 +119,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { data: externalTransforms } = useGetExternalTransformsQuery(id);
   const availableTransforms = externalTransforms ?? [];
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
-  const { data: aaallTransforms = [] } = useListTransformsQuery({});
   useRegisterMetabotContextProvider(async () => {
     if (!workspace?.database_id) {
       return;
@@ -668,15 +667,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 availableTransforms={availableTransforms}
                 workspaceId={workspace.id}
                 workspaceTransforms={workspaceTransforms}
-                onTransformClick={(externalTransform) => {
-                  const transform = aaallTransforms.find(
-                    (t) => "id" in t && t.id === externalTransform.id,
-                  );
-
-                  if (!transform) {
-                    return;
-                  }
-
+                onTransformClick={(transform) => {
                   addOpenedTransform(transform);
                   if (activeTable) {
                     setActiveTable(undefined);
