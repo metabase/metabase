@@ -32,11 +32,11 @@ export const useToggleResourceEmbedding = () => {
   const [updateCardEmbeddingParams] = useUpdateCardEmbeddingParamsMutation();
   const [updateCardEnableEmbedding] = useUpdateCardEnableEmbeddingMutation();
 
-  const handleEnableEmbedding = async (enableEmbedding: boolean) => {
-    if (!resource || !resourceType) {
-      return;
-    }
+  if (!resource || !resourceType) {
+    return null;
+  }
 
+  const handleEnableEmbedding = async (enableEmbedding: boolean) => {
     const handlersMap = {
       dashboard: updateDashboardEnableEmbedding,
       question: updateCardEnableEmbedding,
@@ -52,10 +52,6 @@ export const useToggleResourceEmbedding = () => {
   const handleUpdateEmbeddingParams = async (
     embeddingParams: EmbeddingParameters,
   ) => {
-    if (!resource || !resourceType) {
-      return;
-    }
-
     const handlersMap = {
       dashboard: updateDashboardEmbeddingParams,
       question: updateCardEmbeddingParams,
@@ -67,10 +63,6 @@ export const useToggleResourceEmbedding = () => {
       embedding_type: GUEST_EMBED_EMBEDDING_TYPE,
     });
   };
-
-  if (!resource || !resourceType) {
-    return null;
-  }
 
   const { handleSave, handleUnpublish, handleDiscard } =
     getStaticEmbedSetupPublishHandlers({

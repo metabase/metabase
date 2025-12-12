@@ -19,8 +19,11 @@ export const SdkIframeGuestEmbedStatusBar = () => {
 
   const isGuestEmbed = !!settings.isGuest;
   const shouldShowForStep = isStepWithResource(currentStep);
+  const shouldShowForResource =
+    toggleEmbedding?.resourceType === "dashboard" ||
+    toggleEmbedding?.resourceType === "question";
 
-  if (!isGuestEmbed || !shouldShowForStep) {
+  if (!isGuestEmbed || !shouldShowForStep || !shouldShowForResource) {
     return null;
   }
 
