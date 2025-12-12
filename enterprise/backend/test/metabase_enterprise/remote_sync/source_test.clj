@@ -158,17 +158,14 @@
                          :display "table"
                          :dataset_query {:z_field 1 :a_field 2 :database 3}
                          :visualization_settings {:zebra true :apple false}}]
-
         ;; Store the same entity twice
-        (source/store! [test-entity] (source.p/snapshot mock-source-1) task-id "First commit")
-        (source/store! [test-entity] (source.p/snapshot mock-source-2) task-id "Second commit")
-
+        (source/store! [test-entity] [] (source.p/snapshot mock-source-1) task-id "First commit")
+        (source/store! [test-entity] [] (source.p/snapshot mock-source-2) task-id "Second commit")
         (testing "YAML content is identical between runs"
           (let [content-1 (-> @written-files-1 :files first :content)
                 content-2 (-> @written-files-2 :files first :content)]
             (is (= content-1 content-2)
                 "YAML content should be identical for the same entity")))
-
         (testing "known keys appear in serialization-order.edn order"
           (let [content (-> @written-files-1 :files first :content)
                 name-pos (str/index-of content "name:")
@@ -179,7 +176,6 @@
                 "name should appear before description")
             (is (< description-pos display-pos)
                 "description should appear before display")))
-
         (testing "unknown keys are sorted alphabetically after known keys"
           (let [content (-> @written-files-1 :files first :content)
                 a-first-pos (str/index-of content "a_first_field:")
