@@ -1,5 +1,6 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
   - changeSet:
       id: v58.2025-10-30T09:03:00
       author: sanex3339
@@ -893,6 +894,7 @@ databaseChangeLog:
                   remarks: JSON object containing custom tenant attributes
                   constraints:
                     nullable: true
+
   - changeSet:
       id: v58.2025-11-18T12:31:54
       author: johnswanson
@@ -1137,7 +1139,6 @@ databaseChangeLog:
                   remarks: The table id that is 'published' by this model
                   constraints:
                     nullable: true
-
 
   - changeSet:
       id: v58.2025-12-05T17:41:54
