@@ -1529,17 +1529,11 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
-  ;; Inherit is_remote_synced from parent if not explicitly set
-  (let [parent-is-remote-synced? (when-let [parent-id (and location (location-path->parent-id location))]
-                                   (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id))]
-    (u/prog1 (-> collection
-                 (assoc :slug (slugify collection-name))
-                 (cond->
-                  (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
-                  (and (not (contains? collection :is_remote_synced))
-                       parent-is-remote-synced?)
-                  (assoc :is_remote_synced true)))
-      (assert-valid-remote-synced-parent <>))))
+  (u/prog1 (-> collection
+               (assoc :slug (slugify collection-name))
+               (cond->
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+    (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
