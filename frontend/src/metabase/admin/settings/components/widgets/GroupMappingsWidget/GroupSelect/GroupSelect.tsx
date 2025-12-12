@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
@@ -7,7 +8,6 @@ import type {
   UserGroupType,
   UserGroupsType,
 } from "metabase/admin/types";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import Select from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
@@ -18,7 +18,7 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+import { Icon, Popover } from "metabase/ui";
 
 type GroupSelectProps = {
   groups: UserGroupsType;
@@ -58,6 +58,8 @@ export const GroupSelect = ({
   isCurrentUser = false,
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
+  const [opened, setOpened] = useState(false);
+
   const triggerElement = (
     <div className={cx(CS.flex, CS.alignCenter)}>
       <GroupSummary
@@ -71,9 +73,14 @@ export const GroupSelect = ({
 
   if (groups.length === 0) {
     return (
-      <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className={CS.p1}>{emptyListMessage}</span>
-      </PopoverWithTrigger>
+      <Popover opened={opened} onChange={setOpened}>
+        <Popover.Target>
+          <div onClick={() => setOpened(!opened)}>{triggerElement}</div>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <span className={CS.p1}>{emptyListMessage}</span>
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 
