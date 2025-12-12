@@ -54,8 +54,8 @@ export const DataTabSidebar = ({
             return (
               <TableListItem
                 key={`output-${index}`}
-                name={table.isolated.table}
-                schema={table.isolated.schema}
+                name={table.global.table}
+                schema={table.global.schema}
                 icon="pivot_table"
                 type="output"
                 hasChanges={hasChanges}
