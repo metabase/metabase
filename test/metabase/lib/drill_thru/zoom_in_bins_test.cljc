@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.zoom-in-bins-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -10,6 +10,8 @@
    [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (defn- variant-expected-query-with-count-filter-stage [base-expected-query]
   (let [base-filters (get-in base-expected-query [:stages 0 :filters])]

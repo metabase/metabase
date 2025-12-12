@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import * as Urls from "metabase/lib/urls";
 import { createMockSegment } from "metabase-types/api/mocks";
 
 import { SegmentItem } from "./SegmentItem";
@@ -12,15 +13,12 @@ describe("SegmentItem", () => {
       definition_description: "Total > $1000",
     });
 
+    const segmentUrl = Urls.dataModelSegment(segment.id);
+
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
-          <SegmentItem
-            segment={segment}
-            href="/data-studio/library/segments/42"
-          />
-        )}
+        component={() => <SegmentItem segment={segment} href={segmentUrl} />}
       />,
       { withRouter: true },
     );
@@ -30,7 +28,7 @@ describe("SegmentItem", () => {
 
     const item = screen.getByRole("listitem");
     expect(item).toBeInTheDocument();
-    expect(item).toHaveAttribute("href", "/data-studio/library/segments/42");
+    expect(item).toHaveAttribute("href", segmentUrl);
     expect(item).toHaveAttribute("aria-label", "Premium Customers");
   });
 

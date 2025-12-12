@@ -348,7 +348,7 @@ const TableSectionBase = ({
           </Tabs.Panel>
 
           <Tabs.Panel value="segments">
-            <SegmentList segments={table.segments ?? []} tableId={table.id} />
+            <SegmentList table={table} />
           </Tabs.Panel>
         </Tabs>
       </Box>

@@ -74,7 +74,11 @@ export const DefaultItemRenderer = ({
           item={item}
           testIdPrefix={testIdPrefix}
           onClick={onClick}
+          includeDescription={!visibleColumnsMap["description"]}
         />
+      )}
+      {visibleColumnsMap["description"] && (
+        <Columns.Description.Cell item={item} testIdPrefix={testIdPrefix} />
       )}
       {visibleColumnsMap["lastEditedBy"] && (
         <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />

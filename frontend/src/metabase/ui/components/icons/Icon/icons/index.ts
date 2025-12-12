@@ -4,6 +4,8 @@ import one_million_component from "./1m.svg?component";
 import one_million_source from "./1m.svg?source";
 import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
+import add_collection_component from "./add_collection.svg?component";
+import add_collection_source from "./add_collection.svg?source";
 import add_column_component from "./add_column.svg?component";
 import add_column_source from "./add_column.svg?source";
 import add_comment_component from "./add_comment.svg?component";
@@ -544,6 +546,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     add: {
       component: add_component,
       source: add_source,
+    },
+    add_collection: {
+      component: add_collection_component,
+      source: add_collection_source,
     },
     add_column: {
       component: add_column_component,
@@ -1637,6 +1643,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
  */
 export type IconName =
   | "add"
+  | "add_collection"
   | "add_column"
   | "add_data"
   | "add_folder"

@@ -13,7 +13,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { tag } from "./tags";
+import { listTag, tag } from "./tags";
 
 export const remoteSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -87,7 +87,11 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/remote-sync/settings`,
         body: settings,
       }),
-      invalidatesTags: () => [tag("session-properties")],
+      invalidatesTags: () => [
+        tag("session-properties"),
+        // Invalidate collection list to refresh is_remote_synced values
+        listTag("collection"),
+      ],
     }),
     getBranches: builder.query<GetBranchesResponse, void>({
       query: () => ({

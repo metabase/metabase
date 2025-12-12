@@ -199,7 +199,15 @@
                                                  :continue-on-error false
                                                  :skip-archived true})]
               (remote-sync.task/update-progress! task-id 0.3)
-              (let [written-version (source/store! models snapshot task-id message)]
+              (let [top-level-removed-prefixes (->> (t2/query {:select [:c.entity_id]
+                                                               :from [[:collection :c]]
+                                                               :join [[:remote_sync_object :rso]
+                                                                      [:and [:= :rso.model_type [:inline "Collection"]]
+                                                                       [:= :rso.status [:inline "removed"]]
+                                                                       [:= :rso.model_id :c.id]]]
+                                                               :where [:= :location "/"]})
+                                                    (map #(str "collections/" (:entity_id %))))
+                    written-version (source/store! models top-level-removed-prefixes snapshot task-id message)]
                 (remote-sync.task/set-version! task-id written-version))
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
           {:status :success
