@@ -95,7 +95,7 @@ type MetabotConversationSnapshot = Pick<
 function WorkspacePageContent({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
   const dispatch = useDispatch();
-  const { sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [tab, setTab] = useState<string>("setup");
 
   const {
@@ -378,10 +378,13 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         return;
       }
       dispatch(replace(Urls.transformList()));
+      sendSuccessToast(
+        t`Workspace '${response.workspace.name}' merged successfully`,
+      );
     } catch (error) {
       sendErrorToast(t`Failed to merge workspace`);
     }
-  }, [id, mergeWorkspace, sendErrorToast, dispatch]);
+  }, [id, mergeWorkspace, sendErrorToast, dispatch, sendSuccessToast]);
 
   const handleWorkspaceNameChange = useCallback(
     async (newName: string) => {
