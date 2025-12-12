@@ -1,13 +1,19 @@
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
-import { noop } from "underscore";
 
 import { EntityPickerModal } from "metabase/common/components/EntityPicker/components/EntityPickerModal/EntityPickerModal";
 import {
   TablePicker,
+  type TablePickerItem,
   type TablePickerStatePath,
 } from "metabase/common/components/Pickers/TablePicker";
+import { useDispatch } from "metabase/lib/redux";
+import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { Box } from "metabase/ui";
+import { usePublishTablesMutation } from "metabase-enterprise/api/table";
+import { trackDataStudioTablePublished } from "metabase-enterprise/data-studio/analytics";
+import { Urls } from "metabase-enterprise/urls";
 
 interface PublishTableModalProps {
   opened: boolean;
@@ -15,7 +21,25 @@ interface PublishTableModalProps {
 }
 
 export function PublishTableModal({ opened, onClose }: PublishTableModalProps) {
+  const dispatch = useDispatch();
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
+  const { sendSuccessToast } = useMetadataToasts();
+  const [publishTables] = usePublishTablesMutation();
+  const [item, setItem] = useState<TablePickerItem | null>(null);
+
+  const onConfirm = async () => {
+    if (!item) {
+      return;
+    }
+    await publishTables({ table_ids: [item.id] });
+    onClose();
+    sendSuccessToast(
+      t`Published`,
+      () => dispatch(push(Urls.dataStudioTable(item.id))),
+      t`Go to ${item.name}`,
+    );
+    trackDataStudioTablePublished(item.id);
+  };
 
   if (!opened) {
     return null;
@@ -53,13 +77,10 @@ export function PublishTableModal({ opened, onClose }: PublishTableModalProps) {
           ),
         },
       ]}
-      onItemSelect={noop}
+      onItemSelect={setItem}
       onClose={onClose}
-      onConfirm={() => {
-        // TODO: Publish table
-        onClose();
-      }}
-      selectedItem={null}
+      onConfirm={onConfirm}
+      selectedItem={item}
     />
   );
 }
