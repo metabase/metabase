@@ -80,7 +80,8 @@
     ;; Just short-circuit if there are errors.
     (throw entity))
   (u/prog1 {:path (remote-sync-path opts entity)
-            :content (yaml/generate-string entity {:dumper-options {:flow-style :block :split-lines false}})}
+            :content (yaml/generate-string (serialization/serialization-deep-sort entity)
+                                           {:dumper-options {:flow-style :block :split-lines false}})}
     (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
 
 (defn store!
