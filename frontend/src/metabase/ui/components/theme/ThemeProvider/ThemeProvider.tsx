@@ -25,10 +25,13 @@ import type {
 } from "metabase/lib/color-scheme";
 import {
   getUserColorScheme,
+  isValidColorScheme,
   setUserColorSchemeAfterUpdate,
 } from "metabase/lib/color-scheme";
 import { mutateColors } from "metabase/lib/colors/colors";
+import { useSelector } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
+import { getSetting } from "metabase/selectors/settings";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
@@ -175,6 +178,13 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
     : schemeFromHash;
 
+  const colorSchemeFromSettings = useSelector((state) => {
+    const colorScheme = getSetting(state, "color-scheme");
+    return colorScheme && isValidColorScheme(colorScheme)
+      ? colorScheme
+      : undefined;
+  });
+
   const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
     await PUT("/api/setting/:key")({
       key: "color-scheme",
@@ -186,7 +196,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
 
   return (
     <ColorSchemeProvider
-      defaultColorScheme={getUserColorScheme()}
+      defaultColorScheme={colorSchemeFromSettings ?? getUserColorScheme()}
       forceColorScheme={forceColorScheme}
       onUpdateColorScheme={handleUpdateColorScheme}
     >

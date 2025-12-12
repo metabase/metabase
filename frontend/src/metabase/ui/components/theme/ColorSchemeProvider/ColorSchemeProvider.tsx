@@ -3,6 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -57,6 +58,11 @@ export function ColorSchemeProvider({
   const [colorScheme, setColorScheme] = useState<ColorScheme>(
     defaultColorScheme || "auto",
   );
+
+  useEffect(() => {
+    setColorScheme(defaultColorScheme);
+  }, [defaultColorScheme]);
+
   const resolvedColorScheme = useMemo(() => {
     if (forceColorScheme) {
       return forceColorScheme;
