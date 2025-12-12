@@ -29,8 +29,7 @@ export function ErrorSection({ type, errors }: ErrorSectionProps) {
             <Group
               key={detailIndex}
               className={S.item}
-              px="lg"
-              py="md"
+              p="md"
               justify="space-between"
               wrap="nowrap"
             >

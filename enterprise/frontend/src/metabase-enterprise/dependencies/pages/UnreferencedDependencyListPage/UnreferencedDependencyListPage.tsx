@@ -1,9 +1,8 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { Flex } from "metabase/ui";
 import { useListUnreferencedGraphNodesQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
@@ -13,14 +12,7 @@ import type {
 
 import { DependencyListView } from "../../components/DependencyListView";
 import type { DependencyFilterOptions } from "../../types";
-import {
-  getCardTypes,
-  getDependencyTypes,
-  getSearchQuery,
-  isSameNode,
-} from "../../utils";
-
-import { UnreferencedNodePanel } from "./UnreferencedNodePanel";
+import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
 
 const EMPTY_NODES: DependencyNode[] = [];
 
@@ -59,29 +51,20 @@ export function UnreferencedDependencyListPage() {
     card_types: getCardTypes(groupTypes),
   });
 
-  const selectedNode = useMemo(() => {
-    return selectedEntry != null
-      ? data.find((node) => isSameNode(node, selectedEntry))
-      : null;
-  }, [data, selectedEntry]);
-
   return (
-    <Flex h="100%">
-      <DependencyListView
-        nodes={data}
-        searchValue={searchValue}
-        filterOptions={filterOptions}
-        availableGroupTypes={AVAILABLE_GROUP_TYPES}
-        nothingFoundMessage={t`No unreferenced entities found.`}
-        error={error}
-        isFetching={isFetching}
-        isLoading={isLoading}
-        withDependentsCountColumn
-        onSelect={setSelectedEntry}
-        onSearchValueChange={setSearchValue}
-        onFilterOptionsChange={setFilterOptions}
-      />
-      {selectedNode != null && <UnreferencedNodePanel node={selectedNode} />}
-    </Flex>
+    <DependencyListView
+      nodes={data}
+      selectedEntry={selectedEntry}
+      searchValue={searchValue}
+      filterOptions={filterOptions}
+      availableGroupTypes={AVAILABLE_GROUP_TYPES}
+      nothingFoundMessage={t`No unreferenced entities found.`}
+      error={error}
+      isFetching={isFetching}
+      isLoading={isLoading}
+      onSelect={setSelectedEntry}
+      onSearchValueChange={setSearchValue}
+      onFilterOptionsChange={setFilterOptions}
+    />
   );
 }
