@@ -2130,9 +2130,9 @@
                  (is (caused-by? java.net.SocketTimeoutException e))
                  (throw e)))))))
     (testing "network hangs are not interrupted before *query-timeout-ms*"
-      (is (= true
-             (sql-jdbc.execute/do-with-connection-with-options
-              driver/*driver* (mt/id) nil
-              (fn [^Connection conn]
-                (with-open [stmt (.createStatement conn)]
-                  (.execute stmt "SELECT pg_sleep(6)")))))))))
+      (is (true?
+           (sql-jdbc.execute/do-with-connection-with-options
+            driver/*driver* (mt/id) nil
+            (fn [^Connection conn]
+              (with-open [stmt (.createStatement conn)]
+                (.execute stmt "SELECT pg_sleep(6)")))))))))
