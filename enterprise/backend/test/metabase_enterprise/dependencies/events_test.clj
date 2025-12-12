@@ -760,3 +760,67 @@
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :transform
                                   :analyzed_entity_id [:in [transform-id]])))))))))
+
+(deftest ^:sequential segment-update-works-with-no-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          products (lib.metadata/table mp products-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                    :definition {:filter [:> [:field price-field-id nil] 50]}}
+                       :model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id card-id
+                                            :to_entity_type :segment
+                                            :to_entity_id segment-id}]
+          (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
+          (is (= card-id
+                 (t2/select-one-fn :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :card
+                                   :analyzed_entity_id card-id)))
+          (is (= segment-id
+                 (t2/select-one-fn :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :segment
+                                   :analyzed_entity_id segment-id))))))))
+
+(deftest ^:sequential segment-update-updates-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          products (lib.metadata/table mp products-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                    :definition {:filter [:> [:field price-field-id nil] 50]}}
+                       :model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id card-id
+                                            :to_entity_type :segment
+                                            :to_entity_id segment-id}]
+          (lib-be/with-metadata-provider-cache
+            (deps.findings/upsert-analysis! segment)
+            (deps.findings/upsert-analysis! card))
+          (is (= {:analyzed_entity_id card-id
+                  :analysis_version models.analysis-finding/current-analysis-version}
+                 (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                :analyzed_entity_type :card
+                                :analyzed_entity_id card-id)))
+          (is (= {:analyzed_entity_id segment-id
+                  :analysis_version models.analysis-finding/current-analysis-version}
+                 (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                :analyzed_entity_type :segment
+                                :analyzed_entity_id segment-id)))
+          (binding [models.analysis-finding/current-analysis-version (inc models.analysis-finding/current-analysis-version)]
+            (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*}))
+          (is (= {:analyzed_entity_id card-id
+                  :analysis_version (inc models.analysis-finding/current-analysis-version)}
+                 (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                :analyzed_entity_type :card
+                                :analyzed_entity_id card-id)))
+          (is (= {:analyzed_entity_id segment-id
+                  :analysis_version (inc models.analysis-finding/current-analysis-version)}
+                 (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                :analyzed_entity_type :segment
+                                :analyzed_entity_id segment-id))))))))

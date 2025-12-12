@@ -253,17 +253,26 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))))
 
+(def ^:private types-to-check
+  #{:card :transform :segment})
+
+(def ^:private dependency-type->model
+  {:card :model/Card
+   :transform :model/Transform
+   :segment :model/Segment})
+
 (defn- check-dependents [type object]
   (let [graph (models.dependency/filtered-graph-dependents
                nil
                (fn [type-field _id-field]
                  [:not= type-field "transform"]))
-        {child-cards :card
-         child-transforms :transform} (models.dependency/transitive-dependents graph {type [object]})]
-    (doseq [instances (partition 50 50 nil child-cards)]
-      (deps.findings/analyze-instances! (t2/select :model/Card :id [:in instances])))
-    (doseq [instances (partition 50 50 nil child-transforms)]
-      (deps.findings/analyze-instances! (t2/select :model/Transform :id [:in instances])))))
+        children-map (models.dependency/transitive-dependents graph {type [object]})]
+    (prn "children-map" children-map type object)
+    (doseq [[type children] children-map
+            :when (types-to-check type)
+            instances (partition 50 50 nil children)]
+      (-> (t2/select (dependency-type->model type) :id [:in instances])
+          deps.findings/analyze-instances!))))
 
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-create ::check-card-dependents)
