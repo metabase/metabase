@@ -59,7 +59,9 @@ export interface WorkspaceContextValue {
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
   setActiveTab: (tab: WorkspaceTab | undefined) => void;
-  setActiveTransform: (transform: Transform | undefined) => void;
+  setActiveTransform: (
+    transform: Transform | WorkspaceTransform | undefined,
+  ) => void;
   setActiveTable: (table: OpenTable | undefined) => void;
   addOpenedTab: (tab: WorkspaceTab) => void;
   removeOpenedTab: (tabId: string) => void;
@@ -89,7 +91,7 @@ const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
 
 interface WorkspaceState {
   openedTabs: WorkspaceTab[];
-  activeTransform?: Transform;
+  activeTransform?: Transform | WorkspaceTransform;
   activeEditedTransform?: Transform;
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
@@ -341,6 +343,7 @@ export const WorkspaceProvider = ({
         const currentTransform =
           state.editedTransforms.get(transformId) ?? activeTransform;
         const newEditedTransform = {
+          ...activeTransform,
           name: patch.name ? patch.name : currentTransform.name,
           source: patch.source ? patch.source : currentTransform.source,
           target: patch.target ? patch.target : currentTransform.target,

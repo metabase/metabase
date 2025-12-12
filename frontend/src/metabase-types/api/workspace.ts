@@ -146,7 +146,7 @@ export type WorkspaceTransformRef = {
   transformId: string;
 };
 
-export type CreateWorkspaceTransformResponse = Transform;
+export type CreateWorkspaceTransformResponse = WorkspaceTransform;
 
 export type WorkspaceInputTable = {
   id: number | null;

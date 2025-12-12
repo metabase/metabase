@@ -80,6 +80,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           listTag("transform"),
           ...(global_id != null ? [idTag("transform", global_id)] : []),
         ]),
+      transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
     }),
     getTransformUpstreamMapping: builder.query<
       TransformUpstreamMapping,

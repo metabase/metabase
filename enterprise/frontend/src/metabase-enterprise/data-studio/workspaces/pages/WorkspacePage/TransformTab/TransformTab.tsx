@@ -64,7 +64,7 @@ interface Props {
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
   onChange: (patch: Partial<EditedTransform>) => void;
-  onOpenTransform: (transformId: TransformId) => void;
+  onOpenTransform: (transformId: number | string) => void;
 }
 
 export const TransformTab = ({
@@ -81,6 +81,7 @@ export const TransformTab = ({
     isWorkspaceExecuting,
     setIsWorkspaceExecuting,
     removeUnsavedTransform,
+    setActiveTransform,
     unsavedTransforms,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -204,7 +205,7 @@ export const TransformTab = ({
               id: workspaceId,
               name: values.name,
               description: null,
-              source: transform.source,
+              source: editedTransform.source,
               target: {
                 type: "table-incremental" as const,
                 name: values.targetName,
@@ -219,7 +220,7 @@ export const TransformTab = ({
               id: workspaceId,
               name: values.name,
               description: null,
-              source: transform.source,
+              source: editedTransform.source,
               target: {
                 type: "table" as const,
                 name: values.targetName,
@@ -231,7 +232,9 @@ export const TransformTab = ({
       const savedTransform = await createWorkspaceTransform(request).unwrap();
 
       // Remove from unsaved transforms and refresh workspace
-      removeUnsavedTransform(transform.id);
+      if ("id" in editedTransform && typeof editedTransform.id === "number") {
+        removeUnsavedTransform(editedTransform.id);
+      }
 
       // Invalidate workspace transforms after creating new one
       dispatch(
@@ -241,6 +244,7 @@ export const TransformTab = ({
       );
 
       // Open the newly saved transform
+      setActiveTransform(savedTransform);
       onOpenTransform(savedTransform.id);
 
       sendSuccessToast(t`Transform saved successfully`);
@@ -317,7 +321,6 @@ export const TransformTab = ({
 
   const handleTargetUpdate = useCallback(
     (updatedTransform?: WorkspaceTransform) => {
-      debugger;
       if (updatedTransform) {
         updateTransformState(updatedTransform);
         sendSuccessToast(t`Transform target updated`);
