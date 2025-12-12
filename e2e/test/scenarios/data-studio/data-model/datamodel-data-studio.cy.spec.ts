@@ -933,6 +933,9 @@ describe("scenarios > data studio > datamodel", () => {
 
       TableSection.clickField("ID");
 
+      // Sometimes in CI this doesn't happen
+      FieldSection.get().scrollIntoView();
+
       FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "BIGINT");
