@@ -84,5 +84,6 @@
          (deliver start-promise t))
        (throw t)))))
 
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :query [transform opts]
   (run-mbql-transform! transform opts))

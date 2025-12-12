@@ -13,4 +13,5 @@
   ([transform]
    (execute! transform nil))
   ([transform opts]
+   #_{:clj-kondo/ignore [:discouraged-var]}
    (transforms.i/execute! transform opts)))
