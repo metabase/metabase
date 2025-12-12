@@ -16,7 +16,6 @@ import {
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
 import { DependencyList } from "./DependencyList";
-import S from "./DependencyListView.module.css";
 import { FilterOptionsPicker } from "./FilterOptionsPicker";
 import { ListEmptyState } from "./ListEmptyState";
 import { ListHeader } from "./ListHeader";
@@ -84,7 +83,7 @@ export function DependencyListView({
   );
 
   return (
-    <Stack className={S.root} flex={1} px="3.5rem" py="md" gap="md" h="100%">
+    <Stack flex={1} px="3.5rem" py="md" gap="md" h="100%">
       <ListHeader />
       <Flex gap="md" align="center">
         <TextInput
@@ -118,13 +117,15 @@ export function DependencyListView({
             withErrorsColumn={withErrorsColumn}
             withDependentsCountColumn={withDependentsCountColumn}
           />
-          <Center>
-            <Pagination
-              value={pageNumber}
-              total={totalPages}
-              onChange={handlePageChange}
-            />
-          </Center>
+          {totalPages > 1 && (
+            <Center>
+              <Pagination
+                value={pageNumber}
+                total={totalPages}
+                onChange={handlePageChange}
+              />
+            </Center>
+          )}
         </Stack>
       )}
     </Stack>
