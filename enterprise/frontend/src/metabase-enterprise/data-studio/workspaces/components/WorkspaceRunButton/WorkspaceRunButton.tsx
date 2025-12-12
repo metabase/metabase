@@ -14,10 +14,18 @@ type WorkspaceRunButtonProps = {
   onCancel?: () => void;
 };
 
-// A workspace-friendly wrapper that avoids showing the "recent success" state
+// A workspace-friendly wrapper that shows visual feedback during and after runs
 export function WorkspaceRunButton({ run, ...rest }: WorkspaceRunButtonProps) {
+  // Pass through active/completed run states for visual feedback
+  // - started/canceling: show in-progress state
+  // - succeeded/failed: show completion state (controlled by parent)
   const activeRun =
-    run?.status === "started" || run?.status === "canceling" ? run : null;
+    run?.status === "started" ||
+    run?.status === "canceling" ||
+    run?.status === "succeeded" ||
+    run?.status === "failed"
+      ? run
+      : null;
 
   return <RunButton run={activeRun} {...rest} />;
 }
