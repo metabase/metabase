@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [deferred-tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -14,6 +15,20 @@
 (t2/deftransforms :model/WorkspaceLog
   {:task   mi/transform-keyword
    :status mi/transform-keyword})
+
+(defn- task->description
+  "Return a human-readable description for a workspace task."
+  [task]
+  (case task
+    :workspace-setup    (deferred-tru "Setting up the workspace")
+    :database-isolation (deferred-tru "Provisioning database isolation")
+    :mirror-entities    (deferred-tru "Mirroring entities")
+    :grant-read-access  (deferred-tru "Granting permissions")
+    (name task)))
+
+(t2/define-after-select :model/WorkspaceLog
+  [{:keys [task] :as log}]
+  (assoc log :description (task->description task)))
 
 (defn start!
   "Create a log entry for a workspace setup task. Returns the created log."
