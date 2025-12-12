@@ -115,7 +115,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         query: (transformId) => ({
           method: "GET",
           url: `/api/ee/workspace/checkout`,
-          params: { "transform-id": transformId },
+          params: { transform_id: transformId },
         }),
         providesTags: (_, __, transformId) => [idTag("transform", transformId)],
       },
