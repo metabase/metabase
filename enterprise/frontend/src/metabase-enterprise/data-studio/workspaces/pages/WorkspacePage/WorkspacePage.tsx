@@ -623,10 +623,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   <DataTab
                     databaseId={workspace?.database_id ?? null}
                     tableId={activeTable.tableId}
-                    transform={workspaceTransforms.find(
-                      (transform: Transform) =>
-                        transform.target.schema === activeTable.schema,
-                    )}
                   />
                 )}
               </Tabs.Panel>

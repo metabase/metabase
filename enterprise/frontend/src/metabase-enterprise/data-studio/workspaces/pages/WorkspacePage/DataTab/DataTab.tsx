@@ -17,11 +17,7 @@ interface DataTabProps {
   transform?: Transform;
 }
 
-export function DataTab({
-  databaseId,
-  tableId,
-  transform: _transform,
-}: DataTabProps) {
+export function DataTab({ databaseId, tableId }: DataTabProps) {
   const { data: table } = useGetTableQuery(
     tableId ? { id: tableId } : skipToken,
   );
