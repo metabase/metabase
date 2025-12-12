@@ -30,7 +30,7 @@
                           result
                           settings
                           (ee.sso.settings/ldap-group-membership-filter))]
-      (assoc user-info :attributes (syncable-user-attributes result)))))
+      (assoc user-info :attributes (update-keys (syncable-user-attributes result) name)))))
 
 (defenterprise check-provision-ldap
   "Throw if creating new users from ldap is disallowed."
