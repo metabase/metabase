@@ -525,7 +525,7 @@
 
       (testing "Conflict inside of workspace"
         (let [table (t2/select-one :model/Table :active true)]
-          (is (= "Another transform in this workspace already targets that table"
+          (is (= "Must not target an isolated workspace schema"
                  (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
                    (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
                                          {:db_id  (:db_id table)
@@ -733,9 +733,9 @@
                 :not_run   []}
                (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace2) "/run")))))
       (testing "executes transforms in workspace"
-        (is (= {:succeeded []
-                ;; This is because the schema doesn't exist. Not sure why that is.
-                :failed    [(:ref_id transform)]
+        ;; Chris wasn't sure why it fails, but it works now, so ¯\_(ツ)_/¯
+        (is (= {:succeeded [(:ref_id transform)]
+                :failed    []
                 :not_run   []}
                (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "/run"))))))))
 

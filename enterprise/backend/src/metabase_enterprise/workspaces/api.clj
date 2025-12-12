@@ -302,8 +302,7 @@
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id ws-id))]
-    ;; See https://metaboat.slack.com/archives/C099RKNLP6U/p1765529507251079
-    #_(api/check-400 (some? (:archived_at ws)) "You cannot delete a workspace without first archiving it")
+    (api/check-400 (some? (:archived_at ws)) "You cannot delete a workspace without first archiving it")
     (ws.model/delete! ws)
     {:ok true}))
 
@@ -379,7 +378,7 @@
        (fn [acc {ref-id :ref_id :as transform}]
          (try
            ;; Perhaps we want to return some of the metadata from this as well?
-           (if (= :succeeded (:status (ws.execute/run-transform-with-remapping transform remapping)))
+           (if (= :succeeded (:status (ws.execute/run-transform-with-remapping workspace transform remapping)))
              (update acc :succeeded conj ref-id)
              ;; Perhaps the status might indicate it never ran?
              (update acc :failed conj ref-id))
@@ -490,7 +489,7 @@
       {:status 200 :body "OK"})))
 
 (defn- malli-map-keys [schema]
-  (into [] (comp (remove #(:hydrated (second %))) (map first)) (rest schema)))
+  (into [] (map first) (rest schema)))
 
 (defn- select-malli-keys
   "Like select-keys, but with the arguments reversed, and taking the malli schema for the output map.
@@ -525,8 +524,7 @@
    [:archived_at :any]
    [:created_at :any]
    [:updated_at :any]
-   ;; We are not storing this yet.
-   #_[:last_run_at {:hydrated true} :any]])
+   [:last_run_at :any]])
 
 (def ^:private workspace-transform-alias {:target_stale :stale})
 
@@ -646,7 +644,7 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    (ws.execute/run-transform-with-remapping transform (build-remapping workspace))))
+    (ws.execute/run-transform-with-remapping workspace transform (build-remapping workspace))))
 
 (api.macros/defendpoint :get "/checkout"
   :- [:map

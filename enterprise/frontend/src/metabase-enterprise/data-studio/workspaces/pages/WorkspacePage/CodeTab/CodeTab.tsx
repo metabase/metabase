@@ -5,9 +5,9 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { Stack, Text } from "metabase/ui";
 import { useLazyGetWorkspaceTransformQuery } from "metabase-enterprise/api";
 import type {
+  ExternalTransform,
   Transform,
   WorkspaceId,
-  WorkspaceTransform,
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
@@ -18,15 +18,15 @@ import { TransformListItemMenu } from "./TransformListItemMenu";
 
 type CodeTabProps = {
   activeTransformId?: number;
-  transforms: Transform[];
+  availableTransforms: ExternalTransform[];
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
-  onTransformClick: (transform: Transform | WorkspaceTransform) => void;
+  onTransformClick: (transform: ExternalTransform) => void;
 };
 
 export const CodeTab = ({
   activeTransformId,
-  transforms,
+  availableTransforms,
   workspaceId,
   workspaceTransforms,
   onTransformClick,
@@ -36,11 +36,13 @@ export const CodeTab = ({
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
 
   const handleTransformClick = useCallback(
-    (transform: Transform | WorkspaceTransform) => {
-      const edited = editedTransforms.get(transform.id);
+    (externalTransform: ExternalTransform) => {
+      const edited = editedTransforms.get(externalTransform.id);
+      // we need to fetch a transform
       const transformToOpen = edited
-        ? ({ ...transform, ...edited } as Transform)
-        : transform;
+        ? { ...externalTransform, ...edited }
+        : externalTransform;
+
       onTransformClick(transformToOpen);
     },
     [editedTransforms, onTransformClick],
@@ -109,7 +111,7 @@ export const CodeTab = ({
 
       <Stack data-testid="mainland-transforms" py="sm" gap="xs">
         <Text fw={600} mt="sm">{t`Available transforms`}</Text>
-        {transforms.map((transform) => (
+        {availableTransforms.map((transform) => (
           <TransformListItem
             key={transform.id}
             name={transform.name}
