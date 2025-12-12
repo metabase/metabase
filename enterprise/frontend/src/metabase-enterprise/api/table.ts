@@ -1,17 +1,35 @@
 import type {
+  BulkTableSelection,
+  BulkTableSelectionInfo,
   DiscardTablesValuesRequest,
   EditTablesRequest,
-  PublishModelsRequest,
-  PublishModelsResponse,
+  PublishTablesResponse,
   RescanTablesValuesRequest,
   SyncTablesSchemaRequest as SyncTablesSchemasRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag, tag } from "./tags";
+import {
+  invalidateTags,
+  listTag,
+  provideBulkTableSelectionInfoTags,
+  tag,
+} from "./tags";
 
 export const tableApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getTableSelectionInfo: builder.query<
+      BulkTableSelectionInfo,
+      BulkTableSelection
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/data-studio/table/selection",
+        body,
+      }),
+      providesTags: (response) =>
+        response ? provideBulkTableSelectionInfoTags(response) : [],
+    }),
     editTables: builder.mutation<Record<string, never>, EditTablesRequest>({
       query: (body) => ({
         method: "POST",
@@ -57,13 +75,19 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    publishModels: builder.mutation<
-      PublishModelsResponse,
-      PublishModelsRequest
-    >({
+    publishTables: builder.mutation<PublishTablesResponse, BulkTableSelection>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/data-studio/table/publish-model",
+        url: "/api/ee/data-studio/table/publish-tables",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("table"), tag("card"), tag("collection")]),
+    }),
+    unpublishTables: builder.mutation<void, BulkTableSelection>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/data-studio/table/unpublish-tables",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -73,9 +97,12 @@ export const tableApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useGetTableSelectionInfoQuery,
+  useLazyGetTableSelectionInfoQuery,
   useEditTablesMutation,
   useRescanTablesFieldValuesMutation,
   useSyncTablesSchemasMutation,
   useDiscardTablesFieldValuesMutation,
-  usePublishModelsMutation,
+  usePublishTablesMutation,
+  useUnpublishTablesMutation,
 } = tableApi;

@@ -1678,3 +1678,17 @@
              ["field" 3]
              nil]]
            {"default" ["field" 5 {}]}]))))
+
+(deftest ^:parallel normalize-literal-strings-in-custom-aggregations-test
+  (testing "Strings are allowed as arguments to a custom aggregation (#66199)"
+    (is (= [:max "Literal String"]
+           (mbql.normalize/normalize ["max" "Literal String"])))
+    (is (= [:aggregation-options
+            [:max "Literal String"]
+            {:name         "foo"
+             :display-name "Foo"}]
+           (mbql.normalize/normalize
+            ["aggregation-options"
+             ["max" "Literal String"]
+             {"name"         "foo"
+              "display-name" "Foo"}])))))

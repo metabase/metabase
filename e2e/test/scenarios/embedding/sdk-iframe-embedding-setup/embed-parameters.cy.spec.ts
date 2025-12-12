@@ -22,6 +22,7 @@ describe(suiteTitle, () => {
     H.activateToken("bleeding-edge");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-static", false);
     H.mockEmbedJsToDevServer();
   });
 

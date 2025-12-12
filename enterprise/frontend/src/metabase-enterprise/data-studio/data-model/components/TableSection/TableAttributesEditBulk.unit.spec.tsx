@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useEffect, useState } from "react";
+import _ from "underscore";
 
 import {
   setupTableEndpoints,
@@ -55,7 +56,7 @@ function TestWrapper({
 
   return (
     <SelectionProvider>
-      <TableAttributesEditBulk />
+      <TableAttributesEditBulk hasLibrary onUpdate={_.noop} />
       <SelectionController
         initialTables={initialTables}
         onSelectionChange={() => setSelectionChanged(true)}
@@ -70,7 +71,7 @@ function setup({
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
-    key: "seen-publish-models-info",
+    key: "seen-publish-tables-info",
     value: true,
   });
   setupTableEndpoints(createMockTable());

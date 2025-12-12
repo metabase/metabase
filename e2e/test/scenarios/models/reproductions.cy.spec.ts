@@ -29,7 +29,9 @@ describe("issue 29943", () => {
     getHeaderCell(1, "Total").should("exist");
     getHeaderCell(2, "Custom").should("exist");
 
-    H.moveDnDKitElement(H.tableHeaderColumn("Custom"), { horizontal: -100 });
+    const tableHeaderAlias = "customHeader";
+    H.tableHeaderColumn("Custom").as(tableHeaderAlias);
+    H.moveDnDKitElementByAlias(`@${tableHeaderAlias}`, { horizontal: -100 });
 
     getHeaderCell(1, "Custom").should("exist");
     getHeaderCell(2, "Total").should("exist");

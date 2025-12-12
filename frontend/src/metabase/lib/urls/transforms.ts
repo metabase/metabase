@@ -42,6 +42,10 @@ export function transform(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}`;
 }
 
+export function transformEdit(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/edit`;
+}
+
 export function transformRun(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/run`;
 }

@@ -4,10 +4,12 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
+import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
+  setIsGuestEmbed,
   setLoaderComponent,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
@@ -27,7 +29,7 @@ import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 import { METABOT_SDK_EE_PLUGIN } from "../MetabotQuestion/MetabotQuestion";
 
-type ComponentProviderInternalProps = ComponentProviderProps & {
+export type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
   isLocalHost?: boolean;
 };
@@ -50,28 +52,42 @@ function useInitPlugins() {
   }, [tokenFeatures]);
 }
 
-export const ComponentProviderInternal = ({
-  children,
-  authConfig,
-  pluginsConfig,
-  eventHandlers,
-  theme,
-  reduxStore,
-  locale,
-  errorComponent,
-  loaderComponent,
-  allowConsoleLog,
-  isLocalHost,
-}: ComponentProviderInternalProps): JSX.Element => {
+export const ComponentProviderInternal = (
+  props: ComponentProviderInternalProps,
+): JSX.Element => {
+  const {
+    children,
+    authConfig,
+    pluginsConfig,
+    eventHandlers,
+    theme,
+    reduxStore,
+    locale,
+    errorComponent,
+    loaderComponent,
+    allowConsoleLog,
+    isLocalHost,
+  } = useNormalizeComponentProviderProps(props);
+
+  const isGuestEmbed = !!authConfig.isGuest;
   const { fontFamily } = theme ?? {};
 
   // The main call of useInitData happens in the MetabaseProvider
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitDataInternal({ reduxStore, authConfig, isLocalHost });
+  useInitDataInternal({
+    reduxStore,
+    isGuestEmbed,
+    authConfig,
+    isLocalHost,
+  });
 
   useInitPlugins();
+
+  useEffect(() => {
+    reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
+  }, [reduxStore, isGuestEmbed]);
 
   useEffect(() => {
     if (fontFamily) {

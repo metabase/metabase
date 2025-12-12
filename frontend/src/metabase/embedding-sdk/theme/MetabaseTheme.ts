@@ -6,10 +6,17 @@ import type { DeepPartial } from "../types/utils";
 
 import type { MetabaseFontFamily } from "./fonts";
 
+export type MetabaseThemePreset = "light" | "dark";
+
 /**
  * Theme configuration for embedded Metabase components.
  */
 export interface MetabaseTheme {
+  /**
+   * Predefined theme preset to use as a base.
+   */
+  preset?: MetabaseThemePreset;
+
   /**
    * Base font size.
    * Supported units are px, em and rem.

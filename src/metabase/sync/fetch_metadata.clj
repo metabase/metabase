@@ -10,7 +10,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]))
+   [metabase.util.malli.fn :as mu.fn]
+   [toucan2.core :as t2]))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body."
@@ -57,12 +58,21 @@
   "Replaces [[metabase.driver/describe-fields]] for drivers that haven't implemented it. Uses [[driver/describe-table]]
   instead. Also includes nested field column metadata."
   [_driver database & {:keys [schema-names table-names]}]
-  (let [tables (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names)]
+  ;; Realize everything in a vector to close the connection. But only keep the ids because the maps can hog memory.
+  (let [table-ids (mapv :id (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names))]
     (eduction
-     (mapcat (fn [table]
-               (for [x (table-fields-metadata database table)]
-                 (assoc x :table-schema (:schema table) :table-name (:name table)))))
-     tables)))
+     (mapcat (fn [table-id]
+               (try
+                 (let [table (t2/select-one :model/Table table-id)
+                       table-fields (table-fields-metadata database table)]
+                  ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
+                  ;; connection is closed before moving to the next table.
+                   (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
+                         table-fields))
+                 (catch Throwable e
+                   (log/warn e (str "Could not fetch fields from table " table-id))
+                   nil))))
+     table-ids)))
 
 (mu/defn fields-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema.

@@ -7,18 +7,15 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Flex, Group } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
-import {
-  PaneHeader,
-  PanelHeaderTitle,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
 import { PythonEditor } from "../../components/PythonEditor";
 
+import { PythonLibraryEditorHeader } from "./PythonLibraryEditorHeader";
 import S from "./PythonLibraryEditorPage.module.css";
 
 type PythonLibraryEditorPageProps = {
@@ -93,7 +90,7 @@ export function PythonLibraryEditorPage({
   return (
     <>
       <Flex h="100%" w="100%" gap={0} direction="column">
-        <LibraryEditorHeader
+        <PythonLibraryEditorHeader
           onSave={handleSave}
           onRevert={handleRevert}
           isDirty={isDirty}
@@ -109,36 +106,5 @@ export function PythonLibraryEditorPage({
       </Flex>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
     </>
-  );
-}
-
-export function LibraryEditorHeader({
-  isDirty,
-  isSaving,
-  onSave,
-  onRevert,
-}: {
-  isDirty?: boolean;
-  isSaving?: boolean;
-  onSave: () => void;
-  onRevert: () => void;
-}) {
-  return (
-    <PaneHeader
-      title={<PanelHeaderTitle>{t`Python library`}</PanelHeaderTitle>}
-      actions={
-        (isDirty || isSaving) && (
-          <Group>
-            <Button disabled={isSaving} onClick={onRevert}>
-              {t`Revert`}
-            </Button>
-            <Button variant="filled" disabled={isSaving} onClick={onSave}>
-              {t`Save`}
-            </Button>
-          </Group>
-        )
-      }
-      data-testid="python-library-header"
-    />
   );
 }

@@ -15,8 +15,6 @@ jobs:
     env:
       MB_EDITION: ee
       DISPLAY: ""
-      MB_RUN_MODE: "e2e"
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
@@ -29,6 +27,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: false
+          webhook: false
+          snowplow: false
+          postgres: false
+          mysql: false
+          mongo: false
 
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
@@ -45,12 +56,8 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
 
       - name: Prepare Cypress environment
         id: cypress-prep
@@ -62,7 +69,10 @@ jobs:
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        # Component tests only need the default snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       # Has to be run after the app db snapshot is made, as it is not compatible with React 19
       - name: Change React version to ${{ matrix.react-version }}
@@ -159,6 +169,19 @@ jobs:
         with:
           ref: ${{ needs.decide-target-ref.outputs.target-ref }}
 
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: false
+          webhook: false
+          snowplow: false
+          postgres: false
+          mysql: false
+          mongo: false
+
       - name: Get the actual commit SHA from the checked out branch
         id: get-commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -168,6 +191,8 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
 
       - name: Attempt to retrieve the ee uberjar artifact from the previous commit
         id: download-uberjar
@@ -201,7 +226,10 @@ jobs:
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        # Component tests only need the default snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       - name: Run component tests for Embedding SDK
         env:

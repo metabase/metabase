@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
-   [metabase-enterprise.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -14,6 +14,7 @@
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
   {:card (or (lib/all-source-card-ids query) #{})
+   :segment (or (lib/all-segment-ids query) #{})
    :table (-> #{}
               (into (lib/all-source-table-ids query))
               (into (lib/all-implicitly-joined-table-ids query)))})
@@ -130,3 +131,10 @@
   (if-let [card-id (:card_id sandbox)]
     {:card #{card-id}}
     {}))
+
+(mu/defn upstream-deps:segment :- ::deps.schema/upstream-deps
+  "Given a segment, return its upstream dependencies (the table it filters and any segments it references)"
+  [{:keys [table_id definition] :as _segment}]
+  {:segment (or (lib/all-segment-ids definition) #{})
+   :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
+            table_id (conj table_id))})

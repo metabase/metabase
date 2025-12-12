@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { TablePicker } from "metabase/common/components/Pickers/TablePicker";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
@@ -41,6 +42,36 @@ export const CollectionItemPickerResolver = ({
   if (query.id === PERSONAL_COLLECTIONS.id) {
     return (
       <PersonalCollectionsItemList
+        onClick={onClick}
+        selectedItem={selectedItem}
+        isFolder={isFolder}
+        isCurrentLevel={isCurrentLevel}
+        shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
+        options={options}
+      />
+    );
+  }
+
+  if (query.id === PLUGIN_TENANTS.TENANT_SPECIFIC_COLLECTIONS?.id) {
+    return (
+      <PLUGIN_TENANTS.TenantSpecificCollectionsItemList
+        onClick={onClick}
+        selectedItem={selectedItem}
+        isFolder={isFolder}
+        isCurrentLevel={isCurrentLevel}
+        shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
+        options={options}
+      />
+    );
+  }
+
+  // Route to tenant collection list only for the root tenant collection
+  // (not for subcollections within the tenant namespace)
+  if (query.id === "tenant") {
+    return (
+      <PLUGIN_TENANTS.TenantCollectionItemList
         onClick={onClick}
         selectedItem={selectedItem}
         isFolder={isFolder}

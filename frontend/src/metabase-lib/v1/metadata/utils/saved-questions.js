@@ -52,6 +52,7 @@ export function convertSavedQuestionToVirtualTable(card) {
     moderated_status: card.moderated_status,
     // we may not have permissions
     db_id: card.dataset_query?.database,
+    type: "question",
     schema: getCollectionVirtualSchemaId(card.collection),
     schema_name: getCollectionVirtualSchemaName(card.collection),
   };

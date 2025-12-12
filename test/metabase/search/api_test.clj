@@ -37,7 +37,7 @@
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available (thunk)))))
+                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
 
 (def ^:private default-search-row
   {:archived                   false
@@ -1007,6 +1007,36 @@
                    (filter #(and (= (:model %) "collection")
                                  (#{"Normal Collection" "Coin Collection"} (:name %))))))))))
 
+(deftest shared-tenant-collection-search-test
+  (testing "Search returns collections with namespace: shared-tenant-collection"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {shared-name :name} {:name "Shared Tenant Test Collection"
+                                                              :namespace collection/shared-tenant-ns}
+                       :model/Collection {normal-name :name} {:name "Normal Test Collection"}]
+          (let [results (->> (search-request-data :crowberto :q "Test Collection")
+                             (filter #(= (:model %) "collection"))
+                             (map :name)
+                             set)]
+            (testing "shared-tenant-collection namespace collections are returned in search"
+              (is (contains? results shared-name))
+              (is (contains? results normal-name)))))))))
+
+(deftest shared-tenant-collection-dataset-search-test
+  (testing "Search returns datasets (models) from collections in the shared-tenant-collection namespace"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {shared-coll-id :id} {:name "Shared Tenant Collection"
+                                                               :namespace collection/shared-tenant-ns}
+                       :model/Card {model-name :name} {:name "Shared Tenant Model"
+                                                       :type :model
+                                                       :collection_id shared-coll-id}]
+          (let [results (->> (search-request-data :crowberto :q "Shared Tenant Model")
+                             (filter #(= (:model %) "dataset"))
+                             first)]
+            (testing "datasets in shared-tenant-collection namespace are returned"
+              (is (=? {:name model-name} results)))))))))
+
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"
     (letfn [(search-for-pulses [{pulse-id :id}]
@@ -1845,7 +1875,7 @@
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
 
-(deftest ^:synchronized multiple-limits
+(deftest ^:synchronized multiple-limits-test
   (when (search/supports-index?)
     ;; This test is failing with "no index" for some reason, forcing the reindex
     (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
@@ -1930,3 +1960,17 @@
                                           :collection coll-1)]
         (is (= #{card-1}
                (set (map :id (:data results)))))))))
+
+(deftest published-table-not-in-collection-search-oss-test
+  (testing "In OSS, published tables should NOT appear in collection-filtered search"
+    (mt/with-premium-features #{}
+      (mt/with-temp
+        [:model/Collection {parent-coll :id} {:name "OSS Test Collection" :location "/"}
+         :model/Card       {card-id :id}     {:collection_id parent-coll :name "OSS Test Card"}
+         :model/Table      {table-id :id}    {:name "OSS Published Table" :is_published true :collection_id parent-coll}]
+        (testing "Collection-filtered search should NOT include published tables in OSS"
+          (let [result-ids (into #{} (map :id) (:data (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)))]
+            (is (contains? result-ids card-id)
+                "Card in collection should be included")
+            (is (not (contains? result-ids table-id))
+                "Published table should NOT be included in collection search in OSS")))))))

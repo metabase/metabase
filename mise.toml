@@ -1,0 +1,112 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+# Metabase Development Environment
+# =================================
+#
+# This file defines the tools required for Metabase development.
+# We use mise (https://mise.jdx.dev) to manage tool versions consistently
+# across all development machines.
+#
+# Getting started:
+# 1. Run: ./bin/dev-install
+#
+# The install script handles all the setup.
+# This will install mise, configure your shell, and set up all required tools.
+#
+# IDE/Editor users (not cd'd into the repo):
+# ------------------------------------------
+# If your workflow doesn't involve cd'ing into the repo (e.g., Emacs server,
+# IDE running commands with absolute paths), you have three options:
+#
+#   1. Use mise shims (recommended for IDEs):
+#      Add ~/.local/share/mise/shims to your PATH instead of using `mise activate`.
+#      Shims determine the correct tool version at runtime based on the command's
+#      working directory.
+#
+#   2. Use the -C flag to specify the project directory:
+#      mise exec -C /path/to/metabase -- yarn build
+#
+#   3. Set MISE_PROJECT_DIR environment variable:
+#      MISE_PROJECT_DIR=/path/to/metabase yarn build
+#
+#  For more info, see: docs/developers-guide/devenv.md > 'IDE and editor setup' Section
+
+[settings]
+# Automatically install tools when entering the project directory
+auto_install = true
+
+[env]
+# Add bin/ to PATH so mage and other project scripts are available
+_.path = ["{{ config_root }}/bin"]
+
+# Disable corepack - we use yarn classic installed via mise
+COREPACK_ENABLE_AUTO_PIN = "0"
+
+# =============================================================================
+# Required Tools
+# =============================================================================
+
+[tools]
+# Node.js - for frontend development
+# We pin to a specific version to ensure consistency across the team.
+# This should match .nvmrc for compatibility with other version managers.
+node = "22.13.1"
+
+# Yarn Classic - for package management
+# IMPORTANT: Metabase requires Yarn 1.x (Classic), NOT Yarn 2+ (Berry)
+yarn = "1.22.22"
+
+# Java - for Clojure backend
+# We require Eclipse *Temurin* (AdoptOpenJDK successor) for consistency.
+java = "temurin-21.0.9+10.0.LTS"
+
+# Clojure CLI - for backend development and REPL
+clojure = "1.12.3"
+
+# Babashka
+babashka = "1.12.212"
+
+# =============================================================================
+# Other Tools (quality of life)
+# =============================================================================
+#
+# Project-required tools belong here.
+# Anything custom should go to your personal mise.local.toml file (gitignored 👻)
+#
+# See: https://mise.jdx.dev/registry.html#tools
+
+# bat - A cat clone with syntax highlighting
+# https://github.com/sharkdp/bat
+bat = "latest"
+
+# fzf - A fuzzy finder for the terminal
+# https://github.com/junegunn/fzf
+fzf = "latest"
+
+# fd - A fast alternative to find
+# https://github.com/sharkdp/fd
+fd = "latest"
+
+# ripgrep - A fast alternative to grep
+# https://github.com/BurntSushi/ripgrep
+ripgrep = "latest"
+
+# GitHub CLI - for GitHub operations from the terminal
+# https://cli.github.com/
+gh = "latest"
+
+# AWS CLI - for AWS operations
+# https://aws.amazon.com/cli/
+awscli = "latest"
+
+# One Password CLI - for password management
+# https://developer.1password.com/docs/cli/get-started/
+op = "latest"
+
+# jq - Command-line JSON processor
+# https://github.com/jqlang/jq
+jq = "latest"
+
+# claude code - Terminal AI coding agent
+# https://github.com/anthropics/claude-code
+claude = "latest"

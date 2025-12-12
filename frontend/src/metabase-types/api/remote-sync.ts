@@ -63,6 +63,8 @@ export type ImportFromBranchResponse = {
   message?: string;
 };
 
+export type CollectionSyncPreferences = Record<number, boolean>;
+
 export type RemoteSyncConfigurationSettings = Pick<
   EnterpriseSettings,
   | "remote-sync-enabled"
@@ -70,7 +72,9 @@ export type RemoteSyncConfigurationSettings = Pick<
   | "remote-sync-token"
   | "remote-sync-type"
   | "remote-sync-branch"
->;
+> & {
+  collections?: CollectionSyncPreferences;
+};
 
 export type UpdateRemoteSyncConfigurationResponse = {
   success: boolean;

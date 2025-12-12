@@ -74,6 +74,8 @@ const CreateDashboardModalInner = ({
 };
 
 export const CreateDashboardModal = Object.assign(
-  withPublicComponentWrapper(CreateDashboardModalInner),
+  withPublicComponentWrapper(CreateDashboardModalInner, {
+    supportsGuestEmbed: false,
+  }),
   { schema: createDashboardModalSchema },
 );

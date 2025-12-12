@@ -1,8 +1,8 @@
 (ns metabase.lib.drill-thru.column-extract-test
-  "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
+  "See also [[metabase.query-processor.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -12,6 +12,8 @@
    [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (def ^:private time-extraction-units
   [{:tag :hour-of-day, :display-name "Hour of day"}])

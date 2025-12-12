@@ -2,6 +2,7 @@ import type { CardId, CardType } from "./card";
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DocumentId } from "./document";
+import type { CardDisplayType } from "./visualization";
 
 export const BOOKMARK_TYPES = [
   "card",
@@ -10,6 +11,7 @@ export const BOOKMARK_TYPES = [
   "snippet",
   "indexed-entity",
   "document",
+  "table",
 ] as const;
 export type BookmarkType = (typeof BOOKMARK_TYPES)[number];
 export type BookmarkId = string;
@@ -17,7 +19,7 @@ export type BookmarkId = string;
 export interface Bookmark {
   authority_level?: string;
   card_id?: string;
-  display?: string;
+  display?: CardDisplayType;
   id: BookmarkId;
   item_id: number;
   name: string;

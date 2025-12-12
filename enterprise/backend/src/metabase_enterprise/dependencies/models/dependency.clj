@@ -11,7 +11,7 @@
 (def current-dependency-analysis-version
   "Current version of the dependency analysis logic.
   This should be incremented when the dependency analysis logic changes."
-  2)
+  3)
 
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 

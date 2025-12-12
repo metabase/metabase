@@ -1,0 +1,521 @@
+#!/usr/bin/env bash
+# Automated Metabase development environment setup using mise.
+# This script installs mise, configures shell integration, and sets up all required tools.
+#
+# Usage: ./bin/dev-install
+#
+# Safe to run multiple times (idempotent).
+
+set -euo pipefail
+
+# Check if mise was already active in the parent shell before we do anything
+MISE_WAS_ACTIVE="${MISE_SHELL:-}"
+
+# Load shared utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/utils/all.sh"
+
+# Lock directory to prevent concurrent runs
+LOCK_DIR="$PROJECT_ROOT/logs/dev-install.lock"
+
+acquire_lock() {
+    mkdir -p "$(dirname "$LOCK_DIR")"
+    # Use mkdir for atomic lock acquisition
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        print_error "dev-install is already running"
+        echo "      If this is a mistake, run: rm -rf $LOCK_DIR"
+        exit 1
+    fi
+    # Set trap only after successfully acquiring lock
+    trap release_lock EXIT
+}
+
+release_lock() {
+    rm -rf "$LOCK_DIR"
+}
+
+# =============================================================================
+# Environment Detection
+# =============================================================================
+
+detect_os() {
+    case "$(uname -s)" in
+        Darwin) echo "macos" ;;
+        Linux)  echo "linux" ;;
+        *)      echo "unknown" ;;
+    esac
+}
+
+detect_arch() {
+    case "$(uname -m)" in
+        x86_64)  echo "x86_64" ;;
+        aarch64) echo "arm64" ;;
+        arm64)   echo "arm64" ;;
+        *)       echo "unknown" ;;
+    esac
+}
+
+detect_shell() {
+    # Use $SHELL (login shell) since that's what rc files we want to configure.
+    # The user may be running this script from a different shell, but their
+    # login shell is what new terminal windows will use.
+    local shell_name
+    shell_name=$(basename "$SHELL")
+    case "$shell_name" in
+        bash|zsh|fish) echo "$shell_name" ;;
+        *) echo "unknown" ;;
+    esac
+}
+
+get_shell_rc_file() {
+    local shell_name=$1
+    case "$shell_name" in
+        bash)
+            # macOS Terminal.app opens login shells, which source .bash_profile (not .bashrc).
+            # Linux terminals typically open non-login shells, which source .bashrc.
+            # We need to pick the right file based on OS and what already exists.
+            if [ "$(uname -s)" = "Darwin" ]; then
+                # macOS: prefer .bash_profile for login shells
+                if [ -f "$HOME/.bash_profile" ]; then
+                    echo "$HOME/.bash_profile"
+                elif [ -f "$HOME/.bashrc" ]; then
+                    # User has .bashrc but no .bash_profile - they likely source it manually
+                    echo "$HOME/.bashrc"
+                else
+                    # Fresh setup: use .bash_profile since that's what macOS sources
+                    echo "$HOME/.bash_profile"
+                fi
+            else
+                # Linux: prefer .bashrc for interactive non-login shells
+                if [ -f "$HOME/.bashrc" ]; then
+                    echo "$HOME/.bashrc"
+                elif [ -f "$HOME/.bash_profile" ]; then
+                    echo "$HOME/.bash_profile"
+                else
+                    echo "$HOME/.bashrc"
+                fi
+            fi
+            ;;
+        zsh)  echo "$HOME/.zshrc" ;;
+        fish) echo "${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish" ;;
+        *)    echo "" ;;
+    esac
+}
+
+get_mise_activation_line() {
+    local shell_name=$1
+    case "$shell_name" in
+        bash) echo 'eval "$(mise activate bash)"' ;;
+        zsh)  echo 'eval "$(mise activate zsh)"' ;;
+        fish) echo 'mise activate fish | source' ;;
+        *)    echo "" ;;
+    esac
+}
+
+# =============================================================================
+# Installation Functions
+# =============================================================================
+
+install_mise_official() {
+    print_info "Installing mise via official installer"
+
+    if ! has_tool curl; then
+        print_error "curl is required but not installed"
+        exit 1
+    fi
+
+    # Use shell-specific installer that also configures activation
+    local shell_name=$(detect_shell)
+    local installer_url="https://mise.run"
+
+    case "$shell_name" in
+        bash|zsh|fish)
+            installer_url="https://mise.run/$shell_name"
+            ;;
+    esac
+
+    if curl -fsSL "$installer_url" | sh; then
+        print_success "mise installed via official installer"
+
+        # Add to PATH for this session
+        export PATH="$HOME/.local/bin:$PATH"
+        return 0
+    else
+        print_error "Failed to install mise"
+        exit 1
+    fi
+}
+
+update_mise() {
+    # mise self-update is unavailable when installed via package manager
+    # It will exit with an error in that case, which we handle gracefully
+    if mise self-update -y 2>/dev/null; then
+        print_success "mise is up to date ($(mise --version))"
+    else
+        print_info "mise update skipped (managed externally or already current)"
+    fi
+}
+
+is_homebrew_mise() {
+    local mise_path
+    mise_path=$(command -v mise 2>/dev/null) || return 1
+    # Check for Homebrew paths on both Apple Silicon (/opt/homebrew) and Intel Macs (/usr/local)
+    [[ "$mise_path" == *homebrew* || "$mise_path" == *Cellar* || "$mise_path" == /opt/homebrew/* || "$mise_path" == /usr/local/bin/mise ]]
+}
+
+migrate_from_homebrew() {
+    print_warning "mise is currently installed via Homebrew"
+    echo ""
+    echo "      We recommend using the official mise installer instead of Homebrew."
+    echo "      This provides faster updates and better self-update support."
+    echo ""
+    echo "      This will:"
+    echo "        1. Uninstall mise from Homebrew (your tools/configs are preserved)"
+    echo "        2. Install mise to ~/.local/bin via the official installer"
+    echo ""
+
+    if ask_yes_no "Switch to official mise install?" "y"; then
+        print_info "Uninstalling Homebrew mise..."
+        if brew uninstall mise 2>/dev/null; then
+            print_success "Homebrew mise uninstalled"
+        else
+            print_warning "Could not uninstall via Homebrew (may already be removed)"
+        fi
+
+        # Clean up cached files and orphaned dependencies
+        brew cleanup mise 2>/dev/null || true
+        brew autoremove 2>/dev/null || true
+
+        # Install official version
+        install_mise_official
+
+        # Check for stale Homebrew paths in shell config
+        local shell_name=$(detect_shell)
+        local rc_file=$(get_shell_rc_file "$shell_name")
+        if [ -n "$rc_file" ] && [ -f "$rc_file" ]; then
+            if grep -q "homebrew.*mise" "$rc_file" 2>/dev/null; then
+                echo ""
+                print_warning "Found Homebrew mise references in $rc_file"
+                echo "      You may want to remove any lines containing '/opt/homebrew' and 'mise'"
+                echo "      The official mise installer uses ~/.local/bin/mise instead."
+            fi
+        fi
+
+        return 0
+    else
+        print_info "Keeping Homebrew mise installation"
+        update_mise
+        return 0
+    fi
+}
+
+install_mise() {
+    if has_tool mise; then
+        local version=$(mise --version 2>/dev/null || echo "unknown")
+
+        # Check if installed via Homebrew and offer migration
+        if is_homebrew_mise && has_tool brew; then
+            migrate_from_homebrew
+            return 0
+        fi
+
+        print_success "mise is already installed ($version)"
+        update_mise
+        return 0
+    fi
+
+    local os=$(detect_os)
+
+    case "$os" in
+        macos)
+            install_mise_official
+            ;;
+        linux)
+            install_mise_official
+            ;;
+        *)
+            print_error "Unsupported operating system: $os"
+            exit 1
+            ;;
+    esac
+}
+
+# =============================================================================
+# Shell Integration
+# =============================================================================
+
+# Check shell integration status
+# Returns via global SHELL_INTEGRATION_STATUS:
+#   "active"     - mise activation is present and uncommented
+#   "commented"  - mise activation exists but is commented out
+#   "none"       - no mise activation found
+check_shell_integration() {
+    local rc_file=$1
+    SHELL_INTEGRATION_STATUS="none"
+
+    if [ ! -f "$rc_file" ]; then
+        return 1
+    fi
+
+    # Check for uncommented mise activation (line that doesn't start with # after optional whitespace)
+    if grep -qE '^[^#]*(eval.*mise activate|mise activate)' "$rc_file" 2>/dev/null; then
+        SHELL_INTEGRATION_STATUS="active"
+        return 0
+    fi
+
+    # Check for commented mise activation
+    if grep -qE '^[[:space:]]*#.*(eval.*mise activate|mise activate)' "$rc_file" 2>/dev/null; then
+        SHELL_INTEGRATION_STATUS="commented"
+        return 0
+    fi
+
+    return 1
+}
+
+setup_shell_integration() {
+    local shell_name=$(detect_shell)
+
+    if [ "$shell_name" = "unknown" ]; then
+        print_warning "Unknown shell: $SHELL"
+        echo "      Please manually add mise activation to your shell config."
+        echo "      See: https://mise.jdx.dev/getting-started.html#activate-mise"
+        return 0
+    fi
+
+    local rc_file=$(get_shell_rc_file "$shell_name")
+    local activation_line=$(get_mise_activation_line "$shell_name")
+
+    if [ -z "$rc_file" ]; then
+        print_warning "Could not determine shell config file"
+        return 0
+    fi
+
+    check_shell_integration "$rc_file"
+
+    if [ "$SHELL_INTEGRATION_STATUS" = "active" ]; then
+        print_success "Shell integration already configured in $rc_file"
+        return 0
+    fi
+
+    if [ "$SHELL_INTEGRATION_STATUS" = "commented" ]; then
+        print_warning "Found commented-out mise activation in $rc_file"
+        echo "      It looks like mise activation was previously disabled."
+        echo ""
+        if ask_yes_no "Add a new mise activation line?" "n"; then
+            echo "" >> "$rc_file"
+            echo "# mise - dev tool version manager" >> "$rc_file"
+            echo "$activation_line" >> "$rc_file"
+            print_success "Added mise activation to $rc_file"
+            echo "      You may want to remove the old commented line manually."
+        else
+            print_info "Keeping current configuration"
+            echo "      To enable mise, uncomment the existing line in $rc_file"
+        fi
+        return 0
+    fi
+
+    # No mise activation found - offer to add it
+    print_step "Shell integration"
+    echo "      mise needs to be activated in your shell to work automatically."
+    echo "      This will add the following line to $rc_file:"
+    echo ""
+    echo "        $activation_line"
+    echo ""
+
+    if ask_yes_no "Add mise to your shell config?" "y"; then
+        # Create rc file if it doesn't exist
+        mkdir -p "$(dirname "$rc_file")"
+        touch "$rc_file"
+
+        # Add activation line
+        echo "" >> "$rc_file"
+        echo "# mise - dev tool version manager" >> "$rc_file"
+        echo "$activation_line" >> "$rc_file"
+
+        print_success "Added mise activation to $rc_file"
+        echo "      mise is available in this script and will auto-activate in new shells"
+    else
+        print_warning "Skipped shell integration"
+        echo "      You'll need to manually activate mise in each session:"
+        echo "        $activation_line"
+    fi
+}
+
+# =============================================================================
+# Tool Installation
+# =============================================================================
+
+install_tools() {
+    cd "$PROJECT_ROOT"
+
+    # Verify mise.toml exists
+    if [ ! -f "mise.toml" ] && [ ! -f ".mise.toml" ]; then
+        print_error "No mise.toml found in $PROJECT_ROOT"
+        return 1
+    fi
+
+    # Trust the mise.toml file
+    # --all flag may not exist in older versions, fall back to basic trust
+    if ! mise trust --all 2>/dev/null; then
+        if ! mise trust 2>/dev/null; then
+            print_warning "Could not trust mise.toml (may need manual: mise trust)"
+        fi
+    fi
+
+    # Install all tools
+    if mise install; then
+        print_success "All tools installed successfully"
+    else
+        print_error "Failed to install some tools"
+        echo "      Try running 'mise install' manually to see detailed errors"
+        return 1
+    fi
+}
+
+# =============================================================================
+# Main
+# =============================================================================
+
+main() {
+    acquire_lock
+
+    print_header "Metabase Development Environment Setup"
+
+    echo "This script will:"
+    echo "  1. Check prerequisites"
+    echo -e "${DIM}     - Checks your OS, shell, curl installed, etc. ${NC}"
+    echo "  2. Install/update mise"
+    echo -e "${DIM}     - Installs if needed or checks for updates${NC}"
+    echo "  3. Configure shell integration (with your permission)"
+    echo -e "${DIM}     - Puts everything you need on your path when you cd into the project${NC}"
+    echo "  4. Install all required development tools"
+    echo -e "${DIM}     - Installs Node.js, Yarn, Clojure, etc.${NC}"
+    echo "  5. Run dev-deps to download project dependencies"
+    echo -e "${DIM}     - Downloads and caches JavaScript and Clojure libraries${NC}"
+    echo -e "${DIM}       and optionally builds a jar${NC}"
+    echo ""
+
+    ask_yes_no "Are you ready?" "y" || exit 1
+
+    # Check prerequisites
+    print_step "1. Check prerequisites"
+
+    local os=$(detect_os)
+    local arch=$(detect_arch)
+    local shell_name=$(detect_shell)
+
+    if [ "$os" = "unknown" ]; then
+        print_error "Unsupported operating system"
+        exit 1
+    fi
+
+    print_success "OS: $os ($arch)"
+    print_success "Shell: $shell_name"
+
+    if [ "$(id -u)" = "0" ]; then
+        print_warning "Running as root is not recommended"
+        if ! ask_yes_no "Continue anyway?" "n"; then
+            exit 1
+        fi
+    fi
+
+    if ! has_tool curl; then
+        print_error "curl is required but not installed"
+        exit 1
+    fi
+    print_success "curl is available"
+
+    print_step "2. Install/update mise"
+    # Install mise
+    install_mise
+
+    # Verify mise is now available
+    if ! has_tool mise; then
+        # Try adding common mise locations to PATH
+        export PATH="$HOME/.local/bin:$HOME/.mise/bin:$PATH"
+
+        if ! has_tool mise; then
+            print_error "mise installation succeeded but 'mise' command not found"
+            echo "      Try restarting your shell and running this script again"
+            exit 1
+        fi
+    fi
+
+    # Setup shell integration (only needed if mise was already installed,
+    # since the official installer handles this for new installs)
+    print_step "3. Configure shell integration"
+    setup_shell_integration
+
+    print_step "4. Install development tools"
+    install_tools
+
+    # Activate mise for this script session so installed tools are available
+    eval "$(mise activate bash)"
+
+    # Run dev-deps
+    print_step "5. Run dev-deps"
+    echo ""
+    if ask_yes_no "Run dev-deps to complete setup by downloading libraries?" "y"; then
+        echo ""
+        print_step "Running bin/dev-deps"
+        echo ""
+        "$SCRIPT_DIR/dev-deps"
+    else
+        print_warning "Skipped dev-deps"
+        echo "      Run './bin/dev-deps' when you're ready to complete setup"
+    fi
+
+    print_header "Setup Complete!"
+
+    echo "Your development environment is ready."
+    echo ""
+
+    # Run mage doctor to verify the setup
+    print_step "Running health check..."
+    echo ""
+    if has_tool bb; then
+        "$SCRIPT_DIR/mage" doctor || true
+    else
+        print_warning "Babashka not available yet - skipping health check"
+        echo "      Run './bin/mage doctor' after restarting your shell"
+    fi
+    echo ""
+
+    # Check if mise was already active in the parent shell
+    if [ -n "$MISE_WAS_ACTIVE" ]; then
+        # mise was already active in parent shell
+        echo -e "${BOLD}${GREEN}mise is already active in this shell - you're ready to go!${NC}"
+        echo ""
+    else
+        # Provide next steps for activating mise
+        local shell_name=$(detect_shell)
+        echo -e "${BOLD}${GREEN}Next step: Open a new terminal window to get started.${NC}"
+        echo ""
+        echo -e "${DIM}(Or to continue in this terminal, run:"
+        if [ "$shell_name" = "zsh" ]; then
+            echo "  eval \"\$(mise activate zsh)\""
+        elif [ "$shell_name" = "bash" ]; then
+            echo "  eval \"\$(mise activate bash)\""
+        elif [ "$shell_name" = "fish" ]; then
+            echo "  mise activate fish | source"
+        else
+            echo "  eval \"\$(mise activate)\""
+        fi
+        echo -e ")${NC}"
+        echo ""
+    fi
+    echo -e "${BOLD}Then start developing:${NC}"
+    echo ""
+    echo "Backend in one terminal, either:"
+    echo "  - from source, with hot reloading:"
+    echo "    clojure -M:dev:drivers:drivers-dev:ee:ee-dev:dev-start --hot"
+    echo "  - from a pre-built JAR:"
+    echo "    java --add-opens java.base/java.nio=ALL-UNNAMED -jar target/uberjar/metabase.jar"
+    echo ""
+    echo "Frontend in another terminal:"
+    echo "  yarn build-hot"
+    echo ""
+}
+
+main "$@"

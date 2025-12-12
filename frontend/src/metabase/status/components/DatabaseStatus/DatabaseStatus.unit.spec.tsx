@@ -72,4 +72,18 @@ describe("DatabaseStatus", () => {
 
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
+
+  it("assigns 'sync-status-visible' class to body element when database is in sync", () => {
+    setup({
+      user: createMockUser({ id: 1 }),
+      databases: [
+        createMockDatabase({
+          creator_id: 1,
+          initial_sync_status: "incomplete",
+        }),
+      ],
+    });
+
+    expect(document.body).toHaveClass("sync-status-visible");
+  });
 });

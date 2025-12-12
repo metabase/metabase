@@ -1,3 +1,5 @@
+import { ENTERPRISE_PLUGIN_NAME_MAPPING } from "./enterprise-typed";
+
 /**
  * @deprecated use setupEnterprisePlugins with settings set via mockSettings
  * ```ts
@@ -39,7 +41,13 @@ export function setupEnterprisePlugins() {
 }
 
 // function is used for optimization, so we don't need to import all plugins
+/**
+ *
+ * @param {import("./enterprise-typed").ENTERPRISE_PLUGIN_NAME} pluginName
+ */
 export function setupEnterpriseOnlyPlugin(pluginName) {
-  const { initializePlugin } = require(`metabase-enterprise/${pluginName}`);
+  const { initializePlugin } = require(
+    ENTERPRISE_PLUGIN_NAME_MAPPING[pluginName],
+  );
   initializePlugin?.();
 }

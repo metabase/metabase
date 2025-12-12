@@ -73,7 +73,7 @@
 
 (defn- kondo-updated* [diff-target]
   (let [diff-target   (or diff-target "HEAD")
-        updated-files (u/updated-files diff-target)]
+        updated-files (u/updated-clojure-files diff-target)]
     (when (empty? updated-files)
       (println "No updated Clojure source files.")
       (System/exit 0))

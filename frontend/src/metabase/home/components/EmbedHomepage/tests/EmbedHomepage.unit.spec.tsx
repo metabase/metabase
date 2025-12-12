@@ -25,7 +25,7 @@ describe("EmbedHomepage (OSS)", () => {
     setup();
 
     const embedJsSection = screen.getByRole("region", {
-      name: "Embedded analytics JS",
+      name: "Modular embedding",
     });
 
     // Then find the "Read the docs" button within that section

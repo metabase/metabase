@@ -305,7 +305,10 @@
   (has-cache? [cached-metadata-provider]
     "Whether this metadata provider actually has a cache or not. (Some metadata providers like
   ComposedMetadataProvider implement this method but can only cache stuff if one of the providers they wrap is a cached
-  metadata provider.)"))
+  metadata provider.)")
+  (clear-cache! [cached-metadata-provider]
+    "Removes everything from the cache of this `CachedMetadataProvider`. Should not need to be called in general,
+    but some tests want to eg. reuse card numbers and caching can return stale cards."))
 
 (defn cached-metadata-provider?
   "Whether `x` satisfies the [[CachedMetadataProvider]] protocol. This does not necessarily mean it actually caches

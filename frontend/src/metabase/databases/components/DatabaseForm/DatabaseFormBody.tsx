@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { type JSX, useEffect, useMemo } from "react";
+import { type JSX, useMemo } from "react";
 import { match } from "ts-pattern";
 
 import type {
@@ -27,7 +27,6 @@ interface DatabaseFormBodyProps {
   autofocusFieldName?: string;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
-  setIsDirty?: (isDirty: boolean) => void;
   config: DatabaseFormConfig;
   showSampleDatabase?: boolean;
   location: FormLocation;
@@ -41,17 +40,12 @@ export const DatabaseFormBody = ({
   autofocusFieldName,
   isAdvanced,
   onEngineChange,
-  setIsDirty,
   config,
   showSampleDatabase = false,
   location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty, setValues } = useFormikContext<DatabaseData>();
+  const { values, setValues } = useFormikContext<DatabaseData>();
   const hasConnectionError = useHasConnectionError();
-
-  useEffect(() => {
-    setIsDirty?.(dirty);
-  }, [dirty, setIsDirty]);
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];

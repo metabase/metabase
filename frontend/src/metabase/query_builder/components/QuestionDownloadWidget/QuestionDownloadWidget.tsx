@@ -35,7 +35,7 @@ type QuestionDownloadWidgetProps = {
     type: string;
     enableFormatting: boolean;
     enablePivot: boolean;
-  }) => void;
+  }) => Promise<void>;
   disabled?: boolean;
   formatPreference?: FormatPreference;
 } & StackProps;
@@ -106,6 +106,8 @@ export const QuestionDownloadWidget = ({
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride(result) ??
     t`The maximum download size is 1 million rows.`;
 
+  const [loading, setLoading] = useState(false);
+
   const handleFormatChange = (newFormat: ExportFormat) => {
     setUserSelectedFormat(newFormat);
 
@@ -132,12 +134,16 @@ export const QuestionDownloadWidget = ({
     setDismissedExcelPivotExportsBanner,
   ] = useUserSetting("dismissed-excel-pivot-exports-banner");
 
-  const handleDownload = () => {
-    onDownload({
+  const handleDownload = async () => {
+    setLoading(true);
+
+    await onDownload({
       type: format,
       enableFormatting: isFormatted,
       enablePivot: isPivoted,
     });
+
+    setLoading(false);
   };
 
   const showPivotXlsxExportHint =
@@ -215,6 +221,7 @@ export const QuestionDownloadWidget = ({
         mt="auto"
         ml="auto"
         variant="filled"
+        loading={loading}
         onClick={handleDownload}
         disabled={disabled}
       >{t`Download`}</Button>

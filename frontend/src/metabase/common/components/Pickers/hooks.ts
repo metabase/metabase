@@ -3,6 +3,7 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
   useGetDashboardQuery,
+  useGetTableQuery,
 } from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
 import { DATABASES_COLLECTION } from "metabase/entities/collections";
@@ -28,10 +29,6 @@ export const useGetInitialContainer = (
     ? isValidCollectionId(initialValue.id)
       ? initialValue.id
       : "root"
-    : undefined;
-
-  const databasesCollection = isTable
-    ? (DATABASES_COLLECTION as Collection)
     : undefined;
 
   // Fetch the initial value's entity
@@ -86,10 +83,24 @@ export const useGetInitialContainer = (
       : skipToken,
   );
 
+  const {
+    data: currentTable,
+    isLoading: isCurrentTableLoading,
+    error: currentTableError,
+  } = useGetTableQuery(
+    initialValue != null && isTable ? { id: initialValue.id } : skipToken,
+  );
+
+  const currentTableCollection =
+    currentTable != null
+      ? (currentTable.collection ?? (DATABASES_COLLECTION as Collection))
+      : undefined;
+
   return {
-    currentQuestion: currentQuestion,
+    currentTable,
+    currentQuestion,
     currentCollection:
-      databasesCollection ??
+      currentTableCollection ??
       currentQuestionCollection ??
       currentDashboardCollection ??
       currentCollection,
@@ -98,10 +109,12 @@ export const useGetInitialContainer = (
       isCollectionLoading ||
       isQuestionLoading ||
       isDashboardLoading ||
+      isCurrentTableLoading ||
       isCurrentQuestionCollectionLoading ||
       isCurrentQuestionDashboardLoading ||
       isCurrentDashboardCollectionLoading,
     error:
+      currentTableError ??
       currentCollectionError ??
       currentDashboardError ??
       currentQuestionError ??

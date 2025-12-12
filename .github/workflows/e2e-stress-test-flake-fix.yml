@@ -22,14 +22,10 @@ on:
         required: false
         default: "ee"
       qa_db:
-        description: "Select the type of Database you want to run your tests with"
-        type: choice
+        description: "Whether to set up and include external QA databases"
+        type: boolean
         required: true
-        default: "none"
-        options:
-          - none
-          - sql
-          - mongo
+        default: false
       enable_network_throttling:
         description: "Enable network throttling simulation (4g slow like in chrome dev tools)"
         type: boolean
@@ -81,8 +77,6 @@ jobs:
     name: Stress test E2E flake fix
     env:
       DISPLAY: ""
-      QA_DB_ENABLED: ${{ contains(fromJSON('["sql", "mongo"]'), inputs.qa_db) }}
-      CYPRESS_QA_DB_MONGO: ${{ inputs.qa_db == 'mongo' }}
       MB_RUN_MODE: e2e
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
@@ -109,9 +103,9 @@ jobs:
           maildev: true
           openldap: true
           snowplow: true
-          postgres: ${{ inputs.qa_db == 'sql' }}
-          mysql: ${{ inputs.qa_db == 'sql' }}
-          mongo: ${{ inputs.qa_db == 'mongo' }}
+          postgres: ${{ inputs.qa_db }}
+          mysql: ${{ inputs.qa_db }}
+          mongo: ${{ inputs.qa_db }}
 
       - name: Download Metabase ${{ matrix.edition }} uberjar
         uses: ./.github/actions/e2e-download-uberjar
@@ -122,26 +116,22 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Prepare back-end environment
-        if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
+
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         run: yarn build-embedding-sdk-package
 
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
+
       - name: Generate database snapshots
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --env grepTags="${{inputs.qa_db && '' || '-@external'}}"
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep

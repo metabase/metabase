@@ -1,6 +1,8 @@
+import type { ComponentType } from "react";
 import { indexBy } from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -23,7 +25,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Box } from "metabase/ui";
-import type { DashboardCard } from "metabase-types/api";
+import type { DashboardCard, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -38,6 +40,7 @@ import {
   createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -109,15 +112,21 @@ export const DEFAULT_DASHCARDS: DashboardCard[] = [
   textDashcard2,
 ];
 
-export interface SetupSdkDashboardOptions {
-  props?: Partial<SdkDashboardProps>;
+export interface SetupSdkDashboardOptions extends NotificationChannelSetup {
+  props?: Omit<Partial<SdkDashboardProps>, "token">;
   providerProps?: Partial<MetabaseProviderProps>;
   isLocaleLoading?: boolean;
-  component: React.ComponentType<SdkDashboardProps>;
+  component: ComponentType<SdkDashboardProps>;
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
   dashcards?: DashboardCard[];
-  hasEmbeddingEnterprisePlugin?: boolean;
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
+  tokenFeatures?: Partial<TokenFeatures>;
+}
+
+interface NotificationChannelSetup {
+  isEmailConfigured?: boolean;
+  isSlackConfigured?: boolean;
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -132,7 +141,10 @@ export const setupSdkDashboard = async ({
   dashboardName = "Dashboard",
   dataPickerProps,
   dashcards = DEFAULT_DASHCARDS,
-  hasEmbeddingEnterprisePlugin = false,
+  enterprisePlugins = [],
+  tokenFeatures = {},
+  isEmailConfigured = false,
+  isSlackConfigured = false,
 }: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
@@ -176,7 +188,10 @@ export const setupSdkDashboard = async ({
 
   setupAlertsEndpoints(tableCard, []);
 
-  setupNotificationChannelsEndpoints({});
+  setupNotificationChannelsEndpoints({
+    email: { configured: isEmailConfigured },
+    slack: { configured: isSlackConfigured },
+  } as any);
 
   setupDatabasesEndpoints([createMockDatabase()]);
 
@@ -184,7 +199,11 @@ export const setupSdkDashboard = async ({
 
   setupBookmarksEndpoints([]);
 
-  const user = createMockUser();
+  const user = createMockUser({
+    permissions: createMockUserPermissions({
+      can_create_queries: true,
+    }),
+  });
 
   const state = setupSdkState({
     currentUser: user,
@@ -198,10 +217,11 @@ export const setupSdkDashboard = async ({
       },
       dashcards: indexBy(dashcards, "id"),
     }),
+    tokenFeatures,
   });
 
-  if (hasEmbeddingEnterprisePlugin) {
-    setupEnterpriseOnlyPlugin("embedding");
+  if (enterprisePlugins.length > 0) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithSDKProviders(

@@ -9,7 +9,6 @@ import {
   isExamplesCollection,
   isLibraryCollection,
   isRootTrashCollection,
-  isSyncedCollection,
 } from "metabase/collections/utils";
 import CollapseSection from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
@@ -24,7 +23,12 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_DATA_STUDIO, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import {
+  PLUGIN_DATA_STUDIO,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Bookmark } from "metabase-types/api";
 
@@ -85,7 +89,7 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
-  const showSyncGroup = useSetting("remote-sync-type") === "read-write";
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const [
     addDataModalOpened,
@@ -117,50 +121,27 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  const {
-    regularCollections,
-    trashCollection,
-    examplesCollection,
-    syncedCollections,
-  } = useMemo(() => {
-    const syncedCollections = collections.filter(isSyncedCollection);
-    const trashCollection = collections.find(isRootTrashCollection);
-    const examplesCollection = collections.find(isExamplesCollection);
+  const { regularCollections, trashCollection, examplesCollection } =
+    useMemo(() => {
+      const trashCollection = collections.find(isRootTrashCollection);
+      const examplesCollection = collections.find(isExamplesCollection);
 
-    const regularCollections = collections.filter((c) => {
-      const isNormalCollection =
-        !isRootTrashCollection(c) && !isExamplesCollection(c);
-      return (
-        isNormalCollection && !isSyncedCollection(c) && !isLibraryCollection(c)
-      );
-    });
+      const regularCollections = collections.filter((c) => {
+        const isNormalCollection =
+          !isRootTrashCollection(c) && !isExamplesCollection(c);
+        return isNormalCollection && !isLibraryCollection(c);
+      });
 
-    const shouldMoveSyncedCollectionToTop =
-      !showSyncGroup &&
-      syncedCollections.length > 0 &&
-      regularCollections.length > 0;
-
-    const collectionsByCategory = {
-      trashCollection,
-      examplesCollection,
-      syncedCollections,
-    };
-
-    if (shouldMoveSyncedCollectionToTop) {
-      const [root, ...rest] = regularCollections;
-      const reordered = [root, ...syncedCollections, ...rest];
+      const collectionsByCategory = {
+        trashCollection,
+        examplesCollection,
+      };
 
       return {
         ...collectionsByCategory,
-        regularCollections: reordered,
+        regularCollections,
       };
-    }
-
-    return {
-      ...collectionsByCategory,
-      regularCollections,
-    };
-  }, [collections, showSyncGroup]);
+    }, [collections]);
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -169,6 +150,11 @@ export function MainNavbarView({
   const activeUsersCount = useSetting("active-users-count");
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
+
+  const useTenants = useSetting("use-tenants");
+  const collectionsHeading = useTenants
+    ? t`Internal Collections`
+    : t`Collections`;
 
   return (
     <ErrorBoundary>
@@ -225,13 +211,7 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
-          {showSyncGroup && (
-            <PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection
-              onItemSelect={onItemSelect}
-              selectedId={collectionItem?.id}
-              syncedCollections={syncedCollections}
-            />
-          )}
+          <PLUGIN_TENANTS.MainNavSharedCollections />
 
           {PLUGIN_DATA_STUDIO.isEnabled && (
             <PLUGIN_DATA_STUDIO.NavbarLibrarySection
@@ -244,36 +224,46 @@ export function MainNavbarView({
           <SidebarSection>
             <ErrorBoundary>
               <CollapseSection
-                header={<SidebarHeading>{t`Collections`}</SidebarHeading>}
+                header={<SidebarHeading>{collectionsHeading}</SidebarHeading>}
                 initialState={expandCollections ? "expanded" : "collapsed"}
                 iconPosition="right"
                 iconSize={8}
                 onToggle={setExpandCollections}
                 rightAction={
-                  <Tooltip label={t`Create a new collection`}>
-                    <ActionIcon
-                      aria-label={t`Create a new collection`}
-                      color="var(--mb-color-text-medium)"
-                      onClick={() => {
-                        trackNewCollectionFromNavInitiated();
-                        handleCreateNewCollection();
-                      }}
-                    >
-                      <Icon name="add" />
-                    </ActionIcon>
-                  </Tooltip>
+                  canWriteToCollections ? (
+                    <Tooltip label={t`Create a new collection`}>
+                      <ActionIcon
+                        aria-label={t`Create a new collection`}
+                        color="var(--mb-color-text-medium)"
+                        onClick={() => {
+                          trackNewCollectionFromNavInitiated();
+                          handleCreateNewCollection();
+                        }}
+                      >
+                        <Icon name="add" />
+                      </ActionIcon>
+                    </Tooltip>
+                  ) : null
                 }
                 role="section"
                 aria-label={t`Collections`}
               >
-                <Tree
-                  data={regularCollections}
-                  selectedId={collectionItem?.id}
-                  onSelect={onItemSelect}
-                  TreeNode={SidebarCollectionLink}
-                  role="tree"
-                  aria-label="collection-tree"
-                />
+                {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
+                  <PLUGIN_REMOTE_SYNC.CollectionsNavTree
+                    collections={regularCollections}
+                    selectedId={collectionItem?.id}
+                    onSelect={onItemSelect}
+                  />
+                ) : (
+                  <Tree
+                    data={regularCollections}
+                    selectedId={collectionItem?.id}
+                    onSelect={onItemSelect}
+                    TreeNode={SidebarCollectionLink}
+                    role="tree"
+                    aria-label="collection-tree"
+                  />
+                )}
                 {showOtherUsersCollections && (
                   <PaddedSidebarLink
                     icon="group"
@@ -310,9 +300,9 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-        </div>
-        <div>
-          <WhatsNewNotification />
+          <div>
+            <WhatsNewNotification />
+          </div>
         </div>
       </SidebarContentRoot>
 

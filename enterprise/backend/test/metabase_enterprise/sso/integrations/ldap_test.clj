@@ -16,120 +16,120 @@
   (mt/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server!
       (testing "find by username"
-        (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
+        (is (= {:dn "cn=John Smith,ou=People,dc=metabase,dc=com"
                 :first-name "John"
-                :last-name  "Smith"
-                :email      "John.Smith@metabase.com"
-                :attributes {:uid       "jsmith1"
-                             :mail      "John.Smith@metabase.com"
-                             :givenname "John"
-                             :sn        "Smith"
-                             :cn        "John Smith"}
-                :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
+                :last-name "Smith"
+                :email "John.Smith@metabase.com"
+                :attributes {"uid" "jsmith1"
+                             "mail" "John.Smith@metabase.com"
+                             "givenname" "John"
+                             "sn" "Smith"
+                             "cn" "John Smith"}
+                :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "jsmith1"))))
 
       (testing "find by email"
-        (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
+        (is (= {:dn "cn=John Smith,ou=People,dc=metabase,dc=com"
                 :first-name "John"
-                :last-name  "Smith"
-                :email      "John.Smith@metabase.com"
-                :attributes {:uid       "jsmith1"
-                             :mail      "John.Smith@metabase.com"
-                             :givenname "John"
-                             :sn        "Smith"
-                             :cn        "John Smith"}
-                :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
+                :last-name "Smith"
+                :email "John.Smith@metabase.com"
+                :attributes {"uid" "jsmith1"
+                             "mail" "John.Smith@metabase.com"
+                             "givenname" "John"
+                             "sn" "Smith"
+                             "cn" "John Smith"}
+                :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "John.Smith@metabase.com"))))
 
       (testing "find by email, no groups"
-        (is (= {:dn         "cn=Fred Taylor,ou=People,dc=metabase,dc=com"
+        (is (= {:dn "cn=Fred Taylor,ou=People,dc=metabase,dc=com"
                 :first-name "Fred"
-                :last-name  "Taylor"
-                :email      "fred.taylor@metabase.com"
-                :attributes {:mail      "fred.taylor@metabase.com"
-                             :cn        "Fred Taylor"
-                             :givenname "Fred"
-                             :sn        "Taylor"}
-                :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
+                :last-name "Taylor"
+                :email "fred.taylor@metabase.com"
+                :attributes {"mail" "fred.taylor@metabase.com"
+                             "cn" "Fred Taylor"
+                             "givenname" "Fred"
+                             "sn" "Taylor"}
+                :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "fred.taylor@metabase.com"))))
 
       (testing "find by email, no givenName"
-        (is (= {:dn         "cn=Jane Miller,ou=People,dc=metabase,dc=com"
+        (is (= {:dn "cn=Jane Miller,ou=People,dc=metabase,dc=com"
                 :first-name nil
-                :last-name  "Miller"
-                :email      "jane.miller@metabase.com"
-                :attributes {:uid       "jmiller"
-                             :mail      "jane.miller@metabase.com"
-                             :cn        "Jane Miller"
-                             :sn        "Miller"}
-                :groups     []}
+                :last-name "Miller"
+                :email "jane.miller@metabase.com"
+                :attributes {"uid" "jmiller"
+                             "mail" "jane.miller@metabase.com"
+                             "cn" "Jane Miller"
+                             "sn" "Miller"}
+                :groups []}
                (ldap/find-user "jane.miller@metabase.com"))))
 
       (mt/with-temporary-setting-values [ldap-group-membership-filter "memberUid={uid}"]
         (testing "find by username with custom group membership filter"
-          (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
+          (is (= {:dn "cn=Sally Brown,ou=People,dc=metabase,dc=com"
                   :first-name "Sally"
-                  :last-name  "Brown"
-                  :email      "sally.brown@metabase.com"
-                  :attributes {:uid       "sbrown20"
-                               :mail      "sally.brown@metabase.com"
-                               :givenname "Sally"
-                               :sn        "Brown"
-                               :cn        "Sally Brown"}
-                  :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
+                  :last-name "Brown"
+                  :email "sally.brown@metabase.com"
+                  :attributes {"uid" "sbrown20"
+                               "mail" "sally.brown@metabase.com"
+                               "givenname" "Sally"
+                               "sn" "Brown"
+                               "cn" "Sally Brown"}
+                  :groups ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
                  (ldap/find-user "sbrown20"))))
 
         (testing "find by email with custom group membership filter"
-          (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
+          (is (= {:dn "cn=Sally Brown,ou=People,dc=metabase,dc=com"
                   :first-name "Sally"
-                  :last-name  "Brown"
-                  :email      "sally.brown@metabase.com"
-                  :attributes {:uid       "sbrown20"
-                               :mail      "sally.brown@metabase.com"
-                               :givenname "Sally"
-                               :sn        "Brown"
-                               :cn        "Sally Brown"}
-                  :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
+                  :last-name "Brown"
+                  :email "sally.brown@metabase.com"
+                  :attributes {"uid" "sbrown20"
+                               "mail" "sally.brown@metabase.com"
+                               "givenname" "Sally"
+                               "sn" "Brown"
+                               "cn" "Sally Brown"}
+                  :groups ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
                  (ldap/find-user "sally.brown@metabase.com"))))))))
 
 (deftest attribute-sync-test
   (mt/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server!
       (testing "find by email/username should return other attributes as well"
-        (is (= {:dn         "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
+        (is (= {:dn "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
                 :first-name "Lucky"
-                :last-name  "Pigeon"
-                :email      "lucky@metabase.com"
-                :attributes {:uid       "lucky"
-                             :mail      "lucky@metabase.com"
-                             :title     "King Pigeon"
-                             :givenname "Lucky"
-                             :sn        "Pigeon"
-                             :cn        "Lucky Pigeon"}
-                :groups     []}
+                :last-name "Pigeon"
+                :email "lucky@metabase.com"
+                :attributes {"uid" "lucky"
+                             "mail" "lucky@metabase.com"
+                             "title" "King Pigeon"
+                             "givenname" "Lucky"
+                             "sn" "Pigeon"
+                             "cn" "Lucky Pigeon"}
+                :groups []}
                (ldap/find-user "lucky"))))
       (testing "ignored attributes should not be returned"
         (mt/with-temporary-setting-values [ldap-sync-user-attributes-blacklist
                                            (cons "title" (sso-settings/ldap-sync-user-attributes-blacklist))]
-          (is (= {:dn         "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
+          (is (= {:dn "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
                   :first-name "Lucky"
-                  :last-name  "Pigeon"
-                  :email      "lucky@metabase.com"
-                  :attributes {:uid       "lucky"
-                               :mail      "lucky@metabase.com"
-                               :givenname "Lucky"
-                               :sn        "Pigeon"
-                               :cn        "Lucky Pigeon"}
-                  :groups     []}
+                  :last-name "Pigeon"
+                  :email "lucky@metabase.com"
+                  :attributes {"uid" "lucky"
+                               "mail" "lucky@metabase.com"
+                               "givenname" "Lucky"
+                               "sn" "Pigeon"
+                               "cn" "Lucky Pigeon"}
+                  :groups []}
                  (ldap/find-user "lucky")))))
       (testing "if attribute sync is disabled, no attributes should come back at all"
         (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
-          (is (= {:dn         "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
+          (is (= {:dn "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
                   :first-name "Lucky"
-                  :last-name  "Pigeon"
-                  :email      "lucky@metabase.com"
+                  :last-name "Pigeon"
+                  :email "lucky@metabase.com"
                   :attributes nil
-                  :groups     []}
+                  :groups []}
                  (ldap/find-user "lucky"))))))))
 
 (deftest new-user-attributes-synced-test
@@ -145,15 +145,15 @@
                                                             :ip_address "127.0.0.1"
                                                             :embedded false}})]
             (is (true? (:success? result)))
-            (is (= {:first_name       "John"
-                    :last_name        "Smith"
-                    :email            "john.smith@metabase.com"
-                    :login_attributes {"uid"       "jsmith1"
-                                       "mail"      "John.Smith@metabase.com"
+            (is (= {:first_name "John"
+                    :last_name "Smith"
+                    :email "john.smith@metabase.com"
+                    :login_attributes {"uid" "jsmith1"
+                                       "mail" "John.Smith@metabase.com"
                                        "givenname" "John"
-                                       "sn"        "Smith"
-                                       "cn"        "John Smith"}
-                    :common_name      "John Smith"}
+                                       "sn" "Smith"
+                                       "cn" "John Smith"}
+                    :common_name "John Smith"}
                    (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                            :email "john.smith@metabase.com"))))))))))
 
@@ -171,11 +171,11 @@
                                                               :ip_address "127.0.0.1"
                                                               :embedded false}})]
               (is (true? (:success? result)))
-              (is (= {:first_name       "John"
-                      :last_name        "Smith"
-                      :email            "john.smith@metabase.com"
+              (is (= {:first_name "John"
+                      :last_name "Smith"
+                      :email "john.smith@metabase.com"
                       :login_attributes nil
-                      :common_name      "John Smith"}
+                      :common_name "John Smith"}
                      (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                              :email "john.smith@metabase.com")))))))))))
 
@@ -200,14 +200,14 @@
                                                              :embedded false}})]
             (is (true? (:success? result1)))
             (is (true? (:success? result2)))
-            (is (= {:first_name       "John"
-                    :last_name        "Smith"
-                    :common_name      "John Smith"
-                    :email            "john.smith@metabase.com"
-                    :login_attributes {"uid"          "jsmith1"
-                                       "mail"         "John.Smith@metabase.com"
-                                       "givenname"    "John"
-                                       "sn"           "Smith"
+            (is (= {:first_name "John"
+                    :last_name "Smith"
+                    :common_name "John Smith"
+                    :email "john.smith@metabase.com"
+                    :login_attributes {"uid" "jsmith1"
+                                       "mail" "John.Smith@metabase.com"
+                                       "givenname" "John"
+                                       "sn" "Smith"
                                        "cn" "John Smith"}}
                    (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                            :email "john.smith@metabase.com"))))))))))
@@ -234,10 +234,10 @@
                                                                :embedded false}})]
               (is (true? (:success? result1)))
               (is (true? (:success? result2)))
-              (is (= {:first_name       "John"
-                      :last_name        "Smith"
-                      :common_name      "John Smith"
-                      :email            "john.smith@metabase.com"
+              (is (= {:first_name "John"
+                      :last_name "Smith"
+                      :common_name "John Smith"
+                      :email "john.smith@metabase.com"
                       :login_attributes nil}
                      (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                              :email "john.smith@metabase.com")))))))))))
@@ -255,10 +255,10 @@
                                                             :ip_address "127.0.0.1"
                                                             :embedded false}})]
             (is (true? (:success? result)))
-            (is (= {:first_name       "John"
-                    :last_name        "Smith"
-                    :common_name      "John Smith"
-                    :email            "john.smith@metabase.com"}
+            (is (= {:first_name "John"
+                    :last_name "Smith"
+                    :common_name "John Smith"
+                    :email "john.smith@metabase.com"}
                    (into {} (t2/select-one [:model/User :first_name :last_name :email] :email "john.smith@metabase.com"))))))))))
 
 (deftest create-user-without-givenname-test
@@ -274,9 +274,9 @@
                                                             :ip_address "127.0.0.1"
                                                             :embedded false}})]
             (is (true? (:success? result)))
-            (is (= {:first_name       nil
-                    :last_name        "Miller"
-                    :common_name      "Miller"}
+            (is (= {:first_name nil
+                    :last_name "Miller"
+                    :common_name "Miller"}
                    (into {} (t2/select-one [:model/User :first_name :last_name] :email "jane.miller@metabase.com"))))))))))
 
 (deftest ldap-no-user-provisioning-test

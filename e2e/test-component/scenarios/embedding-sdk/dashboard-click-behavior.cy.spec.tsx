@@ -244,13 +244,14 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   });
 
   it("columns that return a string url should be rendered as a link", () => {
+    cy.intercept("GET", "/api/card/*").as("getCard");
+
     // We can't map them easily to click behaviors, so they stay as links for now
     // see https://github.com/metabase/metabase/issues/64622
     cy.get<string>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />);
     });
 
-    cy.intercept("GET", "/api/card/*").as("getCard");
     cy.wait("@getCard");
 
     cy.findByRole("link", { name: "https://example.org/979" })

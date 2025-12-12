@@ -47,6 +47,10 @@ export function SyncProgressModal({
           icon: "warning",
           toastColor: "error",
         });
+
+        if (message.match(/no active task/i)) {
+          onDismiss();
+        }
       });
   };
 

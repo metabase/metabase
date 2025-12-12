@@ -184,3 +184,32 @@
 
   (testing "f returns nil keys"
     (is (= {nil 2} (perf/update-keys {:a 1 :b 2} (constantly nil))))))
+
+(deftest ^:parallel get-in-test
+  (testing "basic nested access"
+    (is (= 3 (perf/get-in {:a {:b 3}} [:a :b])))
+    (is (= "value" (perf/get-in {:x {:y {:z "value"}}} [:x :y :z])))
+    (is (= 42 (perf/get-in {:key 42} [:key])))
+    (is (= {:a 1} (perf/get-in {:a 1} [])))
+    (is (nil? (perf/get-in nil [:a :b]))))
+
+  (testing "missing keys return nil"
+    (is (nil? (perf/get-in {:a {:b 3}} [:a :c])))
+    (is (nil? (perf/get-in {:a 1} [:x :y :z]))))
+
+  (testing "with not-found value"
+    (is (= :default (perf/get-in {:a {:b 3}} [:a :c] :default)))
+    (is (nil? (perf/get-in {:a {:b 3}} [:a :c] nil)))
+    (is (nil? (perf/get-in {:a {:b nil}} [:a :b] :something-else))))
+
+  (testing "nil values vs missing keys"
+    (is (nil? (perf/get-in {:a {:b nil}} [:a :b])))
+    (is (= :default (perf/get-in {:a {:b nil}} [:a :c] :default))))
+
+  (testing "works with vectors"
+    (is (= 2 (perf/get-in [[1 2] [3 4]] [0 1])))
+    (is (= 30 (perf/get-in {:items [10 20 30]} [:items 2]))))
+
+  (testing "partial path exists"
+    (is (nil? (perf/get-in {:a 1} [:a :b])))
+    (is (= :fallback (perf/get-in {:a "not-a-map"} [:a :b] :fallback)))))

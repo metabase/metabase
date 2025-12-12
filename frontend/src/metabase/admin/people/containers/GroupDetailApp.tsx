@@ -11,10 +11,16 @@ import { getUser } from "metabase/selectors/user";
 
 import { GroupDetail } from "../components/GroupDetail";
 
-export const GroupDetailApp = (props: any) => {
+export const GroupDetailApp = ({
+  params: { groupId },
+  title,
+}: {
+  params: { groupId: number };
+  title?: string;
+}) => {
   const currentUser = useSelector(getUser);
 
-  const getGroupReq = useGetPermissionsGroupQuery(props.params.groupId);
+  const getGroupReq = useGetPermissionsGroupQuery(groupId);
   const membershipsByUserReq = useListUserMembershipsQuery();
 
   const error = getGroupReq.error ?? membershipsByUserReq.error;
@@ -22,7 +28,7 @@ export const GroupDetailApp = (props: any) => {
     getGroupReq.isLoading ?? membershipsByUserReq.isLoading ?? !currentUser;
 
   return (
-    <SettingsPageWrapper title={t`Groups`}>
+    <SettingsPageWrapper title={title ?? t`Groups`}>
       <LoadingAndErrorWrapper error={error} loading={isLoading}>
         {currentUser && (
           <GroupDetail

@@ -49,9 +49,10 @@ export const EmbeddingHub = () => {
             type: "click" as const,
             onClick,
           }))
-          .with({ docsPath: P.string }, ({ docsPath }) => ({
+          .with({ docsPath: P.string }, ({ docsPath, anchor }) => ({
             type: "docs" as const,
             docsPath,
+            anchor,
             utm: { utm_campaign: "embedding_hub", utm_content: stepId },
           }))
           .with({ modal: P.nonNullable }, ({ modal }) => ({

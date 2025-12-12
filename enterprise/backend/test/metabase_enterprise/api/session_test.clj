@@ -21,7 +21,6 @@
                               :database-auth-providers
                               :data-studio
                               :development-mode
-                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
@@ -57,6 +56,7 @@
                               :whitelabel
                               :collection-cleanup
                               :database-routing
+                              :tenants
                               :cloud-custom-smtp}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
@@ -71,7 +71,6 @@
             :database_auth_providers        true
             :data_studio                    true
             :development_mode               true
-            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -106,6 +105,7 @@
             :whitelabel                     true
             :collection_cleanup             true
             :database_routing               true
+            :tenants                        true
             :cloud_custom_smtp              true
             :etl_connections                false
             :etl_connections_pg             false

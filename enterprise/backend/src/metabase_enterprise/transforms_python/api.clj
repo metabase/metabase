@@ -22,12 +22,20 @@
       api/check-404
       (select-keys [:source :path :created_at :updated_at])))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/library/:path"
   "Get the Python library for user modules."
   [{:keys [path]} :- [:map [:path :string]]
    _query-params]
   (get-python-library-by-path path))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules."
   [{:keys [path]} :- [:map [:path :string]]
@@ -37,6 +45,10 @@
   (api/check-superuser)
   (python-library/update-python-library-source! path (:source body)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/test-run"
   :- [:map
       [:logs :string]
@@ -64,7 +76,7 @@
   (with-open [shared-storage-ref (s3/open-shared-storage! source_tables)]
     (let [server-url  (transforms-python.settings/python-runner-url)
           _           (python-runner/copy-tables-to-s3! {:shared-storage @shared-storage-ref
-                                                         :table-name->id source_tables
+                                                         :source         {:source-tables source_tables}
                                                          :limit          per_input_row_limit})
           {runner-status :status
            runner-body   :body}

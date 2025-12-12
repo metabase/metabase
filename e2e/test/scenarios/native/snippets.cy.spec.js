@@ -283,7 +283,7 @@ describe("scenarios > question > snippets (EE)", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    H.modal().within(() => cy.findByText("Top folder").click());
+    H.modal().within(() => cy.findByText("SQL snippets").click());
     H.entityPickerModal().within(() => {
       cy.findByText("my favorite snippets").click();
       cy.findByText("Select").click();

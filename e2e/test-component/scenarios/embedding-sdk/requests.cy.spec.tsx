@@ -16,6 +16,7 @@ import {
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import { defer } from "metabase/lib/promise";
 
 describe("scenarios > embedding-sdk > requests", () => {
   describe("cache preflight requests", () => {
@@ -38,11 +39,28 @@ describe("scenarios > embedding-sdk > requests", () => {
     });
 
     it("properly performs session token refresh request when multiple data requests are triggered at the same time", () => {
-      const expiredInSeconds = 60;
       cy.clock(Date.now());
 
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      const sessionIds: string[] = [];
+
+      cy.intercept("GET", "/auth/sso?jwt=**", (req) => {
+        req.continue((res) => {
+          sessionIds.push(res.body.id);
+        });
+      }).as("jwtToSession");
+
+      const expiredInSeconds = 60;
+
+      const deferreds = [defer(), defer()];
+      let index = 0;
+
       cy.then(() => getSignedJwtForUser({ expiredInSeconds })).then((jwt) => {
-        mockAuthProviderAndJwtSignIn(USERS.admin, { jwt });
+        mockAuthProviderAndJwtSignIn(USERS.admin, {
+          jwt,
+          waitForPromise: () => deferreds[index++].promise,
+        });
       });
 
       cy.mount(
@@ -51,8 +69,10 @@ describe("scenarios > embedding-sdk > requests", () => {
         </MetabaseProvider>,
       );
 
+      cy.then(() => deferreds[0].resolve());
+
       getSdkRoot().within(() => {
-        cy.findByText("Orders").should("exist");
+        cy.findByText("Orders", { timeout: 60_000 }).should("exist");
 
         cy.findByText("Group").click();
 
@@ -61,13 +81,24 @@ describe("scenarios > embedding-sdk > requests", () => {
         cy.tick(1000 * (expiredInSeconds + 5));
 
         cy.findByRole("dialog").contains(/^ID$/).click();
+        cy.findByText("Doing science...").should("exist");
         cy.findByRole("dialog").findByTestId("badge-remove-button").click();
 
-        cy.wait("@jwtProvider");
+        cy.get("@dataset.all").should("have.length", 0);
 
-        cy.intercept("POST", "/api/dataset").as("dataset");
+        cy.then(() => deferreds[1].resolve());
+
+        cy.findByText("Product ID").should("be.visible");
+
+        cy.wait("@jwtProvider");
         // We ensure that both `dataset` requests are made after the token refresh request
-        cy.get("@dataset.all").should("have.length", 2);
+        cy.get("@dataset.all", { timeout: 60_000 })
+          .should("have.length", 2)
+          .each((interception: any) => {
+            expect(interception.request.headers["x-metabase-session"]).to.equal(
+              sessionIds[1],
+            );
+          });
       });
     });
   });

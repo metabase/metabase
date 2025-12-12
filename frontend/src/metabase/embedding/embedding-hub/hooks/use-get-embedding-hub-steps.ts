@@ -1,14 +1,19 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
+import {
+  PLUGIN_TENANTS,
+  type SdkIframeEmbedSetupModalProps,
+} from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 
 import type { EmbeddingHubStep } from "../types";
 
 export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const dispatch = useDispatch();
+  const isUsingTenants = useSetting("use-tenants");
 
   const openEmbedModal = useCallback(
     (props: Pick<SdkIframeEmbedSetupModalProps, "initialState">) => {
@@ -23,6 +28,8 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   );
 
   return useMemo(() => {
+    const isTenantsFeatureAvailable = PLUGIN_TENANTS.isEnabled;
+
     const TEST_EMBED: EmbeddingHubStep = {
       id: "create-test-embed",
       title: t`Create embed`,
@@ -33,11 +40,27 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
           onClick: () => {
             openEmbedModal({
-              initialState: { useExistingUserSession: true },
+              initialState: {
+                isGuest: true,
+                useExistingUserSession: true,
+              },
             });
           },
           variant: "outline",
         },
+        ...(isTenantsFeatureAvailable
+          ? [
+              {
+                title: t`Set up tenants`,
+                description: t`Define a multi tenant user strategy to manage access for tenant users.`,
+                to: isUsingTenants
+                  ? "/admin/tenants"
+                  : "/admin/people/user-strategy",
+                optional: true,
+                stepId: "setup-tenants" as const,
+              },
+            ]
+          : []),
       ],
       image: {
         src: "app/assets/img/embedding_hub_create_embed.png",
@@ -99,14 +122,15 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         {
           title: t`Configure SSO`,
           description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
-          docsPath: "embedding/embedded-analytics-js#set-up-sso",
+          docsPath: "embedding/embedded-analytics-js",
+          anchor: "set-up-sso",
           variant: "outline",
           stepId: "secure-embeds",
         },
         {
           title: t`Configure data permissions`,
-          docsPath:
-            "permissions/embedding#one-database-for-all-customers-commingled-setups",
+          docsPath: "permissions/embedding",
+          anchor: "one-database-for-all-customers-commingled-setups",
           description: t`Manage permissions to limit what data your users can access.`,
           variant: "outline",
           stepId: "configure-row-column-security",
@@ -130,7 +154,10 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
           onClick: () => {
             openEmbedModal({
-              initialState: { useExistingUserSession: false },
+              initialState: {
+                isGuest: false,
+                useExistingUserSession: false,
+              },
             });
           },
           variant: "outline",
@@ -154,5 +181,5 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       SECURE_EMBEDS,
       EMBED_PRODUCTION,
     ];
-  }, [openEmbedModal]);
+  }, [isUsingTenants, openEmbedModal]);
 };

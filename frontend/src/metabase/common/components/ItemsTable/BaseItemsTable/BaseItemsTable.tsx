@@ -172,6 +172,7 @@ export const BaseItemsTable = ({
           {visibleColumnsMap["name"] && (
             <Columns.Name.Col isInDragLayer={isInDragLayer} />
           )}
+          {visibleColumnsMap["description"] && <Columns.Description.Col />}
           {visibleColumnsMap["lastEditedBy"] && <Columns.LastEditedBy.Col />}
           {visibleColumnsMap["lastEditedAt"] && <Columns.LastEditedAt.Col />}
           {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Col />}
@@ -202,6 +203,12 @@ export const BaseItemsTable = ({
             )}
             {visibleColumnsMap["name"] && (
               <Columns.Name.Header
+                sortingOptions={sortingOptions}
+                onSortingOptionsChange={onSortingOptionsChange}
+              />
+            )}
+            {visibleColumnsMap["description"] && (
+              <Columns.Description.Header
                 sortingOptions={sortingOptions}
                 onSortingOptionsChange={onSortingOptionsChange}
               />

@@ -31,7 +31,7 @@
             (t2/update! :model/SupportAccessGrantLog grant-id {:notes "Updated notes"})
             (is (some? (t2/select-one :model/Session :id session-id))
                 "Session should still exist after non-revocation update")
-            (is (nil? (:expires_at (t2/select-one :model/AuthIdentity :id support-user-id)))
+            (is (nil? (:expires_at (t2/select-one :model/AuthIdentity :provider "password" :user_id support-user-id)))
                 "Auth identity expires_at should remain unchanged")))))))
 
 (deftest revoke-grant-only-affects-support-user-test

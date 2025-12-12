@@ -266,8 +266,7 @@
    & filters]
   (set (apply
         t2/select
-        [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
-         :visibility_type :initial_sync_status]
+        (into [:model/Table :id :name :schema] keys-to-update)
         :db_id (u/the-id database)
         filters)))
 

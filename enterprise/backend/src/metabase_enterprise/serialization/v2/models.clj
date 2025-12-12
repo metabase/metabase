@@ -108,6 +108,7 @@
    "Session"
    "SupportAccessGrantLog"
    "TaskHistory"
+   "Tenant"
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"

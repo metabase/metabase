@@ -30,6 +30,7 @@ export type FormattedParameterValueProps = {
   dashboardId?: DashboardId;
   placeholder?: string;
   isPopoverOpen?: boolean;
+  dataTestId?: string;
 };
 
 function FormattedParameterValue({

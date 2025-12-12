@@ -1,7 +1,23 @@
+export type OnBeforeRequestHandlerData = {
+  method: "GET" | "POST";
+  url: string;
+  options: {
+    headers?: Record<string, string>;
+    hasBody: boolean;
+  } & Record<string, unknown>;
+};
+
+export type OnBeforeRequestHandler = (
+  data: OnBeforeRequestHandlerData,
+) => Promise<void | OnBeforeRequestHandlerData>;
+
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,
   onBeforeRequestHandlers: {
     getOrRefreshSessionHandler: async () => {},
+    overrideRequestsForGuestEmbeds: async (
+      _data: OnBeforeRequestHandlerData,
+    ): Promise<OnBeforeRequestHandlerData | void> => {},
   },
 });
 

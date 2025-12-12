@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  getIcon as testGetIcon,
+} from "__support__/ui";
+import { getIcon } from "metabase/lib/icon";
 import type { IconName } from "metabase/ui";
 import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
 import {
@@ -101,7 +106,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
 describe("PinnedItemCard", () => {
   it("should show the item's icon", () => {
     setup();
-    expect(getIcon(defaultItem.getIcon().name)).toBeInTheDocument();
+    expect(testGetIcon(getIcon(defaultItem).name)).toBeInTheDocument();
   });
 
   it("should show the item's name", () => {
@@ -121,7 +126,7 @@ describe("PinnedItemCard", () => {
 
   it("should show an action menu when user clicks on the menu icon in the card", async () => {
     setup();
-    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(testGetIcon("ellipsis"));
     expect(await screen.findByText("Unpin")).toBeInTheDocument();
   });
 

@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createAction, createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -137,6 +137,9 @@ const getDownloadedResourceType = ({
   };
 };
 
+export const DOWNLOAD_TO_IMAGE = "metabase/downloads/DOWNLOAD_TO_IMAGE";
+export const downloadToImage = createAction<boolean>(DOWNLOAD_TO_IMAGE);
+
 export const downloadQueryResults = createAsyncThunk(
   "metabase/downloads/downloadQueryResults",
   async (opts: DownloadQueryResultsOpts, { dispatch, getState }) => {
@@ -148,11 +151,17 @@ export const downloadQueryResults = createAsyncThunk(
     });
 
     if (opts.type === Urls.exportFormatPng) {
+      dispatch(downloadToImage(true));
+
       const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
       const includeBranding = !isWhitelabeled;
-      downloadChart({ opts, includeBranding });
+      try {
+        await downloadChart({ opts, includeBranding });
+      } finally {
+        dispatch(downloadToImage(false));
+      }
     } else {
-      dispatch(downloadDataset({ opts, id: Date.now() }));
+      await dispatch(downloadDataset({ opts, id: Date.now() }));
     }
   },
 );
@@ -219,7 +228,7 @@ const getPublicDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/public/document/${documentUuid}/card/${cardId}/${type}`,
+  url: `/api/public/document/${documentUuid}/card/${cardId}/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,
@@ -318,7 +327,7 @@ const getInternalDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/document/${documentId}/card/${cardId}/query/${type}`,
+  url: `/api/document/${documentId}/card/${cardId}/query/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,
@@ -537,11 +546,19 @@ export const getChartFileName = (question: Question, branded: boolean) => {
   return branded ? `Metabase-${fileName}` : fileName;
 };
 
-export const getDownloads = (state: State) => state.downloads;
+export const getDownloads = (state: State) => state.downloads.datasetRequests;
 export const hasActiveDownloads = (state: State) =>
-  state.downloads.some((download) => download.status === "in-progress");
+  state.downloads.datasetRequests.some(
+    (download) => download.status === "in-progress",
+  );
 
-const initialState: DownloadsState = [];
+export const getIsDownloadingToImage = (state: State) =>
+  state.downloads.isDownloadingToImage;
+
+const initialState: DownloadsState = {
+  isDownloadingToImage: false,
+  datasetRequests: [],
+};
 
 const downloads = createSlice({
   name: "metabase/downloads",
@@ -555,27 +572,35 @@ const downloads = createSlice({
         const title = t`Results for ${
           action.meta.arg.opts.question.card().name
         }`;
-        state.push({
+        state.datasetRequests.push({
           id: action.meta.arg.id,
           title,
           status: "in-progress",
         });
       })
       .addCase(downloadDataset.fulfilled, (state, action) => {
-        const download = state.find((item) => item.id === action.meta.arg.id);
+        const download = state.datasetRequests.find(
+          (item) => item.id === action.meta.arg.id,
+        );
         if (download) {
           download.status = "complete";
           download.title = action.payload.name;
         }
       })
       .addCase(downloadDataset.rejected, (state, action) => {
-        const download = state.find((item) => item.id === action.meta.arg.id);
+        const download = state.datasetRequests.find(
+          (item) => item.id === action.meta.arg.id,
+        );
         if (download) {
           download.status = "error";
           download.error =
             action.error.message ?? t`Could not download the file`;
         }
       });
+
+    builder.addCase(downloadToImage, (state, action) => {
+      state.isDownloadingToImage = action.payload;
+    });
   },
 });
 

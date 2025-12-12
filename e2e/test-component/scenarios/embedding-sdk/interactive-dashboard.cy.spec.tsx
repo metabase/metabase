@@ -63,6 +63,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       parameters: [DATE_FILTER],
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
+      cy.wrap(String(dashboard.id)).as("dashboardNumericStringId");
       cy.wrap(dashboard.entity_id).as("dashboardEntityId");
     });
 
@@ -210,41 +211,56 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   const idTypes = [
-    { idType: "numeric id", dashboardIdAlias: "@dashboardId" },
-    { idType: "entity id", dashboardIdAlias: "@dashboardEntityId" },
+    {
+      idType: "numeric ID",
+      dashboardIdAlias: "@dashboardId",
+      issueId: "(EMB-773)",
+    },
+    {
+      idType: "numeric string ID",
+      dashboardIdAlias: "@dashboardNumericStringId",
+      issueId: "(EMB-1120)",
+    },
+    {
+      idType: "entity ID",
+      dashboardIdAlias: "@dashboardEntityId",
+      issueId: "(EMB-773)",
+    },
   ];
 
-  idTypes.forEach(({ idType, dashboardIdAlias }) => {
-    it(`can go to dashcard and go back using a ${idType} dashboard (EMB-773)`, () => {
-      cy.get(dashboardIdAlias).then((dashboardId) => {
-        mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+  describe("Dashboard ID types", () => {
+    idTypes.forEach(({ idType, dashboardIdAlias, issueId }) => {
+      it(`can go to dashcard and go back using a ${idType} dashboard ${issueId}`, () => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+        });
+
+        getSdkRoot().within(() => {
+          H.getDashboardCard().findByText("Orders").click();
+
+          cy.findByTestId("interactive-question-result-toolbar").should(
+            "be.visible",
+          );
+
+          cy.findByLabelText("Back to Orders in a dashboard").click();
+          cy.findByText("Orders in a dashboard").should("be.visible");
+          cy.findByText("Back to Orders in a dashboard").should("not.exist");
+        });
       });
 
-      getSdkRoot().within(() => {
-        H.getDashboardCard().findByText("Orders").click();
+      it(`can drill a question and go back using a ${idType} dashboard ${issueId}`, () => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+        });
 
-        cy.findByTestId("interactive-question-result-toolbar").should(
-          "be.visible",
-        );
+        getSdkRoot().within(() => {
+          cy.findByText("123").first().click();
+          H.popover().findByText("View this Product's Orders").click();
 
-        cy.findByLabelText("Back to Orders in a dashboard").click();
-        cy.findByText("Orders in a dashboard").should("be.visible");
-        cy.findByText("Back to Orders in a dashboard").should("not.exist");
-      });
-    });
-
-    it(`can drill a question and go back using a ${idType} dashboard (EMB-773)`, () => {
-      cy.get(dashboardIdAlias).then((dashboardId) => {
-        mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
-      });
-
-      getSdkRoot().within(() => {
-        cy.findByText("123").first().click();
-        H.popover().findByText("View this Product's Orders").click();
-
-        cy.findByLabelText("Back to Orders in a dashboard").click();
-        cy.findByText("Orders in a dashboard").should("be.visible");
-        cy.findByText("Back to Orders in a dashboard").should("not.exist");
+          cy.findByLabelText("Back to Orders in a dashboard").click();
+          cy.findByText("Orders in a dashboard").should("be.visible");
+          cy.findByText("Back to Orders in a dashboard").should("not.exist");
+        });
       });
     });
   });

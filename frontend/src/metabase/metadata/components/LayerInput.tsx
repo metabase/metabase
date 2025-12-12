@@ -58,7 +58,7 @@ export const LayerInput = ({
       leftSection={
         value ? <Icon c={getColor(value)} name="medallion" /> : undefined
       }
-      placeholder={t`Select a layer`}
+      placeholder={t`Select a visibility type`}
       value={value}
       onChange={(value) => onChange(value)}
       onFocus={handleFocus}

@@ -1,11 +1,13 @@
 (ns metabase.lib.drill-thru.zoom-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel zoom-availability-test
   (testing "zoom drill is available for cell clicks on non-FKs in tables with only 1 PK, and the PK in the result set"

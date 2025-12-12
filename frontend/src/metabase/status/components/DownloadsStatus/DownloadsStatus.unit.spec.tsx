@@ -6,7 +6,7 @@ import { downloadDataset } from "metabase/redux/downloads";
 import { HIDE_DELAY } from "metabase/status/hooks/use-status-visibility";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
-import type { Dispatch, Download } from "metabase-types/store";
+import type { Dispatch, DownloadsState } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { DownloadsStatus } from "./DownloadsStatus";
@@ -30,10 +30,15 @@ const getDownloadDatasetAction = () =>
   });
 
 interface SetupOpts {
-  downloads?: Download[];
+  downloads?: DownloadsState;
 }
 
-const setup = ({ downloads = [] }: SetupOpts = {}) => {
+const setup = ({
+  downloads = {
+    datasetRequests: [],
+    isDownloadingToImage: false,
+  },
+}: SetupOpts = {}) => {
   const state = createMockState({
     downloads,
   });

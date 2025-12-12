@@ -23,7 +23,12 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { runQuestionQuery } from "./services";
+import * as getIsEmbedPreviewModule from "./get-is-embed-preview";
+import {
+  DashboardApi,
+  runQuestionQuery,
+  setEmbedDashboardEndpoints,
+} from "./services";
 
 const MOCK_QUERY = createMockStructuredDatasetQuery({
   database: SAMPLE_DB_ID,
@@ -199,5 +204,54 @@ describe("metabase/services > runQuestionQuery", () => {
       const { result, mockResult } = await setupRunQuestionQuery(question);
       expect(result).toEqual([mockResult]);
     });
+  });
+});
+
+describe("DashboardApi parameter endpoints with IS_EMBED_PREVIEW", () => {
+  let isEmbedPreviewMock: jest.SpyInstance<boolean, []>;
+
+  beforeEach(() => {
+    isEmbedPreviewMock = jest.spyOn(
+      getIsEmbedPreviewModule,
+      "getIsEmbedPreview",
+    );
+  });
+
+  it("should use /api/embed prefix when IS_EMBED_PREVIEW is false", async () => {
+    isEmbedPreviewMock.mockReturnValue(false);
+
+    setEmbedDashboardEndpoints("test-token");
+
+    fetchMock.get(
+      "path:/api/embed/dashboard/test-token/params/param1/values",
+      {},
+    );
+
+    await DashboardApi.parameterValues({ dashId: "123", paramId: "param1" });
+
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/embed/dashboard/test-token/params/param1/values",
+      ),
+    ).toBe(true);
+  });
+
+  it("should use /api/preview_embed prefix when IS_EMBED_PREVIEW is true", async () => {
+    isEmbedPreviewMock.mockReturnValue(true);
+
+    setEmbedDashboardEndpoints("test-token");
+
+    fetchMock.get(
+      "path:/api/preview_embed/dashboard/test-token/params/param1/values",
+      {},
+    );
+
+    await DashboardApi.parameterValues({ dashId: "123", paramId: "param1" });
+
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/preview_embed/dashboard/test-token/params/param1/values",
+      ),
+    ).toBe(true);
   });
 });

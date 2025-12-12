@@ -229,3 +229,23 @@
           (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
             (backfill-dependencies-single-trigger!))
           (is (t2/exists? :model/Card :id card-id :dependency_analysis_version current-version)))))))
+
+(deftest backfill-card-does-not-cause-revision-test
+  (testing "backfilling a card does not create a new revision or audit log entry"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies :audit-app}
+      (mt/with-temp [:model/Card {card-id :id
+                                  dep-version :dependency_analysis_version}
+                     {:dependency_analysis_version 0, :dataset_query (mt/mbql-query orders)}]
+        (let [revision-count-before (t2/count :model/Revision :model "Card" :model_id card-id)
+              deps-before (t2/count :model/Dependency :from_entity_type :card :from_entity_id card-id)]
+          (is (= 0 dep-version))
+          (is (= 0 revision-count-before))
+          (is (= 0 deps-before))
+          (backfill-dependencies-single-trigger!)
+          (let [revision-count-after (t2/count :model/Revision :model "Card" :model_id card-id)
+                dep-version-after (t2/select-one-fn :dependency_analysis_version :model/Card :id card-id)
+                deps-after (t2/count :model/Dependency :from_entity_type :card :from_entity_id card-id)]
+            (is (= 0 revision-count-after))
+            (is (= 3 dep-version-after))
+            (is (= 1 deps-after))))))))

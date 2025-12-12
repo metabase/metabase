@@ -1,5 +1,6 @@
 (ns metabase.search.appdb.core
   (:require
+   [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -49,6 +50,13 @@
            (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
+(defmethod search.engine/disjunction :search.engine/appdb [_ terms]
+  (when (seq terms)
+    (if (or (= (mdb/db-type) :h2)
+            (= 1 (count terms)))
+      terms
+      [(str/join " OR " (map #(str "(" % ")") terms))])))
+
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 
@@ -61,6 +69,7 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
@@ -81,6 +90,14 @@
                                                                                                    :integer)]]
                                           (search.permissions/permitted-tables-clause search-ctx :mt_toplevel.id)]}]]]))
 
+(def null-collection-id-should-be-ignored-for-unpublished-tables-clause
+  "For every model except tables, a null collection ID means the thing is in Our Analytics.
+
+  For tables, this means there is no associated collection and the collection_id should be completely ignored."
+  [:and
+   [:= :model [:inline "table"]]
+   [:= :is_published false]])
+
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -89,7 +106,10 @@
         permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
         personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
         excluded-models   (search.filter/models-without-collection)
-        or-null           #(vector :or [:in :search_index.model excluded-models] %)]
+        or-null           #(vector :or
+                                   [:in :search_index.model excluded-models]
+                                   null-collection-id-should-be-ignored-for-unpublished-tables-clause
+                                   %)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
       true (sql.helpers/where (or-null permitted-clause))

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 import type { DetailViewState } from "metabase-types/store";
@@ -74,6 +74,7 @@ const AppBarLarge = ({
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
         />
+        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >

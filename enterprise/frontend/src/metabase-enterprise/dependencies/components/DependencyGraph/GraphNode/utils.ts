@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import type { DependencyNode } from "metabase-types/api";
 
@@ -15,6 +15,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     dashboard = 0,
     document = 0,
     sandbox = 0,
+    segment = 0,
   } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
@@ -27,6 +28,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "dashboard", count: dashboard },
     { type: "document", count: document },
     { type: "sandbox", count: sandbox },
+    { type: "segment", count: segment },
   ];
 
   return groups.filter(({ count }) => count !== 0);
@@ -73,6 +75,12 @@ export function getDependentGroupLabel({
       return ngettext(
         msgid`${count} row and column security rule`,
         `${count} row and column security rules`,
+        count,
+      );
+    case "segment":
+      return c("{0} is the number of segments").ngettext(
+        msgid`${count} segment`,
+        `${count} segments`,
         count,
       );
   }

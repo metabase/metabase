@@ -478,7 +478,6 @@ describe("scenarios > notebook > link to data source", () => {
           },
         });
 
-        // @ts-expect-error - Non-trivial types in `sandboxTable` that should be addressed separately
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {

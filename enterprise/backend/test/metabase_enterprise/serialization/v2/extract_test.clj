@@ -912,6 +912,45 @@
                       {:model "Field" :id "Some Field"}]}
                    (set (serdes/dependencies ser))))))))))
 
+(deftest table-publishing-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database   {db-id :id}           {:name "My Database"}
+                       :model/Table      {table-id :id}        {:name "Schemaless Table" :db_id db-id}
+                       :model/Collection {coll-id  :id
+                                          coll-eid :entity_id} {:name "Publishing Collection"}
+                       :model/Table      {pub-table-id :id}    {:name         "Published Table"
+                                                                :db_id        db-id
+                                                                :is_published true
+                                                                :collection_id coll-id}
+                       :model/Table      {unpub-table-id :id}  {:name         "Unpublished Table"
+                                                                :db_id        db-id
+                                                                :is_published false}]
+      (testing "published table with collection_id"
+        (let [ser (ts/extract-one "Table" pub-table-id)]
+          (testing "is_published is included in extraction"
+            (is (true? (:is_published ser))))
+          (testing "collection_id is transformed to entity_id"
+            (is (= coll-eid (:collection_id ser))))
+          (testing "depends on the collection"
+            (is (contains? (set (serdes/dependencies ser))
+                           [{:model "Collection" :id coll-eid}])))))
+      (testing "unpublished table without collection_id"
+        (let [ser (ts/extract-one "Table" unpub-table-id)]
+          (testing "is_published defaults to false"
+            (is (false? (:is_published ser))))
+          (testing "collection_id is nil"
+            (is (nil? (:collection_id ser))))
+          (testing "does not depend on any collection"
+            (is (not (some #(= "Collection" (:model (first %)))
+                           (serdes/dependencies ser)))))))
+      (testing "regular table without publishing fields set"
+        (let [ser (ts/extract-one "Table" table-id)]
+          (testing "is_published defaults to false"
+            (is (false? (:is_published ser))))
+
+          (testing "collection_id is nil"
+            (is (nil? (:collection_id ser)))))))))
+
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"

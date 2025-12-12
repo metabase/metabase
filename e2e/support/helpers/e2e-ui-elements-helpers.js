@@ -53,6 +53,10 @@ export function miniPickerBrowseAll() {
   return miniPicker().findByText("Browse all");
 }
 
+export function miniPickerOurAnalytics() {
+  return miniPicker().findByText("Our analytics");
+}
+
 export function miniPickerHeader() {
   return cy.findByTestId("mini-picker-header");
 }
@@ -270,6 +274,10 @@ export const queryBuilderFooterDisplayToggle = () => {
   return cy.findByTestId("query-display-tabular-toggle");
 };
 
+export const queryVisualizationRoot = () => {
+  return cy.findByTestId("query-visualization-root");
+};
+
 export const closeQuestionActions = () => {
   queryBuilderHeader().click();
 };
@@ -300,6 +308,10 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
+/**
+ * @deprecated Use `moveDnDKitElementByAlias` instead.
+ * Otherwise, the chain will be broken due to "element was removed from the DOM" error
+ */
 export const moveDnDKitElement = (
   element,
   { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
@@ -575,7 +587,7 @@ export function assertTableData({ columns, firstRows = [] }) {
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
  * @returns
  */
-export function newButton(menuItem) {
+export function newButton(menuItem = undefined) {
   if (menuItem) {
     cy.findByTestId("app-bar").button("New").click();
     return popover().findByText(menuItem);

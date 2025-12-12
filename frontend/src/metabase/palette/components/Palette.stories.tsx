@@ -89,6 +89,10 @@ export default {
   decorators: [ReduxDecorator],
   parameters: {
     msw,
+    layout: "fullscreen",
+    loki: {
+      chromeSelector: "[data-testid=command-palette]",
+    },
   },
 };
 

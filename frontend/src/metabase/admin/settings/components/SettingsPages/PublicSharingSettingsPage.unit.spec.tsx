@@ -6,6 +6,7 @@ import {
   setupListPublicActionsEndpoint,
   setupListPublicCardsEndpoint,
   setupListPublicDashboardsEndpoint,
+  setupListPublicDocumentsEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -56,6 +57,13 @@ const setup = async (enablePublicSharing = false) => {
       public_uuid: "16a4568d-c328-4306-9c4b-ec8fbd6e4c8e",
     },
   ]);
+  setupListPublicDocumentsEndpoint([
+    {
+      name: "Test Document",
+      id: 4,
+      public_uuid: "3a9a7c46-ff19-4935-bfbe-4932d315732a",
+    },
+  ]);
 
   renderWithProviders(
     <div>
@@ -80,9 +88,11 @@ describe("PublicSharingSettingsPage", () => {
       "Shared dashboards",
       "Shared questions",
       "Shared action forms",
+      "Shared documents",
       "Test Action",
       "Test Dashboard",
       "Test Question",
+      "Test Document",
     ].forEach((text) => {
       expect(screen.queryByText(text)).not.toBeInTheDocument();
     });
@@ -95,9 +105,11 @@ describe("PublicSharingSettingsPage", () => {
       "Shared dashboards",
       "Shared questions",
       "Shared action forms",
+      "Shared documents",
       "Test Action",
       "Test Dashboard",
       "Test Question",
+      "Test Document",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
@@ -108,6 +120,7 @@ describe("PublicSharingSettingsPage", () => {
     expect(screen.queryByText("Shared Dashboards")).not.toBeInTheDocument();
     expect(screen.queryByText("Shared Questions")).not.toBeInTheDocument();
     expect(screen.queryByText("Shared Action Forms")).not.toBeInTheDocument();
+    expect(screen.queryByText("Shared Documents")).not.toBeInTheDocument();
 
     // Toggle public sharing on
     const toggle = await screen.findByRole("switch");

@@ -116,18 +116,19 @@
     ;; 57+
     :model/Glossary
     ;; 58+
-    :model/AuthIdentity]
+    :model/AuthIdentity
+    :model/Document
+    :model/DocumentBookmark
+    :model/Comment
+    :model/CommentReaction]
    (when config/ee-available?
      [:model/Sandbox
+      :model/Tenant
       :model/ConnectionImpersonation
       :model/Metabot
       :model/MetabotConversation
       :model/MetabotMessage
-      :model/MetabotPrompt
-      :model/Document
-      :model/DocumentBookmark
-      :model/Comment
-      :model/CommentReaction])))
+      :model/MetabotPrompt])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`

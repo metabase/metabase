@@ -16,6 +16,8 @@
                                           [:= :type [:inline "personal"]]]} :distinct_emails]]})))
 
 (defn external-users-count
-  "Number of users with sso-source: JWT as a proxy for external users of embedded views"
+  "Number of users with sso-source: JWT as a proxy for tenant users of embedded views"
   []
-  (t2/count :model/User :is_active true :sso_source :jwt :type :personal))
+  ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid the `after-select` method on
+  ;; users, which calls an EE method that needs ... a token check :|
+  (t2/count (t2/table-name :model/User) :is_active true :sso_source "jwt" :type "personal"))

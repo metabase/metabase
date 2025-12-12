@@ -26,7 +26,7 @@
   "Formats or checks all updated clojure files with cljfmt."
   [parsed]
   (let [target-branch (or (first (:arguments parsed)) "HEAD")
-        updated-files (u/updated-files target-branch)]
+        updated-files (u/updated-clojure-files target-branch)]
     (println (str "Checking for updated files against " (c/green target-branch)))
     (if (seq updated-files)
       (files (assoc parsed :arguments updated-files))

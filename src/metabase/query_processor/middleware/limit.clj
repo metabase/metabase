@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
-  (:refer-clojure :exclude [empty?])
+  (:refer-clojure :exclude [empty? get-in])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -9,7 +9,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [empty?]]
+   [metabase.util.performance :refer [empty? get-in]]
    [potemkin :as p]))
 
 ;;; provided as a convenience since this var used to live here. Prefer using directly from `qp.settings` going forward.
@@ -58,14 +58,16 @@
                                                      :native query)))
     (when-not (disable-max-results? query)
       (let [context             (-> query :info :context)
-            download-context?   #{:csv-download :json-download :xlsx-download}
+            download-context?   #{:csv-download :json-download :xlsx-download
+                                  :embedded-csv-download :embedded-json-download :embedded-xlsx-download
+                                  :public-csv-download :public-json-download :public-xlsx-download}
             attachment-context? #{:dashboard-subscription :pulse :notification}
             download-limit      (when (download-context? context) (qp.settings/download-row-limit))
             attachment-limit    (when (attachment-context? context) (qp.settings/attachment-row-limit))
             res                 (u/safe-min (lib/max-rows-limit query)
                                             download-limit
                                             attachment-limit)]
-        (if (= context :xlsx-download)
+        (if (#{:xlsx-download :embedded-xlsx-download :public-xlsx-download} context)
           (u/safe-min res qp.settings/absolute-max-results)
           (or res qp.settings/absolute-max-results))))))
 
