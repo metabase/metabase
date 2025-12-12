@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
    [metabase.test :as mt]
@@ -502,6 +503,70 @@
         (mt/with-temporary-setting-values [custom-homepage true
                                            custom-homepage-dashboard -3]
           (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
+
+(deftest get-current-user-query-permissions-test
+  (testing "GET /api/user/current includes can_create_queries and can_create_native_queries"
+    (mt/with-premium-features #{}
+      (letfn [(user-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "admins should have both permissions true"
+          (is (partial= {:can_create_queries        true
+                         :can_create_native_queries true}
+                        (user-permissions :crowberto))))
+
+        (testing "user with query-builder-and-native on a non-sample DB"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :query-builder-and-native}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries true}
+                            (user-permissions :rasta))))))
+
+        (testing "user with only query-builder (no native) on a non-sample DB"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :query-builder}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))
+
+        (testing "user with no query permissions on non-sample DBs"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :no}}
+              (is (partial= {:can_create_queries        false
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))
+
+        (testing "at least one non-sample DB with native permission is enough"
+          (mt/with-temp [:model/Database {db1-id :id} {:is_sample false}
+                         :model/Database {db2-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db1-id {:view-data      :unrestricted
+                                                          :create-queries :no}
+                                                  db2-id {:view-data      :unrestricted
+                                                          :create-queries :query-builder-and-native}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries true}
+                            (user-permissions :rasta))))))))))
+
+(deftest can-create-queries-ignores-published-tables-oss-test
+  (testing "In OSS, can_create_queries should NOT consider published tables"
+    (mt/with-premium-features #{}
+      (letfn [(user-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "user with collection permission on published table should still have can_create_queries false"
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Table      _table              {:db_id         (mt/id)
+                                                                :is_published  true
+                                                                :collection_id collection-id}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+            (mt/with-no-data-perms-for-all-users!
+              (is (partial= {:can_create_queries        false
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))
+                  "Published tables should NOT grant can_create_queries in OSS"))))))))
 
 (deftest ^:parallel get-user-test
   (mt/with-premium-features #{}
@@ -1418,6 +1483,18 @@
     (testing "Check that a non-superuser CANNOT deactivate themselves"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
+
+(deftest deactivate-missing-user-fails
+  (testing "DELETE /api/user/:id"
+    (let [max-id (:max_id (t2/query-one {:select [[:%max.id :max_id]]
+                                         :from :core_user}))]
+      (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
+
+(deftest deactivate-deactivated-user-again-succeeds
+  (testing "DELETE /api/user/:id"
+    (mt/with-temp [:model/User user {:is_active false}]
+      (is (= {:success true}
+             (mt/user-http-request :crowberto :delete 200 (format "user/%d" (:id user)) {}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Other Endpoints                                                    |

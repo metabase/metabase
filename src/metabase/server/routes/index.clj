@@ -11,6 +11,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
+   [metabase.users.settings :as users-settings]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -89,6 +90,7 @@
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
      :nonceJSON              (escape-script (json/encode nonce))
      :language               (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
+     :userColorScheme        (escape-script (json/encode (users-settings/color-scheme)))
      :favicon                (hiccup.util/escape-html (let [custom-favicon (appearance/application-favicon-url)]
                                                         (if (and config/is-dev?
                                                                  (= custom-favicon "app/assets/img/favicon.ico"))
@@ -101,7 +103,8 @@
      :enableGoogleAuth       (boolean google-auth-client-id)
      :enableAnonTracking     (boolean anon-tracking-enabled)
      ;; (metabase#65533) color-scheme meta tag breaks EAJS because it has a transparent background.
-     :hasColorSchemeMetaTag  (not= entrypoint-name "embed-sdk")}))
+     ;; (metabase#66585) Also omit for static/public embedding to preserve legacy behavior for transparent iframes.
+     :hasColorSchemeMetaTag  (not (contains? #{"embed-sdk" "embed" "public"} entrypoint-name))}))
 
 (defn- load-entrypoint-template [entrypoint-name embeddable? opts]
   (load-template

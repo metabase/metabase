@@ -37,6 +37,9 @@ const assertEditorContent = (editorType: EditorType, content: string) => {
 const makeManualEdit = (editorType: EditorType, newContent: string) =>
   editor(editorType).clear().paste(newContent);
 
+const getMetabotButton = () =>
+  cy.findByRole("button", { name: /Chat with Metabot/ });
+
 const assertSuggestionInSidebar = (values: {
   oldSourcePartial?: string;
   newSourcePartial: string;
@@ -49,10 +52,10 @@ const assertSuggestionInSidebar = (values: {
 
 const assertEditorDiffState = (opts: { exists: boolean }) => {
   const should = opts.exists ? "exist" : "not.exist";
-  H.DataStudio.Transforms.content()
+  H.DataStudio.Transforms.queryEditor()
     .findByRole("button", { name: /apply|create/i })
     .should(should);
-  H.DataStudio.Transforms.content()
+  H.DataStudio.Transforms.queryEditor()
     .findByRole("button", { name: /reject/i })
     .should(should);
 };
@@ -84,7 +87,7 @@ describe(
       describe("create new transform", () => {
         it("should create SQL transform via metabot", () => {
           visitTransformListPage();
-          H.openMetabotViaSearchButton(true);
+          getMetabotButton().click();
 
           cy.log("Ask metabot for a new transform");
           H.mockMetabotResponse({
@@ -149,7 +152,7 @@ describe(
 
         it("should create Python transform via metabot", () => {
           visitTransformListPage();
-          H.openMetabotViaSearchButton(true);
+          getMetabotButton().click();
 
           cy.log("Ask metabot for a new transform");
           H.mockMetabotResponse({
@@ -255,7 +258,7 @@ describe(
 
           cy.get("@model").then(({ body: model }) => {
             visitTransformListPage();
-            H.openMetabotViaSearchButton(true);
+            getMetabotButton().click();
 
             cy.log("Ask metabot for a new transform that references the model");
             const modelTagName = `#${model.id}-test-model`;
@@ -301,7 +304,7 @@ describe(
           }).as("transformId");
 
           visitTransformListPage();
-          H.openMetabotViaSearchButton(true);
+          getMetabotButton().click();
 
           // Ask metabot for a change to existing transform
           cy.get("@transformId").then((transformId) => {
@@ -377,7 +380,7 @@ describe(
                 sourceTables: { foo: tableId },
               }).then((transformId) => {
                 visitTransformListPage();
-                H.openMetabotViaSearchButton(true);
+                getMetabotButton().click();
 
                 // Ask metabot for a change to existing transform
                 cy.get("@transformId").then((transformId) => {

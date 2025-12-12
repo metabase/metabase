@@ -101,7 +101,7 @@
                        (when-not include-library?
                          [:or [:= nil :type]
                           [:not-in :type [collection/library-collection-type
-                                          collection/library-models-collection-type
+                                          collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-filter-clause
@@ -122,6 +122,10 @@
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
@@ -179,6 +183,10 @@
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
@@ -222,17 +230,26 @@
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
-      (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                          (update acc (case (keyword card-type)
-                                                        :model :dataset
-                                                        :metric :metric
-                                                        :card) conj collection-id))
-                                        {:dataset #{}
-                                         :metric  #{}
-                                         :card    #{}}
-                                        (t2/reducible-query {:select-distinct [:collection_id :type]
-                                                             :from            [:report_card]
-                                                             :where           [:= :archived false]}))
+      (let [collection-type-ids (merge (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                                                 (update acc (case (keyword card-type)
+                                                               :model :dataset
+                                                               :metric :metric
+                                                               :card) conj collection-id))
+                                               {:dataset #{}
+                                                :metric  #{}
+                                                :card    #{}}
+                                               (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                                    :from            [:report_card]
+                                                                    :where           [:= :archived false]}))
+                                       ;; Tables in collections are an EE feature (data-studio)
+                                       (when (premium-features/has-feature? :data-studio)
+                                         {:table (->> (t2/query {:select-distinct [:collection_id]
+                                                                 :from :metabase_table
+                                                                 :where [:and
+                                                                         [:= :is_published true]
+                                                                         [:= :archived_at nil]]})
+                                                      (map :collection_id)
+                                                      (into #{}))}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -250,7 +267,8 @@
     "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
     "snippet"
     "no_models"
-    "timeline"})
+    "timeline"
+    "table"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -380,7 +398,7 @@
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
-                  [:= :collection_id (:id collection)]
+                  [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
@@ -481,11 +499,11 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
-                      [:= :collection_id (:id collection)]
+                      [:= :c.collection_id (:id collection)]
                       [:= :c.archived_directly false]])
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
@@ -579,11 +597,11 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
-                      [:= :collection_id (:id collection)]
+                      [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
                    [:= :archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
@@ -659,7 +677,7 @@
           [:or [:= nil :type]
            [:not [:in :type [collection/library-collection-type
                              collection/library-metrics-collection-type
-                             collection/library-models-collection-type]]]])
+                             collection/library-data-collection-type]]]])
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
@@ -683,6 +701,26 @@
 (defmethod collection-children-query :collection
   [_ collection options]
   (collection-query collection options))
+
+(defmethod collection-children-query :table
+  [_ collection {:keys [archived? pinned-state]}]
+  {:select [:t.id
+            [:t.id :table_id]
+            [:t.display_name :name]
+            :t.description
+            :t.collection_id
+            [:t.db_id :database_id]
+            [[:!= :t.archived_at nil] :archived]
+            [(h2x/literal "table") :model]]
+   :from   [[:metabase_table :t]]
+   :where  [:and
+            [:= :t.is_published true]
+            (poison-when-pinned-clause pinned-state)
+            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+            [:= :t.collection_id (:id collection)]
+            (if archived?
+              [:!= :t.archived_at nil]
+              [:= :t.archived_at nil])]})
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
@@ -710,6 +748,20 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
+        ;; Tables in collections are an EE feature (data-studio)
+        collections-containing-tables
+        (if (premium-features/has-feature? :data-studio)
+          (->> (when (seq descendant-collection-ids)
+                 (t2/query {:select-distinct [:collection_id]
+                            :from :metabase_table
+                            :where [:and
+                                    [:= :is_published true]
+                                    [:= :archived_at nil]
+                                    [:in :collection_id descendant-collection-ids]]}))
+               (map :collection_id)
+               (into #{}))
+          #{})
+
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
                (t2/query {:select-distinct [:collection_id]
@@ -730,7 +782,8 @@
 
         child-type->coll-id-set
         (merge child-type->coll-id-set
-               {:collection collections-containing-collections
+               {:table collections-containing-tables
+                :collection collections-containing-collections
                 :dashboard collections-containing-dashboards})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
@@ -760,6 +813,10 @@
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
             update-personal-collection)))))
+
+(defmethod post-process-collection-children :table
+  [_ _ _collection rows]
+  (map #(update % :archived api/bit->boolean) rows))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
@@ -793,6 +850,7 @@
     :document   :model/Document
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
+    :table      :model/Table
     :timeline   :model/Timeline))
 
 (defn post-process-rows
@@ -981,8 +1039,9 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
-                                      (premium-features/enable-documents?) (conj :document))
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document]
+                                      ;; Tables in collections are an EE feature (data-studio)
+                                      (premium-features/has-feature? :data-studio) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -1012,6 +1071,10 @@
                   :can_restore
                   :can_delete)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
@@ -1129,6 +1192,10 @@
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/root"
   "Return the 'Root' Collection object with standard details added"
   [_route-params
@@ -1152,7 +1219,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
@@ -1250,6 +1322,10 @@
         (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
       (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new Collection."
   [_route-params
@@ -1323,6 +1399,10 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph"
   "Fetch a graph of all Collection Permissions."
   [_route-params
@@ -1374,6 +1454,10 @@
     {:revision (perms/latest-collection-permissions-revision-id)}
     (perms/graph namespace)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
   are present in the request, and leave the rest unchanged.
@@ -1399,6 +1483,10 @@
 
 ;;; ------------------------------------------ Fetching a single Collection -------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch a specific Collection with standard details added"
   [{:keys [id]} :- [:map
@@ -1406,6 +1494,10 @@
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [{:keys [id]} :- [:map
@@ -1439,6 +1531,10 @@
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Deletes a collection permanently"
   [{:keys [id]} :- [:map
@@ -1465,7 +1561,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:
 

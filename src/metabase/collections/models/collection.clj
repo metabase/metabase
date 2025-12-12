@@ -48,8 +48,7 @@
 
 (defn- archived-directly-models
   []
-  (cond-> #{:model/Card :model/Dashboard}
-    (premium-features/enable-documents?) (conj :model/Document)))
+  #{:model/Card :model/Dashboard :model/Document})
 
 (defn- collectable-models
   []
@@ -72,12 +71,12 @@
   "The value of the `:type` field for library collections."
   "library")
 
-(def ^:constant library-models-collection-type
-  "The value of the `:type` field for collections that only allow models."
-  "library-models")
+(def ^:constant library-data-collection-type
+  "The value of the `:type` field for collections that only allow tables."
+  "library-data")
 
 (def ^:constant library-metrics-collection-type
-  "The value of the `:type` field for collections that only allow models."
+  "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
 (defn- trash-collection* []
@@ -133,10 +132,10 @@
   [collection]
   (= (:type collection) library-collection-type))
 
-(defn- is-library-models-collection?
-  "Is this the library-models (named 'Data') collection?"
+(defn- is-library-data-collection?
+  "Is this the Data collection?"
   [collection]
-  (= (:type collection) library-models-collection-type))
+  (= (:type collection) library-data-collection-type))
 
 (defn- is-library-metrics-collection?
   "Is this the Metrics collection?"
@@ -179,13 +178,13 @@
                                                                         :type     library-collection-type
                                                                         :location "/"})
         base-location (str "/" (:id library) "/")
-        models        (t2/insert-returning-instance! :model/Collection {:name     "Data"
-                                                                        :type     library-models-collection-type
+        data          (t2/insert-returning-instance! :model/Collection {:name     "Data"
+                                                                        :type     library-data-collection-type
                                                                         :location base-location})
         metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
                                                                         :type     library-metrics-collection-type
                                                                         :location base-location})]
-    (doseq [col [library models metrics]]
+    (doseq [col [library data metrics]]
       (t2/delete! :model/Permissions :collection_id (:id col))
       (perms/grant-collection-read-permissions! (perms/all-users-group) col))
     library))
@@ -208,7 +207,7 @@
   (cond-> collection
     (is-trash? collection) (assoc :name (tru "Trash"))
     (is-library? collection) (assoc :name (tru "Library"))
-    (is-library-models-collection? collection) (assoc :name (tru "Data"))
+    (is-library-data-collection? collection) (assoc :name (tru "Data"))
     (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
@@ -222,7 +221,8 @@
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
-  (= id (:id (audit/default-audit-collection))))
+  (when-not (audit/analytics-dev-mode)
+    (= id (:id (audit/default-audit-collection)))))
 
 (defmethod mi/can-write? :model/Collection
   ([instance]
@@ -1744,6 +1744,8 @@
   ;; delete all collection children
   (t2/delete! :model/Collection :location (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]
+    (t2/update! :model/Table :collection_id [:in affected-collection-ids] {:collection_id nil
+                                                                           :is_published  false})
     (doseq [model [:model/Card
                    :model/Dashboard
                    :model/NativeQuerySnippet
@@ -1865,15 +1867,14 @@
                                                                                    [:= :collection_id id]
                                                                                    (when skip-archived [:not :archived])]})]
                                {["Card" card-id] {"Collection" id}}))
-        documents   (when config/ee-available?
-                      (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
-                                                                                [:and [:= :collection_id id]
-                                                                                 (when skip-archived [:not :archived])]})]
-                                 {["Document" doc-id] {"Collection" id}})))
-        timelines       (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and
-                                                                                               [:= :collection_id id]
-                                                                                               (when skip-archived [:not :archived])]})]
-                                   {["Timeline" timeline-id] {"Collection" id}}))]
+        documents   (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
+                                                                              [:and [:= :collection_id id]
+                                                                               (when skip-archived [:not :archived])]})]
+                               {["Document" doc-id] {"Collection" id}}))
+        timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and
+                                                                                           [:= :collection_id id]
+                                                                                           (when skip-archived [:not :archived])]})]
+                               {["Timeline" timeline-id] {"Collection" id}}))]
     (merge child-colls dashboards cards documents timelines)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
@@ -2183,5 +2184,5 @@
   [collection-id]
   (when collection-id
     (pos-int? (t2/count :model/Collection :id collection-id :type [:in [library-collection-type
-                                                                        library-models-collection-type
+                                                                        library-data-collection-type
                                                                         library-metrics-collection-type]]))))

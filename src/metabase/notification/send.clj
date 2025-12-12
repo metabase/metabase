@@ -31,12 +31,11 @@
 (def ^:private default-shutdown-timeout-ms (* 30 60 1000)) ;; 30 minutes
 
 (def ^:private default-retry-config
-  {:max-attempts            (if config/is-dev? 2 7)
+  {:max-retries             (if config/is-dev? 1 6)
    :initial-interval-millis 500
    :multiplier              2.0
-   :randomization-factor    0.1
-   :max-interval-millis     30000
-   :retry-on-exception-pred (comp not ::skip-retry? ex-data)})
+   :jitter-factor           0.1
+   :max-interval-millis     30000})
 
 (defn- unretriable-error?
   [error]
@@ -55,29 +54,12 @@
                          {:type (:channel_type handler)})
         channel-type (:type channel)]
     (try
-      (let [#_notification-id #_(:notification_id handler)
-            retry-config    default-retry-config
-            retry-errors    (volatile! [])
-            retry-report    (fn []
-                              {:attempted_retries (count @retry-errors)
-                               ;; we want the last retry to be the most recent
-                               :retry_errors       (reverse @retry-errors)})
-            send!           (fn []
-                              (try
-                                (channel/send! channel message)
-                                (catch Exception e
-                                  (let [skip-retry? (should-skip-retry? e (:type channel))
-                                        new-e       (ex-info (ex-message e)
-                                                             (assoc (ex-data e) ::skip-retry? skip-retry?)
-                                                             e)]
-                                    (if-not skip-retry?
-                                      (do
-                                        (vswap! retry-errors conj {:message   (u/strip-error e)
-                                                                   :timestamp (t/offset-date-time)})
-                                        (log/warn e "Failed to send,  retrying..."))
-                                      (log/warn e "Failed to send, not retrying"))
-                                    (throw new-e)))))
-            retrier         (retry/make retry-config)]
+      (let [retry-config default-retry-config
+            retry-errors (volatile! [])
+            retry-report (fn []
+                           {:attempted_retries (count @retry-errors)
+                            ;; we want the last retry to be the most recent
+                            :retry_errors      (reverse @retry-errors)})]
         (log/debug "Started sending")
         (task-history/with-task-history {:task            "channel-send"
                                          :on-success-info (fn [update-map _result]
@@ -93,7 +75,17 @@
                                                            :notification_id   notification-id
                                                            :notification_type payload-type
                                                            :recipient_ids     (map :id (:recipients handler))}}
-          (retrier send!)
+          (retry/with-retry (assoc retry-config
+                                   :retry-on Exception
+                                   :abort-if (fn [_ ex]
+                                               (should-skip-retry? ex (:type channel)))
+                                   :on-retry (fn [_ ex]
+                                               (vswap! retry-errors conj {:message   (u/strip-error ex)
+                                                                          :timestamp (t/offset-date-time)})
+                                               (log/warn ex "Failed to send, retrying..."))
+                                   :on-failure (fn [_ ex]
+                                                 (log/warn ex "Failed to send, not retrying")))
+            (channel/send! channel message))
           (log/debugf "Sent with %d retries" (count @retry-errors))
           (log/info "Sent successfully")))
       (prometheus/inc! :metabase-notification/channel-send-ok {:payload-type payload-type

@@ -19,8 +19,6 @@ export function snapshot(name) {
  * } name
  */
 export function restore(name = "default") {
-  cy.skipOn(name.includes("mongo") && Cypress.env("QA_DB_MONGO") !== true);
-
   cy.log("Restore Data Set");
 
   // automatically reset the data db if this is a test that uses a writable db

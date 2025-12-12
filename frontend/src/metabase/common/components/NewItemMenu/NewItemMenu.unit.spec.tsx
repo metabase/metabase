@@ -7,8 +7,13 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { NewModals } from "metabase/new/components/NewModals/NewModals";
 import type { Database } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockUser,
+  createMockUserPermissions,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import NewItemMenu from "./NewItemMenu";
 
@@ -34,6 +39,16 @@ async function setup({ databases = [SAMPLE_DATABASE] }: SetupOpts = {}) {
       <NewItemMenu trigger={<button>New</button>} />
       <NewModals />
     </>,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({
+          permissions: createMockUserPermissions({
+            can_create_queries: true,
+            can_create_native_queries: true,
+          }),
+        }),
+      }),
+    },
   );
   await userEvent.click(screen.getByText("New"));
 }

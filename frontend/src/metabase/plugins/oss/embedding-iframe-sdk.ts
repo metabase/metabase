@@ -1,8 +1,10 @@
-import type { ReactNode } from "react";
+import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/subscriptions";
 
 const getDefaultPluginEmbeddingIframeSdk = () => ({
-  hasValidLicense: () => false,
-  SdkIframeEmbedRoute: (): ReactNode => null,
+  isEnabled: () => false,
+  DashboardSubscriptionsButton: (
+    _props: DashboardSubscriptionsButtonProps,
+  ): JSX.Element | null => null,
 });
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = getDefaultPluginEmbeddingIframeSdk();

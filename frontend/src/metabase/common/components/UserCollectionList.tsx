@@ -79,7 +79,7 @@ export const UserCollectionList = () => {
           </Grid>
         )}
       </Box>
-      <Flex justify="end">
+      <Flex justify="end" className={CS.syncStatusAwarePagination}>
         <PaginationControls
           page={page}
           pageSize={PAGE_SIZE}

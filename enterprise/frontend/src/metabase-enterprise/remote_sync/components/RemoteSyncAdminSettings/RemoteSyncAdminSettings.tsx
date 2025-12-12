@@ -312,7 +312,9 @@ export const RemoteSyncAdminSettings = () => {
                           : t`Set up Remote Sync`
                       }
                       variant="filled"
-                      disabled={!dirty}
+                      disabled={
+                        isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]
+                      }
                       flex="auto 0 0"
                     />
                   </Flex>

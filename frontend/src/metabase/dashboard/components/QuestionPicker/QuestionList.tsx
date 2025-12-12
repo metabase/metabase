@@ -19,6 +19,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Search from "metabase/entities/search";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import { getIcon } from "metabase/lib/icon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
@@ -145,7 +146,7 @@ export function QuestionList({
               className={S.QuestionListItem}
               name={item.getName()}
               icon={{
-                name: item.getIcon().name,
+                name: getIcon(item).name,
                 size: item.model === "dataset" ? 18 : 16,
                 className: S.QuestionListItemIcon,
               }}

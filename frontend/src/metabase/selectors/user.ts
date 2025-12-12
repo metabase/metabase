@@ -32,10 +32,20 @@ export const canAccessSettings = createSelector(
 
 export const getUserAttributes = createSelector(
   [getUser],
-  (user) => user?.login_attributes || {},
+  (user) => user?.attributes || {},
 );
 
 export const getUserPersonalCollectionId = createSelector(
   [getUser],
   (user) => user?.personal_collection_id,
+);
+
+export const canUserCreateQueries = createSelector(
+  [getUser],
+  (user) => user?.permissions?.can_create_queries ?? false,
+);
+
+export const canUserCreateNativeQueries = createSelector(
+  [getUser],
+  (user) => user?.permissions?.can_create_native_queries ?? false,
 );

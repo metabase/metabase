@@ -1839,12 +1839,12 @@ describe("scenarios > embedding > full app", () => {
 
       cy.intercept({
         method: "GET",
-        path: "/api/ee/document/*",
+        path: "/api/document/*",
       }).as("documentGet");
 
       cy.intercept({
         method: "GET",
-        path: "/api/ee/comment/*",
+        path: "/api/comment/*",
       }).as("commentGet");
 
       H.visitFullAppEmbeddingUrl({
@@ -1892,6 +1892,14 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
     H.updateSetting("jwt-shared-secret", jwtSecret);
     H.updateSetting("jwt-enabled", true);
 
+    cy.intercept("POST", `/api/card/${ORDERS_QUESTION_ID}/query`).as(
+      "getCardQuery",
+    );
+    addLinkClickBehavior({
+      dashboardId,
+      linkTemplate: "/question/{{test_attribute}}",
+    });
+
     cy.signOut(); // we *need* to sign out, otherwise the SSO process won't kick in
   });
 
@@ -1936,6 +1944,43 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
     // 4) verify the user is authenticated and can access the dashboard
     cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
     H.main().findByText("Orders in a dashboard").should("be.visible");
+  });
+
+  it("should pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
+    const jwtAttributeValue = ORDERS_QUESTION_ID;
+
+    // 1) set up a click behavior that uses a user attribute in the URL
+    // Added in beforeeach so it uses the admin user
+
+    // 2) sign a jwt for the user with a custom attribute
+    cy.task("signJwt", {
+      payload: {
+        email: USERS.normal.email,
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
+        test_attribute: jwtAttributeValue,
+      },
+      secret: jwtSecret,
+    }).then((jwtToken) => {
+      // 3) mock the JWT provider to redirect to the auth/sso endpoint with the JWT
+      cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
+        const redirectUrl = `${baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`;
+        req.redirect(redirectUrl);
+      }).as("jwt-provider");
+    });
+
+    // 4) visit the dashboard as embedded
+    H.visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboardId}` });
+
+    cy.wait("@jwt-provider");
+
+    // 5) verify user is on dashboard
+    cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
+
+    cy.findAllByRole("gridcell").first().click();
+    cy.wait("@getCardQuery");
+
+    cy.findByTestId("question-filter-header").realHover();
+    cy.findByTestId("main-logo").should("be.visible");
   });
 });
 

@@ -9,29 +9,29 @@ import {
 
 describe("qa databases snapshots", { tags: "@external" }, () => {
   it("creates snapshots for supported qa databases", () => {
-    if (Cypress.env("QA_DB_MONGO") === true) {
-      restoreAndAuthenticate();
-      addMongoDatabase();
-      snapshot("mongo-5");
-    } else {
-      // Postgres
-      restoreAndAuthenticate();
+    // Mongo
+    restoreAndAuthenticate();
 
-      addPostgresDatabase();
-      snapshot("postgres-12");
+    addMongoDatabase();
+    snapshot("mongo-5");
 
-      convertToWritable("postgres");
-      snapshot("postgres-writable");
+    // Postgres
+    restoreAndAuthenticate();
 
-      // MySQL
-      restoreAndAuthenticate();
+    addPostgresDatabase();
+    snapshot("postgres-12");
 
-      addMySQLDatabase({});
-      snapshot("mysql-8");
+    convertToWritable("postgres");
+    snapshot("postgres-writable");
 
-      convertToWritable("mysql");
-      snapshot("mysql-writable");
-    }
+    // MySQL
+    restoreAndAuthenticate();
+
+    addMySQLDatabase({});
+    snapshot("mysql-8");
+
+    convertToWritable("mysql");
+    snapshot("mysql-writable");
 
     restore("blank");
   });

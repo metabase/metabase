@@ -20,7 +20,6 @@ import {
   undo,
 } from "metabase/lib/entities";
 import { compose, withAction, withRequestState } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
@@ -175,10 +174,8 @@ const Dashboards = createEntity({
 
   objectSelectors: {
     getName: (dashboard) => dashboard && dashboard.name,
-    getUrl: (dashboard) => dashboard && Urls.dashboard(dashboard),
     getCollection: (dashboard) =>
       dashboard && normalizedCollection(dashboard.collection),
-    getIcon: () => ({ name: "dashboard" }),
     getColor: () => color("dashboard"),
   },
 
