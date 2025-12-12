@@ -1,7 +1,6 @@
 (ns metabase.queries.models.card-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
