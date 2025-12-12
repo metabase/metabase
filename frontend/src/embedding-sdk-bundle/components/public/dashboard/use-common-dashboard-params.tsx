@@ -8,6 +8,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { parseNumber } from "metabase/lib/number";
 import * as Urls from "metabase/lib/urls";
 import { isJWT } from "metabase/lib/utils";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
@@ -149,5 +150,5 @@ const findDashboardById = (
 };
 
 function isNumericStringOrNumber(value: string | number): boolean {
-  return Number.isFinite(Number(value));
+  return parseNumber(String(value)) !== null;
 }
