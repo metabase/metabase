@@ -122,7 +122,8 @@
             [:source ::transforms.schema/transform-source]
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
   (check-feature-enabled! body)
@@ -134,7 +135,7 @@
                     (let [tag-ids (:tag_ids body)
                           transform (t2/insert-returning-instance!
                                      :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id])
                                             :creator_id api/*current-user-id*))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
@@ -223,7 +224,8 @@
             [:source {:optional true} ::transforms.schema/transform-source]
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
