@@ -380,7 +380,7 @@
                     :global_id (:id x2)
                     :ref_id ws-x-2-id}
                    resp)))
-          (testing "Remaining workspace transform is left untouched"
+          (testing "Remaining workspace transform was deleted"
             (is (= 0 (count remaining))))
           (testing "Propagation back to core"
             (is (= (:name ws-x-2)
