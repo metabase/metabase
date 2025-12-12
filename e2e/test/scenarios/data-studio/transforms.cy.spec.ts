@@ -2219,7 +2219,7 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
-H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
+describe("scenarios > admin > transforms", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
