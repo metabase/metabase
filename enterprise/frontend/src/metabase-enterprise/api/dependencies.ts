@@ -7,10 +7,8 @@ import type {
   DependencyNode,
   GetDependencyGraphRequest,
   ListBrokenGraphNodesRequest,
-  ListBrokenGraphNodesResponse,
   ListNodeDependentsRequest,
   ListUnreferencedGraphNodesRequest,
-  ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -45,7 +43,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
     listBrokenGraphNodes: builder.query<
-      ListBrokenGraphNodesResponse,
+      DependencyNode[],
       ListBrokenGraphNodesRequest
     >({
       query: (params) => ({
@@ -53,11 +51,11 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/dependencies/graph/broken",
         params,
       }),
-      providesTags: (response) =>
-        response ? provideDependencyNodeListTags(response.data) : [],
+      providesTags: (nodes) =>
+        nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
     listUnreferencedGraphNodes: builder.query<
-      ListUnreferencedGraphNodesResponse,
+      DependencyNode[],
       ListUnreferencedGraphNodesRequest
     >({
       query: (params) => ({
@@ -65,8 +63,8 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/dependencies/graph/unreferenced",
         params,
       }),
-      providesTags: (response) =>
-        response ? provideDependencyNodeListTags(response.data) : [],
+      providesTags: (nodes) =>
+        nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
     checkCardDependencies: builder.query<
       CheckDependenciesResponse,

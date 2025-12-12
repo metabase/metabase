@@ -2,7 +2,6 @@ import type {
   CardId,
   CollectionId,
   DatabaseId,
-  DependencyGroupType,
   FieldId,
   NativeQuerySnippetId,
   SchemaName,
@@ -187,36 +186,10 @@ export function dataStudioTasks() {
   return `${ROOT_URL}/tasks`;
 }
 
-export type DependencyListParams = {
-  query?: string;
-  groupTypes?: DependencyGroupType[];
-  pageIndex?: number;
-};
-
-function dataStudioDependencyList(
-  baseUrl: string,
-  { query, groupTypes, pageIndex }: DependencyListParams = {},
-) {
-  const searchParams = new URLSearchParams();
-
-  if (query != null) {
-    searchParams.set("query", query);
-  }
-  if (groupTypes != null) {
-    groupTypes.forEach((type) => searchParams.append("groupTypes", type));
-  }
-  if (pageIndex != null) {
-    searchParams.set("pageIndex", pageIndex.toString());
-  }
-
-  const queryString = searchParams.toString();
-  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
+export function dataStudioTasksBroken() {
+  return `${dataStudioTasks()}/broken`;
 }
 
-export function dataStudioBrokenItems(params: DependencyListParams = {}) {
-  return dataStudioDependencyList(`${dataStudioTasks()}/broken`, params);
-}
-
-export function dataStudioUnreferencedItems(params: DependencyListParams = {}) {
-  return dataStudioDependencyList(`${dataStudioTasks()}/unreferenced`, params);
+export function dataStudioTasksUnreferenced() {
+  return `${dataStudioTasks()}/unreferenced`;
 }

@@ -11,12 +11,12 @@ export function ListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Broken`,
-      to: Urls.dataStudioBrokenItems(),
+      to: Urls.dataStudioTasksBroken(),
       icon: "list",
     },
     {
       label: t`Unreferenced`,
-      to: Urls.dataStudioUnreferencedItems(),
+      to: Urls.dataStudioTasksUnreferenced(),
       icon: "list",
     },
   ];

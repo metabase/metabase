@@ -8,14 +8,14 @@ import { getColumns } from "./utils";
 
 type DependencyListProps = {
   nodes: DependencyNode[];
-  withErrorsColumn?: boolean;
-  withDependentsCountColumn?: boolean;
+  withErrorsColumn: boolean;
+  withDependentsCountColumn: boolean;
 };
 
 export const DependencyList = memo(function DependencyList({
   nodes,
-  withErrorsColumn = false,
-  withDependentsCountColumn = false,
+  withErrorsColumn,
+  withDependentsCountColumn,
 }: DependencyListProps) {
   const columns = useMemo(
     () => getColumns({ withErrorsColumn, withDependentsCountColumn }),

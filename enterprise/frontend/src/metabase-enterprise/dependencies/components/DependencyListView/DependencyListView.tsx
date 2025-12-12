@@ -1,86 +1,49 @@
-import { useDebouncedCallback } from "@mantine/hooks";
-import { type ChangeEvent, useCallback, useState } from "react";
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import {
-  Center,
-  Flex,
-  Icon,
-  Loader,
-  Pagination,
-  Stack,
-  TextInput,
-} from "metabase/ui";
+import { Box, Center, Flex, Icon, Loader, Stack, TextInput } from "metabase/ui";
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
+
+import type { DependencyFilterOptions } from "../../types";
 
 import { DependencyList } from "./DependencyList";
 import { FilterOptionsPicker } from "./FilterOptionsPicker";
 import { ListEmptyState } from "./ListEmptyState";
 import { ListHeader } from "./ListHeader";
-import type { DependencyListViewParams } from "./types";
-import { getSearchQuery } from "./utils";
 
 type DependencyListViewProps = {
   nodes: DependencyNode[];
-  params: DependencyListViewParams;
-  error: unknown;
+  searchValue: string;
+  filterOptions: DependencyFilterOptions;
   availableGroupTypes: DependencyGroupType[];
   nothingFoundMessage: string;
-  pageSize: number;
-  totalNodes: number;
+  error: unknown;
   isFetching: boolean;
   isLoading: boolean;
   withErrorsColumn?: boolean;
   withDependentsCountColumn?: boolean;
-  onParamsChange: (
-    params: DependencyListViewParams,
-    withReplace?: boolean,
-  ) => void;
+  onSearchValueChange: (searchValue: string) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export function DependencyListView({
   nodes,
-  params,
+  searchValue,
+  filterOptions,
   availableGroupTypes,
   nothingFoundMessage,
-  pageSize,
-  totalNodes,
   isFetching,
   isLoading,
   error,
   withErrorsColumn = false,
   withDependentsCountColumn = false,
-  onParamsChange,
+  onSearchValueChange,
+  onFilterOptionsChange,
 }: DependencyListViewProps) {
-  const { query = "", pageIndex = 0 } = params;
-  const [searchValue, setSearchValue] = useState(query);
-  const pageNumber = pageIndex + 1;
-  const totalPages = Math.ceil(totalNodes / pageSize);
-
-  const handleSearchDebounce = useDebouncedCallback(
-    (query: string | undefined) => {
-      onParamsChange({ ...params, query, pageIndex: 0 }, true);
-    },
-    SEARCH_DEBOUNCE_DURATION,
-  );
-
-  const handleSearchChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const searchValue = event.target.value;
-      setSearchValue(searchValue);
-      handleSearchDebounce(getSearchQuery(searchValue));
-    },
-    [handleSearchDebounce],
-  );
-
-  const handlePageChange = useCallback(
-    (pageNumber: number) => {
-      onParamsChange({ ...params, pageIndex: pageNumber - 1 });
-    },
-    [params, onParamsChange],
-  );
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onSearchValueChange(event.target.value);
+  };
 
   return (
     <Stack flex={1} px="3.5rem" py="md" gap="md" h="100%">
@@ -97,9 +60,9 @@ export function DependencyListView({
           onChange={handleSearchChange}
         />
         <FilterOptionsPicker
-          params={params}
+          filterOptions={filterOptions}
           availableGroupTypes={availableGroupTypes}
-          onParamsChange={onParamsChange}
+          onFilterOptionsChange={onFilterOptionsChange}
         />
       </Flex>
       {isLoading || nodes.length === 0 ? (
@@ -111,22 +74,13 @@ export function DependencyListView({
           )}
         </Center>
       ) : (
-        <Stack flex={1} mih={0}>
+        <Box flex={1} mih={0}>
           <DependencyList
             nodes={nodes}
             withErrorsColumn={withErrorsColumn}
             withDependentsCountColumn={withDependentsCountColumn}
           />
-          {totalPages > 1 && (
-            <Center>
-              <Pagination
-                value={pageNumber}
-                total={totalPages}
-                onChange={handlePageChange}
-              />
-            </Center>
-          )}
-        </Stack>
+        </Box>
       )}
     </Stack>
   );

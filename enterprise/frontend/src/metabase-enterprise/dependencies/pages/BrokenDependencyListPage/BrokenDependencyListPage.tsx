@@ -1,69 +1,54 @@
-import type { Location } from "history";
-import { push, replace } from "react-router-redux";
+import { useDebouncedValue } from "@mantine/hooks";
+import { useState } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 
-import {
-  DependencyListView,
-  type DependencyListViewParams,
-} from "../../components/DependencyListView";
-import type { DependencyListRawParams } from "../../types";
-import {
-  getCardTypes,
-  getDependencyTypes,
-  parseDependencyListParams,
-} from "../../utils";
+import { DependencyListView } from "../../components/DependencyListView";
+import type { DependencyFilterOptions } from "../../types";
+import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
 
-import { AVAILABLE_GROUP_TYPES, PAGE_SIZE } from "./constants";
+import { AVAILABLE_GROUP_TYPES } from "./constants";
 
-type BrokenDependencyListPageProps = {
-  location: Location<DependencyListRawParams>;
-};
+export function BrokenDependencyListPage() {
+  const [searchValue, setSearchValue] = useState("");
+  const [searchQuery] = useDebouncedValue(
+    getSearchQuery(searchValue),
+    SEARCH_DEBOUNCE_DURATION,
+  );
 
-export function BrokenDependencyListPage({
-  location,
-}: BrokenDependencyListPageProps) {
-  const params = parseDependencyListParams(location.query);
+  const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>({
+    groupTypes: AVAILABLE_GROUP_TYPES,
+  });
+  const groupTypes =
+    filterOptions.groupTypes.length > 0
+      ? filterOptions.groupTypes
+      : AVAILABLE_GROUP_TYPES;
+
   const {
-    query = "",
-    groupTypes = AVAILABLE_GROUP_TYPES,
-    pageIndex = 0,
-  } = params;
-  const dispatch = useDispatch();
-
-  const { data, isFetching, isLoading, error } = useListBrokenGraphNodesQuery({
-    query,
+    data = [],
+    isFetching,
+    isLoading,
+    error,
+  } = useListBrokenGraphNodesQuery({
+    query: searchQuery,
     types: getDependencyTypes(groupTypes),
     card_types: getCardTypes(groupTypes),
-    offset: pageIndex * PAGE_SIZE,
-    limit: PAGE_SIZE,
   });
-
-  const handleParamsChange = (
-    params: DependencyListViewParams,
-    withReplace?: boolean,
-  ) => {
-    const newUrl = Urls.dataStudioBrokenItems(params);
-    dispatch(withReplace ? replace(newUrl) : push(newUrl));
-  };
 
   return (
     <DependencyListView
-      nodes={data?.data ?? []}
-      params={params}
-      error={error}
+      nodes={data}
+      searchValue={searchValue}
+      filterOptions={filterOptions}
       availableGroupTypes={AVAILABLE_GROUP_TYPES}
       nothingFoundMessage={t`No broken entities found.`}
-      pageSize={PAGE_SIZE}
-      totalNodes={data?.total ?? 0}
+      error={error}
       isFetching={isFetching}
       isLoading={isLoading}
-      withErrorsColumn
-      withDependentsCountColumn
-      onParamsChange={handleParamsChange}
+      onSearchValueChange={setSearchValue}
+      onFilterOptionsChange={setFilterOptions}
     />
   );
 }

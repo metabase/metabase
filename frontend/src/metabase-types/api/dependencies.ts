@@ -251,47 +251,14 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export const DEPENDENCY_SORT_COLUMNS = ["name", "location"] as const;
-export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
-
-export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
-export type DependencySortDirection =
-  (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
-
 export type ListBrokenGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
-  sort_column?: DependencySortColumn;
-  sort_direction?: DependencySortDirection;
-  limit?: number;
-  offset?: number;
-};
-
-export type ListBrokenGraphNodesResponse = {
-  data: DependencyNode[];
-  sort_column: DependencySortColumn;
-  sort_direction: DependencySortDirection;
-  limit: number;
-  offset: number;
-  total: number;
 };
 
 export type ListUnreferencedGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
-  sort_column?: DependencySortColumn;
-  sort_direction?: DependencySortDirection;
-  limit?: number;
-  offset?: number;
-};
-
-export type ListUnreferencedGraphNodesResponse = {
-  data: DependencyNode[];
-  sort_column: DependencySortColumn;
-  sort_direction: DependencySortDirection;
-  limit: number;
-  offset: number;
-  total: number;
 };

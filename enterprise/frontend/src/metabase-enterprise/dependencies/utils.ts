@@ -3,23 +3,21 @@ import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import {
-  type CardType,
-  DEPENDENCY_GROUP_TYPES,
-  type DependencyError,
-  type DependencyErrorType,
-  type DependencyGroupType,
-  type DependencyId,
-  type DependencyNode,
-  type DependencyType,
-  type LastEditInfo,
-  type VisualizationDisplay,
+import type {
+  CardType,
+  DependencyError,
+  DependencyErrorType,
+  DependencyGroupType,
+  DependencyId,
+  DependencyNode,
+  DependencyType,
+  LastEditInfo,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
 import type {
   DependencyErrorInfo,
   DependencyGroupTypeInfo,
-  DependencyListRawParams,
   NodeId,
   NodeLink,
   NodeLocationInfo,
@@ -475,20 +473,6 @@ export function getDependencyErrorInfo(
   };
 }
 
-export function parseString(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  return value;
-}
-
-export function parseNumber(value: unknown): number | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  return parseInt(value, 10);
-}
-
 export function parseEnum<T extends string>(
   value: unknown,
   items: readonly T[],
@@ -500,25 +484,7 @@ export function parseEnum<T extends string>(
   return item != null ? item : undefined;
 }
 
-export function parseList<T>(
-  value: unknown,
-  parseItem: (value: unknown) => T | undefined,
-): T[] | undefined {
-  if (value == null) {
-    return undefined;
-  }
-  const values = Array.isArray(value) ? value : [value];
-  return values.map(parseItem).filter((item) => item != null);
-}
-
-export function parseDependencyListParams(
-  rawParams?: DependencyListRawParams,
-): Urls.DependencyListParams {
-  return {
-    query: parseString(rawParams?.query),
-    groupTypes: parseList(rawParams?.groupTypes, (value) =>
-      parseEnum(value, DEPENDENCY_GROUP_TYPES),
-    ),
-    pageIndex: parseNumber(rawParams?.pageIndex),
-  };
+export function getSearchQuery(searchValue: string): string | undefined {
+  const searchQuery = searchValue.trim();
+  return searchQuery.length > 0 ? searchQuery : undefined;
 }

@@ -4,20 +4,20 @@ import { t } from "ttag";
 import { Box, Button, FixedSizeIcon, Popover, Stack } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
 
-import type { DependencyListViewParams } from "../types";
+import type { DependencyFilterOptions } from "../../../types";
 
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
 type FilterOptionsPickerProps = {
-  params: DependencyListViewParams;
+  filterOptions: DependencyFilterOptions;
   availableGroupTypes: DependencyGroupType[];
-  onParamsChange: (params: DependencyListViewParams) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export function FilterOptionsPicker({
-  params,
+  filterOptions,
   availableGroupTypes,
-  onParamsChange,
+  onFilterOptionsChange,
 }: FilterOptionsPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
@@ -33,9 +33,9 @@ export function FilterOptionsPicker({
       </Popover.Target>
       <Popover.Dropdown>
         <ListFilterPopover
-          params={params}
+          filterOptions={filterOptions}
           availableGroupTypes={availableGroupTypes}
-          onParamsChange={onParamsChange}
+          onFilterOptionsChange={onFilterOptionsChange}
         />
       </Popover.Dropdown>
     </Popover>
@@ -43,25 +43,25 @@ export function FilterOptionsPicker({
 }
 
 type ListFilterPopoverProps = {
-  params: DependencyListViewParams;
+  filterOptions: DependencyFilterOptions;
   availableGroupTypes: DependencyGroupType[];
-  onParamsChange: (params: DependencyListViewParams) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 function ListFilterPopover({
-  params,
+  filterOptions,
   availableGroupTypes,
-  onParamsChange,
+  onFilterOptionsChange,
 }: ListFilterPopoverProps) {
   const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
-    onParamsChange({ ...params, groupTypes });
+    onFilterOptionsChange({ ...filterOptions, groupTypes });
   };
 
   return (
     <Box w="20rem" p="md">
       <Stack>
         <TypeFilterPicker
-          groupTypes={params.groupTypes ?? []}
+          groupTypes={filterOptions.groupTypes ?? []}
           availableGroupTypes={availableGroupTypes}
           onChange={handleTypesChange}
         />

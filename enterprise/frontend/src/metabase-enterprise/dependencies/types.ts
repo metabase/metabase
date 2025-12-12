@@ -1,4 +1,5 @@
 import type { IconName } from "metabase/ui";
+import type { DependencyGroupType } from "metabase-types/api";
 
 export type NodeId = string;
 
@@ -22,8 +23,6 @@ export type DependencyErrorInfo = {
   detail?: string;
 };
 
-export type DependencyListRawParams = {
-  query?: string | string[];
-  groupTypes?: string | string[];
-  pageIndex?: string | string[];
+export type DependencyFilterOptions = {
+  groupTypes: DependencyGroupType[];
 };
