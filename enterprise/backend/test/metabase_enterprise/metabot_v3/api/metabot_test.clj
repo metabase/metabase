@@ -287,9 +287,7 @@
             (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                    (:message (mt/user-http-request :crowberto :put 402
                                                    (format "ee/metabot-v3/metabot/%d" metabot-id)
-                                                   {:use_verified_content true}))))))
-
-)))))
+                                                   {:use_verified_content true}))))))))))
 
 (deftest metabot-put-use-cases-test
   (testing "PUT /api/ee/metabot-v3/metabot/:id can update use_cases"

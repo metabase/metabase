@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api.metabot
   "`/api/ee/metabot-v3/metabot` routes"
   (:require
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
