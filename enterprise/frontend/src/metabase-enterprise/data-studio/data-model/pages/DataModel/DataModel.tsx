@@ -1,5 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -134,6 +134,10 @@ function DataModelContent({ params }: Props) {
     },
   );
 
+  const scrollToPanel = useCallback((el: HTMLDivElement | null) => {
+    el?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   if (databasesData?.data?.length === 0) {
     return <NoDatabasesEmptyState />;
   }
@@ -244,7 +248,7 @@ function DataModelContent({ params }: Props) {
             }
             maw={COLUMN_CONFIG.field.max}
             miw={COLUMN_CONFIG.field.min}
-            ref={(el) => el?.scrollIntoView({ behavior: "smooth" })}
+            ref={scrollToPanel}
           >
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {field && table && databaseId != null && (
@@ -282,7 +286,7 @@ function DataModelContent({ params }: Props) {
             p="lg"
             maw={COLUMN_CONFIG.preview.max}
             miw={COLUMN_CONFIG.preview.min}
-            ref={(el) => el?.scrollIntoView({ behavior: "smooth" })}
+            ref={scrollToPanel}
           >
             <PreviewSection
               className={S.preview}

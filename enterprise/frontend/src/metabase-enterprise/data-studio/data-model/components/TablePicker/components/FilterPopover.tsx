@@ -47,6 +47,7 @@ export function FilterPopover({ filters, onSubmit }: Props) {
             withinPortal: false,
             floatingStrategy: "fixed",
           }}
+          autoFocus
         />
 
         <UserInput
