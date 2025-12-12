@@ -286,8 +286,8 @@ describe(suiteTitle, () => {
           dashboardWidth,
           "EAJS preview should scale when opening a dashboard sidebar (EMB-1120)",
         ).to.be.within(
-            EXPECTED_APPROX_WIDTH - ERROR_TOLERANCE,
-            EXPECTED_APPROX_WIDTH + ERROR_TOLERANCE
+          EXPECTED_APPROX_WIDTH - ERROR_TOLERANCE,
+          EXPECTED_APPROX_WIDTH + ERROR_TOLERANCE,
         );
       });
     });
