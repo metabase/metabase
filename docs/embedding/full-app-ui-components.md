@@ -2,7 +2,7 @@
 title: Full app embedding UI components
 description: Customize the UI components in your full app Metabase embed by adding parameters to the embedding URL.
 redirect_from:
-  - /docs/latest/embedding/interactive-components
+  - /docs/latest/embedding/interactive-ui-components
 ---
 
 # Full app embedding UI components
