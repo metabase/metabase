@@ -10,28 +10,35 @@ import {
   DependencyListView,
   type DependencyListViewParams,
 } from "../../components/DependencyListView";
-import { getCardTypes, getDependencyTypes } from "../../utils";
+import type { DependencyListRawParams } from "../../types";
+import {
+  getCardTypes,
+  getDependencyTypes,
+  parseDependencyListParams,
+} from "../../utils";
 
 import { AVAILABLE_GROUP_TYPES, PAGE_SIZE } from "./constants";
-import type { UnreferencedDependencyListRawParams } from "./types";
-import { parseRawParams } from "./utils";
 
 type UnreferencedDependencyListPageProps = {
-  location: Location<UnreferencedDependencyListRawParams>;
+  location: Location<DependencyListRawParams>;
 };
 
 export function UnreferencedDependencyListPage({
   location,
 }: UnreferencedDependencyListPageProps) {
-  const params = parseRawParams(location.query);
-  const { query = "", types, pageIndex = 0 } = params;
+  const params = parseDependencyListParams(location.query);
+  const {
+    query = "",
+    groupTypes = AVAILABLE_GROUP_TYPES,
+    pageIndex = 0,
+  } = params;
   const dispatch = useDispatch();
 
   const { data, isFetching, isLoading, error } =
     useListUnreferencedGraphNodesQuery({
       query,
-      types: getDependencyTypes(types ?? AVAILABLE_GROUP_TYPES),
-      card_types: getCardTypes(types ?? AVAILABLE_GROUP_TYPES),
+      types: getDependencyTypes(groupTypes),
+      card_types: getCardTypes(groupTypes),
       offset: pageIndex * PAGE_SIZE,
       limit: PAGE_SIZE,
     });

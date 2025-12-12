@@ -21,3 +21,9 @@ export type DependencyErrorInfo = {
   label: string;
   detail?: string;
 };
+
+export type DependencyListRawParams = {
+  query?: string | string[];
+  groupTypes?: string | string[];
+  pageIndex?: string | string[];
+};

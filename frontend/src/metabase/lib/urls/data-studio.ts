@@ -187,25 +187,23 @@ export function dataStudioTasks() {
   return `${ROOT_URL}/tasks`;
 }
 
-export type UnreferencedDependencyListParams = {
+export type DependencyListParams = {
   query?: string;
-  types?: DependencyGroupType[];
+  groupTypes?: DependencyGroupType[];
   pageIndex?: number;
 };
 
-export function dataStudioUnreferencedItems({
-  query,
-  types,
-  pageIndex,
-}: UnreferencedDependencyListParams = {}) {
-  const baseUrl = `${dataStudioTasks()}/unreferenced`;
+function dataStudioDependencyList(
+  baseUrl: string,
+  { query, groupTypes, pageIndex }: DependencyListParams = {},
+) {
   const searchParams = new URLSearchParams();
 
   if (query != null) {
     searchParams.set("query", query);
   }
-  if (types != null) {
-    types.forEach((type) => searchParams.append("types", type));
+  if (groupTypes != null) {
+    groupTypes.forEach((type) => searchParams.append("groupTypes", type));
   }
   if (pageIndex != null) {
     searchParams.set("pageIndex", pageIndex.toString());
@@ -215,30 +213,10 @@ export function dataStudioUnreferencedItems({
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
-export type BrokenDependencyListParams = {
-  query?: string;
-  types?: DependencyGroupType[];
-  pageIndex?: number;
-};
+export function dataStudioBrokenItems(params: DependencyListParams = {}) {
+  return dataStudioDependencyList(`${dataStudioTasks()}/broken`, params);
+}
 
-export function dataStudioBrokenItems({
-  query,
-  types,
-  pageIndex,
-}: BrokenDependencyListParams = {}) {
-  const baseUrl = `${dataStudioTasks()}/broken`;
-  const searchParams = new URLSearchParams();
-
-  if (query != null) {
-    searchParams.set("query", query);
-  }
-  if (types != null) {
-    types.forEach((type) => searchParams.append("types", type));
-  }
-  if (pageIndex != null) {
-    searchParams.set("pageIndex", pageIndex.toString());
-  }
-
-  const queryString = searchParams.toString();
-  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
+export function dataStudioUnreferencedItems(params: DependencyListParams = {}) {
+  return dataStudioDependencyList(`${dataStudioTasks()}/unreferenced`, params);
 }

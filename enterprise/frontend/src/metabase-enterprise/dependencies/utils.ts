@@ -3,21 +3,23 @@ import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import type {
-  CardType,
-  DependencyError,
-  DependencyErrorType,
-  DependencyGroupType,
-  DependencyId,
-  DependencyNode,
-  DependencyType,
-  LastEditInfo,
-  VisualizationDisplay,
+import {
+  type CardType,
+  DEPENDENCY_GROUP_TYPES,
+  type DependencyError,
+  type DependencyErrorType,
+  type DependencyGroupType,
+  type DependencyId,
+  type DependencyNode,
+  type DependencyType,
+  type LastEditInfo,
+  type VisualizationDisplay,
 } from "metabase-types/api";
 
 import type {
   DependencyErrorInfo,
   DependencyGroupTypeInfo,
+  DependencyListRawParams,
   NodeId,
   NodeLink,
   NodeLocationInfo,
@@ -507,4 +509,16 @@ export function parseList<T>(
   }
   const values = Array.isArray(value) ? value : [value];
   return values.map(parseItem).filter((item) => item != null);
+}
+
+export function parseDependencyListParams(
+  rawParams?: DependencyListRawParams,
+): Urls.DependencyListParams {
+  return {
+    query: parseString(rawParams?.query),
+    groupTypes: parseList(rawParams?.groupTypes, (value) =>
+      parseEnum(value, DEPENDENCY_GROUP_TYPES),
+    ),
+    pageIndex: parseNumber(rawParams?.pageIndex),
+  };
 }
