@@ -49,8 +49,13 @@
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
+(defmethod collection/allowed-namespaces :model/Transform
+  [_]
+  #{:transforms})
+
 (t2/define-before-insert :model/Transform
   [{:keys [source collection_id] :as transform}]
+  (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
   (assoc transform :source_type (transforms.util/transform-source-type source)))
@@ -58,6 +63,7 @@
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
+    (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
   (if source
     (assoc transform :source_type (transforms.util/transform-source-type source))
