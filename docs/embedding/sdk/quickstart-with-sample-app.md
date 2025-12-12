@@ -91,7 +91,7 @@ Here's a quick overview of what you'll be doing:
 
 5. [Set up the application environment](#set-up-the-application-environment).
 6. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and serve the embedded Metabase components.
-6. [Run the client application](#set-up-the-client-application) that will contain Metabase components built with the SDK.
+7. [Run the client application](#set-up-the-client-application) that will contain Metabase components built with the SDK.
 
 And then fiddle around with styling.
 

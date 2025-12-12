@@ -25,7 +25,7 @@ Cloud customers can request an early upgrade by emailing support at help@metabas
 
 ### Instances using the modular embedding SDK on Metabase Cloud must request an upgrade
 
-If you're using the [modular embedding SDK SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading.
+If you're using the [modular embedding SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading.
 
 To upgrade your Metabase, you'll need to request an upgrade by [contacting support](https://www.metabase.com/help-premium).
 
