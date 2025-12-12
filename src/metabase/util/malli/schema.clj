@@ -154,6 +154,10 @@
                      (str message))
       :api/regex   #"[1-9]\d*"}]))
 
+(def LocalizedString
+  "Schema that is a localized string."
+  [:fn i18n/localized-string?])
+
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (mu/with-api-error-message
