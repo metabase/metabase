@@ -60,10 +60,16 @@ export interface MetabaseElement {
   };
 }
 export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
-  cy.get("iframe[data-metabase-embed]").should("have.length", n);
-  cy.get("iframe[data-iframe-loaded]").should("have.length", n, {
+  const options = {
     timeout: 10_000, // the iframe can slow to load, we need to wait to decrease flakiness
-  });
+  };
+
+  cy.get("iframe[data-metabase-embed]").should("have.length", n);
+  cy.get("iframe[data-iframe-loaded]", options).should(
+    "have.length",
+    n,
+    options,
+  );
 };
 
 export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
