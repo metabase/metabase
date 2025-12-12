@@ -390,6 +390,43 @@
               (is (some? ws-after))
               (is (empty? (:archived_at ws-after))))))))))
 
+(deftest merge-single-transfom-failure-test
+  (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
+                 :model/Transform x1 {:name        "Upstream Transform 1"
+                                      :description "Original description 2"
+                                      :target      {:type     "table"
+                                                    :database 1
+                                                    :schema   "public"
+                                                    :name     "merge_test_table"}}]
+    (let [;; Create a workspace
+          {ws-id :id} (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                      {:name        "Merge test"
+                                                       :database_id  (mt/id)}))
+          ;; Add transform
+          {ws-x-1-id :ref_id :as ws-x-1}
+          (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
+                                (merge {:global_id (:id x1)}
+                                       (select-keys x1 [:name :description :source :target])))
+
+          _ (mt/user-http-request :crowberto :post 204
+                                  (ws-url ws-id (str "/transform/" ws-x-1-id "/archive")))]
+      (testing "Failure on merge"
+        (with-redefs [transforms.api/delete-transform! (fn [& _args]
+                                                         (throw (Exception. "boom")))]
+          (let [resp (mt/user-http-request :crowberto :post 500
+                                           (ws-url ws-id (str "/transform/" ws-x-1-id "/merge")))]
+            (testing "Response"
+              (is (=? {:op "delete"
+                       :global_id (:id x1)
+                       :ref_id ws-x-1-id
+                       :message "Failed to merge transform."}
+                      resp)))
+            (testing "no changes"
+              (let [ws-xs (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
+                (is (= 1 (count ws-xs)))
+                (is (= (:name ws-x-1)
+                       (:name (first ws-xs))))))))))))
+
 (deftest merging-multiple-transforms-incl-ws-only-test
   (let [mp (mt/metadata-provider)]
     (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
