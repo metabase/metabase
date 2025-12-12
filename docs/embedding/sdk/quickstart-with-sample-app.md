@@ -70,7 +70,6 @@ This script will:
 That's it!
 
 If you want to log in to the sample Metabase this command set up, visit [http://localhost:4300](http://localhost:4300). You can log in with email and password as Rene Descartes:
-E
 
 - email: rene@example.com
 - password: foobarbaz
