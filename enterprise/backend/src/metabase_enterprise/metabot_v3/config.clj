@@ -6,10 +6,12 @@
 
 (def metabot-config
   "Configuration for the built-in metabot instances."
-  {metabot-v3.settings/internal-metabot-uuid {:entity-id metabot-v3.settings/internal-metabot-entity-id
-                                              :default-use-case "omnibot"}
-   metabot-v3.settings/embedded-metabot-uuid {:entity-id metabot-v3.settings/embedded-metabot-entity-id
-                                              :default-use-case "embedding"}})
+  {metabot-v3.settings/internal-metabot-uuid {:entity-id        metabot-v3.settings/internal-metabot-entity-id
+                                              :default-use-case "omnibot"
+                                              :use-cases        #{"nlq" "sql" "omnibot" "transforms"}}
+   metabot-v3.settings/embedded-metabot-uuid {:entity-id        metabot-v3.settings/embedded-metabot-entity-id
+                                              :default-use-case "embedding"
+                                              :use-cases        #{"embedding"}}})
 
 (defn normalize-metabot-id
   "Return the primary key for the metabot instance identified by `metabot-id`.
