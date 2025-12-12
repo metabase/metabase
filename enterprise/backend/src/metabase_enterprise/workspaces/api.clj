@@ -22,6 +22,7 @@
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -353,26 +354,58 @@
            ;; Perhaps we want to expose some of this later?
            #_(t2/hydrate transforms :last_run :creator))}))
 
-(api.macros/defendpoint :post "/:id/run"
+(defn- build-remapping [workspace]
+  ;; This is meant to be a map of:
+  ;; (merge {id => {d s t id}}, {[d s t] {d s t id})
+  ;; (the id mappings are for remapping python and mbql sources, the latter for SQL)
+  ;; This map should be built purely from querying WorkspaceOutput, but first we need to fix that table:
+  ;; See: https://linear.app/metabase/issue/BOT-696/fix-workspace-output-table
+  ;; For now the code takes an evil shortcut, that will only work for targets, and will break for both
+  ;; SQL and python sources. Note especially that for SQL we need to pass a concrete map of replacements to macaw,
+  ;; so this will have to be a map, not a function!
+  {:tables (let [isolated-s (:schema workspace)]
+             (fn [[d s t]] {:db-id d, :schema isolated-s, :table (ws.u/isolated-table-name s t), :id nil}))
+   ;; We won't need the field-map until we support MBQL.
+   :fields nil})
+
+(api.macros/defendpoint :post "/:ws-id/run"
   :- [:map
       [:succeeded [:sequential ::ws.t/ref-id]]
       [:failed [:sequential ::ws.t/ref-id]]
       [:not_run [:sequential ::ws.t/ref-id]]]
   "Execute all transforms in the workspace in dependency order.
    Returns which transforms succeeded, failed, and were not run."
-  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
-   _body-params]
-  (u/prog1 (t2/select-one :model/Workspace :id id)
-    (api/check-404 <>)
-    (api/check-400 (nil? (:archived_at <>)) "Cannot execute archived workspace"))
-  ;; get topo-sorted enclosed transforms, run them in order
-  ;; to keep things simple, stop execution as soon as there is any failure
-  ;; in future we can continue running anything as long as its dependencies succeeded
-  ;; TODO not only is the order dodgy, we're not actually running them.
-  {:succeeded (or (t2/select-fn-vec :ref_id [:model/WorkspaceTransform :ref_id] :workspace_id id) [])
-   :failed    []
-   :not_run   []})
+   ;; Hmmm, I wonder why this isn't a boolean? T_T
+   {:keys [stale_only]} :- [:map [:stale_only {:optional true} [:or [:= 1] :boolean]]]]
+  (let [workspace (t2/select-one :model/Workspace :id ws-id)]
+    (api/check-404 workspace)
+    (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
+    (let [remapping (build-remapping workspace)]
+      (reduce
+       (fn [acc {ref-id :ref_id :as transform}]
+         (try
+           ;; Perhaps we want to return some of the metadata from this as well?
+           (if (= :succeeded (:status (ws.execute/run-transform-with-remapping transform remapping)))
+             (update acc :succeeded conj ref-id)
+             ;; Perhaps the status might indicate it never ran?
+             (update acc :failed conj ref-id))
+           (catch Exception e
+             (log/error e "Failed to execute transform" {:workspace-id ws-id, :transform-ref-id ref-id})
+             (update acc :failed conj ref-id))))
+       {:succeeded []
+        :failed    []
+        :not_run   []}
+       ;; Right now we're running things in random order, and skipping all the enclosed transforms (because
+       ;; we don't about them yet). Once we've got the graph analysis, we can order things appropriately, and
+       ;; skip execution of anything with a failed ancestor.
+       ;; Or, for simplicity and frugality, we might want to just shortcircuit on the first failure.
+       (t2/select [:model/WorkspaceTransform :ref_id :name :description :source :target] :workspace_id ws-id
+                  ;; 1. Depending on what we end up storing in this field, we might not be considering stale ancestors.
+                  ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
+                  ;; Why is there all this weird code then? To avoid unused references.
+                  (if stale_only {:where [:= :stale true]} {}))))))
 
 (mr/def ::graph-node-type [:enum :table :output-table :transform :workspace-transform])
 
@@ -618,22 +651,10 @@
   App DB changes are rolled back. Warehouse DB changes persist."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (let [workspace  (api/check-404 (t2/select-one :model/Workspace id))
-        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))
-        ;; This is meant to be a map of:
-        ;; (merge {id => {d s t id}}, {[d s t] {d s t id})
-        ;; (the id mappings are for remapping python and mbql sources, the latter for SQL)
-        ;; This map should be built purely from querying WorkspaceOutput, but first we need to fix that table:
-        ;; See: https://linear.app/metabase/issue/BOT-696/fix-workspace-output-table
-        ;; For now the code takes an evil shortcut, that will only work for targets, and will break for both
-        ;; SQL and python sources. Note especially that for SQL we need to pass a concrete map of replacements to macaw,
-        ;; so this will have to be a map, not a function!
-        table-map (let [isolated-s (:schema workspace)]
-                    (fn [[d s t]] {:db-id d, :schema isolated-s, :table (ws.u/isolated-table-name s t), :id nil}))
-        ;; We won't need the field-map until we support MBQL.
-        field-map nil]
+        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    (ws.execute/run-transform-with-remapping transform table-map field-map)))
+    (ws.execute/run-transform-with-remapping transform (build-remapping workspace))))
 
 (api.macros/defendpoint :get "/checkout"
   :- [:map
