@@ -103,4 +103,25 @@ describe("scenarios > data studio > library", () => {
     H.entityPickerModalItem(1, "Data").click();
     H.entityPickerModalItem(2, "Orders").should("exist");
   });
+
+  describe("+New button", () => {
+    it("should allow you to publish a table", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Publish a table from the 'New' menu");
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Publish a table").click();
+
+      cy.log("Select a table and click 'Publish'");
+      H.entityPickerModalItem(3, "Orders").click();
+      H.entityPickerModal().button("Publish").click();
+
+      cy.log("Verify the newly published table shows up in the Library");
+      H.DataStudio.Library.tableItem("Orders").should("exist");
+
+      cy.log("Verify tables are disabled if they've already been published");
+      // TODO
+    });
+  });
 });
