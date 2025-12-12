@@ -154,8 +154,8 @@
                          :visualization_settings {:zebra true :apple false}}]
 
         ;; Store the same entity twice
-        (source/store! [test-entity] (source.p/snapshot mock-source-1) task-id "First commit")
-        (source/store! [test-entity] (source.p/snapshot mock-source-2) task-id "Second commit")
+        (source/store! [test-entity] mock-source-1 task-id "First commit")
+        (source/store! [test-entity] mock-source-2 task-id "Second commit")
 
         (testing "YAML content is identical between runs"
           (let [content-1 (-> @written-files-1 :files first :content)
