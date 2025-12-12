@@ -28,6 +28,7 @@ export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = [
   "model",
   "metric",
   "transform",
+  "segment",
 ];
 
 export function BrokenDependencyListPage() {

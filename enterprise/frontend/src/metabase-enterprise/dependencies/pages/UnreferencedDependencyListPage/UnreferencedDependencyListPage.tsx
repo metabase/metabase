@@ -27,7 +27,8 @@ export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = [
   "question",
   "model",
   "metric",
-  "transform",
+  "snippet",
+  "segment",
 ];
 
 export function UnreferencedDependencyListPage() {

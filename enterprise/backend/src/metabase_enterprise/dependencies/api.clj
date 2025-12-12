@@ -476,7 +476,8 @@
                      :snippet :native_query_snippet
                      :dashboard :report_dashboard
                      :document :document
-                     :sandbox :sandboxes)
+                     :sandbox :sandboxes
+                     :segment :segment)
         name-column (case entity-type
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
@@ -547,7 +548,8 @@
                      :snippet :native_query_snippet
                      :dashboard :report_dashboard
                      :document :document
-                     :sandbox :sandboxes)
+                     :sandbox :sandboxes
+                     :segment :segment)
         name-column (case entity-type
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
