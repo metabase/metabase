@@ -22,7 +22,6 @@ export interface CellSize {
 export const useCellMeasure = (
   cell: React.ReactNode,
   contentNodeSelector: string,
-  fontSize?: string,
 ) => {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -38,14 +37,14 @@ export const useCellMeasure = (
           visibility: "hidden",
           pointerEvents: "none",
           zIndex: -999,
-          fontSize: fontSize ?? DEFAULT_FONT_SIZE,
+          fontSize: DEFAULT_FONT_SIZE,
           overflow: "visible",
         }}
       >
         {cell}
       </div>
     );
-  }, [cell, fontSize]);
+  }, [cell]);
 
   const measureDimensions: CellMeasurer = useCallback(
     (content: React.ReactNode, containerWidth?: number) => {
@@ -97,11 +96,7 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
   const {
     measureDimensions: measureBodyCellDimensions,
     measureRoot: measureBodyCellRoot,
-  } = useCellMeasure(
-    bodyCellToMeasure,
-    "[data-grid-cell-content]",
-    theme?.fontSize,
-  );
+  } = useCellMeasure(bodyCellToMeasure, "[data-grid-cell-content]");
 
   const measureRoot = useMemo(
     () => (

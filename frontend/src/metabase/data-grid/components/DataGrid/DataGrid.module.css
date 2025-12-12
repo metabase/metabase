@@ -11,7 +11,7 @@
 .tableGrid {
   display: grid;
   flex-grow: 1;
-  grid-template-rows: var(--data-grid-header-height, 36px);
+  grid-template-rows: 36px;
   width: 100%;
   height: 100%;
   overflow: auto;
@@ -24,7 +24,7 @@
   top: 0;
   z-index: 2;
   border-bottom: 1px solid var(--mb-color-border-subtle);
-  height: calc(var(--data-grid-header-height, 36px) + 1px);
+  height: 37px;
 }
 
 .bodyContainer {

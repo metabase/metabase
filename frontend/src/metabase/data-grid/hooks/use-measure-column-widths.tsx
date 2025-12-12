@@ -54,7 +54,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       measureRoot.style.visibility = "hidden";
       measureRoot.style.pointerEvents = "none";
       measureRoot.style.zIndex = "-999";
-      measureRoot.style.fontSize = theme?.fontSize ?? DEFAULT_FONT_SIZE;
+      measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
       document.body.appendChild(measureRoot);
 
       const skipColumnIdsSet = new Set(skipColumnIds);

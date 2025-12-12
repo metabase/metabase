@@ -37,14 +37,6 @@
   background-color: color-mix(in srgb, var(--mb-color-brand), transparent 82%);
 }
 
-.notClickable .content {
-  cursor: default;
-}
-
-.notClickable .content:hover {
-  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 92%);
-}
-
 .outline .content {
   border: 1px solid var(--mb-color-border);
 }
