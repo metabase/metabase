@@ -513,17 +513,14 @@
       :string]
   "This will:
    1. Update original transforms with workspace versions
-   2. Archive the workspace and clean up isolated resources
-   Returns a report of merged entities, and any errors."
-  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
-   _query-params
-   _body-params]
+   2. Delete the workspace and clean up isolated resources
+   Returns a report of merged entities, or error in errors key."
+  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (let [ws               (u/prog1 (t2/select-one :model/Workspace :id id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged
                 errors]} (-> (ws.merge/merge-workspace! id)
-                             (update :merged update-vals #(mapv :global_id %))
                              (update :errors (partial mapv #(-> %
                                                                 (update :error (fn [e] (.getMessage ^Throwable e)))
                                                                 (set/rename-keys {:error :message})))))]
