@@ -24,10 +24,10 @@ import {
   getDependencyGroupTypeInfo,
   getNodeIcon,
   getNodeLabel,
+  isSameNode,
 } from "../../../utils";
 import { GraphContext } from "../GraphContext";
 import type { GraphSelection, NodeType } from "../types";
-import { isSameNode } from "../utils";
 
 import S from "./GraphNode.module.css";
 import type { DependentGroup } from "./types";

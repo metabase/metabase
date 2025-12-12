@@ -5,6 +5,7 @@ import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
   CardType,
+  DependencyEntry,
   DependencyError,
   DependencyErrorType,
   DependencyGroupType,
@@ -22,6 +23,13 @@ import type {
   NodeLink,
   NodeLocationInfo,
 } from "./types";
+
+export function isSameNode(
+  entry1: DependencyEntry,
+  entry2: DependencyEntry,
+): boolean {
+  return entry1.id === entry2.id && entry1.type === entry2.type;
+}
 
 export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${id}-${type}`;

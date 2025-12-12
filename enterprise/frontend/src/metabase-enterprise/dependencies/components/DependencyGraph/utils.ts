@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/api";
 
 import type { NodeId } from "../../types";
-import { getNodeId } from "../../utils";
+import { getNodeId, isSameNode } from "../../utils";
 
 import type { EdgeId, GraphData, NodeType } from "./types";
 
@@ -53,13 +53,6 @@ export function getInitialGraph({ nodes, edges }: DependencyGraph): GraphData {
     nodes: getNodes(nodes),
     edges: getEdges(edges),
   };
-}
-
-export function isSameNode(
-  entry1: DependencyEntry,
-  entry2: DependencyEntry,
-): boolean {
-  return entry1.id === entry2.id && entry1.type === entry2.type;
 }
 
 export function findNode(
