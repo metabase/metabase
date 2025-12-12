@@ -30,8 +30,8 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformCreated } from "../../../analytics";
+import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 
-import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
 import { TargetNameInput } from "./TargetNameInput";
 
 function getValidationSchema() {
