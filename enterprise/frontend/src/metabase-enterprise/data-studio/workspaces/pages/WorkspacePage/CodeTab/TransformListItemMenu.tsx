@@ -43,6 +43,7 @@ export function TransformListItemMenu({ transform, workspaceId }: Props) {
         transformId: transform.ref_id,
       }).unwrap();
 
+      debugger;
       sendSuccessToast(t`Transform removed from the workspace`);
       removeEditedTransform(transform.ref_id);
       removeOpenedTransform(transform.ref_id);
