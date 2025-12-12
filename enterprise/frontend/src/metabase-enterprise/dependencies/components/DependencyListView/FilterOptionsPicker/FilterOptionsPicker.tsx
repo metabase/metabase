@@ -32,7 +32,7 @@ export function FilterOptionsPicker({
         </Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <ListFilterPopover
+        <FilterOptionsPopover
           filterOptions={filterOptions}
           availableGroupTypes={availableGroupTypes}
           onFilterOptionsChange={onFilterOptionsChange}
@@ -42,17 +42,17 @@ export function FilterOptionsPicker({
   );
 }
 
-type ListFilterPopoverProps = {
+type FilterOptionsPopoverProps = {
   filterOptions: DependencyFilterOptions;
   availableGroupTypes: DependencyGroupType[];
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
-function ListFilterPopover({
+function FilterOptionsPopover({
   filterOptions,
   availableGroupTypes,
   onFilterOptionsChange,
-}: ListFilterPopoverProps) {
+}: FilterOptionsPopoverProps) {
   const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
     onFilterOptionsChange({ ...filterOptions, groupTypes });
   };
