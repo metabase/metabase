@@ -3,8 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
-   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
