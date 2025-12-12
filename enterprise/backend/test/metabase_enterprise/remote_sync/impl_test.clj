@@ -434,3 +434,42 @@
                     "Should return nil when remote sync is disabled")
                 (is @clear-called?
                     "Should call clear-remote-synced-collection!")))))))))
+
+(deftest import!-v58-is-remote-synced-migration-test
+  (testing "importing v58 export with is_remote_synced=true sets type=remote-synced"
+    (let [v58-entity-id "v58-collection-xxxx"
+          v58-files {"main" {(str "collections/" v58-entity-id "_v58_collection/" v58-entity-id "_v58_collection.yaml")
+                             (test-helpers/generate-v58-collection-yaml v58-entity-id "V58 Collection" :is-remote-synced true)}}
+          mock-source (test-helpers/create-mock-source :initial-files v58-files)]
+      (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+              result (impl/import! mock-source task-id)]
+          (is (= :success (:status result)))
+          (let [imported-collection (t2/select-one :model/Collection :entity_id v58-entity-id)]
+            (is (some? imported-collection)
+                "Collection should be imported")
+            (is (= "remote-synced" (:type imported-collection))
+                "type should be 'remote-synced' after migration from v58 is_remote_synced=true")))))))
+
+(deftest import!-v58-nested-remote-synced-collections-test
+  (testing "importing v58 export with nested is_remote_synced=true collections migrates all correctly"
+    (let [parent-entity-id "v58-parent-collxxxxxx"
+          child-entity-id  "v58-child-collxxxxxxx"
+          v58-files {"main" {(str "collections/" parent-entity-id "_v58_parent/" parent-entity-id "_v58_parent.yaml")
+                             (test-helpers/generate-v58-collection-yaml parent-entity-id "V58 Parent" :is-remote-synced true)
+
+                             (str "collections/" parent-entity-id "_v58_parent/" child-entity-id "_v58_child/" child-entity-id "_v58_child.yaml")
+                             (test-helpers/generate-v58-collection-yaml child-entity-id "V58 Child" :parent-id parent-entity-id :is-remote-synced true)}}
+          mock-source (test-helpers/create-mock-source :initial-files v58-files)]
+      (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+              result (impl/import! mock-source task-id)]
+          (is (= :success (:status result)))
+          (let [parent-collection (t2/select-one :model/Collection :entity_id parent-entity-id)
+                child-collection (t2/select-one :model/Collection :entity_id child-entity-id)]
+            (testing "parent collection"
+              (is (some? parent-collection) "Parent collection should be imported")
+              (is (= "remote-synced" (:type parent-collection)) "Parent type should be 'remote-synced'"))
+            (testing "child collection"
+              (is (some? child-collection) "Child collection should be imported")
+              (is (= "remote-synced" (:type child-collection)) "Child type should be 'remote-synced'"))))))))
