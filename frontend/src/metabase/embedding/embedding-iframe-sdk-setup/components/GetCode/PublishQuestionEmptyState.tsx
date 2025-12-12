@@ -11,6 +11,10 @@ export const PublishQuestionEmptyState = () => {
   const { experience, isFetching } = useSdkIframeEmbedSetupContext();
   const toggleEmbedding = useToggleResourceEmbedding();
 
+  if (!toggleEmbedding) {
+    return null;
+  }
+
   const { handleSave } = toggleEmbedding;
 
   return (
