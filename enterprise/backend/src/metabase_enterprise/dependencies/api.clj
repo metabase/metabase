@@ -379,25 +379,30 @@
         nodes-by-type (->> (group-by first nodes)
                            (m/map-vals #(map second %)))
         errors (when include-errors?
-                 (calc-errors nodes-by-type))]
-    (mapcat (fn [[entity-type entity-ids]]
-              (let [model (entity-model entity-type)
-                    fields (entity-select-fields entity-type)]
-                (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
-                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal] :moderation_reviews)
-                                                 (->> (map collection.root/hydrate-root-collection))
-                                                 (revisions/with-last-edit-info :card))
-                       (= entity-type :table) (t2/hydrate :fields :db)
-                       (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields :last_run)
-                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
-                                                      (->> (map collection.root/hydrate-root-collection))
-                                                      (revisions/with-last-edit-info :dashboard))
-                       (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
-                                                     (->> (map collection.root/hydrate-root-collection)))
-                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
-                       (= entity-type :segment) (t2/hydrate :creator [:table :db]))
-                     (mapv #(entity-value entity-type % usages errors)))))
-            nodes-by-type)))
+                 (calc-errors nodes-by-type))
+        nodes-by-type-and-id
+        (into {}
+              (mapcat (fn [[entity-type entity-ids]]
+                        (let [model (entity-model entity-type)
+                              fields (entity-select-fields entity-type)]
+                          (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
+                                 (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal] :moderation_reviews)
+                                                           (->> (map collection.root/hydrate-root-collection))
+                                                           (revisions/with-last-edit-info :card))
+                                 (= entity-type :table) (t2/hydrate :fields :db)
+                                 (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields :last_run)
+                                 (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
+                                                                (->> (map collection.root/hydrate-root-collection))
+                                                                (revisions/with-last-edit-info :dashboard))
+                                 (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
+                                                               (->> (map collection.root/hydrate-root-collection)))
+                                 (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
+                                 (= entity-type :segment) (t2/hydrate :creator [:table :db]))
+                               (map (fn [entity]
+                                      [[entity-type (:id entity)]
+                                       (entity-value entity-type entity usages errors)]))))))
+              nodes-by-type)]
+    (keep nodes-by-type-and-id nodes)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
