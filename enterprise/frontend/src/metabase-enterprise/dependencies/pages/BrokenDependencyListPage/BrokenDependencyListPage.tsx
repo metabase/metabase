@@ -1,5 +1,5 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
@@ -69,6 +69,10 @@ export function BrokenDependencyListPage() {
       : null;
   }, [nodes, selectedEntry]);
 
+  const handleClosePanel = useCallback(() => {
+    setSelectedEntry(null);
+  }, []);
+
   return (
     <Flex h="100%">
       <Stack flex={1} px="3.5rem" py="md" gap="md">
@@ -98,10 +102,7 @@ export function BrokenDependencyListPage() {
         )}
       </Stack>
       {selectedNode != null && (
-        <DependencyListPanel
-          node={selectedNode}
-          onClose={() => setSelectedEntry(null)}
-        />
+        <DependencyListPanel node={selectedNode} onClose={handleClosePanel} />
       )}
     </Flex>
   );

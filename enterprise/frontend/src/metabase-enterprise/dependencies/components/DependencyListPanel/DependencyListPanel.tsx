@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
@@ -12,7 +14,7 @@ type DependencyListPanelProps = {
   onClose: () => void;
 };
 
-export function DependencyListPanel({
+export const DependencyListPanel = memo(function DependencyListPanel({
   node,
   onClose,
 }: DependencyListPanelProps) {
@@ -31,4 +33,4 @@ export function DependencyListPanel({
       ))}
     </Stack>
   );
-}
+});

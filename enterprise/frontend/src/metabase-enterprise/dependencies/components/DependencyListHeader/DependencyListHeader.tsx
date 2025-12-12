@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -7,7 +8,7 @@ import {
   PaneHeaderTabs,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
-export function DependencyListHeader() {
+export const DependencyListHeader = memo(function DependencyListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Broken`,
@@ -27,4 +28,4 @@ export function DependencyListHeader() {
       <PaneHeaderTabs tabs={tabs} />
     </Stack>
   );
-}
+});

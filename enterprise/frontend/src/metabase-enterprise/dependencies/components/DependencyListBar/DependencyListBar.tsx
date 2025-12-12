@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import { type ChangeEvent, memo } from "react";
 import { t } from "ttag";
 
 import { Flex, Icon, Loader, TextInput } from "metabase/ui";
@@ -18,7 +18,7 @@ type DependencyListBarProps = {
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
-export function DependencyListBar({
+export const DependencyListBar = memo(function DependencyListBar({
   searchValue,
   filterOptions,
   availableGroupTypes,
@@ -50,4 +50,4 @@ export function DependencyListBar({
       />
     </Flex>
   );
-}
+});
