@@ -1,10 +1,12 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
   CardType,
+  DependencyError,
+  DependencyErrorType,
   DependencyGroupType,
   DependencyId,
   DependencyNode,
@@ -14,6 +16,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  DependencyErrorInfo,
   DependencyGroupTypeInfo,
   NodeId,
   NodeLink,
@@ -386,6 +389,88 @@ export function getCardTypes(groupTypes: DependencyGroupType[]): CardType[] {
     .map(getCardType)
     .filter((cardType) => cardType !== null);
   return Array.from(new Set(cardTypes));
+}
+
+export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
+  switch (type) {
+    case "query-error/missing-column":
+      return t`Missing column`;
+    case "query-error/missing-table-alias":
+      return t`Missing table alias`;
+    case "query-error/duplicate-column":
+      return t`Duplicate column`;
+    case "query-error/syntax-error":
+      return t`Syntax error`;
+  }
+}
+
+export function getDependencyErrorTypeCountMessage(
+  type: DependencyErrorType,
+  count: number,
+): string {
+  switch (type) {
+    case "query-error/missing-column":
+      return ngettext(
+        msgid`${count} missing column`,
+        `${count} missing columns`,
+        count,
+      );
+    case "query-error/missing-table-alias":
+      return ngettext(
+        msgid`${count} missing table alias`,
+        `${count} missing table aliases`,
+        count,
+      );
+    case "query-error/duplicate-column":
+      return ngettext(
+        msgid`${count} duplicate column`,
+        `${count} duplicate columns`,
+        count,
+      );
+    case "query-error/syntax-error":
+      return ngettext(
+        msgid`${count} syntax error`,
+        `${count} syntax errors`,
+        count,
+      );
+  }
+}
+
+export function getDependencyErrorDetail(
+  error: DependencyError,
+): string | undefined {
+  if (error.type !== "query-error/syntax-error") {
+    return error.name;
+  }
+}
+
+export function getDependencyErrorInfo(
+  errors: DependencyError[],
+): DependencyErrorInfo | undefined {
+  if (errors.length === 0) {
+    return undefined;
+  }
+
+  if (errors.length === 1) {
+    const [error] = errors;
+    const label = getDependencyErrorTypeLabel(error.type);
+    const detail = getDependencyErrorDetail(error);
+    return { label, detail };
+  }
+
+  const types = new Set(errors.map((error) => error.type));
+  if (types.size === 1) {
+    const [type] = types;
+    return { label: getDependencyErrorTypeCountMessage(type, errors.length) };
+  }
+
+  return {
+    label: ngettext(
+      msgid`${errors.length} error`,
+      `${errors.length} errors`,
+      errors.length,
+    ),
+  };
 }
 
 export function getSearchQuery(searchValue: string): string | undefined {

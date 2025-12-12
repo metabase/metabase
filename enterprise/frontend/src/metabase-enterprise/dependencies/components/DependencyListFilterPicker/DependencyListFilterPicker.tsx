@@ -5,21 +5,21 @@ import { t } from "ttag";
 import { Box, Button, FixedSizeIcon, Popover, Stack } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
 
-import type { DependencyListFilterOptions } from "../../../types";
+import type { DependencyListFilterOptions } from "../../types";
 
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
-type ListFilterPickerProps = {
+type DependencyListFilterPickerProps = {
   filterOptions: DependencyListFilterOptions;
   availableGroupTypes: DependencyGroupType[];
   onFilterOptionsChange: (filterOptions: DependencyListFilterOptions) => void;
 };
 
-export const ListFilterPicker = memo(function ListFilterPicker({
+export const DependencyListFilterPicker = memo(function ListFilterPicker({
   filterOptions,
   availableGroupTypes,
   onFilterOptionsChange,
-}: ListFilterPickerProps) {
+}: DependencyListFilterPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
   return (

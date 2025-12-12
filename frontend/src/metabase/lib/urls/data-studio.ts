@@ -3,8 +3,6 @@ import type {
   CollectionId,
   DatabaseId,
   DependencyGroupType,
-  DependencySortColumn,
-  DependencySortDirection,
   FieldId,
   NativeQuerySnippetId,
   SchemaName,
@@ -189,18 +187,18 @@ export function dataStudioTasks() {
   return `${ROOT_URL}/tasks`;
 }
 
-export type DependencyListParams = {
+export type UnreferencedDependencyListParams = {
   query?: string;
   page?: number;
   types?: DependencyGroupType[];
-  sortColumn?: DependencySortColumn;
-  sortDirection?: DependencySortDirection;
 };
 
-function dataStudioDependencies(
-  baseUrl: string,
-  { query, page, types, sortColumn, sortDirection }: DependencyListParams,
-) {
+export function dataStudioUnreferencedItems({
+  query,
+  page,
+  types,
+}: UnreferencedDependencyListParams = {}) {
+  const baseUrl = `${dataStudioTasks()}/unreferenced`;
   const searchParams = new URLSearchParams();
 
   if (query != null) {
@@ -212,21 +210,35 @@ function dataStudioDependencies(
   if (types != null) {
     types.forEach((type) => searchParams.append("types", type));
   }
-  if (sortColumn != null) {
-    searchParams.set("sortColumn", sortColumn);
-  }
-  if (sortDirection != null) {
-    searchParams.set("sortDirection", sortDirection);
-  }
 
   const queryString = searchParams.toString();
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
-export function dataStudioBrokenItems(params: DependencyListParams = {}) {
-  return dataStudioDependencies(`${dataStudioTasks()}/broken`, params);
-}
+export type BrokenDependencyListParams = {
+  query?: string;
+  page?: number;
+  types?: DependencyGroupType[];
+};
 
-export function dataStudioUnreferencedItems(params: DependencyListParams = {}) {
-  return dataStudioDependencies(`${dataStudioTasks()}/unreferenced`, params);
+export function dataStudioBrokenItems({
+  query,
+  page,
+  types,
+}: BrokenDependencyListParams = {}) {
+  const baseUrl = `${dataStudioTasks()}/broken`;
+  const searchParams = new URLSearchParams();
+
+  if (query != null) {
+    searchParams.set("query", query);
+  }
+  if (page != null) {
+    searchParams.set("page", page.toString());
+  }
+  if (types != null) {
+    types.forEach((type) => searchParams.append("types", type));
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }

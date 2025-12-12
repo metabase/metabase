@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Anchor, FixedSizeIcon, Flex } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeIcon, getNodeLabel, getNodeLink } from "../../../../utils";
+import { getNodeIcon, getNodeLabel, getNodeLink } from "../../../utils";
 import S from "../DependencyList.module.css";
 
 type NameCellProps = {

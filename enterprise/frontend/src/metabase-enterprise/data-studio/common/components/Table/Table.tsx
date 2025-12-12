@@ -28,7 +28,7 @@ export const TableComponent = <
 }: {
   data: T[];
   columns: ColumnDef<T>[];
-  onSelect?: (item: T) => void;
+  onSelect: (item: T) => void;
 }) => {
   const [scrollRef, setScrollRef] = useState<HTMLDivElement | null>(null);
 
@@ -99,7 +99,7 @@ export const TableComponent = <
 interface TableBodyProps<T> {
   table: Table<T>;
   tableContainerRef: HTMLDivElement;
-  onSelect?: (item: T) => void;
+  onSelect: (item: T) => void;
 }
 
 function TableBody<T>({
@@ -151,7 +151,7 @@ interface TableBodyRowProps<T> {
   row: Row<T>;
   virtualRow: VirtualItem;
   rowVirtualizer: Virtualizer<HTMLDivElement, HTMLTableRowElement>;
-  onSelect?: (item: T) => void;
+  onSelect: (item: T) => void;
 }
 
 function TableBodyRow<T>({
@@ -178,7 +178,7 @@ function TableBodyRow<T>({
       onClick={
         canExpand
           ? row.getToggleExpandedHandler()
-          : () => onSelect?.(row.original)
+          : () => onSelect(row.original)
       }
     >
       {row.getVisibleCells().map((cell, index) => {

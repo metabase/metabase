@@ -28,11 +28,6 @@ export type PaginationOptions = {
   total: number;
 };
 
-export type DependencyGraphRawParams = {
-  id?: string;
-  type?: string;
-};
-
 export type DependencyListSortOptions = {
   column: DependencyListSortColumn;
   direction: DependencyListSortDirection;
@@ -42,10 +37,7 @@ export type DependencyListFilterOptions = {
   groupTypes: DependencyGroupType[];
 };
 
-export type DependencyListRawParams = {
-  query?: unknown;
-  page?: unknown;
-  types?: unknown;
-  sortColumn?: unknown;
-  sortDirection?: unknown;
+export type DependencyErrorInfo = {
+  label: string;
+  detail?: string;
 };

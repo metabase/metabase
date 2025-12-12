@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -8,13 +7,7 @@ import {
   PaneHeaderTabs,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
-import S from "./DependencyListLayout.module.css";
-
-type DependencyListLayoutProps = {
-  children: ReactNode;
-};
-
-export function DependencyListLayout({ children }: DependencyListLayoutProps) {
+export function DependencyListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Broken`,
@@ -29,17 +22,9 @@ export function DependencyListLayout({ children }: DependencyListLayoutProps) {
   ];
 
   return (
-    <Stack
-      className={S.page}
-      h="100%"
-      px="3.5rem"
-      py="md"
-      gap="md"
-      bg="accent-gray-light"
-    >
+    <Stack gap="md">
       <Title order={1} fz="sm" lh="1rem" fw="normal">{t`Tasks`}</Title>
       <PaneHeaderTabs tabs={tabs} />
-      {children}
     </Stack>
   );
 }

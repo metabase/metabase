@@ -10,7 +10,7 @@ import {
   getNodeLabel,
   getNodeLastEditInfo,
   getNodeLocationInfo,
-} from "../../../utils";
+} from "../../utils";
 
 import { DependentsCountCell } from "./DependentsCountCell";
 import { ErrorsCell } from "./ErrorsCell";
@@ -55,6 +55,9 @@ function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
   return {
     id: "error",
     header: t`Errors`,
+    meta: {
+      width: "auto",
+    },
     cell: ({ row }) => {
       const node = row.original;
       const errors = node.errors ?? [];
@@ -62,9 +65,6 @@ function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
         return null;
       }
       return <ErrorsCell node={node} />;
-    },
-    meta: {
-      width: "auto",
     },
   };
 }
