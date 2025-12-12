@@ -272,7 +272,7 @@
    :api  #{metabase.channel.api
            metabase.channel.core
            metabase.channel.email
-           metabase.channel.email.messages
+           metabase.channel.email.core
            metabase.channel.init
            metabase.channel.models.channel
            metabase.channel.render.core

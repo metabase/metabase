@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel.email.core :as messages]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.util :as impl.util]
    [metabase.channel.models.channel :as models.channel]
