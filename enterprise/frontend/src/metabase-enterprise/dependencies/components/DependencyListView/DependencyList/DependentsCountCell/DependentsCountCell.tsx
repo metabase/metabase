@@ -4,7 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import { Anchor } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeDependentsCount } from "../../../utils";
+import { getNodeDependentsCount } from "../../../../utils";
 import S from "../DependencyList.module.css";
 
 type DependentsCountCellProps = {

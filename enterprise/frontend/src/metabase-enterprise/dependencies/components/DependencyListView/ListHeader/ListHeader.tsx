@@ -7,7 +7,7 @@ import {
   PaneHeaderTabs,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
-export function DependencyListHeader() {
+export function ListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Broken`,

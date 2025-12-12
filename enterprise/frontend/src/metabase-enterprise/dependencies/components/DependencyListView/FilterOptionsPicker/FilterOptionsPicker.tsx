@@ -1,25 +1,24 @@
 import { useDisclosure } from "@mantine/hooks";
-import { memo } from "react";
 import { t } from "ttag";
 
 import { Box, Button, FixedSizeIcon, Popover, Stack } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
 
-import type { DependencyListFilterOptions } from "../../types";
+import type { DependencyListViewParams } from "../types";
 
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
-type DependencyListFilterPickerProps = {
-  filterOptions: DependencyListFilterOptions;
+type FilterOptionsPickerProps = {
+  params: DependencyListViewParams;
   availableGroupTypes: DependencyGroupType[];
-  onFilterOptionsChange: (filterOptions: DependencyListFilterOptions) => void;
+  onParamsChange: (params: DependencyListViewParams) => void;
 };
 
-export const DependencyListFilterPicker = memo(function ListFilterPicker({
-  filterOptions,
+export function FilterOptionsPicker({
+  params,
   availableGroupTypes,
-  onFilterOptionsChange,
-}: DependencyListFilterPickerProps) {
+  onParamsChange,
+}: FilterOptionsPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
   return (
@@ -34,35 +33,35 @@ export const DependencyListFilterPicker = memo(function ListFilterPicker({
       </Popover.Target>
       <Popover.Dropdown>
         <ListFilterPopover
-          filterOptions={filterOptions}
+          params={params}
           availableGroupTypes={availableGroupTypes}
-          onFilterOptionsChange={onFilterOptionsChange}
+          onParamsChange={onParamsChange}
         />
       </Popover.Dropdown>
     </Popover>
   );
-});
+}
 
 type ListFilterPopoverProps = {
-  filterOptions: DependencyListFilterOptions;
+  params: DependencyListViewParams;
   availableGroupTypes: DependencyGroupType[];
-  onFilterOptionsChange: (filterOptions: DependencyListFilterOptions) => void;
+  onParamsChange: (params: DependencyListViewParams) => void;
 };
 
 function ListFilterPopover({
-  filterOptions,
+  params,
   availableGroupTypes,
-  onFilterOptionsChange,
+  onParamsChange,
 }: ListFilterPopoverProps) {
-  const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
-    onFilterOptionsChange({ ...filterOptions, groupTypes });
+  const handleTypesChange = (types: DependencyGroupType[]) => {
+    onParamsChange({ ...params, types });
   };
 
   return (
     <Box w="20rem" p="md">
       <Stack>
         <TypeFilterPicker
-          groupTypes={filterOptions.groupTypes}
+          groupTypes={params.types ?? []}
           availableGroupTypes={availableGroupTypes}
           onChange={handleTypesChange}
         />

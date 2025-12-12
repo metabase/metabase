@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Checkbox, Stack } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
 
-import { getDependencyGroupTypeInfo } from "../../../utils";
+import { getDependencyGroupTypeInfo } from "../../../../utils";
 
 type TypeFilterPickerProps = {
   groupTypes: DependencyGroupType[];

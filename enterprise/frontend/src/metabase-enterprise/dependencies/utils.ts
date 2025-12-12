@@ -473,11 +473,6 @@ export function getDependencyErrorInfo(
   };
 }
 
-export function getSearchQuery(searchValue: string): string | undefined {
-  const searchQuery = searchValue.trim();
-  return searchQuery.length > 0 ? searchQuery : undefined;
-}
-
 export function parseString(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;

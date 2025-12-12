@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { Anchor, Box, FixedSizeIcon, Flex } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeLocationInfo } from "../../../utils";
+import { getNodeLocationInfo } from "../../../../utils";
 import S from "../DependencyList.module.css";
 
 type LocationCellProps = {

@@ -1,6 +1,6 @@
 import type { DependencyNode } from "metabase-types/api";
 
-import { getDependencyErrorInfo } from "../../../utils";
+import { getDependencyErrorInfo } from "../../../../utils";
 
 type ErrorsCellProps = {
   node: DependencyNode;
