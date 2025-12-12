@@ -5,32 +5,32 @@
 
 (mr/def ::missing-column
   [:map
-   [:type [:= :query-error/missing-column]]
+   [:type [:= :validate/missing-column]]
    [:name :string]])
 
 (mr/def ::missing-table-alias
   [:map
-   [:type [:= :query-error/missing-table-alias]]
+   [:type [:= :validate/missing-table-alias]]
    [:name :string]])
 
 (mr/def ::duplicate-column
   [:map
-   [:type [:= :query-error/duplicate-column]]
+   [:type [:= :validate/duplicate-column]]
    [:name :string]])
 
 (mr/def ::syntax-error
   [:map
-   [:type [:= :query-error/syntax-error]]])
+   [:type [:= :validate/syntax-error]]])
 
 (mr/def ::validation-error
   [:map
-   [:type [:= :query-error/validation-error]
+   [:type [:= :validate/validation-error]
     :message :string]])
 
 (mr/def ::error
   [:multi {:dispatch :type}
-   [:query-error/missing-column [:ref ::missing-column]]
-   [:query-error/missing-table-alias [:ref ::missing-table-alias]]
-   [:query-error/duplicate-column [:ref ::duplicate-column]]
-   [:query-error/syntax-error [:ref ::syntax-error]]
-   [:query-error/validation-error [:ref ::validation-error]]])
+   [:validate/missing-column [:ref ::missing-column]]
+   [:validate/missing-table-alias [:ref ::missing-table-alias]]
+   [:validate/duplicate-column [:ref ::duplicate-column]]
+   [:validate/syntax-error [:ref ::syntax-error]]
+   [:validate/validation-error [:ref ::validation-error]]])

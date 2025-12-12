@@ -13,26 +13,26 @@
 
 (mu/defn missing-column :- [:ref ::lib.schema.validate/missing-column]
   [name :- :string]
-  {:type :query-error/missing-column
+  {:type :validate/missing-column
    :name name})
 
 (mu/defn missing-table-alias :- [:ref ::lib.schema.validate/missing-table-alias]
   [name :- :string]
-  {:type :query-error/missing-table-alias
+  {:type :validate/missing-table-alias
    :name name})
 
 (mu/defn duplicate-column :- [:ref ::lib.schema.validate/duplicate-column]
   [name :- :string]
-  {:type :query-error/duplicate-column
+  {:type :validate/duplicate-column
    :name name})
 
 (mu/defn syntax-error :- [:ref ::lib.schema.validate/syntax-error]
   []
-  {:type :query-error/syntax-error})
+  {:type :validate/syntax-error})
 
 (mu/defn validation-error :- [:ref ::lib.schema.validate/validation-error]
   [message :- :string]
-  {:type :query-error/validation-error
+  {:type :validate/validation-error
    :message message})
 
 (mu/defn find-bad-refs :- [:set [:ref ::lib.schema.validate/error]]

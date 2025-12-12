@@ -393,13 +393,13 @@ export function getCardTypes(groupTypes: DependencyGroupType[]): CardType[] {
 
 export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
   switch (type) {
-    case "query-error/missing-column":
+    case "validate/missing-column":
       return t`Missing column`;
-    case "query-error/missing-table-alias":
+    case "validate/missing-table-alias":
       return t`Missing table alias`;
-    case "query-error/duplicate-column":
+    case "validate/duplicate-column":
       return t`Duplicate column`;
-    case "query-error/syntax-error":
+    case "validate/syntax-error":
       return t`Syntax error`;
   }
 }
@@ -409,25 +409,25 @@ export function getDependencyErrorTypeCountMessage(
   count: number,
 ): string {
   switch (type) {
-    case "query-error/missing-column":
+    case "validate/missing-column":
       return ngettext(
         msgid`${count} missing column`,
         `${count} missing columns`,
         count,
       );
-    case "query-error/missing-table-alias":
+    case "validate/missing-table-alias":
       return ngettext(
         msgid`${count} missing table alias`,
         `${count} missing table aliases`,
         count,
       );
-    case "query-error/duplicate-column":
+    case "validate/duplicate-column":
       return ngettext(
         msgid`${count} duplicate column`,
         `${count} duplicate columns`,
         count,
       );
-    case "query-error/syntax-error":
+    case "validate/syntax-error":
       return ngettext(
         msgid`${count} syntax error`,
         `${count} syntax errors`,
@@ -439,7 +439,7 @@ export function getDependencyErrorTypeCountMessage(
 export function getDependencyErrorDetail(
   error: DependencyError,
 ): string | undefined {
-  if (error.type !== "query-error/syntax-error") {
+  if (error.type !== "validate/syntax-error") {
     return error.name;
   }
 }

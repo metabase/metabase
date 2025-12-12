@@ -176,10 +176,10 @@ export type DependencyNode =
   | SegmentDependencyNode;
 
 export const DEPENDENCY_ERROR_TYPES = [
-  "query-error/missing-column",
-  "query-error/missing-table-alias",
-  "query-error/duplicate-column",
-  "query-error/syntax-error",
+  "validate/missing-column",
+  "validate/missing-table-alias",
+  "validate/duplicate-column",
+  "validate/syntax-error",
 ] as const;
 export type DependencyErrorType = (typeof DEPENDENCY_ERROR_TYPES)[number];
 
@@ -188,22 +188,22 @@ type BaseDependencyError<TType extends DependencyErrorType> = {
 };
 
 export type MissingColumnDependencyError =
-  BaseDependencyError<"query-error/missing-column"> & {
+  BaseDependencyError<"validate/missing-column"> & {
     name: string;
   };
 
 export type MissingTableAliasDependencyError =
-  BaseDependencyError<"query-error/missing-table-alias"> & {
+  BaseDependencyError<"validate/missing-table-alias"> & {
     name: string;
   };
 
 export type DuplicateColumnDependencyError =
-  BaseDependencyError<"query-error/duplicate-column"> & {
+  BaseDependencyError<"validate/duplicate-column"> & {
     name: string;
   };
 
 export type SyntaxErrorDependencyError =
-  BaseDependencyError<"query-error/syntax-error">;
+  BaseDependencyError<"validate/syntax-error">;
 
 export type DependencyError =
   | MissingColumnDependencyError
