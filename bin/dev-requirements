@@ -81,18 +81,18 @@ main() {
         issues+=("Node.js: not installed (need >= 22)")
     fi
 
-    # Yarn
-    yarn_version=$(get_yarn_version)
-    if [ -n "$yarn_version" ]; then
-        if check_yarn_classic "$yarn_version"; then
-            print_found "Yarn $yarn_version (Yarn Classic - correct!)"
+    # pnpm
+    pnpm_version=$(get_pnpm_version)
+    if [ -n "$pnpm_version" ]; then
+        if check_pnpm_version "$pnpm_version"; then
+            print_found "pnpm $pnpm_version (meets requirement: >= 9)"
         else
-            print_warning "Yarn $yarn_version (required: Yarn Classic 1.x)"
-            issues+=("Yarn: version $yarn_version is not Yarn Classic 1.x")
+            print_warning "pnpm $pnpm_version (required: >= 9)"
+            issues+=("pnpm: version $pnpm_version is not >= 9")
         fi
     else
-        print_not_found "Yarn (required: Yarn Classic 1.x)"
-        issues+=("Yarn: not installed (need Yarn Classic 1.x)")
+        print_not_found "pnpm (required: >= 9)"
+        issues+=("pnpm: not installed (need pnpm >= 9)")
     fi
 
     # Java
@@ -155,7 +155,7 @@ main() {
 
     echo -e "  ${BOLD}Required Tools:${NC}"
     echo "    - Node.js >= 22 (currently specified in .nvmrc)"
-    echo "    - Yarn Classic 1.x (NOT Yarn 2+, NO Corepack)"
+    echo "    - pnpm >= 9"
     echo "    - Java 21 with Eclipse Temurin distribution (for Clojure backend)"
     if [ -n "$required_clojure_version" ]; then
         echo "    - Clojure CLI (for Clojure $required_clojure_version specified in deps.edn)"

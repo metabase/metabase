@@ -257,6 +257,9 @@ const config = {
     },
     fallback: {
       buffer: require.resolve("buffer/"),
+      url: require.resolve("url/"),
+      events: require.resolve("events/"),
+      querystring: require.resolve("querystring-es3"),
     },
   },
   optimization: {
@@ -345,7 +348,7 @@ if (shouldEnableHotRefresh) {
     throw new Error("webpack config is missing configuration");
   }
 
-  // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
+  // suffixing with ".hot" allows us to run both `pnpm run build-hot` and `pnpm run test` or `pnpm run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server

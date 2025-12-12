@@ -4,6 +4,7 @@
   "description": "",
   "type": "module",
   "main": "run/build.js",
+  "packageManager": "pnpm@10.11.0",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -19,6 +20,7 @@
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
+    "@octokit/graphql": "^8.2.1",
     "@octokit/rest": "^21.1.1",
     "@slack/web-api": "^7.9.3",
     "dayjs": "^1.11.10",
@@ -42,8 +44,13 @@
     "jest": "^29.7.0",
     "prettier": "^3.0.2"
   },
-  "resolutions": {
-    "axios": "^1.8.2",
-    "form-data": "^4.0.4"
+  "pnpm": {
+    "overrides": {
+      "axios": "^1.8.2",
+      "form-data": "^4.0.4"
+    },
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
