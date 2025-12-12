@@ -612,8 +612,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               <Tabs.Panel value={`table-${activeTable?.tableId}`} h="100%">
                 {!activeTable ? null : (
                   <DataTab
+                    workspaceId={workspace?.id}
                     databaseId={workspace?.database_id ?? null}
                     tableId={activeTable.tableId}
+                    transformId={activeTable.transformId}
                   />
                 )}
               </Tabs.Panel>

@@ -80,6 +80,7 @@ export type WorkspaceTransform = Omit<Transform, "id"> & {
   global_id: TransformId | null;
   target_stale: boolean;
   target_isolated: WorkspaceOutputTableRef;
+  last_run_at: string | null;
 };
 
 export type TransformUpstreamMapping = {
