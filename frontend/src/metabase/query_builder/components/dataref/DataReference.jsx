@@ -2,7 +2,7 @@
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 
-import DatabasePane from "./DatabasePane";
+import { DatabasePane } from "./DatabasePane";
 import FieldPane from "./FieldPane";
 import MainPane from "./MainPane";
 import { QuestionPane } from "./QuestionPane";

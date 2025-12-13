@@ -124,7 +124,7 @@ const DataSelectorDatabaseSchemaPicker = ({
       onChangeSection={handleChangeSection}
       itemIsSelected={({ schema }) => schema === selectedSchema}
       renderSectionIcon={renderSectionIcon}
-      renderItemIcon={() => <Icon name="folder" size={16} />}
+      renderItemIcon={() => <Icon name="folder_database" size={16} />}
       initiallyOpenSection={openSection}
       alwaysTogglable={true}
       showSpinner={(itemOrSection) =>
