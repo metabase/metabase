@@ -20,7 +20,7 @@ import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -248,7 +248,8 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     queryStartTime,
   } = props;
 
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
 
   usePageTitleWithLoadingTime(documentTitle || card?.name || t`Question`, {
     titleIndex: 1,

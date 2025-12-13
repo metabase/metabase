@@ -19,7 +19,7 @@ import { modelToUrl } from "metabase/lib/urls";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { zoomInRow } from "metabase/query_builder/actions";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import type { WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
@@ -47,7 +47,7 @@ type Props = {
 };
 
 export const SearchBar = ({ onSearchActive, onSearchInactive }: Props) => {
-  const { location } = useRouter();
+  const location = useLocation();
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );

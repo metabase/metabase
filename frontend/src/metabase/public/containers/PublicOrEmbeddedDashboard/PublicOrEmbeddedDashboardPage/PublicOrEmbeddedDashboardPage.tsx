@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -25,7 +25,8 @@ const PublicOrEmbeddedDashboardPageInner = () => {
 
 export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
 
   const parameterQueryParams = location.query;
 

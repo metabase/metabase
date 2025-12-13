@@ -8,7 +8,7 @@ import { useSetting } from "metabase/common/hooks";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useRouter } from "metabase/router";
+import { useLocation, useRouter } from "metabase/router";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { selectTab } from "../actions";
@@ -21,7 +21,8 @@ import {
 import { createTabSlug } from "../utils";
 
 export function useDashboardUrlQuery() {
-  const { location, router } = useRouter();
+  const { router } = useRouter();
+  const location = useLocation();
   const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
