@@ -42,7 +42,7 @@ import {
   METABOT_ERR_MSG,
 } from "./constants";
 import { MetabotProvider } from "./context";
-import { useMetabotAgent } from "./hooks";
+import { useMetabotConversation } from "./hooks";
 import {
   type MetabotConvoId,
   type MetabotState,
@@ -401,7 +401,7 @@ describe("metabot-streaming", () => {
 
     it("should be able to set the prompt input's value from anywhere in the app", async () => {
       const AnotherComponent = () => {
-        const { setPrompt } = useMetabotAgent();
+        const { setPrompt } = useMetabotConversation();
 
         return (
           <button onClick={() => setPrompt("TEST VAL")}>CLICK HERE</button>

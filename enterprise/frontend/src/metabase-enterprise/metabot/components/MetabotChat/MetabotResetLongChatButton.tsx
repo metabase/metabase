@@ -1,10 +1,10 @@
 import { c, jt } from "ttag";
 
 import { Text, UnstyledButton } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 export const MetabotResetLongChatButton = () => {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation();
 
   return (
     <Text lh={1} c="text-light" m={0} ta="center">

@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
 export function SidebarHeader() {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation();
 
   return (
     <Flex

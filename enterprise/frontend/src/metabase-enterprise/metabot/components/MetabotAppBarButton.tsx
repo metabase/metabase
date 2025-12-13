@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { METAKEY } from "metabase/lib/browser";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import { trackMetabotChatOpened } from "../analytics";
 
@@ -14,7 +14,7 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation();
 
   const handleClick = () => {
     if (!metabot.visible) {

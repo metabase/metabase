@@ -12,14 +12,14 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import {
-  useMetabotAgent,
   useMetabotChatHandlers,
+  useMetabotConversation,
 } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
 export function MetabotChatInput() {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation();
   const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
 
   const placeholder = metabot.isDoingScience

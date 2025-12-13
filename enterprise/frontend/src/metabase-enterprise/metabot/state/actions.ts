@@ -31,6 +31,7 @@ import {
   getHistory,
   getIsProcessing,
   getLastMessage,
+  getMetabotConversation,
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
@@ -62,6 +63,7 @@ export const {
   deactivateSuggestedCodeEdit,
   setProfileOverride,
   newConversation,
+  removeConversation,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -177,6 +179,15 @@ export const submitInput = createAsyncThunk<
         return { prompt: data.message, success: false, shouldRetry: false };
       }
 
+      const convoState = getMetabotConversation(state, convoId);
+      if (!convoState) {
+        console.error(
+          "There is not metabot conversation initialized for conversation: ",
+          convoId,
+        );
+        return { prompt: data.message, success: false, shouldRetry: false };
+      }
+
       // if there were from the last prompt, remove the last prompt from the history
       const errors = getAgentErrorMessages(state, convoId);
       const lastMessageId = getLastMessage(state, convoId)?.id;
@@ -218,7 +229,8 @@ export const submitInput = createAsyncThunk<
         sendAgentRequest({
           ...data,
           message,
-          conversation_id: convoId,
+          convoId,
+          conversation_id: convoState.conversationId,
           ...agentMetadata,
         }),
       );
@@ -261,7 +273,8 @@ type SendAgentRequestError =
 
 export const sendAgentRequest = createAsyncThunk<
   MetabotAgentResponse,
-  MetabotAgentRequest,
+  // TODO: come back here... you were wiring in convoId since the request is failing to send and the redurer is probs looking up the conversation with conversationId rather than convoId
+  MetabotAgentRequest & { convoId: MetabotConvoId },
   { rejectValue: SendAgentRequestError }
 >(
   "metabase-enterprise/metabot/sendAgentRequest",
@@ -399,7 +412,6 @@ export const sendAgentRequest = createAsyncThunk<
   },
 );
 
-// TODO: this needs to be scoped for a conversation
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
   (convoId: MetabotConvoId) => {
@@ -508,14 +520,14 @@ export const retryPrompt = createAsyncThunk<
   },
 );
 
-export const removeConversation = createAsyncThunk(
-  "metabase-enterprise/metabot/removeConversation ",
+export const resetConversation = createAsyncThunk(
+  "metabase-enterprise/metabot/resetConversation",
   (
     payload: { convoId: MetabotConvoId; resetReactions: boolean },
     { dispatch },
   ) => {
     dispatch(cancelInflightAgentRequests(payload.convoId));
-    dispatch(metabot.actions.removeConversation(payload));
+    dispatch(metabot.actions.resetConversation(payload));
   },
 );
 

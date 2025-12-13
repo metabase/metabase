@@ -7,7 +7,7 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import { getUser } from "metabase/selectors/user";
 
 import { trackMetabotChatOpened } from "../analytics";
-import { useMetabotAgent } from "../hooks";
+import { useMetabotConversation } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
 
@@ -26,7 +26,7 @@ export interface MetabotProps {
 }
 
 export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
-  const { visible, setVisible } = useMetabotAgent();
+  const { visible, setVisible } = useMetabotConversation();
 
   useEffect(() => {
     return tinykeys(window, {

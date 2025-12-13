@@ -1,6 +1,5 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
-import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
@@ -15,10 +14,10 @@ import {
   createConversation,
   getMetabotInitialState,
   getRequestConversation,
+  resetReactionState,
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
-  MetabotConvoId,
   MetabotErrorMessage,
   MetabotSuggestedTransform,
   MetabotUserChatMessage,
@@ -29,6 +28,28 @@ export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
+    // TOP-LEVEL STATE REDUCERS
+    newConversation: (
+      state,
+      action: ConvoPayloadAction<{ visible: boolean }>,
+    ) => {
+      const { convoId, ...options } = action.payload;
+      state.conversations[convoId] = castDraft(createConversation(options));
+    },
+    removeConversation: (state, action: ConvoPayloadAction) => {
+      const { convoId } = action.payload;
+      delete state.conversations[convoId];
+      resetReactionState(state, convoId);
+    },
+    resetConversation: (state, action: ConvoPayloadAction) => {
+      const { convoId } = action.payload;
+      state.conversations[convoId] = castDraft(createConversation());
+      resetReactionState(state, convoId);
+    },
+    setDebugMode: (state, action: PayloadAction<boolean>) => {
+      state.debugMode = action.payload;
+    },
+    // CONVERSATION REDUCERS
     addDeveloperMessage: convoReducer(
       (convo, action: ConvoPayloadAction<{ message: string }>) => {
         convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;
@@ -158,39 +179,11 @@ export const metabot = createSlice({
         }
       },
     ),
-    newConversation: (
-      state,
-      action: PayloadAction<{ convoId: MetabotConvoId; visible: boolean }>,
-    ) => {
-      const { convoId, ...options } = action.payload;
-      state.conversations[convoId] = castDraft(createConversation(options));
-    },
-    removeConversation: (
-      state,
-      action: PayloadAction<{
-        convoId: MetabotConvoId;
-      }>,
-    ) => {
-      const { convoId } = action.payload;
-      state.conversations[convoId] = castDraft(createConversation());
-      match(convoId)
-        .with("omnibot", () => {
-          state.reactions.navigateToPath = null;
-          state.reactions.suggestedTransforms = [];
-        })
-        .with("inline_sql", () => {
-          state.reactions.suggestedCodeEdits = [];
-        })
-        .otherwise(() => {});
-    },
     setIsProcessing: convoReducer(
       (state, action: ConvoPayloadAction<{ processing: boolean }>) => {
         state.isProcessing = action.payload.processing;
       },
     ),
-    setNavigateToPath: (state, action: PayloadAction<string>) => {
-      state.reactions.navigateToPath = action.payload;
-    },
     setVisible: convoReducer(
       (state, action: ConvoPayloadAction<{ visible: boolean }>) => {
         state.visible = action.payload.visible;
@@ -206,8 +199,9 @@ export const metabot = createSlice({
         state.experimental.profileOverride = action.payload.profile;
       },
     ),
-    setDebugMode: (state, action: PayloadAction<boolean>) => {
-      state.debugMode = action.payload;
+    // REACTIONS REDUCERS
+    setNavigateToPath: (state, action: PayloadAction<string>) => {
+      state.reactions.navigateToPath = action.payload;
     },
     addSuggestedTransform: (
       state,
@@ -270,7 +264,7 @@ export const metabot = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(logout.pending, getMetabotInitialState)
-      // streamed response handlers
+      // CONVERSATION REQUEST REDUCERS
       .addCase(sendAgentRequest.pending, (state, action) => {
         const convo = getRequestConversation(state, action);
         if (convo) {

@@ -7,10 +7,10 @@ import { getLocation } from "metabase/selectors/routing";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
-import { useMetabotAgent } from "../hooks";
+import { useMetabotConversation } from "../hooks";
 
 export const MetabotDataStudioButton = () => {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation();
   const location = useSelector(getLocation);
   const disabled = !location.pathname?.startsWith(Urls.transformList());
 

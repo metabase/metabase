@@ -1,14 +1,14 @@
 import { Button, Stack } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import {
-  useMetabotAgent,
   useMetabotChatHandlers,
+  useMetabotConversation,
 } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
 export const MetabotChatSuggestions = () => {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation();
   const { handleSubmitInput } = useMetabotChatHandlers();
 
   // Keep in sync with [MetabotChat.tsx]

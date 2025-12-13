@@ -6,7 +6,7 @@ import { t } from "ttag";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import { MetabotPromptInput } from "../MetabotPromptInput";
 
@@ -23,7 +23,7 @@ export const MetabotInlineSQLPrompt = ({
   const [value, setValue] = useState("");
   const [hasError, setHasError] = useState(false);
   const { isDoingScience, submitInput, cancelRequest } =
-    useMetabotAgent("inline_sql");
+    useMetabotConversation("inline_sql");
 
   const disabled = !value.trim() || isDoingScience;
 

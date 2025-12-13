@@ -22,7 +22,7 @@ import {
   getMetabotVisible,
   getProfileOverride,
   newConversation,
-  removeConversation,
+  resetConversation,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
@@ -145,7 +145,7 @@ export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
 
   const startNewConversation = useCallback(() => {
     // TODO fix these methods
-    dispatch(removeConversation({ convoId, resetReactions: true }));
+    dispatch(resetConversation({ convoId, resetReactions: true }));
     dispatch(newConversation({ convoId, visible: true }));
   }, [convoId, dispatch]);
 

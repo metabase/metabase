@@ -1,5 +1,6 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { WritableDraft } from "immer";
+import { match } from "ts-pattern";
 
 import { uuid } from "metabase/lib/uuid";
 
@@ -41,6 +42,21 @@ export const createConversation = (
     ...overrides?.experimental,
   },
 });
+
+export const resetReactionState = (
+  state: WritableDraft<MetabotState>,
+  convoId: MetabotConvoId,
+) => {
+  match(convoId)
+    .with("omnibot", () => {
+      state.reactions.navigateToPath = null;
+      state.reactions.suggestedTransforms = [];
+    })
+    .with("inline_sql", () => {
+      state.reactions.suggestedCodeEdits = [];
+    })
+    .otherwise(() => {});
+};
 
 export const getConversationOrThrow = (
   state: WritableDraft<MetabotState>,

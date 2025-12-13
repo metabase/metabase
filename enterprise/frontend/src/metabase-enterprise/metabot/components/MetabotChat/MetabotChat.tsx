@@ -18,7 +18,7 @@ import {
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
-import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
+import { useMetabotChatHandlers, useMetabotConversation } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
@@ -43,7 +43,7 @@ export const MetabotChat = ({
 }: {
   config?: MetabotConfig;
 }) => {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation();
   const { handleSubmitInput, handleRetryMessage, handleResetInput } =
     useMetabotChatHandlers(config);
 
