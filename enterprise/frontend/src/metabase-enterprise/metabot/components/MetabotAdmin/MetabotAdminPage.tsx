@@ -10,7 +10,7 @@ import {
   AdminNavItem,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -37,14 +37,17 @@ import {
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
+  METABOT_USE_CASES,
 } from "metabase-enterprise/metabot/constants";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Collection,
   CollectionEssentials,
   MetabotInfo,
+  MetabotUseCase,
 } from "metabase-types/api";
 
+import S from "./MetabotAdmin.module.css";
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
@@ -72,35 +75,160 @@ export function MetabotAdminPage() {
   const isEmbedMetabot =
     metabot.entity_id === FIXED_METABOT_ENTITY_IDS.EMBEDDED;
 
+  const description = isEmbedMetabot
+    ? c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+        .t`${metabot.name} is Metabase's AI agent. If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`
+    : c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+        .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`;
+
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
       <ErrorBoundary>
-        <SettingsSection key={metabotId}>
-          <Box>
-            <SettingHeader
-              id="configure-metabot"
-              title={c("{0} is the name of an AI assistant")
-                .t`Configure ${metabot.name}`}
-              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
-                .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
-            />
-            {isEmbedMetabot && (
-              <Text c="text-medium" maw="40rem">
-                {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
-              </Text>
-            )}
-          </Box>
-
-          <MetabotVerifiedContentConfigurationPane metabot={metabot} />
-
-          {isEmbedMetabot && (
-            <MetabotCollectionConfigurationPane metabot={metabot} />
+        <SettingsPageWrapper
+          key={metabotId}
+          title={c("{0} is the name of an AI assistant")
+            .t`Configure ${metabot.name}`}
+          description={description}
+        >
+          {!isEmbedMetabot && (
+            <Box className={S.SectionCard}>
+              <MetabotUseCaseSection
+                metabot={metabot}
+                useCase={METABOT_USE_CASES.NLQ}
+                title={t`Natural Language Querying`}
+                description={t`Allow users to query data using natural language`}
+                switchLabel={t`Enable NLQ`}
+              />
+            </Box>
           )}
 
-          <MetabotPromptSuggestionPane metabot={metabot} />
-        </SettingsSection>
+          {!isEmbedMetabot && (
+            <Box className={S.SectionCard}>
+              <MetabotUseCaseSection
+                metabot={metabot}
+                useCase={METABOT_USE_CASES.SQL}
+                title={t`SQL Generation`}
+                description={t`Generate SQL queries from natural language inputs`}
+                switchLabel={t`Enable SQL generation`}
+              />
+            </Box>
+          )}
+
+          {!isEmbedMetabot && (
+            <Box className={S.SectionCard}>
+              <MetabotUseCaseSection
+                metabot={metabot}
+                useCase={METABOT_USE_CASES.OMNIBOT}
+                title={t`Omnibot`}
+                description={t`Enable the multi-modal AI assistant`}
+                switchLabel={t`Enable Omnibot`}
+              />
+            </Box>
+          )}
+
+          {!isEmbedMetabot && (
+            <Box className={S.SectionCard}>
+              <MetabotUseCaseSection
+                metabot={metabot}
+                useCase={METABOT_USE_CASES.TRANSFORMS}
+                title={t`Transforms`}
+                description={t`Allow Metabot to write and edit transforms`}
+                switchLabel={t`Enable Transforms`}
+              />
+            </Box>
+          )}
+
+          <Box className={S.SectionCard}>
+            <Stack gap="lg">
+              <Stack gap="sm">
+                <Text fw={600} c="text-dark" fz="h4">
+                  {t`Advanced`}
+                </Text>
+                <Text c="text-medium" maw="38rem">
+                  {t`Fine-tune query behavior and data sources`}
+                </Text>
+              </Stack>
+              {!isEmbedMetabot && (
+                <MetabotCollectionConfigurationPane
+                  metabot={metabot}
+                  title={t`Collection for NLQ`}
+                />
+              )}
+              {isEmbedMetabot && (
+                <MetabotCollectionConfigurationPane metabot={metabot} />
+              )}
+              <MetabotVerifiedContentConfigurationPane metabot={metabot} />
+              <MetabotPromptSuggestionPane metabot={metabot} />
+            </Stack>
+          </Box>
+        </SettingsPageWrapper>
       </ErrorBoundary>
     </AdminSettingsLayout>
+  );
+}
+
+function useUseCaseToggle(metabot: MetabotInfo, useCaseName: MetabotUseCase) {
+  const [updateMetabot, { isLoading }] = useUpdateMetabotMutation();
+  const [sendToast] = useToast();
+
+  const useCase = metabot.use_cases?.find((uc) => uc.name === useCaseName);
+  const isEnabled = useCase?.enabled ?? false;
+
+  const handleToggle = async (checked: boolean) => {
+    if (!useCase) {
+      return;
+    }
+    const result = await updateMetabot({
+      id: metabot.id,
+      use_cases: [{ id: useCase.id, enabled: checked }],
+    });
+
+    if (result.error) {
+      sendToast({
+        message: t`Error updating Metabot`,
+        icon: "warning",
+      });
+    }
+  };
+
+  return { isEnabled, isLoading, handleToggle };
+}
+
+function MetabotUseCaseSection({
+  metabot,
+  useCase,
+  title,
+  description,
+  switchLabel,
+}: {
+  metabot: MetabotInfo;
+  useCase: MetabotUseCase;
+  title: string;
+  description: string;
+  switchLabel: string;
+}) {
+  const { isEnabled, isLoading, handleToggle } = useUseCaseToggle(
+    metabot,
+    useCase,
+  );
+
+  return (
+    <Stack gap="sm">
+      <Text fw={600} c="text-dark" fz="h4">
+        {title}
+      </Text>
+      <Text c="text-medium" maw="38rem">
+        {description}
+      </Text>
+      <Switch
+        label={switchLabel}
+        checked={isEnabled}
+        onChange={(e) => handleToggle(e.target.checked)}
+        disabled={isLoading}
+        w="auto"
+        size="sm"
+      />
+    </Stack>
   );
 }
 
@@ -186,8 +314,10 @@ function MetabotVerifiedContentConfigurationPane({
 
 function MetabotCollectionConfigurationPane({
   metabot,
+  title,
 }: {
   metabot: MetabotInfo;
+  title?: string;
 }) {
   const metabotId = metabot.id;
   const metabotName = metabot.name;
@@ -230,13 +360,12 @@ function MetabotCollectionConfigurationPane({
     }
   };
 
+  const defaultTitle = c("{0} is the name of an AI assistant")
+    .t`Collection ${metabotName} can use`;
+
   return (
     <Box>
-      <SettingHeader
-        id="allow-metabot"
-        title={c("{0} is the name of an AI assistant")
-          .t`Collection ${metabotName} can use`}
-      />
+      <SettingHeader id="allow-metabot" title={title ?? defaultTitle} />
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
         <Button onClick={open} leftSection={isUpdating && <Loader size="xs" />}>

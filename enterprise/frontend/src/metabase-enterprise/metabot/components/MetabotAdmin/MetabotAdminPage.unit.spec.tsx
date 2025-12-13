@@ -17,11 +17,48 @@ import {
   FIXED_METABOT_IDS,
 } from "metabase-enterprise/metabot/constants";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { MetabotId, RecentItem } from "metabase-types/api";
+import type {
+  MetabotId,
+  MetabotUseCaseInfo,
+  RecentItem,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockMetabotInfo,
 } from "metabase-types/api/mocks";
+
+const createMockUseCases = (
+  overrides: Partial<Record<string, Partial<MetabotUseCaseInfo>>> = {},
+): MetabotUseCaseInfo[] => [
+  {
+    id: 1,
+    name: "nlq",
+    profile: "internal",
+    enabled: true,
+    ...overrides.nlq,
+  },
+  {
+    id: 2,
+    name: "sql",
+    profile: "internal",
+    enabled: true,
+    ...overrides.sql,
+  },
+  {
+    id: 3,
+    name: "omnibot",
+    profile: "internal",
+    enabled: true,
+    ...overrides.omnibot,
+  },
+  {
+    id: 4,
+    name: "transforms",
+    profile: "transforms_codegen",
+    enabled: false,
+    ...overrides.transforms,
+  },
+];
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
 import * as hooks from "./utils";
@@ -39,12 +76,14 @@ const defaultMetabots = [
   createMockMetabotInfo({
     id: FIXED_METABOT_IDS.DEFAULT,
     entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
+    use_cases: createMockUseCases(),
   }),
   createMockMetabotInfo({
     id: FIXED_METABOT_IDS.EMBEDDED,
     name: "Embedded Metabot",
     entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
     collection_id: 21,
+    use_cases: createMockUseCases(),
   }),
 ];
 
@@ -277,6 +316,43 @@ describe("MetabotAdminPage", () => {
 
       const putRequests = await findRequests("PUT");
       expect(putRequests[0].body).toEqual({ use_verified_content: true });
+    });
+  });
+
+  describe("Use Case Toggles", () => {
+    it("should show use case sections for default metabot but not embedded", async () => {
+      await setup();
+      expect(screen.getByText("Natural Language Querying")).toBeInTheDocument();
+      expect(screen.getByText("SQL Generation")).toBeInTheDocument();
+      expect(screen.getByText("Omnibot")).toBeInTheDocument();
+      expect(screen.getByText("Transforms")).toBeInTheDocument();
+
+      // Switch to embedded metabot
+      mockPathParam(FIXED_METABOT_IDS.EMBEDDED);
+      await userEvent.click(screen.getByText("Embedded Metabot"));
+      await screen.findByText(/Configure Embedded Metabot/);
+
+      expect(
+        screen.queryByText("Natural Language Querying"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("SQL Generation")).not.toBeInTheDocument();
+    });
+
+    it("should reflect use case enabled state and toggle correctly", async () => {
+      await setup();
+
+      // Transforms is disabled by default in our mock
+      const transformsSwitch = await screen.findByRole("switch", {
+        name: "Enable Transforms",
+      });
+      expect(transformsSwitch).not.toBeChecked();
+
+      await userEvent.click(transformsSwitch);
+
+      await waitFor(async () => {
+        const puts = await findRequests("PUT");
+        expect(puts[0].body).toEqual({ use_cases: [{ id: 4, enabled: true }] });
+      });
     });
   });
 });

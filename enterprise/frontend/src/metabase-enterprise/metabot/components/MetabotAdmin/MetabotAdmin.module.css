@@ -1,0 +1,6 @@
+.SectionCard {
+  border-radius: 8px;
+  border: 1px solid var(--mb-color-border);
+  background: var(--mb-color-background);
+  padding: var(--mantine-spacing-lg);
+}

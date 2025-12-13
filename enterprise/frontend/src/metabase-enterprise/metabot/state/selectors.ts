@@ -10,6 +10,7 @@ import {
   FIXED_METABOT_IDS,
   LONG_CONVO_MSG_LENGTH_THRESHOLD,
   METABOT_REQUEST_IDS,
+  METABOT_USE_CASES,
 } from "../constants";
 
 import type { MetabotUserChatMessage } from "./reducer";
@@ -140,8 +141,8 @@ export const getUseCase = createSelector(
   getLocation,
   (location): "transforms" | "omnibot" => {
     return location.pathname.startsWith(Urls.transformList())
-      ? "transforms"
-      : "omnibot";
+      ? METABOT_USE_CASES.TRANSFORMS
+      : METABOT_USE_CASES.OMNIBOT;
   },
 );
 

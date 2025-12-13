@@ -19,5 +19,5 @@
                    (metabot-v3.config/resolve-dynamic-metabot-id nil)))))
 
         (testing "falls back to internal default when no explicit or env value"
-          (is (= metabot-v3.config/internal-metabot-id
+          (is (= metabot-v3.settings/internal-metabot-uuid
                  (metabot-v3.config/resolve-dynamic-metabot-id nil))))))))

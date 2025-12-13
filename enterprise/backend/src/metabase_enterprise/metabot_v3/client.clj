@@ -11,7 +11,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase.api.common :as api]
@@ -35,7 +34,7 @@
 (defn get-ai-service-token
   "Get the token for the AI service."
   ([]
-   (get-ai-service-token api/*current-user-id* metabot-v3.config/internal-metabot-id))
+   (get-ai-service-token api/*current-user-id* metabot-v3.settings/internal-metabot-uuid))
 
   ([user-id metabot-id]
    (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
