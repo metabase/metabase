@@ -76,7 +76,7 @@
 
      {:resource {:question <card-id>}}"
   [{:keys [token]} :- [:map
-                       [:token string?]]]
+                       [:token api.embed.common/EncodedToken]]]
   (let [unsigned (unsign-and-translate-ids token)]
     (api.embed.common/check-embedding-enabled-for-card (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question]))
     (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
@@ -112,7 +112,7 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [{:keys [token]} :- [:map
-                       [:token string?]]
+                       [:token api.embed.common/EncodedToken]]
    query-params :- :map]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api (api.embed.common/parse-query-params query-params)))
 
@@ -127,7 +127,7 @@
 (api.macros/defendpoint :get ["/card/:token/query/:export-format", :export-format qp.schema/export-formats-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map
-                                     [:token         string?]
+                                     [:token api.embed.common/EncodedToken]
                                      [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot?       :pivot_results
@@ -157,7 +157,7 @@
 
      {:resource {:dashboard <dashboard-id>}}"
   [{:keys [token]} :- [:map
-                       [:token string?]]]
+                       [:token api.embed.common/EncodedToken]]]
   (let [unsigned (unsign-and-translate-ids token)]
     (api.embed.common/check-embedding-enabled-for-dashboard (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
@@ -202,7 +202,7 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map
-                                           [:token       string?]
+                                           [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
    query-params :- :map]
@@ -262,8 +262,8 @@
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [{:keys [token param-key]} :- [:map
-                                 [:token     string?]
-                                 [:param-key string?]]
+                                 [:token api.embed.common/EncodedToken]
+                                 [:param-key ms/NonBlankString]]
    query-params]
   (api.embed.common/dashboard-param-values token param-key nil
                                            (api.embed.common/parse-query-params query-params)))
@@ -274,7 +274,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
-  [{:keys [token param-key prefix]}
+  [{:keys [token param-key prefix]} :- api.embed.common/SearchParams
    query-params]
   (api.embed.common/dashboard-param-values token param-key prefix
                                            (api.embed.common/parse-query-params query-params)))
@@ -285,7 +285,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
   "Embedded version of the remapped dashboard param value endpoint."
-  [{:keys [token param-key]}
+  [{:keys [token param-key]} :- [:map
+                                 [:token api.embed.common/EncodedToken]
+                                 [:param-key ms/NonBlankString]]
    {:keys [value]}]
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value)))
 
@@ -296,8 +298,8 @@
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
   [{:keys [token param-key]} :- [:map
-                                 [:token     string?]
-                                 [:param-key string?]]]
+                                 [:token api.embed.common/EncodedToken]
+                                 [:param-key ms/NonBlankString]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one :model/Card :id card-id)]
@@ -312,10 +314,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
-  [{:keys [token param-key prefix]}] :- [:map
-                                         [:token     string?]
-                                         [:param-key string?]
-                                         [:prefix    string?]]
+  [{:keys [token param-key prefix]} :- api.embed.common/SearchParams]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one :model/Card :id card-id)]
@@ -332,8 +331,8 @@
 (api.macros/defendpoint :get "/card/:token/params/:param-key/remapping"
   "Embedded version of api.card filter values endpoint."
   [{:keys [token param-key]} :- [:map
-                                 [:token     string?]
-                                 [:param-key string?]]
+                                 [:token api.embed.common/EncodedToken]
+                                 [:param-key ms/NonBlankString]]
    {:keys [value]}           :- [:map [:value :string]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
@@ -356,7 +355,7 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [{:keys [token]} :- [:map
-                       [:token string?]]
+                       [:token api.embed.common/EncodedToken]]
    query-params    :- :map]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token)
                                       :api (api.embed.common/parse-query-params query-params)
@@ -370,7 +369,7 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map
-                                           [:token       string?]
+                                           [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
    query-params :- :map]
@@ -386,7 +385,7 @@
   "Generates a single tile image for an embedded Card using the map visualization."
   [{:keys [token zoom x y]}
    :- [:map
-       [:token string?]
+       [:token api.embed.common/EncodedToken]
        [:zoom ms/Int]
        [:x ms/Int]
        [:y ms/Int]]
@@ -412,7 +411,7 @@
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
   [{:keys [token dashcard-id card-id zoom x y]}
    :- [:map
-       [:token       string?]
+       [:token api.embed.common/EncodedToken]
        [:dashcard-id ms/PositiveInt]
        [:card-id     ms/PositiveInt]
        [:zoom        ms/Int]

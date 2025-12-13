@@ -704,7 +704,8 @@
 (api.macros/defendpoint :put "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map
-                          [:id ms/PositiveInt]]]
+                          [:id ms/PositiveInt]
+                          [:modal [:enum "qbnewb" "datasetnewb"]]]]
   (check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
