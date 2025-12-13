@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
+import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -11,7 +11,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Stack } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
@@ -90,42 +91,47 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
 
   return (
     <>
-      <Stack
+      <PageContainer
         pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
         data-testid="metric-query-editor"
         gap={0}
+        header={
+          <PaneHeader
+            title={
+              <PaneHeaderInput
+                initialValue={name}
+                placeholder={t`New metric`}
+                maxLength={NAME_MAX_LENGTH}
+                isOptional
+                onChange={setName}
+              />
+            }
+            icon="metric"
+            actions={
+              <PaneHeaderActions
+                errorMessage={validationResult.errorMessage}
+                isValid={validationResult.isValid}
+                isDirty
+                onSave={openModal}
+                onCancel={handleCancel}
+              />
+            }
+            breadcrumbs={
+              <DataStudioBreadcrumbs>
+                <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
+                {t`New Metric`}
+              </DataStudioBreadcrumbs>
+            }
+          />
+        }
       >
-        <PaneHeader
-          title={
-            <PaneHeaderInput
-              initialValue={name}
-              placeholder={t`New metric`}
-              maxLength={NAME_MAX_LENGTH}
-              isOptional
-              onChange={setName}
-            />
-          }
-          icon="metric"
-          actions={
-            <PaneHeaderActions
-              errorMessage={validationResult.errorMessage}
-              isValid={validationResult.isValid}
-              isDirty
-              onSave={openModal}
-              onCancel={handleCancel}
-            />
-          }
-        />
         <MetricQueryEditor
           query={query}
           uiState={uiState}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
         />
-      </Stack>
+      </PageContainer>
       {isModalOpened && (
         <CreateMetricModal
           query={query}

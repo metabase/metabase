@@ -9,11 +9,14 @@ import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import EditableText from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import Link from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Card, Flex } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import type { RegularCollectionId } from "metabase-types/api";
 
 import {
@@ -82,36 +85,48 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
 
   return (
     <>
-      <Stack
+      <PageContainer
         pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
-        gap={0}
         data-testid="new-snippet-page"
+        header={
+          <PaneHeader
+            title={
+              <PaneHeaderInput
+                initialValue={name}
+                placeholder={t`New SQL snippet`}
+                maxLength={SNIPPET_NAME_MAX_LENGTH}
+                isOptional
+                onContentChange={setName}
+              />
+            }
+            actions={
+              <PaneHeaderActions
+                isValid={isValid}
+                isDirty={true}
+                isSaving={isSaving}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            }
+            breadcrumbs={
+              <DataStudioBreadcrumbs>
+                <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
+                {t`New Snippet`}
+              </DataStudioBreadcrumbs>
+            }
+          />
+        }
       >
-        <PaneHeader
-          title={
-            <PaneHeaderInput
-              initialValue={name}
-              placeholder={t`New SQL snippet`}
-              maxLength={SNIPPET_NAME_MAX_LENGTH}
-              isOptional
-              onContentChange={setName}
-            />
-          }
-          actions={
-            <PaneHeaderActions
-              isValid={isValid}
-              isDirty={true}
-              isSaving={isSaving}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          }
-        />
-        <Flex flex={1} w="100%">
-          <Box flex={1} className={S.editorContainer}>
+        <Flex flex={1} w="100%" gap="sm">
+          <Card
+            withBorder
+            p={0}
+            w="100%"
+            flex={1}
+            style={{
+              overflow: "hidden",
+            }}
+          >
             <CodeMirror
               value={content}
               onChange={setContent}
@@ -126,19 +141,17 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
                 highlightActiveLine: true,
               }}
             />
-          </Box>
-          <Stack w={320} gap="lg" p="md" bg="bg-white" className={S.sidebar}>
-            <Box mx="-5px">
-              <EditableText
-                initialValue={description}
-                placeholder={t`No description`}
-                isMarkdown
-                onChange={setDescription}
-              />
-            </Box>
-          </Stack>
+          </Card>
+          <Card p="md" bg="bg-white" withBorder flex="0 0 320px">
+            <EditableText
+              initialValue={description}
+              placeholder={t`No description`}
+              isMarkdown
+              onChange={setDescription}
+            />
+          </Card>
         </Flex>
-      </Stack>
+      </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={!isSaving} />
       <PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal
         isOpen={isCollectionPickerOpen}

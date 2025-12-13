@@ -15,11 +15,12 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Box } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import type { Database, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
@@ -29,7 +30,6 @@ import { useSourceState } from "../../hooks/use-source-state";
 import { isNotDraftSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
-import S from "./TransformQueryPage.module.css";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -159,66 +159,67 @@ function TransformQueryPageBody({
 
   return (
     <>
-      <Stack
-        align="stretch"
+      <PageContainer
         data-testid="transform-query-editor"
-        gap={0}
-        h="100%"
-        mx="auto"
-        pb="sm"
-        pos="relative"
-        px="3.5rem"
-        w="100%"
-      >
-        <TransformHeader
-          transform={transform}
-          actions={
-            <TransformPaneHeaderActions
-              source={source}
-              isSaving={isSaving}
-              isDirty={isDirty}
-              handleSave={handleSave}
-              handleCancel={handleCancel}
-              transformId={transform.id}
-              isEditMode={isEditMode}
-            />
-          }
-          hasMenu={!isEditMode && !isDirty}
-          isEditMode={isEditMode}
-          pb="lg"
-        />
-        <Flex gap={0} className={S.visualization}>
-          <Box w="100%">
-            {source.type === "python" ? (
-              <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+        header={
+          <TransformHeader
+            transform={transform}
+            actions={
+              <TransformPaneHeaderActions
                 source={source}
-                proposedSource={
-                  proposedSource?.type === "python" ? proposedSource : undefined
-                }
+                isSaving={isSaving}
                 isDirty={isDirty}
-                onChangeSource={setSourceAndRejectProposed}
-                onAcceptProposed={acceptProposed}
-                onRejectProposed={rejectProposed}
-              />
-            ) : (
-              <TransformEditor
-                source={source}
-                proposedSource={
-                  proposedSource?.type === "query" ? proposedSource : undefined
-                }
-                uiState={uiState}
-                readOnly={!isEditMode}
-                databases={databases}
-                onChangeSource={setSourceAndRejectProposed}
-                onChangeUiState={setUiState}
-                onAcceptProposed={acceptProposed}
-                onRejectProposed={rejectProposed}
+                handleSave={handleSave}
+                handleCancel={handleCancel}
                 transformId={transform.id}
+                isEditMode={isEditMode}
               />
-            )}
-          </Box>
-        </Flex>
-      </Stack>
+            }
+            hasMenu={!isEditMode && !isDirty}
+            isEditMode={isEditMode}
+            pb="lg"
+          />
+        }
+      >
+        <Box
+          w="100%"
+          bg="bg-white"
+          bdrs="md"
+          bd="1px solid var(--mb-color-border)"
+          flex={1}
+          style={{
+            overflow: "hidden",
+          }}
+        >
+          {source.type === "python" ? (
+            <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+              source={source}
+              proposedSource={
+                proposedSource?.type === "python" ? proposedSource : undefined
+              }
+              isDirty={isDirty}
+              onChangeSource={setSourceAndRejectProposed}
+              onAcceptProposed={acceptProposed}
+              onRejectProposed={rejectProposed}
+            />
+          ) : (
+            <TransformEditor
+              source={source}
+              proposedSource={
+                proposedSource?.type === "query" ? proposedSource : undefined
+              }
+              uiState={uiState}
+              readOnly={!isEditMode}
+              databases={databases}
+              onChangeSource={setSourceAndRejectProposed}
+              onChangeUiState={setUiState}
+              onAcceptProposed={acceptProposed}
+              onRejectProposed={rejectProposed}
+              transformId={transform.id}
+            />
+          )}
+        </Box>
+      </PageContainer>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}

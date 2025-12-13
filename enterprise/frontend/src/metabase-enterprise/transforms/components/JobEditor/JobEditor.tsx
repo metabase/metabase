@@ -1,5 +1,10 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
+import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import {
   PaneHeader,
   PaneHeaderInput,
@@ -7,7 +12,6 @@ import {
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
-import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { ScheduleSection } from "./ScheduleSection";
@@ -35,24 +39,37 @@ export function JobEditor({
   onTagListChange,
 }: JobEditorProps) {
   return (
-    <ColumnLayout data-testid="transforms-job-editor">
-      <PaneHeader
-        title={
-          <PaneHeaderInput
-            initialValue={job.name}
-            maxLength={NAME_MAX_LENGTH}
-            onChange={onNameChange}
-          />
-        }
-        menu={menu}
-        actions={actions}
-        data-testid="jobs-header"
-      />
-      <ColumnLayoutBody>
-        <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
-        <TagSection job={job} onTagsChange={onTagListChange} />
-        {job.id != null && <DependenciesSection jobId={job.id} />}
-      </ColumnLayoutBody>
-    </ColumnLayout>
+    <PageContainer
+      data-testid="transforms-job-editor"
+      header={
+        <PaneHeader
+          title={
+            <PaneHeaderInput
+              initialValue={job.name}
+              maxLength={NAME_MAX_LENGTH}
+              onChange={onNameChange}
+            />
+          }
+          py={0}
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              {[
+                <Link key="transform-job-list" to={Urls.transformJobList()}>
+                  {t`Jobs`}
+                </Link>,
+                job.name,
+              ]}
+            </DataStudioBreadcrumbs>
+          }
+          menu={menu}
+          actions={actions}
+          data-testid="jobs-header"
+        />
+      }
+    >
+      <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
+      <TagSection job={job} onTagsChange={onTagListChange} />
+      {job.id != null && <DependenciesSection jobId={job.id} />}
+    </PageContainer>
   );
 }

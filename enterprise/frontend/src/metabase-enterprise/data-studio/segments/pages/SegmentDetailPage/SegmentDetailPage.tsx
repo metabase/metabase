@@ -8,7 +8,8 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Flex, Group } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import * as Lib from "metabase-lib";
 import type { Segment } from "metabase-types/api";
 
@@ -95,36 +96,33 @@ export function SegmentDetailPage({
   }, [savedSegment]);
 
   return (
-    <Flex
-      direction="column"
-      pos="relative"
-      w="100%"
-      h="100%"
-      bg="bg-white"
+    <PageContainer
       data-testid="segment-detail-page"
+      header={
+        <SegmentHeader
+          segment={segment}
+          tabUrls={tabUrls}
+          previewUrl={previewUrl}
+          onRemove={onRemove}
+          breadcrumbs={breadcrumbs}
+          actions={
+            isDirty && (
+              <Group gap="sm">
+                <Button onClick={handleReset}>{t`Cancel`}</Button>
+                <Button
+                  variant="filled"
+                  disabled={!isValid}
+                  loading={isSaving}
+                  onClick={handleSave}
+                >
+                  {t`Save`}
+                </Button>
+              </Group>
+            )
+          }
+        />
+      }
     >
-      <SegmentHeader
-        segment={segment}
-        tabUrls={tabUrls}
-        previewUrl={previewUrl}
-        onRemove={onRemove}
-        breadcrumbs={breadcrumbs}
-        actions={
-          isDirty && (
-            <Group gap="sm">
-              <Button onClick={handleReset}>{t`Cancel`}</Button>
-              <Button
-                variant="filled"
-                disabled={!isValid}
-                loading={isSaving}
-                onClick={handleSave}
-              >
-                {t`Save`}
-              </Button>
-            </Group>
-          )
-        }
-      />
       <SegmentEditor
         query={query}
         description={description}
@@ -136,6 +134,6 @@ export function SegmentDetailPage({
         route={route}
         isEnabled={isDirty && !isSaving}
       />
-    </Flex>
+    </PageContainer>
   );
 }

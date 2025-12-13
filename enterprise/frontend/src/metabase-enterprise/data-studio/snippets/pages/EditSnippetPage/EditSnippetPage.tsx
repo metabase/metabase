@@ -15,7 +15,8 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
-import { Box, Center, Flex, Stack } from "metabase/ui";
+import { Card, Center, Flex, Stack } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
@@ -97,28 +98,34 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
 
   return (
     <>
-      <Stack
+      <PageContainer
         pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
-        gap={0}
         data-testid="edit-snippet-page"
+        header={
+          <SnippetHeader
+            snippet={snippet}
+            actions={
+              <PaneHeaderActions
+                isValid={true}
+                isDirty={isDirty}
+                isSaving={isSaving}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            }
+          />
+        }
       >
-        <SnippetHeader
-          snippet={snippet}
-          actions={
-            <PaneHeaderActions
-              isValid={true}
-              isDirty={isDirty}
-              isSaving={isSaving}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          }
-        />
-        <Flex flex={1} w="100%">
-          <Box flex={1} className={S.editorContainer}>
+        <Flex flex={1} w="100%" gap="sm">
+          <Card
+            withBorder
+            p={0}
+            w="100%"
+            flex={1}
+            style={{
+              overflow: "hidden",
+            }}
+          >
             <CodeMirror
               value={content}
               onChange={setContent}
@@ -133,16 +140,18 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
                 highlightActiveLine: true,
               }}
             />
-          </Box>
-          <Stack w={320} gap="lg" p="md" bg="bg-white" className={S.sidebar}>
-            <SnippetDescriptionSection snippet={snippet} />
-            <EntityCreationInfo
-              createdAt={snippet.created_at}
-              creator={snippet.creator}
-            />
-          </Stack>
+          </Card>
+          <Card withBorder p="md" bg="bg-white" flex="0 0 320px">
+            <Stack gap="lg">
+              <SnippetDescriptionSection snippet={snippet} />
+              <EntityCreationInfo
+                createdAt={snippet.created_at}
+                creator={snippet.creator}
+              />
+            </Stack>
+          </Card>
         </Flex>
-      </Stack>
+      </PageContainer>
       <LeaveRouteConfirmModal
         key={snippetId}
         route={route}
