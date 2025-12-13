@@ -1614,7 +1614,7 @@
    :display-name               "Name"
    :database-position          4
    :database-required          false
-   :fingerprint                {:global {:distinct-count 2499, :nil% 0.0}
+   :fingerprint                {:global {:distinct-count 2474, :nil% 0.0}
                                 :type   {:type/Text {:percent-json   0.0
                                                      :percent-url    0.0
                                                      :percent-email  0.0
