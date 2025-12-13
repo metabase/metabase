@@ -1,8 +1,8 @@
+import { useDebouncedValue } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -151,11 +151,14 @@ export function DatasetsList({
       },
     );
 
-  const debouncedIsFetching = useDebouncedValue(
-    isSearchFetching || isListRecentsFetching,
-    300, // Adjust debounce duration as needed
-    (_lastValue, newValue) => newValue === true, // We want instant updates when loading ends
-  );
+  // Handle debouncing of loading state with instant updates when loading ends
+  // When loading starts (false → true): debouncedIsFetching stays false for 300ms,
+  //   so shouldShowLoading delays showing the loading indicator
+  // When loading ends (true → false): shouldShowLoading immediately becomes false
+  //   regardless of debouncedIsFetching's debounced value
+  const isFetching = isSearchFetching || isListRecentsFetching;
+  const debouncedIsFetching = useDebouncedValue(isFetching, 300);
+  const shouldShowLoading = isFetching && debouncedIsFetching;
 
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
@@ -261,7 +264,7 @@ export function DatasetsList({
       data-testid="datasets-list"
       style={{ overflow: "auto", ...style }}
     >
-      {debouncedIsFetching && (
+      {shouldShowLoading && (
         <>
           <Skeleton height={30} radius="sm" />
           <Skeleton height={30} mt={6} radius="sm" />
@@ -273,7 +276,7 @@ export function DatasetsList({
       {items && items.length === 0 && (
         <Box m="auto">{t`No compatible results`}</Box>
       )}
-      {items && !debouncedIsFetching
+      {items && !shouldShowLoading
         ? items.map((item, index) => (
             <DatasetsListItem
               key={index}
