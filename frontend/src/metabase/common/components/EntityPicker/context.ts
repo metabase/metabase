@@ -3,6 +3,7 @@ import {
   type SetStateAction,
   createContext,
   useContext,
+  useState,
 } from "react";
 
 import type {
@@ -15,6 +16,10 @@ import type {
 export interface OmniPickerContextValue {
   path: OmniPickerItem[];
   setPath: Dispatch<SetStateAction<OmniPickerItem[]>>;
+  previousPath: OmniPickerItem[];
+  setPreviousPath: Dispatch<SetStateAction<OmniPickerItem[]>>;
+  searchScope: string;
+  setSearchScope: Dispatch<SetStateAction<string>>;
   onChange: (value: OmniPickerItem) => void;
   initialValue?: OmniPickerItem;
   isFolderItem: (item: OmniPickerItem | unknown) => item is OmniPickerFolderItem;
