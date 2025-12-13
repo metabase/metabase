@@ -13,18 +13,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time.impl-common :as u.time.impl-common])
-  #?@
-   (:clj
-    [(:import
-      (java.time ZoneId))]
-    :cljs
-    [(:require
-      ["moment" :as moment]
-      ["moment-timezone" :as mtz])]))
+  #?(:clj
+     (:import
+      (java.time ZoneId))))
 
-#?(:cljs
-   ;; so the moment-timezone stuff gets loaded
-   (comment mtz/keep-me))
 
 (mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
@@ -175,23 +167,34 @@
   ;; argument. But we can't refactor everything in one go, so that will have to be a future refactor.
   [:mode     [:? [:schema [:ref ::week-mode]]]])
 
+#?(:cljs
+   (defn- valid-timezone-id?
+     "Check if a string is a valid timezone ID by trying to construct a DateTimeFormat with it."
+     [s]
+     (try
+       (js/Intl.DateTimeFormat. "en-US" #js {:timeZone s})
+       true
+       (catch js/Error _
+         false))))
+
 (mr/def ::timezone-id
   [:and
    ::common/non-blank-string
    [:or
-    (into [:enum
-           {:error/message "valid timezone ID"
-            :error/fn      (fn [{:keys [value]} _]
-                             (str "invalid timezone ID: " (pr-str value)))
-            :description   "A valid timezone ID like: \"Asia/Aden\", \"America/Cuiaba\"."
-            ;; The timezone list is dynamic which make the .github/workflows/openapi-check.yml flaky on CI
-            ;; so we need to hack this to write a static schema
-            :json-schema   {:type "string"}}]
-          (sort
-           #?(;; 600 timezones on java 17
-              :clj (ZoneId/getAvailableZoneIds)
-              ;; 596 timezones on moment-timezone 0.5.38
-              :cljs (.names (.-tz moment)))))
+    #?(:clj  (into [:enum
+                    {:error/message "valid timezone ID"
+                     :error/fn      (fn [{:keys [value]} _]
+                                      (str "invalid timezone ID: " (pr-str value)))
+                     :description   "A valid timezone ID like: \"Asia/Aden\", \"America/Cuiaba\"."
+                     ;; The timezone list is dynamic which make the .github/workflows/openapi-check.yml flaky on CI
+                     ;; so we need to hack this to write a static schema
+                     :json-schema   {:type "string"}}]
+                   (sort (ZoneId/getAvailableZoneIds)))
+       :cljs [:fn
+              {:error/message "valid timezone ID"
+               :error/fn      (fn [{:keys [value]} _]
+                                (str "invalid timezone ID: " (pr-str value)))}
+              valid-timezone-id?])
     ::literal/string.zone-offset]])
 
 (mbql-clause/define-catn-mbql-clause :convert-timezone
