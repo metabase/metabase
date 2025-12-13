@@ -4,13 +4,14 @@ import { t } from "ttag";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
-import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
+import S from "./WhatsNewNotification.module.css";
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";
 
@@ -57,9 +58,9 @@ export function WhatsNewNotification() {
       <Stack gap="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
-          <DismissIconButtonWrapper onClick={dismiss}>
+          <IconButtonWrapper className={S.DismissIconButtonWrapper} onClick={dismiss}>
             <Icon name="close" />
-          </DismissIconButtonWrapper>
+          </IconButtonWrapper>
         </Flex>
 
         {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
