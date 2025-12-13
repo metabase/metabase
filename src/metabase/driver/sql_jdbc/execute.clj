@@ -45,6 +45,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime)
+   (java.util.concurrent Executors)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -405,6 +406,10 @@
             (.setAutoCommit conn false)
             (catch Throwable e
               (log/debug e "Error setting connection autoCommit to false"))))
+    (try
+      (.setNetworkTimeout conn (Executors/newSingleThreadExecutor) driver.settings/*network-timeout-ms*)
+      (catch Throwable e
+        (log/debug e "Error setting network timeout for connection")))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
