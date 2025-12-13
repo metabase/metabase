@@ -2281,6 +2281,7 @@
    :uses #{analytics
            api
            app-db
+           collections
            driver
            events
            lib
