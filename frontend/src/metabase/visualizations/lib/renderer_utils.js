@@ -102,13 +102,6 @@ function getColumnIndex({ settings, data: { cols } }) {
   return i === -1 ? 0 : i;
 }
 
-// Crossfilter calls toString on each moment object, which calls format(), which is very slow.
-// Replace toString with a function that just returns the unparsed ISO input date, since that works
-// just as well and is much faster
-function moment_fast_toString() {
-  return this._i;
-}
-
 function parseTimestampAndWarn(value, unit) {
   if (value == null) {
     return { parsedValue: null, warning: nullDimensionWarning() };
@@ -117,7 +110,6 @@ function parseTimestampAndWarn(value, unit) {
   if (!m.isValid()) {
     return { parsedValue: null, warning: invalidDateWarning(value) };
   }
-  m.toString = moment_fast_toString;
   return { parsedValue: m };
 }
 

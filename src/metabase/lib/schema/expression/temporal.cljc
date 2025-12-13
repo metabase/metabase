@@ -13,18 +13,26 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time.impl-common :as u.time.impl-common])
-  #?@
-   (:clj
-    [(:import
-      (java.time ZoneId))]
-    :cljs
-    [(:require
-      ["moment" :as moment]
-      ["moment-timezone" :as mtz])]))
+#?@
+ (:clj
+  [(:import
+    (java.time ZoneId))]
+  :cljs
+  [(:require
+    [goog.object :as gobj])]))
 
 #?(:cljs
-   ;; so the moment-timezone stuff gets loaded
-   (comment mtz/keep-me))
+   (def ^:private timezone-aliases
+     ["US/Pacific" "US/Mountain" "US/Central" "US/Eastern"
+      "US/Arizona" "US/East-Indiana" "US/Hawaii" "US/Alaska"]))
+
+#?(:cljs
+   (defn- js-timezone-ids []
+     (let [supported? (gobj/get js/Intl "supportedValuesOf")
+           base       (if supported?
+                        (js->clj (.call supported? js/Intl "timeZone"))
+                        [])]
+       (distinct (concat base timezone-aliases)))))
 
 (mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
@@ -176,19 +184,19 @@
   [:mode     [:? [:schema [:ref ::week-mode]]]])
 
 (mr/def ::timezone-id
-  [:and
-   ::common/non-blank-string
-   [:or
-    (into [:enum
-           {:error/message "valid timezone ID"
-            :error/fn      (fn [{:keys [value]} _]
-                             (str "invalid timezone ID: " (pr-str value)))}]
-          (sort
-           #?(;; 600 timezones on java 17
-              :clj (ZoneId/getAvailableZoneIds)
-              ;; 596 timezones on moment-timezone 0.5.38
-              :cljs (.names (.-tz moment)))))
-    ::literal/string.zone-offset]])
+  (let [zone-ids #?(;; 600 timezones on java 17
+                    :clj (ZoneId/getAvailableZoneIds)
+                    ;; Use Intl API in JS environments
+                    :cljs (js-timezone-ids))]
+    [:and
+     ::common/non-blank-string
+     [:or
+      (into [:enum
+             {:error/message "valid timezone ID"
+              :error/fn      (fn [{:keys [value]} _]
+                               (str "invalid timezone ID: " (pr-str value)))}]
+            (sort zone-ids))
+      ::literal/string.zone-offset]]))
 
 (mbql-clause/define-catn-mbql-clause :convert-timezone
   [:datetime [:schema [:ref ::expression/temporal]]]

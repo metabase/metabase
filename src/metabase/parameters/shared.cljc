@@ -7,7 +7,7 @@
         [metabase.util.date-2.parse.builder :as b]
         [metabase.util.i18n.impl :as i18n.impl]))
    #?@(:cljs
-       (["moment" :as moment]))
+       [["dayjs" :as dayjs]])
    [clojure.string :as str]
    [metabase.lib.core :as lib]
    [metabase.parameters.schema :as parameters.schema]
@@ -19,8 +19,13 @@
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
 
-;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
-#?(:cljs (comment moment/keep-me))
+#?(:cljs
+   (defn- format-date [value locale pattern]
+     (let [t (time/coerce-to-timestamp value {})]
+       (if (time/valid? t)
+         (let [t (if locale (.locale ^js t locale) t)]
+           (.format ^js t pattern))
+         ""))))
 
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
@@ -39,15 +44,15 @@
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/single
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value) locale)]
-             (.format m "MMMM D, YYYY"))
+  #?(:cljs (format-date value locale "MMMM D, YYYY")
      :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) locale)))
 
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/month-year
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value "YYYY-MM") locale)]
-             (if (.isValid m) (.format m "MMMM, YYYY") ""))
+  #?(:cljs (let [t (dayjs value "YYYY-MM" true)
+                 t (if locale (.locale ^js t locale) t)]
+             (if (.isValid ^js t) (.format ^js t "MMMM, YYYY") ""))
      :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) locale)))
 
 #?(:clj
@@ -63,8 +68,9 @@
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/quarter-year
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") locale)]
-             (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
+  #?(:cljs (if-let [[_ q year] (re-matches #"Q([1-4])-(\d{4})" value)]
+             (str "Q" q ", " year)
+             "")
      :clj (.format (.withLocale ^DateTimeFormatter quarter-formatter-out (i18n.impl/locale locale))
                    (.parse ^DateTimeFormatter quarter-formatter-in value))))
 

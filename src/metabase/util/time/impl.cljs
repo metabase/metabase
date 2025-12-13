@@ -1,27 +1,82 @@
 (ns metabase.util.time.impl
-  "CLJS implementation of the time utilities on top of Moment.js.
+  "CLJS implementation of the time utilities on top of Day.js.
   See [[metabase.util.time]] for the public interface."
   (:require
-   ["moment" :as moment]
+   [clojure.string :as str]
+   ["dayjs" :as dayjs]
+   ["dayjs/plugin/advancedFormat" :as advanced-format]
+   ["dayjs/plugin/customParseFormat" :as custom-parse-format]
+   ["dayjs/plugin/dayOfYear" :as day-of-year]
+   ["dayjs/plugin/isoWeek" :as iso-week]
+   ["dayjs/plugin/localeData" :as locale-data]
+   ["dayjs/plugin/quarterOfYear" :as quarter-of-year]
+   ["dayjs/plugin/utc" :as dayjs-utc]
+   ["dayjs/plugin/weekOfYear" :as week-of-year]
+   ["dayjs/plugin/weekday" :as weekday]
+   ["dayjs/locale/es"]
+   ["dayjs/locale/fr"]
+   ["./dayjs_parse_zone_plugin" :default parse-zone]
    [metabase.util.time.impl-common :as common]))
 
-(defn- now [] (moment))
+;; forward declarations for helpers defined later
+(declare ->dayjs parse-with-formats iso-8601->dayjs+type)
+
+;; Plugins needed to match the Day.js surface we relied on previously.
+(.extend dayjs dayjs-utc)
+(.extend dayjs custom-parse-format)
+(.extend dayjs iso-week)
+(.extend dayjs weekday)
+(.extend dayjs week-of-year)
+(.extend dayjs quarter-of-year)
+(.extend dayjs day-of-year)
+(.extend dayjs locale-data)
+(.extend dayjs advanced-format)
+(.extend dayjs parse-zone)
+
+(defn- annotate!
+  "Store which components were present in the parsed value on the Day.js instance.
+  This mirrors the parsingFlags checks we used with Moment previously."
+  [^js d {:keys [has-date? has-time?]}]
+  (let [x (or (.-$x d) (js-obj))]
+    (aset d "$x" x)
+    (when (some? has-date?)
+      (aset x "hasDate" has-date?))
+    (when (some? has-time?)
+      (aset x "hasTime" has-time?)))
+  d)
+
+(defn- parsed-part?
+  "Check whether the parsed value carried date or time parts."
+  [^js d indices]
+  (let [x (.-$x d)
+        has-date (when x (.-hasDate x))
+        has-time (when x (.-hasTime x))]
+    (cond
+      (some #{0 1 2} indices) (if (some? has-date) has-date true)
+      (some #{3 4 5} indices) (if (some? has-time) has-time true)
+      :else true)))
+
+(defn- now [] (annotate! (dayjs) {:has-date? true, :has-time? true}))
 
 ;;; ----------------------------------------------- predicates -------------------------------------------------------
+(defn- moment? [value]
+  (and value (true? (.-_isAMomentObject value))))
+
 (defn time?
   "checks if the provided value is a local time value."
   [value]
-  (moment/isMoment value))
+  (or (.isDayjs dayjs value)
+      (moment? value)))
 
 (defn datetime?
-  "Given any value, check if it's a (possibly invalid) Moment."
+  "Given any value, check if it's a (possibly invalid) Day.js value."
   [value]
   (and value (time? value)))
 
 (defn valid?
-  "Given a Moment, check that it's valid."
+  "Given a Day.js value, check that it's valid."
   [value]
-  (and (datetime? value) (.isValid ^moment/Moment value)))
+  (and (datetime? value) (.isValid ^js value)))
 
 (defn normalize
   "Does nothing. Just a placeholder in CLJS; the JVM implementation does some real work."
@@ -30,17 +85,17 @@
 
 (defn same-day?
   "Given two platform-specific datetimes, checks if they fall within the same day."
-  [^moment/Moment d1 ^moment/Moment d2]
+  [d1 d2]
   (.isSame d1 d2 "day"))
 
 (defn same-month?
   "True if these two datetimes fall in the same (year and) month."
-  [^moment/Moment d1 ^moment/Moment d2]
+  [d1 d2]
   (.isSame d1 d2 "month"))
 
 (defn same-year?
   "True if these two datetimes fall in the same year."
-  [^moment/Moment d1 ^moment/Moment d2]
+  [d1 d2]
   (.isSame d1 d2 "year"))
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
@@ -50,27 +105,42 @@
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- apply-offset
-  [^moment/Moment value offset-n offset-unit]
-  (.add
-   (moment value)
-   offset-n
-   (name offset-unit)))
+  [value offset-n offset-unit]
+  (.add (->dayjs value) offset-n (name offset-unit)))
 
-(defmethod common/to-range :default [^moment/Moment value {:keys [n unit]}]
-  (let [^moment/Moment c1       (.clone value)
-        ^moment/Moment c2       (.clone value)
-        ^moment/Moment adjusted (if (> n 1)
-                                  (.add c2 (dec n) (name unit))
-                                  c2)]
-    [(.startOf c1       (name unit))
-     (.endOf   adjusted (name unit))]))
+(defmethod common/to-range :default [value {:keys [n unit]}]
+  (let [base      (dayjs value)
+        adjusted  (if (> n 1)
+                    (.add base (dec n) (name unit))
+                    base)]
+    [(.startOf base (name unit))
+     (.endOf adjusted (name unit))]))
 
-;; NB: Only the :default for to-range is needed in CLJS, since Moment's startOf and endOf methods are doing the work.
+;; NB: Only the :default for to-range is needed in CLJS, since Day.js startOf and endOf methods are doing the work.
 
 ;;; -------------------------------------------- string->timestamp ---------------------------------------------------
 (defmethod common/string->timestamp :default [value _]
   ;; Best effort to parse this unknown string format, as a local zoneless datetime, then treating it as UTC.
-  (moment/utc value moment/ISO_8601))
+  (when-let [[parsed value-type] (iso-8601->dayjs+type value)]
+    (let [needs-utc? (not (#{:local-time :offset-time} value-type))
+          adjusted   (if needs-utc?
+                       (.utc ^js parsed)
+                       parsed)]
+      adjusted)))
+
+(defn- weekday-name->iso-weekday
+  "Return ISO weekday number (1=Mon .. 7=Sun) for a localized weekday name."
+  [value locale]
+  (let [loc-inst (.locale (dayjs) (or locale (.locale dayjs)))
+        data     (.localeData loc-inst)
+        norm     (fn [s] (some-> s str/lower-case))
+        match    (fn [names]
+                   (some (fn [[i n]] (when (= (norm n) (norm value)) i))
+                         (map-indexed vector names)))
+        idx      (or (match (.weekdays data))
+                     (match (.weekdaysShort data)))]
+    (when-some [i idx]
+      (.isoWeekday (.day loc-inst i)))))
 
 (defmethod common/string->timestamp :day-of-week [value options]
   ;; Try to parse as a regular timestamp; if that fails then try to treat it as a weekday name and adjust from
@@ -79,127 +149,151 @@
                         (catch js/Error _ nil))]
     (if (valid? as-default)
       as-default
-      (-> (now)
-          (.isoWeekday value)
-          (.startOf "day")))))
+      (let [locale  (:locale options)
+            iso-day (or (weekday-name->iso-weekday value locale)
+                        (let [n (js/parseInt value 10)]
+                          (when-not (js/isNaN n) n)))]
+        (if iso-day
+          (annotate! (-> (now)
+                         (.isoWeekday iso-day)
+                         (.startOf "day"))
+                     {:has-date? true, :has-time? false})
+          (throw (ex-info (str "Failed to coerce '" value "' to day-of-week")
+                          {:value value})))))))
 
 ;;; -------------------------------------------- number->timestamp ---------------------------------------------------
 (defn- magic-base-date
   "Some of the date coercions are relative, and not directly involved with any particular month.
   To avoid errors we need to use a reference date that is (a) in a month with 31 days,(b) in a leap year.
   This uses 2016-01-01 for the purpose.
-  This is a function that returns fresh values, since Moments are mutable."
+  This is a function that returns fresh values."
   []
-  (moment "2016-01-01"))
+  (annotate! (dayjs "2016-01-01") {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :default [value _]
   ;; If no unit is given, or the unit is not recognized, try to parse the number as year number, returning the timestamp
   ;; for midnight UTC on January 1.
-  (moment/utc value moment/ISO_8601))
+  (annotate! (.utc dayjs (str value) "YYYY" true) {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :minute-of-hour [value _]
-  (.. (now) (minute value) (startOf "minute")))
+  (annotate! (-> (now) (.minute value) (.startOf "minute")) {:has-date? false, :has-time? true}))
 
 (defmethod common/number->timestamp :hour-of-day [value _]
-  (.. (now) (hour value) (startOf "hour")))
+  (annotate! (-> (now) (.hour value) (.startOf "hour")) {:has-date? false, :has-time? true}))
 
 (defmethod common/number->timestamp :day-of-week [value _]
   ;; Metabase uses 1 to mean the start of the week, based on the Metabase setting for the first day of the week.
-  ;; Moment uses 0 as the first day of the week in its configured locale.
-  (.. (now) (weekday (dec value)) (startOf "day")))
+  ;; Day.js uses 0 as the first day of the week in its configured locale.
+  (annotate! (-> (now) (.weekday (dec value)) (.startOf "day")) {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :day-of-week-iso [value _]
-  (.. (now) (isoWeekday value) (startOf "day")))
+  (annotate! (-> (now) (.isoWeekday value) (.startOf "day")) {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :day-of-month [value _]
   ;; We force the initial date to be in a month with 31 days.
-  (.. (magic-base-date) (date value) (startOf "day")))
+  (annotate! (-> (magic-base-date) (.date value) (.startOf "day")) {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :day-of-year [value _]
   ;; We force the initial date to be in a leap year (2016).
-  (.. (magic-base-date) (dayOfYear value) (startOf "day")))
+  (annotate! (-> (magic-base-date) (.dayOfYear value) (.startOf "day")) {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :week-of-year [value _]
-  (.. (now) (week value) (startOf "week")))
+  (annotate! (-> (now) (.week value) (.startOf "week")) {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :month-of-year [value _]
-  (.. (now) (month (dec value)) (startOf "month")))
+  (annotate! (-> (now) (.month (dec value)) (.startOf "month")) {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :quarter-of-year [value _]
-  (.. (now) (quarter value) (startOf "quarter")))
+  (annotate! (-> (now) (.quarter value) (.startOf "quarter")) {:has-date? true, :has-time? false}))
 
 (defmethod common/number->timestamp :year [value _]
-  (.. (now) (year value) (startOf "year")))
+  (annotate! (-> (now) (.year value) (.startOf "year")) {:has-date? true, :has-time? false}))
 
 ;;; ---------------------------------------------- parsing helpers ---------------------------------------------------
 (defn parse-with-zone
   "Parses a timestamp with Z or a timezone offset at the end.
   This requires a different API call from timestamps without time zones in CLJS."
   [value]
-  (moment/parseZone value))
+  (let [time-only?    (re-matches common/offset-time-regex value)
+        time-prefix   (str (.format (now) "YYYY-MM-DD") "T")
+        parsed        (.parseZone dayjs (if time-only?
+                                          (str time-prefix value)
+                                          value))]
+    (annotate! parsed {:has-date? (not time-only?), :has-time? true})))
 
 (defn localize
-  "Given a freshly parsed absolute Moment, convert it to a local one."
+  "Given a freshly parsed absolute Day.js value, convert it to a local one."
   [value]
   (.local value))
 
 (def ^:private parse-time-formats
-  #js ["HH:mm:ss.SSSZ"
-       "HH:mm:ss.SSS"
-       "HH:mm:ss"
-       "HH:mm"])
+  ["HH:mm:ss.SSSZ"
+   "HH:mm:ss.SSS"
+   "HH:mm:ss"
+   "HH:mm"])
+
+(defn- today-prefix []
+  (str (.format (now) "YYYY-MM-DD") "T"))
 
 (defn parse-time-string
   "Parses a time string that has been stripped of any time zone."
   [value]
-  (moment value parse-time-formats))
+  (parse-with-formats value {:formats       parse-time-formats
+                             :parser        #(dayjs %1 %2 nil %3)
+                             :prefix        today-prefix
+                             :format-prefix "YYYY-MM-DDT"
+                             :flags         {:has-date? false, :has-time? true}
+                             :strict?       true}))
 
 ;;; ----------------------------------------------- constructors -----------------------------------------------------
 (defn local-time
-  "Constructs a platform time value (eg. Moment, LocalTime) for the given hour and minute, plus optional seconds and
+  "Constructs a platform time value (eg. Day.js, LocalTime) for the given hour and minute, plus optional seconds and
   milliseconds.
 
   If called without arguments, returns the current time."
   ([]
-   ;; Actually a full datetime, but Moment doesn't have freestanding time values.
-   (moment))
+   (now))
   ([hours minutes]
-   (moment #js {:hours hours, :minutes minutes}))
+   (annotate! (-> (dayjs) (.hour hours) (.minute minutes) (.second 0) (.millisecond 0))
+              {:has-date? false, :has-time? true}))
   ([hours minutes seconds]
-   (moment #js {:hours hours, :minutes minutes, :seconds seconds}))
+   (annotate! (-> (dayjs) (.hour hours) (.minute minutes) (.second seconds) (.millisecond 0))
+              {:has-date? false, :has-time? true}))
   ([hours minutes seconds millis]
-   (moment #js {:hours hours, :minutes minutes, :seconds seconds, :milliseconds millis})))
+   (annotate! (-> (dayjs) (.hour hours) (.minute minutes) (.second seconds) (.millisecond millis))
+              {:has-date? false, :has-time? true})))
 
 (declare truncate)
 
 (defn local-date
-  "Constructs a platform date value (eg. Moment, LocalDate) for the given year, month and day.
+  "Constructs a platform date value (eg. Day.js, LocalDate) for the given year, month and day.
 
   Day is 1-31. January = 1, or you can specify keywords like `:jan`, `:jun`."
-  ([] (truncate (moment) :day))
+  ([] (annotate! (.startOf (dayjs) "day") {:has-date? true, :has-time? false}))
   ([year month day]
-   (moment #js {:year  year
-                :day   day
-                ;; Moment uses 0-based months, unlike Metabase.
-                :month (dec (or (common/month-keywords month) month))})))
+   (annotate! (dayjs (js/Date. year
+                               (dec (or (common/month-keywords month) month))
+                               day))
+              {:has-date? true, :has-time? false})))
 
 (defn local-date-time
-  "Constructs a platform datetime (eg. Moment, LocalDateTime).
+  "Constructs a platform datetime (eg. Day.js, LocalDateTime).
 
   Accepts either:
   - no arguments (current datetime)
   - a local date and local time (see [[local-date]] and [[local-time]]); or
   - year, month, day, hour, and minute, plus optional seconds and millis."
-  ([] (moment))
+  ([] (annotate! (dayjs) {:has-date? true, :has-time? true}))
   ([a-date a-time]
    (when-not (and (valid? a-date) (valid? a-time))
-     (throw (ex-info "Expected valid Moments for date and time" {:date a-date
-                                                                 :time a-time})))
-   (let [^moment/Moment d (.clone a-date)
-         ^moment/Moment t a-time]
-     (doseq [unit ["hour" "minute" "second" "millisecond"]]
-       (.set d unit (.get t unit)))
-     d))
+     (throw (ex-info "Expected valid Day.js values for date and time" {:date a-date
+                                                                       :time a-time})))
+   (let [t a-time
+         combined (reduce (fn [acc unit]
+                            (.set acc unit (.get t unit)))
+                          (dayjs a-date)
+                          ["hour" "minute" "second" "millisecond"])]
+     (annotate! combined {:has-date? true, :has-time? true})))
   ([year month day hours minutes]
    (local-date-time (local-date year month day) (local-time hours minutes)))
   ([year month day hours minutes seconds]
@@ -217,9 +311,8 @@
   (unit-diff :day before after))
 
 (defn- coerce-local-date-time [input]
-  (-> input
-      common/drop-trailing-time-zone
-      (moment/utc moment/ISO_8601)))
+  (annotate! (.utc dayjs (common/drop-trailing-time-zone input))
+             {:has-date? true, :has-time? true}))
 
 (def ^:private unit-formats
   {:day-of-week        "dddd"
@@ -229,7 +322,7 @@
    :month-of-year-full "MMMM"
    :minute-of-hour     "m"
    :hour-of-day        "h A"
-   :hour-of-day-24     "h"
+   :hour-of-day-24     "H"
    :day-of-month       "D"
    :day-of-year        "DDD"
    :week-of-year       "w"
@@ -239,21 +332,28 @@
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
   [t unit locale]
-  (when-some [format (get unit-formats unit)]
-    (if locale
-      (-> t
-          (.locale locale)
-          (.format format))
-      (.format t format))))
+  (cond
+    (= unit :day-of-year)
+    (str (.dayOfYear ^js t))
+
+    :else
+    (when-some [format (get unit-formats unit)]
+      (if locale
+        (-> t
+            (.locale locale)
+            (.format format))
+        (.format t format)))))
 
 (defn- has-parsed-parts?
-  "Check if moment has explicit parsed parts at given indices.
+  "Check if a parsed value carries explicit date/time parts at given indices.
   Date indices: 0=year, 1=month, 2=day. Time indices: 3=hours, 4=minutes, 5=seconds."
-  [^moment/Moment m indices]
-  (let [^js/Object flags (.parsingFlags m)
-        ^js/Array parts (.-parsedDateParts flags)]
-    (when parts
-      (some #(aget parts %) indices))))
+  [m indices]
+  (if (and m (.-parsingFlags m))
+    (let [^js/Object flags (.parsingFlags m)
+          ^js/Array parts (.-parsedDateParts flags)]
+      (when parts
+        (some #(aget parts %) indices)))
+    (parsed-part? m indices)))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
@@ -264,32 +364,25 @@
   ([input unit locale]
    (cond
      (string? input)
-     (let [time? (common/matches-time? input)
-           date? (common/matches-date? input)
-           date-time? (common/matches-date-time? input)
-           t (cond
-               ;; Anchor to an arbitrary date since time inputs are only defined for
-               ;; :hour-of-day and :minute-of-hour.
-               time? (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
-               (or date? date-time?) (coerce-local-date-time input))]
+     (let [t (->dayjs input)]
        (if (and t (.isValid t))
          (or
           (format-extraction-unit t unit locale)
           ;; no locale for default formats
           (cond
-            time? (.format t "h:mm A")
-            date? (.format t "MMM D, YYYY")
-            date-time? (.format t "MMM D, YYYY, h:mm A")))
+            (not (has-parsed-parts? t [3 4 5])) (.format t "MMM D, YYYY")
+            (not (has-parsed-parts? t [0 1 2])) (.format t "h:mm A")
+            :else (.format t "MMM D, YYYY, h:mm A")))
          input))
 
      (number? input)
      (if (= unit :hour-of-day)
        (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-       (or
-        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
-        (str input)))
+      (or
+       (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
+       (str input)))
 
-     (moment/isMoment input)
+     (datetime? input)
      (or (format-extraction-unit input unit locale)
          ;; no locale for default formats
          (cond
@@ -307,20 +400,45 @@
 (defn parse-unit
   "Parse a unit of time/date, e.g., 'Wed' or 'August' or '14'."
   ([input unit]
-   (when-some [format (get unit-formats unit)]
-     (moment input format)))
+   (parse-unit input unit nil))
   ([input unit locale]
-   (let [temp (.locale moment)]     ;; 1. save current locale
-     (try
-       (.locale moment locale)      ;; 2. set new locale for subsequent parse
-       (parse-unit input unit)
-       (finally
-         (.locale moment temp)))))) ;; 3. set locale to original
+   (when-some [format (get unit-formats unit)]
+     (let [flags {:has-date? true, :has-time? (boolean (re-find #"[Hhms]" format))}
+           locale (or locale (.locale dayjs))
+           parsed (dayjs input format locale true)]
+       (if (.isValid parsed)
+         (annotate! parsed flags)
+         (let [loc-inst (.locale (dayjs) locale)
+               data     (.localeData loc-inst)
+               norm     (fn [s] (some-> s str/lower-case))]
+           (cond
+             (#{:day-of-week :day-of-week-abbrev} unit)
+             (let [names (if (= unit :day-of-week-abbrev)
+                           (.weekdaysShort data)
+                           (.weekdays data))
+                   idx   (some (fn [[i n]] (when (= (norm n) (norm input)) i))
+                               (map-indexed vector names))]
+               (when-some [i idx]
+                 (annotate! (.startOf (.day loc-inst i) "day")
+                            {:has-date? true, :has-time? false})))
+
+             (#{:month-of-year :month-of-year-full} unit)
+             (let [names (if (= unit :month-of-year-full)
+                           (.months data)
+                           (.monthsShort data))
+                   idx   (some (fn [[i n]] (when (= (norm n) (norm input)) i))
+                               (map-indexed vector names))]
+               (when-some [i idx]
+                 (annotate! (-> loc-inst
+                                (.month i)
+                                (.date 1)
+                                (.startOf "day"))
+                            {:has-date? true, :has-time? false}))))))))))
 
 (defn- format-diff-with-formats
-  "Helper for format-diff. Given two moments and a function to select formats based on matches,
+  "Helper for format-diff. Given two parsed values and a function to select formats based on matches,
    returns the formatted range or nil if no special formatting applies."
-  [^moment/Moment lhs ^moment/Moment rhs select-formats-fn]
+  [lhs rhs select-formats-fn]
   (let [year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
         month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
         day-matches? (= (.format lhs "D") (.format rhs "D"))
@@ -360,8 +478,8 @@
       (and (common/matches-date? temporal-value-1)
            (common/matches-date? temporal-value-2))
       (or (format-diff-with-formats
-           (moment/utc temporal-value-1 moment/ISO_8601)
-           (moment/utc temporal-value-2 moment/ISO_8601)
+           (annotate! (.utc dayjs temporal-value-1) {:has-date? true, :has-time? false})
+           (annotate! (.utc dayjs temporal-value-2) {:has-date? true, :has-time? false})
            (fn [year? month? _day?]
              (cond
                (and year? month?) ["MMM D" "D, YYYY"]
@@ -394,33 +512,64 @@
 
 (def ^:private temporal-formats
   {:offset-date-time {:regex   common/offset-datetime-regex
-                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSSZ"
-                                    "YYYY-MM-DDTHH:mm:ssZ"
-                                    "YYYY-MM-DDTHH:mmZ"]}
+                      :formats ["YYYY-MM-DDTHH:mm:ss.SSSZ"
+                                "YYYY-MM-DDTHH:mm:ssZ"
+                                "YYYY-MM-DDTHH:mmZ"]
+                      :parser  #(.parseZone dayjs %1 %2 nil %3)
+                      :flags   {:has-date? true, :has-time? true}
+                      :strict? true}
    :local-date-time  {:regex   common/local-datetime-regex
-                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS"
-                                    "YYYY-MM-DDTHH:mm:ss"
-                                    "YYYY-MM-DDTHH:mm"]}
+                      :formats ["YYYY-MM-DDTHH:mm:ss.SSS"
+                                "YYYY-MM-DDTHH:mm:ss"
+                                "YYYY-MM-DDTHH:mm"]
+                      :parser  #(.utc dayjs %1 %2 %3)
+                      :flags   {:has-date? true, :has-time? true}
+                      :strict? true}
    :local-date       {:regex   common/local-date-regex
-                      :formats #js ["YYYY-MM-DD"
-                                    "YYYY-MM"
-                                    "YYYY"]}
+                      :formats ["YYYY-MM-DD"
+                                "YYYY-MM"
+                                "YYYY"]
+                      :parser  #(.utc dayjs %1 %2 %3)
+                      :flags   {:has-date? true, :has-time? false}
+                      :strict? true}
    :offset-time      {:regex   common/offset-time-regex
-                      :formats #js ["HH:mm:ss.SSSZ"
-                                    "HH:mm:ssZ"
-                                    "HH:mmZ"]}
+                      :formats ["HH:mm:ss.SSSZ"
+                                "HH:mm:ssZ"
+                                "HH:mmZ"]
+                      :parser  #(.parseZone dayjs %1 %2 nil %3)
+                      :prefix  today-prefix
+                      :format-prefix "YYYY-MM-DDT"
+                      :flags   {:has-date? false, :has-time? true}
+                      :strict? true}
    :local-time       {:regex   common/local-time-regex
-                      :formats #js ["HH:mm:ss.SSS"
-                                    "HH:mm:ss"
-                                    "HH:mm"]}})
+                      :formats ["HH:mm:ss.SSS"
+                                "HH:mm:ss"
+                                "HH:mm"]
+                      :parser  #(dayjs %1 %2 nil %3)
+                      :prefix  today-prefix
+                      :format-prefix "YYYY-MM-DDT"
+                      :flags   {:has-date? false, :has-time? true}
+                      :strict? true}})
 
-(defn- iso-8601->moment+type
+(defn- parse-with-formats
+  [value {:keys [formats parser prefix format-prefix flags strict?]}]
+  (let [prefix-val        (if (ifn? prefix) (prefix) prefix)
+        format-prefix-val (if (ifn? format-prefix) (format-prefix) format-prefix)
+        parsed (some (fn [fmt]
+                       (let [parsed (parser (str (or prefix-val "") value)
+                                            (str (or format-prefix-val "") fmt)
+                                            strict?)]
+                         (when (.isValid parsed)
+                           (annotate! parsed flags))))
+                     formats)]
+    parsed))
+
+(defn- iso-8601->dayjs+type
   [s]
-  (some (fn [[value-type {:keys [regex formats]}]]
-          (when (re-matches regex s)
-            (let [parsed (moment/parseZone s formats #_strict? true)]
-              (when (.isValid parsed)
-                [parsed value-type]))))
+  (some (fn [[value-type spec]]
+          (when (re-matches (:regex spec) s)
+            (when-let [parsed (parse-with-formats s spec)]
+              [parsed value-type])))
         temporal-formats))
 
 
@@ -441,50 +590,52 @@
                       :seconds "HH:mm:ss"
                       :minutes "HH:mm"}})
 
-(defn- moment+type->iso-8601
-  "Convert a [moment value-type] pair to an ISO-8601 string."
-  [[^moment/Moment t value-type]]
+(defn- dayjs+type->iso-8601
+  "Convert a [dayjs value-type] pair to an ISO-8601 string."
+  [[t value-type]]
   (let [formats (get iso-8601-output-formats value-type)
         format-key (cond
                      (:default formats)       :default
-                     (pos? (.millisecond t))  :millis
-                     (pos? (.second t))       :seconds
+                     (pos? (.millisecond ^js t))  :millis
+                     (pos? (.second ^js t))       :seconds
                      :else                    :minutes)]
     (.format t (get formats format-key))))
 
-(defn- ->moment
-  "Coerce a value to a Moment. Handles strings, js/Date, and passes through Moments."
-  ^moment/Moment [t]
+(defn- ->dayjs
+  "Coerce a value to a Day.js instance. Handles strings, js/Date, and passes through Day.js instances."
+  [t]
   (cond
-    (string? t)            (first (iso-8601->moment+type t))
-    (instance? js/Date t)  (moment/utc t)
+    (string? t)            (first (iso-8601->dayjs+type t))
+    (instance? js/Date t)  (.utc dayjs t)
+    (moment? t)            (annotate! (dayjs (.valueOf ^js t)) {:has-date? true, :has-time? true})
+    (.isDayjs dayjs t)     t
     :else                  t))
 
 (defn unit-diff
   "Return the number of `unit`s between two temporal values `before` and `after`, e.g. maybe there are 32 `:day`s
   between Jan 1st and Feb 2nd."
   [unit before after]
-  (.diff (->moment after) (->moment before) (name unit)))
+  (.diff (->dayjs after) (->dayjs before) (name unit)))
 
 (defn truncate
-  "ClojureScript implementation of [[metabase.util.time/truncate]]; supports both Moment.js instances and ISO-8601
+  "ClojureScript implementation of [[metabase.util.time/truncate]]; supports both Day.js instances and ISO-8601
   strings."
   [t unit]
   (if (string? t)
-    (let [[t value-type] (iso-8601->moment+type t)
+    (let [[t value-type] (iso-8601->dayjs+type t)
           t              (truncate t unit)]
-      (moment+type->iso-8601 [t value-type]))
-    (let [^moment/Moment t (->moment t)]
+      (dayjs+type->iso-8601 [t value-type]))
+    (let [t (->dayjs t)]
       (.startOf t (name unit)))))
 
 (defn add
-  "ClojureScript implementation of [[metabase.util.time/add]]; supports both Moment.js instances and ISO-8601 strings."
+  "ClojureScript implementation of [[metabase.util.time/add]]; supports both Day.js instances and ISO-8601 strings."
   [t unit amount]
   (if (string? t)
-    (let [[t value-type] (iso-8601->moment+type t)
+    (let [[t value-type] (iso-8601->dayjs+type t)
           t              (add t unit amount)]
-      (moment+type->iso-8601 [t value-type]))
-    (let [^moment/Moment t (->moment t)]
+      (dayjs+type->iso-8601 [t value-type]))
+    (let [t (->dayjs t)]
       (.add t amount (name unit)))))
 
 (defn format-for-base-type
@@ -494,18 +645,18 @@
   [t base-type]
   (if (string? t)
     t
-    (let [t          (->moment t)
+    (let [t          (->dayjs t)
           value-type (condp #(isa? %2 %1) base-type
                        :type/TimeWithTZ     :offset-time
                        :type/Time           :local-time
                        :type/DateTimeWithTZ :offset-date-time
                        :type/DateTime       :local-date-time
                        :type/Date           :local-date)]
-      (moment+type->iso-8601 [t value-type]))))
+      (dayjs+type->iso-8601 [t value-type]))))
 
 (defn extract
   "Extract a field such as `:minute-of-hour` from a temporal value `t`."
-  [^moment/Moment t unit]
+  [t unit]
   (case unit
     :second-of-minute (.second t)
     :minute-of-hour   (.minute t)
