@@ -102,13 +102,18 @@ export const DataStudio = {
     },
   },
   Library: {
-    emptyPage: () =>
+    visit: () => {
+      cy.visit("/data-studio/library");
+      DataStudio.Library.libraryPage().should("be.visible");
+    },
+    noResults: () =>
       libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
     metricItem: (name: string) =>
       cy.findAllByTestId("metric-name").contains(name),
+    allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
-      libraryPage().findAllByTestId("table-name").contains(name),
+      DataStudio.Library.allTableItems().contains(name),
     result: (name: string) => libraryPage().findByText(name).closest("tr"),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string) =>

@@ -40,12 +40,12 @@ describe("scenarios > data studio > library > tables", () => {
     it("should be able to unpublish a table", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
-
-      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.tableItem("Orders").click();
       H.DataStudio.Tables.moreMenu().click();
       H.popover().findByText("Unpublish").click();
       H.modal().findByText("Unpublish this table").click();
-      H.DataStudio.Library.emptyPage().should("be.visible");
+      H.DataStudio.Library.allTableItems().should("have.length", 0);
     });
   });
 
