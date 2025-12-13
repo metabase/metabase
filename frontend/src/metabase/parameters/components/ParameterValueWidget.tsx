@@ -290,6 +290,7 @@ export const ParameterValueWidget = ({
                   value={value}
                   cardId={cardId}
                   dashboardId={dashboardId}
+                  token={token}
                   placeholder={placeholderText}
                   isPopoverOpen={isOpen}
                 />

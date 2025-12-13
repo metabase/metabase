@@ -18,6 +18,7 @@ export const Value = ({
   parameter?: Parameter;
   cardId?: number;
   dashboardId?: DashboardId;
+  token?: string | null;
 } & OptionsType) => {
   const tc = useTranslateContent<unknown>();
 

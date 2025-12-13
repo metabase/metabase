@@ -64,6 +64,16 @@ describe("matchUrlPattern", () => {
     ).toBe(true);
   });
 
+  it("should match card parameter remapping pattern with JWT token", () => {
+    const jwtToken = "token";
+    expect(
+      matchUrlPattern(
+        "/api/card/:cardId/params/:paramId/remapping",
+        `/api/card/${jwtToken}/params/290ead16/remapping`,
+      ),
+    ).toBe(true);
+  });
+
   it("should match dashboard parameter values pattern", () => {
     expect(
       matchUrlPattern(
@@ -87,6 +97,16 @@ describe("matchUrlPattern", () => {
       matchUrlPattern(
         "/api/dashboard/:dashId/params/:paramId/remapping",
         "/api/dashboard/789/params/456/remapping",
+      ),
+    ).toBe(true);
+  });
+
+  it("should match dashboard parameter remapping pattern with JWT token", () => {
+    const jwtToken = "token";
+    expect(
+      matchUrlPattern(
+        "/api/dashboard/:dashId/params/:paramId/remapping",
+        `/api/dashboard/${jwtToken}/params/290ead16/remapping`,
       ),
     ).toBe(true);
   });
