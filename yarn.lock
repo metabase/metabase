@@ -15678,18 +15678,6 @@ module-replacements@^2.1.0:
   resolved "https://registry.yarnpkg.com/module-replacements/-/module-replacements-2.3.2.tgz#285600e9ccf15c37d2a37c9a5690e4a6754a5941"
   integrity sha512-dK8FQwOCU0rKuqtS2kWIU6It0XrE8qYZWtDT6fK4BQPtcspQ9EjWo2V0hob2d6G1wvQ21q+b1HFHOp3E/0cQTg==
 
-moment-timezone@^0.5.38:
-  version "0.5.38"
-  resolved "https://registry.yarnpkg.com/moment-timezone/-/moment-timezone-0.5.38.tgz#9674a5397b8be7c13de820fd387d8afa0f725aad"
-  integrity sha512-nMIrzGah4+oYZPflDvLZUgoVUO4fvAqHstvG3xAUnMolWncuAiLDWNnJZj6EwJGMGfb1ZcuTFE6GI3hNOVWI/Q==
-  dependencies:
-    moment ">= 2.9.0"
-
-"moment@>= 2.9.0":
-  version "2.29.4"
-  resolved "https://registry.yarnpkg.com/moment/-/moment-2.29.4.tgz#3dbe052889fe7c1b2ed966fcb3a77328964ef108"
-  integrity sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==
-
 moo-color@^1.0.2:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/moo-color/-/moo-color-1.0.3.tgz#d56435f8359c8284d83ac58016df7427febece74"

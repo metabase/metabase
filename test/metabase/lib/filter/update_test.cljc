@@ -204,6 +204,20 @@
                                           "2024-01-02T15:22:00"
                                           "2025-02-01T15:22:00"))))))
 
+(deftest ^:parallel update-temporal-filter-aligned-start-test
+  (testing "Don't skip the first bucket when start is already aligned to the unit boundary"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
+      (is (=? {:stages [{:filters [[:between
+                                    {}
+                                    [:field {} (meta/id :checkins :date)]
+                                    "2024-01-01T00:00"
+                                    "2024-05-01T00:00"]]}]}
+              (lib/update-temporal-filter query
+                                          (-> (meta/field-metadata :checkins :date)
+                                              (lib/with-temporal-bucket :month))
+                                          "2024-01-01T00:00"
+                                          "2024-05-01T00:00"))))))
+
 (deftest ^:parallel update-temporal-filter-existing-breakout-test
   (testing "Update an existing query with breakout and filter against this column"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
@@ -245,7 +259,7 @@
                              :filters  [[:between
                                          {}
                                          [:field {} (meta/id table field)]
-                                         "2024-01-02"
+                                         "2024-01-01"
                                          "2024-01-03"]]}]}
                   (lib/update-temporal-filter query
                                               (-> (meta/field-metadata table field)
@@ -269,7 +283,7 @@
                          :filters  [[:between
                                      {}
                                      [:field {} (meta/id :checkins :date)]
-                                     "2024-01-02"
+                                     "2024-01-01"
                                      "2024-01-03"]]}]}
               (lib/update-temporal-filter query
                                           (-> (meta/field-metadata :checkins :date)
@@ -280,9 +294,10 @@
 (deftest ^:parallel update-temporal-filter-equals-test
   (testing "If the resulting start and end values are the same then generate an := filter instead of :between"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
-      (is (=? {:stages [{:filters [[:=
+      (is (=? {:stages [{:filters [[:between
                                     {}
                                     [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                                    "2024-01-01"
                                     "2024-01-02"]]}]}
               (lib/update-temporal-filter query
                                           (-> (meta/field-metadata :checkins :date)

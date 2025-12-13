@@ -1,46 +1,70 @@
 (ns metabase.util.time-test
   (:require
-   #?@(:cljs [["moment" :as moment]
-              ["moment-timezone" :as moment-tz]]
+   #?@(:cljs [["dayjs" :as dayjs]
+              ["dayjs/plugin/customParseFormat" :as custom-parse-format]
+              ["dayjs/plugin/dayOfYear" :as day-of-year]
+              ["dayjs/plugin/isoWeek" :as iso-week]
+              ["dayjs/plugin/utc" :as dayjs-utc]
+              ["dayjs/plugin/weekOfYear" :as week-of-year]
+              ["dayjs/plugin/weekday" :as weekday]]
        :clj  [[java-time.api :as t]])
    [clojure.test :refer [are deftest is testing]]
    [metabase.util.time :as shared.ut]
    [metabase.util.time.impl :as internal])
   #?(:clj (:import java.util.Locale)))
 
+   #?(:cljs
+   (do
+     (.extend dayjs dayjs-utc)
+     (.extend dayjs custom-parse-format)
+     (.extend dayjs iso-week)
+     (.extend dayjs week-of-year)
+     (.extend dayjs weekday)
+     (.extend dayjs day-of-year)))
+
+#?(:cljs
+   (defn- strip-offset [s]
+     (or (second (re-matches #"(.*?)(?:Z|[+-]\d\d:?\d\d)?$" s)) s)))
+
 (defn- from [time-str]
-  #?(:cljs (moment time-str)
+  #?(:cljs (dayjs time-str)
      :clj  (t/offset-date-time (t/local-date-time time-str) (t/zone-offset))))
 (defn- from-zulu [time-str]
-  #?(:cljs (moment/utc time-str)
+  #?(:cljs (.utc dayjs time-str)
      :clj  (t/offset-date-time time-str)))
 
 (defn- from-local [time-str]
-  #?(:cljs (moment time-str)
+  #?(:cljs (dayjs time-str)
      :clj  (t/local-date-time time-str)))
 
 (defn- from-local-date [time-str]
-  #?(:cljs (moment time-str)
+  #?(:cljs (let [[y m d] (map js/parseInt (re-seq #"\d+" time-str))]
+             (shared.ut/local-date y m d))
      :clj  (t/local-date time-str)))
 
 (defn- from-local-time [time-str]
-  #?(:cljs (moment time-str
-                   #js [(.. moment -HTML5_FMT -TIME_MS)
-                        (.. moment -HTML5_FMT -TIME_SECONDS)
-                        (.. moment -HTML5_FMT -TIME)])
+  #?(:cljs (let [stripped (strip-offset time-str)]
+             (when-let [[_ h m s ms] (re-matches #"(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{3}))?)?" stripped)]
+               (shared.ut/local-time (js/parseInt h)
+                                     (js/parseInt m)
+                                     (js/parseInt (or s "0"))
+                                     (js/parseInt (or ms "0")))))
      :clj  (t/local-time time-str)))
 
 (defn- same?
-  "True if these two datetimes are equivalent.
-  JVM objects are [[=]] but Moment.js values are not, so use the Moment.isSame method in CLJS."
+  "True if these two datetimes are equivalent."
   [t1 t2]
-  #?(:cljs (.isSame ^moment/Moment t1 t2)
+  #?(:cljs (let [d1 (when t1 (dayjs t1))
+                 d2 (when t2 (dayjs t2))]
+             (and d1 d2 (.isValid d1) (.isValid d2) (.isSame d1 d2)))
      :clj  (= t1 t2)))
 
 (defn- same-instant?
   "The same point on the timeline of the universe, adjusting to the same time zone (UTC)."
   [t1 t2]
-  #?(:cljs (.isSame ^moment/Moment t1 t2)
+  #?(:cljs (let [d1 (when t1 (dayjs t1))
+                 d2 (when t2 (dayjs t2))]
+             (= (.valueOf d1) (.valueOf d2)))
      :clj  (= (t/instant t1) (t/instant t2))))
 
 (def test-epoch
@@ -192,7 +216,7 @@
     (is (same? (from-zulu exp-to)   to)   "end dates should be the same")))
 
 (defn- time-from [s]
-  #?(:cljs (moment s moment/HTML5_FMT.TIME_MS)
+  #?(:cljs (from-local-time s)
      :clj  (t/local-time s)))
 
 (deftest coerce-to-time-test
@@ -454,37 +478,29 @@
     :hour        "02:00"))
 
 (deftest ^:parallel zulu-add-datetime-test
-  #?(:cljs (moment-tz/tz.setDefault "Europe/Helsinki"))
   (testing "Datetime addition in string format works (#53724)"
-    (try
-      (doseq [datetime-fmt ["2024-01-01T00:00:00.000Z" "2024-01-01T00:00:00Z" "2024-01-01T00:00Z"]]
-        (are [unit expected] (= (str expected #?(:clj "[UTC]"))
-                                (shared.ut/add datetime-fmt unit 2))
-          :millisecond "2024-01-01T00:00:00.002Z"
-          :second      "2024-01-01T00:00:02Z"
-          :minute      "2024-01-01T00:02Z"
-          :hour        "2024-01-01T02:00Z"
-          :day         "2024-01-03T00:00Z"
-          :week        "2024-01-15T00:00Z"
-          :month       "2024-03-01T00:00Z"
-          :quarter     "2024-07-01T00:00Z"
-          :year        "2026-01-01T00:00Z"))
-      (finally
-        #?(:cljs (moment-tz/tz.setDefault))))))
+    (doseq [datetime-fmt ["2024-01-01T00:00:00.000Z" "2024-01-01T00:00:00Z" "2024-01-01T00:00Z"]]
+      (are [unit expected] (= (str expected #?(:clj "[UTC]"))
+                              (shared.ut/add datetime-fmt unit 2))
+        :millisecond "2024-01-01T00:00:00.002Z"
+        :second      "2024-01-01T00:00:02Z"
+        :minute      "2024-01-01T00:02Z"
+        :hour        "2024-01-01T02:00Z"
+        :day         "2024-01-03T00:00Z"
+        :week        "2024-01-15T00:00Z"
+        :month       "2024-03-01T00:00Z"
+        :quarter     "2024-07-01T00:00Z"
+        :year        "2026-01-01T00:00Z"))))
 
 (deftest ^:parallel zulu-add-time-test
   (testing "Time addition in string format works (#53724)"
-    #?(:cljs (moment-tz/tz.setDefault "Europe/Helsinki"))
-    (try
-      (doseq [time-fmt ["00:00:00.000Z" "00:00:00Z" "00:00Z"]]
-        (are [unit expected] (= expected
-                                (shared.ut/add time-fmt unit 2))
-          :millisecond "00:00:00.002Z"
-          :second      "00:00:02Z"
-          :minute      "00:02Z"
-          :hour        "02:00Z"))
-      (finally
-        #?(:cljs (moment-tz/tz.setDefault))))))
+    (doseq [time-fmt ["00:00:00.000Z" "00:00:00Z" "00:00Z"]]
+      (are [unit expected] (= expected
+                              (shared.ut/add time-fmt unit 2))
+        :millisecond "00:00:00.002Z"
+        :second      "00:00:02Z"
+        :minute      "00:02Z"
+        :hour        "02:00Z"))))
 
 (deftest ^:parallel extract-test
   (let [t (shared.ut/local-date-time 2024 12 06 10 20 30 500)]
