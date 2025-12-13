@@ -1,8 +1,10 @@
-(ns metabase.channel.email.messages
-  "Convenience functions for sending templated email messages.  Each function here should represent a single email.
-   NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails.
+(ns metabase.channel.email.internal
+  "Implementation for sending templated email messages.  Each function here should represent a single email.
 
-  NOTE: This namespace is deprecated, all of these emails will soon be converted to System Email Notifications."
+  NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails.
+
+  ⚠⚠⚠ DO NOT USE THESE FUNCTIONS OUTSIDE OF THIS MODULE... IF YOU WANT TO SEND AN EMAIL, TRIGGER ONE OF THE EVENTS
+  IN [[metabase.channel.events.email]] INSTEAD. ⚠⚠⚠"
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
@@ -81,7 +83,10 @@
    :colorTextDark      channel.render/color-text-dark
    :siteUrl            (system/site-url)})
 
-;;; ### Public Interface
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                  DO NOT CALL THESE FUNCTIONS DIRECTLY OUTSIDE OF THIS MODULE...                 !!
+;;; !!                  USE THE EVENTS IN [[metabase.channel.events.email]] instead!!                  !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
@@ -360,10 +365,10 @@
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
-  [card recipient-emails archiver]
+  [card recipient-emails changer]
   (send-email! recipient-emails not-working-subject changed-stopped-template
                {:card card
-                :actor archiver}
+                :actor changer}
                true))
 
 (defn send-broken-subscription-notification!
