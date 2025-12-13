@@ -1,10 +1,11 @@
-import type { Location, Query } from "history";
+import type { Query } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 import { useEffectOnce, useLatest } from "react-use";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/lib/redux";
+import { useLocation } from "metabase/router";
 
 type BaseState = Record<string, unknown>;
 
@@ -23,10 +24,11 @@ export const URL_UPDATE_DEBOUNCE_DELAY = 300;
  * Once we migrate to react-router 6 we should be able to replace this custom hook
  * with something more sophisticated, like https://github.com/asmyshlyaev177/state-in-url
  */
-export function useUrlState<State extends BaseState>(
-  location: Location,
-  { parse, serialize }: UrlStateConfig<State>,
-): [State, UrlStateActions<State>] {
+export function useUrlState<State extends BaseState>({
+  parse,
+  serialize,
+}: UrlStateConfig<State>): [State, UrlStateActions<State>] {
+  const location = useLocation();
   const dispatch = useDispatch();
   const [state, setState] = useState(parse(location.query));
   const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);

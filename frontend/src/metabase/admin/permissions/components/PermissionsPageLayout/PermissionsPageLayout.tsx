@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -56,7 +55,6 @@ type PermissionsPageLayoutProps = {
   saveError?: string;
   clearSaveError?: () => void;
   navigateToLocation?: (location: string) => void;
-  route: Route;
   navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
   showSplitPermsModal?: boolean;
@@ -77,7 +75,6 @@ export function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
-  route,
   helpContent,
   showSplitPermsModal: _showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
@@ -120,7 +117,7 @@ export function PermissionsPageLayout({
           />
         )}
 
-        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} route={route} />
+        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} />
 
         <ConfirmModal
           opened={saveError != null}

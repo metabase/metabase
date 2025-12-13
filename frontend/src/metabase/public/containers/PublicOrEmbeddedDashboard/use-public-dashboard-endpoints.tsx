@@ -1,13 +1,13 @@
 import { useEffect } from "react";
-import type { WithRouterProps } from "react-router";
+import type { Params } from "react-router/lib/Router";
 
 import {
   setEmbedDashboardEndpoints,
   setPublicDashboardEndpoints,
 } from "metabase/services";
 
-export const usePublicDashboardEndpoints = (props: WithRouterProps) => {
-  const { uuid, token } = props.params;
+export const usePublicDashboardEndpoints = (params: Params) => {
+  const { uuid, token } = params;
 
   useEffect(() => {
     if (uuid) {

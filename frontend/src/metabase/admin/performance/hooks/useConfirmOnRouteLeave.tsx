@@ -11,16 +11,16 @@ type Props = {
 
 export const useConfirmOnRouteLeave = ({ shouldConfirm, confirm }: Props) => {
   const dispatch = useDispatch();
-  const { router, routes } = useRouter();
+  const { router, route } = useRouter();
+
   /**
    * to prevent endless loop
    */
   const confirmedRef = useRef<boolean>(false);
-  const currentRoute = routes.at(-1);
 
   useEffect(
     () =>
-      router.setRouteLeaveHook(currentRoute, (nextLocation) => {
+      router.setRouteLeaveHook(route, (nextLocation) => {
         if (confirmedRef.current || !shouldConfirm) {
           return true;
         }
@@ -40,6 +40,6 @@ export const useConfirmOnRouteLeave = ({ shouldConfirm, confirm }: Props) => {
         });
         return false;
       }),
-    [router, currentRoute, shouldConfirm, confirm, dispatch],
+    [router, route, shouldConfirm, confirm, dispatch],
   );
 };

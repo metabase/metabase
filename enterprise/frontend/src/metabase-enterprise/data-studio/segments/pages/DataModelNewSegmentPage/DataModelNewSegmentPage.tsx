@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { Route } from "react-router";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
@@ -18,13 +17,11 @@ type DataModelNewSegmentPageParams = {
 
 type DataModelNewSegmentPageProps = {
   params: DataModelNewSegmentPageParams;
-  route: Route;
   children?: ReactNode;
 };
 
 export function DataModelNewSegmentPage({
   params,
-  route,
 }: DataModelNewSegmentPageProps) {
   const databaseId = Number(params.databaseId);
   const schemaName = getSchemaName(params.schemaId);
@@ -44,7 +41,6 @@ export function DataModelNewSegmentPage({
 
   return (
     <NewSegmentPage
-      route={route}
       table={table}
       breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
       getSuccessUrl={(segment) =>

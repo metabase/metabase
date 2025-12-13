@@ -2,7 +2,7 @@ import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
-import type { Route, WithRouterProps } from "react-router";
+import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
@@ -20,6 +20,7 @@ import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
+import { useLocation, useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -212,7 +213,6 @@ const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
 type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps &
   EntityListLoaderMergedProps & {
     route: Route;
   };
@@ -223,8 +223,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const {
     question,
     originalQuestion,
-    location,
-    params,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -243,13 +241,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isAdmin,
     isLoadingComplete,
     closeQB,
-    route,
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
     documentTitle,
     queryStartTime,
   } = props;
+
+  const location = useLocation();
+  const params = useParams();
 
   usePageTitleWithLoadingTime(documentTitle || card?.name || t`Question`, {
     titleIndex: 1,
@@ -483,7 +483,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route}
       />
     </>
   );

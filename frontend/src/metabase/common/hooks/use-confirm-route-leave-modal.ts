@@ -1,16 +1,14 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
 import { goBack, push, replace } from "react-router-redux";
 import { match } from "ts-pattern";
 
 import { useDispatch } from "metabase/lib/redux";
+import { useRouter } from "metabase/router";
 
 import useBeforeUnload from "./use-before-unload";
 
 interface UseConfirmLeaveModalInput {
-  router: InjectedRouter;
-  route: Route;
   isEnabled: boolean;
   isLocationAllowed?: (location: Location | undefined) => boolean;
 }
@@ -36,11 +34,10 @@ export const IS_LOCATION_ALLOWED = (location?: Location) => !location;
  * whenever they try to leave a route
  */
 export const useConfirmRouteLeaveModal = ({
-  router,
-  route,
   isEnabled,
   isLocationAllowed = IS_LOCATION_ALLOWED,
 }: UseConfirmLeaveModalInput): UseConfirmLeaveModalResult => {
+  const { router, route } = useRouter();
   const dispatch = useDispatch();
   const [nextLocation, setNextLocation] = useState<Location | undefined>();
 

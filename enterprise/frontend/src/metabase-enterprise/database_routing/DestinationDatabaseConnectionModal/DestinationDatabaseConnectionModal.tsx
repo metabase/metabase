@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -23,10 +22,8 @@ import { pickPrefillFieldsFromPrimaryDb } from "./utils";
 
 export const DestinationDatabaseConnectionModal = ({
   params: { databaseId, destinationDatabaseId },
-  route,
 }: {
   params: { databaseId: string; destinationDatabaseId?: string };
-  route: Route;
 }) => {
   const dispatch = useDispatch();
 
@@ -141,7 +138,6 @@ export const DestinationDatabaseConnectionModal = ({
           handleSaveDb={handleSaveDatabase}
           onSubmitted={handleOnSubmit}
           onCancel={handleCloseModal}
-          route={route}
           config={{
             name: { isSlug: true },
             engine: { fieldState: "hidden" },

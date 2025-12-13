@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import type { Route, WithRouterProps } from "react-router";
 import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -36,6 +35,7 @@ import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
+import { useLocation, useParams } from "metabase/router";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -44,23 +44,14 @@ import { getDocumentTitle, getFavicon } from "../../selectors";
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
-interface DashboardAppProps
-  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
+interface DashboardAppProps extends PropsWithChildren {
   dashboardId?: DashboardId;
-  route: Route;
 }
 
-type DashboardAppInnerProps = Pick<
-  DashboardAppProps,
-  "location" | "route" | "children"
->;
+type DashboardAppInnerProps = Pick<DashboardAppProps, "children">;
 
-function DashboardAppInner({
-  location,
-  route,
-  children,
-}: DashboardAppInnerProps) {
-  useDashboardLocationSync({ location });
+function DashboardAppInner({ children }: DashboardAppInnerProps) {
+  useDashboardLocationSync();
   const pageFavicon = useSelector(getFavicon);
   useFavicon({ favicon: pageFavicon });
   useSlowCardNotification();
@@ -77,7 +68,7 @@ function DashboardAppInner({
   return (
     <>
       <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-        <DashboardLeaveConfirmationModal route={route} />
+        <DashboardLeaveConfirmationModal />
         <Dashboard />
         {/* For rendering modal urls */}
         {children}
@@ -90,14 +81,12 @@ export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
 export const DashboardApp = ({
-  location,
-  params,
-  router,
-  route,
   dashboardId: _dashboardId,
   children,
 }: DashboardAppProps) => {
   const dispatch = useDispatch();
+  const location = useLocation();
+  const params = useParams<{ slug: string }>();
 
   const [error, setError] = useState<string>();
 
@@ -106,7 +95,7 @@ export const DashboardApp = ({
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
   useRegisterDashboardMetabotContext();
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery();
 
   const extractHashOption = async (
     key: string,
@@ -186,9 +175,7 @@ export const DashboardApp = ({
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
       >
-        <DashboardAppInner location={location} route={route}>
-          {children}
-        </DashboardAppInner>
+        <DashboardAppInner>{children}</DashboardAppInner>
       </DashboardContextProvider>
     </ErrorBoundary>
   );

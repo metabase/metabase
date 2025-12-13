@@ -1,8 +1,7 @@
-import type { Location } from "history";
 import * as React from "react";
 import { type ReactNode, useMemo } from "react";
 import reactAnsiStyle from "react-ansi-style";
-import { Link, withRouter } from "react-router";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -26,7 +25,6 @@ import {
 
 interface LogsProps {
   children?: ReactNode;
-  location: Location;
   // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB isntance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable
   // amount of time
@@ -35,15 +33,11 @@ interface LogsProps {
 
 export const DEFAULT_POLLING_DURATION_MS = 1000;
 
-const LogsBase = ({
+export const Logs = ({
   children,
-  location,
   pollingDurationMs = DEFAULT_POLLING_DURATION_MS,
 }: LogsProps) => {
-  const [{ process, query }, { patchUrlState }] = useUrlState(
-    location,
-    urlStateConfig,
-  );
+  const [{ process, query }, { patchUrlState }] = useUrlState(urlStateConfig);
   const { loaded, error, logs } = usePollingLogsQuery(pollingDurationMs);
   const processUUIDs = useMemo(() => getAllProcessUUIDs(logs), [logs]);
   const filteredLogs = useMemo(
@@ -163,5 +157,3 @@ const LogsBase = ({
     </>
   );
 };
-
-export const Logs = withRouter(LogsBase);

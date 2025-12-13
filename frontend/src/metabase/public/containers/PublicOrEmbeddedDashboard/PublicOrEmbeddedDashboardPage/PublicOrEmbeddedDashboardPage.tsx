@@ -1,5 +1,3 @@
-import type { WithRouterProps } from "react-router";
-
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
@@ -10,6 +8,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
+import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -17,23 +16,21 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 import { usePublicDashboardEndpoints } from "../use-public-dashboard-endpoints";
 
-const PublicOrEmbeddedDashboardPageInner = ({
-  location,
-  router,
-}: WithRouterProps) => {
-  useDashboardLocationSync({ location });
-  useDashboardUrlQuery(router, location);
+const PublicOrEmbeddedDashboardPageInner = () => {
+  useDashboardLocationSync();
+  useDashboardUrlQuery();
 
   return <PublicOrEmbeddedDashboardView />;
 };
 
-export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
+export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
+  const params = useParams();
 
-  const { location } = props;
-  const parameterQueryParams = props.location.query;
+  const parameterQueryParams = location.query;
 
-  const { dashboardId } = usePublicDashboardEndpoints(props);
+  const { dashboardId } = usePublicDashboardEndpoints(params);
 
   useSetEmbedFont({ location });
 
@@ -81,7 +78,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         }
         dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
       >
-        <PublicOrEmbeddedDashboardPageInner {...props} />
+        <PublicOrEmbeddedDashboardPageInner />
       </DashboardContextProvider>
     </LocaleProvider>
   );

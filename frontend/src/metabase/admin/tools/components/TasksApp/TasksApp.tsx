@@ -1,6 +1,4 @@
-import type { Location } from "history";
 import type { ReactNode } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -20,16 +18,15 @@ import { urlStateConfig } from "./utils";
 
 type TasksAppProps = {
   children: ReactNode;
-  location: Location;
 };
 
 const PAGE_SIZE = 50;
 
-const TasksAppBase = ({ children, location }: TasksAppProps) => {
+export const TasksApp = ({ children }: TasksAppProps) => {
   const [
     { page, sort_column, sort_direction, status, task },
     { patchUrlState },
-  ] = useUrlState(location, urlStateConfig);
+  ] = useUrlState(urlStateConfig);
   const sortingOptions = { sort_column, sort_direction };
 
   const {
@@ -114,5 +111,3 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
     </SettingsPageWrapper>
   );
 };
-
-export const TasksApp = withRouter(TasksAppBase);

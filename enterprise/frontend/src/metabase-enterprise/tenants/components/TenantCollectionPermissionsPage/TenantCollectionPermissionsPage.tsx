@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -77,7 +76,6 @@ type TenantCollectionPermissionsPageProps = {
   savePermissions: () => void;
   loadPermissions: () => void;
   initialize: () => void;
-  route: Route;
 };
 
 function TenantCollectionPermissionsPageView({
@@ -90,7 +88,6 @@ function TenantCollectionPermissionsPageView({
   updateCollectionPermission,
   navigateToItem,
   initialize,
-  route,
 }: TenantCollectionPermissionsPageProps) {
   useEffect(() => {
     initialize();
@@ -117,7 +114,6 @@ function TenantCollectionPermissionsPageView({
     <PermissionsPageLayout
       tab="tenant-collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}
