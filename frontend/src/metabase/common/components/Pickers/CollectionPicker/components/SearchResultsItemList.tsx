@@ -6,8 +6,10 @@ import { useOmniPickerContext } from "metabase/common/components/EntityPicker/co
 
 
 export const SearchResultsItemList = () => {
-  const { models, searchQuery, isHiddenItem } = useOmniPickerContext();
+  const { models, searchQuery, isHiddenItem, searchScope } = useOmniPickerContext();
   const [debouncedQuery] = useDebouncedValue(searchQuery, 500);
+
+  console.log({ searchScope }); // 🤔 why isn't this updating?
 
   const {
     data: results,
@@ -15,6 +17,7 @@ export const SearchResultsItemList = () => {
     isLoading,
   } = useSearchQuery({
     q: debouncedQuery,
+    collection: searchScope || undefined,
     models: models,
   }, { skip: !debouncedQuery });
 

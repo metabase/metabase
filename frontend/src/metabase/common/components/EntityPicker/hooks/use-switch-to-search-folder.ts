@@ -7,14 +7,13 @@ import type { OmniPickerItem } from "../types";
 import { validCollectionModels } from "../utils";
 
 export function useSwitchToSearchFolder() {
-  const { path, setPath, searchQuery } = useOmniPickerContext();
+  const { path, setPath, searchQuery, setPreviousPath, previousPath } = useOmniPickerContext();
   const previousSearchQuery = usePrevious(searchQuery);
-  const pathCache = useRef<OmniPickerItem[] | null>(null);
 
   useEffect(() => {
     if (searchQuery && searchQuery !== previousSearchQuery) {
       if (path[0]?.id !== "search-results") {
-        pathCache.current = path; // cache old path
+        setPreviousPath(path);
       }
       setPath([{
         id: "search-results",
@@ -24,10 +23,10 @@ export function useSwitchToSearchFolder() {
       }]);
     } else if (!searchQuery && previousSearchQuery) {
       // Restore previous path when clearing search
-      if (pathCache.current) {
-        setPath(pathCache.current);
-        pathCache.current = null;
+      if (previousPath.length > 0) {
+        setPath(previousPath);
+        setPreviousPath([]);
       }
     }
-  }, [searchQuery, previousSearchQuery, setPath, path]);
+  }, [searchQuery, previousSearchQuery, setPath, path, previousPath, setPreviousPath]);
 }

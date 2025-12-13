@@ -1,5 +1,6 @@
-import { match } from "ts-pattern";
+import { useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import EmptyState from "metabase/common/components/EmptyState";
@@ -7,9 +8,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { getIcon } from "metabase/lib/icon";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO, PLUGIN_MODERATION } from "metabase/plugins";
 // import { trackSearchClick } from "metabase/search/analytics";
-import { Box, Flex, Icon, NavLink, Stack, Text } from "metabase/ui";
+import { Box, Flex, Icon, NavLink, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
 import type { OmniPickerCollectionItem } from "../..";
@@ -36,10 +37,12 @@ export const SearchResults = ({
     );
   }
 
+
   return (
     <Box h="100%" w="40rem">
       {searchResults.length > 0 ? (
-        <Stack h="100%">
+        <Stack h="100%" gap={0}>
+          <SearchScopeSelector />
           <VirtualizedList
             Wrapper={({ children, ...props }) => (
               <Box py="md" {...props}>
@@ -112,13 +115,14 @@ export const SearchResults = ({
           </VirtualizedList>
         </Stack>
       ) : (
-        <Flex direction="column" justify="center" h="100%">
+        <Stack h="100%">
+          <SearchScopeSelector />
           <EmptyState
             title={t`Didn't find anything`}
             message={t`There weren't any results for your search.`}
             illustrationElement={<NoObjectError mb="-1.5rem" />}
           />
-        </Flex>
+        </Stack>
       )}
     </Box>
   );
@@ -180,3 +184,36 @@ const LocationInfo = ({ item, isSelected }: { item: SearchResult | RecentItem, i
     </Flex>
   );
 };
+
+function SearchScopeSelector() {
+  const { previousPath, searchScope, setSearchScope } = useOmniPickerContext();
+
+  const { data: libraryCollection } = PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+
+  const lastCollection = useMemo(() => {
+    console.log({ previousPath });
+    const lastCollectionIndex = _.findLastIndex(previousPath, (item) => item.model === "collection");
+    return lastCollectionIndex !== -1 ? previousPath[lastCollectionIndex] as OmniPickerCollectionItem : null;
+  }, [previousPath]);
+
+  if (!libraryCollection && !lastCollection) {
+    return null;
+  }
+
+  const options = [
+    { label: t`Everywhere`, value: "" },
+    (libraryCollection?.id ? { label: t`Library`, value: String(libraryCollection.id) } : null),
+    (lastCollection?.id ? { label: lastCollection.name, value: String(lastCollection.id) } : null),
+  ].filter(i => i !== null);
+
+  return(
+    <Flex justify="space-between" align="center" px="md" py="sm" bg="bg-light" mb="xs">
+      <Text>{t`Where to search:`}</Text>
+      <SegmentedControl
+        value={searchScope}
+        onChange={setSearchScope}
+        data={options}
+      />
+    </Flex>
+  )
+}

@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 
 import { OmniPickerContext } from "../context"
 import { useGetPathFromValue } from "../hooks/use-get-path-from-value"
@@ -39,6 +39,9 @@ export function EntityPicker({
       value: initialValue
   });
 
+  const [previousPath, setPreviousPath] = useState<OmniPickerItem[]>([]);
+  const [searchScope, setSearchScope] = useState<string>("");
+
   const {
     isFolderItem,
     isHiddenItem,
@@ -71,6 +74,10 @@ export function EntityPicker({
       onChange,
       path,
       setPath,
+      previousPath,
+      setPreviousPath,
+      searchScope,
+      setSearchScope,
       options,
     }}>
       <NestedItemPicker />
