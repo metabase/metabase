@@ -2,10 +2,10 @@ import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
 import Link from "metabase/common/components/Link";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 
 export const CopyAnalyticsDashboardButton = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   return (
     <Button
       icon="clone"

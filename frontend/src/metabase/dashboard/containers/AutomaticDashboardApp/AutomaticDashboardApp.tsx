@@ -21,7 +21,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { useRouter } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Box, Flex, Group } from "metabase/ui";
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
@@ -212,7 +212,7 @@ const AutomaticDashboardAppInner = () => {
 };
 
 export const AutomaticDashboardApp = () => {
-  const { params } = useRouter<{ splat: string }>();
+  const params = useParams<{ splat: string }>();
   useDashboardUrlQuery();
 
   const dispatch = useDispatch();

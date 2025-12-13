@@ -12,7 +12,7 @@ import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowled
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { ConfirmMoveDashboardQuestionCandidatesModal } from "./ConfirmMoveDashboardQuestionCandidatesModal";
@@ -25,10 +25,8 @@ interface MoveQuestionsIntoDashboardsModalProps {
 export const MoveQuestionsIntoDashboardsModal = ({
   onClose: handleClose,
 }: MoveQuestionsIntoDashboardsModalProps) => {
-  const {
-    location: { pathname },
-    params,
-  } = useRouter<{ slug: string }>();
+  const { pathname } = useLocation();
+  const params = useParams<{ slug: string }>();
   const collectionId = Urls.extractCollectionId(params.slug);
   const isAdmin = useSelector(getUserIsAdmin);
 

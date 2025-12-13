@@ -6,7 +6,7 @@ import { omit } from "underscore";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 
 type SYNCED_KEY = "refresh" | "fullscreen";
 
@@ -42,7 +42,7 @@ export const useLocationSync = <
   value: Value;
   onChange: (value: Value | null) => void;
 }) => {
-  const { location } = useRouter();
+  const location = useLocation();
   const dispatch = useDispatch();
   const previousValue = usePrevious(value) ?? null;
   const hashOptions = parseHashOptions(location.hash);

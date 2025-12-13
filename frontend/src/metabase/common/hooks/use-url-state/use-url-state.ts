@@ -5,7 +5,7 @@ import { useEffectOnce, useLatest } from "react-use";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/lib/redux";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 
 type BaseState = Record<string, unknown>;
 
@@ -28,7 +28,7 @@ export function useUrlState<State extends BaseState>({
   parse,
   serialize,
 }: UrlStateConfig<State>): [State, UrlStateActions<State>] {
-  const { location } = useRouter();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [state, setState] = useState(parse(location.query));
   const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);

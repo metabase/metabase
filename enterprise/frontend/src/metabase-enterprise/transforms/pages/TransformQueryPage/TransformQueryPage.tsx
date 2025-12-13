@@ -89,13 +89,12 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const dispatch = useDispatch();
-  const { routes } = useRouter();
-  const currentRoute = routes.at(-1);
+  const { route } = useRouter();
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const isEditMode = !!currentRoute?.path?.includes("/edit");
+  const isEditMode = !!route?.path?.includes("/edit");
   useRegisterMetabotTransformContext(transform, source);
 
   const {

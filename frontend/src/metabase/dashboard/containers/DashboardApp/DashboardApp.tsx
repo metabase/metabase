@@ -35,7 +35,7 @@ import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -85,7 +85,8 @@ export const DashboardApp = ({
   children,
 }: DashboardAppProps) => {
   const dispatch = useDispatch();
-  const { location, params } = useRouter<{ slug: string }>();
+  const location = useLocation();
+  const params = useParams<{ slug: string }>();
 
   const [error, setError] = useState<string>();
 

@@ -10,7 +10,7 @@ import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { TEST_CARD } from "metabase/query_builder/containers/test-utils";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
 import type { DashboardState, State } from "metabase-types/store";
@@ -42,7 +42,7 @@ function setup({
   };
 
   const RoutedDashboardComponent = () => {
-    const { location } = useRouter();
+    const location = useLocation();
     const { selectedTabId } = useDashboardTabs();
     useDashboardUrlQuery();
     return (
