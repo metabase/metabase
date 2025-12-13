@@ -8,15 +8,15 @@
 (defn- now [] (moment))
 
 ;;; ----------------------------------------------- predicates -------------------------------------------------------
-(defn datetime?
-  "Given any value, check if it's a (possibly invalid) Moment."
-  [value]
-  (and value (moment/isMoment value)))
-
 (defn time?
   "checks if the provided value is a local time value."
   [value]
   (moment/isMoment value))
+
+(defn datetime?
+  "Given any value, check if it's a (possibly invalid) Moment."
+  [value]
+  (and value (time? value)))
 
 (defn valid?
   "Given a Moment, check that it's valid."
@@ -44,13 +44,6 @@
   (.isSame d1 d2 "year"))
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
-(defn first-day-of-week
-  "The first day of the week varies by locale, but Metabase has a setting that overrides it.
-  In CLJS, Moment is already configured with that setting."
-  []
-  (nth [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]
-       (.firstDayOfWeek (moment/localeData))))
-
 (def default-options
   "The default map of options - empty in CLJS."
   {})
@@ -253,29 +246,14 @@
           (.format format))
       (.format t format))))
 
-(defn- has-explicit-time?
-  "Does this moment value have explicit time parts (i.e., what it parsed with time components?"
-  [m]
-  ;; type hints to quell warnings from compiler
-  (let [^js/Object flags (.parsingFlags ^moment/Moment m)
+(defn- has-parsed-parts?
+  "Check if moment has explicit parsed parts at given indices.
+  Date indices: 0=year, 1=month, 2=day. Time indices: 3=hours, 4=minutes, 5=seconds."
+  [^moment/Moment m indices]
+  (let [^js/Object flags (.parsingFlags m)
         ^js/Array parts (.-parsedDateParts flags)]
     (when parts
-      (some (fn [i] (aget parts i)) [3 ;; hours
-                                     4 ;; minutes
-                                     5 ;; seconds
-                                     ]))))
-
-(defn- has-explicit-date?
-  "Does this moment value have explicit date parts (i.e., what it parsed with date components?"
-  [m]
-  ;; type hints to quell warnings from compiler
-  (let [^js/Object flags (.parsingFlags ^moment/Moment m)
-        ^js/Array parts (.-parsedDateParts flags)]
-    (when parts
-      (some (fn [i] (aget parts i)) [0 ;; year
-                                     1 ;; month
-                                     2 ;; day
-                                     ]))))
+      (some #(aget parts %) indices))))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
@@ -316,11 +294,11 @@
          ;; no locale for default formats
          (cond
            ;; no hour, minute, or seconds, must be date
-           (not (has-explicit-time? input))
+           (not (has-parsed-parts? input [3 4 5])) ;; no time parts
            (.format input "MMM D, YYYY")
 
            ;; no year, month, or day, must be a time
-           (not (has-explicit-date? input))
+           (not (has-parsed-parts? input [0 1 2])) ;; no date parts
            (.format input "h:mm A")
 
            :else ;; otherwise both date and time
@@ -338,6 +316,17 @@
        (parse-unit input unit)
        (finally
          (.locale moment temp)))))) ;; 3. set locale to original
+
+(defn- format-diff-with-formats
+  "Helper for format-diff. Given two moments and a function to select formats based on matches,
+   returns the formatted range or nil if no special formatting applies."
+  [^moment/Moment lhs ^moment/Moment rhs select-formats-fn]
+  (let [year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
+        month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
+        day-matches? (= (.format lhs "D") (.format rhs "D"))
+        [lhs-fmt rhs-fmt] (select-formats-fn year-matches? month-matches? day-matches?)]
+    (when lhs-fmt
+      (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt)))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.
@@ -359,41 +348,25 @@
 
       (and (common/matches-date-time? temporal-value-1)
            (common/matches-date-time? temporal-value-2))
-      (let [lhs (coerce-local-date-time temporal-value-1)
-            rhs (coerce-local-date-time temporal-value-2)
-            year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
-            month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
-            day-matches? (= (.format lhs "D") (.format rhs "D"))
-            hour-matches? (= (.format lhs "HH") (.format rhs "HH"))
-            [lhs-fmt rhs-fmt] (cond
-                                (and year-matches? month-matches? day-matches? hour-matches?)
-                                ["MMM D, YYYY, h:mm A " " h:mm A"]
-
-                                (and year-matches? month-matches? day-matches?)
-                                ["MMM D, YYYY, h:mm A " " h:mm A"]
-
-                                year-matches?
-                                ["MMM D, h:mm A " " MMM D, YYYY, h:mm A"])]
-
-        (if lhs-fmt
-          (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt))
-          (default-format)))
+      (or (format-diff-with-formats
+           (coerce-local-date-time temporal-value-1)
+           (coerce-local-date-time temporal-value-2)
+           (fn [year? month? day?]
+             (cond
+               (and year? month? day?) ["MMM D, YYYY, h:mm A " " h:mm A"]
+               year?                   ["MMM D, h:mm A " " MMM D, YYYY, h:mm A"])))
+          (default-format))
 
       (and (common/matches-date? temporal-value-1)
            (common/matches-date? temporal-value-2))
-      (let [lhs (moment/utc temporal-value-1 moment/ISO_8601)
-            rhs (moment/utc temporal-value-2 moment/ISO_8601)
-            year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
-            month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
-            [lhs-fmt rhs-fmt] (cond
-                                (and year-matches? month-matches?)
-                                ["MMM D" "D, YYYY"]
-
-                                year-matches?
-                                ["MMM D " " MMM D, YYYY"])]
-        (if lhs-fmt
-          (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt))
-          (default-format)))
+      (or (format-diff-with-formats
+           (moment/utc temporal-value-1 moment/ISO_8601)
+           (moment/utc temporal-value-2 moment/ISO_8601)
+           (fn [year? month? _day?]
+             (cond
+               (and year? month?) ["MMM D" "D, YYYY"]
+               year?              ["MMM D " " MMM D, YYYY"])))
+          (default-format))
 
       :else
       (default-format))))
@@ -450,79 +423,48 @@
                 [parsed value-type]))))
         temporal-formats))
 
-(comment
-  (moment "01:49:10.858Z" "HH:mm:ss.SSSZ")
 
-  (let [s "1982-03-16T01:49:10.858Z"
-        formats #js ["YYYY-MM-DDTHH:mm:ss.SSS[Z]"]
-        formatz #js ["YYYY-MM-DDTHH:mm:ss.SSSZ"]
-        s-parsed (moment/parseZone s formats #_strict? true)
-        z-parsed (moment/parseZone s formatz #_strict? true)]
-    {:tz (.. (js/Intl.DateTimeFormat) resolvedOptions -timeZone)
-     :tzo (.getTimezoneOffset (js/Date.)) #_mins
-     :s s-parsed
-     :z z-parsed
-     :fz (.format z-parsed "YYYY-MM-DDTHH:mm:ss.SSSZ")
-     :fs (.format z-parsed "YYYY-MM-DDTHH:mm:ss.SSS[Z]")})
-  -)
+(def ^:private iso-8601-output-formats
+  "Format strings for each temporal type, keyed by [type precision].
+   Precision is :millis, :seconds, or :minutes based on the non-zero components."
+  {:offset-date-time {:millis  "YYYY-MM-DDTHH:mm:ss.SSS[Z]"
+                      :seconds "YYYY-MM-DDTHH:mm:ss[Z]"
+                      :minutes "YYYY-MM-DDTHH:mm[Z]"}
+   :local-date-time  {:millis  "YYYY-MM-DDTHH:mm:ss.SSS"
+                      :seconds "YYYY-MM-DDTHH:mm:ss"
+                      :minutes "YYYY-MM-DDTHH:mm"}
+   :local-date       {:default "YYYY-MM-DD"}
+   :offset-time      {:millis  "HH:mm:ss.SSS[Z]"
+                      :seconds "HH:mm:ss[Z]"
+                      :minutes "HH:mm[Z]"}
+   :local-time       {:millis  "HH:mm:ss.SSS"
+                      :seconds "HH:mm:ss"
+                      :minutes "HH:mm"}})
 
-(defmulti ^:private moment+type->iso-8601
-  {:arglists '([moment+type])}
-  (fn [[_t value-type]]
-    value-type))
+(defn- moment+type->iso-8601
+  "Convert a [moment value-type] pair to an ISO-8601 string."
+  [[^moment/Moment t value-type]]
+  (let [formats (get iso-8601-output-formats value-type)
+        format-key (cond
+                     (:default formats)       :default
+                     (pos? (.millisecond t))  :millis
+                     (pos? (.second t))       :seconds
+                     :else                    :minutes)]
+    (.format t (get formats format-key))))
 
-(defmethod moment+type->iso-8601 :offset-date-time
-  [[^moment/Moment t _value-type]]
-  (let [format-string (cond
-                        (pos? (.millisecond t)) "YYYY-MM-DDTHH:mm:ss.SSS[Z]"
-                        (pos? (.second t))      "YYYY-MM-DDTHH:mm:ss[Z]"
-                        :else                    "YYYY-MM-DDTHH:mm[Z]")]
-    (.format t format-string)))
-
-(defmethod moment+type->iso-8601 :local-date-time
-  [[^moment/Moment t _value-type]]
-  (let [format-string (cond
-                        (pos? (.millisecond t)) "YYYY-MM-DDTHH:mm:ss.SSS"
-                        (pos? (.second t))      "YYYY-MM-DDTHH:mm:ss"
-                        :else                    "YYYY-MM-DDTHH:mm")]
-    (.format t format-string)))
-
-(defmethod moment+type->iso-8601 :local-date
-  [[^moment/Moment t _value-type]]
-  (.format t "YYYY-MM-DD"))
-
-(defmethod moment+type->iso-8601 :offset-time
-  [[^moment/Moment t _value-type]]
-  (let [format-string (cond
-                        (pos? (.millisecond t)) "HH:mm:ss.SSS[Z]"
-                        (pos? (.second t))      "HH:mm:ss[Z]"
-                        :else                    "HH:mm[Z]")]
-    (.format t format-string)))
-
-(defmethod moment+type->iso-8601 :local-time
-  [[^moment/Moment t _value-type]]
-  (let [format-string (cond
-                        (pos? (.millisecond t)) "HH:mm:ss.SSS"
-                        (pos? (.second t))      "HH:mm:ss"
-                        :else                    "HH:mm")]
-    (.format t format-string)))
-
-(defn- ->moment ^moment/Moment [t]
-  (if (instance? js/Date t)
-    (moment/utc t)
-    t))
+(defn- ->moment
+  "Coerce a value to a Moment. Handles strings, js/Date, and passes through Moments."
+  ^moment/Moment [t]
+  (cond
+    (string? t)            (first (iso-8601->moment+type t))
+    (instance? js/Date t)  (moment/utc t)
+    :else                  t))
 
 (defn unit-diff
   "Return the number of `unit`s between two temporal values `before` and `after`, e.g. maybe there are 32 `:day`s
   between Jan 1st and Feb 2nd."
   [unit before after]
-  (let [^moment/Moment before (if (string? before)
-                                (first (iso-8601->moment+type before))
-                                (->moment before))
-        ^moment/Moment after  (if (string? after)
-                                (first (iso-8601->moment+type after))
-                                (->moment after))]
-    (.diff after before (name unit))))
+  (.diff (->moment after) (->moment before) (name unit)))
 
 (defn truncate
   "ClojureScript implementation of [[metabase.util.time/truncate]]; supports both Moment.js instances and ISO-8601
