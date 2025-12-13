@@ -160,6 +160,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
+                  :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
