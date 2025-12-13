@@ -339,12 +339,22 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/fks"
-  "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
+  "Get all foreign keys from active tables whose destination is a `Field` that belongs to
+  this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)]
+    (for [origin-field (t2/select :model/Field
+                                  {:select [:f.*]
+                                   :from [[(t2/table-name :model/Field) :f]]
+                                   :inner-join [[(t2/table-name :model/Table) :t]
+                                                [:= :f.table_id :t.id]]
+                                   :where
+                                   [:and
+                                    [:is :t.active true]
+                                    [:is :f.active true]
+                                    [:in :f.fk_target_field_id field-ids]]})]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
