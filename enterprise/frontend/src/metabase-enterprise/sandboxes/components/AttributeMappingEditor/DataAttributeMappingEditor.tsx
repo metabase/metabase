@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Icon, Select, Text, Tooltip } from "metabase/ui";
-import QuestionParameterTargetWidget from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
+import { QuestionParameterTargetWidget } from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
 import type {
   DataAttributeMap,
   GroupTableAccessPolicyDraft,
