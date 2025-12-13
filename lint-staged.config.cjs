@@ -31,7 +31,8 @@ module.exports = {
      * once per file avoids shell parsing issues with paths containing spaces or
      * special characters (e.g. parentheses), and keeps the invocation explicit.
      */
-    (files) => files.map((f) => `./bin/mage -token-scan ${f}`),
+    (files) =>
+      `./bin/mage -token-scan ${files.map((item) => `"${item}"`).join(" ")}`,
     "./bin/mage -install-merge-drivers",
   ],
 };
