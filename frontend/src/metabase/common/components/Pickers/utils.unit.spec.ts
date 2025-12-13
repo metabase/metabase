@@ -404,16 +404,9 @@ describe("shouldDisableItemForSavingModel", () => {
     location: "/tenant/",
   };
 
-  it("should return true for tenant root when saving a dashboard", () => {
-    expect(shouldDisableItemForSavingModel(tenantRoot, "dashboard")).toBe(true);
-  });
-
-  it("should return true for tenant root when saving a question", () => {
-    expect(shouldDisableItemForSavingModel(tenantRoot, "question")).toBe(true);
-  });
-
-  it("should return true for tenant root when saving a model", () => {
-    expect(shouldDisableItemForSavingModel(tenantRoot, "model")).toBe(true);
+  it("should return true for tenant root when savingModel is not 'collection'", () => {
+    expect(shouldDisableItemForSavingModel(tenantRoot, undefined)).toBe(true);
+    expect(shouldDisableItemForSavingModel(tenantRoot, null)).toBe(true);
   });
 
   it("should return false for tenant root when saving a collection", () => {
@@ -422,11 +415,11 @@ describe("shouldDisableItemForSavingModel", () => {
     );
   });
 
-  it("should return false for regular collections when saving any item type", () => {
-    expect(
-      shouldDisableItemForSavingModel(regularCollection, "dashboard"),
-    ).toBe(false);
-    expect(shouldDisableItemForSavingModel(regularCollection, "question")).toBe(
+  it("should return false for regular collections regardless of savingModel", () => {
+    expect(shouldDisableItemForSavingModel(regularCollection, undefined)).toBe(
+      false,
+    );
+    expect(shouldDisableItemForSavingModel(regularCollection, null)).toBe(
       false,
     );
     expect(
@@ -434,18 +427,11 @@ describe("shouldDisableItemForSavingModel", () => {
     ).toBe(false);
   });
 
-  it("should return false for tenant sub-collections when saving any item type", () => {
+  it("should return false for tenant sub-collections regardless of savingModel", () => {
     expect(
-      shouldDisableItemForSavingModel(tenantSubCollection, "dashboard"),
+      shouldDisableItemForSavingModel(tenantSubCollection, undefined),
     ).toBe(false);
-    expect(
-      shouldDisableItemForSavingModel(tenantSubCollection, "question"),
-    ).toBe(false);
-  });
-
-  it("should return false when savingModel is not specified", () => {
-    expect(shouldDisableItemForSavingModel(tenantRoot, undefined)).toBe(false);
-    expect(shouldDisableItemForSavingModel(regularCollection, undefined)).toBe(
+    expect(shouldDisableItemForSavingModel(tenantSubCollection, null)).toBe(
       false,
     );
   });
@@ -466,8 +452,8 @@ describe("getDisabledReasonForSavingModel", () => {
     location: "/",
   };
 
-  it("should return reason for disabled tenant root", () => {
-    const reason = getDisabledReasonForSavingModel(tenantRoot, "dashboard");
+  it("should return reason for disabled tenant root when savingModel is not 'collection'", () => {
+    const reason = getDisabledReasonForSavingModel(tenantRoot, undefined);
 
     expect(reason).toBeDefined();
     expect(reason).toContain("tenant root collection");
@@ -475,13 +461,10 @@ describe("getDisabledReasonForSavingModel", () => {
 
   it("should return undefined for enabled items", () => {
     expect(
-      getDisabledReasonForSavingModel(regularCollection, "dashboard"),
+      getDisabledReasonForSavingModel(regularCollection, undefined),
     ).toBeUndefined();
     expect(
       getDisabledReasonForSavingModel(tenantRoot, "collection"),
-    ).toBeUndefined();
-    expect(
-      getDisabledReasonForSavingModel(tenantRoot, undefined),
     ).toBeUndefined();
   });
 });

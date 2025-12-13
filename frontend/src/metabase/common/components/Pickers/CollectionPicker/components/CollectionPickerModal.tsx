@@ -157,7 +157,6 @@ export const CollectionPickerModal = ({
 
       // Check if namespace root is disallowed for this savingModel
       if (
-        options.savingModel &&
         options.savingModel !== "collection" &&
         isNamespaceRoot(item as CollectionPickerItem)
       ) {

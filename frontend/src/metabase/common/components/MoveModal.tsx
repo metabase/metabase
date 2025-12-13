@@ -37,10 +37,10 @@ interface BaseMoveModalProps {
   entityType?: EntityType;
   recentAndSearchFilter?: (item: CollectionPickerItem) => boolean;
   /**
-   * The type of item being moved. When set to a non-collection model,
-   * namespace root collections (like tenant root) will be disabled.
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
    */
-  savingModel?: "collection" | "dashboard" | "question" | "model";
+  savingModel?: "collection" | null;
   /**
    * The namespace of the collection being moved. Used to restrict which
    * collections are shown in the picker:
