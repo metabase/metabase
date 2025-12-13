@@ -1,6 +1,6 @@
 (ns metabase.lib.js.metadata-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.js.metadata :as lib.js.metadata]
    [metabase.lib.metadata :as lib.metadata]))
@@ -68,3 +68,24 @@
         query    {:lib/type :mbql/query, :database 1, :lib/metadata mp, :stages [{:lib/type :mbql.stage/mbql, :source-table 2}]}]
     (is (= query
            (lib/normalize query)))))
+
+(deftest ^:parallel parse-column-lib-source-test
+  ;; See issue #66721 - when both "source" and "lib/source" exist in a JS column object,
+  ;; we should prefer "lib/source" and parse it correctly.
+  ;; Will be resolved by QUE-1404.
+  (testing "legacy 'source' key only"
+    (let [column (lib.js.metadata/parse-column #js {"name" "count", "source" "aggregation"})]
+      (is (= :source/aggregations (:lib/source column)))))
+  (testing "modern 'lib/source' key only"
+    (let [column (lib.js.metadata/parse-column #js {"name" "count", "lib/source" "source/aggregations"})]
+      (is (= :source/aggregations (:lib/source column)))))
+  (testing "both keys present - 'lib/source' should win"
+    ;; This was the bug: when both keys exist, JS object iteration order is non-deterministic,
+    ;; causing flaky behavior. Now we skip 'source' when 'lib/source' exists.
+    (let [column (lib.js.metadata/parse-column #js {"name" "count"
+                                                    "source" "aggregation"
+                                                    "lib/source" "source/aggregations"})]
+      (is (= :source/aggregations (:lib/source column)))))
+  (testing "other lib/source values are handled correctly"
+    (let [column (lib.js.metadata/parse-column #js {"name" "id", "lib/source" "source/table-defaults"})]
+      (is (= :source/table-defaults (:lib/source column))))))
