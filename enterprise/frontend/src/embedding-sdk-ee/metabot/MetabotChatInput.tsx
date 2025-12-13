@@ -11,16 +11,12 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import {
-  useMetabotChatHandlers,
-  useMetabotConversation,
-} from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
 export function MetabotChatInput() {
   const metabot = useMetabotConversation();
-  const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
 
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`
@@ -70,7 +66,7 @@ export function MetabotChatInput() {
           if (e.key === "Enter" && !isModifiedKeyPress) {
             e.preventDefault();
             e.stopPropagation();
-            handleSubmitInput(metabot.prompt);
+            metabot.submitInput(metabot.prompt, { focusInput: true });
           }
         }}
       />
@@ -89,7 +85,7 @@ export function MetabotChatInput() {
 
         {!metabot.isDoingScience && metabot.prompt.length > 0 && (
           <UnstyledButton
-            onClick={handleResetInput}
+            onClick={() => metabot.setPrompt("")}
             data-testid="metabot-close-chat"
             className={S.chatButton}
           >

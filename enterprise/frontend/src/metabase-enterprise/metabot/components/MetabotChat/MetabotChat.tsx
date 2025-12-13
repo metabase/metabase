@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -18,7 +18,7 @@ import {
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
-import { useMetabotChatHandlers, useMetabotConversation } from "../../hooks";
+import { useMetabotConversation } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
@@ -44,8 +44,6 @@ export const MetabotChat = ({
   config?: MetabotConfig;
 }) => {
   const metabot = useMetabotConversation();
-  const { handleSubmitInput, handleRetryMessage, handleResetInput } =
-    useMetabotChatHandlers(config);
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -68,18 +66,11 @@ export const MetabotChat = ({
   };
 
   const handleClose = () => {
-    handleResetInput();
+    metabot.setPrompt("");
     metabot.setVisible(false);
   };
 
-  const handleEditorChange = useCallback(
-    (value: string) => metabot.setPrompt(value),
-    [metabot],
-  );
-
-  const handleEditorSubmit = useCallback(() => {
-    handleSubmitInput(metabot.prompt);
-  }, [handleSubmitInput, metabot.prompt]);
+  const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
 
   return (
     <Sidebar
@@ -102,14 +93,6 @@ export const MetabotChat = ({
               {metabot.profileOverride
                 ? t`Using profile: ${metabot.profileOverride}`
                 : t`Metabot isn't perfect. Double-check results.`}
-              {metabot.profileOverride && (
-                <Button
-                  ml="xs"
-                  size="compact-xs"
-                  variant="subtle"
-                  onClick={() => metabot.setProfileOverride("unset")}
-                >{t`Reset`}</Button>
-              )}
             </Text>
           </Flex>
 
@@ -168,7 +151,7 @@ export const MetabotChat = ({
                         <Button
                           fz="sm"
                           size="xs"
-                          onClick={() => handleSubmitInput(prompt)}
+                          onClick={() => metabot.submitInput(prompt)}
                           className={Styles.promptSuggestionButton}
                         >
                           {prompt}
@@ -190,7 +173,9 @@ export const MetabotChat = ({
               <Messages
                 messages={metabot.messages}
                 errorMessages={metabot.errorMessages}
-                onRetryMessage={handleRetryMessage}
+                onRetryMessage={
+                  config.preventRetryMessage ? undefined : metabot.retryMessage
+                }
                 isDoingScience={metabot.isDoingScience}
                 showFeedbackButtons
               />
@@ -219,7 +204,7 @@ export const MetabotChat = ({
               autoFocus
               isResponding={metabot.isDoingScience}
               placeholder={t`Tell me to do something, or ask a question`}
-              onChange={handleEditorChange}
+              onChange={metabot.setPrompt}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
               suggestionModels={config.suggestionModels}

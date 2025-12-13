@@ -16,10 +16,26 @@ export type ConvoPayloadAction<
 
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
-  action: { meta: { arg: { conversation_id: string } } },
+  action: {
+    meta: { arg: { convoId: MetabotConvoId; conversation_id: string } };
+  },
 ) => {
-  const convoId = action.meta.arg.conversation_id as unknown as MetabotConvoId;
-  return state.conversations[convoId];
+  const { convoId, conversation_id } = action.meta.arg;
+  const convo = state.conversations[convoId];
+
+  if (!convo) {
+    console.warn(`Unable to find metabot conversation for ${convoId}`);
+    return undefined;
+  }
+
+  if (conversation_id !== convo.conversationId) {
+    console.warn(
+      `Metabot conversation ${convoId} has ${convo.conversationId} but request was for ${conversation_id}`,
+    );
+    return undefined;
+  }
+
+  return convo;
 };
 
 // Create a new empty conversation

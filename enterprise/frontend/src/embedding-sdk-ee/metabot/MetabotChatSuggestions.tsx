@@ -1,15 +1,11 @@
 import { Button, Stack } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
-import {
-  useMetabotChatHandlers,
-  useMetabotConversation,
-} from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
 export const MetabotChatSuggestions = () => {
   const metabot = useMetabotConversation();
-  const { handleSubmitInput } = useMetabotChatHandlers();
 
   // Keep in sync with [MetabotChat.tsx]
   const suggestedPromptsQuery = useGetSuggestedMetabotPromptsQuery({
@@ -38,7 +34,7 @@ export const MetabotChatSuggestions = () => {
           size="xs"
           variant="outline"
           fw={400}
-          onClick={() => handleSubmitInput(prompt)}
+          onClick={() => metabot.submitInput(prompt, { focusInput: true })}
           className={S.promptSuggestionButton}
           data-testid="metabot-suggestion-button"
         >

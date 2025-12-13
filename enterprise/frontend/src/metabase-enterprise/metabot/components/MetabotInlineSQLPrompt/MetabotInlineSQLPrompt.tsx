@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
-import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import { MetabotPromptInput } from "../MetabotPromptInput";
@@ -31,7 +30,6 @@ export const MetabotInlineSQLPrompt = ({
     const value = inputRef.current?.getValue?.().trim() ?? "";
     setHasError(false);
     const action = await submitInput(value, {
-      profile: METABOT_PROFILE_OVERRIDES.INLINE_SQL,
       preventOpenSidebar: true,
     });
     if (

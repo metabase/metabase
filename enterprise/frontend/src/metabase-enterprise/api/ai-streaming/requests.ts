@@ -10,7 +10,7 @@ import type { JSONValue } from "./types";
 export const inflightAiStreamingRequests = new Map<
   string,
   {
-    sourceId: string;
+    sourceId?: string;
     abortController: AbortController;
   }
 >();
@@ -36,11 +36,11 @@ export async function aiStreamingQuery(
     url: string;
     signal?: AbortSignal | null | undefined;
     body: JSONValue;
+    sourceId?: string;
   },
   config: AIStreamingConfig = {},
 ) {
   const reqId = `${req.url}-${nanoid()}`;
-  const conversation_id = (req.body as any).conversation_id;
 
   try {
     const abortController = new AbortController();
@@ -52,7 +52,7 @@ export async function aiStreamingQuery(
       });
     }
     inflightAiStreamingRequests.set(reqId, {
-      sourceId: conversation_id,
+      sourceId: req.sourceId,
       abortController,
     });
 

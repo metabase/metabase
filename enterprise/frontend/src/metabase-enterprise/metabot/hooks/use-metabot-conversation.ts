@@ -24,7 +24,6 @@ import {
   newConversation,
   resetConversation,
   retryPrompt,
-  setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
@@ -47,13 +46,6 @@ export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
     [dispatch, convoId],
   );
 
-  const setProfileOverride = useCallback(
-    (profile: string | undefined) => {
-      dispatch(setProfileOverrideAction({ convoId: convoId, profile }));
-    },
-    [dispatch, convoId],
-  );
-
   const prepareRetryIfUnsuccesful = useCallback(
     (result: MetabotPromptSubmissionResult) => {
       if (!result.success && result.shouldRetry) {
@@ -73,7 +65,7 @@ export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
         focusInput?: boolean;
       },
     ) => {
-      setProfileOverride(options?.profile);
+      setPrompt("");
 
       if (!visible && !options?.preventOpenSidebar) {
         setVisible(true);
@@ -107,11 +99,11 @@ export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
       getChatContext,
       metabotRequestId,
       prepareRetryIfUnsuccesful,
-      setProfileOverride,
       setVisible,
       visible,
       convoId,
       promptInputRef,
+      setPrompt,
     ],
   );
 
@@ -159,8 +151,7 @@ export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
     submitInput,
     retryMessage,
     cancelRequest,
-    setProfileOverride,
-    metabotId: useSelector((state: any) => getMetabotId(state)),
+    metabotId: useSelector(getMetabotId),
     messages: useSelector((state: any) => getMessages(state, convoId)),
     errorMessages: useSelector((state: any) =>
       getAgentErrorMessages(state, convoId),
