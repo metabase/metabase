@@ -346,16 +346,16 @@
       (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
                                         (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
       (notification/with-skip-sending-notification true
-        (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
-                                                                   :sso_source (name provider))})))))
+        (events/publish-event! :event/user-invited {:object #p (assoc (t2/select-one :model/User (:id <>))
+                                                                      :sso_source (name provider))})))))
 
 (methodical/defmethod login! ::create-user-if-not-exists
   [provider request]
-  (let [user (or (when-let [user (:user request)]
-                   (cond-> user
-                     (:user-data request) (update-user! (:user-data request) provider)))
-                 (when-let [user-data (:user-data request)]
-                   (create-user! user-data provider)))
+  (let [user #p (or (when-let [user (:user request)]
+                      (cond-> user
+                        (:user-data request) (update-user! (:user-data request) provider)))
+                    (when-let [user-data (:user-data request)]
+                      (create-user! user-data provider)))
         redirect-url (or (:redirect-url request) "/")]
     (assoc request
            :success? true
