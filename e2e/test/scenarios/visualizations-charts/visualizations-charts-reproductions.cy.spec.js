@@ -675,7 +675,7 @@ describe("issue 21665", () => {
   });
 });
 
-describe("issue 22527", { tags: "@skip" }, () => {
+describe("issue 22527", () => {
   const questionDetails = {
     native: {
       query:
@@ -688,37 +688,40 @@ describe("issue 22527", { tags: "@skip" }, () => {
     },
   };
 
-  function assertion() {
-    cy.get("circle").should("have.length", 5).last().realHover();
-
-    H.popover().within(() => {
-      H.testPairedTooltipValues("X", "5");
-      H.testPairedTooltipValues("Y", "-20");
-      H.testPairedTooltipValues("SIZE", "70");
+  function assertChartCircle() {
+    H.cartesianChartCircle()
+      .should("have.length", 5)
+      .last()
+      .trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "5",
+      rows: [
+        {
+          name: "Y",
+          value: "-20",
+        },
+      ],
     });
   }
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should render negative values in a scatter visualziation (metabase#22527)", () => {
-    assertion();
+    assertChartCircle();
 
     H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Data").click();
     });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Bubble size").parent().contains("Select a field").click();
-
+    cy.findByTestId("chart-settings-widget-scatter.bubble").click();
     H.popover().contains(/size/i).click();
+    H.openVizSettingsSidebar(); // close the sidebar otherwise hover over chart circle won't work
 
-    assertion();
+    assertChartCircle();
   });
 });
 
