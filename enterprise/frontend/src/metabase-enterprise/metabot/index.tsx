@@ -15,6 +15,7 @@ import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
+import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
@@ -105,4 +106,5 @@ export function initializePlugin() {
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   }
+  PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
 }

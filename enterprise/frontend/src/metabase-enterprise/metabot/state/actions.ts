@@ -34,10 +34,12 @@ import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
   getDebugMode,
+  getDeveloperMessage,
   getHistory,
   getIsProcessing,
   getLastMessage,
   getMetabotConversationId,
+  getProfile,
   getUserPromptForMessageId,
 } from "./selectors";
 import type { MetabotStoreState, SlashCommand } from "./types";
@@ -53,12 +55,14 @@ export const {
   setNavigateToPath,
   toolCallStart,
   toolCallEnd,
-  setProfileOverride,
   setMetabotReqIdOverride,
   setDebugMode,
   addSuggestedTransform,
   activateSuggestedTransform,
   deactivateSuggestedTransform,
+  addSuggestedCodeEdit,
+  deactivateSuggestedCodeEdit,
+  clearDeveloperMessage,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -103,6 +107,16 @@ export const setVisible =
     }
 
     dispatch(metabot.actions.setVisible(isVisible));
+  };
+
+export const setProfileOverride =
+  (profile: string | undefined) => (dispatch: Dispatch, getState: any) => {
+    const currentProfile = getProfile(getState() as any);
+    if (profile && currentProfile !== profile) {
+      dispatch(resetConversation());
+      const nextProfile = profile === "unset" ? undefined : profile;
+      dispatch(metabot.actions.setProfileOverride(nextProfile));
+    }
   };
 
 export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
@@ -180,16 +194,19 @@ export const submitInput = createAsyncThunk<
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState() as any);
       const messageId = createMessageId();
+      const message = getDeveloperMessage(state) + data.message;
       dispatch(
         addUserMessage({
           id: messageId,
           ..._.omit(data, ["context", "metabot_id"]),
+          message,
         }),
       );
 
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,
+          message,
           ...agentMetadata,
         }),
       );
@@ -277,6 +294,9 @@ export const sendAgentRequest = createAsyncThunk<
                 };
 
                 dispatch(addAgentMessage(message));
+              })
+              .with({ type: "code_edit" }, (part) => {
+                dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
@@ -367,6 +387,24 @@ export const cancelInflightAgentRequests = createAsyncThunk(
     );
   },
 );
+
+export const addDeveloperMessage = (message: string) => {
+  return (dispatch: Dispatch, getState: any) => {
+    const state = getState() as any;
+    const isProcessing = getIsProcessing(state);
+    if (isProcessing) {
+      console.error("Metabot is actively serving a request");
+      // NOTE: silently failing - not great but is is better to not break the app for
+      // now we don't want to write to history at this point in time as we'd have a
+      // race condition w/ the in-flight request. in the future, it'd be preferable to
+      // have a queue that we write to which flushes its contents into the history once
+      // it has settled.
+      return;
+    } else {
+      dispatch(metabot.actions.addDeveloperMessage(message));
+    }
+  };
+};
 
 const rewindConversation = createAsyncThunk(
   "metabase-enterprise/metabot/rewindConversation",

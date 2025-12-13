@@ -4,6 +4,7 @@ import _ from "underscore";
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
 import type {
+  MetabotCodeEdit,
   MetabotHistory,
   MetabotTodoItem,
   MetabotTransformInfo,
@@ -102,6 +103,7 @@ export type MetabotSuggestedTransform = SuggestedTransform & {
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  suggestedCodeEdits: MetabotCodeEdit[];
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
@@ -115,8 +117,10 @@ export interface MetabotState {
   state: any;
   reactions: MetabotReactionsState;
   activeToolCalls: MetabotToolCall[];
+  profile?: string;
   experimental: {
     debugMode: boolean;
+    developerMessage: string;
     metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
   };
@@ -132,11 +136,14 @@ export const getMetabotInitialState = (): MetabotState => ({
   state: {},
   reactions: {
     navigateToPath: null,
+    suggestedCodeEdits: [],
+    // NOTE: suggestedTransforms should be folded into suggestedCodeEdits eventually
     suggestedTransforms: [],
   },
   activeToolCalls: [],
   experimental: {
     debugMode: false,
+    developerMessage: "",
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
   },
@@ -146,6 +153,9 @@ export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
+    addDeveloperMessage: (state, action: PayloadAction<string>) => {
+      state.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload}\n\n`;
+    },
     addUserMessage: (
       state,
       action: PayloadAction<Omit<MetabotUserChatMessage, "role">>,
@@ -153,7 +163,7 @@ export const metabot = createSlice({
       const { id, message, ...rest } = action.payload;
 
       state.errorMessages = [];
-      state.messages.push({ id, role: "user", message, ...rest } as any);
+      state.messages.push({ id, role: "user", ...rest, message } as any);
       state.history.push({ id, role: "user", content: message });
     },
     addAgentMessage: (
@@ -266,6 +276,7 @@ export const metabot = createSlice({
       state.conversationId = uuid();
       state.reactions.suggestedTransforms = [];
       state.experimental.metabotReqIdOverride = undefined;
+      state.experimental.developerMessage = "";
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -330,6 +341,24 @@ export const metabot = createSlice({
         }
       });
     },
+    addSuggestedCodeEdit: (
+      state,
+      { payload }: PayloadAction<MetabotCodeEdit>,
+    ) => {
+      // mark all other edits w/ same buffer id as inactive before adding new one
+      state.reactions.suggestedCodeEdits.forEach((t) => {
+        t.active = t.bufferId === payload.bufferId ? false : t.active;
+      });
+      state.reactions.suggestedCodeEdits.push(payload);
+    },
+    deactivateSuggestedCodeEdit: (
+      state,
+      action: PayloadAction<MetabotCodeEdit["bufferId"] | undefined>,
+    ) => {
+      state.reactions.suggestedCodeEdits.forEach((t) => {
+        t.active = t.bufferId === action.payload ? false : t.active;
+      });
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -344,6 +373,7 @@ export const metabot = createSlice({
         state.history = action.payload?.history?.slice() ?? [];
         state.activeToolCalls = [];
         state.isProcessing = false;
+        state.experimental.developerMessage = "";
       })
       .addCase(sendAgentRequest.rejected, (state, action) => {
         // aborted requests needs special state adjustments

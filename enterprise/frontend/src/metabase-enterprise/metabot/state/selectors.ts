@@ -192,3 +192,20 @@ export const getIsSuggestedTransformActive = createSelector(
     return suggestion?.active ?? false;
   },
 );
+
+export const getMetabotSuggestedCodeEdits = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.suggestedCodeEdits,
+);
+
+export const getMetabotSuggestedCodeEdit = createSelector(
+  [getMetabotSuggestedCodeEdits, (_, bufferId: string) => bufferId],
+  (codeEdits, bufferId) => {
+    return codeEdits.findLast((t) => t.bufferId === bufferId && t.active);
+  },
+);
+
+export const getDeveloperMessage = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.developerMessage,
+);
