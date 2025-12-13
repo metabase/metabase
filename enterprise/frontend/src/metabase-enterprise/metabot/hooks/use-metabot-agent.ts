@@ -21,28 +21,18 @@ import {
   getMetabotRequestId,
   getMetabotVisible,
   getProfileOverride,
+  newConversation,
+  removeConversation,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
 
-import { useMetaboConversationManager } from "./use-metabot-conversation-manager";
-
-export const useMetabotConversation = (
-  initialConvoId: MetabotConvoId = "omnibot",
-) => {
+export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
   const dispatch = useDispatch();
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();
-
-  // TODO startNewConversation kinda sucks because calling this will get make a new
-  // conversation_id BUT all the methods that were returned from useMetabotConversation
-  // will still have a stale reference to the old value. on the flipside moving this to
-  // a also screws things up... you could update all the methods to use a ref, but then
-  // your selector values will be from a different conversation than your new one :(
-  const { convoId, startNewConversation } =
-    useMetaboConversationManager(initialConvoId);
 
   const metabotRequestId = useSelector((state: any) =>
     getMetabotRequestId(state, convoId),
@@ -152,6 +142,12 @@ export const useMetabotConversation = (
   const cancelRequest = useCallback(() => {
     dispatch(cancelInflightAgentRequests(convoId));
   }, [dispatch, convoId]);
+
+  const startNewConversation = useCallback(() => {
+    // TODO fix these methods
+    dispatch(removeConversation({ convoId, resetReactions: true }));
+    dispatch(newConversation({ convoId, visible: true }));
+  }, [convoId, dispatch]);
 
   return {
     prompt,

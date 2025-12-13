@@ -16,13 +16,12 @@ import {
   getMetabotInitialState,
   getRequestConversation,
 } from "./reducer-utils";
-import {
-  type MetabotAgentChatMessage,
-  type MetabotConvoId,
-  type MetabotErrorMessage,
-  type MetabotSuggestedTransform,
-  type MetabotUserChatMessage,
-  isFixedMetabotConvoId,
+import type {
+  MetabotAgentChatMessage,
+  MetabotConvoId,
+  MetabotErrorMessage,
+  MetabotSuggestedTransform,
+  MetabotUserChatMessage,
 } from "./types";
 import { createMessageId } from "./utils";
 
@@ -161,21 +160,10 @@ export const metabot = createSlice({
     ),
     newConversation: (
       state,
-      action: PayloadAction<{
-        convoId: MetabotConvoId;
-        visible: boolean;
-      }>,
+      action: PayloadAction<{ convoId: MetabotConvoId; visible: boolean }>,
     ) => {
       const { convoId, ...options } = action.payload;
-      if (isFixedMetabotConvoId(convoId)) {
-        state.conversations[convoId] = castDraft(createConversation(options));
-      } else {
-        const newConvo = createConversation({
-          ...options,
-          conversationId: convoId,
-        });
-        state.conversations[newConvo.conversationId] = castDraft(newConvo);
-      }
+      state.conversations[convoId] = castDraft(createConversation(options));
     },
     removeConversation: (
       state,
@@ -184,20 +172,16 @@ export const metabot = createSlice({
       }>,
     ) => {
       const { convoId } = action.payload;
-      if (isFixedMetabotConvoId(convoId)) {
-        state.conversations[convoId] = castDraft(createConversation());
-        match(convoId)
-          .with("omnibot", () => {
-            state.reactions.navigateToPath = null;
-            state.reactions.suggestedTransforms = [];
-          })
-          .with("inline_sql", () => {
-            state.reactions.suggestedCodeEdits = [];
-          })
-          .otherwise(() => {});
-      } else {
-        delete state.conversations[convoId];
-      }
+      state.conversations[convoId] = castDraft(createConversation());
+      match(convoId)
+        .with("omnibot", () => {
+          state.reactions.navigateToPath = null;
+          state.reactions.suggestedTransforms = [];
+        })
+        .with("inline_sql", () => {
+          state.reactions.suggestedCodeEdits = [];
+        })
+        .otherwise(() => {});
     },
     setIsProcessing: convoReducer(
       (state, action: ConvoPayloadAction<{ processing: boolean }>) => {

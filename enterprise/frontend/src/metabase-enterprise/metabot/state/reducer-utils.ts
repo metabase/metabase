@@ -7,7 +7,6 @@ import type {
   MetabotConverstationState,
   MetabotConvoId,
   MetabotState,
-  MetabotUniqueConvoId,
 } from "./types";
 
 export type ConvoPayloadAction<
@@ -22,11 +21,6 @@ export const getRequestConversation = (
   return state.conversations[convoId];
 };
 
-// Create a unique id for a metabot conversations
-export const createConversationId = (): MetabotUniqueConvoId => {
-  return uuid() as MetabotUniqueConvoId;
-};
-
 // Create a new empty conversation
 export const createConversation = (
   overrides?: Partial<MetabotConverstationState>,
@@ -39,7 +33,7 @@ export const createConversation = (
   state: {},
   activeToolCalls: [],
   ...overrides,
-  conversationId: overrides?.conversationId ?? createConversationId(),
+  conversationId: overrides?.conversationId ?? uuid(),
   experimental: {
     developerMessage: "",
     metabotReqIdOverride: undefined,
