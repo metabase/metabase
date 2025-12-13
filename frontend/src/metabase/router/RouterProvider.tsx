@@ -1,22 +1,35 @@
 import type { History } from "history";
 import { type PropsWithChildren, createContext } from "react";
 import { Route, Router, type WithRouterProps, withRouter } from "react-router";
+import type { PlainRoute } from "react-router/lib/Route";
+import type { Params } from "react-router/lib/Router";
 
 import { useHistory } from "metabase/history";
 
-type RouterContextType = WithRouterProps;
+export type RouterContextType<TParams extends Params = Params> =
+  WithRouterProps<TParams> & {
+    route: PlainRoute | undefined;
+  };
 
 export const RouterContext = createContext<RouterContextType | null>(null);
 
-const RouterContextProviderBase = ({
+const RouterContextProviderBase = <TParams extends Params = Params>({
   router,
   location,
   params,
   routes,
   children,
-}: PropsWithChildren<RouterContextType>) => {
+}: PropsWithChildren<RouterContextType<TParams>>) => {
   return (
-    <RouterContext.Provider value={{ router, location, params, routes }}>
+    <RouterContext.Provider
+      value={{
+        router,
+        location,
+        params,
+        routes,
+        route: routes.at(-1),
+      }}
+    >
       {children}
     </RouterContext.Provider>
   );
@@ -38,6 +51,7 @@ export const RouterProvider = ({
   children,
 }: PropsWithChildren<RouterProviderProps>) => {
   const { history } = useHistory();
+
   return (
     <Router history={history}>
       <Route component={RouterContextProvider}>{children}</Route>

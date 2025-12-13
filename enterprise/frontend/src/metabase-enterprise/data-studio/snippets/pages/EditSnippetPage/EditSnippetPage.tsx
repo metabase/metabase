@@ -1,6 +1,5 @@
 import { sql } from "@codemirror/lang-sql";
 import { useLayoutEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -29,10 +28,9 @@ type EditSnippetPageParams = {
 
 type EditSnippetPageProps = {
   params: EditSnippetPageParams;
-  route: Route;
 };
 
-export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
+export function EditSnippetPage({ params }: EditSnippetPageProps) {
   const snippetId = Urls.extractEntityId(params.snippetId);
   const [sendToast] = useToast();
 
@@ -145,7 +143,6 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
       </Stack>
       <LeaveRouteConfirmModal
         key={snippetId}
-        route={route}
         isEnabled={isDirty && !isSaving}
       />
     </>

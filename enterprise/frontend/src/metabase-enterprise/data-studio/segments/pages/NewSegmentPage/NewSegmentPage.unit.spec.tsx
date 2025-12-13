@@ -65,7 +65,6 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
       path="/"
       component={() => (
         <NewSegmentPage
-          route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
           getSuccessUrl={getSuccessUrl}

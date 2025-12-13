@@ -92,7 +92,6 @@ function setup({ segment = TEST_SEGMENT, table = TEST_TABLE }: SetupOpts = {}) {
       path="/"
       component={() => (
         <SegmentDetailPage
-          route={{ path: "/" } as never}
           segment={segment}
           tabUrls={tabUrls}
           breadcrumbs={

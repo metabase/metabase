@@ -1,5 +1,3 @@
-import { withRouter } from "react-router";
-
 import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
@@ -102,4 +100,4 @@ const CollectionHeader = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouter(CollectionHeader);
+export default CollectionHeader;

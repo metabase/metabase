@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -34,10 +33,9 @@ type NewMetricPageQuery = {
 
 type NewMetricPageProps = {
   location: Location<NewMetricPageQuery>;
-  route: Route;
 };
 
-export function NewMetricPage({ location, route }: NewMetricPageProps) {
+export function NewMetricPage({ location }: NewMetricPageProps) {
   const metadata = useSelector(getMetadata);
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
@@ -134,7 +132,7 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
           onClose={closeModal}
         />
       )}
-      <LeaveRouteConfirmModal route={route} isEnabled={!isModalOpened} />
+      <LeaveRouteConfirmModal isEnabled={!isModalOpened} />
     </>
   );
 }
