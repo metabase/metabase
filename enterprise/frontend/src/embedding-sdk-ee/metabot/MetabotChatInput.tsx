@@ -107,7 +107,7 @@ export function MetabotChatInput() {
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="edit_document_outlined" size="1rem" />}
-              onClick={metabot.startNewConversation}
+              onClick={metabot.resetConversation}
             >
               {t`Start new chat`}
             </Menu.Item>

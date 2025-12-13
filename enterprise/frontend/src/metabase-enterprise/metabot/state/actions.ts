@@ -523,10 +523,7 @@ export const retryPrompt = createAsyncThunk<
 
 export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
-  (
-    payload: { convoId: MetabotConvoId; resetReactions: boolean },
-    { dispatch },
-  ) => {
+  (payload: { convoId: MetabotConvoId }, { dispatch }) => {
     dispatch(cancelInflightAgentRequests(payload.convoId));
     dispatch(metabot.actions.resetConversation(payload));
   },

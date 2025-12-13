@@ -22,7 +22,7 @@ export function SidebarHeader() {
 
       <Tooltip label={t`Start new chat`}>
         <UnstyledButton
-          onClick={() => metabot.startNewConversation()}
+          onClick={() => metabot.resetConversation()}
           data-testid="metabot-new-conversation"
         >
           <Icon

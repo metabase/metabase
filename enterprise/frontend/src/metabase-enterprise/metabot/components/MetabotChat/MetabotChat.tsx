@@ -61,7 +61,7 @@ export const MetabotChat = ({
   }, [suggestedPromptsReq.currentData?.prompts]);
 
   const handleResetChat = () => {
-    metabot.startNewConversation();
+    metabot.resetConversation();
     suggestedPromptsReq.refetch();
   };
 

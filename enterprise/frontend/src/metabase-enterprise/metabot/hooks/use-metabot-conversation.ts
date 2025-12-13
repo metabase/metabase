@@ -21,8 +21,7 @@ import {
   getMetabotRequestId,
   getMetabotVisible,
   getProfileOverride,
-  newConversation,
-  resetConversation,
+  resetConversation as resetConversationAction,
   retryPrompt,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
@@ -135,10 +134,8 @@ export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
     dispatch(cancelInflightAgentRequests(convoId));
   }, [dispatch, convoId]);
 
-  const startNewConversation = useCallback(() => {
-    // TODO fix these methods
-    dispatch(resetConversation({ convoId, resetReactions: true }));
-    dispatch(newConversation({ convoId, visible: true }));
+  const resetConversation = useCallback(() => {
+    dispatch(resetConversationAction({ convoId }));
   }, [convoId, dispatch]);
 
   return {
@@ -147,7 +144,7 @@ export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
     promptInputRef,
     visible,
     setVisible,
-    startNewConversation,
+    resetConversation,
     submitInput,
     retryMessage,
     cancelRequest,

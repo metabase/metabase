@@ -43,7 +43,8 @@ export const metabot = createSlice({
     },
     resetConversation: (state, action: ConvoPayloadAction) => {
       const { convoId } = action.payload;
-      state.conversations[convoId] = castDraft(createConversation());
+      const visible = state.conversations[convoId]?.visible ?? false;
+      state.conversations[convoId] = castDraft(createConversation({ visible }));
       resetReactionState(state, convoId);
     },
     setDebugMode: (state, action: PayloadAction<boolean>) => {
