@@ -468,10 +468,15 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
+   (filterable-columns query stage-number nil))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
    (let [columns (sequence
                   (comp (map add-column-operators)
                         (clojure.core/filter :operators))
-                  (lib.metadata.calculation/visible-columns query stage-number))
+                  (lib.metadata.calculation/visible-columns query stage-number options))
          existing-filters (filters query stage-number)]
      (cond
        (empty? columns)

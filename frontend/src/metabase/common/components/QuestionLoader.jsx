@@ -38,15 +38,22 @@ const QuestionLoader = ({
   questionObject,
   questionId,
   questionHash,
+  includeSensitiveFields = false,
   children,
 }) =>
   questionObject != null ? (
-    <AdHocQuestionLoader questionHash={serializeCardForUrl(questionObject)}>
+    <AdHocQuestionLoader
+      questionHash={serializeCardForUrl(questionObject)}
+      includeSensitiveFields={includeSensitiveFields}
+    >
       {children}
     </AdHocQuestionLoader>
   ) : // if there's a questionHash it means we're in ad-hoc land
   questionHash != null && questionHash !== "" ? (
-    <AdHocQuestionLoader questionHash={questionHash}>
+    <AdHocQuestionLoader
+      questionHash={questionHash}
+      includeSensitiveFields={includeSensitiveFields}
+    >
       {children}
     </AdHocQuestionLoader>
   ) : // otherwise if there's a non-null questionId it means we're in saved land

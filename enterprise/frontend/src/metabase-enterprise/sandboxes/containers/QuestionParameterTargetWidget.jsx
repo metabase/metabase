@@ -10,7 +10,16 @@ class QuestionParameterTargetWidget extends Component {
   render() {
     const { question, ...props } = this.props;
     const mappingOptions = question
-      ? getParameterMappingOptions(question, null, question.card())
+      ? getParameterMappingOptions(
+          question,
+          null,
+          question.card(),
+          null,
+          null,
+          {
+            includeSensitiveFields: true,
+          },
+        )
       : [];
     return (
       <ParameterTargetWidget
