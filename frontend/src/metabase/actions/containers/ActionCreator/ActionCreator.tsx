@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,6 +15,7 @@ import { Actions } from "metabase/entities/actions";
 import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
+import { useRouter } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -41,8 +41,6 @@ interface OwnProps {
   databaseId?: DatabaseId;
 
   action?: WritebackAction;
-  route: Route;
-
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
@@ -59,8 +57,6 @@ interface DispatchProps {
   onCreateAction: (params: CreateActionParams) => void;
   onUpdateAction: (params: UpdateActionParams) => void;
 }
-
-export type ActionCreatorProps = OwnProps;
 
 type Props = OwnProps & ModelLoaderProps & StateProps & DispatchProps;
 
@@ -79,7 +75,6 @@ function ActionCreator({
   onUpdateAction,
   onSubmit,
   onClose,
-  route,
 }: Props) {
   const {
     action,
@@ -105,6 +100,7 @@ function ActionCreator({
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
 
+  const { route } = useRouter();
   useBeforeUnload(!route && showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
@@ -192,10 +188,7 @@ function ActionCreator({
       )}
 
       {route && (
-        <LeaveRouteConfirmModal
-          isEnabled={showUnsavedChangesWarning}
-          route={route}
-        />
+        <LeaveRouteConfirmModal isEnabled={showUnsavedChangesWarning} />
       )}
     </>
   );

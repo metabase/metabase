@@ -1,6 +1,5 @@
 import { type MouseEvent, forwardRef, useState } from "react";
-import { Link, type LinkProps, withRouter } from "react-router";
-import type { WithRouterProps } from "react-router/lib/withRouter";
+import { Link, type LinkProps } from "react-router";
 import { c, t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
@@ -8,6 +7,7 @@ import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useRouter } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {
@@ -27,13 +27,13 @@ const ForwardRefLink = forwardRef((props: LinkProps, ref) => (
 // @ts-expect-error - must set a displayName + this works
 ForwardRefLink.displayName = "ForwardRefLink";
 
-const DashboardActionMenuInner = ({
+export const DashboardActionMenu = ({
   canResetFilters,
   onResetFilters,
   canEdit,
-  location,
   openSettingsSidebar,
-}: DashboardActionMenuProps & WithRouterProps) => {
+}: DashboardActionMenuProps) => {
+  const { location } = useRouter();
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);
@@ -143,5 +143,3 @@ const DashboardActionMenuInner = ({
     </Menu>
   );
 };
-
-export const DashboardActionMenu = withRouter(DashboardActionMenuInner);

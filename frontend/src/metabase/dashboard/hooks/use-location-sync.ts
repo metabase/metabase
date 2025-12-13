@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useEffect, useMemo } from "react";
 import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
@@ -7,6 +6,7 @@ import { omit } from "underscore";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";
+import { useRouter } from "metabase/router";
 
 type SYNCED_KEY = "refresh" | "fullscreen";
 
@@ -37,13 +37,12 @@ export const useLocationSync = <
   key,
   value,
   onChange,
-  location,
 }: {
   key: Key;
   value: Value;
   onChange: (value: Value | null) => void;
-  location: Location;
 }) => {
+  const { location } = useRouter();
   const dispatch = useDispatch();
   const previousValue = usePrevious(value) ?? null;
   const hashOptions = parseHashOptions(location.hash);
