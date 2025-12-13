@@ -89,8 +89,8 @@
                    (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0
                                                                           :max 74.0
                                                                           :avg 29.98
-                                                                          :q1  6.9
-                                                                          :q3  49.24
+                                                                          :q1  7.0
+                                                                          :q3  49.0
                                                                           :sd  23.06}}))]
     (assoc column :display_name (:name column))))
 
@@ -277,7 +277,7 @@
                 :display_name "Date: Year"
                 :name         "DATE"
                 :unit         :year
-                :fingerprint  {:global {:distinct-count 618 :nil% 0.0}
+                :fingerprint  {:global {:distinct-count 614 :nil% 0.0}
                                :type   {:type/DateTime {:earliest "2013-01-03"
                                                         :latest   "2015-12-29"}}}
                 :id           (mt/id :checkins :date)
@@ -289,7 +289,7 @@
                 :semantic_type :type/Quantity
                 :fingerprint  {:global {:distinct-count 3
                                         :nil%           0.0}
-                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.25, :sd 143.5}}}
+                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 235.0, :q3 498.0, :sd 143.5}}}
                 :field_ref    [:aggregation 0]}]
               (-> card
                   card-metadata
