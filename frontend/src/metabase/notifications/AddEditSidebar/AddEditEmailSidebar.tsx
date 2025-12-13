@@ -85,6 +85,8 @@ export const AddEditEmailSidebar = ({
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getCurrentUser);
 
+  const downloadPermission = pulse.cards?.[0]?.download_perm;
+
   useEffect(() => {
     if (isEmbeddingSdk()) {
       onChannelPropertyChange("recipients", [currentUser]);
@@ -187,6 +189,7 @@ export const AddEditEmailSidebar = ({
           cards={pulse.cards}
           pulse={pulse}
           setPulse={setPulse}
+          downloadPermission={downloadPermission}
         />
         {pulse.id != null && (
           <DeleteSubscriptionAction
