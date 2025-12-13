@@ -7,7 +7,10 @@
         [metabase.util.date-2.parse.builder :as b]
         [metabase.util.i18n.impl :as i18n.impl]))
    #?@(:cljs
-       (["moment" :as moment]))
+       (["dayjs" :as dayjs-lib]
+        ["dayjs/plugin/customParseFormat" :as dayjs-custom-parse-lib]
+        ["dayjs/plugin/quarterOfYear" :as dayjs-quarter-lib]
+        ["dayjs/plugin/advancedFormat" :as dayjs-advanced-format-lib]))
    [clojure.string :as str]
    [metabase.lib.core :as lib]
    [metabase.parameters.schema :as parameters.schema]
@@ -19,8 +22,36 @@
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
 
-;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
-#?(:cljs (comment moment/keep-me))
+#?(:cljs
+   (defonce ^:private dayjs-initialized (atom false)))
+
+#?(:cljs
+   (defonce ^:private loaded-locales (atom #{"en"})))
+
+#?(:cljs
+   (defn ^:private load-locale!
+     "Dynamically load a dayjs locale if not already loaded"
+     [locale-code]
+     (when-not (contains? @loaded-locales locale-code)
+       (try
+         ;; Dynamically require the locale
+         (let [locale-path (str "dayjs/locale/" locale-code)]
+           (js/require locale-path)
+           (swap! loaded-locales conj locale-code))
+         (catch js/Error _
+           ;; Locale not available, silently ignore
+           nil)))))
+
+#?(:cljs
+   (defn ^:private dayjs
+     [& args]
+     (when-not @dayjs-initialized
+       (let [dayjs-fn (or (.-default dayjs-lib) dayjs-lib)]
+         (.extend dayjs-fn (or (.-default dayjs-custom-parse-lib) dayjs-custom-parse-lib))
+         (.extend dayjs-fn (or (.-default dayjs-quarter-lib) dayjs-quarter-lib))
+         (.extend dayjs-fn (or (.-default dayjs-advanced-format-lib) dayjs-advanced-format-lib))
+         (reset! dayjs-initialized true)))
+     (apply (or (.-default dayjs-lib) dayjs-lib) args)))
 
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
@@ -39,15 +70,19 @@
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/single
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value) locale)]
-             (.format m "MMMM D, YYYY"))
+  #?(:cljs (do
+             (load-locale! locale)
+             (let [d (.locale (dayjs value) locale)]
+               (.format d "MMMM D, YYYY")))
      :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) locale)))
 
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/month-year
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value "YYYY-MM") locale)]
-             (if (.isValid m) (.format m "MMMM, YYYY") ""))
+  #?(:cljs (do
+             (load-locale! locale)
+             (let [d (.locale (dayjs value "YYYY-MM") locale)]
+               (if (.isValid d) (.format d "MMMM, YYYY") "")))
      :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) locale)))
 
 #?(:clj
@@ -63,8 +98,10 @@
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/quarter-year
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") locale)]
-             (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
+  #?(:cljs (do
+             (load-locale! locale)
+             (let [d (.locale (dayjs value "[Q]Q-YYYY") locale)]
+               (if (.isValid d) (.format d "[Q]Q, YYYY") "")))
      :clj (.format (.withLocale ^DateTimeFormatter quarter-formatter-out (i18n.impl/locale locale))
                    (.parse ^DateTimeFormatter quarter-formatter-in value))))
 
