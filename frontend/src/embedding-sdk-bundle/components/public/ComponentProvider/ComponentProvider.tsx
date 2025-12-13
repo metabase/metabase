@@ -5,6 +5,7 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
+import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
@@ -84,6 +85,8 @@ export const ComponentProviderInternal = (
   });
 
   useInitPlugins();
+
+  useSdkCustomLoader();
 
   useEffect(() => {
     reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
