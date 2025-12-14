@@ -1,16 +1,12 @@
 import { t } from "ttag";
 
 import { Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
 export function SidebarHeader() {
-  const metabot = useMetabotAgent();
-
-  const startNewConversation = () => {
-    metabot.resetConversation();
-  };
+  const metabot = useMetabotConversation();
 
   return (
     <Flex
@@ -26,7 +22,7 @@ export function SidebarHeader() {
 
       <Tooltip label={t`Start new chat`}>
         <UnstyledButton
-          onClick={startNewConversation}
+          onClick={() => metabot.resetConversation()}
           data-testid="metabot-new-conversation"
         >
           <Icon

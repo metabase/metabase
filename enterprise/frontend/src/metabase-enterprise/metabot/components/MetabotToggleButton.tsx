@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Button, Icon, Tooltip } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import { trackMetabotChatOpened } from "../analytics";
 
@@ -10,7 +10,7 @@ interface MetabotToggleButtonProps {
 }
 
 export function MetabotToggleButton({ className }: MetabotToggleButtonProps) {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation("omnibot");
 
   const handleClick = () => {
     if (!metabot.visible) {

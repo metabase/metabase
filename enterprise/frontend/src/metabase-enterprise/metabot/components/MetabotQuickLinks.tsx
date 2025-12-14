@@ -3,7 +3,7 @@ import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { useDispatch } from "metabase/lib/redux";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 export const getMetabotQuickLinks = () => {
   return (
@@ -11,7 +11,7 @@ export const getMetabotQuickLinks = () => {
       key="metabot"
       path="metabot/new"
       component={(props) => {
-        const { startNewConversation } = useMetabotAgent();
+        const { submitInput } = useMetabotConversation("omnibot");
         const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();
 
@@ -19,7 +19,7 @@ export const getMetabotQuickLinks = () => {
           dispatch(replace("/"));
 
           if (prompt) {
-            startNewConversation(prompt);
+            submitInput(prompt, { focusInput: true });
           }
         });
 

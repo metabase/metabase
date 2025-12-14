@@ -3,18 +3,14 @@ import { useEffect, useRef } from "react";
 import { Stack } from "metabase/ui";
 import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
-import {
-  useMetabotAgent,
-  useMetabotChatHandlers,
-} from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import S from "./MetabotQuestion.module.css";
 
 export function MetabotChatHistory() {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotConversation();
   const { messages, errorMessages } = metabot;
-  const { handleRetryMessage } = useMetabotChatHandlers();
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -41,13 +37,17 @@ export function MetabotChatHistory() {
         <Messages
           messages={messages}
           errorMessages={errorMessages}
-          onRetryMessage={handleRetryMessage}
+          onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
           showFeedbackButtons={false}
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}
-      {metabot.isLongConversation && <MetabotResetLongChatButton />}
+      {metabot.isLongConversation && (
+        <MetabotResetLongChatButton
+          onResetConversation={metabot.resetConversation}
+        />
+      )}
     </Stack>
   );
 }

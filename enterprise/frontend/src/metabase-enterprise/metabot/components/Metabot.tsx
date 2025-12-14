@@ -7,12 +7,14 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import { getUser } from "metabase/selectors/user";
 
 import { trackMetabotChatOpened } from "../analytics";
-import { useMetabotAgent } from "../hooks";
+import { useMetabotConversation } from "../hooks";
+import type { MetabotConvoId } from "../state";
 
 import { MetabotChat } from "./MetabotChat";
 
 // TODO: add test coverage for these
 export interface MetabotConfig {
+  convoId?: MetabotConvoId;
   emptyText?: string;
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
@@ -26,7 +28,9 @@ export interface MetabotProps {
 }
 
 export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
-  const { visible, setVisible } = useMetabotAgent();
+  const { visible, setVisible } = useMetabotConversation(
+    config?.convoId ?? "omnibot",
+  );
 
   useEffect(() => {
     return tinykeys(window, {

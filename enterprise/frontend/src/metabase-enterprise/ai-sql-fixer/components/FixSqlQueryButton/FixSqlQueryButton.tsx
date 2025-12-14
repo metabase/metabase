@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { Button } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 
 import { trackQueryFixClicked } from "../../analytics";
 
 export function FixSqlQueryButton() {
-  const { submitInput } = useMetabotAgent();
+  const { submitInput } = useMetabotConversation("omnibot");
 
   const handleClick = () => {
     trackQueryFixClicked();

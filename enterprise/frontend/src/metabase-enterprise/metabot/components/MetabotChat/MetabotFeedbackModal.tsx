@@ -8,7 +8,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import { getMetabot, getMetabotId } from "metabase-enterprise/metabot/state";
+import {
+  getMetabotId,
+  getMetabotState,
+} from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
 
 interface MetabotFeedbackModalProps {
@@ -31,8 +34,8 @@ export const MetabotFeedbackModal = ({
   const metabotId = useSelector(getMetabotId as any) as ReturnType<
     typeof getMetabotId
   >;
-  const metabotState = useSelector(getMetabot as any) as ReturnType<
-    typeof getMetabot
+  const metabotState = useSelector(getMetabotState as any) as ReturnType<
+    typeof getMetabotState
   >;
 
   const handleSubmit = (

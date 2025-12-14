@@ -7,11 +7,10 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-import { EnterpriseApi } from "metabase-enterprise/api";
 import {
   type JSONValue,
   aiStreamingQuery,
-  getInflightRequestsForUrl,
+  findMatchingInflightAiStreamingRequests,
 } from "metabase-enterprise/api/ai-streaming";
 import type {
   MetabotAgentRequest,
@@ -23,13 +22,7 @@ import type { Dispatch } from "metabase-types/store";
 
 import { METABOT_ERR_MSG } from "../constants";
 
-import {
-  type MetabotAgentEditSuggestionChatMessage,
-  type MetabotAgentTodoListChatMessage,
-  type MetabotErrorMessage,
-  type MetabotUserChatMessage,
-  metabot,
-} from "./reducer";
+import { metabot } from "./reducer";
 import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
@@ -38,11 +31,18 @@ import {
   getHistory,
   getIsProcessing,
   getLastMessage,
-  getMetabotConversationId,
-  getProfile,
+  getMetabotConversation,
   getUserPromptForMessageId,
 } from "./selectors";
-import type { MetabotStoreState, SlashCommand } from "./types";
+import type {
+  MetabotAgentEditSuggestionChatMessage,
+  MetabotAgentTodoListChatMessage,
+  MetabotConvoId,
+  MetabotErrorMessage,
+  MetabotStoreState,
+  MetabotUserChatMessage,
+  SlashCommand,
+} from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
 
 export const {
@@ -50,7 +50,6 @@ export const {
   addAgentMessage,
   addAgentErrorMessage,
   addUserMessage,
-  resetConversationId,
   setIsProcessing,
   setNavigateToPath,
   toolCallStart,
@@ -62,7 +61,9 @@ export const {
   deactivateSuggestedTransform,
   addSuggestedCodeEdit,
   deactivateSuggestedCodeEdit,
-  clearDeveloperMessage,
+  setProfileOverride,
+  startConversation,
+  removeConversation,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -97,7 +98,8 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
 };
 
 export const setVisible =
-  (isVisible: boolean) => (dispatch: Dispatch, getState: any) => {
+  (payload: { convoId: MetabotConvoId; visible: boolean }) =>
+  (dispatch: Dispatch, getState: any) => {
     const currentUser = getUser(getState());
     if (!currentUser) {
       console.error(
@@ -106,33 +108,30 @@ export const setVisible =
       return;
     }
 
-    dispatch(metabot.actions.setVisible(isVisible));
+    dispatch(metabot.actions.setVisible(payload));
   };
 
-export const setProfileOverride =
-  (profile: string | undefined) => (dispatch: Dispatch, getState: any) => {
-    const currentProfile = getProfile(getState() as any);
-    if (profile && currentProfile !== profile) {
-      dispatch(resetConversation());
-      const nextProfile = profile === "unset" ? undefined : profile;
-      dispatch(metabot.actions.setProfileOverride(nextProfile));
-    }
-  };
-
-export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
+export const executeSlashCommand = createAsyncThunk<
+  void,
+  { command: SlashCommand; convoId: MetabotConvoId }
+>(
   "metabase-enterprise/metabot/executeSlashCommand",
-  async (slashCommand, { dispatch, getState }) => {
-    match(slashCommand)
+  async ({ command, convoId: conversationId }, { dispatch, getState }) => {
+    match(command)
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
-          dispatch(setProfileOverride(args[0]));
+          dispatch(
+            setProfileOverride({ convoId: conversationId, profile: args[0] }),
+          );
         } else {
           dispatch(addUndo({ message: "/profile <name>" }));
         }
       })
       .with({ cmd: "metabot" }, ({ args }) => {
         if (args.length <= 1) {
-          dispatch(setMetabotReqIdOverride(args[0]));
+          dispatch(
+            setMetabotReqIdOverride({ id: args[0], convoId: conversationId }),
+          );
         } else {
           dispatch(addUndo({ message: "/metabot <name>" }));
         }
@@ -164,49 +163,80 @@ export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
   Omit<MetabotUserChatMessage, "id" | "role"> & {
     context: MetabotChatContext;
+    convoId: MetabotConvoId;
     metabot_id?: string;
   }
 >(
   "metabase-enterprise/metabot/submitInput",
-  async (data, { dispatch, getState, signal }) => {
+  async (payload, { dispatch, getState, signal }) => {
+    const state = getState() as any;
+    const { convoId, message: rawPrompt, ...data } = payload;
+
+    const prompt = rawPrompt.trim();
+    if (prompt === "") {
+      console.warn("An empty prompt was submitted to conversation: ", convoId);
+      return { prompt, success: true };
+    }
+
     try {
-      const state = getState() as any;
-      const isProcessing = getIsProcessing(state);
+      const isProcessing = getIsProcessing(state, convoId);
       if (isProcessing) {
         console.error("Metabot is actively serving a request");
-        return { prompt: data.message, success: false, shouldRetry: false };
+        return { prompt, success: false, shouldRetry: false };
+      }
+
+      const convoState = getMetabotConversation(state, convoId);
+      if (!convoState) {
+        console.error(
+          "There is not metabot conversation initialized for conversation: ",
+          convoId,
+        );
+        return { prompt, success: false, shouldRetry: false };
       }
 
       // if there were from the last prompt, remove the last prompt from the history
-      const errors = getAgentErrorMessages(state);
-      const lastMessageId = getLastMessage(state)?.id;
+      const errors = getAgentErrorMessages(state, convoId);
+      const lastMessageId = getLastMessage(state, convoId)?.id;
       if (errors.length > 0 && lastMessageId) {
-        dispatch(rewindConversation(lastMessageId));
+        dispatch(
+          rewindConversation({
+            convoId: convoId,
+            messageId: lastMessageId,
+          }),
+        );
       }
 
-      const slashCommand = parseSlashCommand(data.message);
-      if (slashCommand) {
-        await dispatch(executeSlashCommand(slashCommand));
-        return { prompt: data.message, success: true };
+      const command = parseSlashCommand(prompt);
+      if (command) {
+        await dispatch(
+          executeSlashCommand({
+            command,
+            convoId,
+          }),
+        );
+        return { prompt, success: true };
       }
 
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
-      const agentMetadata = getAgentRequestMetadata(getState() as any);
+      const agentMetadata = getAgentRequestMetadata(getState() as any, convoId);
       const messageId = createMessageId();
-      const message = getDeveloperMessage(state) + data.message;
+      const promptWithDevMsg = getDeveloperMessage(state, convoId) + prompt;
       dispatch(
         addUserMessage({
           id: messageId,
           ..._.omit(data, ["context", "metabot_id"]),
-          message,
+          message: prompt,
+          convoId: convoId,
         }),
       );
 
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,
-          message,
+          message: promptWithDevMsg,
+          convoId,
+          conversation_id: convoState.conversationId,
           ...agentMetadata,
         }),
       );
@@ -217,20 +247,25 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result) && result.payload?.type === "error") {
-        dispatch(stopProcessingAndNotify(result.payload?.errorMessage));
+        dispatch(
+          stopProcessingAndNotify({
+            convoId: convoId,
+            message: result.payload?.errorMessage,
+          }),
+        );
         return {
-          prompt: data.message,
+          prompt,
           success: false,
           shouldRetry: result.payload?.shouldRetry ?? false,
         };
       }
 
-      return { prompt: data.message, success: true, data: result.payload };
+      return { prompt, success: true, data: result.payload };
     } catch (error) {
       // NOTE: all errors should be caught above, this is is a catch-all
       // to make sure that this async action always resolves to a value
       console.error(error);
-      return { prompt: data.message, success: false, shouldRetry: true };
+      return { prompt, success: false, shouldRetry: true };
     }
   },
 );
@@ -244,30 +279,18 @@ type SendAgentRequestError =
 
 export const sendAgentRequest = createAsyncThunk<
   MetabotAgentResponse,
-  Omit<MetabotAgentRequest, "conversation_id">,
+  MetabotAgentRequest & { convoId: MetabotConvoId },
   { rejectValue: SendAgentRequestError }
 >(
   "metabase-enterprise/metabot/sendAgentRequest",
   async (
-    req,
+    payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
     const isEmbedding = getIsEmbedding(getState() as any);
-
-    // TODO: make enterprise store
-    let sessionId = getMetabotConversationId(getState() as any);
-
-    // should not be needed, but just in case the value got unset
-    if (!sessionId) {
-      console.warn(
-        "Metabot has no session id while open, this should never happen",
-      );
-      dispatch(resetConversationId());
-      sessionId = getMetabotConversationId(getState() as any) as string;
-    }
+    const { convoId, ...request } = payload;
 
     try {
-      const body = { ...req, conversation_id: sessionId };
       let state = {};
       let error: unknown = undefined;
 
@@ -276,8 +299,9 @@ export const sendAgentRequest = createAsyncThunk<
           url: "/api/ee/metabot-v3/agent-streaming",
           // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
           // is upsetting the types, casting for now
-          body: body as JSONValue,
+          body: request as JSONValue,
           signal,
+          sourceId: convoId,
         },
         {
           onDataPart: function handleDataPart(part) {
@@ -293,7 +317,7 @@ export const sendAgentRequest = createAsyncThunk<
                   payload: part.value,
                 };
 
-                dispatch(addAgentMessage(message));
+                dispatch(addAgentMessage({ ...message, convoId }));
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
@@ -314,7 +338,7 @@ export const sendAgentRequest = createAsyncThunk<
                 };
                 dispatch(addSuggestedTransform(suggestedTransform));
 
-                const transform = req.context.user_is_viewing
+                const transform = request.context.user_is_viewing
                   .filter(
                     (t): t is MetabotTransformInfo => t.type === "transform",
                   )
@@ -330,18 +354,18 @@ export const sendAgentRequest = createAsyncThunk<
                     suggestedTransform,
                   },
                 };
-                dispatch(addAgentMessage(message));
+                dispatch(addAgentMessage({ ...message, convoId }));
               })
               .exhaustive();
           },
           onTextPart: function handleTextPart(part) {
-            dispatch(addAgentTextDelta(String(part)));
+            dispatch(addAgentTextDelta({ convoId, text: String(part) }));
           },
           onToolCallPart: function handleToolCallPart(part) {
-            dispatch(toolCallStart(part));
+            dispatch(toolCallStart({ ...part, convoId }));
           },
           onToolResultPart: function handleToolResultPart(part) {
-            dispatch(toolCallEnd(part));
+            dispatch(toolCallEnd({ ...part, convoId }));
           },
           onError: function handleError(part) {
             error = part;
@@ -356,20 +380,26 @@ export const sendAgentRequest = createAsyncThunk<
       if (response.aborted) {
         return rejectWithValue({
           type: "abort",
-          conversation_id: body.conversation_id,
+          conversation_id: request.conversation_id,
           unresolved_tool_calls: response.toolCalls.filter(
             (tc) => tc.state === "call",
           ),
-          history: [...getHistory(getState() as any), ...response.history],
+          history: [
+            ...getHistory(getState() as any, convoId),
+            ...response.history,
+          ],
           // state object comes at the end, so we may not have recieved it
           // so fallback to the state used when the request was issued
-          state: Object.keys(state).length === 0 ? body.state : state,
+          state: Object.keys(state).length === 0 ? request.state : state,
         });
       }
 
       return fulfillWithValue({
-        conversation_id: body.conversation_id,
-        history: [...getHistory(getState() as any), ...response.history],
+        conversation_id: request.conversation_id,
+        history: [
+          ...getHistory(getState() as any, convoId),
+          ...response.history,
+        ],
         state,
       });
     } catch (error) {
@@ -381,17 +411,21 @@ export const sendAgentRequest = createAsyncThunk<
 
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
-  (_args) => {
-    getInflightRequestsForUrl("/api/ee/metabot-v3/agent-streaming").forEach(
-      (req) => req.abortController.abort(),
-    );
+  (convoId: MetabotConvoId) => {
+    findMatchingInflightAiStreamingRequests(
+      "/api/ee/metabot-v3/agent-streaming",
+      convoId,
+    ).forEach((req) => req.abortController.abort());
   },
 );
 
-export const addDeveloperMessage = (message: string) => {
+export const addDeveloperMessage = (payload: {
+  convoId: MetabotConvoId;
+  message: string;
+}) => {
   return (dispatch: Dispatch, getState: any) => {
     const state = getState() as any;
-    const isProcessing = getIsProcessing(state);
+    const isProcessing = getIsProcessing(state, payload.convoId);
     if (isProcessing) {
       console.error("Metabot is actively serving a request");
       // NOTE: silently failing - not great but is is better to not break the app for
@@ -401,21 +435,38 @@ export const addDeveloperMessage = (message: string) => {
       // it has settled.
       return;
     } else {
-      dispatch(metabot.actions.addDeveloperMessage(message));
+      dispatch(metabot.actions.addDeveloperMessage(payload));
     }
   };
 };
 
 const rewindConversation = createAsyncThunk(
   "metabase-enterprise/metabot/rewindConversation",
-  (messageId: string, { dispatch, getState }) => {
-    dispatch(cancelInflightAgentRequests());
+  (
+    payload: {
+      convoId: MetabotConvoId;
+      messageId: string;
+    },
+    { dispatch, getState },
+  ) => {
+    dispatch(cancelInflightAgentRequests(payload.convoId));
 
-    const promptMessage = getUserPromptForMessageId(getState(), messageId);
+    const promptMessage = getUserPromptForMessageId(
+      getState(),
+      payload.convoId,
+      payload.messageId,
+    );
     if (!promptMessage) {
-      throw new Error("Unable to rewind conversation to prompt for pro");
+      throw new Error(
+        `Unable to find the prompt for message ${payload.messageId} in conversation ${payload.convoId}`,
+      );
     }
-    dispatch(metabot.actions.rewindStateToMessageId(promptMessage.id));
+    dispatch(
+      metabot.actions.rewindStateToMessageId({
+        convoId: payload.convoId,
+        messageId: promptMessage.id,
+      }),
+    );
   },
 );
 
@@ -425,21 +476,44 @@ export const retryPrompt = createAsyncThunk<
     messageId: string;
     context: MetabotChatContext;
     metabot_id?: string;
+    convoId: MetabotConvoId;
   }
 >(
   "metabase-enterprise/metabot/retryPrompt",
-  async ({ messageId, context, metabot_id }, { getState, dispatch }) => {
-    const prompt = getUserPromptForMessageId(getState() as any, messageId);
+  async (
+    { messageId, context, metabot_id, convoId },
+    { getState, dispatch },
+  ) => {
+    const state = getState() as any;
+
+    const prompt = getUserPromptForMessageId(state, convoId, messageId);
     if (!prompt) {
       throw new Error("Agent message was not proceeded by a user message");
     }
 
-    dispatch(rewindConversation(prompt.id));
-    dispatch(cancelInflightAgentRequests());
-    dispatch(metabot.actions.rewindStateToMessageId(messageId));
+    const isProcessing = getIsProcessing(state, convoId);
+    if (isProcessing) {
+      console.error("Metabot is actively serving a request");
+      return { prompt: prompt.message, success: false, shouldRetry: false };
+    }
+
+    dispatch(
+      rewindConversation({
+        convoId,
+        messageId: prompt.id,
+      }),
+    );
+    dispatch(cancelInflightAgentRequests(convoId));
+    dispatch(
+      metabot.actions.rewindStateToMessageId({
+        convoId: convoId,
+        messageId: messageId,
+      }),
+    );
 
     return await dispatch(
       submitInput({
+        convoId,
         type: "text",
         message: prompt.message,
         context,
@@ -451,32 +525,29 @@ export const retryPrompt = createAsyncThunk<
 
 export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
-  (_args, { dispatch }) => {
-    dispatch(cancelInflightAgentRequests());
-
-    // clear out suggested prompts so the user is shown something fresh
-    dispatch(EnterpriseApi.util.invalidateTags(["metabot-prompt-suggestions"]));
-
-    dispatch(metabot.actions.resetConversation());
+  (payload: { convoId: MetabotConvoId }, { dispatch }) => {
+    dispatch(cancelInflightAgentRequests(payload.convoId));
+    dispatch(metabot.actions.resetConversation(payload));
   },
 );
 
-export const stopProcessing = () => (dispatch: Dispatch) => {
-  dispatch(setIsProcessing(false));
-};
-
 export const stopProcessingAndNotify =
-  (message?: MetabotErrorMessage | false | undefined) =>
+  (payload: {
+    convoId: MetabotConvoId;
+    message?: MetabotErrorMessage | false | undefined;
+  }) =>
   (dispatch: Dispatch) => {
-    dispatch(stopProcessing());
-    if (message !== false) {
+    dispatch(setIsProcessing({ convoId: payload.convoId, processing: false }));
+    if (payload.message !== false) {
+      const message = payload.message ?? {
+        type: "message",
+        message: METABOT_ERR_MSG.default,
+      };
       dispatch(
-        addAgentErrorMessage(
-          message ?? {
-            type: "message",
-            message: METABOT_ERR_MSG.default,
-          },
-        ),
+        addAgentErrorMessage({
+          convoId: payload.convoId,
+          ...message,
+        }),
       );
     }
   };

@@ -32,7 +32,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   collectionId: Collections.selectors.getInitialCollectionId(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
-  isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state),
+  isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
   isDocumentSidebarOpen: getSidebarOpen(state),
   isCommentSidebarOpen: getCommentSidebarOpen(state),
   isLogoVisible: getIsLogoVisible(state),

@@ -4,10 +4,10 @@ import { renderWithProviders, screen } from "__support__/ui";
 
 import { FixSqlQueryButton } from "./FixSqlQueryButton";
 
-// Mock the useMetabotAgent hook
+// Mock the useMetabotConversation hook
 const mockSubmitInput = jest.fn();
 jest.mock("metabase-enterprise/metabot/hooks", () => ({
-  useMetabotAgent: () => ({
+  useMetabotConversation: () => ({
     submitInput: mockSubmitInput,
   }),
 }));
