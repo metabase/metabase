@@ -555,7 +555,10 @@
 (defmethod driver/prettify-native-form :mongo
   [_driver native-form]
   (try
-    (encode-mongo native-form)
+    (let [parsed-form (if (string? native-form)
+                        (mongo.qp/parse-query-string native-form)
+                        native-form)]
+      (encode-mongo parsed-form))
     (catch Throwable e
       (log/errorf "Unexpected error while encoding Mongo BSON query: %s" (ex-message e))
       (log/debugf e "Query:\n%s" native-form)

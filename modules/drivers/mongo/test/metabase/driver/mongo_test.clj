@@ -991,6 +991,50 @@
                     :query
                     (driver/prettify-native-form driver/*driver*))))))))
 
+(deftest ^:parallel prettify-native-form-string-test
+  (testing "prettify-native-form should handle JSON strings without double-escaping"
+    (let [;; A simple MongoDB aggregation pipeline as a JSON string (as stored in native queries)
+          json-string "[{\"$match\":{\"name\":\"test\"}},{\"$project\":{\"_id\":1,\"name\":1}}]"
+          ;; Expected formatted output
+          expected (str/join "\n"
+                            ["["
+                             "  {"
+                             "    \"$match\": {"
+                             "      \"name\": \"test\""
+                             "    }"
+                             "  },"
+                             "  {"
+                             "    \"$project\": {"
+                             "      \"_id\": 1,"
+                             "      \"name\": 1"
+                             "    }"
+                             "  }"
+                             "]"])
+          result (driver/prettify-native-form :mongo json-string)]
+      (is (= expected result)
+          "JSON string should be parsed and formatted without escape sequences")))
+  (testing "prettify-native-form should still handle data structures directly"
+    (let [;; A MongoDB aggregation pipeline as Clojure data (as from MBQL compilation)
+          data-structure [{"$match" {"name" "test"}} {"$project" {"_id" 1 "name" 1}}]
+          ;; Expected formatted output
+          expected (str/join "\n"
+                            ["["
+                             "  {"
+                             "    \"$match\": {"
+                             "      \"name\": \"test\""
+                             "    }"
+                             "  },"
+                             "  {"
+                             "    \"$project\": {"
+                             "      \"_id\": 1,"
+                             "      \"name\": 1"
+                             "    }"
+                             "  }"
+                             "]"])
+          result (driver/prettify-native-form :mongo data-structure)]
+      (is (= expected result)
+          "Data structures should be formatted directly without parsing"))))
+
 (defn- do-with-describe-table-for-sample
   "Override so aggregation is run on database instead of collection and provide `documents` in initial stage of
   aggregation."
