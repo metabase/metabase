@@ -6,7 +6,7 @@ import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 import { trackExplainChartClicked } from "../analytics";
 
 export const AIQuestionAnalysisButton = () => {
-  const { submitInput } = useMetabotConversation();
+  const { submitInput } = useMetabotConversation("omnibot");
 
   const handleClick = () => {
     trackExplainChartClicked();

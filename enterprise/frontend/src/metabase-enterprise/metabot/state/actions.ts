@@ -62,7 +62,7 @@ export const {
   addSuggestedCodeEdit,
   deactivateSuggestedCodeEdit,
   setProfileOverride,
-  newConversation,
+  startConversation,
   removeConversation,
 } = metabot.actions;
 
@@ -457,7 +457,9 @@ const rewindConversation = createAsyncThunk(
       payload.messageId,
     );
     if (!promptMessage) {
-      throw new Error("Unable to rewind conversation to prompt for pro");
+      throw new Error(
+        `Unable to find the prompt for message ${payload.messageId} in conversation ${payload.convoId}`,
+      );
     }
     dispatch(
       metabot.actions.rewindStateToMessageId({

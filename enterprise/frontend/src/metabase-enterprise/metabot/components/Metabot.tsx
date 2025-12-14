@@ -8,11 +8,13 @@ import { getUser } from "metabase/selectors/user";
 
 import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotConversation } from "../hooks";
+import type { MetabotConvoId } from "../state";
 
 import { MetabotChat } from "./MetabotChat";
 
 // TODO: add test coverage for these
 export interface MetabotConfig {
+  convoId?: MetabotConvoId;
   emptyText?: string;
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
@@ -26,7 +28,9 @@ export interface MetabotProps {
 }
 
 export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
-  const { visible, setVisible } = useMetabotConversation();
+  const { visible, setVisible } = useMetabotConversation(
+    config?.convoId ?? "omnibot",
+  );
 
   useEffect(() => {
     return tinykeys(window, {

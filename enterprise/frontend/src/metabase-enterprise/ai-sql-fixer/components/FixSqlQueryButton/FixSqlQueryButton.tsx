@@ -6,7 +6,7 @@ import { useMetabotConversation } from "metabase-enterprise/metabot/hooks";
 import { trackQueryFixClicked } from "../../analytics";
 
 export function FixSqlQueryButton() {
-  const { submitInput } = useMetabotConversation();
+  const { submitInput } = useMetabotConversation("omnibot");
 
   const handleClick = () => {
     trackQueryFixClicked();

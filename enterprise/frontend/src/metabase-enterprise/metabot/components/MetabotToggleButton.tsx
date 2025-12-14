@@ -10,7 +10,7 @@ interface MetabotToggleButtonProps {
 }
 
 export function MetabotToggleButton({ className }: MetabotToggleButtonProps) {
-  const metabot = useMetabotConversation();
+  const metabot = useMetabotConversation("omnibot");
 
   const handleClick = () => {
     if (!metabot.visible) {

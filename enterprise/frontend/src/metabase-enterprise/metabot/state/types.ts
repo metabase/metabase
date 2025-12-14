@@ -8,9 +8,6 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-declare const __type: unique symbol;
-type Opaque<T, B> = T & { [__type]: B };
-
 export type MetabotUserTextChatMessage = {
   id: string;
   role: "user";
@@ -102,21 +99,6 @@ export type MetabotReactionsState = {
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
-// unique identifier for a particular chat id
-export type MetabotUniqueConvoId = Opaque<string, "MetabotConvoId">;
-
-// area of the app this conversation belongs to its used as a developer friendly
-// identifier for conversations and, while not yet implmented, useful for
-// distinguishing the origin of a conversation when dealing with persisted convos
-export type MetabotFixedConvoId =
-  | "omnibot"
-  | "inline_sql"
-  | `workspace_${number}`;
-
-// it's nicer to not have to know/keep track of dynamic ids as a developer, so
-// in some cases we're able to accept the domain id and look up the conversation id
-export type MetabotConvoId = MetabotFixedConvoId;
-
 export interface MetabotConverstationState {
   conversationId: string;
   isProcessing: boolean;
@@ -132,6 +114,10 @@ export interface MetabotConverstationState {
     profileOverride: string | undefined;
   };
 }
+
+export const fixedMetabotIds = ["omnibot", "inline_sql"] as const;
+type FixedMetabotIds = (typeof fixedMetabotIds)[number];
+export type MetabotConvoId = FixedMetabotIds | `test_${number}`;
 
 export interface MetabotState {
   conversations: Record<MetabotConvoId, MetabotConverstationState | undefined>;

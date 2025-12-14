@@ -27,7 +27,7 @@ import {
   submitInput as submitInputAction,
 } from "../state";
 
-export const useMetabotConversation = (convoId: MetabotConvoId = "omnibot") => {
+export const useMetabotConversation = (convoId: MetabotConvoId) => {
   const dispatch = useDispatch();
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();

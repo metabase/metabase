@@ -28,6 +28,7 @@ import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotConfig = {
+  convoId: "omnibot",
   suggestionModels: [
     "dataset",
     "metric",
@@ -43,7 +44,7 @@ export const MetabotChat = ({
 }: {
   config?: MetabotConfig;
 }) => {
-  const metabot = useMetabotConversation();
+  const metabot = useMetabotConversation(config.convoId);
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -186,7 +187,11 @@ export const MetabotChat = ({
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
               {/* long convo warning */}
-              {metabot.isLongConversation && <MetabotResetLongChatButton />}
+              {metabot.isLongConversation && (
+                <MetabotResetLongChatButton
+                  onResetConversation={metabot.resetConversation}
+                />
+              )}
             </Box>
           )}
         </Box>

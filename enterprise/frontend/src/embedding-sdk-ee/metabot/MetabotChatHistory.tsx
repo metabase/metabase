@@ -43,7 +43,11 @@ export function MetabotChatHistory() {
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}
-      {metabot.isLongConversation && <MetabotResetLongChatButton />}
+      {metabot.isLongConversation && (
+        <MetabotResetLongChatButton
+          onResetConversation={metabot.resetConversation}
+        />
+      )}
     </Stack>
   );
 }

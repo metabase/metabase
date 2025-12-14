@@ -29,12 +29,16 @@ export const metabot = createSlice({
   initialState: getMetabotInitialState(),
   reducers: {
     // TOP-LEVEL STATE REDUCERS
-    newConversation: (
+    startConversation: (
       state,
-      action: ConvoPayloadAction<{ visible: boolean }>,
+      action: ConvoPayloadAction<{ visible?: boolean }>,
     ) => {
       const { convoId, ...options } = action.payload;
-      state.conversations[convoId] = castDraft(createConversation(options));
+      if (!state.conversations[convoId]) {
+        state.conversations[convoId] = castDraft(createConversation(options));
+      } else {
+        console.warn("Conversation already exists for convoId: ", convoId);
+      }
     },
     removeConversation: (state, action: ConvoPayloadAction) => {
       const { convoId } = action.payload;

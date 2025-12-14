@@ -26,6 +26,11 @@ export const getMetabotState = (state: MetabotStoreState) => {
   return state.plugins.metabotPlugin;
 };
 
+export const getActiveMetabotConvoIds = createSelector(
+  getMetabotState,
+  (state) => Object.keys(state.conversations) as MetabotConvoId[],
+);
+
 export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
   isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
@@ -106,12 +111,12 @@ export const getMetabotConversation = createSelector(
 
 export const getMetabotVisible = createSelector(
   getMetabotConversation,
-  (convo) => !!convo?.visible,
+  (convo) => convo.visible,
 );
 
 const getInternalMessages = createSelector(
   getMetabotConversation,
-  (convo) => convo?.messages || [],
+  (convo) => convo.messages,
 );
 
 export const getMessages = createSelector(
@@ -125,7 +130,7 @@ export const getMessages = createSelector(
 
 export const getActiveToolCalls = createSelector(
   getMetabotConversation,
-  (convo) => convo?.activeToolCalls ?? [],
+  (convo) => convo.activeToolCalls,
 );
 
 export const getLastMessage = createSelector(getMessages, (messages) =>
@@ -134,7 +139,7 @@ export const getLastMessage = createSelector(getMessages, (messages) =>
 
 export const getAgentErrorMessages = createSelector(
   getMetabotConversation,
-  (convo) => convo?.errorMessages ?? [],
+  (convo) => convo.errorMessages,
 );
 
 // if the message id provided is an agent id the first user message
@@ -161,17 +166,17 @@ export const getUserPromptForMessageId = createSelector(
 
 export const getIsProcessing = createSelector(
   getMetabotConversation,
-  (convo) => convo?.isProcessing ?? false,
+  (convo) => convo.isProcessing,
 );
 
 export const getHistory = createSelector(
   getMetabotConversation,
-  (convo) => convo?.history ?? [],
+  (convo) => convo.history,
 );
 
 export const getMetabotRequestState = createSelector(
   getMetabotConversation,
-  (convo) => convo?.state ?? {},
+  (convo) => convo.state,
 );
 
 export const getIsLongMetabotConversation = createSelector(
@@ -186,7 +191,7 @@ export const getIsLongMetabotConversation = createSelector(
 
 export const getMetabotReqIdOverride = createSelector(
   getMetabotConversation,
-  (state) => state?.experimental.metabotReqIdOverride,
+  (convo) => convo.experimental.metabotReqIdOverride,
 );
 
 export const getMetabotRequestId = createSelector(
@@ -199,7 +204,7 @@ export const getMetabotRequestId = createSelector(
 
 export const getProfileOverride = createSelector(
   getMetabotConversation,
-  (convo) => convo?.experimental.profileOverride,
+  (convo) => convo.experimental.profileOverride,
 );
 
 export const getProfile = createSelector(
@@ -232,5 +237,5 @@ export const getAgentRequestMetadata = createSelector(
 
 export const getDeveloperMessage = createSelector(
   getMetabotConversation,
-  (convo) => convo?.experimental.developerMessage ?? "",
+  (convo) => convo.experimental.developerMessage,
 );

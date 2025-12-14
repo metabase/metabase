@@ -11,7 +11,6 @@ import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   act,
-  fireEvent,
   renderWithProviders,
   screen,
   waitFor,
@@ -21,10 +20,8 @@ import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import {
-  type MockStreamedEndpointParams,
   createMockReadableStream,
   createPauses,
-  mockStreamedEndpoint,
 } from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
@@ -44,19 +41,32 @@ import {
 import { MetabotProvider } from "./context";
 import { useMetabotConversation } from "./hooks";
 import {
-  type MetabotConvoId,
   type MetabotState,
   addUserMessage,
   getHistory,
   getMetabotConversation,
   getMetabotRequestState,
   metabotReducer,
-  setVisible,
 } from "./state";
 import { getMetabotInitialState } from "./state/reducer-utils";
-
-const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
-  mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", params);
+import {
+  assertConversation,
+  assertNotVisible,
+  assertVisible,
+  chat,
+  closeChatButton,
+  enterChatMessage,
+  hideMetabot,
+  input,
+  lastChatMessage,
+  lastReqBody,
+  mockAgentEndpoint,
+  resetChatButton,
+  responseLoader,
+  sendMessageButton,
+  showMetabot,
+  stopResponseButton,
+} from "./tests/utils";
 
 function setup(
   options: {
@@ -119,72 +129,7 @@ function setup(
   };
 }
 
-const chat = () => screen.findByTestId("metabot-chat");
-const chatMessages = () => screen.findAllByTestId("metabot-chat-message");
-const lastChatMessage = async () => (await chatMessages()).at(-1);
-const input = async () => {
-  const chatInput = await screen.findByTestId("metabot-chat-input");
-  // get tiptap content editable node
-  // eslint-disable-next-line testing-library/no-node-access
-  return chatInput.querySelector('[contenteditable="true"]')!;
-};
-const enterChatMessage = async (message: string, send = true) => {
-  // using userEvent.type works locally but in CI characters are sometimes dropped
-  // so "Who is your favorite?" becomes something like "Woi or fvrite?"
-  const editor = await input();
-  editor.textContent = message;
-  fireEvent.input(editor, {
-    target: { textContent: message },
-  });
-  if (send) {
-    await userEvent.type(await input(), "{Enter}");
-  }
-};
-const sendMessageButton = () => screen.findByTestId("metabot-send-message");
-const stopResponseButton = () => screen.findByTestId("metabot-stop-response");
-const closeChatButton = () => screen.findByTestId("metabot-close-chat");
-const responseLoader = () => screen.findByTestId("metabot-response-loader");
-const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
-
-const assertVisible = async () =>
-  expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
-const assertNotVisible = async () =>
-  await waitFor(() => {
-    expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
-  });
-
-// NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
-const hideMetabot = (dispatch: any, convoId: MetabotConvoId = "omnibot") =>
-  act(() => dispatch(setVisible({ convoId, visible: false })));
-const showMetabot = (dispatch: any, convoId: MetabotConvoId = "omnibot") =>
-  act(() => dispatch(setVisible({ convoId, visible: true })));
-
-const assertConversation = async (
-  expectedMessages: ["user" | "agent", string][],
-) => {
-  if (!expectedMessages.length) {
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId("metabot-chat-message"),
-      ).not.toBeInTheDocument();
-    });
-  } else {
-    const realMessages = await chatMessages();
-    expect(realMessages.length).toBe(expectedMessages.length);
-    expectedMessages.forEach(([expectedRole, expectedMessage], index) => {
-      const realMessage = realMessages[index];
-      expect(realMessage).toHaveAttribute("data-message-role", expectedRole);
-      expect(realMessage).toHaveTextContent(expectedMessage);
-    });
-  }
-};
-
-const lastReqBody = async (agentSpy: ReturnType<typeof mockAgentEndpoint>) => {
-  await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-  return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
-};
-
-describe("metabot-streaming", () => {
+describe("metabot", () => {
   describe("ui", () => {
     it("should be able to render metabot", async () => {
       setup();
@@ -401,7 +346,7 @@ describe("metabot-streaming", () => {
 
     it("should be able to set the prompt input's value from anywhere in the app", async () => {
       const AnotherComponent = () => {
-        const { setPrompt } = useMetabotConversation();
+        const { setPrompt } = useMetabotConversation("omnibot");
 
         return (
           <button onClick={() => setPrompt("TEST VAL")}>CLICK HERE</button>
