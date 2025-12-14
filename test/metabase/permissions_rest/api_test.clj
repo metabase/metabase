@@ -572,6 +572,45 @@
       (testing "Delete membership successfully"
         (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" id))))))
 
+(deftest delete-group-membership-audit-test
+  (testing "DELETE /api/permissions/membership/:id audit logging"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User                       {user-id :id}  {}
+                     :model/PermissionsGroup           {group-id :id} {}
+                     :model/PermissionsGroupMembership {id :id}       {:group_id group-id
+                                                                       :user_id  user-id}]
+        (let [before-delete-count (t2/count :model/AuditLog)]
+          (testing "removing user from custom group via API is audited"
+            (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" id))
+            (is (> (t2/count :model/AuditLog) before-delete-count))
+            (let [audit-entry (t2/select-one :model/AuditLog :topic "group-membership-delete" {:order-by [[:id :desc]]})]
+              (is (some? audit-entry))
+              (is (= "PermissionsGroupMembership" (:model audit-entry)))
+              (is (= user-id (get-in audit-entry [:details :user_id])))
+              (is (= group-id (get-in audit-entry [:details :group_id]))))))))))
+
+(deftest clear-group-membership-audit-test
+  (testing "PUT /api/permissions/membership/:group-id/clear audit logging"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User                       {user-id-1 :id} {}
+                     :model/User                       {user-id-2 :id} {}
+                     :model/PermissionsGroup           {group-id :id}  {}
+                     :model/PermissionsGroupMembership _               {:group_id group-id
+                                                                        :user_id  user-id-1}
+                     :model/PermissionsGroupMembership _               {:group_id group-id
+                                                                        :user_id  user-id-2}]
+        (let [before-clear-count (t2/count :model/AuditLog)]
+          (testing "clearing all members from a custom group via API is audited"
+            (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
+            ;; Should have 2 audit log entries, one for each removed member
+            (is (= (+ before-clear-count 2) (t2/count :model/AuditLog)))
+            (let [audit-entries (t2/select :model/AuditLog :topic "group-membership-delete" {:order-by [[:id :desc]] :limit 2})
+                  user-ids-in-logs (set (map #(get-in % [:details :user_id]) audit-entries))]
+              (is (= 2 (count audit-entries)))
+              (is (every? #(= "PermissionsGroupMembership" (:model %)) audit-entries))
+              (is (= #{user-id-1 user-id-2} user-ids-in-logs))
+              (is (every? #(= group-id (get-in % [:details :group_id])) audit-entries))))))))))
+
 (deftest enabling-tenants-changes-groups
   (let [get-magic-group (fn [group-type]
                           (->>
