@@ -247,10 +247,10 @@ export function dataStudioTasks() {
   return `${ROOT_URL}/tasks`;
 }
 
-export function dataStudioTasksBroken() {
+export function dataStudioBrokenEntities() {
   return `${dataStudioTasks()}/broken`;
 }
 
-export function dataStudioTasksUnreferenced() {
+export function dataStudioUnreferencedEntities() {
   return `${dataStudioTasks()}/unreferenced`;
 }

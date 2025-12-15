@@ -114,4 +114,9 @@ export const DataStudio = {
     collectionItem: (name: string) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
+  Tasks: {
+    visitBrokenEntities: () => cy.visit("/data-studio/tasks/broken"),
+    visitUnreferencedEntities: () =>
+      cy.visit("/data-studio/tasks/unreferenced"),
+  },
 };

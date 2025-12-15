@@ -12,12 +12,12 @@ export const DependencyListHeader = memo(function DependencyListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Broken`,
-      to: Urls.dataStudioTasksBroken(),
+      to: Urls.dataStudioBrokenEntities(),
       icon: "list",
     },
     {
       label: t`Unreferenced`,
-      to: Urls.dataStudioTasksUnreferenced(),
+      to: Urls.dataStudioUnreferencedEntities(),
       icon: "list",
     },
   ];
