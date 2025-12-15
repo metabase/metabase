@@ -27,7 +27,6 @@ import {
 const EMPTY_NODES: DependencyNode[] = [];
 
 export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = [
-  "question",
   "model",
   "metric",
   "snippet",
