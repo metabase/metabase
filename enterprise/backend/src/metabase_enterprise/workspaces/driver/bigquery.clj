@@ -17,8 +17,8 @@
    (com.google.auth.oauth2 ImpersonatedCredentials ServiceAccountCredentials)
    (com.google.cloud Identity Role)
    (com.google.cloud.bigquery Acl Acl$Role Acl$User
-                              BigQuery BigQuery$DatasetListOption BigQuery$DatasetOption BigQuery$IAMOption BigQuery$TableOption BigQueryOptions
-                              DatasetId DatasetInfo StandardTableDefinition TableId TableInfo)
+                              BigQuery BigQuery$DatasetListOption BigQuery$DatasetOption BigQuery$IAMOption BigQueryOptions
+                              DatasetId DatasetInfo TableId)
    (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
    (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
    (com.google.iam.admin.v1 CreateServiceAccountRequest ServiceAccount)
