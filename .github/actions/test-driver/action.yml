@@ -9,6 +9,9 @@ inputs:
   build-static-viz:
     required: true
     default: false
+  logs-artifact-suffix:
+    required: false
+    description: Suffix to append to the test logs artifact name to avoid conflicts in matrix jobs
 
 outputs:
   quarantine-skipped:
