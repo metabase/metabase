@@ -1,36 +1,43 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { CardId, SegmentId, TableId } from "metabase-types/api";
+import type { CardId, FieldId, SegmentId, TableId } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const MODEL_1_NAME = "Model 1";
-const MODEL_2_NAME = "Model 2";
-const MODEL_3_NAME = "Model 3";
-const SEGMENT_1_NAME = "Segment 1";
-const SEGMENT_2_NAME = "Segment 2";
-const SEGMENT_3_NAME = "Segment 3";
-const SEGMENT_4_NAME = "Segment 4";
-const METRIC_1_NAME = "Metric 1";
-const METRIC_2_NAME = "Metric 2";
-const METRIC_3_NAME = "Metric 3";
-const SNIPPET_1_NAME = "Snippet 1";
-const SNIPPET_2_NAME = "Snippet 2";
+const MODEL_FOR_QUESTION_DATA_SOURCE = "Model for question data source";
+const MODEL_FOR_MODEL_DATA_SOURCE = "Model for model data source";
+const MODEL_FOR_METRIC_DATA_SOURCE = "Model for metric data source";
+const MODEL_FOR_NATIVE_QUESTION_CARD_TAG = "Model for native question card tag";
+const MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE =
+  "Model for native question parameter source";
+const SEGMENT_FOR_QUESTION_FILTER = "Segment for question filter";
+const SEGMENT_FOR_MODEL_FILTER = "Segment for model filter";
+const SEGMENT_FOR_SEGMENT_FILTER = "Segment for segment filter";
+const SEGMENT_FOR_METRIC_FILTER = "Segment for metric filter";
+const METRIC_FOR_QUESTION_AGGREGATION = "Metric for question aggregation";
+const METRIC_FOR_MODEL_AGGREGATION = "Metric for model aggregation";
+const METRIC_FOR_METRIC_AGGREGATION = "Metric for metric aggregation";
+const SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG =
+  "Snippet for native question card tag";
+const SNIPPET_FOR_SNIPPET_TAG = "Snippet for snippet tag";
 
 const ENTITY_NAMES = [
-  MODEL_1_NAME,
-  MODEL_2_NAME,
-  MODEL_3_NAME,
-  SEGMENT_1_NAME,
-  SEGMENT_2_NAME,
-  SEGMENT_3_NAME,
-  SEGMENT_4_NAME,
-  METRIC_1_NAME,
-  METRIC_2_NAME,
-  METRIC_3_NAME,
-  SNIPPET_1_NAME,
-  SNIPPET_2_NAME,
+  MODEL_FOR_QUESTION_DATA_SOURCE,
+  MODEL_FOR_MODEL_DATA_SOURCE,
+  MODEL_FOR_METRIC_DATA_SOURCE,
+  MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+  MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  SEGMENT_FOR_QUESTION_FILTER,
+  SEGMENT_FOR_MODEL_FILTER,
+  SEGMENT_FOR_SEGMENT_FILTER,
+  SEGMENT_FOR_METRIC_FILTER,
+  METRIC_FOR_QUESTION_AGGREGATION,
+  METRIC_FOR_MODEL_AGGREGATION,
+  METRIC_FOR_METRIC_AGGREGATION,
+  SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+  SNIPPET_FOR_SNIPPET_TAG,
 ];
 
 describe("scenarios > dependencies > unreferenced", () => {
@@ -78,35 +85,64 @@ function createModelContent({
   withReferences?: boolean;
 }) {
   createModelWithTableDataSource({
-    name: MODEL_1_NAME,
+    name: MODEL_FOR_QUESTION_DATA_SOURCE,
     tableId: ORDERS_ID,
   }).then(({ body: model }) => {
     if (withReferences) {
       createQuestionWithModelDataSource({
-        name: `${MODEL_1_NAME} -> Question`,
+        name: `${MODEL_FOR_QUESTION_DATA_SOURCE} -> Question`,
         modelId: model.id,
       });
     }
   });
+
   createModelWithTableDataSource({
-    name: MODEL_2_NAME,
+    name: MODEL_FOR_MODEL_DATA_SOURCE,
     tableId: ORDERS_ID,
   }).then(({ body: model }) => {
     if (withReferences) {
       createModelWithModelDataSource({
-        name: `${MODEL_2_NAME} -> Model`,
+        name: `${MODEL_FOR_MODEL_DATA_SOURCE} -> Model`,
         modelId: model.id,
       });
     }
   });
+
   createModelWithTableDataSource({
-    name: MODEL_3_NAME,
+    name: MODEL_FOR_METRIC_DATA_SOURCE,
     tableId: ORDERS_ID,
   }).then(({ body: model }) => {
     if (withReferences) {
       createMetricWithModelDataSource({
-        name: `${MODEL_3_NAME} -> Metric`,
+        name: `${MODEL_FOR_METRIC_DATA_SOURCE} -> Metric`,
         modelId: model.id,
+      });
+    }
+  });
+
+  createModelWithTableDataSource({
+    name: MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+    tableId: ORDERS_ID,
+  }).then(({ body: model }) => {
+    if (withReferences) {
+      createNativeQuestionWithCardTag({
+        name: `${MODEL_FOR_NATIVE_QUESTION_CARD_TAG} -> Question`,
+        cardId: model.id,
+      });
+    }
+  });
+
+  createModelWithTableDataSource({
+    name: MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+    tableId: PRODUCTS_ID,
+  }).then(({ body: model }) => {
+    if (withReferences) {
+      createNativeQuestionWithParameterWithCardSource({
+        name: `${MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE} -> Question`,
+        tableName: "PRODUCTS",
+        tableFieldId: PRODUCTS.CATEGORY,
+        cardId: model.id,
+        cardFieldName: "CATEGORY",
       });
     }
   });
@@ -118,48 +154,48 @@ function createSegmentContent({
   withReferences?: boolean;
 }) {
   createSegmentWithTableDataSource({
-    name: SEGMENT_1_NAME,
+    name: SEGMENT_FOR_QUESTION_FILTER,
     tableId: ORDERS_ID,
   }).then(({ body: segment }) => {
     if (withReferences) {
       createQuestionWithSegmentClause({
-        name: `${SEGMENT_1_NAME} -> Question`,
+        name: `${SEGMENT_FOR_QUESTION_FILTER} -> Question`,
         tableId: ORDERS_ID,
         segmentId: segment.id,
       });
     }
   });
   createSegmentWithTableDataSource({
-    name: SEGMENT_2_NAME,
+    name: SEGMENT_FOR_MODEL_FILTER,
     tableId: ORDERS_ID,
   }).then(({ body: segment }) => {
     if (withReferences) {
       createModelWithSegmentClause({
-        name: `${SEGMENT_2_NAME} -> Model`,
+        name: `${SEGMENT_FOR_MODEL_FILTER} -> Model`,
         tableId: ORDERS_ID,
         segmentId: segment.id,
       });
     }
   });
   createSegmentWithTableDataSource({
-    name: SEGMENT_3_NAME,
+    name: SEGMENT_FOR_SEGMENT_FILTER,
     tableId: ORDERS_ID,
   }).then(({ body: segment }) => {
     if (withReferences) {
       createSegmentWithSegmentClause({
-        name: `${SEGMENT_3_NAME} -> Segment`,
+        name: `${SEGMENT_FOR_SEGMENT_FILTER} -> Segment`,
         tableId: ORDERS_ID,
         segmentId: segment.id,
       });
     }
   });
   createSegmentWithTableDataSource({
-    name: SEGMENT_4_NAME,
+    name: SEGMENT_FOR_METRIC_FILTER,
     tableId: ORDERS_ID,
   }).then(({ body: segment }) => {
     if (withReferences) {
       createMetricWithSegmentClause({
-        name: `${SEGMENT_4_NAME} -> Metric`,
+        name: `${SEGMENT_FOR_METRIC_FILTER} -> Metric`,
         tableId: ORDERS_ID,
         segmentId: segment.id,
       });
@@ -173,36 +209,36 @@ function createMetricContent({
   withReferences?: boolean;
 }) {
   createMetricWithTableDataSource({
-    name: METRIC_1_NAME,
+    name: METRIC_FOR_QUESTION_AGGREGATION,
     tableId: ORDERS_ID,
   }).then(({ body: metric }) => {
     if (withReferences) {
       createQuestionWithMetricClause({
-        name: `${METRIC_1_NAME} -> Question`,
+        name: `${METRIC_FOR_QUESTION_AGGREGATION} -> Question`,
         tableId: ORDERS_ID,
         metricId: metric.id,
       });
     }
   });
   createMetricWithTableDataSource({
-    name: METRIC_2_NAME,
+    name: METRIC_FOR_MODEL_AGGREGATION,
     tableId: ORDERS_ID,
   }).then(({ body: metric }) => {
     if (withReferences) {
       createModelWithMetricClause({
-        name: `${METRIC_2_NAME} -> Model`,
+        name: `${METRIC_FOR_MODEL_AGGREGATION} -> Model`,
         tableId: ORDERS_ID,
         metricId: metric.id,
       });
     }
   });
   createMetricWithTableDataSource({
-    name: METRIC_3_NAME,
+    name: METRIC_FOR_METRIC_AGGREGATION,
     tableId: ORDERS_ID,
   }).then(({ body: metric }) => {
     if (withReferences) {
       createMetricWithMetricClause({
-        name: `${METRIC_3_NAME} -> Metric`,
+        name: `${METRIC_FOR_METRIC_AGGREGATION} -> Metric`,
         tableId: ORDERS_ID,
         metricId: metric.id,
       });
@@ -215,23 +251,23 @@ function createSnippetContent({
 }: {
   withReferences?: boolean;
 }) {
-  createSnippetWithBasicFilter({ name: SNIPPET_1_NAME }).then(
-    ({ body: filter }) => {
-      if (withReferences) {
-        createQuestionWithSnippetReference({
-          name: `${SNIPPET_1_NAME} -> Question`,
-          tableName: "ORDERS",
-          snippetName: filter.name,
-        });
-      }
-    },
-  );
+  createSnippetWithBasicFilter({
+    name: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+  }).then(({ body: filter }) => {
+    if (withReferences) {
+      createNativeQuestionWithSnippetTag({
+        name: `${SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG} -> Question`,
+        tableName: "ORDERS",
+        snippetName: filter.name,
+      });
+    }
+  });
 
-  createSnippetWithBasicFilter({ name: SNIPPET_2_NAME }).then(
+  createSnippetWithBasicFilter({ name: SNIPPET_FOR_SNIPPET_TAG }).then(
     ({ body: filter }) => {
       if (withReferences) {
-        createSnippetWithSnippetReference({
-          name: `${SNIPPET_2_NAME} -> Snippet`,
+        createSnippetWithSnippetTag({
+          name: `${SNIPPET_FOR_SNIPPET_TAG} -> Snippet`,
           snippetName: filter.name,
         });
       }
@@ -293,7 +329,79 @@ function createQuestionWithMetricClause({
   });
 }
 
-function createQuestionWithSnippetReference({
+function createNativeQuestionWithCardTag({
+  name,
+  cardId,
+}: {
+  name: string;
+  cardId: CardId;
+}) {
+  const tagName = `{{#${cardId}}}`;
+
+  return H.createNativeQuestion({
+    name,
+    type: "question",
+    native: {
+      query: `select * from ${tagName}`,
+      "template-tags": {
+        [tagName]: {
+          id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+          type: "card",
+          name: tagName,
+          "display-name": tagName,
+          "card-id": cardId,
+        },
+      },
+    },
+  });
+}
+
+function createNativeQuestionWithParameterWithCardSource({
+  name,
+  tableName,
+  tableFieldId,
+  cardId,
+  cardFieldName,
+}: {
+  name: string;
+  tableName: string;
+  tableFieldId: FieldId;
+  cardId: CardId;
+  cardFieldName: string;
+}) {
+  return H.createNativeQuestion({
+    name,
+    native: {
+      query: `select * from ${tableName} where {{filter}}`,
+      "template-tags": {
+        filter: {
+          id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+          type: "dimension",
+          name: "filter",
+          "display-name": "Filter",
+          dimension: ["field", tableFieldId, null],
+          "widget-type": "string/=",
+        },
+      },
+    },
+    parameters: [
+      createMockParameter({
+        id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+        name: "Filter",
+        slug: "filter",
+        type: "string/=",
+        target: ["dimension", ["template-tag", "filter"]],
+        values_source_type: "card",
+        values_source_config: {
+          card_id: cardId,
+          value_field: ["field", cardFieldName, { "base-type": "type/Text" }],
+        },
+      }),
+    ],
+  });
+}
+
+function createNativeQuestionWithSnippetTag({
   name,
   tableName,
   snippetName,
@@ -497,7 +605,7 @@ function createSnippetWithBasicFilter({ name }: { name: string }) {
   });
 }
 
-function createSnippetWithSnippetReference({
+function createSnippetWithSnippetTag({
   name,
   snippetName,
 }: {
