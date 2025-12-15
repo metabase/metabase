@@ -510,3 +510,35 @@
           (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
                                                                                                     :create-queries :query-builder}}}
                                                                 :revision (:revision (data-perms.graph/api-graph))}))))))))
+
+(deftest conflicting-db-and-table-level-permissions-test
+  (testing "data-permissions-graph handles conflicting db-level and table-level permissions without throwing ClassCastException"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
+                   :model/Database         {db-id :id}       {}
+                   :model/Table            {table-id-1 :id}  {:db_id db-id :schema "PUBLIC"}
+                   :model/Table            {table-id-2 :id}  {:db_id db-id :schema "PUBLIC"}]
+      (t2/delete! :model/DataPermissions :group_id group-id)
+
+      (testing "when both database-level and table-level permissions exist for the same group/db/perm-type"
+        ;; Manually insert conflicting permissions: both a database-level permission and table-level permissions
+        ;; This simulates corrupted data or a race condition
+        (t2/insert! :model/DataPermissions
+                    {:group_id   group-id
+                     :db_id      db-id
+                     :perm_type  :perms/view-data
+                     :perm_value :unrestricted
+                     :table_id   nil})
+
+        (t2/insert! :model/DataPermissions
+                    {:group_id    group-id
+                     :db_id       db-id
+                     :perm_type   :perms/view-data
+                     :perm_value  :legacy-no-self-service
+                     :schema_name "PUBLIC"
+                     :table_id    table-id-1})
+
+        (let [graph (data-perms.graph/data-permissions-graph :group-id group-id)]
+          (is (some? graph))
+          (is (map? (get-in graph [group-id db-id :perms/view-data])))
+          (is (= :legacy-no-self-service (get-in graph [group-id db-id :perms/view-data "PUBLIC" table-id-1])))
+          (is (= :unrestricted (get-in graph [group-id db-id :perms/view-data "PUBLIC" table-id-2]))))))))

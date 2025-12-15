@@ -745,6 +745,33 @@
                                         keys
                                         (zipmap (repeat :no))))])))
 
+(defn other-new-perms
+  "Given an existing database-level permission and table-ids for individual table permissions,
+   return missing table-level permissions."
+  [group-id perm-type db-id table-ids existing-db-perm-value]
+  (->> (t2/select :model/Table {:where
+                                [:and
+                                 [:= :db_id db-id]
+                                 ;; We can't filter out *everything* here because
+                                 ;; max number of parameters is capped. But we might
+                                 ;; as well filter out what we can (conservatively).
+                                 [:not [:in :id (take 10000 table-ids)]]]})
+       (keep (fn [table]
+               ;; See above: we filtered out what we could in the database, but if
+               ;; the number of tables is large we need to filter them out in
+               ;; Clojure.
+               (when-not (contains? table-ids (:id table))
+                 {:perm_type   perm-type
+                  :group_id    group-id
+                  :perm_value  (case existing-db-perm-value
+                                 ;; If the previous database-level permission can't be set at
+                                 ;; the table-level, we need to provide a new default
+                                 :query-builder-and-native :query-builder
+                                 existing-db-perm-value)
+                  :db_id       db-id
+                  :table_id    (:id table)
+                  :schema_name (:schema table)})))))
+
 (defn- handle-existing-db-permission
   "Handles the case where there's an existing database-level permission."
   [existing-db-perm values group-id perm-type db-id table-ids new-perms]
@@ -753,28 +780,7 @@
       {:to-delete [] :to-insert []}
       ;; If we're setting any table permissions to a value that is different from the database-level permission,
       ;; we need to replace it with individual permission rows for every table in the database instead.
-      (let [other-new-perms (->> (t2/select :model/Table {:where
-                                                          [:and
-                                                           [:= :db_id db-id]
-                                                           ;; We can't filter out *everything* here because
-                                                           ;; max number of parameters is capped. But we might
-                                                           ;; as well filter out what we can (conservatively).
-                                                           [:not [:in :id (take 10000 table-ids)]]]})
-                                 (keep (fn [table]
-                                         ;; See above: we filtered out what we could in the database, but if
-                                         ;; the number of tables is large we need to filter them out in
-                                         ;; Clojure.
-                                         (when-not (contains? table-ids (:id table))
-                                           {:perm_type   perm-type
-                                            :group_id    group-id
-                                            :perm_value  (case existing-db-perm-value
-                                                           ;; If the previous database-level permission can't be set at
-                                                           ;; the table-level, we need to provide a new default
-                                                           :query-builder-and-native :query-builder
-                                                           existing-db-perm-value)
-                                            :db_id       db-id
-                                            :table_id    (:id table)
-                                            :schema_name (:schema table)}))))]
+      (let [other-new-perms (other-new-perms group-id perm-type db-id table-ids existing-db-perm-value)]
         {:to-delete [existing-db-perm]
          :to-insert (concat other-new-perms new-perms)}))))
 

@@ -7,6 +7,7 @@
   Essentially, this is a translation layer between the graph used by the v1 permissions schema and the v2 permissions
   schema."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.audit-app.core :as audit]
@@ -162,6 +163,30 @@
         [:int {:title "table-id" :min 0}]
         ::permissions.schema/data-permission-value]]]]]])
 
+(defn- filter-conflicting-perms
+  "Filters out database-level permissions when table-level permissions exist for the same
+  group/database/permission-type combination. This should not intentionally happen, but we
+  guard against corrupted graphs, which we've seen appear."
+  [data-perms]
+  (let [grouped (group-by (fn [perm]
+                            [(:group-id perm) (:db-id perm) (:type perm)])
+                          data-perms)]
+    ;; if there are table-level perms, remove db-level ones
+    (mapcat (fn [[_ perms]]
+              (let [{:keys [group-id type db-id value] :as db-level} (first (filter (comp nil? :table-id) perms))]
+                (if (and db-level (some :table-id perms))
+                  (let [individual (filter :table-id perms)
+                        other (->> (perms/other-new-perms group-id type db-id (set (map :table-id individual)) value)
+                                   (map #(set/rename-keys % {:perm_type :type
+                                                             :group_id :group-id
+                                                             :perm_value :value
+                                                             :db_id :db-id
+                                                             :schema_name :schema
+                                                             :table_id :table-id})))]
+                    (concat individual other))
+                  perms)))
+            grouped)))
+
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
@@ -179,7 +204,8 @@
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
                                        (when group-ids [:in :group_id group-ids])
-                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})
+        filtered-perms (filter-conflicting-perms data-perms)]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
@@ -193,7 +219,7 @@
                       [group-id db-id perm-type])]
          (assoc-in graph path value)))
      {}
-     data-perms)))
+     filtered-perms)))
 
 (mu/defn api-graph :- ::permissions-rest.schema/data-permissions-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
