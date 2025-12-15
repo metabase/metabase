@@ -547,7 +547,7 @@
              (encode-object-id [oid] (str "ObjectId(\"" (.toString ^ObjectId oid) "\")"))]
        (cond
          (map? mgo) (encode-map mgo next-indent)
-         (vector? mgo) (encode-vector mgo next-indent)
+         (sequential? mgo) (encode-vector mgo next-indent)
          (instance? ObjectId mgo) (encode-object-id mgo)
          (instance? Binary mgo) (encode-binary mgo)
          :else (json/encode mgo))))))
@@ -555,9 +555,12 @@
 (defmethod driver/prettify-native-form :mongo
   [_driver native-form]
   (try
-    (encode-mongo native-form)
+    (let [parsed (if (string? native-form)
+                   (json/decode native-form)
+                   native-form)]
+      (encode-mongo parsed))
     (catch Throwable e
-      (log/errorf "Unexpected error while encoding Mongo BSON query: %s" (ex-message e))
+      (log/errorf "Unexpected error while prettifying Mongo BSON query: %s" (ex-message e))
       (log/debugf e "Query:\n%s" native-form)
       native-form)))
 
