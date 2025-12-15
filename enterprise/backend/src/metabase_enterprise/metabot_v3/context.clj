@@ -12,7 +12,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -162,6 +163,16 @@
   [context]
   (update context :capabilities (fnil into #{}) (backend-metabot-capabilities)))
 
+(defn- add-enabled-use-cases
+  "Add the enabled use cases to the context when a Metabot ID is provided. Primarily used by the default internal
+  profile (Omnibot) which needs to select between NLQ or SQL use cases for search."
+  [context metabot-id]
+  (if-let [enabled-use-cases (when metabot-id
+                               (->> (t2/select :model/MetabotUseCase :metabot_id metabot-id :enabled true)
+                                    (map :name)))]
+    (assoc context :enabled_use_cases enabled-use-cases)
+    context))
+
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
   Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
@@ -198,11 +209,12 @@
   "Create a tool context."
   ([context :- ::context]
    (create-context context nil))
-  ([context :- ::context
-    opts    :- [:maybe [:map-of :keyword :any]]]
+  ([context    :- ::context
+    metabot-id :- [:maybe :int]]
    (-> context
        enhance-context-with-schema
        annotate-transform-source-types
        add-backend-capabilities
+       (add-enabled-use-cases metabot-id)
        add-recent-views
-       (set-user-time opts))))
+       (set-user-time {}))))

@@ -3,11 +3,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.context :as context]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
 (def ^:private users-mbql-query (lib/query meta/metadata-provider (meta/table-metadata :users)))
@@ -247,3 +249,26 @@
           ;; Assert that collection is excluded even though it was viewed most recently
           (is (= #{"question" "model" "dashboard" "table"}
                  (set (map :type recently-viewed)))))))))
+
+(deftest enabled-use-cases-in-context-test
+  (testing "Adds enabled use cases for the provided Metabot ID to the context"
+    (mt/with-temp [:model/Metabot        {metabot-id :id} {:entity_id (u/generate-nano-id)
+                                                           :name      "Test Metabot"}
+                   :model/MetabotUseCase _                {:metabot_id metabot-id
+                                                           :name       "nlq"
+                                                           :profile    "internal"
+                                                           :enabled    true}
+                   :model/MetabotUseCase _                {:metabot_id metabot-id
+                                                           :name       "sql"
+                                                           :profile    "internal"
+                                                           :enabled    true}
+                   :model/MetabotUseCase _                {:metabot_id metabot-id
+                                                           :name       "transforms"
+                                                           :profile    "transforms_codegen"
+                                                           :enabled    false}]
+      (let [enabled-use-cases (-> (context/create-context {} metabot-id)
+                                  :enabled_use_cases
+                                  set)]
+        (is (contains? enabled-use-cases "nlq"))
+        (is (contains? enabled-use-cases "sql"))
+        (is (not (contains? enabled-use-cases "transforms")))))))

@@ -67,7 +67,7 @@
         session-id    (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
     (store-message! conversation_id use_case profile [message])
     (metabot-v3.client/streaming-request
-     {:context         (metabot-v3.context/create-context context)
+     {:context         (metabot-v3.context/create-context context metabot-pk)
       :metabot-id      metabot-id
       :use-case        use-case
       :profile-id      profile
