@@ -1823,3 +1823,12 @@
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
+
+(define-migration BackfillTransformTargetDbId
+  (doseq [{:keys [id target]} (t2/query {:select [:id :target]
+                                         :from   [:transform]
+                                         :where  [:= :target_db_id nil]})]
+    (let [target-map (json/decode target)
+          db-id      (get target-map "database")]
+      (when db-id
+        (t2/update! :transform id {:target_db_id db-id})))))
