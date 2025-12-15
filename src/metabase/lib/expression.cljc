@@ -620,6 +620,33 @@
      (lib.util/clause? expr)
      (some #(invalid-nesting % (conj path-tags (first expr))) (nnext expr)))))
 
+(defn- has-unaggregated-field?
+  "Check if an aggregation expression contains a raw :field reference that is not
+  wrapped in an aggregation function. This returns true for expressions like
+  `datetimeDiff([Birth Date],[Birth Date], \"hour\")` where fields are used directly,
+  but false for expressions like `sum([Price]) / count()` where fields are properly
+  aggregated."
+  ([expr]
+   (has-unaggregated-field? expr false))
+  ([expr inside-aggregation?]
+   (cond
+     ;; If we find a :field clause and we're not inside an aggregation, that's a problem
+     (and (lib.util/clause? expr)
+          (= :field (first expr))
+          (not inside-aggregation?))
+     true
+
+     ;; If we encounter an aggregation function, mark that we're inside one
+     (aggregation-expr? expr)
+     (some #(has-unaggregated-field? % true) (nnext expr))
+
+     ;; For other clauses, recursively check children
+     (lib.util/clause? expr)
+     (some #(has-unaggregated-field? % inside-aggregation?) (nnext expr))
+
+     :else
+     false)))
+
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and
   `expression-position` is provided, for cyclic references with other expressions.
@@ -646,7 +673,11 @@
                       :expression expression-explainer
                       :aggregation aggregation-explainer
                       :filter filter-explainer)]
-      (or (when-let [explanation (explainer expr)]
+      (or (when (and (= expression-mode :aggregation)
+                     (has-unaggregated-field? expr))
+            {:message  (i18n/tru "Aggregation expressions must use aggregation functions. Fields must be wrapped in functions like sum, avg, count, etc.")
+             :friendly true})
+          (when-let [explanation (explainer expr)]
             (let [error (first (:errors explanation))
                   schema (:schema error)
                   props (or (mc/properties schema)
