@@ -7,6 +7,7 @@
    [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
@@ -82,7 +83,7 @@
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
   and including [[current-schema-version]]."
-  22)
+  23)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
@@ -670,6 +671,17 @@
   (update card :result_metadata (fn [cols]
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
+;; Schema upgrade: 22 to 23 ==========================================================================================
+;; #66199 shows a customer upgrading to 57 breaking certain cards
+;; The cards in question have {} as their dataset_query.
+;; This schema upgrade is to overwrite cards with dataset_query = "{}" with a converted legacy_query.
+;; Discussion: https://metaboat.slack.com/archives/C05MPF0TM3L/p1764944945966649?thread_ts=1763990244.080579&cid=C05MPF0TM3L
+(defmethod upgrade-card-schema-to 23
+  [card _schema-version]
+  ;; This fix was a failure. We have to keep the schema upgrade, but now it's
+  ;; just a no-op.
+  card)
+
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]
   (-> (if (and (:id card)
@@ -684,7 +696,8 @@
                           {:card-id (:id card)}))
           ;; Plausible and has the schema, so run the upgrades over it.
           (loop [card card]
-            (if (= (:card_schema card) current-schema-version)
+            ;; Use >= to allow for downgrades.
+            (if (>= (:card_schema card) current-schema-version)
               card
               (let [new-version (inc (:card_schema card))]
                 (recur (assoc (upgrade-card-schema-to card new-version)
@@ -692,6 +705,26 @@
         ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
         card)
       queries.schema/normalize-card))
+
+(defonce ^:private unique-cards-with-blank-dataset-query
+  (atom #{}))
+
+(defn- monitor-blank-dataset-query
+  "Captures the IDs of all cards which get read and have `:dataset_query {}`. That happens when the MBQL 4->5
+  conversion fails, and usually indicates a problem with the MBQL 4 normalization.
+
+  This publishes a Prometheus metric with a count of the unique cards on this instance which have been read since
+  startup. If this is nonzero then there are known to be bad cards present. This function logs a message in that
+  case which will point out the bad cards and enable us to localize the problem.
+
+  Always returns `card`."
+  [card]
+  (when (= (:dataset_query card) {})
+    (log/infof "Card %d has a blank :dataset_query - this indicates a Metabase issue" (:id card))
+    (let [uniques (swap! unique-cards-with-blank-dataset-query conj (:id card))]
+      (analytics/set! :metabase-card/unique-cards-failed-conversion (count uniques))))
+  ;; Always returns the original card.
+  card)
 
 (t2/define-after-select :model/Card
   [card]
@@ -706,7 +739,8 @@
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ;; At this point, the card should be at schema version 20 or higher.
-      upgrade-card-schema-to-latest))
+      upgrade-card-schema-to-latest
+      monitor-blank-dataset-query))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -900,7 +934,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id :document_id :published_table_id]
+                                             :cache_ttl :type :dashboard_id :document_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)
@@ -1215,7 +1249,6 @@
     :document_id            (serdes/fk :model/Document)
     :creator_id             (serdes/fk :model/User)
     :made_public_by_id      (serdes/fk :model/User)
-    :published_table_id     (serdes/fk :model/Table)
     :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
@@ -1338,7 +1371,10 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where        [:and [:= :collection.namespace nil] [:= :this.document_id nil]]
+   :where [:and [:or [:= :collection.namespace nil]
+                 [:= :collection.namespace "shared-tenant-collection"]
+                 [:= :collection.namespace "tenant-specific"]]
+           [:= :this.document_id nil]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]

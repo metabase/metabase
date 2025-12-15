@@ -2,7 +2,7 @@
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
   (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty doseq for
-                            first second update-vals #?(:cljs clj->js)])
+                            first second update-vals get-in #?(:cljs clj->js)])
   #?(:clj (:require
            [net.cgrand.macrovich :as macros])
      :cljs (:require
@@ -198,9 +198,12 @@
      (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4)))))
 
 (defn mapv
-  "Drop-in replacement for `clojure.core/mapv`.
+  "**Nearly** drop-in replacement for `clojure.core/mapv`.
+
   Iterates multiple collections more efficiently and uses Java iterators under the hood (the CLJ version). CLJS
-  version is only optimized for a single collection arity."
+  version is only optimized for a single collection arity.
+
+  Checks the `count` of all inputs - DO NOT give this infinite sequences!"
   ([f coll1]
    (let [n (count coll1)]
      (cond (= n 0) []
@@ -375,6 +378,18 @@
                              coll coll)
                   maybe-persistent!
                   (with-meta (meta coll)))))
+
+(defn get-in
+  "Drop-in replacement for `clojure.core/get-in`, but more efficient."
+  ([m ks]
+   (reduce get m ks))
+  ([m ks not-found]
+   (let [sentinel #?(:clj (Object.) :cljs #js{})]
+     (reduce #(let [v (get %1 %2 sentinel)]
+                (if (identical? sentinel v)
+                  (reduced not-found)
+                  v))
+             m ks))))
 
 ;; List comprehension reimplementation.
 

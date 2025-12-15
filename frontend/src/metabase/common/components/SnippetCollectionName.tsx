@@ -6,7 +6,7 @@ import type { CollectionId } from "metabase-types/api";
 
 function SnippetCollectionName({ id }: { id: CollectionId }) {
   if (isRootCollection({ id })) {
-    return <span>{t`Top folder`}</span>;
+    return <span>{t`SQL snippets`}</span>;
   }
   if (!Number.isSafeInteger(id)) {
     return null;

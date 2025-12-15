@@ -138,13 +138,13 @@ export const createMockTokenFeatures = (
   database_routing: false,
   development_mode: false,
   table_data_editing: false,
-  documents: false,
   semantic_search: false,
   transforms: false,
   remote_sync: false,
   "transforms-python": false,
   data_studio: false,
   "support-users": false,
+  tenants: false,
   ...opts,
 });
 
@@ -289,6 +289,7 @@ export const createMockSettings = (
   "jwt-attribute-firstname": null,
   "jwt-attribute-lastname": null,
   "jwt-attribute-groups": null,
+  "jwt-attribute-tenant": null,
   "jwt-group-sync": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
@@ -334,6 +335,7 @@ export const createMockSettings = (
   "saml-attribute-email": null,
   "saml-attribute-firstname": null,
   "saml-attribute-lastname": null,
+  "saml-attribute-tenant": null,
   "saml-identity-provider-issuer": null,
   "saml-identity-provider-certificate": null,
   "saml-keystore-password": null,
@@ -396,5 +398,6 @@ export const createMockSettings = (
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
   "sdk-iframe-embed-setup-settings": null,
+  "use-tenants": false,
   ...opts,
 });

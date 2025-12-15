@@ -127,14 +127,15 @@ describe(
 
         // Experience step
         getEmbedSidebar().within(() => {
-          ["Exploration", "Browser"].forEach((label) => {
-            cy.findByLabelText(label).should("be.disabled");
-            cy.get("label")
-              .contains(label)
-              .within(() => {
-                cy.findByTestId("upsell-gem").should("be.visible");
-              });
-          });
+          cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+
+          ["Metabase account (SSO)", "Exploration", "Browser"].forEach(
+            (label) => {
+              cy.findByLabelText(label).should("be.disabled");
+            },
+          );
+
+          cy.findByTestId("upsell-card").should("be.visible");
 
           cy.findByText("Chart").click();
           cy.findByText("Next").click();
@@ -142,7 +143,8 @@ describe(
 
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_experience_completed",
-          event_detail: "custom=chart",
+          event_detail:
+            "authType=guest-embed,experience=chart,isDefaultExperience=false",
         });
 
         // Entity selection step
@@ -166,9 +168,6 @@ describe(
         });
 
         // Options step
-        cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-        cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
-
         cy.findByLabelText("Allow people to drill through on data points")
           .should("be.visible")
           .should("be.disabled");
@@ -181,28 +180,37 @@ describe(
           .should("be.disabled");
 
         [
-          "Single sign-on (SSO)",
           "Allow people to drill through on data points",
           "Allow downloads",
           "Allow people to save new questions",
-        ].forEach((text) => {
-          cy.findAllByTestId("tooltip-warning")
-            .filter(`:contains("${text}")`)
-            .within(() => {
-              cy.findByTestId("upsell-gem").should("be.visible");
-            });
+        ].forEach((label) => {
+          cy.findByLabelText(label).should("be.disabled");
         });
+
+        cy.findByTestId("upsell-card").should("exist");
 
         H.setEmbeddingParameter("Text", "Locked");
         cy.findAllByTestId("parameter-widget")
           .find("input")
           .type("Foo Bar Baz");
 
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("embedding-footer")
+          .should("be.visible");
+
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("question-download-widget-button")
+          .should("have.css", "background-color", "rgb(255, 255, 255)");
+
         getEmbedSidebar().within(() => {
           cy.findByTestId("appearance-section").within(() => {
-            cy.findByTestId("upsell-gem").should("be.visible");
+            cy.findByText("Dark").click();
           });
         });
+
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("question-download-widget-button")
+          .should("have.css", "background-color", "rgb(7, 23, 34)");
 
         H.publishChanges("card");
         cy.button("Unpublish").should("be.visible");
@@ -218,11 +226,15 @@ describe(
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_options_completed",
           event_detail:
-            'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
+            'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
         });
 
         // Get code step
         getEmbedSidebar().within(() => {
+          codeBlock()
+            .invoke("text")
+            .should("match", /"theme":\s*\{\s*"preset":\s*"dark"\s*},/);
+
           cy.findAllByText(/Copy code/)
             .first()
             .click();
@@ -231,7 +243,7 @@ describe(
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_code_copied",
           event_detail:
-            "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest-embed",
+            "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,authSubType=none",
         });
 
         // Visit embed page
@@ -261,6 +273,8 @@ describe(
 
           frame.within(() => {
             cy.findByText("Foo Bar Baz").should("be.visible");
+
+            cy.findByTestId("embedding-footer").should("be.visible");
           });
         });
       });

@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.ordering-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.ordering :as ordering]
    [metabase.driver :as driver]
@@ -111,7 +112,7 @@
                                                                   LIMIT 100"}}
                                                 "venues_transform_2")]
         (try
-          (transforms.i/execute! transform1 {:run-method :manual})
+          (transforms.execute/execute! transform1 {:run-method :manual})
           (let [table1 (t2/select-one-pk :model/Table :name "checkins_transform")]
             (is (= #{{:table table1} {:transform t2}}
                    (transform-deps-for-db (t2/select-one :model/Transform  t3)))))

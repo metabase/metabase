@@ -40,6 +40,44 @@ is_sample: false
           name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")
           (or parent-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
+(defn generate-v57-collection-yaml
+  "Generates YAML content for a collection in v57 format.
+
+  In v57, remote-synced collections used `type: remote-synced` instead of
+  `is_remote_synced: true`. This helper is used to test backward compatibility
+  when importing exports from v57 Metabase instances.
+
+  Args:
+    entity-id: The unique identifier for the collection.
+    name: The name of the collection.
+    parent-id: Optional parent collection ID.
+    type: Optional type value (e.g., \"remote-synced\" for v57 remote-synced collections).
+
+  Returns:
+    A string containing the v57-format YAML representation of the collection."
+  [entity-id name & {:keys [parent-id type]}]
+  (format "name: %s
+description: null
+entity_id: %s
+slug: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+archived: false
+type: %s
+parent_id: %s
+personal_owner_id: null
+namespace: null
+authority_level: null
+serdes/meta:
+- id: %s
+  label: %s
+  model: Collection
+archive_operation_id: null
+archived_directly: null
+is_sample: false
+"
+          name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")
+          (or type "null") (or parent-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
 (defn generate-card-yaml
   "Generates YAML content for a card.
 
@@ -182,8 +220,22 @@ width: fixed
       :write-files-error (throw (Exception. "Failed to write files"))
       :store-error (throw (Exception. "Store failed"))
       :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
-      ;; Default success case - write files to atom
-      (swap! files-atom assoc branch (into {} (map (juxt :path :content) files))))
+      ;; Default success case - handle both writes and removals
+      (let [write-entries (remove #(or (:remove? %) (str/blank? (:path %))) files)
+            removal-prefixes (into #{} (comp (filter :remove?)
+                                             (map :path)
+                                             (remove str/blank?))
+                                   files)
+            current-files (get @files-atom branch {})
+            ;; Remove files matching removal prefixes
+            after-removals (into {}
+                                 (remove (fn [[path _]]
+                                           (some #(or (= path %) (str/starts-with? path %))
+                                                 removal-prefixes))
+                                         current-files))
+            ;; Add new files
+            final-files (into after-removals (map (juxt :path :content) write-entries))]
+        (swap! files-atom assoc branch final-files)))
     "write-files-version")
 
   (version [_this]

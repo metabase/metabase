@@ -108,7 +108,7 @@ export const QuestionPickerModal = ({
       displayName: t`Questions`,
       models: ["card" as const],
       folderModels: ["collection" as const],
-      icon: "table",
+      icon: "folder",
       render: ({ onItemSelect }) => (
         <QuestionPicker
           initialValue={value}

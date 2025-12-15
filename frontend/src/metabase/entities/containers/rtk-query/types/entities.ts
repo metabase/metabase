@@ -42,6 +42,7 @@ export type EntityType =
   | "collections"
   | "dashboards"
   | "databases"
+  | "documents"
   | "fields"
   | "groups"
   | "indexedEntities"
