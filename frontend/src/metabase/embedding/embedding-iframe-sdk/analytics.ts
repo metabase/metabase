@@ -210,6 +210,12 @@ function getAuthMethod(firstEmbed: MetabaseEmbedElement): AUTH_TYPES {
       },
       () => "api_key",
     )
+    .with(
+      {
+        isGuest: true,
+      },
+      () => "guest",
+    )
     .otherwise(() => {
       return "sso";
     });
