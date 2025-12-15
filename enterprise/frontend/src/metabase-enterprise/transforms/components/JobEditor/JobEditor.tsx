@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import { Stack } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import {
@@ -41,6 +42,7 @@ export function JobEditor({
   return (
     <PageContainer
       data-testid="transforms-job-editor"
+      gap="2.5rem"
       header={
         <PaneHeader
           title={
@@ -67,9 +69,11 @@ export function JobEditor({
         />
       }
     >
-      <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
-      <TagSection job={job} onTagsChange={onTagListChange} />
-      {job.id != null && <DependenciesSection jobId={job.id} />}
+      <Stack gap="3.5rem">
+        <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
+        <TagSection job={job} onTagsChange={onTagListChange} />
+        {job.id != null && <DependenciesSection jobId={job.id} />}
+      </Stack>
     </PageContainer>
   );
 }

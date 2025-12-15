@@ -12,13 +12,13 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Center } from "metabase/ui";
+import { Card, Center } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import { Card } from "metabase-types/api";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { MetricHeader } from "../../components/MetricHeader";
@@ -133,7 +133,7 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
       <PageContainer
         pos="relative"
         data-testid="metric-query-editor"
-        gap={0}
+        gap="xl"
         header={
           <MetricHeader
             card={card}
@@ -150,13 +150,15 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
           />
         }
       >
-        <MetricQueryEditor
-          query={question.query()}
-          uiState={uiState}
-          readOnly={!card.can_write}
-          onChangeQuery={handleChangeQuery}
-          onChangeUiState={setUiState}
-        />
+        <Card withBorder flex={1} p={0}>
+          <MetricQueryEditor
+            query={question.query()}
+            uiState={uiState}
+            readOnly={!card.can_write}
+            onChangeQuery={handleChangeQuery}
+            onChangeUiState={setUiState}
+          />
+        </Card>
       </PageContainer>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal

@@ -13,6 +13,7 @@ export const PageContainer = ({
       h="100%"
       pb="2rem"
       px="3.5rem"
+      gap="xl"
       style={{ overflow: "auto" }}
       {...rest}
     >

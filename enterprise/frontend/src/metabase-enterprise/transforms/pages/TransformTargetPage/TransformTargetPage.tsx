@@ -53,7 +53,6 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
     <PageContainer
       header={<TransformHeader transform={transform} />}
       data-testid="transforms-target-content"
-      gap="3rem"
     >
       <TargetSection transform={transform} />
     </PageContainer>

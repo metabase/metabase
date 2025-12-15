@@ -177,7 +177,6 @@ function TransformQueryPageBody({
             }
             hasMenu={!isEditMode && !isDirty}
             isEditMode={isEditMode}
-            pb="lg"
           />
         }
       >

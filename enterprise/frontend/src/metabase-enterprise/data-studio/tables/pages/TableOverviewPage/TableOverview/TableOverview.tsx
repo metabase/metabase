@@ -19,7 +19,7 @@ export function TableOverview({ table }: TableOverviewProps) {
   const metadata = useSelector(getMetadata);
   const card = useMemo(() => getCard(table, metadata), [table, metadata]);
   return (
-    <Flex py="lg" flex={1} gap="lg">
+    <Flex flex={1} gap="lg">
       <Flex direction="column" flex={1} mah={700}>
         {card && <OverviewVisualization card={card} />}
       </Flex>

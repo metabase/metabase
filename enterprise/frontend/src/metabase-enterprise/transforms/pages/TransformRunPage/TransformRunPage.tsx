@@ -53,7 +53,6 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
     <PageContainer
       header={<TransformHeader transform={transform} />}
       data-testid="transforms-run-content"
-      gap="3rem"
     >
       <RunSection transform={transform} />
     </PageContainer>

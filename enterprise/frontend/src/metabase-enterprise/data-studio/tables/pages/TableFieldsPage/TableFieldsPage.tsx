@@ -57,6 +57,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
     <PageContainer
       header={<TableHeader table={table} />}
       data-testid="table-fields-page"
+      gap="md"
     >
       <Flex className={S.body} flex={1}>
         <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
@@ -72,6 +73,8 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               Urls.dataStudioTableFields(tableId, fieldId)
             }
             onSyncOptionsClick={openSyncModal}
+            px={0}
+            pr="lg"
           />
         </Stack>
         {field != null && (

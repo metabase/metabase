@@ -11,11 +11,12 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Card } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
-import type { Card } from "metabase-types/api";
+import type { Card as CardType } from "metabase-types/api";
 
 import {
   PaneHeader,
@@ -77,7 +78,7 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
     [name, resultMetadata, initialCollectionId, defaultCollectionId],
   );
 
-  const handleCreate = (card: Card) => {
+  const handleCreate = (card: CardType) => {
     dispatch(push(Urls.dataStudioMetric(card.id)));
   };
 
@@ -94,7 +95,6 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
       <PageContainer
         pos="relative"
         data-testid="metric-query-editor"
-        gap={0}
         header={
           <PaneHeader
             title={
@@ -125,12 +125,14 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
           />
         }
       >
-        <MetricQueryEditor
-          query={query}
-          uiState={uiState}
-          onChangeQuery={handleChangeQuery}
-          onChangeUiState={setUiState}
-        />
+        <Card withBorder p={0} flex={1}>
+          <MetricQueryEditor
+            query={query}
+            uiState={uiState}
+            onChangeQuery={handleChangeQuery}
+            onChangeUiState={setUiState}
+          />
+        </Card>
       </PageContainer>
       {isModalOpened && (
         <CreateMetricModal

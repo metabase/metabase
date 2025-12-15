@@ -32,6 +32,7 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
     <PageContainer
       data-testid="metric-overview-page"
       header={<MetricHeader card={card} />}
+      gap="xl"
     >
       <MetricOverview card={card} />
     </PageContainer>

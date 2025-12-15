@@ -41,7 +41,7 @@ export function RunListPage({ location }: RunListPageProps) {
       gap={0}
     >
       <Stack>
-        <Box>{t`A list of when each transform ran.`}</Box>
+        <Box>{t`When each transform ran.`}</Box>
         <RunListPageBody params={params} />
       </Stack>
     </PageContainer>
