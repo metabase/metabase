@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -297,3 +298,31 @@
             (let [updated-table (t2/select-one :model/Table (:id existing-table))]
               (is (= :ingested (:data_authority updated-table)))
               (is (:active updated-table)))))))))
+
+(deftest drop-fk-relationships-test
+  (testing "Check that Foreign Key relationships can be dropped"
+    (let [                ; dataset tables need at least one field other than the ID column, so just add a dummy field
+          name-field-def {:field-name "dummy", :base-type :type/Text}]
+      (mt/with-temp-test-data
+        [["continent_1" [name-field-def]
+          []]
+         ["continent_2" [name-field-def]
+          []]
+         ["country" [name-field-def {:field-name "continent_id", :base-type :type/Integer}]
+          []]]
+        (let [db (mt/db)
+              db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
+              get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+          ;; 1. add FK relationship in the database targeting continent_1
+          (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
+          (sync/sync-database! db {:scan :schema})
+          (testing "initially country's continent_id is targeting continent_1"
+            (is (= (mt/id :continent_1 :id)
+                   (get-fk-target))))
+          ;; 2. drop the FK relationship in the database with SQL
+          (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
+          (sync/sync-database! db {:scan :schema})
+
+          (qp/process-query (mt/query continent_1))
+          (qp/process-query (mt/query continent_2))
+          (qp/process-query (mt/query country)))))))
