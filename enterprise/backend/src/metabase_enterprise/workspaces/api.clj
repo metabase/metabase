@@ -137,7 +137,7 @@
   "Given a bounded list of tables all, within the same database, return an association list of [db schema table] => id"
   [db-id schema-key table-key table-refs]
   (t2/select-fn-vec (juxt (juxt (constantly db-id) :schema :name) :id)
-                    [:model/Table :id :schema [:name]]
+                    [:model/Table :id :schema :name]
                     :db_id db-id
                     {:where (into [:or] (for [tr table-refs]
                                           [:and
