@@ -768,3 +768,5 @@
 (defmethod driver/table-name-length-limit :mongo
   [_driver]
   64)
+
+(defmethod driver/remove-inactive-fields? :mongo [_driver] false)
