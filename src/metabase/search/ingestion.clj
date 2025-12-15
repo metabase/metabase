@@ -103,7 +103,7 @@
                   record)]
       (f input))
     (catch Exception e
-      (log/warn e "Function execution failed for attribute" attr-key)
+      (log/warn "Function execution failed for attribute" attr-key)
       false)))
 
 (defn- execute-all-function-attrs
