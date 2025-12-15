@@ -9,7 +9,6 @@ import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getIsEditingInDashboard,
-  getIsNotebookNativePreviewShown,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -375,8 +374,8 @@ async function handleQBInit(
 
   const objectId = params?.objectId || queryParams?.objectId;
 
-  uiControls.isShowingNotebookNativePreview =
-    getIsNotebookNativePreviewShown(getState());
+  // Always start with the preview sidebar closed (do not restore previous state)
+  uiControls.isShowingNotebookNativePreview = false;
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
 
