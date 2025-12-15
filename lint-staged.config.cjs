@@ -33,6 +33,7 @@ module.exports = {
      */
     (files) =>
       `./bin/mage -token-scan ${files.map((item) => `"${item}"`).join(" ")}`,
-    "./bin/mage -install-merge-drivers",
+    // TODO (Bryan 12/12/25) -- reenable this when we can completely verify correctness
+    "./bin/mage -uninstall-merge-drivers",
   ],
 };
