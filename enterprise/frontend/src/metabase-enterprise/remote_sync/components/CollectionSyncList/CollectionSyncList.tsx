@@ -1,0 +1,93 @@
+import { useFormikContext } from "formik";
+import { useCallback, useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
+
+import { Box, Flex, Loader, Text } from "metabase/ui";
+import type {
+  CollectionItem,
+  CollectionSyncPreferences,
+  RemoteSyncConfigurationSettings,
+} from "metabase-types/api";
+
+import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
+import { CollectionSyncRow } from "../CollectionSyncRow";
+
+interface CollectionSyncListProps {
+  collections: CollectionItem[];
+  isLoading: boolean;
+  error: unknown;
+  emptyMessage: string;
+  errorMessage: string;
+}
+
+export const CollectionSyncList = ({
+  collections,
+  isLoading,
+  error,
+  emptyMessage,
+  errorMessage,
+}: CollectionSyncListProps) => {
+  const { values, setFieldValue, initialValues } =
+    useFormikContext<RemoteSyncConfigurationSettings>();
+
+  const syncMap: CollectionSyncPreferences = useMemo(
+    () => values[COLLECTIONS_KEY] ?? {},
+    [values],
+  );
+  const currentType = values[TYPE_KEY];
+  const isReadOnly = currentType === "read-only";
+  const previousType = usePrevious(currentType);
+
+  // Reset collections to initial values when switching from read-write to read-only
+  useEffect(() => {
+    if (previousType === "read-write" && currentType === "read-only") {
+      setFieldValue(COLLECTIONS_KEY, initialValues[COLLECTIONS_KEY] ?? {});
+    }
+  }, [currentType, initialValues, setFieldValue, previousType]);
+
+  const handleToggle = useCallback(
+    (collection: CollectionItem, checked: boolean) => {
+      // Use nested path to avoid stale closure issues with syncMap after form reinitialization
+      setFieldValue(`${COLLECTIONS_KEY}.${collection.id}`, checked);
+    },
+    [setFieldValue],
+  );
+
+  if (isLoading) {
+    return (
+      <Flex justify="center" py="lg">
+        <Loader data-testid="loading-indicator" />
+      </Flex>
+    );
+  }
+
+  if (error) {
+    return <Text c="error">{errorMessage}</Text>;
+  }
+
+  if (collections.length === 0) {
+    return <Text c="text-medium">{emptyMessage}</Text>;
+  }
+
+  return (
+    <Box
+      style={{
+        borderRadius: "var(--mantine-radius-md)",
+        border: "1px solid var(--mb-color-border)",
+        backgroundColor: "var(--mb-color-bg-white)",
+        overflow: "hidden",
+      }}
+    >
+      {collections.map((collection, index) => (
+        <CollectionSyncRow
+          key={collection.id}
+          collection={collection}
+          isChecked={syncMap[collection.id] ?? false}
+          onToggle={handleToggle}
+          isLast={index === collections.length - 1}
+          isReadOnly={isReadOnly}
+        />
+      ))}
+    </Box>
+  );
+};
