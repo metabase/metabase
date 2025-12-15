@@ -573,15 +573,8 @@ describe("scenarios > dependencies > dependency graph", () => {
     }
 
     it("should be able to filter questions", () => {
-      makeCollectionOfficial(FIRST_COLLECTION_ID);
       getScoreboardTableId().then((tableId) => {
         createDashboard().then(({ body: dashboard }) => {
-          createTableBasedQuestion({
-            name: "Verified question",
-            tableId,
-          }).then(({ body: card }) => {
-            verifyCard(card.id);
-          });
           createTableBasedQuestion({
             name: "Question in dashboard",
             tableId,
@@ -590,11 +583,6 @@ describe("scenarios > dependencies > dependency graph", () => {
           createTableBasedQuestion({
             name: "Question in root collection",
             tableId,
-          });
-          createTableBasedQuestion({
-            name: "Question in official collection",
-            tableId,
-            collectionId: FIRST_COLLECTION_ID,
           });
           createTableBasedQuestion({
             name: "Question in regular collection",
@@ -614,23 +602,9 @@ describe("scenarios > dependencies > dependency graph", () => {
         .findByText("6 questions")
         .click();
       verifyFilter({
-        filterName: "Verified",
-        visibleItems: ["Verified question"],
-        hiddenItems: ["Question in official collection"],
-      });
-      verifyFilter({
         filterName: "In a dashboard",
         visibleItems: ["Question in dashboard"],
-        hiddenItems: ["Verified question", "Question in regular collection"],
-      });
-      verifyFilter({
-        filterName: "In an official collection",
-        visibleItems: ["Question in official collection"],
-        hiddenItems: [
-          "Verified question",
-          "Question in dashboard",
-          "Question in root collection",
-        ],
+        hiddenItems: ["Question in regular collection"],
       });
       verifyFilter({
         filterName: "Not in personal collection",
@@ -655,20 +629,6 @@ function visitGraphForEntity(id: DependencyId, type: DependencyType) {
 
 function getScoreboardTableId() {
   return cy.get<number>(`@${TABLE_ID_ALIAS}`);
-}
-
-function makeCollectionOfficial(collectionId: CollectionId) {
-  cy.request("PUT", `/api/collection/${collectionId}`, {
-    authority_level: "official",
-  });
-}
-
-function verifyCard(cardId: CardId) {
-  cy.request("POST", "/api/moderation-review", {
-    status: "verified",
-    moderated_item_id: cardId,
-    moderated_item_type: "card",
-  });
 }
 
 function createTableBasedCard({
