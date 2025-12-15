@@ -229,21 +229,26 @@
                                                                        :schema schema
                                                                        :name table))
                                     isolated-table (ws.u/isolated-table-name schema table)
-                                    global-id      (or (when (and (= schema (:global_schema existing))
-                                                                  (= table (:global_table existing)))
-                                                         (:global_table_id existing))
-                                                       (->table-id schema table))
-                                    isolated-id    (or (when (and (= isolated-schema (:isolated_schema existing))
-                                                                  (= isolated-table (:isolated_table existing)))
-                                                         (:isolated_table_id existing))
-                                                       (->table-id isolated-schema isolated-table))]
+                                    id-if-match    (fn [schema-key schema table-key table id-key]
+                                                     (when (and (= schema (get existing schema-key))
+                                                                (= table (get existing table-key)))
+                                                       (get existing id-key)))
+                                    id-fallback    (fn [schema-key schema table-key table id-key]
+                                                     (or (id-if-match schema-key schema table-key table id-key)
+                                                         (->table-id schema table)))]
                                 {:db_id             db_id
                                  :global_schema     schema
                                  :global_table      table
-                                 :global_table_id   global-id
+                                 :global_table_id   (id-fallback
+                                                     :global_schema schema
+                                                     :global_table table
+                                                     :global_table_id)
                                  :isolated_schema   isolated-schema
                                  :isolated_table    isolated-table
-                                 :isolated_table_id isolated-id}))))
+                                 :isolated_table_id (id-fallback
+                                                     :isolated_schema isolated-schema
+                                                     :isolated_table isolated-table
+                                                     :isolated_table_id)}))))
 
 (defn- build-output-lookup
   "Build a lookup map for workspace outputs: [db_id global_schema global_table] -> output_id.
