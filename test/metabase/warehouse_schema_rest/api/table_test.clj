@@ -1344,23 +1344,22 @@
 
 (deftest no-fks-for-missing-tables-test
   (testing "Check that we don't return foreign keys for missing/inactive tables"
-    (let []
-      (mt/with-temp-test-data
-        [["continent" []
-          []]
-         ["country" [{:field-name "continent_id", :base-type :type/Integer}]
-          []]]
-        (let [db (mt/db)
-              db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
-              get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
-          ;; 1. add FK relationship in the database targeting continent_1
-          (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
-          (sync/sync-database! db {:scan :schema})
-          (testing "initially country's continent_id is targeting continent_1"
-            (is (= (mt/id :continent :id)
-                   (get-fk-target))))
-          ;; 2. drop the country table
-          (jdbc/execute! db-spec "DROP TABLE country;")
-          (sync/sync-database! db {:scan :schema})
+    (mt/with-temp-test-data
+      [["continent" []
+        []]
+       ["country" [{:field-name "continent_id", :base-type :type/Integer}]
+        []]]
+      (let [db (mt/db)
+            db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+        ;; 1. add FK relationship in the database targeting continent_1
+        (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
+        (sync/sync-database! db {:scan :schema})
+        (testing "initially country's continent_id is targeting continent_1"
+          (is (= (mt/id :continent :id)
+                 (get-fk-target))))
+        ;; 2. drop the country table
+        (jdbc/execute! db-spec "DROP TABLE country;")
+        (sync/sync-database! db {:scan :schema})
 
-          (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent))))))))))
+        (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
