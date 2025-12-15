@@ -96,7 +96,7 @@
                 (format "Expected deserialized query to be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query)))
         (normalize-query query))
       (catch Throwable e
-        (log/errorf e "Error deserializing dataset_query from app DB: %s" (ex-message e))
+        (log/errorf "Error deserializing dataset_query from app DB: %s" (ex-message e))
         {}))))
 
 (def transform-query
