@@ -1586,7 +1586,7 @@
 
   Field filters and raw values usually have their value specified by `:parameters`."
   [:multi
-   {:dispatch (comp keyword :type)}
+   {:dispatch (comp keyword (some-fn :type #(get % "type")))}
    [:dimension     [:ref ::TemplateTag.FieldFilter]]
    [:snippet       [:ref ::TemplateTag.Snippet]]
    [:card          [:ref ::TemplateTag.SourceQuery]]
@@ -2008,7 +2008,7 @@
      :type     "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
 
 (mr/def ::WidgetType
-  "Schema for valid values of `:widget-type` for a [[::TemplateTag.FieldFilter]]."
+  "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`."
   [:ref :metabase.lib.schema.parameter/widget-type])
 
 ;; this is the reference like [:template-tag <whatever>], not the [[TemplateTag]] schema for when it's declared in
