@@ -19,6 +19,8 @@ const DEFAULT_VALUES: DefaultValues = {
     with_downloads: false,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L159} */
     with_title: true,
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L161} */
+    with_subscriptions: false,
   },
   question: {
     /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/components/SdkIframeEmbedRoute.tsx#L149} */
