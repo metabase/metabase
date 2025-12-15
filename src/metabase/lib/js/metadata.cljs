@@ -36,18 +36,18 @@
   "Convert a JS object of *any* class to a ClojureScript object."
   ([xform obj]
    (obj->clj xform obj {}))
-  ([xform obj {:keys [use-plain-object? skip-keys] :or {use-plain-object? true}}]
+  ([xform obj {:keys [use-plain-object? skip-keys]
+               :or   {use-plain-object? true
+                      skip-keys         #{}}}]
    (if (map? obj)
      ;; already a ClojureScript object.
-     (into {} xform (cond->> obj
-                      skip-keys (m/remove-keys skip-keys)))
+     (into {} xform (m/remove-keys skip-keys obj))
      ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
      (if-let [plain-object (when use-plain-object?
                              (some-> (object-get obj "_plainObject")
                                      js->clj
                                      not-empty))]
-       (into {} xform (cond->> plain-object
-                        skip-keys (m/remove-keys skip-keys)))
+       (into {} xform (m/remove-keys skip-keys plain-object))
        ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
        ;; arbitrary classes other than `Object`)
        (into {}
