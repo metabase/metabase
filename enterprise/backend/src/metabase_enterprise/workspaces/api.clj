@@ -621,6 +621,7 @@
     (check-transforms-enabled! (:database_id workspace))
     (ws.execute/run-transform-with-remapping workspace transform (build-remapping workspace))))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/checkout"
   :- [:map
       [:transforms [:sequential
