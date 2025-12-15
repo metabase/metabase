@@ -1,6 +1,4 @@
 import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
-import { builders } from "prettier/doc";
-import { format as pformat } from "prettier/standalone";
 
 import { parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
@@ -16,6 +14,7 @@ import {
 import { parsePunctuator } from "../punctuator";
 import { type StartDelimiter, formatStringLiteral } from "../string";
 
+import { getBuilders, format as pformat } from "./prettier-loader";
 import {
   pathMatchers as check,
   isDimensionOperator,
@@ -57,9 +56,10 @@ export async function formatExpressionParts(
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
+  const builders = await getBuilders();
   return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin({ ...options, root })],
+    plugins: [plugin({ ...options, root }, builders)],
     printWidth: options.printWidth ?? 80,
   });
 }
@@ -73,6 +73,7 @@ type InternalOptions = {
 // Set up a prettier plugin that formats expressions
 function plugin(
   options: FormatOptions & InternalOptions,
+  builders: Awaited<ReturnType<typeof getBuilders>>,
 ): Plugin<ExpressionNode> {
   return {
     languages: [
@@ -101,28 +102,27 @@ function plugin(
           opts.extra = options;
           return ast;
         },
-        print,
+        print: (path, opts, print) =>
+          printNode(
+            path,
+            opts as ParserOptions<ExpressionNode> & { extra: FormatOptions },
+            print,
+            builders,
+          ),
       },
     },
   };
 }
 
-const {
-  // prettier helpers
-  join,
-  indent,
-  softline,
-  line,
-  group,
-  ifBreak,
-} = builders;
-
 type Print = (path: AstPath<ExpressionNode>) => Doc;
 
-function print(
+type Builders = Awaited<ReturnType<typeof getBuilders>>;
+
+function printNode(
   path: AstPath<ExpressionNode>,
   options: ParserOptions<ExpressionNode> & { extra: FormatOptions },
   print: Print,
+  builders: Builders,
 ): Doc {
   if (path.node === null) {
     return "";
@@ -139,13 +139,13 @@ function print(
   } else if (check.isSegmentMetadata(path)) {
     return formatSegment(path, options.extra);
   } else if (check.isExpressionOperator(path)) {
-    return formatOperator(path, print);
+    return formatOperator(path, print, builders);
   } else if (check.isDimensionOperator(path)) {
     return formatDimension(path);
   } else if (check.isValueOperator(path)) {
     return formatValueExpression(path, print);
   } else if (check.isExpressionParts(path)) {
-    return formatFunctionCall(path, print);
+    return formatFunctionCall(path, print, builders);
   }
 
   throw new Error(`Unknown MBQL clause: ${JSON.stringify(path.node)}`);
@@ -239,8 +239,10 @@ function formatDimension(path: AstPath<Lib.ExpressionParts>): Doc {
 function formatFunctionCall(
   path: AstPath<Lib.ExpressionParts>,
   print: Print,
+  builders: Builders,
 ): Doc {
   const { node } = path;
+  const { join, indent, softline, line, group } = builders;
 
   const args = node.args.map((arg: ExpressionNode) =>
     recurse(path, print, arg),
@@ -291,8 +293,13 @@ function formatExpressionOptions(options: Lib.ExpressionOptions): Doc | null {
   return null;
 }
 
-function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
+function formatOperator(
+  path: AstPath<Lib.ExpressionParts>,
+  print: Print,
+  builders: Builders,
+): Doc {
   const { node } = path;
+  const { join, indent, softline, line, group, ifBreak } = builders;
 
   assert(
     isExpressionOperator(node),
