@@ -171,6 +171,7 @@
                                    :workspace_id id order-by)
         raw-inputs      (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
                                    :workspace_id id {:order-by [:db_id :schema :table]})
+        ;; Some of our inputs may be shadowed by the outputs of other transforms. We only want external inputs.
         shadowed?       (into #{} (map (juxt :db_id :global_schema :global_table)) outputs)
         inputs          (remove (comp shadowed? (juxt :db_id :schema :table)) raw-inputs)
         ;; Build a map of [d s t] => id for every table that has been synced since the output row was written.
