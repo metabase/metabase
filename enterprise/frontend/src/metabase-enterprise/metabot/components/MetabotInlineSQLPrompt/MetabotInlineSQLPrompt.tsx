@@ -30,7 +30,7 @@ export const MetabotInlineSQLPrompt = ({
     const value = inputRef.current?.getValue?.().trim() ?? "";
     setHasError(false);
     const action = await submitInput(value, {
-      profile: METABOT_PROFILE_OVERRIDES.INLINE_SQL,
+      profile: METABOT_PROFILE_OVERRIDES.SQL,
       preventOpenSidebar: true,
     });
     if (

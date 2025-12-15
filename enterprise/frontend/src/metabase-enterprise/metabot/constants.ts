@@ -19,7 +19,7 @@ export const FIXED_METABOT_ENTITY_IDS = {
 
 export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
-  INLINE_SQL: "inline_sql",
+  SQL: "sql",
 };
 
 export const METABOT_ERR_MSG = {
