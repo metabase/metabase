@@ -446,6 +446,17 @@
   {:in  (comp json-in migrate-viz-settings)
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
+(defn- stringify-keys-and-values
+  "Given a map, convert all the keys and values to strings."
+  [m]
+  (into {} (map (fn [[k v]] [(u/qualified-name k) (str v)]) m)))
+
+(def transform-attributes
+  "Transform user attributes, which are maps of strings->strings. There may be some existing values in the database
+  which are not, so convert on the way out."
+  {:in (comp json-in stringify-keys-and-values)
+   :out (comp stringify-keys-and-values json-out-without-keywordization)})
+
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mr/validator u.cron/CronScheduleString)]
     (partial mu/validate-throw validator)))

@@ -2,10 +2,8 @@ import {
   DataPermission,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
-import Database from "metabase-lib/v1/metadata/Database";
-import Schema from "metabase-lib/v1/metadata/Schema";
+import type { DatabasePermissionInfo } from "metabase/admin/permissions/utils/database-metadata";
 import type { SchemasPermissions } from "metabase-types/api";
-import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 
 import { upgradeViewPermissionsIfNeeded } from "./graph";
 
@@ -15,21 +13,40 @@ const schema = "my_schema";
 const tableId = 30;
 const entityId = { databaseId };
 
-const database = new Database({
-  ...createMockDatabase({ id: entityId.databaseId }),
-  schemas: [schema],
-  tables: [tableId],
-});
+/**
+ * Helper to create a mock database that satisfies DatabasePermissionInfo.
+ */
+function createMockDatabasePermissionInfo(
+  schemas: Array<{ name: string; tables: Array<{ id: number }> }>,
+): DatabasePermissionInfo {
+  const schemaInfos = schemas.map((s) => ({
+    name: s.name,
+    getTables: () =>
+      s.tables.map((t) => ({
+        id: t.id,
+        db_id: databaseId,
+        schema_name: s.name || null,
+      })),
+  }));
 
-// mock out schemas as real Schema
-database.schemas = [
-  new Schema(
-    createMockSchema({
-      id: "100",
-      name: schema,
-    }),
-  ),
-];
+  return {
+    schemas: schemaInfos,
+    schema: (name: string | undefined) =>
+      schemaInfos.find((s) => s.name === (name ?? "")) ?? null,
+    getTables: () =>
+      schemas.flatMap((s) =>
+        s.tables.map((t) => ({
+          id: t.id,
+          db_id: databaseId,
+          schema_name: s.name || null,
+        })),
+      ),
+  };
+}
+
+const database = createMockDatabasePermissionInfo([
+  { name: schema, tables: [{ id: tableId }] },
+]);
 
 const createGraph = (viewPermissions: SchemasPermissions) => ({
   [groupId]: {

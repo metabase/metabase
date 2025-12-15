@@ -5,6 +5,7 @@ import {
   isSchemaEntityId,
   isTableEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
+import type { DatabasePermissionInfo } from "metabase/admin/permissions/utils/database-metadata";
 import {
   getFieldsPermission,
   getSchemasPermission,
@@ -13,7 +14,6 @@ import {
 import Alert from "metabase/common/components/Alert";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { Flex, Text } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   ConcreteTableId,
   Group,
@@ -181,7 +181,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
   permissions: GroupsPermissions,
   groupId: Group["id"],
   entityId: DatabaseEntityId | SchemaEntityId,
-  database: Database,
+  database: DatabasePermissionInfo,
   value: DataPermissionValue,
 ) {
   // if user sets 'Query builder and native' for a DB, warn them that view data permissions must be 'Can view'
@@ -268,7 +268,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
 // warn the user that the access to raw queries will be revoked as well.
 // This warning will only be shown if the user is editing the permissions of individual tables.
 export function getRevokingAccessToAllTablesWarningModal(
-  database: Database,
+  database: DatabasePermissionInfo,
   permissions: GroupsPermissions,
   groupId: Group["id"],
   entityId: EntityId,

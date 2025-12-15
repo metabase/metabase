@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
+import type { DatabasePermissionInfo } from "metabase/admin/permissions/utils/database-metadata";
 import { getSchemasPermission } from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
@@ -8,7 +9,6 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
@@ -36,7 +36,7 @@ const buildAccessPermission = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: DatabasePermissionInfo,
 ): PermissionSectionConfig => {
   const accessPermissionConfirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
@@ -121,7 +121,7 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: DatabasePermissionInfo,
   accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
   const value = getSchemasPermission(
@@ -199,7 +199,7 @@ export const buildSchemasPermissions = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: DatabasePermissionInfo,
   permissionView: "group" | "database",
 ): PermissionSectionConfig[] => {
   const accessPermission = buildAccessPermission(

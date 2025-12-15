@@ -15,14 +15,12 @@ import {
   isSchemaEntityId,
   isTableEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
-import {
-  entityIdToMetadataTableFields,
-  metadataTableToTableEntityId,
-} from "metabase/admin/permissions/utils/metadata";
+import type {
+  DatabasePermissionInfo,
+  TablePermissionInfo,
+} from "metabase/admin/permissions/utils/database-metadata";
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { GroupsPermissions } from "metabase-types/api";
+import type { ConcreteTableId, GroupsPermissions } from "metabase-types/api";
 
 import {
   getFieldsPermission,
@@ -75,7 +73,7 @@ export function updateFieldsPermission(
   groupId: number,
   entityId: TableEntityId,
   value: any,
-  database: Database,
+  database: DatabasePermissionInfo,
   permission: DataPermission,
 ) {
   const { databaseId, tableId } = entityId;
@@ -105,11 +103,11 @@ export function updateTablesPermission(
   groupId: number,
   { databaseId, schemaName }: SchemaEntityId,
   value: any,
-  database: Database,
+  database: DatabasePermissionInfo,
   permission: DataPermission,
 ) {
   const schema = database.schema(schemaName);
-  const tableIds = schema?.getTables().map((t: Table) => t.id);
+  const tableIds = schema?.getTables().map((t) => t.id);
 
   permissions = updateSchemasPermission(
     permissions,
@@ -137,14 +135,14 @@ export function updateSchemasPermission(
   groupId: number,
   { databaseId }: DatabaseEntityId,
   value: DataPermissionValue,
-  database: Database,
+  database: DatabasePermissionInfo,
   permission: DataPermission,
 ) {
-  const schemaNames = database && database.schemaNames();
+  const schemaNames = database?.schemas?.map((s) => s.name);
   const schemaNamesOrNoSchema =
     schemaNames &&
     schemaNames.length > 0 &&
-    !(schemaNames.length === 1 && schemaNames[0] === null)
+    !(schemaNames.length === 1 && schemaNames[0] === "")
       ? schemaNames
       : [""];
 
@@ -164,7 +162,7 @@ export function updateEntityPermission(
   groupId: number,
   entityId: EntityId,
   value: DataPermissionValue,
-  database: Database,
+  database: DatabasePermissionInfo,
   permission: DataPermission,
 ) {
   if (isTableEntityId(entityId)) {
@@ -203,7 +201,7 @@ export function restrictCreateQueriesPermissionsIfNeeded(
   entityId: EntityId,
   permission: DataPermission,
   value: DataPermissionValue,
-  database: Database,
+  database: DatabasePermissionInfo,
 ) {
   const currDbCreateQueriesPermission = getSchemasPermission(
     permissions,
@@ -233,7 +231,7 @@ export function restrictCreateQueriesPermissionsIfNeeded(
     isMakingGranularCreateQueriesChange || shouldRestrictForSomeReason;
 
   if (shouldRestrictNative) {
-    const schemaNames = (database && database.schemaNames()) ?? [null];
+    const schemaNames = database?.schemas?.map((s) => s.name) ?? [""];
 
     schemaNames.forEach((schemaName) => {
       permissions = updateTablesPermission(
@@ -267,16 +265,54 @@ export function restrictCreateQueriesPermissionsIfNeeded(
   return permissions;
 }
 
+/**
+ * Convert TablePermissionInfo to the format used by entityId matching.
+ */
+function tableToEntityFields(table: TablePermissionInfo) {
+  return {
+    db_id: table.db_id,
+    schema_name: table.schema_name !== "" ? table.schema_name : null,
+    id: table.id,
+  };
+}
+
+/**
+ * Convert TablePermissionInfo to TableEntityId.
+ */
+function tableToTableEntityId(table: TablePermissionInfo): TableEntityId {
+  return {
+    databaseId: table.db_id,
+    schemaName: table.schema_name ?? "",
+    tableId: table.id as ConcreteTableId,
+  };
+}
+
+/**
+ * Convert an EntityId to the format used for matching against tables.
+ */
+function entityIdToTableFields(entityId: Partial<TableEntityId>) {
+  return {
+    ...(entityId.databaseId ? { db_id: entityId.databaseId } : {}),
+    ...(entityId.schemaName !== undefined
+      ? { schema_name: entityId.schemaName !== "" ? entityId.schemaName : null }
+      : {}),
+    ...(entityId.tableId ? { id: entityId.tableId } : {}),
+  };
+}
+
 function inferEntityPermissionValueFromChildTables(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: EntityId,
-  database: Database,
+  database: DatabasePermissionInfo,
   permission: DataPermission,
 ): DataPermissionValue {
-  const entityIdsForDescendantTables = _.chain(database.tables)
-    .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
-    .map(metadataTableToTableEntityId)
+  const tables = database.getTables();
+  const matchFields = entityIdToTableFields(entityId);
+
+  const entityIdsForDescendantTables = _.chain(tables)
+    .filter((t) => _.isMatch(tableToEntityFields(t), matchFields))
+    .map(tableToTableEntityId)
     .value();
 
   const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
@@ -300,7 +336,7 @@ export function inferAndUpdateEntityPermissions(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: EntityId,
-  database: Database,
+  database: DatabasePermissionInfo,
   permission: DataPermission,
 ) {
   const { databaseId } = entityId;

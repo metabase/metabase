@@ -9,13 +9,13 @@ import {
   isSchemaEntityId,
   isTableEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
+import type { DatabasePermissionInfo } from "metabase/admin/permissions/utils/database-metadata";
 import {
   getEntityPermission,
   getSchemasPermission,
   hasPermissionValueInSubgraph,
   updateEntityPermission,
 } from "metabase/admin/permissions/utils/graph";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
 
 export function shouldRestrictNativeQueryPermissions(
@@ -24,7 +24,7 @@ export function shouldRestrictNativeQueryPermissions(
   entityId: EntityId,
   _permission: DataPermission,
   value: DataPermissionValue,
-  _database: Database,
+  _database: DatabasePermissionInfo,
 ) {
   const currDbNativePermission = getSchemasPermission(
     permissions,
@@ -56,7 +56,7 @@ export function upgradeViewPermissionsIfNeeded(
   groupId: number,
   entityId: EntityId,
   value: NativePermissions,
-  database: Database,
+  database: DatabasePermissionInfo,
 ) {
   // get permission for item up one level or db if we're already at the top most entity:
   // table -> schema, schema -> database, database -> database

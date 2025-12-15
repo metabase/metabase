@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
+import type { DatabasePermissionInfo } from "metabase/admin/permissions/utils/database-metadata";
 import {
   getFieldsPermission,
   getSchemasPermission,
@@ -14,7 +15,6 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
@@ -40,7 +40,7 @@ const buildAccessPermission = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: DatabasePermissionInfo,
 ): PermissionSectionConfig => {
   const value = getFieldsPermission(
     permissions,
@@ -195,7 +195,7 @@ export const buildFieldsPermissions = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: DatabasePermissionInfo,
 ): PermissionSectionConfig[] => {
   const accessPermission = buildAccessPermission(
     entityId,

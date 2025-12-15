@@ -10,6 +10,8 @@ export const ROOT_COLLECTION = {
   location: "",
   path: [],
   is_personal: false,
+  namespace: null as null,
+  type: null as null,
 };
 
 export const PERSONAL_COLLECTION = {
