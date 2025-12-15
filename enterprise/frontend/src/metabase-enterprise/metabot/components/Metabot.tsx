@@ -58,7 +58,7 @@ export const MetabotAuthenticated = ({
         setVisible(!visible);
       },
     });
-  }, [visible, setVisible, hasRequiredUseCase]);
+  }, [visible, setVisible]);
 
   useEffect(
     function closeViaPropChange() {
