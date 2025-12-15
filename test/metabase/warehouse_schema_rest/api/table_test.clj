@@ -1358,6 +1358,8 @@
         (testing "initially country's continent_id is targeting continent_1"
           (is (= (mt/id :continent :id)
                  (get-fk-target))))
+        (is (= 1 (count (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent))))))
+
         ;; 2. drop the country table
         (jdbc/execute! db-spec "DROP TABLE country;")
         (sync/sync-database! db {:scan :schema})
