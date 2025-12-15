@@ -228,6 +228,10 @@ export type DependencyGraph = {
   edges: DependencyEdge[];
 };
 
+export type DependencyGraphStatus = {
+  dependencies_analyzed: boolean;
+};
+
 export type GetDependencyGraphRequest = {
   id: DependencyId;
   type: DependencyType;
@@ -266,8 +270,4 @@ export type ListUnreferencedGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
-};
-
-export type GetDependencyGraphStatusResponse = {
-  dependencies_analyzed: boolean;
 };

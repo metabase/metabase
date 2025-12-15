@@ -13,7 +13,10 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group } from "metabase/ui";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
+import {
+  useGetDependencyGraphQuery,
+  useGetDependencyGraphStatusQuery,
+} from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
@@ -50,9 +53,17 @@ export function DependencyGraph({
 }: DependencyGraphProps) {
   const {
     data: graph,
-    isFetching,
-    error,
+    isFetching: isFetchingGraph,
+    error: graphError,
   } = useGetDependencyGraphQuery(entry ?? skipToken);
+  const {
+    data: status = null,
+    isFetching: isFetchingStatus,
+    error: statusError,
+  } = useGetDependencyGraphStatusQuery();
+  const isFetching = isFetchingGraph || isFetchingStatus;
+  const error = graphError || statusError;
+
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
@@ -82,7 +93,7 @@ export function DependencyGraph({
 
   useEffect(() => {
     if (error != null) {
-      sendErrorToast(t`Failed to load dependencies`);
+      sendErrorToast(t`Failed to load the dependency graph`);
     }
   }, [error, sendErrorToast]);
 
@@ -91,7 +102,7 @@ export function DependencyGraph({
   };
 
   return (
-    <GraphContext.Provider value={{ selection, setSelection }}>
+    <GraphContext.Provider value={{ status, selection, setSelection }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
