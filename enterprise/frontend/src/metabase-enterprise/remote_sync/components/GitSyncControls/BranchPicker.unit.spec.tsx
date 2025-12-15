@@ -236,4 +236,13 @@ describe("BranchPicker", () => {
       });
     });
   });
+
+  describe("button styling", () => {
+    it("should apply flex: 1 to button to fill available width", () => {
+      setup();
+
+      const button = screen.getByTestId("branch-picker-button");
+      expect(button).toHaveStyle({ flex: "1" });
+    });
+  });
 });

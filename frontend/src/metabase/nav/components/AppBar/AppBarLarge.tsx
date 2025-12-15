@@ -54,6 +54,7 @@ const AppBarLarge = ({
   onToggleNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const isGitSyncVisible = PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
   return (
     <AppBarRoot
@@ -73,6 +74,7 @@ const AppBarLarge = ({
         <AppBarLogo
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
+          isGitSyncVisible={isGitSyncVisible}
         />
         <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <AppBarInfoContainer

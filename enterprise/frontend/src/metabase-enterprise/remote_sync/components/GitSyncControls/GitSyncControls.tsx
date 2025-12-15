@@ -6,13 +6,11 @@ import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Loader, Tooltip } from "metabase/ui";
-import {
-  useGetRemoteSyncChangesQuery,
-  useImportChangesMutation,
-} from "metabase-enterprise/api";
+import { useImportChangesMutation } from "metabase-enterprise/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
 import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../../constants";
+import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
 import { type SyncError, parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
@@ -23,7 +21,13 @@ import {
 
 import { BranchPicker } from "./BranchPicker";
 
-export const GitSyncControls = () => {
+interface GitSyncControlsProps {
+  fullWidth?: boolean;
+}
+
+export const GitSyncControls = ({
+  fullWidth = false,
+}: GitSyncControlsProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
   const { value: currentBranch } = useAdminSetting(BRANCH_KEY);
@@ -39,14 +43,9 @@ export const GitSyncControls = () => {
   const [showPushModal, setShowPushModal] = useState(false);
   const [sendToast] = useToast();
 
-  const { data: dirtyData, refetch: refetchDirty } =
-    useGetRemoteSyncChangesQuery(undefined, {
-      skip: !isRemoteSyncEnabled,
-      refetchOnFocus: true,
-    });
+  const { isDirty, refetch: refetchDirty } = useRemoteSyncDirtyState();
 
   const isSwitchingBranch = !!nextBranch;
-  const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
   const isLoading = isSyncTaskRunning || isSwitchingBranch || isImporting;
 
   const changeBranch = useCallback(
@@ -156,7 +155,11 @@ export const GitSyncControls = () => {
 
   return (
     <>
-      <Button.Group data-testid="git-sync-controls" mr="2rem">
+      <Button.Group
+        data-testid="git-sync-controls"
+        mr={fullWidth ? undefined : "2rem"}
+        w={fullWidth ? "100%" : "13.5rem"}
+      >
         <BranchPicker
           isLoading={isLoading}
           value={currentBranch}
