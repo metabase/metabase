@@ -409,6 +409,8 @@ export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
       return t`Duplicate column`;
     case "validate/syntax-error":
       return t`Syntax error`;
+    case "validate/validation-error":
+      return t`Unknown error`;
   }
 }
 
@@ -441,14 +443,26 @@ export function getDependencyErrorTypeCountMessage(
         `${count} syntax errors`,
         count,
       );
+    case "validate/validation-error":
+      return ngettext(
+        msgid`${count} unknown error`,
+        `${count} unknown errors`,
+        count,
+      );
   }
 }
 
 export function getDependencyErrorDetail(
   error: DependencyError,
-): string | undefined {
-  if (error.type !== "validate/syntax-error") {
-    return error.name;
+): string | null {
+  switch (error.type) {
+    case "validate/missing-column":
+    case "validate/missing-table-alias":
+    case "validate/duplicate-column":
+      return error.name;
+    case "validate/syntax-error":
+    case "validate/validation-error":
+      return null;
   }
 }
 
@@ -469,7 +483,10 @@ export function getDependencyErrorInfo(
   const types = new Set(errors.map((error) => error.type));
   if (types.size === 1) {
     const [type] = types;
-    return { label: getDependencyErrorTypeCountMessage(type, errors.length) };
+    return {
+      label: getDependencyErrorTypeCountMessage(type, errors.length),
+      detail: null,
+    };
   }
 
   return {
@@ -478,6 +495,7 @@ export function getDependencyErrorInfo(
       `${errors.length} errors`,
       errors.length,
     ),
+    detail: null,
   };
 }
 

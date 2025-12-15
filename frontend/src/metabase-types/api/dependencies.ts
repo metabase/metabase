@@ -180,6 +180,7 @@ export const DEPENDENCY_ERROR_TYPES = [
   "validate/missing-table-alias",
   "validate/duplicate-column",
   "validate/syntax-error",
+  "validate/validation-error",
 ] as const;
 export type DependencyErrorType = (typeof DEPENDENCY_ERROR_TYPES)[number];
 
@@ -205,11 +206,15 @@ export type DuplicateColumnDependencyError =
 export type SyntaxErrorDependencyError =
   BaseDependencyError<"validate/syntax-error">;
 
+export type ValidationErrorDependencyError =
+  BaseDependencyError<"validate/validation-error">;
+
 export type DependencyError =
   | MissingColumnDependencyError
   | MissingTableAliasDependencyError
   | DuplicateColumnDependencyError
-  | SyntaxErrorDependencyError;
+  | SyntaxErrorDependencyError
+  | ValidationErrorDependencyError;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;

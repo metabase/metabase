@@ -20,7 +20,7 @@ export type NodeLocationInfo = {
 
 export type DependencyErrorInfo = {
   label: string;
-  detail?: string;
+  detail: string | null;
 };
 
 export type DependencyFilterOptions = {
