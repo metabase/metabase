@@ -31,47 +31,35 @@ const URL_PATTERNS = {
  */
 const EMBED_URL_TRANSFORMATIONS: Record<
   string,
-  (data: Pick<RequestData, "url" | "method">) => {
+  {
     url: string;
     method: "GET" | "POST";
   }
 > = {
-  [URL_PATTERNS.CARD_QUERY]: () => ({
+  [URL_PATTERNS.CARD_QUERY]: {
     url: `${getEmbedBase()}/card/:token/query`,
     method: "GET",
-  }),
-  [URL_PATTERNS.CARD_PIVOT_QUERY]: () => ({
+  },
+  [URL_PATTERNS.CARD_PIVOT_QUERY]: {
     url: `${getEmbedBase()}/pivot/card/:token/query`,
     method: "GET",
-  }),
-  [URL_PATTERNS.CARD_PARAMETER_VALUES]: () => ({
+  },
+  [URL_PATTERNS.CARD_PARAMETER_VALUES]: {
     url: `${getEmbedBase()}/card/:token/params/:paramId/values`,
     method: "GET",
-  }),
-  [URL_PATTERNS.CARD_PARAMETER_SEARCH]: () => ({
+  },
+  [URL_PATTERNS.CARD_PARAMETER_SEARCH]: {
     url: `${getEmbedBase()}/card/:token/params/:paramId/search/:query`,
     method: "GET",
-  }),
-  [URL_PATTERNS.CARD_PARAMETER_REMAPPING]: ({ url }) => ({
-    // We don't override URL, just the base path via `replaceWithEmbedBase`,
-    // because we already receive an url with replaced values, It happens in `frontend/src/metabase/plugins/oss/api.ts`
-    url,
-    method: "GET",
-  }),
-  [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: () => ({
+  },
+  [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: {
     url: `${getEmbedBase()}/dashboard/:token/params/:paramId/values`,
     method: "GET",
-  }),
-  [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: () => ({
+  },
+  [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: {
     url: `${getEmbedBase()}/dashboard/:token/params/:paramId/search/:query`,
     method: "GET",
-  }),
-  [URL_PATTERNS.DASHBOARD_PARAMETER_REMAPPING]: ({ url }) => ({
-    // We don't override URL, just the base path via `replaceWithEmbedBase`,
-    // because we already receive an url with replaced values, It happens in `frontend/src/metabase/plugins/oss/api.ts`
-    url,
-    method: "GET",
-  }),
+  },
 } as const;
 
 type RequestData = {
@@ -138,10 +126,7 @@ function getRequestTransformation({
   }
 
   // Apply the transformation for this pattern
-  const transformation = EMBED_URL_TRANSFORMATIONS[matchedPattern]({
-    url,
-    method,
-  });
+  const transformation = EMBED_URL_TRANSFORMATIONS[matchedPattern];
   if (!transformation) {
     return { method, url, options };
   }
