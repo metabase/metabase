@@ -1,4 +1,4 @@
-import { assocIn, getIn, updateIn } from "icepick";
+import { assocIn, getIn, merge, updateIn } from "icepick";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
@@ -24,8 +24,7 @@ const DEFAULT_VALUES: DefaultValues = {
     with_subscriptions: false,
   },
   question: {
-    /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/components/SdkIframeEmbedRoute.tsx#L149} */
-    // XXX: This depends on the question types. For guest embeds, defaults to false, for non guest embeds, defaults to true.
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L241} */
     drills: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L132} */
     with_downloads: false,
@@ -46,6 +45,17 @@ const DEFAULT_VALUES: DefaultValues = {
     read_only: true,
   },
 };
+
+const DEFAULT_GUEST_EMBED_VALUES: DefaultValues = merge(DEFAULT_VALUES, {
+  dashboard: {
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L157} */
+    drills: false,
+  },
+  question: {
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L212} */
+    drills: false,
+  },
+});
 
 const SECOND = 1000;
 
@@ -100,6 +110,9 @@ export function createEmbeddedAnalyticsJsUsage(
           "dashboard.drills",
           properties.drills,
           usage,
+          properties.isGuest
+            ? (path) => getIn(DEFAULT_GUEST_EMBED_VALUES, path)
+            : undefined,
         );
         usage = incrementComponentPropertyCount(
           "dashboard.with_downloads",
@@ -144,6 +157,9 @@ export function createEmbeddedAnalyticsJsUsage(
             "question.drills",
             properties.drills,
             usage,
+            properties.isGuest
+              ? (path) => getIn(DEFAULT_GUEST_EMBED_VALUES, path)
+              : undefined,
           );
           usage = incrementComponentPropertyCount(
             "question.with_downloads",
@@ -203,12 +219,17 @@ function incrementComponentPropertyCount(
   propertyPath: FlattenObjectKeys<DefaultValues>,
   value: any | undefined,
   usage: EmbeddedAnalyticsJsEventSchema,
+  getDefaultValue: (path: string[]) => any = defaultGetDefaultValue,
 ) {
   const path = propertyPath.split(".");
 
   return updateIn(
     usage,
-    [...path, String(value ?? getIn(DEFAULT_VALUES, path))],
+    [...path, String(value ?? getDefaultValue(path))],
     (value) => value + 1,
   );
+}
+
+function defaultGetDefaultValue(path: string[]): any {
+  return getIn(DEFAULT_VALUES, path);
 }
