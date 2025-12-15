@@ -68,12 +68,8 @@
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
-<<<<<<< HEAD
-  {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
-=======
                                             {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/encore                       {:mvn/version "3.158.0"}            ; Utilities library (used by Nippy)
->>>>>>> origin/workspaces-master
   com.taoensso/nippy                        {:mvn/version "3.6.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
@@ -101,11 +97,6 @@
                                              :git/url "https://github.com/eerohele/pp"}
   ;; TODO: replace back to normal artifact
   io.github.metabase/macaw                  {:mvn/version "0.2.29"}             ; Parse native SQL queries
-<<<<<<< HEAD
-  io.github.resilience4j/resilience4j-retry ^:antq/exclude                      ; 2.x do not support Java 8
-  {:mvn/version "1.7.1"}              ; Support for retrying operations
-=======
->>>>>>> origin/workspaces-master
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
