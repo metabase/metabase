@@ -40,7 +40,7 @@
 ; The id can be any string, but a simple incrementing number is normally easiest to manage while giving some semantic meaning.
 ; When this version changes, on startup metabase will not use the existing index table and instead reindex everything to a new table marked with the new version.
 ; It is dynamic to allow tests to override it
-(defonce ^:dynamic ^:private *index-version-id* "2")
+(defonce ^:dynamic ^:private *index-version-id* "3")
 
 (defonce ^:private next-sync-at (atom nil))
 

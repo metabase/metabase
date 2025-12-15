@@ -42,7 +42,6 @@ export function initializeEmbedding(store) {
         }
       }
     });
-
     store.dispatch(setInitialUrlOptions(window.location));
   }
 }

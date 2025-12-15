@@ -881,7 +881,7 @@
           (met/with-user-attributes! :rasta {"cat" 40}
             ;; re-bind current user so updated attributes come in to effect
             (mt/with-test-user :rasta
-              (is (= {"cat" 40}
+              (is (= {"cat" "40"} ;; attributes are always stringified
                      (:login_attributes @api/*current-user*)))
               (let [result (run-query)]
                 (is (= nil

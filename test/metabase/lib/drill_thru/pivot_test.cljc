@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.pivot-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
@@ -17,6 +17,8 @@
 ;; 2. Category + Location: a. date, b. date + category
 ;; 3. Category + Time: a. address, b. category, c. category + category
 ;; 4. All types: a. no breakouts.
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel pivot-availability-test
   (testing "pivot drill is available only for cell clicks"
