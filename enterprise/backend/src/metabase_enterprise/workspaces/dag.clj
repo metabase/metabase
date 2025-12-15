@@ -93,19 +93,6 @@
               :when (not (pred child))]
     [child (mapcat (partial node->allowed-parents pred deps) parents)]))
 
-(comment
-  (let [ws (fn [ref-id] {:entity-type :workspace-transform, :id ref-id})
-        t  (fn [id] {:entity-type :table, :id id})]
-    (= {(ws 1) [(ws 2)]
-        (ws 2) []
-        (ws 3) []}
-       (collapse
-        table?
-        {(ws 1) [(t 1) (t 2)]
-         (t 1)  [(ws 2)]
-         (ws 2) [(t 3)]
-         (ws 3) [(t 4)]}))))
-
 (defn- render-graph [entities deps]
   (let [table-nodes     (filter table? entities)
         ;; Any table that has an enclosed parent is an output

@@ -200,3 +200,20 @@
             tx-with-sql-card-dependency           4]
         (is (= nil (ws.dag/unsupported-dependency? {:transforms [1]})))
         (is (= {:transforms [2 3 4]} (ws.dag/unsupported-dependency? {:transforms [1 2 3 4]}))))))
+
+(deftest collapse-test
+  (let [ws (fn [ref-id] {:entity-type :workspace-transform, :id ref-id})
+        t  (fn [id] {:entity-type :table, :id id})]
+    (is (= {(ws 1) [(ws 2) (ws 3) (ws 4)]
+            (ws 2) []
+            (ws 3) []
+            (ws 4) []}
+           (#'ws.dag/collapse
+            #'ws.dag/table?
+            {(ws 1) [(t 1) (t 2)]
+             (t 1)  [(ws 2)]
+             (t 2)  [(ws 3) (t 5)]
+             (ws 2) [(t 3)]
+             (ws 3) [(t 4)]
+             (t 5)  [(ws 4)]
+             (ws 4) []})))))
