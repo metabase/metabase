@@ -576,16 +576,16 @@ describe("scenarios > dependencies > dependency graph", () => {
       getScoreboardTableId().then((tableId) => {
         createDashboard().then(({ body: dashboard }) => {
           createTableBasedQuestion({
-            name: "Question in dashboard",
-            tableId,
-            dashboardId: dashboard.id,
-          });
-          createTableBasedQuestion({
             name: "Question in root collection",
             tableId,
           });
           createTableBasedQuestion({
-            name: "Question in regular collection",
+            name: "Question in first collection",
+            tableId,
+            collectionId: FIRST_COLLECTION_ID,
+          });
+          createTableBasedQuestion({
+            name: "Question in second collection",
             tableId,
             collectionId: SECOND_COLLECTION_ID,
           });
@@ -594,24 +594,33 @@ describe("scenarios > dependencies > dependency graph", () => {
             tableId,
             collectionId: ADMIN_PERSONAL_COLLECTION_ID,
           });
+          createTableBasedQuestion({
+            name: "Question in dashboard",
+            tableId,
+            dashboardId: dashboard.id,
+          });
         });
         visitGraphForEntity(tableId, "table");
       });
       H.DependencyGraph.graph()
         .findByLabelText(TABLE_DISPLAY_NAME)
-        .findByText("6 questions")
+        .findByText("5 questions")
         .click();
       verifyFilter({
         filterName: "In a dashboard",
         visibleItems: ["Question in dashboard"],
-        hiddenItems: ["Question in regular collection"],
+        hiddenItems: [
+          "Question in first collection",
+          "Question in second collection",
+        ],
       });
       verifyFilter({
         filterName: "Not in personal collection",
         visibleItems: [
           "Question in dashboard",
           "Question in root collection",
-          "Question in regular collection",
+          "Question in first collection",
+          "Question in second collection",
         ],
         hiddenItems: ["Question in personal collection"],
       });
