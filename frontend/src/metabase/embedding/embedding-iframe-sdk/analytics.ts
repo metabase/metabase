@@ -6,6 +6,7 @@ import type { FlattenObjectKeys } from "metabase/embedding-sdk/types/utils";
 import type {
   AUTH_TYPES,
   DefaultValues,
+  EmbeddedAnalyticsJsEvent,
   EmbeddedAnalyticsJsEventSchema,
 } from "metabase-types/analytics/embedded-analytics-js";
 
@@ -92,7 +93,8 @@ export function createEmbeddedAnalyticsJsUsage(
             drills: { true: 0, false: 0 },
             with_downloads: { true: 0, false: 0 },
             with_title: { true: 0, false: 0 },
-          });
+            with_subscriptions: { true: 0, false: 0 },
+          } satisfies EmbeddedAnalyticsJsEvent["dashboard"]);
         }
         usage = incrementComponentPropertyCount(
           "dashboard.drills",
@@ -116,7 +118,7 @@ export function createEmbeddedAnalyticsJsUsage(
           if (!usage.exploration) {
             usage = assocIn(usage, ["exploration"], {
               is_save_enabled: { true: 0, false: 0 },
-            });
+            } satisfies EmbeddedAnalyticsJsEvent["exploration"]);
           }
           usage = incrementComponentPropertyCount(
             "exploration.is_save_enabled",
@@ -136,7 +138,7 @@ export function createEmbeddedAnalyticsJsUsage(
               with_downloads: { true: 0, false: 0 },
               with_title: { true: 0, false: 0 },
               is_save_enabled: { true: 0, false: 0 },
-            });
+            } satisfies EmbeddedAnalyticsJsEvent["question"]);
           }
           usage = incrementComponentPropertyCount(
             "question.drills",
@@ -164,7 +166,7 @@ export function createEmbeddedAnalyticsJsUsage(
         if (!usage.browser) {
           usage = assocIn(usage, ["browser"], {
             read_only: { true: 0, false: 0 },
-          });
+          } satisfies EmbeddedAnalyticsJsEvent["browser"]);
         }
         usage = incrementComponentPropertyCount(
           "browser.read_only",
