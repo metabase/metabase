@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -38,11 +39,14 @@ export function ModelCacheToggle({
   const modelId = model.id();
   const userCanPersist = model.canManageDB();
   const canPersistDatabase = database?.settings?.["persist-models-enabled"];
+  const supportsPersistence = database ? hasFeature(database, "persist-models") : false;
 
   if (!canPersistDatabase || !userCanPersist) {
-    const tooltipLabel = !canPersistDatabase
-      ? t`Model persistence is disabled for this database`
-      : t`You don't have permission to modify model persistence`;
+    const tooltipLabel = !userCanPersist
+      ? t`You don't have permission to modify model persistence`
+      : !supportsPersistence
+        ? t`Model persistence is not supported for this database`
+        : t`Model persistence is disabled for this database`;
 
     return (
       <Tooltip label={tooltipLabel}>

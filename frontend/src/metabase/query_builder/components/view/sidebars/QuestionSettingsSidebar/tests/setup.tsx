@@ -30,6 +30,7 @@ export interface SetupOpts {
   settings?: Settings;
   hasEnterprisePlugins?: boolean;
   dbHasModelPersistence?: boolean;
+  dbSupportsPersistence?: boolean;
 }
 
 export const setup = async ({
@@ -37,6 +38,7 @@ export const setup = async ({
   settings = createMockSettings(),
   hasEnterprisePlugins,
   dbHasModelPersistence = true,
+  dbSupportsPersistence = true,
 }: SetupOpts) => {
   const currentUser = createMockUser();
   setupCardEndpoints(card);
@@ -48,11 +50,16 @@ export const setup = async ({
     }),
   ]);
 
+  const databaseFeatures = dbSupportsPersistence
+    ? undefined // Use default features which include "persist-models"
+    : ["basic-aggregations"]; // Minimal features without "persist-models"
+
   setupDatabaseEndpoints(
     createSampleDatabase({
       settings: {
         "persist-models-enabled": dbHasModelPersistence,
       },
+      features: databaseFeatures,
     }),
   );
 
@@ -65,7 +72,14 @@ export const setup = async ({
       ),
     }),
     entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: [
+        createSampleDatabase({
+          settings: {
+            "persist-models-enabled": dbHasModelPersistence,
+          },
+          features: databaseFeatures,
+        }),
+      ],
       questions: [card],
     }),
   });
