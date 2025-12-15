@@ -563,7 +563,7 @@
                     (lib/aggregate $q (lib/count)))]
         (is (= [[1 1000]]
                (mt/formatted-rows
-                [parse-long int]
+                [(comp parse-long str) int]
                 (qp/process-query query))))))))
 
 (deftest ^:synchronized table-rows-sample-test
