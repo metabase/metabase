@@ -14,6 +14,8 @@ export type Workspace = {
   id: WorkspaceId;
   name: string;
   archived: boolean;
+  archived_at?: string | null;
+  status?: WorkspaceSetupStatus;
   collection_id?: CollectionId | null;
   database_id?: DatabaseId | null;
   created_at?: string;
@@ -52,6 +54,17 @@ export type WorkspaceTransformsResponse = {
   transforms: WorkspaceTransformItem[];
 };
 
+export type ExternalTransform = {
+  id: TransformId;
+  name: string;
+  source_type: Transform["source_type"];
+  checkout_disabled: string;
+};
+
+export type ExternalTransformsResponse = {
+  transforms: ExternalTransform[];
+};
+
 export type WorkspaceOutputTableRef = {
   transform_id: number | string | null;
   schema: string;
@@ -62,10 +75,12 @@ export type WorkspaceOutputTableRef = {
 export type WorkspaceTransform = Omit<Transform, "id"> & {
   id: string;
   ref_id: string;
+  workspace_id: number;
   stale: boolean;
   global_id: TransformId | null;
   target_stale: boolean;
   target_isolated: WorkspaceOutputTableRef;
+  last_run_at: string | null;
 };
 
 export type TransformUpstreamMapping = {
@@ -82,6 +97,16 @@ export type TransformDownstreamMapping = {
   transforms: DownstreamTransformInfo[];
 };
 
+export type WorkspaceCheckoutItem = {
+  id: string;
+  name: string;
+  workspace: WorkspaceItem;
+};
+
+export type WorkspaceCheckoutResponse = {
+  transforms: WorkspaceCheckoutItem[];
+};
+
 export type WorkspaceMergeResponse = {
   promoted: WorkspaceTransformItem[];
   errors?: (WorkspaceTransformItem & { error: string })[];
@@ -93,16 +118,6 @@ export type WorkspaceTransformMergeResponse = {
   // I have no idea atm how are we going to use this
   workspace: WorkspaceItem;
   archived_at: string | null;
-};
-
-export type WorkspaceUpdateContentsRequest = {
-  id: WorkspaceId;
-  add?: {
-    transforms?: TransformId[];
-  };
-  remove?: {
-    transforms?: TransformId[];
-  };
 };
 
 export type ValidateTableNameRequest = {
@@ -143,24 +158,25 @@ export type WorkspaceTransformRef = {
   transformId: string;
 };
 
-export type CreateWorkspaceTransformResponse = Transform;
+export type CreateWorkspaceTransformResponse = WorkspaceTransform;
 
 export type WorkspaceInputTable = {
-  id: number | null;
   db_id: DatabaseId;
   schema: string;
+  table_id: number | null;
   table: string;
 };
 
 export type WorkspaceOutputTableEntry = {
-  id: number | null;
-  db_id: DatabaseId;
+  transform_id: string;
   schema: string;
   table: string;
+  table_id: number | null;
 };
 
 export type WorkspaceOutputTable = {
-  external: WorkspaceOutputTableEntry;
+  db_id: DatabaseId;
+  global: WorkspaceOutputTableEntry;
   isolated: WorkspaceOutputTableEntry;
 };
 
@@ -269,4 +285,15 @@ export type WorkspaceRunResponse = {
   succeeded: TransformId[];
   failed: TransformId[];
   not_run: TransformId[];
+};
+
+export type WorkspaceTransformRunResponse = {
+  status: "succeeded" | "failed";
+  start_time?: string | null;
+  end_time?: string | null;
+  message?: string | null;
+  table: {
+    name: string;
+    schema?: string | null;
+  };
 };

@@ -9,8 +9,8 @@
   - H2 connection details use a single :db key with embedded credentials in the connection string"
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
@@ -47,9 +47,9 @@
 
 (defmethod isolation/init-workspace-database-isolation! :h2
   [database workspace]
-  (let [schema-name (driver.common/isolation-namespace-name workspace)
-        username    (driver.common/isolation-user-name workspace)
-        password    (driver.common/random-isolated-password)
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
+        username    (ws.u/isolation-user-name workspace)
+        password    (ws.u/random-isolated-password)
         ;; H2 embeds credentials in the :db connection string, so we need to build a new one
         original-db (get-in database [:details :db])
         new-db      (replace-credentials original-db username password)]
@@ -74,4 +74,16 @@
           (.addBatch ^java.sql.Statement stmt
                      ^String (format "DROP TABLE IF EXISTS \"%s\".\"%s\""
                                      schema-name table-name)))
+        (.executeBatch ^java.sql.Statement stmt)))))
+
+(defmethod isolation/destroy-workspace-isolation! :h2
+  [database workspace]
+  (let [schema-name (ws.u/isolation-namespace-name workspace)
+        username    (ws.u/isolation-user-name workspace)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
+                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                     (format "DROP USER IF EXISTS \"%s\"" username)]]
+          (.addBatch ^java.sql.Statement stmt ^String sql))
         (.executeBatch ^java.sql.Statement stmt)))))

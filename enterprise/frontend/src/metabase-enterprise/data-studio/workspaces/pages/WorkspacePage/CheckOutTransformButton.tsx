@@ -2,10 +2,7 @@ import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button } from "metabase/ui";
-import {
-  useLazyGetTransformQuery,
-  useUpdateWorkspaceContentsMutation,
-} from "metabase-enterprise/api";
+import { useCreateWorkspaceTransformMutation } from "metabase-enterprise/api";
 import {
   addSuggestedTransform,
   getMetabotSuggestedTransform,
@@ -29,8 +26,7 @@ export const CheckOutTransformButton = ({
   const suggestedTransform = useSelector((state) =>
     getMetabotSuggestedTransform(state, transform.id),
   );
-  const [getTransform] = useLazyGetTransformQuery();
-  const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
+  const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
 
   const {
     addOpenedTransform,
@@ -40,39 +36,32 @@ export const CheckOutTransformButton = ({
   } = useWorkspace();
 
   const handleClick = async () => {
-    const response = await updateWorkspaceContents({
+    const newTransform = await createWorkspaceTransform({
       id: workspaceId,
-      add: {
-        transforms: [transform.id],
-      },
-    });
+      global_id: transform.id,
+      name: transform.name,
+      description: transform.description,
+      source: transform.source,
+      target: transform.target,
+      tag_ids: transform.tag_ids,
+    }).unwrap();
 
-    const newTransform = response.data?.contents.transforms.find(
-      (t) => t.upstream_id === transform.id,
-    );
-    const newTransformId = newTransform?.id;
-
-    if (newTransformId != null) {
-      // TODO: remove when backend adds contents hydration to previous request
-      const newTransform = await getTransform(newTransformId).unwrap();
-
-      if (newTransform) {
-        if (suggestedTransform) {
-          dispatch(
-            addSuggestedTransform({
-              ...suggestedTransform,
-              id: newTransform.id,
-              active: true,
-            }),
-          );
-        }
-
-        removeEditedTransform(transform.id);
-        addOpenedTransform(newTransform);
-        removeOpenedTransform(transform.id);
-        setActiveTransform(newTransform);
-        onOpenTransform(newTransform.id);
+    if (newTransform) {
+      if (suggestedTransform) {
+        dispatch(
+          addSuggestedTransform({
+            ...suggestedTransform,
+            id: newTransform.id,
+            active: true,
+          }),
+        );
       }
+
+      removeEditedTransform(transform.id);
+      addOpenedTransform(newTransform);
+      removeOpenedTransform(transform.id);
+      setActiveTransform(newTransform);
+      onOpenTransform(newTransform.id);
     }
   };
 

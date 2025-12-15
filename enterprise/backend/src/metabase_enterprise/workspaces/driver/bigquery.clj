@@ -9,9 +9,9 @@
   - APIs: `bigquery.googleapis.com`, `iam.googleapis.com`, `cloudresourcemanager.googleapis.com`"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase-enterprise.workspaces.sync :as ws.sync]
+   [metabase-enterprise.workspaces.util :as ws.util]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -267,7 +267,7 @@
         iam-client   (database-details->iam-client details)
         project-id   (get-project-id details)
         main-sa-email (.getClientEmail (service-account-credentials details))
-        dataset-name (driver.common/isolation-namespace-name workspace)]
+        dataset-name (ws.util/isolation-namespace-name workspace)]
 
     (try
       ;; Create the workspace service account (or get existing)

@@ -22,6 +22,7 @@ export interface OpenTable {
   tableId: TableId;
   name: string;
   schema?: string | null;
+  transformId?: string;
 }
 
 export interface EditedTransform {
@@ -59,23 +60,27 @@ export interface WorkspaceContextValue {
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
   setActiveTab: (tab: WorkspaceTab | undefined) => void;
-  setActiveTransform: (transform: Transform | undefined) => void;
+  setActiveTransform: (
+    transform: Transform | WorkspaceTransform | undefined,
+  ) => void;
   setActiveTable: (table: OpenTable | undefined) => void;
   addOpenedTab: (tab: WorkspaceTab) => void;
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
   removeOpenedTransform: (transformId: number) => void;
-  editedTransforms: Map<number, EditedTransform>;
+  editedTransforms: Map<number | string, EditedTransform>;
   patchEditedTransform: (
     transformId: number,
     patch: Partial<EditedTransform>,
   ) => void;
   removeEditedTransform: (transformId: number) => void;
   runTransforms: Set<number>;
-  updateTransformState: (transform: Transform) => void;
+  updateTransformState: (transform: WorkspaceTransform) => void;
   hasUnsavedChanges: () => boolean;
-  hasTransformEdits: (originalTransform: Transform) => boolean;
+  hasTransformEdits: (
+    originalTransform: Transform | WorkspaceTransform,
+  ) => boolean;
   isWorkspaceExecuting: boolean;
   setIsWorkspaceExecuting: (value: boolean) => void;
   unsavedTransforms: Transform[];
@@ -89,11 +94,11 @@ const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
 
 interface WorkspaceState {
   openedTabs: WorkspaceTab[];
-  activeTransform?: Transform;
+  activeTransform?: Transform | WorkspaceTransform;
   activeEditedTransform?: Transform;
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
-  editedTransforms: Map<number, EditedTransform>;
+  editedTransforms: Map<number | string, EditedTransform>;
   runTransforms: Set<number>;
   unsavedTransforms: Transform[];
   nextUnsavedTransformIndex: number;
@@ -109,8 +114,8 @@ const createEmptyWorkspaceState = (): WorkspaceState => ({
   activeTransform: undefined,
   activeTable: undefined,
   activeTab: undefined,
-  editedTransforms: new Map(),
-  runTransforms: new Set(),
+  editedTransforms: new Map<number | string, EditedTransform>(),
+  runTransforms: new Set<number>(),
   unsavedTransforms: [],
   nextUnsavedTransformIndex: 0,
 });
@@ -341,6 +346,7 @@ export const WorkspaceProvider = ({
         const currentTransform =
           state.editedTransforms.get(transformId) ?? activeTransform;
         const newEditedTransform = {
+          ...activeTransform,
           name: patch.name ? patch.name : currentTransform.name,
           source: patch.source ? patch.source : currentTransform.source,
           target: patch.target ? patch.target : currentTransform.target,
@@ -397,7 +403,7 @@ export const WorkspaceProvider = ({
   );
 
   const updateTransformState = useCallback(
-    (transform: Transform) => {
+    (transform: WorkspaceTransform) => {
       updateWorkspaceState((state) => {
         const newOpenedTabs = state.openedTabs.map((tab) => {
           if (tab.type === "transform" && tab.transform.id === transform.id) {
