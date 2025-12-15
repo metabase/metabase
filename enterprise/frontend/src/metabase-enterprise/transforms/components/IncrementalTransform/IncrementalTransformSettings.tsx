@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { FormSelect, FormSwitch } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Alert, Stack } from "metabase/ui";
+import { Alert, Box, Stack, Text } from "metabase/ui";
 import { useLazyCheckQueryComplexityQuery } from "metabase-enterprise/api";
 import {
   KeysetColumnSelect,
@@ -120,29 +120,36 @@ export const IncrementalTransformSettings = ({
 
   return (
     <>
-      <FormSwitch
-        disabled={isMultiTablePythonTransform}
-        name="incremental"
-        label={
-          isMultiTablePythonTransform
-            ? t`Incremental transforms are only supported for single data source transforms.`
-            : t`Incremental?`
-        }
-        onChange={async (e) => {
-          if (
-            e.target.checked &&
-            transformType === "native" &&
-            !hasCheckpointTag &&
-            query
-          ) {
-            const complexity = await checkQueryComplexity(
-              Lib.rawNativeQuery(query),
-              true,
-            ).unwrap();
-            setShowComplexityWarning(complexity?.is_simple === false);
+      <Box>
+        <Text fw="bold">{t`Incremental transformation`}</Text>
+        <Text size="sm" c="text-secondary" mb="sm">
+          {t`If you don’t need to reprocess everything, incremental transforms can be faster.`}
+        </Text>
+        <FormSwitch
+          disabled={isMultiTablePythonTransform}
+          name="incremental"
+          size="sm"
+          label={
+            isMultiTablePythonTransform
+              ? t`Incremental transforms are only supported for single data source transforms.`
+              : t`Only process new and changed data`
           }
-        }}
-      />
+          onChange={async (e) => {
+            if (
+              e.target.checked &&
+              transformType === "native" &&
+              !hasCheckpointTag &&
+              query
+            ) {
+              const complexity = await checkQueryComplexity(
+                Lib.rawNativeQuery(query),
+                true,
+              ).unwrap();
+              setShowComplexityWarning(complexity?.is_simple === false);
+            }
+          }}
+        />
+      </Box>
       {values?.incremental && (
         <>
           {showComplexityWarning && (
@@ -211,7 +218,10 @@ function SourceStrategyFields({
   }
 
   return (
-    <>
+    <Stack
+      gap="lg"
+      style={{ display: "grid", gridTemplateColumns: "max-content" }}
+    >
       {SOURCE_STRATEGY_OPTIONS.length > 1 && (
         <FormSelect
           name="sourceStrategy"
@@ -225,32 +235,47 @@ function SourceStrategyFields({
           {type === "query" && query && (
             <KeysetColumnSelect
               name="checkpointFilterUniqueKey"
-              label={t`Source Filter Field`}
-              placeholder={t`Select a field to filter on`}
-              description={t`Which field from the source to use in the incremental filter`}
+              label={t`Field to check for new values`}
+              placeholder={t`Pick a field`}
+              description={
+                <Text
+                  c="text-secondary"
+                  size="sm"
+                >{t`Pick the field that we should scan to determine which records are new or changed`}</Text>
+              }
               query={query}
             />
           )}
           {type === "native" && query && (
             <NativeQueryColumnSelect
               name="checkpointFilter"
-              label={t`Source Filter Field`}
-              placeholder={t`e.g. id, created_at`}
-              description={t`Column to use in the incremental filter`}
+              label={t`Column to check for new values`}
+              placeholder={t`Pick a column`}
+              description={
+                <Text
+                  c="text-secondary"
+                  size="sm"
+                >{t`Pick the column that we should scan to determine which records are new or changed`}</Text>
+              }
               query={query}
             />
           )}
           {type === "python" && "source-tables" in source && (
             <PythonKeysetColumnSelect
               name="checkpointFilterUniqueKey"
-              label={t`Source Filter Field`}
-              placeholder={t`Select a field to filter on`}
-              description={t`Which field from the source to use in the incremental filter`}
+              label={t`Field to check for new values`}
+              placeholder={t`Pick a field`}
+              description={
+                <Text
+                  c="text-secondary"
+                  size="sm"
+                >{t`Pick the field that we should scan to determine which records are new or changed`}</Text>
+              }
               sourceTables={source["source-tables"]}
             />
           )}
         </>
       )}
-    </>
+    </Stack>
   );
 }

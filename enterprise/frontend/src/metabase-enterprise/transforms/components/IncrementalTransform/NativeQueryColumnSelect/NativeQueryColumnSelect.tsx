@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useLatest } from "react-use";
 
 import { FormSelect, FormTextInput } from "metabase/forms";
@@ -9,7 +9,7 @@ import * as Lib from "metabase-lib";
 type NativeQueryColumnSelectProps = {
   name: string;
   label: string;
-  description: string;
+  description: ReactNode;
   placeholder: string;
   query: Lib.Query;
 };
