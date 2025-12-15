@@ -148,9 +148,9 @@
                      int str str str str 2.0 2.0 str]
                     (qp/process-query query))))))))))
 
-(deftest ^:parallel domain-extraction-test
-  (testing "Domain extraction should work correctly (#63822, DEV-1190)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex :left-join)
+(deftest ^:parallel email-extractions-test
+  (testing "`:domain` and `:host` extractions from emails should work correctly"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex/lookaheads-and-lookbehinds)
       (let [mp           (mt/metadata-provider)
             people       (lib.metadata/table mp (mt/id :people))
             people-id    (lib.metadata/field mp (mt/id :people :id))
@@ -169,3 +169,20 @@
         (is (= [[1 "borer-hudson@yahoo.com"        "yahoo" "yahoo.com"]
                 [2 "williamson-domenica@yahoo.com" "yahoo" "yahoo.com"]]
                (mt/formatted-rows [int str str str] (qp/process-query query))))))))
+
+(deftest ^:parallel url-extractions-test
+  (testing "`:domain`, `:subdomain`, `:host`, and `:path` extractions from URLs should work correctly"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex/lookaheads-and-lookbehinds)
+      (let [mp          (mt/metadata-provider)
+            people      (lib.metadata/table mp (mt/id :people))
+            people-id   (lib.metadata/field mp (mt/id :people :id))
+            query       (-> (lib/query mp people)
+                            (lib/order-by people-id)
+                            (lib/limit 1)
+                            (lib/with-fields [people-id])
+                            (lib/expression "Domain"    [:domain    {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
+                            (lib/expression "Subdomain" [:subdomain {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
+                            (lib/expression "Host"      [:host      {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
+                            (lib/expression "Path"      [:path      {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"]))]
+        (is (= [[1 "bbc" "x" "bbc.co.uk" "/some/path"]]
+               (mt/formatted-rows [int str str str str] (qp/process-query query))))))))
