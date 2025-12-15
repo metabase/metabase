@@ -57,7 +57,11 @@ export async function aiStreamingQuery(
 
     if (!response.ok) {
       const errorMessage = await response.text();
-      throw new Error(errorMessage || `Response status: ${response.status}`);
+      const error = new Error(
+        errorMessage || `Response status: ${response.status}`,
+      );
+      (error as Error & { status: number }).status = response.status;
+      throw error;
     }
 
     if (!response.body) {

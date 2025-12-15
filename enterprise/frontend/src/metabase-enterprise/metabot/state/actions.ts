@@ -72,17 +72,13 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       errorMessage: false as const,
       shouldRetry: false,
     }))
-    .with(
-      { message: P.string.startsWith("Response status: 5") },
-      { status: 500 },
-      () => ({
-        errorMessage: {
-          type: "alert" as const,
-          message: METABOT_ERR_MSG.agentOffline,
-        },
-        shouldRetry: true,
-      }),
-    )
+    .with({ status: P.number.between(500, 599) }, () => ({
+      errorMessage: {
+        type: "alert" as const,
+        message: METABOT_ERR_MSG.agentOffline,
+      },
+      shouldRetry: true,
+    }))
     .with({ message: P.string.includes("use case is not enabled") }, () => ({
       errorMessage: {
         type: "message" as const,
