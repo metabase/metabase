@@ -47,7 +47,7 @@ export const useLogVersionInfo = () => {
       // eslint-disable-next-line no-console
       console.log(
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-        `Using Metabase Embedding SDK package version ${sdkPackageVersion}, Metabase Embedding SDK bundle version ${sdkBundleVersion}`,
+        `Using Metabase modular embedding SDK package version ${sdkPackageVersion}, Metabase Embedding SDK bundle version ${sdkBundleVersion}`,
       );
     }
   }, [allowConsoleLog, sdkPackageVersion, sdkBundleVersion]);

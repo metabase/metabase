@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
 
-import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
+import { SectionLayout } from "../../components/SectionLayout";
 
 type DataSectionLayoutProps = {
   children?: ReactNode;
@@ -12,9 +12,5 @@ type DataSectionLayoutProps = {
 export function DataSectionLayout({ children }: DataSectionLayoutProps) {
   usePageTitle(t`Data`);
 
-  return (
-    <SectionLayout title={<SectionTitle title={t`Data`} />}>
-      {children}
-    </SectionLayout>
-  );
+  return <SectionLayout>{children}</SectionLayout>;
 }

@@ -44,6 +44,7 @@ import {
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
+  PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -182,6 +183,10 @@ export const getRoutes = (store) => {
 
           <Route path="collection/users" component={IsAdmin}>
             <IndexRoute component={UserCollectionList} />
+          </Route>
+
+          <Route path="collection/tenant-specific" component={IsAdmin}>
+            <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
           </Route>
 
           <Route path="collection/:slug" component={CollectionLanding}>

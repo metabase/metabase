@@ -14,7 +14,7 @@ This page covers how to upgrade to a new Metabase release.
 
 ## Upgrading Metabase Cloud
 
-If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the Embedded analytics SDK](#instances-using-the-embedded-analytics-sdk-on-metabase-cloud-must-request-an-upgrade)).
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the modular embedding SDK](#instances-using-the-modular-embedding-sdk-on-metabase-cloud-must-request-an-upgrade)).
 
 How soon we upgrade you depends on the type of release:
 
@@ -23,13 +23,13 @@ How soon we upgrade you depends on the type of release:
 
 Cloud customers can request an early upgrade by emailing support at help@metabase.com. Include the URL of the Metabase you want us to upgrade.
 
-### Instances using the Embedded analytics SDK on Metabase Cloud must request an upgrade
+### Instances using the modular embedding SDK on Metabase Cloud must request an upgrade
 
-If you're using the [Embedded analytics SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading.
+If you're using the [modular embedding SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading.
 
 To upgrade your Metabase, you'll need to request an upgrade by [contacting support](https://www.metabase.com/help-premium).
 
-See our [upgrade guide for the Embedded analytics SDK](../embedding/sdk/upgrade.md).
+See our [upgrade guide for the modular embedding SDK](../embedding/sdk/upgrade.md).
 
 ## Upgrading a self-hosted Metabase
 

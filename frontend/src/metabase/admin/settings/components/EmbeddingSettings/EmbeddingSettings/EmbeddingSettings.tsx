@@ -25,13 +25,14 @@ import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSetti
 
 function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
   const isEE = isEEBuild();
+  const isUsingTenants = useSetting("use-tenants");
 
   return (
     <SettingsPageWrapper title={t`Embedding settings`}>
       {children}
 
       <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems()}
+        items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
       />
 
       {isEE && <UpsellDevInstances location="embedding-page" />}
@@ -54,8 +55,8 @@ function EmbeddingSettingsEE() {
       </Text>
 
       <EmbeddingSettingsCard
-        title={t`Enable Embedded Analytics JS`}
-        description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
+        title={t`Enable modular embedding`}
+        description={t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming.`}
         settingKey="enable-embedding-simple"
         links={[
           {

@@ -296,6 +296,7 @@
    metabase.lib.convert/->legacy-MBQL                 {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
    metabase.lib.core/->legacy-MBQL                    {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
+   metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
    toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
@@ -577,11 +578,11 @@
    metabase.pulse.models.pulse-test/with-dashboard-subscription-in-collection!                                               hooks.common/with-four-bindings
    metabase.pulse.models.pulse-test/with-pulse-in-collection!                                                                hooks.common/with-four-bindings
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
-   metabase.queries.api.card-test/with-card-param-values-fixtures                                                            hooks.common/let-one-with-optional-value
-   metabase.queries.api.card-test/with-temp-native-card                                                                      hooks.common/with-two-bindings
-   metabase.queries.api.card-test/with-temp-native-card-with-params                                                          hooks.common/with-two-bindings
-   metabase.query-processor.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor.expressions-test/calculate-bird-scarcity
-   metabase.query-processor.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
+   metabase.queries-rest.api.card-test/with-card-param-values-fixtures                                                       hooks.common/let-one-with-optional-value
+   metabase.queries-rest.api.card-test/with-temp-native-card                                                                 hooks.common/with-two-bindings
+   metabase.queries-rest.api.card-test/with-temp-native-card-with-params                                                     hooks.common/with-two-bindings
+   metabase.query-processor.expressions-test/calculate-bird-scarcity                                                         hooks.metabase.query-processor.expressions-test/calculate-bird-scarcity
+   metabase.query-processor.filter-test/count-with-filter-clause                                                             hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache!                                                           hooks.common/with-two-bindings
    metabase.request.core/with-current-request                                                                                hooks.common/with-used-first-arg
    metabase.request.core/with-current-user                                                                                   hooks.common/with-used-first-arg
@@ -680,7 +681,7 @@
    metabase.parameters.chain-filter-test/chain-filter-search                                    macros.metabase.parameters.chain-filter-test/chain-filter
    metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-card-referencing!
    metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
-   metabase.queries.api.card-test/with-ordered-items                                            macros.metabase.queries.api.card-test/with-ordered-items
+   metabase.queries-rest.api.card-test/with-ordered-items                                       macros.metabase.queries-rest.api.card-test/with-ordered-items
    metabase.query-analysis.models.query-analysis-test/with-test-setup                           macros.metabase.query-analysis.models.query-analysis-test/with-test-setup
    metabase.query-analysis.task.test-setup/with-test-setup!                                     macros.metabase.query-analysis.task.test-setup/with-test-setup!
    metabase.query-processor.streaming/streaming-response                                        macros.metabase.query-processor.streaming/streaming-response
@@ -956,4 +957,4 @@
    {:discouraged-java-method
     {java.lang.System {exit
                        {:level :error
-                        :message "Don't use System/exit directly. Instead throw an ex-info with {:babashka/exit <exit-code>} (and optionally :mage/error) let the mage runner handle exiting the process"}}}}}}}
+                        :message "Don't use System/exit directly. Instead use mage.util/exit and let mage handle exiting the process"}}}}}}}
