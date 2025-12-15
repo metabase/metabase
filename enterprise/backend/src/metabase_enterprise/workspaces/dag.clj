@@ -137,15 +137,14 @@
               continue (remove members parents)]
           (if (not= parents continue)
             ;; At least one parent is in the enclosed subgraph, so this entire path is as well.
-            (recur (into members path)
-                   ;; track each member of path as an ancestor of its predecessor
-                   (reduce
-                    (fn [deps [child parent]]
-                      (update deps child (fnil conj #{}) parent))
-                    deps
-                    (partition 2 1 path))
-                   ;; Since everything else along this path has already been added, start a path from other parents.
-                   (into paths (for [c continue] [c])))
+            (let [add-dep    (fn [deps [child parent]]
+                               (update deps child (fnil conj #{}) parent))
+                  ;; Break up the path into adjacent child-parent pairs.
+                  pairs      (concat (partition 2 1 path)
+                                     (map (fn [end] [(peek path) end]) (filter members parents)))
+                  ;; Since everything along this path will now be added to deps already, we can truncate the paths.
+                  next-paths (into paths (for [c continue] [(peek path) c]))]
+              (recur (into members path) (reduce add-dep deps pairs) next-paths))
             ;; We have not reached another member of the enclosed subgraph yet, so keep extending.
             (recur members deps (into paths (for [c continue] (conj path c))))))))))
 
