@@ -1619,6 +1619,7 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: mysql,mariadb
+            failOnError: false
             sql: ALTER TABLE collection DROP FOREIGN KEY fk_collection_workspace_id
         - dropIndex:
             tableName: collection
