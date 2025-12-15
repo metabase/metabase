@@ -237,13 +237,13 @@
                                                                   (= isolated-table (:isolated_table existing)))
                                                          (:isolated_table_id existing))
                                                        (->table-id isolated-schema isolated-table))]
-                                (constantly {:db_id             db_id
-                                             :global_schema     schema
-                                             :global_table      table
-                                             :global_table_id   global-id
-                                             :isolated_schema   isolated-schema
-                                             :isolated_table    isolated-table
-                                             :isolated_table_id isolated-id})))))
+                                {:db_id             db_id
+                                 :global_schema     schema
+                                 :global_table      table
+                                 :global_table_id   global-id
+                                 :isolated_schema   isolated-schema
+                                 :isolated_table    isolated-table
+                                 :isolated_table_id isolated-id}))))
 
 (defn- build-output-lookup
   "Build a lookup map for workspace outputs: [db_id global_schema global_table] -> output_id.
