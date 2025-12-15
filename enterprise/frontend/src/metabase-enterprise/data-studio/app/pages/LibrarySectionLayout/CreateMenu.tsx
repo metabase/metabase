@@ -5,13 +5,11 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-  PLUGIN_SNIPPET_FOLDERS,
-} from "metabase/plugins";
+import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
+  getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
@@ -27,16 +25,14 @@ export const CreateMenu = ({
   const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
   const closeModal = () => setModal(undefined);
 
-  const canAccessDataModel = useSelector(
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
-  );
+  const isAdmin = useSelector(getUserIsAdmin);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
 
   const canCreateMetric = hasDataAccess && metricCollectionId;
 
   const menuItems = [
-    canAccessDataModel && (
+    isAdmin && (
       <Menu.Item
         key="publish-table"
         leftSection={<FixedSizeIcon name="publish" />}
