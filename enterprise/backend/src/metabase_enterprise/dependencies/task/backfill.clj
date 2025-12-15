@@ -15,6 +15,7 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -184,5 +185,7 @@
 
 (defmethod task/init! ::DependencyBackfill [_]
   (if (pos? (deps.settings/dependency-backfill-batch-size))
-    (schedule-next-run! (rand-int (* (deps.settings/dependency-backfill-variance-minutes) 60)))
+    (schedule-next-run! (if config/is-test?
+                          0
+                          (rand-int (* (deps.settings/dependency-backfill-variance-minutes) 60))))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))

@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -48,8 +49,8 @@
   DependencyEntityCheck [ctx]
   (log/info "Executing DependencyEntityCheck job...")
   (check-entities!)
-  (let [delay-seconds    (* (deps.settings/dependency-entity-check-delay-minutes) 1 #_60)
-        variance-seconds (* (deps.settings/dependency-entity-check-variance-minutes) 1 #_60)
+  (let [delay-seconds    (* (deps.settings/dependency-entity-check-delay-minutes) 60)
+        variance-seconds (* (deps.settings/dependency-entity-check-variance-minutes) 60)
         delay-in-seconds (max 0 (+ (- delay-seconds variance-seconds) (rand-int (* 2 variance-seconds))))]
     (schedule-next-run! delay-in-seconds (.getScheduler ctx))))
 
@@ -74,5 +75,7 @@
 
 (defmethod task/init! ::DependencyEntityCheck [_]
   (if (pos? (deps.settings/dependency-entity-check-batch-size))
-    (schedule-next-run! (rand-int (* (deps.settings/dependency-entity-check-variance-minutes) 1 #_60)))
+    (schedule-next-run! (if config/is-test?
+                          0
+                          (rand-int (* (deps.settings/dependency-entity-check-variance-minutes) 60))))
     (log/info "Not starting dependency entity check job because the batch size is not positive")))
