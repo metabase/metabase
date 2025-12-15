@@ -260,14 +260,7 @@ export function provideDependencyNodeTags(
 
 export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
   return [
-    listTag("card"),
-    listTag("table"),
-    listTag("transform"),
-    listTag("snippet"),
-    listTag("dashboard"),
-    listTag("document"),
-    listTag("sandbox"),
-    listTag("segment"),
+    ...provideDependencyGraphStatusTags(),
     ...nodes.flatMap(provideDependencyNodeTags),
   ];
 }
@@ -276,6 +269,19 @@ export function provideDependencyGraphTags(
   graph: DependencyGraph,
 ): TagDescription<EnterpriseTagType>[] {
   return provideDependencyNodeListTags(graph.nodes);
+}
+
+export function provideDependencyGraphStatusTags(): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("card"),
+    listTag("table"),
+    listTag("transform"),
+    listTag("snippet"),
+    listTag("dashboard"),
+    listTag("document"),
+    listTag("sandbox"),
+    listTag("segment"),
+  ];
 }
 
 export function provideSupportAccessGrantTags(

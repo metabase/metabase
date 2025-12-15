@@ -267,3 +267,7 @@ export type ListUnreferencedGraphNodesRequest = {
   card_types?: CardType[];
   query?: string;
 };
+
+export type GetDependencyGraphStatusResponse = {
+  dependencies_analyzed: boolean;
+};

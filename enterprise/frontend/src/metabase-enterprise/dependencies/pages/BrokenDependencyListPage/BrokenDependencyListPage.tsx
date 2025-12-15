@@ -2,9 +2,13 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { Flex, Stack } from "metabase/ui";
-import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
+import { Center, Flex, Stack } from "metabase/ui";
+import {
+  useGetDependencyGraphStatusQuery,
+  useListBrokenGraphNodesQuery,
+} from "metabase-enterprise/api";
 import type {
   DependencyEntry,
   DependencyGroupType,
@@ -53,10 +57,17 @@ export function BrokenDependencyListPage() {
       : AVAILABLE_GROUP_TYPES;
 
   const {
+    data: status,
+    isLoading: isLoadingStatus,
+    isFetching: isFetchingStatus,
+    error: statusError,
+  } = useGetDependencyGraphStatusQuery();
+
+  const {
     data: nodes = EMPTY_NODES,
-    isFetching,
-    isLoading,
-    error,
+    isFetching: isFetchingList,
+    isLoading: isLoadingList,
+    error: listError,
   } = useListBrokenGraphNodesQuery({
     query: searchQuery,
     types: getDependencyTypes(groupTypes),
@@ -68,6 +79,10 @@ export function BrokenDependencyListPage() {
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : null;
   }, [nodes, selectedEntry]);
+
+  const isLoading = isLoadingStatus || isLoadingList;
+  const isFetching = isFetchingStatus || isFetchingList;
+  const error = listError ?? statusError;
 
   const handleClosePanel = useCallback(() => {
     setSelectedEntry(null);
@@ -81,22 +96,23 @@ export function BrokenDependencyListPage() {
           searchValue={searchValue}
           filterOptions={filterOptions}
           availableGroupTypes={AVAILABLE_GROUP_TYPES}
-          isFetching={isFetching}
-          isLoading={isLoading}
+          hasLoader={isFetching && !isLoading}
           onSearchValueChange={setSearchValue}
           onFilterOptionsChange={setFilterOptions}
         />
-        {isLoading || error != null || nodes.length === 0 ? (
-          <DependencyListEmptyState
-            label={t`No broken entities found`}
-            isLoading={isLoading}
-            error={error}
-          />
+        {isLoading || error != null ? (
+          <Center flex={1}>
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+          </Center>
+        ) : nodes.length === 0 ? (
+          <Center flex={1}>
+            <DependencyListEmptyState label={t`No broken entities found`} />
+          </Center>
         ) : (
           <DependencyList
             nodes={nodes}
+            withDependentsCountColumn={status?.dependencies_analyzed}
             withErrorsColumn
-            withDependentsCountColumn
             onSelect={setSelectedEntry}
           />
         )}

@@ -6,6 +6,7 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
+  GetDependencyGraphStatusResponse,
   ListBrokenGraphNodesRequest,
   ListNodeDependentsRequest,
   ListUnreferencedGraphNodesRequest,
@@ -13,6 +14,7 @@ import type {
 
 import { EnterpriseApi } from "./api";
 import {
+  provideDependencyGraphStatusTags,
   provideDependencyGraphTags,
   provideDependencyNodeListTags,
 } from "./tags";
@@ -29,6 +31,16 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         params,
       }),
       providesTags: (graph) => (graph ? provideDependencyGraphTags(graph) : []),
+    }),
+    getDependencyGraphStatus: builder.query<
+      GetDependencyGraphStatusResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/status",
+      }),
+      providesTags: () => provideDependencyGraphStatusTags(),
     }),
     listNodeDependents: builder.query<
       DependencyNode[],
@@ -101,6 +113,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetDependencyGraphQuery,
+  useGetDependencyGraphStatusQuery,
   useListNodeDependentsQuery,
   useListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,

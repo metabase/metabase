@@ -12,8 +12,7 @@ type DependencyListBarProps = {
   searchValue: string;
   filterOptions: DependencyFilterOptions;
   availableGroupTypes: DependencyGroupType[];
-  isFetching: boolean;
-  isLoading: boolean;
+  hasLoader: boolean;
   onSearchValueChange: (searchValue: string) => void;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
@@ -22,8 +21,7 @@ export const DependencyListBar = memo(function DependencyListBar({
   searchValue,
   filterOptions,
   availableGroupTypes,
-  isFetching,
-  isLoading,
+  hasLoader,
   onSearchValueChange,
   onFilterOptionsChange,
 }: DependencyListBarProps) {
@@ -38,9 +36,7 @@ export const DependencyListBar = memo(function DependencyListBar({
         placeholder={t`Search…`}
         flex={1}
         leftSection={<Icon name="search" />}
-        rightSection={
-          isFetching && !isLoading ? <Loader size="sm" /> : undefined
-        }
+        rightSection={hasLoader ? <Loader size="sm" /> : undefined}
         onChange={handleSearchChange}
       />
       <FilterOptionsPicker
