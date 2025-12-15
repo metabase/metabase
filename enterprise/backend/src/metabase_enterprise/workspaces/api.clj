@@ -178,18 +178,17 @@
                          (table-ids-fallbacks :global_schema :global_table :global_table_id outputs)
                          (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id outputs))]
     {:inputs  inputs
-     ;; Yes, neither _table_id field is in the table yet - but they will (sometimes) be when the above issue is fixed.
-     :outputs (for [{:keys [ref_id db_id schema table global_table_id isolated_table_id]} outputs
-                    :let [isolated-name (ws.u/isolated-table-name schema table)]]
+     :outputs (for [{:keys [ref_id db_id global_schema global_table global_table_id
+                            isolated_schema isolated_table isolated_table_id]} outputs]
                 {:db_id    db_id
                  :global   {:transform_id nil
-                            :schema       schema
-                            :table        table
-                            :table_id     (or global_table_id (get fallback-map [db_id schema table]))}
+                            :schema       global_schema
+                            :table        global_table
+                            :table_id     (or global_table_id (get fallback-map [db_id global_schema global_table]))}
                  :isolated {:transform_id ref_id
-                            :schema       isolated-schema
-                            :table        isolated-name
-                            :table_id     (or isolated_table_id (get fallback-map [db_id isolated-schema isolated-name]))}})}))
+                            :schema       isolated_schema
+                            :table        isolated_table
+                            :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})}))
 
 (api.macros/defendpoint :get "/:id" :- Workspace
   "Get a single workspace by ID"
