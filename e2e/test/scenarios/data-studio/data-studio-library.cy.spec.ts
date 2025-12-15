@@ -117,11 +117,22 @@ describe("scenarios > data studio > library", () => {
       H.entityPickerModalItem(3, "Orders").click();
       H.entityPickerModal().button("Publish").click();
 
-      cy.log("Verify the newly published table shows up in the Library");
+      cy.log("Verify the table is published");
+      H.DataStudio.Tables.overviewPage().should("exist");
+      H.DataStudio.Tables.header().findByDisplayValue("Orders").should("exist");
+      H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();
       H.DataStudio.Library.tableItem("Orders").should("exist");
 
-      cy.log("Verify tables are disabled if they've already been published");
-      // TODO
+      cy.log(
+        "Verify tables in the entity picker are disabled if already published",
+      );
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Publish a table").click();
+      H.entityPickerModalItem(3, "Orders").should("have.attr", "data-disabled");
+      H.entityPickerModalItem(3, "People").should(
+        "not.have.attr",
+        "data-disabled",
+      );
     });
   });
 });
