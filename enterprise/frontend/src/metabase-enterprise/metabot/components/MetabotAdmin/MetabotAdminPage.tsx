@@ -10,7 +10,10 @@ import {
   AdminNavItem,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -47,7 +50,6 @@ import type {
   MetabotUseCase,
 } from "metabase-types/api";
 
-import S from "./MetabotAdmin.module.css";
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
@@ -91,54 +93,47 @@ export function MetabotAdminPage() {
           description={description}
         >
           {!isEmbedMetabot && (
-            <Box className={S.SectionCard}>
-              <MetabotUseCaseSection
-                metabot={metabot}
-                useCase={METABOT_USE_CASES.NLQ}
-                title={t`Natural Language Querying`}
-                description={t`Allow users to query data using natural language`}
-                switchLabel={t`Enable NLQ`}
-              />
-            </Box>
+            <>
+              <SettingsSection>
+                <MetabotUseCaseSection
+                  metabot={metabot}
+                  useCase={METABOT_USE_CASES.NLQ}
+                  title={t`Natural Language Querying`}
+                  description={t`Allow users to query data using natural language`}
+                  switchLabel={t`Enable NLQ`}
+                />
+              </SettingsSection>
+              <SettingsSection>
+                <MetabotUseCaseSection
+                  metabot={metabot}
+                  useCase={METABOT_USE_CASES.SQL}
+                  title={t`SQL Generation`}
+                  description={t`Generate SQL queries from natural language inputs`}
+                  switchLabel={t`Enable SQL generation`}
+                />
+              </SettingsSection>
+              <SettingsSection>
+                <MetabotUseCaseSection
+                  metabot={metabot}
+                  useCase={METABOT_USE_CASES.OMNIBOT}
+                  title={t`Omnibot`}
+                  description={t`Enable the multi-modal AI assistant`}
+                  switchLabel={t`Enable Omnibot`}
+                />
+              </SettingsSection>
+              <SettingsSection>
+                <MetabotUseCaseSection
+                  metabot={metabot}
+                  useCase={METABOT_USE_CASES.TRANSFORMS}
+                  title={t`Transforms`}
+                  description={t`Allow Metabot to write and edit transforms`}
+                  switchLabel={t`Enable Transforms`}
+                />
+              </SettingsSection>
+            </>
           )}
 
-          {!isEmbedMetabot && (
-            <Box className={S.SectionCard}>
-              <MetabotUseCaseSection
-                metabot={metabot}
-                useCase={METABOT_USE_CASES.SQL}
-                title={t`SQL Generation`}
-                description={t`Generate SQL queries from natural language inputs`}
-                switchLabel={t`Enable SQL generation`}
-              />
-            </Box>
-          )}
-
-          {!isEmbedMetabot && (
-            <Box className={S.SectionCard}>
-              <MetabotUseCaseSection
-                metabot={metabot}
-                useCase={METABOT_USE_CASES.OMNIBOT}
-                title={t`Omnibot`}
-                description={t`Enable the multi-modal AI assistant`}
-                switchLabel={t`Enable Omnibot`}
-              />
-            </Box>
-          )}
-
-          {!isEmbedMetabot && (
-            <Box className={S.SectionCard}>
-              <MetabotUseCaseSection
-                metabot={metabot}
-                useCase={METABOT_USE_CASES.TRANSFORMS}
-                title={t`Transforms`}
-                description={t`Allow Metabot to write and edit transforms`}
-                switchLabel={t`Enable Transforms`}
-              />
-            </Box>
-          )}
-
-          <Box className={S.SectionCard}>
+          <SettingsSection>
             <Stack gap="lg">
               <Stack gap="sm">
                 <Text fw={600} c="text-dark" fz="h4">
@@ -148,19 +143,14 @@ export function MetabotAdminPage() {
                   {t`Fine-tune query behavior and data sources`}
                 </Text>
               </Stack>
-              {!isEmbedMetabot && (
-                <MetabotCollectionConfigurationPane
-                  metabot={metabot}
-                  title={t`Collection for NLQ`}
-                />
-              )}
-              {isEmbedMetabot && (
-                <MetabotCollectionConfigurationPane metabot={metabot} />
-              )}
+              <MetabotCollectionConfigurationPane
+                metabot={metabot}
+                title={isEmbedMetabot ? undefined : t`Collection for NLQ`}
+              />
               <MetabotVerifiedContentConfigurationPane metabot={metabot} />
               <MetabotPromptSuggestionPane metabot={metabot} />
             </Stack>
-          </Box>
+          </SettingsSection>
         </SettingsPageWrapper>
       </ErrorBoundary>
     </AdminSettingsLayout>
