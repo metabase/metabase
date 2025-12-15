@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
 
-import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
+import { SectionLayout } from "../../components/SectionLayout";
 
 type WorkspacesSectionLayoutProps = {
   location: Location;
@@ -15,7 +15,7 @@ export function WorkspacesSectionLayout({
   usePageTitle(t`Workspaces`);
 
   return (
-    <SectionLayout title={<SectionTitle title={t`Workspaces`} />}>
+    <SectionLayout>
       {children}
     </SectionLayout>
   );

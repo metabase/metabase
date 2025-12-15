@@ -8,6 +8,7 @@ import {
   METABASE_INSTANCE_URL,
   activateToken,
   restore,
+  updateSetting,
 } from "e2e/support/helpers";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
@@ -32,9 +33,16 @@ export const getSignedJwtForUser = async ({
 
 export const mockAuthProviderAndJwtSignIn = (
   user = USERS.admin,
-  { jwt }: { jwt?: string } = {},
+  {
+    jwt,
+    waitForPromise,
+  }: { jwt?: string; waitForPromise?: () => Promise<any> } = {},
 ) => {
   cy.intercept("GET", `${AUTH_PROVIDER_URL}**`, async (req) => {
+    const p = waitForPromise ? waitForPromise() : Promise.resolve();
+
+    await p;
+
     try {
       const url = new URL(req.url);
       const responseParam = url.searchParams.get("response");
@@ -75,6 +83,21 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   cy.request("PUT", "/api/setting", {
     "enable-embedding-sdk": true,
   });
+}
+
+export function signInAsAdminAndSetupGuestEmbedding({
+  token,
+}: {
+  token: "starter" | "pro-cloud" | "bleeding-edge";
+}) {
+  Cypress.config("baseUrl", METABASE_INSTANCE_URL);
+
+  restore();
+
+  cy.signInAsAdmin();
+
+  activateToken(token);
+  updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
 }
 
 const MOCK_SAML_IDP_URI = "https://example.test/saml";

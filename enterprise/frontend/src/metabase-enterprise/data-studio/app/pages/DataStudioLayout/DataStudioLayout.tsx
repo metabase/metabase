@@ -1,16 +1,12 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import dayjs from "dayjs";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -18,84 +14,60 @@ import {
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
-  ActionIcon,
   Box,
+  Center,
   FixedSizeIcon,
   Flex,
-  Group,
-  Icon,
   type IconName,
-  Menu,
-  Skeleton,
+  Loader,
   Stack,
   Text,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import {
-  useArchiveWorkspaceMutation,
-  useCreateWorkspaceMutation,
-  useDeleteWorkspaceMutation,
-  useGetWorkspacesQuery,
-  useUnarchiveWorkspaceMutation,
-} from "metabase-enterprise/api";
-import { DataStudioContext } from "metabase-enterprise/data-studio/common/contexts/DataStudioContext";
-import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
-import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
+import { WorkspacesSection } from "./WorkspaceSection";
+import { getCurrentTab } from "./utils";
 
 type DataStudioLayoutProps = {
   children?: ReactNode;
 };
 
 export function DataStudioLayout({ children }: DataStudioLayoutProps) {
-  const [isSidebarOpened, setIsSidebarOpened] = useState(false);
-  const [isSidebarAvailable, setIsSidebarAvailable] = useState(false);
-  const [isNavExpanded, setIsNavExpanded] = useState(true);
-  const contextValue = useMemo(
-    () => ({
-      isSidebarOpened,
-      isSidebarAvailable,
-      setIsSidebarOpened,
-      setIsSidebarAvailable,
-    }),
-    [isSidebarOpened, isSidebarAvailable],
-  );
+  const {
+    value: _isNavbarOpened,
+    setValue: setIsNavbarOpened,
+    isLoading,
+  } = useUserKeyValue({
+    namespace: "data_studio",
+    key: "isNavbarOpened",
+  });
+  const isNavbarOpened = _isNavbarOpened !== false;
 
-  return (
-    <DataStudioContext.Provider value={contextValue}>
-      <Flex h="100%">
-        <DataStudioNav
-          isSidebarOpened={isSidebarOpened}
-          isSidebarAvailable={isSidebarAvailable}
-          onSidebarToggle={setIsSidebarOpened}
-          isNavExpanded={isNavExpanded}
-          onNavToggle={setIsNavExpanded}
-        />
-        <Box h="100%" flex={1} miw={0}>
-          {children}
-        </Box>
-      </Flex>
-    </DataStudioContext.Provider>
+  return isLoading ? (
+    <Center h="100%">
+      <Loader />
+    </Center>
+  ) : (
+    <Flex h="100%">
+      <DataStudioNav
+        isNavbarOpened={isNavbarOpened}
+        onNavbarToggle={setIsNavbarOpened}
+      />
+      <Box h="100%" flex={1} miw={0}>
+        {children}
+      </Box>
+    </Flex>
   );
 }
 
 type DataStudioNavProps = {
-  isSidebarOpened: boolean;
-  isSidebarAvailable: boolean;
-  onSidebarToggle: (isOpened: boolean) => void;
-  isNavExpanded: boolean;
-  onNavToggle: (isExpanded: boolean) => void;
+  isNavbarOpened: boolean;
+  onNavbarToggle: (isOpened: boolean) => void;
 };
 
-function DataStudioNav({
-  isSidebarOpened,
-  isSidebarAvailable,
-  onSidebarToggle,
-  isNavExpanded,
-  onNavToggle,
-}: DataStudioNavProps) {
+function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
@@ -103,71 +75,97 @@ function DataStudioNav({
   const canAccessTransforms = useSelector(
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
-  const isDataTab = pathname.startsWith(Urls.dataStudioData());
-  const isWorkspacePage = pathname.startsWith(Urls.dataStudioWorkspaceList());
-  const isTransformsTab =
-    pathname.startsWith(Urls.transformList()) && !isWorkspacePage;
-  const isModelingTab = pathname.startsWith(Urls.dataStudioModeling());
-  const isDependenciesTab = pathname.startsWith(Urls.dependencyGraph());
+
+  const currentTab = getCurrentTab(pathname);
 
   return (
     <Stack
-      className={cx(S.nav, { [S.navCollapsed]: !isNavExpanded })}
+      className={cx(S.nav, { [S.opened]: isNavbarOpened })}
       h="100%"
       p="0.75rem"
       justify="space-between"
+      data-testid="data-studio-nav"
     >
-      <Stack gap="0.75rem">
-        <DataStudioNavToggle
-          isNavExpanded={isNavExpanded}
-          onNavToggle={onNavToggle}
+      <Stack gap="0.75rem" flex={1} mih={0}>
+        <DataStudioNavbarToggle
+          isNavbarOpened={isNavbarOpened}
+          onNavbarToggle={onNavbarToggle}
         />
-        <Stack gap="0.75rem">
-          {canAccessDataModel && (
-            <DataStudioTab
-              label={t`Data`}
-              icon="database"
-              to={Urls.dataStudioData()}
-              isSelected={isDataTab}
-              isExpanded={isNavExpanded}
-            />
-          )}
-          {canAccessTransforms && (
-            <DataStudioTab
-              label={t`Transforms`}
-              icon="transform"
-              to={Urls.transformList()}
-              isSelected={isTransformsTab}
-              isExpanded={isNavExpanded}
-            />
-          )}
+        <DataStudioTab
+          label={t`Library`}
+          icon="repository"
+          to={Urls.dataStudioLibrary()}
+          isSelected={currentTab === "library"}
+          showLabel={isNavbarOpened}
+        />
+
+        {canAccessDataModel && (
           <DataStudioTab
-            label={t`Modeling`}
-            icon="model"
-            to={Urls.dataStudioModeling()}
-            isSelected={isModelingTab}
-            isExpanded={isNavExpanded}
+            label={t`Data structure`}
+            icon="open_folder"
+            to={Urls.dataStudioData()}
+            isSelected={currentTab === "data"}
+            showLabel={isNavbarOpened}
           />
-          {PLUGIN_DEPENDENCIES.isEnabled && (
-            <DataStudioTab
-              label={t`Dependency graph`}
-              icon="schema"
-              to={Urls.dependencyGraph()}
-              isSelected={isDependenciesTab}
-              isExpanded={isNavExpanded}
-            />
-          )}
-        </Stack>
+        )}
+        {canAccessDataModel && (
+          <DataStudioTab
+            label={t`Glossary`}
+            icon="glossary"
+            to={Urls.dataStudioGlossary()}
+            isSelected={currentTab === "glossary"}
+            showLabel={isNavbarOpened}
+          />
+        )}
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <DataStudioTab
+            label={t`Dependency graph`}
+            icon="dependencies"
+            to={Urls.dependencyGraph()}
+            isSelected={currentTab === "dependencies"}
+            showLabel={isNavbarOpened}
+          />
+        )}
         {canAccessTransforms && (
-          <WorkspacesSection isExpanded={isNavExpanded} />
+          <DataStudioTab
+            label={t`Transforms`}
+            icon="transform"
+            to={Urls.transformList()}
+            isSelected={currentTab === "transforms"}
+            showLabel={isNavbarOpened}
+          />
+        )}
+        {canAccessTransforms && (
+          <WorkspacesSection showLabel={isNavbarOpened} />
         )}
       </Stack>
-      {isSidebarAvailable && (
-        <DataStudioSidebarToggle
-          isSidebarOpened={isSidebarOpened}
-          onSidebarToggle={onSidebarToggle}
+      <Stack gap="0.75rem">
+        {canAccessTransforms && (
+          <DataStudioTab
+            label={t`Jobs`}
+            icon="clock"
+            to={Urls.transformJobList()}
+            isSelected={currentTab === "jobs"}
+            showLabel={isNavbarOpened}
+          />
+        )}
+        {canAccessTransforms && (
+          <DataStudioTab
+            label={t`Runs`}
+            icon="play_outlined"
+            to={Urls.transformRunList()}
+            isSelected={currentTab === "runs"}
+            showLabel={isNavbarOpened}
+          />
+        )}
+
+        <DataStudioTab
+          label={t`Exit`}
+          icon="exit"
+          to={"/"}
+          showLabel={isNavbarOpened}
         />
-      )}
+      </Stack>
     </Stack>
   );
 }
@@ -176,8 +174,8 @@ type DataStudioTabProps = {
   label: string;
   icon: IconName;
   to: string;
-  isSelected: boolean;
-  isExpanded: boolean;
+  isSelected?: boolean;
+  showLabel: boolean;
 };
 
 const TOOLTIP_OPEN_DELAY = 1000;
@@ -187,454 +185,67 @@ function DataStudioTab({
   icon,
   to,
   isSelected,
-  isExpanded,
+  showLabel,
 }: DataStudioTabProps) {
-  const content = (
-    <Box
-      className={cx(S.tab, { [S.selected]: isSelected })}
-      component={ForwardRefLink}
-      to={to}
-      p="0.75rem"
-      bdrs="md"
-    >
-      <Flex
-        align="center"
-        gap="sm"
-        justify={isExpanded ? "flex-start" : "center"}
-      >
-        <FixedSizeIcon name={icon} display="block" />
-        {isExpanded && (
-          <Text size="sm" fw={600}>
-            {label}
-          </Text>
-        )}
-      </Flex>
-    </Box>
-  );
-
-  if (!isExpanded) {
-    return (
-      <Tooltip label={label} position="right" openDelay={TOOLTIP_OPEN_DELAY}>
-        {content}
-      </Tooltip>
-    );
-  }
-
-  return content;
-}
-
-type WorkspacesSectionProps = {
-  isExpanded: boolean;
-};
-
-function WorkspacesSection({
-  isExpanded: isNavExpanded,
-}: WorkspacesSectionProps) {
-  const dispatch = useDispatch();
-  const [isWorkspacesExpanded, setIsWorkspacesExpanded] = useState(true);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const { pathname } = useSelector(getLocation);
-  const { data: workspacesData, isLoading } = useGetWorkspacesQuery();
-  const { data: databaseData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_analytics: true });
-  const [createWorkspace, { isLoading: isCreating }] =
-    useCreateWorkspaceMutation();
-
-  const workspaces = useMemo(
-    () =>
-      [...(workspacesData?.items ?? [])]
-        // .filter((w) => !w.archived)
-        .sort((a, b) => {
-          const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-          const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-          return bDate - aDate;
-        }),
-    [workspacesData],
-  );
-
-  const databaseOptions = useMemo(
-    () =>
-      (databaseData?.data ?? []).map((db: Database) => ({
-        value: String(db.id),
-        label: db.name,
-      })),
-    [databaseData],
-  );
-
-  const handleOpenWorkspace = useCallback(
-    (workspaceId: number) => {
-      dispatch(push(Urls.dataStudioWorkspace(workspaceId)));
-    },
-    [dispatch],
-  );
-
-  const handleOpenCreateModal = useCallback(() => {
-    setIsCreateModalOpen(true);
-  }, []);
-
-  const handleCloseCreateModal = useCallback(() => {
-    setIsCreateModalOpen(false);
-  }, []);
-
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-
-  const handleCreateWorkspace = useCallback(
-    async ({ name, databaseId }: { name: string; databaseId: string }) => {
-      try {
-        const workspace = await createWorkspace({
-          name,
-          database_id: Number(databaseId),
-          upstream: {},
-        }).unwrap();
-        handleCloseCreateModal();
-        handleOpenWorkspace(workspace.id);
-      } catch (error) {
-        sendErrorToast(t`Failed to create workspace`);
-      }
-    },
-    [
-      createWorkspace,
-      handleCloseCreateModal,
-      handleOpenWorkspace,
-      sendErrorToast,
-    ],
-  );
-
-  const [archiveWorkspace] = useArchiveWorkspaceMutation();
-  const [unarchiveWorkspace] = useUnarchiveWorkspaceMutation();
-  const [deleteWorkspace] = useDeleteWorkspaceMutation();
-
-  const handleWorkspaceArchive = async (id: WorkspaceId) => {
-    try {
-      await archiveWorkspace(id).unwrap();
-      sendSuccessToast(t`Workspace archived successfully`);
-      dispatch(push(Urls.dataStudioWorkspaceList()));
-    } catch (error) {
-      sendErrorToast(t`Failed to archive workspace`);
-    }
-  };
-
-  const handleWorkspaceUnarchive = async (id: WorkspaceId) => {
-    try {
-      await unarchiveWorkspace(id).unwrap();
-      sendSuccessToast(t`Workspace restored successfully`);
-    } catch (error) {
-      sendErrorToast(t`Failed to restore workspace`);
-    }
-  };
-
-  const handleWorkspaceDelete = async (id: WorkspaceId) => {
-    try {
-      await deleteWorkspace(id).unwrap();
-      sendSuccessToast(t`Workspace deleted successfully`);
-      dispatch(push(Urls.dataStudioWorkspaceList()));
-    } catch (error) {
-      sendErrorToast(t`Failed to delete workspace`);
-    }
-  };
-
-  const isWorkspaceListPage = pathname === Urls.dataStudioWorkspaceList();
-
-  if (!isNavExpanded) {
-    // In collapsed mode, show only an icon button with tooltip
-    return (
-      <Tooltip
-        label={t`Workspaces`}
-        position="right"
-        openDelay={TOOLTIP_OPEN_DELAY}
-      >
-        <UnstyledButton
-          className={cx(S.tab, { [S.selected]: isWorkspaceListPage })}
-          component={ForwardRefLink}
-          to={Urls.dataStudioWorkspaceList()}
-          p="0.75rem"
-          bdrs="md"
-        >
-          <Flex align="center" justify="center">
-            <FixedSizeIcon name="git_branch" display="block" />
-          </Flex>
-        </UnstyledButton>
-      </Tooltip>
-    );
-  }
-
-  return (
-    <Stack
-      data-testid="workspaces-section"
-      gap="0.5rem"
-      className={S.workspacesSection}
-    >
-      <UnstyledButton
-        className={cx(S.workspacesSectionHeader, {
-          [S.selected]: isWorkspaceListPage,
-        })}
-        onClick={() => setIsWorkspacesExpanded(!isWorkspacesExpanded)}
-        p="0.75rem"
-        bdrs="md"
-      >
-        <Flex align="center" justify="space-between" w="100%">
-          <Text size="sm" fw={600}>
-            {t`Workspaces`}
-          </Text>
-          <Icon
-            name={isWorkspacesExpanded ? "chevrondown" : "chevronright"}
-            size={16}
-          />
-        </Flex>
-      </UnstyledButton>
-
-      {isWorkspacesExpanded && (
-        <>
-          <UnstyledButton
-            className={S.newWorkspaceButton}
-            onClick={handleOpenCreateModal}
-            disabled={isLoadingDatabases}
-            p="0.5rem"
-            bdrs="md"
-          >
-            <Flex align="center" gap="xs">
-              <Icon name="add" size={16} />
-              <Text size="sm" fw={500}>
-                {t`New workspace`}
-              </Text>
-            </Flex>
-          </UnstyledButton>
-          <Stack gap="0.75rem" style={{ overflowY: "auto", maxHeight: "50vh" }}>
-            {isLoading ? (
-              <>
-                <Skeleton height={80} radius="md" />
-                <Skeleton height={80} radius="md" />
-              </>
-            ) : workspaces.length === 0 ? (
-              <Text c="text-secondary" size="xs" px="0.5rem">
-                {t`No workspaces yet`}
-              </Text>
-            ) : (
-              workspaces.map((workspace) => {
-                const isSelected =
-                  pathname === Urls.dataStudioWorkspace(workspace.id);
-
-                return (
-                  <WorkspaceItem
-                    key={workspace.id}
-                    workspace={workspace}
-                    isSelected={isSelected}
-                    onOpen={handleOpenWorkspace}
-                    onArchive={handleWorkspaceArchive}
-                    onUnarchive={handleWorkspaceUnarchive}
-                    onDelete={handleWorkspaceDelete}
-                  />
-                );
-              })
-            )}
-          </Stack>
-        </>
-      )}
-
-      <CreateWorkspaceModal
-        opened={isCreateModalOpen}
-        onClose={handleCloseCreateModal}
-        onSubmit={handleCreateWorkspace}
-        databaseOptions={databaseOptions}
-        isSubmitting={isCreating}
-      />
-    </Stack>
-  );
-}
-
-type DataStudioSidebarToggleProps = {
-  isSidebarOpened: boolean;
-  onSidebarToggle: (isOpened: boolean) => void;
-};
-
-function DataStudioSidebarToggle({
-  isSidebarOpened,
-  onSidebarToggle,
-}: DataStudioSidebarToggleProps) {
   return (
     <Tooltip
-      label={isSidebarOpened ? t`Close sidebar` : t`Open sidebar`}
+      label={label}
       position="right"
       openDelay={TOOLTIP_OPEN_DELAY}
+      disabled={showLabel}
     >
-      <UnstyledButton
-        className={S.toggle}
-        p="0.75rem"
+      <Box
+        className={cx(S.tab, { [S.selected]: isSelected })}
+        component={ForwardRefLink}
+        to={to}
+        p="0.5rem"
         bdrs="md"
-        onClick={() => onSidebarToggle(!isSidebarOpened)}
+        aria-label={label}
       >
+        <FixedSizeIcon name={icon} display="block" className={S.icon} />
+        {showLabel && <Text lh="sm">{label}</Text>}
+      </Box>
+    </Tooltip>
+  );
+}
+
+type DataStudioNavbarToggleProps = {
+  isNavbarOpened: boolean;
+  onNavbarToggle: (isOpened: boolean) => void;
+};
+
+function DataStudioNavbarToggle({
+  isNavbarOpened,
+  onNavbarToggle,
+}: DataStudioNavbarToggleProps) {
+  return (
+    <Flex justify="space-between">
+      <UnstyledButton
+        className={cx(S.toggle, {
+          [S.hoverButton]: !isNavbarOpened,
+          [S.disablePointer]: isNavbarOpened,
+        })}
+        p="0.5rem"
+        bdrs="md"
+        onClick={() => !isNavbarOpened && onNavbarToggle(true)}
+      >
+        <img src={DataStudioLogo} className={cx(S.hideOnHover, S.logo)} />
         <FixedSizeIcon
-          name={isSidebarOpened ? "sidebar_closed" : "sidebar_open"}
+          name="sidebar_open"
+          className={S.showOnHover}
+          c="text-secondary"
         />
       </UnstyledButton>
-    </Tooltip>
+      {isNavbarOpened && (
+        <UnstyledButton
+          className={S.toggle}
+          p="0.5rem"
+          bdrs="md"
+          onClick={() => onNavbarToggle(false)}
+        >
+          <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
+        </UnstyledButton>
+      )}
+    </Flex>
   );
-}
-
-type DataStudioNavToggleProps = {
-  isNavExpanded: boolean;
-  onNavToggle: (isExpanded: boolean) => void;
-};
-
-function DataStudioNavToggle({
-  isNavExpanded,
-  onNavToggle,
-}: DataStudioNavToggleProps) {
-  return (
-    <Tooltip
-      label={isNavExpanded ? t`Collapse navigation` : t`Expand navigation`}
-      position="right"
-      openDelay={TOOLTIP_OPEN_DELAY}
-    >
-      <UnstyledButton
-        className={S.toggle}
-        p="0.75rem"
-        bdrs="md"
-        onClick={() => onNavToggle(!isNavExpanded)}
-      >
-        <FixedSizeIcon name={isNavExpanded ? "chevronleft" : "chevronright"} />
-      </UnstyledButton>
-    </Tooltip>
-  );
-}
-
-interface WorkspaceItemProps {
-  workspace: Workspace;
-  isSelected: boolean;
-  onOpen: (workspaceId: WorkspaceId) => void;
-  onArchive: (workspaceId: WorkspaceId) => Promise<void>;
-  onUnarchive: (workspaceId: WorkspaceId) => Promise<void>;
-  onDelete: (workspaceId: WorkspaceId) => Promise<void>;
-}
-
-function WorkspaceItem({
-  workspace,
-  isSelected,
-  onOpen,
-  onArchive,
-  onUnarchive,
-  onDelete,
-}: WorkspaceItemProps) {
-  const [
-    deleteModalOpened,
-    { open: openDeleteModal, close: closeDeleteModal },
-  ] = useDisclosure();
-  const timeAgo = workspace.updated_at
-    ? dayjs(workspace.updated_at).fromNow()
-    : null;
-
-  const handleArchive = () => {
-    onArchive(workspace.id);
-  };
-
-  const handleUnarchive = () => {
-    onUnarchive(workspace.id);
-  };
-
-  const handleDelete = () => {
-    openDeleteModal();
-  };
-
-  const handleConfirmDelete = async () => {
-    await onDelete(workspace.id);
-    closeDeleteModal();
-  };
-
-  const status = getWorkspaceListStatus(workspace);
-
-  return (
-    <UnstyledButton
-      className={cx(S.workspaceItem, { [S.selected]: isSelected })}
-      onClick={() => onOpen(workspace.id)}
-      p="0.75rem"
-      bdrs="md"
-    >
-      <Flex align="flex-start" justify="space-between" gap="xs">
-        <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
-          <Text size="sm" fw={600} truncate>
-            {workspace.name}
-          </Text>
-          {status && (
-            <Group gap="xs" align="center" wrap="nowrap">
-              <Icon name={status.icon} size={10} c={status.color} />
-              <Text size="xs" fw={500} c={status.color}>
-                {status.label}
-              </Text>
-            </Group>
-          )}
-          {timeAgo && (
-            <Text size="xs" c="text-secondary" truncate>
-              {t`Updated ${timeAgo}`}
-            </Text>
-          )}
-        </Stack>
-        <Menu position="right" withinPortal>
-          <Menu.Target>
-            <ActionIcon
-              className={S.workspaceMenuButton}
-              aria-label={t`More actions`}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              size="sm"
-              variant="subtle"
-            >
-              <Icon name="ellipsis" size={16} />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            {workspace.archived ? (
-              <Menu.Item
-                leftSection={<Icon name="revert" />}
-                onClick={handleUnarchive}
-              >
-                {t`Restore`}
-              </Menu.Item>
-            ) : (
-              <Menu.Item
-                leftSection={<Icon name="archive" />}
-                onClick={handleArchive}
-              >
-                {t`Archive`}
-              </Menu.Item>
-            )}
-            <Menu.Divider />
-            <Menu.Item
-              c="error"
-              leftSection={<Icon name="trash" />}
-              onClick={handleDelete}
-              color="danger"
-            >
-              {t`Delete`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-      </Flex>
-
-      <ConfirmModal
-        confirmButtonText={t`Delete`}
-        message={t`This can't be undone.`}
-        opened={deleteModalOpened}
-        title={t`Delete ${workspace.name}?`}
-        onClose={closeDeleteModal}
-        onConfirm={handleConfirmDelete}
-      />
-    </UnstyledButton>
-  );
-}
-
-type WorkspaceListStatus = {
-  label: string;
-  icon: IconName;
-  color: string;
-};
-
-function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
-  if (workspace.archived) {
-    return { label: t`Archived`, icon: "archive", color: "text-light" };
-  }
-
-  if (workspace.status === "pending") {
-    return { label: t`Pending setup`, icon: "clock", color: "warning" };
-  }
-
-  return { label: t`Ready`, icon: "check", color: "success" };
 }

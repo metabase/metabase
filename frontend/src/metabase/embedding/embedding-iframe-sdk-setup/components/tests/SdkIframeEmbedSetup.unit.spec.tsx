@@ -5,6 +5,7 @@ import {
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -31,8 +32,18 @@ describe("Embed flow > initial setup", () => {
 });
 
 describe("Embed flow > forward and backward navigation", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
   it("navigates forward through the embed flow", async () => {
     setup({ simpleEmbeddingEnabled: true });
+
+    expect(screen.getByText("Authentication")).toBeInTheDocument();
 
     expect(
       screen.getByText("Select your embed experience"),
@@ -43,6 +54,7 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
     expect(screen.getByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
     expect(
@@ -50,9 +62,7 @@ describe("Embed flow > forward and backward navigation", () => {
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Get code" }));
-    expect(
-      screen.getByText("Choose the authentication method for embedding:"),
-    ).toBeInTheDocument();
+
     expect(
       screen.queryByRole("button", { name: "Next" }),
     ).not.toBeInTheDocument();
@@ -79,7 +89,9 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(
       screen.getByText("Select your embed experience"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
+    ).not.toBeInTheDocument();
   });
 
   it("skips the 'select resource' step for exploration", async () => {
@@ -101,12 +113,12 @@ describe("Embed flow > forward and backward navigation", () => {
     setup({ simpleEmbeddingEnabled: false });
 
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
+    ).not.toBeInTheDocument();
   });
-});
 
-describe("Embed flow > pre-selection via url parameter", () => {
-  it("pre-selects question when resource_type=question is in URL", async () => {
+  it("does not allow to go back when resourceType: question is the initial state", async () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
@@ -130,12 +142,8 @@ describe("Embed flow > pre-selection via url parameter", () => {
     expect(screen.getByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
 
-    // Going back to the "select resource" step shows that it is expecting a chart.
-    await userEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByText("Select a chart to embed")).toBeInTheDocument();
-
-    // Going back to the "select experience" step shows that it is expecting a chart.
-    await userEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByRole("radio", { name: /Chart/ })).toBeChecked();
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
+    ).not.toBeInTheDocument();
   });
 });

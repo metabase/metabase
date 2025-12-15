@@ -5,7 +5,10 @@
    [metabase.lib-be.hash :as lib-be.hash]
    [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- query-hash-hex [query]
   (codecs/bytes->hex

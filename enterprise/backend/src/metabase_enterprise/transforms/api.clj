@@ -96,7 +96,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
@@ -159,12 +164,20 @@
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (get-transform id))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/dependencies"
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
@@ -179,7 +192,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/run"
   "Get transform runs based on a set of filter params."
   [_route-params
@@ -227,6 +245,10 @@
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     transform))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a transform."
   [{:keys [id]} :- [:map
@@ -251,6 +273,10 @@
                           :user-id api/*current-user-id*})
   nil)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a transform."
   [{:keys [id]} :- [:map
@@ -258,6 +284,10 @@
   (api/check-superuser)
   (delete-transform! (api/check-404 (t2/select-one :model/Transform id))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/table"
   "Delete a transform's output table."
   [{:keys [id]} :- [:map
@@ -266,6 +296,10 @@
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/cancel"
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
@@ -296,6 +330,10 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/run"
   "Run a transform."
   [{:keys [id]} :- [:map
@@ -355,6 +393,10 @@
       (log/debugf e "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
+;; TODO (Cam 2025-12-04) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/is-simple-query"
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
   [_route-params
@@ -363,6 +405,10 @@
   (api/check-superuser)
   (simple-native-query? query))
 
+;; TODO (Cam 2025-12-04) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/extract-columns"
   "Extract column names from an MBQL query without executing it.
 

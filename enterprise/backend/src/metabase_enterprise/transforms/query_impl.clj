@@ -7,6 +7,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -23,9 +24,9 @@
 
 (mr/def ::transform-details
   [:map
-   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
+   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
    [:conn-spec :any]
-   [:query :string]
+   [:query ::qp.compile/compiled]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
 (mr/def ::transform-opts
@@ -39,27 +40,23 @@
     ;; once we have more than just append, dispatch on :target-incremental-strategy
     :table-incremental {}))
 
-(defn run-mbql-transform!
-  "Run `transform` and sync its target table.
-
-  This is executing synchronously, but supports being kicked off in the background
-  by delivering the `start-promise` just before the start when the beginning of the execution has been booked
-  in the database."
+(defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
-           transform-details {:db-id          db
-                              :database       database
+           transform-details {:db-id db
+                              :database database
                               :transform-id   id
                               :transform-type (keyword (:type target))
-                              :conn-spec      (driver/connection-spec driver database)
-                              :query          (transforms.util/compile-source transform)
-                              :output-schema  (:schema target)
-                              :output-table   (transforms.util/qualified-table-name driver target)}
+                              :conn-spec (driver/connection-spec driver database)
+                              :query (transforms.util/compile-source transform)
+                              :output-schema (:schema target)
+                              :output-table (transforms.util/qualified-table-name driver target)}
            opts (transform-opts transform-details)
            features (transforms.util/required-database-features transform)]
+
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
                          {:driver driver, :database database})))
@@ -87,5 +84,6 @@
          (deliver start-promise t))
        (throw t)))))
 
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :query [transform opts]
   (run-mbql-transform! transform opts))

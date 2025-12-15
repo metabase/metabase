@@ -119,7 +119,7 @@ type Option = {
 function getData(email: string | null, users: User[]): Option[] {
   return [
     {
-      label: t`No one`,
+      label: t`Unspecified`,
       value: "unknown",
       type: "unknown" as const,
     },

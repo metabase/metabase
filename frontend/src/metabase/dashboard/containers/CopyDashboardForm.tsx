@@ -134,6 +134,7 @@ function CopyDashboardForm({
           title={t`Which collection should this go in?`}
           filterPersonalCollections={filterPersonalCollections}
           entityType="dashboard"
+          savingModel="dashboard"
         />
 
         {!hideShallowCopy && (

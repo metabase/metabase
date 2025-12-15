@@ -41,7 +41,7 @@ describe(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("tracks 'default' when keeping the default dashboard selection", () => {
+  it("tracks event details with `isDefaultResource=true` when keeping the default dashboard selection", () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
@@ -55,11 +55,11 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "default",
+      event_detail: "isDefaultResource=true,experience=dashboard",
     });
   });
 
-  it("tracks 'custom' when selecting a different dashboard", () => {
+  it("tracks event details with `isDefaultResource=false` when selecting a different dashboard", () => {
     cy.log("add two dashboards to activity log");
 
     H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
@@ -101,7 +101,7 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "custom",
+      event_detail: "isDefaultResource=false,experience=dashboard",
     });
   });
 
@@ -136,12 +136,11 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_resource_selection_completed",
-        event_detail: "custom",
+        event_detail: "isDefaultResource=false,experience=chart",
       });
     });
 
     cy.log("selected question should be shown in the preview");
-    cy.wait("@cardQuery");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
     });
@@ -209,10 +208,9 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "custom",
+      event_detail: "isDefaultResource=false,experience=chart",
     });
 
-    cy.wait("@cardQuery");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
     });
@@ -222,6 +220,8 @@ describe(suiteTitle, () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+
       cy.findByText("Browser").click();
       cy.findByText("Next").click();
       cy.findByText("Select a collection to embed").should("be.visible");
@@ -303,6 +303,8 @@ describe(suiteTitle, () => {
 
     it("can open a collection picker from browser empty state", () => {
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
 

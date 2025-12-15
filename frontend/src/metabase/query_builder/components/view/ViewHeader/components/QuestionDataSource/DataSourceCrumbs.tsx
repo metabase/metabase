@@ -7,6 +7,7 @@ import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import { getDataSourceParts } from "./utils";
 
 interface Props {
+  className?: string;
   divider?: ReactElement | string;
   question: Question;
   variant: "head" | "subhead";

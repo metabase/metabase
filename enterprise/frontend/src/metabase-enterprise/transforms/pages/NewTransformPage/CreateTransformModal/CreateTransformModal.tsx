@@ -19,6 +19,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { slugify } from "metabase/lib/formatting/url";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
@@ -29,8 +30,9 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformCreated } from "../../../analytics";
+import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 
-import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
+import { TargetNameInput } from "./TargetNameInput";
 
 const DEFAULT_VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
@@ -201,11 +203,7 @@ function CreateTransformForm({
               data={schemas}
             />
           )}
-          <FormTextInput
-            name="targetName"
-            label={t`Table name`}
-            placeholder={t`descriptive_name`}
-          />
+          <TargetNameInput />
           {showIncrementalSettings && (
             <IncrementalTransformSettings source={source} />
           )}
@@ -228,9 +226,13 @@ function getInitialValues(
 ): NewTransformValues {
   return {
     name: "",
-    targetName: "",
     targetSchema: schemas?.[0] || null,
     ...defaultValues,
+    targetName: defaultValues.targetName
+      ? defaultValues.targetName
+      : defaultValues.name
+        ? slugify(defaultValues.name)
+        : "",
     checkpointFilter: null,
     checkpointFilterUniqueKey: null,
     incremental: false,
@@ -278,20 +280,20 @@ function getCreateRequest(
   // Build the target with incremental strategy if enabled
   const transformTarget: CreateTransformRequest["target"] = incremental
     ? {
-        type: "table-incremental",
-        name: targetName,
-        schema: targetSchema,
-        database: databaseId,
-        "target-incremental-strategy": {
-          type: targetStrategy,
-        },
-      }
+      type: "table-incremental",
+      name: targetName,
+      schema: targetSchema,
+      database: databaseId,
+      "target-incremental-strategy": {
+        type: targetStrategy,
+      },
+    }
     : {
-        type: "table",
-        name: targetName,
-        schema: targetSchema ?? null,
-        database: databaseId,
-      };
+      type: "table",
+      name: targetName,
+      schema: targetSchema ?? null,
+      database: databaseId,
+    };
 
   return {
     name,

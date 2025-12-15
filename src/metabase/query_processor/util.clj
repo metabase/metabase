@@ -1,6 +1,6 @@
 (ns metabase.query-processor.util
   "Utility functions used by the global query processor and middleware functions."
-  (:refer-clojure :exclude [select-keys])
+  (:refer-clojure :exclude [select-keys get-in])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
@@ -14,7 +14,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys]]
+   [metabase.util.performance :refer [select-keys get-in]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
