@@ -5,14 +5,11 @@
    This workspace should encapsulate all coupling to the [[metabase-enterprise.dependencies]] module, including through
    database artifacts.
 
-   It is purely concerned with calculation, any side effects wanted as a result of the analysis should happen outside.")
-
-#_(def ^:private empty-subgraph
-    {:working-set  []
-     :inputs       []
-     :outputs      []
-     :entities     []
-     :dependencies {}})
+   It is purely concerned with calculation, any side effects wanted as a result of the analysis should happen outside."
+  (:require
+   [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 ;; Is this working with appdb-ids or ref-ids?
 (defn unsupported-dependency?
@@ -22,6 +19,79 @@
   (when (seq transform-ids)
     {:transforms transform-ids}))
 
+;; TODO (chris 2025/12/15) Should we leverage data-authority table metadata to speed things up?
+
+(defn- table-id->coord [id]
+  (t2/select-one [:model/Table :id :schema [:name :table] [:db_id :db]] id))
+
+(defn- global-parents
+  "Dependencies analyzed by global hooks - may be incomplete. For example, excluding transforms that have not been run."
+  [ws-id entity-type id]
+  (t2/select-fn-vec (fn [{:keys [from_entity_type from_entity_id]}]
+                      (case from_entity_type
+                        "card"      {:node-type :card,             :id from_entity_id}
+                        "table"     {:node-type :table,            :id (table-id->coord from_entity_id)}
+                        "transform" {:node-type :global-transform, :id from_entity_id}))
+                    [:model/Dependency :from_entity_type :from_entity_id]
+                    :to_entity_type entity-type
+                    :to_entity_id id
+                    ;; Exclude transforms which are being overridden in the workspace.
+                    {:where [:not [:and
+                                   [:= "transform" :from_entity_type]
+                                   [:exists {:select [1]
+                                             :from   [[:workspace_transform :wt]]
+                                             :where  [:and
+                                                      [:= :wt.workspace_id ws-id]
+                                                      [:= :wt.global_id :from_entity_id]]}]]]}))
+
+(defn- ws-transform-parents [ws-id ref-id]
+  ;; We assume there are no card dependencies yet
+  (t2/select-fn-vec (fn [table-coord]
+                      {:entity-type :table, :id table-coord})
+                    [:model/WorkspaceInput [:db_id :db] :schema :table [:table_id :id]]
+                    :workspace_id ws-id
+                    :ref_id ref-id))
+
+(defn- table-producers [ws-id id-or-coord]
+  ;; Work with either logical co-ords or an id
+  (let [{:keys [db schema table id]} (if (map? id-or-coord) id-or-coord (table-id->coord id-or-coord))
+        tx-ref-id (t2/select-one-fn :ref_id [:model/WorkspaceOutput :ref_id]
+                                    {:where [:and
+                                             [:= :workspace_id ws-id]
+                                             [:or
+                                              [:= :global_table_id id]
+                                              [:and
+                                               [:= :db_id db]
+                                               [:= :global_schema schema]
+                                               [:= :global_table table]]]]})]
+    (if tx-ref-id
+      ;; If there is a workspace transform that targets this table, ignore any global transform that also targets it.
+      [{:node-type :ws-transform :id tx-ref-id}]
+      (global-parents ws-id "table" id))))
+
+(defn- table? [{:keys [entity-type]}] (= :table entity-type))
+
+(defn- ws-tx? [{:keys [entity-type]}] (= :ws-transform entity-type))
+
+(defn- node-parents [ws-id {:keys [node-type id]}]
+  (case node-type
+    :ws-transform     (ws-transform-parents ws-id id)
+    :global-transform (global-parents ws-id "transform" id)
+    :table            (table-producers ws-id id)
+    :global-card      (global-parents ws-id "card" id)))
+
+(defn- render-graph [entities deps]
+  (let [table-nodes     (filter table? entities)
+        ;; Any table that has an enclosed parent is an output
+        outputs        (filter deps table-nodes)
+        inputs         (remove (set outputs) table-nodes)
+        entities       (->> (ws.u/toposort-dfs deps) (remove table?))]
+    {:inputs       (map :id inputs)
+     :outputs      (map :id outputs)
+     :entities     entities
+     ;; collapse tables out, directly connecting transforms? smaller graphs are easier for humans to read
+     :dependencies deps}))
+
 ;;;; Public API
 
 #_{:clj-kondo/ignore [:unused-private-var]}
@@ -30,8 +100,6 @@
    `entities-by-type` is a map like {:transform [1 2 3]}.
 
    Returns a map with:
-   - :changeset    - the entities being edited within the workspace, in topological order
-                     {type, ref-id, parent-id}
    - :inputs       - tables that the subgraph directly depends on, that are not themselves produced by the subgraph.
                      ordered lexically by db+schema+table, to be stable across metabase instances, and visibly sorted.
    - :outputs      - outputs of both the changeset transforms, and the external transforms enclosed by the changeset.
@@ -40,53 +108,33 @@
 
    - :entities     - the full list of entities, both in the changeset, and those that are enclosed. topo-sorted.
    - :dependencies - association list for the subgraph, with keys and values both in topological order"
-  [working-set]
-  {:working-set  (or working-set [{:type "transform", :ref_id "2", :global_id 1}])
-   :inputs       [{:db_id 1, :schema "public", :table "orders", :table_id 1}]
-   ;; or global + isolated?
-   :outputs      [{:global   {:transform_id nil
-                              :schema       "public"
-                              :table        "customers"
-                              :table_id     nil}
-                   :isolated {:transform_id "1"
-                              :schema       "isolated__blah"
-                              :table        "public__customers"
-                              :table_id     2}}
-
-                  {:db_id    1
-                   :global   {:transform_id 1
-                              :schema       "public"
-                              :table        "mega_orders"
-                              :table_id     1}
-                   ;; integer id - enclosed
-                   :isolated {:transform_id nil
-                              :schema       "isolated__blah"
-                              :table        "public__mega_orders"
-                              :table_id     3}}
-
-                  {:id       1
-                   :db_id    1
-                   :global   {:transform_id nil
-                              :schema       "public"
-                              :table        "augmented_orders"
-                              :table_id     4}
-                   ;; string id - changeset
-                   :isolated {:transform_id "2"
-                              :schema       "isolated__blah"
-                              :table        "public__augmented_orders"
-                              :table-id     nil}}]
-
-   ;; should we include tables in the :dependencies graph? i kinda don't like it
-   ;; 1. bigger and uglier for test validation
-   ;; 2. easier to expand than to contract (and not sure which we want to show in ui)
-   ;; 3. don't need the tables for execute.
-   ;; 4. don't need the dependencies list for data tab.
-
-   :enclosed     [{:type "transform", :id 2}]
-   ;; If writing to JSON, we need to serialize to an association list because of rich keys.
-   :dependencies {{:type "external-transform", :id 1}    [{:type "workspace-transform", :id "1"}]
-                  {:type "workspace-transform", :id "2"} [{:type "input-table", :id 1}
-                                                          {:type "global-transform" :id 1}]}})
+  [ws-id changeset]
+  (ws.u/assert-transforms! changeset)
+  (let [init-nodes (for [{:keys [entity-type id]} changeset]
+                     (case entity-type
+                       :transform {:node-type :ws-transform :id id}))]
+    (loop [members (into #{} init-nodes)
+           ;; Association list sets from nodes to their direct dependencies
+           deps    (u/for-map [node init-nodes] [node #{}])
+           ;; Paths are vectors sorted from child to parent
+           [path & paths] (for [ref members] [ref])]
+      (if-not path
+        (render-graph members deps)
+        (let [parents  (node-parents ws-id (peek path))
+              continue (remove members parents)]
+          (if (not= parents continue)
+            ;; At least one parent is in the enclosed subgraph, so this entire path is as well.
+            (recur (into members path)
+                   ;; track each member of path as an ancestor of its predecessor
+                   (reduce
+                    (fn [deps [child parent]]
+                      (update deps child (fnil conj #{}) parent))
+                    deps
+                    (partition 2 1 path))
+                   ;; Since everything else along this path has already been added, start a path from other parents.
+                   (into paths (for [c continue] [c])))
+            ;; We have not reached another member of the enclosed subgraph yet, so keep extending.
+            (recur members deps (into paths (for [c continue] (conj path c))))))))))
 
 ;; source-table ---------> checked-out-transform
 ;;          \____external-transform__/

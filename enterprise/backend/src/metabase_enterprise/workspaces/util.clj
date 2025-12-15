@@ -12,6 +12,15 @@
                     {:status-code 400
                      :entity-type entity-type}))))
 
+(defn assert-transforms!
+  "Test that only supported types are given in the given list.
+   Named for the only case we support currently, to make call sites assumptions more obvious."
+  [entities]
+  (when-let [other-types (seq (remove #{:transform} (map :type entities)))]
+    (throw (ex-info "Only transform entities are currently supported"
+                    {:status-code       400
+                     :unsupported-types other-types}))))
+
 (defn- toposort-visit [node child->parents visited result]
   (cond
     (visited node) [visited result]
