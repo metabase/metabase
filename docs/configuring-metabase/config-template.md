@@ -165,6 +165,7 @@ config:
     jwt-attribute-firstname: first_name
     jwt-attribute-groups: groups
     jwt-attribute-lastname: last_name
+    jwt-attribute-tenant: '@tenant'
     jwt-enabled: false
     jwt-group-mappings: {}
     jwt-group-sync: false
@@ -232,6 +233,7 @@ config:
     saml-attribute-firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
     saml-attribute-group: null
     saml-attribute-lastname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
+    saml-attribute-tenant: null
     saml-enabled: false
     saml-group-mappings: {}
     saml-group-sync: false

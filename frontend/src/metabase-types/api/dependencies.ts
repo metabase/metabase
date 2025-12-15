@@ -64,7 +64,6 @@ export type CardDependencyNodeData = Pick<
   | "creator"
   | "created_at"
   | "last-edit-info"
-  | "moderation_reviews"
 > & {
   view_count?: number | null;
 };

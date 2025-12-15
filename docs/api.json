@@ -12866,7 +12866,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "model", "name", "last_edited_by", "last_edited_at" ]
+            "enum" : [ "model", "name", "last_edited_by", "last_edited_at", "description" ]
           }
         }, {
           "in" : "query",
@@ -12974,7 +12974,7 @@
     "/api/collection/tree" : {
       "get" : {
         "summary" : "GET /api/collection/tree",
-        "description" : "Similar to `GET /`, but returns Collections in a tree structure, e.g.\n\n  ```\n  [{:name     \"A\"\n  :below    #{:card :dataset}\n  :children [{:name \"B\"}\n             {:name     \"C\"\n              :here     #{:dataset :card}\n              :below    #{:dataset :card}\n              :children [{:name     \"D\"\n                          :here     #{:dataset}\n                          :children [{:name \"E\"}]}\n                         {:name     \"F\"\n                          :here     #{:card}\n                          :children [{:name \"G\"}]}]}]}\n  {:name \"H\"}]\n  ```\n\n  The here and below keys indicate the types of items at this particular level of the tree (here) and in its\n  subtree (below).\n\n  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at\n  some point in the future.",
+        "description" : "Similar to `GET /`, but returns Collections in a tree structure, e.g.\n\n  ```\n  [{:name     \"A\"\n  :below    #{:card :dataset}\n  :children [{:name \"B\"}\n             {:name     \"C\"\n              :here     #{:dataset :card}\n              :below    #{:dataset :card}\n              :children [{:name     \"D\"\n                          :here     #{:dataset}\n                          :children [{:name \"E\"}]}\n                         {:name     \"F\"\n                          :here     #{:card}\n                          :children [{:name \"G\"}]}]}]}\n  {:name \"H\"}]\n  ```\n\n  The here and below keys indicate the types of items at this particular level of the tree (here) and in its\n  subtree (below).\n\n  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at\n  some point in the future.\n\n  By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a\n  `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look\n  at. For example, `namespaces=analytics&namespaces=` would match the default behavior.",
         "parameters" : [ {
           "in" : "query",
           "name" : "exclude-archived",
@@ -13006,6 +13006,16 @@
           "schema" : {
             "type" : "string",
             "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "namespaces",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         }, {
           "in" : "query",
@@ -13257,7 +13267,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "model", "name", "last_edited_by", "last_edited_at" ]
+            "enum" : [ "model", "name", "last_edited_by", "last_edited_at", "description" ]
           }
         }, {
           "in" : "query",
@@ -19863,6 +19873,9 @@
                   "state" : {
                     "type" : "object",
                     "properties" : { }
+                  },
+                  "use_case" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "message", "context", "conversation_id", "state" ]
@@ -20019,6 +20032,24 @@
                   "collection_id" : {
                     "type" : "integer",
                     "minimum" : 1
+                  },
+                  "use_cases" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "enabled" : {
+                          "type" : "boolean"
+                        },
+                        "id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        }
+                      },
+                      "required" : [ "id" ],
+                      "additionalProperties" : false
+                    }
                   },
                   "use_verified_content" : {
                     "type" : "boolean"
@@ -20662,6 +20693,12 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "collections" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "boolean"
+                    }
+                  },
                   "remote-sync-branch" : {
                     "type" : "string"
                   },
@@ -21754,6 +21791,336 @@
           }
         },
         "tags" : [ "/api/ee/support-access-grant" ]
+      }
+    },
+    "/api/ee/tenant/" : {
+      "post" : {
+        "summary" : "POST /api/ee/tenant/",
+        "description" : "Create a new Tenant",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "attributes" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "string"
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "is_active" : {
+                      "type" : "boolean"
+                    },
+                    "member_count" : {
+                      "description" : "value must be an integer.",
+                      "type" : "integer"
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "slug" : {
+                      "description" : "invalid slug",
+                      "type" : "string",
+                      "pattern" : "^[-_a-z0-9]{1,255}$"
+                    },
+                    "tenant_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "id", "name", "slug", "is_active", "member_count", "tenant_collection_id" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "attributes" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  },
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "slug" : {
+                    "description" : "invalid slug",
+                    "type" : "string",
+                    "pattern" : "^[-_a-z0-9]{1,255}$"
+                  }
+                },
+                "required" : [ "name", "slug" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/tenant" ]
+      },
+      "get" : {
+        "summary" : "GET /api/ee/tenant/",
+        "description" : "Get all tenants",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "status",
+          "required" : true,
+          "schema" : {
+            "default" : "all",
+            "type" : "string",
+            "enum" : [ "all", "deactivated", "active" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:data -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys>} with no other keys",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "attributes" : {
+                            "type" : "object",
+                            "additionalProperties" : {
+                              "type" : "string"
+                            }
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "is_active" : {
+                            "type" : "boolean"
+                          },
+                          "member_count" : {
+                            "description" : "value must be an integer.",
+                            "type" : "integer"
+                          },
+                          "name" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "slug" : {
+                            "description" : "invalid slug",
+                            "type" : "string",
+                            "pattern" : "^[-_a-z0-9]{1,255}$"
+                          },
+                          "tenant_collection_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          }
+                        },
+                        "required" : [ "id", "name", "slug", "is_active", "member_count", "tenant_collection_id" ],
+                        "additionalProperties" : false
+                      }
+                    }
+                  },
+                  "required" : [ "data" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/tenant" ]
+      }
+    },
+    "/api/ee/tenant/{id}" : {
+      "put" : {
+        "summary" : "PUT /api/ee/tenant/{id}",
+        "description" : "Update a tenant, can set name, attributes, or whether this tenant is active.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "attributes" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "string"
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "is_active" : {
+                      "type" : "boolean"
+                    },
+                    "member_count" : {
+                      "description" : "value must be an integer.",
+                      "type" : "integer"
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "slug" : {
+                      "description" : "invalid slug",
+                      "type" : "string",
+                      "pattern" : "^[-_a-z0-9]{1,255}$"
+                    },
+                    "tenant_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "id", "name", "slug", "is_active", "member_count", "tenant_collection_id" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "attributes" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  },
+                  "is_active" : {
+                    "type" : "boolean"
+                  },
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/tenant" ]
+      },
+      "get" : {
+        "summary" : "GET /api/ee/tenant/{id}",
+        "description" : "Get info about a tenant",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "attributes" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "string"
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "is_active" : {
+                      "type" : "boolean"
+                    },
+                    "member_count" : {
+                      "description" : "value must be an integer.",
+                      "type" : "integer"
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "slug" : {
+                      "description" : "invalid slug",
+                      "type" : "string",
+                      "pattern" : "^[-_a-z0-9]{1,255}$"
+                    },
+                    "tenant_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "id", "name", "slug", "is_active", "member_count", "tenant_collection_id" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/tenant" ]
       }
     },
     "/api/ee/transform-job/" : {
@@ -24930,7 +25297,7 @@
     "/api/mt/user/attributes" : {
       "get" : {
         "summary" : "GET /api/mt/user/attributes",
-        "description" : "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for\n  existing Users and returns those. ",
+        "description" : "Fetch a list of possible keys for User `login_attributes`. This includes keys from tenant model\n  attributes and keys that have already been set for existing Users.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -25751,8 +26118,16 @@
     "/api/permissions/group" : {
       "get" : {
         "summary" : "GET /api/permissions/group",
-        "description" : "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.\n  This API requires superuser or group manager of more than one group.\n  Group manager is only available if `advanced-permissions` is enabled and returns only groups that user\n  is manager of.",
-        "parameters" : [ ],
+        "description" : "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.\n  This API requires superuser or group manager of more than one group.\n  Group manager is only available if `advanced-permissions` is enabled and returns only groups that user\n  is manager of.\n\n  Optional query parameter `tenancy` can be used to filter groups:\n  - `tenancy=external`: Returns only tenant groups (where `is_tenant_group = true`)\n  - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)\n  - No `tenancy` parameter: Returns all groups (default behavior)",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "tenancy",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "external", "internal" ]
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -25787,6 +26162,9 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "is_tenant_group" : {
+                    "type" : "boolean"
+                  },
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
@@ -31376,7 +31754,7 @@
     "/api/user/" : {
       "get" : {
         "summary" : "GET /api/user/",
-        "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins and only active users within groups that the group manager is\n  managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n\n   - If `status` is `all`, include all users (active and inactive).\n\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to\n     `status=active`. `status` and `include_deactivated` requires superuser permissions.\n\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised\n     to use `status` for better support and flexibility.\n\n   If both params are passed, `status` takes precedence.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n\n  Takes `query` for filtering on first name, last name, email.\n\n  Also takes `group_id`, which filters on group id.",
+        "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins and only active users within groups that the group manager is\n  managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n\n   - If `status` is `all`, include all users (active and inactive).\n\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to\n     `status=active`. `status` and `include_deactivated` requires superuser permissions.\n\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised\n     to use `status` for better support and flexibility.\n\n   If both params are passed, `status` takes precedence.\n  - if a `tenant_id` is passed, only users with that tenant_id will be returned.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n\n  Takes `query` for filtering on first name, last name, email.\n\n  Also takes `group_id`, which filters on group id.",
         "parameters" : [ {
           "in" : "query",
           "name" : "status",
@@ -31408,6 +31786,23 @@
             "type" : "boolean",
             "default" : false
           }
+        }, {
+          "in" : "query",
+          "name" : "tenancy",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "all", "internal", "external" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenant_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         } ],
         "responses" : {
           "2XX" : {
@@ -31456,7 +31851,6 @@
                     "minLength" : 1
                   },
                   "login_attributes" : {
-                    "description" : "login attribute keys must be a keyword or string",
                     "type" : "object",
                     "additionalProperties" : { }
                   },
@@ -31464,6 +31858,11 @@
                     "type" : "string",
                     "minLength" : 1,
                     "default" : "admin"
+                  },
+                  "tenant_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
                   },
                   "user_group_memberships" : {
                     "type" : "array",
@@ -31575,11 +31974,22 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "login_attributes" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  },
+                  "user_group_memberships" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
+                    }
+                  },
                   "email" : {
                     "description" : "value must be a valid email address.",
                     "type" : "string"
                   },
-                  "first_name" : {
+                  "locale" : {
+                    "description" : "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.",
                     "type" : "string",
                     "minLength" : 1
                   },
@@ -31589,25 +31999,18 @@
                   "is_superuser" : {
                     "type" : "boolean"
                   },
+                  "tenant_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
                   "last_name" : {
                     "type" : "string",
                     "minLength" : 1
                   },
-                  "locale" : {
-                    "description" : "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.",
+                  "first_name" : {
                     "type" : "string",
                     "minLength" : 1
-                  },
-                  "login_attributes" : {
-                    "description" : "login attribute keys must be a keyword or string",
-                    "type" : "object",
-                    "additionalProperties" : { }
-                  },
-                  "user_group_memberships" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
-                    }
                   }
                 }
               }
