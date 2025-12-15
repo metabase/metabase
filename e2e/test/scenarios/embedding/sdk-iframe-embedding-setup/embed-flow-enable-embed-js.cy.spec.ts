@@ -88,6 +88,16 @@ describe(
         .should("be.visible")
         .should("be.disabled");
 
+      // Going to the next step and selecting "Orders in a dashboard" explicitely
+      // because sometimes it selects another one that's been used recently
+      // see EMB-1106
+      cy.log("Navigating to embed flow step 2 and selecting an item to embed");
+      cy.findByRole("button", { name: "Next" }).click();
+      cy.get('[data-testid="embed-recent-item-card"]')
+        .should("have.length.greaterThan", 0)
+        .contains("Orders in a dashboard")
+        .click();
+
       cy.log("Preview should load after embedding is enabled");
       H.waitForSimpleEmbedIframesToLoad();
       H.getSimpleEmbedIframeContent().within(() => {
