@@ -52,9 +52,6 @@ export const MetabotAuthenticated = ({
     return tinykeys(window, {
       "$mod+e": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
-        // if (!hasRequiredUseCase) {
-        //   return;
-        // }
         if (!visible) {
           trackMetabotChatOpened("keyboard_shortcut");
         }
