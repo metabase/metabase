@@ -1619,6 +1619,7 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: mysql,mariadb
+            failOnError: false
             sql: ALTER TABLE collection DROP FOREIGN KEY fk_collection_workspace_id
         - dropIndex:
             tableName: collection
@@ -2968,6 +2969,175 @@ databaseChangeLog:
         - dropColumn:
             tableName: workspace_transform
             columnName: stale
+
+  - changeSet:
+      id: v58.2025-12-12T10:00:00
+      author: piranha
+      comment: Add last_run_at column to workspace_transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_transform
+                columnName: last_run_at
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: last_run_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this transform was last run
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: last_run_at
+
+  - changeSet:
+      id: v58.2025-12-12T11:00:00
+      author: sansolo
+      comment: Rename workspace_output.schema to global_schema
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: workspace_output
+            columnName: schema
+      changes:
+        - renameColumn:
+            tableName: workspace_output
+            oldColumnName: schema
+            newColumnName: global_schema
+            columnDataType: varchar(254)
+      rollback:
+        - renameColumn:
+            tableName: workspace_output
+            oldColumnName: global_schema
+            newColumnName: schema
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v58.2025-12-12T11:00:01
+      author: sansolo
+      comment: Rename workspace_output.table to global_table
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: workspace_output
+            columnName: table
+      changes:
+        - renameColumn:
+            tableName: workspace_output
+            oldColumnName: table
+            newColumnName: global_table
+            columnDataType: varchar(254)
+      rollback:
+        - renameColumn:
+            tableName: workspace_output
+            oldColumnName: global_table
+            newColumnName: table
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v58.2025-12-12T11:00:02
+      author: sansolo
+      comment: Add global_table_id column to workspace_output
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_output
+                columnName: global_table_id
+      changes:
+        - addColumn:
+            tableName: workspace_output
+            columns:
+              - column:
+                  name: global_table_id
+                  type: int
+                  remarks: FK to metabase table for the global output table
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_output
+            columnName: global_table_id
+
+  - changeSet:
+      id: v58.2025-12-12T11:00:03
+      author: sansolo
+      comment: Add isolated_schema column to workspace_output
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_output
+                columnName: isolated_schema
+      changes:
+        - addColumn:
+            tableName: workspace_output
+            columns:
+              - column:
+                  name: isolated_schema
+                  type: varchar(254)
+                  remarks: Schema name in the isolated workspace namespace
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_output
+            columnName: isolated_schema
+
+  - changeSet:
+      id: v58.2025-12-12T11:00:04
+      author: sansolo
+      comment: Add isolated_table column to workspace_output
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_output
+                columnName: isolated_table
+      changes:
+        - addColumn:
+            tableName: workspace_output
+            columns:
+              - column:
+                  name: isolated_table
+                  type: varchar(254)
+                  remarks: Table name in the isolated workspace namespace
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_output
+            columnName: isolated_table
+
+  - changeSet:
+      id: v58.2025-12-12T11:00:05
+      author: sansolo
+      comment: Add isolated_table_id column to workspace_output
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_output
+                columnName: isolated_table_id
+      changes:
+        - addColumn:
+            tableName: workspace_output
+            columns:
+              - column:
+                  name: isolated_table_id
+                  type: int
+                  remarks: FK to metabase table for the isolated output table
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_output
+            columnName: isolated_table_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -54,6 +54,17 @@ export type WorkspaceTransformsResponse = {
   transforms: WorkspaceTransformItem[];
 };
 
+export type ExternalTransform = {
+  id: TransformId;
+  name: string;
+  source_type: Transform["source_type"];
+  checkout_disabled: string;
+};
+
+export type ExternalTransformsResponse = {
+  transforms: ExternalTransform[];
+};
+
 export type WorkspaceOutputTableRef = {
   transform_id: number | string | null;
   schema: string;
@@ -69,6 +80,7 @@ export type WorkspaceTransform = Omit<Transform, "id"> & {
   global_id: TransformId | null;
   target_stale: boolean;
   target_isolated: WorkspaceOutputTableRef;
+  last_run_at: string | null;
 };
 
 export type TransformUpstreamMapping = {
@@ -274,4 +286,15 @@ export type WorkspaceRunResponse = {
   succeeded: TransformId[];
   failed: TransformId[];
   not_run: TransformId[];
+};
+
+export type WorkspaceTransformRunResponse = {
+  status: "succeeded" | "failed";
+  start_time?: string | null;
+  end_time?: string | null;
+  message?: string | null;
+  table: {
+    name: string;
+    schema?: string | null;
+  };
 };

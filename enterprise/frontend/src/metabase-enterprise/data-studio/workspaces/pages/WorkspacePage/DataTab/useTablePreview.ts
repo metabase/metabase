@@ -1,13 +1,8 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useGetAdhocQueryQuery,
-  useGetTableQueryMetadataQuery,
-} from "metabase/api";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { getTableMetadataQuery } from "metabase/metadata/pages/shared";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatabaseId, RawSeries, TableId } from "metabase-types/api";
@@ -17,6 +12,7 @@ interface UseTableQuestionProps {
   databaseId: DatabaseId | null;
   tableId: TableId | null;
   metadata: Metadata;
+  last_transform_run_time?: string | null;
 }
 
 interface UseTablePreviewResult {
@@ -31,6 +27,7 @@ export function useTablePreview({
   databaseId,
   tableId,
   metadata,
+  last_transform_run_time,
 }: UseTableQuestionProps): UseTablePreviewResult {
   const metadataProvider =
     Object.keys(metadata.tables).length > 0
@@ -53,6 +50,7 @@ export function useTablePreview({
       : {
           ...Lib.toJsQuery(query),
           ignore_error: true,
+          _refetchDeps: last_transform_run_time,
         },
   );
   const base = {
