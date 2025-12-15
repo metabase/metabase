@@ -7,7 +7,7 @@ summary: Upload a translation dictionary to translate questions and dashboards i
 
 {% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embbedding=true %}
 
-For now, translations are only available for [static embeds](./static-embedding.md), not Interactive embedding or the Embedded analytics JS/SDK.
+For now, translations are only available for [guest embed](./static-embedding.md). Translations aren't available for SSO-based modular embedding or full app embedding.
 
 You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).
 

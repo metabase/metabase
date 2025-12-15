@@ -247,6 +247,7 @@
     "chromatic": "^10.2.0",
     "commander": "^12.1.0",
     "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
     "cross-fetch": "^3.1.5",
     "crypto-browserify": "^3.12.0",
     "css-loader": "^6.10.0",
@@ -292,7 +293,7 @@
     "json-to-pretty-yaml": "^1.2.2",
     "jsonwebtoken": "^9.0.0",
     "knex": "^2.4.2",
-    "lint-staged": "^13.1.2",
+    "lint-staged": "^14",
     "loki": "^0.35.1",
     "mini-css-extract-plugin": "2.7.2",
     "mocha": "^10.8.1",
@@ -455,7 +456,7 @@
     "lint-prettier-pure": "prettier --check --cache '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
     "postinstall": "if [ -z \"$CI\" ]; then yarn-deduplicate --scopes @babel && yarn patch-package; fi",
-    "precommit": "lint-staged --shell",
+    "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prepare": "husky install",
     "prettier": "prettier --write --cache '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
@@ -487,40 +488,6 @@
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
     "generate:expression-parser": "lezer-generator frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.js",
     "cloud:dev": "yarn && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && yarn concurrently -n 'FE,BE' -c 'blue,green' 'yarn build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'"
-  },
-  "lint-staged": {
-    "+(frontend|enterprise)/**/*.styled.tsx": [
-      "stylelint --customSyntax postcss-styled-syntax --fix"
-    ],
-    "+(frontend|enterprise/frontend|e2e)/**/*.css": [
-      "stylelint --fix",
-      "prettier --write"
-    ],
-    "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
-      "LINT_CSS_MODULES=true eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
-      "prettier --write",
-      "node ./bin/verify-doc-links"
-    ],
-    "e2e/**/*.{js,jsx,ts,jsx}": [
-      "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
-      "prettier --write"
-    ],
-    "**/*.{clj,cljc,cljs,bb}": [
-      "./bin/mage cljfmt-files"
-    ],
-    "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
-      "node e2e/validate-e2e-test-files.js"
-    ],
-    "enterprise/frontend/src/embedding-sdk-package/README.md": [
-      "prettier --write"
-    ],
-    "+(.storybook|enterprise/frontend/src/embedding-sdk-shared/.storybook)/**/*.{js,jsx,ts,tsx,css}": [
-      "prettier --write"
-    ],
-    "**/*": [
-      "./bin/mage -token-scan",
-      "./bin/mage -uninstall-merge-drivers"
-    ]
   },
   "browserslist": [
     "defaults"
