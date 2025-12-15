@@ -72,7 +72,7 @@ describe("scenarios > dependencies > unreferenced", () => {
 
   describe("analysis", () => {
     it("should show unreferenced entities", () => {
-      createEntities({ withReferences: false });
+      createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
       H.DataStudio.Tasks.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
@@ -94,7 +94,7 @@ describe("scenarios > dependencies > unreferenced", () => {
 
   describe("search", () => {
     it("should search for entities", () => {
-      createEntities({ withReferences: true });
+      createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
       H.DataStudio.Tasks.searchInput().type(MODEL_FOR_QUESTION_DATA_SOURCE);
       H.DataStudio.Tasks.list().within(() => {
@@ -104,14 +104,72 @@ describe("scenarios > dependencies > unreferenced", () => {
     });
 
     it("should search for entities with type filters", () => {
-      createEntities({ withReferences: true });
+      createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
-      H.DataStudio.Tasks.filterButton().click();
-      H.popover().findByText("Model").click();
       H.DataStudio.Tasks.searchInput().type("tag");
       H.DataStudio.Tasks.list().within(() => {
         cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
         cy.findByText(SNIPPET_FOR_SNIPPET_TAG).should("not.exist");
+      });
+
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Model").click();
+      H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
+        cy.findByText(SNIPPET_FOR_SNIPPET_TAG).should("not.exist");
+      });
+    });
+  });
+
+  describe("filters", () => {
+    it("should filter entities by type", () => {
+      createEntities();
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
+        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
+        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
+        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should(
+          "be.visible",
+        );
+      });
+
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Model").click();
+      H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
+        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("not.exist");
+        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("not.exist");
+        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
+      });
+
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Segment").click();
+      H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
+        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
+        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("not.exist");
+        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
+      });
+
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Metric").click();
+      H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
+        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
+        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
+        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
+      });
+
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Snippet").click();
+      H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
+        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
+        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("not.exist");
+        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should(
+          "be.visible",
+        );
       });
     });
   });
@@ -119,9 +177,7 @@ describe("scenarios > dependencies > unreferenced", () => {
 
 function createEntities({
   withReferences = false,
-}: {
-  withReferences?: boolean;
-}) {
+}: { withReferences?: boolean } = {}) {
   createModelContent({ withReferences });
   createSegmentContent({ withReferences });
   createMetricContent({ withReferences });
