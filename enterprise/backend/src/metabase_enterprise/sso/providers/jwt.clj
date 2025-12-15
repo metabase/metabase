@@ -93,7 +93,7 @@
                                                                                    :error :invalid-tenant}))))
             user-attributes (jwt-data->user-attributes jwt-data)]
         (when-not email
-          (throw (ex-info "JWT token missing email claim"
+          (throw (ex-info (tru "JWT token missing email claim")
                           {:status-code 400
                            :error :missing-email})))
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
