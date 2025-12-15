@@ -30,9 +30,9 @@
   ;; Note: from_entity_type is transformed to a keyword by the Dependency model
   (t2/select-fn-vec (fn [{:keys [from_entity_type from_entity_id]}]
                       (case from_entity_type
-                        :card      {:node-type :card,             :id from_entity_id}
-                        :table     {:node-type :table,            :id (table-id->coord from_entity_id)}
-                        :transform {:node-type :global-transform, :id from_entity_id}))
+                        :card      {:node-type :external-card,      :id from_entity_id}
+                        :table     {:node-type :table,              :id (table-id->coord from_entity_id)}
+                        :transform {:node-type :external-transform, :id from_entity_id}))
                     [:model/Dependency :from_entity_type :from_entity_id]
                     :to_entity_type entity-type
                     :to_entity_id id
@@ -68,17 +68,17 @@
                                                [:= :global_table table]]]]})]
     (if tx-ref-id
       ;; If there is a workspace transform that targets this table, ignore any global transform that also targets it.
-      [{:node-type :ws-transform :id tx-ref-id}]
+      [{:node-type :workspaces-transform :id tx-ref-id}]
       (global-parents ws-id "table" id))))
 
-(defn- table? [{:keys [entity-type]}] (= :table entity-type))
+(defn- table? [{:keys [node-type]}] (= :table node-type))
 
 (defn- node-parents [ws-id {:keys [node-type id]}]
   (case node-type
-    :ws-transform     (ws-transform-parents ws-id id)
-    :global-transform (global-parents ws-id "transform" id)
-    :table            (table-producers ws-id id)
-    :global-card      (global-parents ws-id "card" id)))
+    :workspace-transform (ws-transform-parents ws-id id)
+    :external-transform  (global-parents ws-id "transform" id)
+    :external-card       (global-parents ws-id "card" id)
+    :table               (table-producers ws-id id)))
 
 (defn- node->allowed-parents
   [pred deps node]
@@ -93,8 +93,10 @@
 
 (defn- render-graph [entities deps]
   (let [table-nodes     (filter table? entities)
-        ;; Any table that has an enclosed parent is an output
+        ;; Any table that has a parent in the subgraph is an output
         outputs        (filter deps table-nodes)
+        ;; Anything else is an input
+        ;; TODO I suspect this is incomplete (may have some transforms without keys in deps yet)
         inputs         (remove (set outputs) table-nodes)
         entities       (->> (ws.u/toposort-dfs deps) (remove table?))]
     {:inputs       (map :id inputs)
@@ -123,7 +125,7 @@
   (ws.u/assert-transforms! changeset)
   (let [init-nodes (for [{:keys [entity-type id]} changeset]
                      (case entity-type
-                       :transform {:node-type :ws-transform :id id}))]
+                       :transform {:node-type :workspaces-transform, :id id}))]
     (loop [members (into #{} init-nodes)
            ;; Association list sets from nodes to their direct dependencies
            deps    (u/for-map [node init-nodes] [node #{}])

@@ -202,8 +202,8 @@
         (is (= {:transforms [2 3 4]} (ws.dag/unsupported-dependency? {:transforms [1 2 3 4]}))))))
 
 (deftest collapse-test
-  (let [ws (fn [ref-id] {:entity-type :workspace-transform, :id ref-id})
-        t  (fn [id] {:entity-type :table, :id id})]
+  (let [ws (fn [ref-id] {:node-type :workspace-transform, :id ref-id})
+        t  (fn [id] {:node-type :table, :id id})]
     (is (= {(ws 1) [(ws 2) (ws 3)]
             (ws 2) []
             (ws 3) [(ws 5)]
