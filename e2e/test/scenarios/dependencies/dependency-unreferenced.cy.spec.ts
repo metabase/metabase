@@ -12,6 +12,7 @@ const MODEL_FOR_METRIC_DATA_SOURCE = "Model for metric data source";
 const MODEL_FOR_NATIVE_QUESTION_CARD_TAG = "Model for native question card tag";
 const MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE =
   "Model for native question parameter source";
+const MODEL_FOR_DASHBOARD_CARD = "Model for dashboard card";
 const SEGMENT_FOR_QUESTION_FILTER = "Segment for question filter";
 const SEGMENT_FOR_MODEL_FILTER = "Segment for model filter";
 const SEGMENT_FOR_SEGMENT_FILTER = "Segment for segment filter";
@@ -19,6 +20,7 @@ const SEGMENT_FOR_METRIC_FILTER = "Segment for metric filter";
 const METRIC_FOR_QUESTION_AGGREGATION = "Metric for question aggregation";
 const METRIC_FOR_MODEL_AGGREGATION = "Metric for model aggregation";
 const METRIC_FOR_METRIC_AGGREGATION = "Metric for metric aggregation";
+const METRIC_FOR_DASHBOARD_CARD = "Metric for dashboard card";
 const SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG =
   "Snippet for native question card tag";
 const SNIPPET_FOR_SNIPPET_TAG = "Snippet for snippet tag";
@@ -29,6 +31,7 @@ const ENTITY_NAMES = [
   MODEL_FOR_METRIC_DATA_SOURCE,
   MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
   MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  MODEL_FOR_DASHBOARD_CARD,
   SEGMENT_FOR_QUESTION_FILTER,
   SEGMENT_FOR_MODEL_FILTER,
   SEGMENT_FOR_SEGMENT_FILTER,
@@ -36,6 +39,7 @@ const ENTITY_NAMES = [
   METRIC_FOR_QUESTION_AGGREGATION,
   METRIC_FOR_MODEL_AGGREGATION,
   METRIC_FOR_METRIC_AGGREGATION,
+  METRIC_FOR_DASHBOARD_CARD,
   SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
   SNIPPET_FOR_SNIPPET_TAG,
 ];
@@ -146,6 +150,18 @@ function createModelContent({
       });
     }
   });
+
+  createModelWithTableDataSource({
+    name: MODEL_FOR_DASHBOARD_CARD,
+    tableId: ORDERS_ID,
+  }).then(({ body: model }) => {
+    if (withReferences) {
+      createDashboardWithCard({
+        name: `${MODEL_FOR_DASHBOARD_CARD} -> Dashboard Card`,
+        cardId: model.id,
+      });
+    }
+  });
 }
 
 function createSegmentContent({
@@ -220,6 +236,7 @@ function createMetricContent({
       });
     }
   });
+
   createMetricWithTableDataSource({
     name: METRIC_FOR_MODEL_AGGREGATION,
     tableId: ORDERS_ID,
@@ -232,6 +249,7 @@ function createMetricContent({
       });
     }
   });
+
   createMetricWithTableDataSource({
     name: METRIC_FOR_METRIC_AGGREGATION,
     tableId: ORDERS_ID,
@@ -241,6 +259,18 @@ function createMetricContent({
         name: `${METRIC_FOR_METRIC_AGGREGATION} -> Metric`,
         tableId: ORDERS_ID,
         metricId: metric.id,
+      });
+    }
+  });
+
+  createMetricWithTableDataSource({
+    name: METRIC_FOR_DASHBOARD_CARD,
+    tableId: ORDERS_ID,
+  }).then(({ body: metric }) => {
+    if (withReferences) {
+      createDashboardWithCard({
+        name: `${METRIC_FOR_DASHBOARD_CARD} -> Dashboard Card`,
+        cardId: metric.id,
       });
     }
   });
@@ -615,5 +645,24 @@ function createSnippetWithSnippetTag({
   return H.createSnippet({
     name,
     content: `{{snippet: ${snippetName}}}`,
+  });
+}
+
+function createDashboardWithCard({
+  name,
+  cardId,
+}: {
+  name: string;
+  cardId: CardId;
+}) {
+  return H.createDashboard({ name }).then(({ body: dashboard }) => {
+    H.updateDashboardCards({
+      dashboard_id: dashboard.id,
+      cards: [
+        {
+          card_id: cardId,
+        },
+      ],
+    });
   });
 }
