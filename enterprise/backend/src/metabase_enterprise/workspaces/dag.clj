@@ -82,16 +82,16 @@
     :table            (table-producers ws-id id)
     :global-card      (global-parents ws-id "card" id)))
 
-(defn- node->non-tables
+(defn- node->allowed-parents
   [pred deps node]
-  (if-not (pred node) [node] (mapcat (partial node->non-tables pred deps) (deps node))))
+  (if-not (pred node) [node] (mapcat (partial node->allowed-parents pred deps) (deps node))))
 
 (defn- collapse
   "Remove nodes that satisfy pred, in-lining their transitive dependencies instead."
   [pred deps]
   (u/for-map [[child parents] deps
               :when (not (pred child))]
-    [child (mapcat (partial node->non-tables pred deps) parents)]))
+    [child (mapcat (partial node->allowed-parents pred deps) parents)]))
 
 (comment
   (let [ws (fn [ref-id] {:entity-type :workspace-transform, :id ref-id})
