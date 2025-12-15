@@ -27,15 +27,17 @@
 (defn- global-parents
   "Dependencies analyzed by global hooks - may be incomplete. For example, excluding transforms that have not been run."
   [ws-id entity-type id]
+  ;; Note: from_entity_type is transformed to a keyword by the Dependency model
   (t2/select-fn-vec (fn [{:keys [from_entity_type from_entity_id]}]
                       (case from_entity_type
-                        "card"      {:node-type :card,             :id from_entity_id}
-                        "table"     {:node-type :table,            :id (table-id->coord from_entity_id)}
-                        "transform" {:node-type :global-transform, :id from_entity_id}))
+                        :card      {:node-type :card,             :id from_entity_id}
+                        :table     {:node-type :table,            :id (table-id->coord from_entity_id)}
+                        :transform {:node-type :global-transform, :id from_entity_id}))
                     [:model/Dependency :from_entity_type :from_entity_id]
                     :to_entity_type entity-type
                     :to_entity_id id
                     ;; Exclude transforms which are being overridden in the workspace.
+                    ;; Note: use string "transform" in SQL WHERE clause (db stores strings)
                     {:where [:not [:and
                                    [:= "transform" :from_entity_type]
                                    [:exists {:select [1]
@@ -80,6 +82,30 @@
     :table            (table-producers ws-id id)
     :global-card      (global-parents ws-id "card" id)))
 
+(defn- node->non-tables
+  [pred deps node]
+  (if-not (pred node) [node] (mapcat (partial node->non-tables pred deps) (deps node))))
+
+(defn- collapse
+  "Remove nodes that satisfy pred, in-lining their transitive dependencies instead."
+  [pred deps]
+  (u/for-map [[child parents] deps
+              :when (not (pred child))]
+    [child (mapcat (partial node->non-tables pred deps) parents)]))
+
+(comment
+  (let [ws (fn [ref-id] {:entity-type :workspace-transform, :id ref-id})
+        t  (fn [id] {:entity-type :table, :id id})]
+    (= {(ws 1) [(ws 2)]
+        (ws 2) []
+        (ws 3) []}
+       (collapse
+        table?
+        {(ws 1) [(t 1) (t 2)]
+         (t 1)  [(ws 2)]
+         (ws 2) [(t 3)]
+         (ws 3) [(t 4)]}))))
+
 (defn- render-graph [entities deps]
   (let [table-nodes     (filter table? entities)
         ;; Any table that has an enclosed parent is an output
@@ -90,7 +116,7 @@
      :outputs      (map :id outputs)
      :entities     entities
      ;; collapse tables out, directly connecting transforms? smaller graphs are easier for humans to read
-     :dependencies deps}))
+     :dependencies (collapse table? deps)}))
 
 ;;;; Public API
 
