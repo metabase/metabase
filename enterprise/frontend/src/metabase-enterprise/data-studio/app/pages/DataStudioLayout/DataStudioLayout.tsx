@@ -139,15 +139,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <DataStudioTab
-            label={t`Dependency graph`}
-            icon="schema"
-            to={Urls.dependencyGraph()}
-            isSelected={isDependenciesTab}
-            isExpanded={isNavExpanded}
-          />
-        )}
       </Stack>
       <Stack gap="0.75rem">
         {canAccessTransforms && (
