@@ -17,6 +17,7 @@ const setup = ({ permissions }: { permissions?: UserPermissions } = {}) => {
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
         snippet_collections: true,
+        advanced_permissions: true,
       }),
     }),
     currentUser: createMockUser({
@@ -52,6 +53,7 @@ describe("CreateMenu", () => {
       permissions: {
         can_create_queries: true,
         can_create_native_queries: true,
+        can_access_data_model: true,
       },
     });
 
@@ -59,6 +61,11 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Metric", "New snippet", "New snippet folder"]);
+    ).toEqual([
+      "Publish a table",
+      "Metric",
+      "New snippet",
+      "New snippet folder",
+    ]);
   });
 });

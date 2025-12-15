@@ -5,7 +5,10 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_SNIPPET_FOLDERS,
+} from "metabase/plugins";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
@@ -24,13 +27,16 @@ export const CreateMenu = ({
   const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
   const closeModal = () => setModal(undefined);
 
+  const canAccessDataModel = useSelector(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
+  );
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
 
   const canCreateMetric = hasDataAccess && metricCollectionId;
 
   const menuItems = [
-    hasDataAccess && (
+    canAccessDataModel && (
       <Menu.Item
         key="publish-table"
         leftSection={<FixedSizeIcon name="publish" />}
