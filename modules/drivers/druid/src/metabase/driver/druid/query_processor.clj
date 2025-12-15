@@ -797,14 +797,14 @@
     (reduce
      (fn [druid-query aggregation]
        (driver-api/match-one aggregation
-                             [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
-                             (handle-expression-aggregation query-type &match druid-query)
+         [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
+         (handle-expression-aggregation query-type &match druid-query)
 
-                             #{:+ :- :/ :*}
-                             (handle-expression-aggregation query-type &match druid-query)
+         #{:+ :- :/ :*}
+         (handle-expression-aggregation query-type &match druid-query)
 
-                             _
-                             (handle-aggregation query-type &match druid-query)))
+         _
+         (handle-aggregation query-type &match druid-query)))
      druid-query
      aggregations)))
 
