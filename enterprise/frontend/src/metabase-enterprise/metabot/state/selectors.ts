@@ -4,7 +4,7 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getLocation } from "metabase/selectors/routing";
-import type { TransformId } from "metabase-types/api";
+import type { MetabotUseCase, TransformId } from "metabase-types/api";
 
 import {
   FIXED_METABOT_IDS,
@@ -139,7 +139,11 @@ export const getProfileOverride = createSelector(
 
 export const getUseCase = createSelector(
   getLocation,
-  (location): "transforms" | "omnibot" => {
+  getIsEmbedding,
+  (location, isEmbedding): MetabotUseCase => {
+    if (isEmbedding) {
+      return METABOT_USE_CASES.EMBEDDING;
+    }
     return location.pathname.startsWith(Urls.transformList())
       ? METABOT_USE_CASES.TRANSFORMS
       : METABOT_USE_CASES.OMNIBOT;
