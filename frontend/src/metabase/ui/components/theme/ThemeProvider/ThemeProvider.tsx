@@ -29,9 +29,8 @@ import {
   setUserColorSchemeAfterUpdate,
 } from "metabase/lib/color-scheme";
 import { mutateColors } from "metabase/lib/colors/colors";
-import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import { getSetting } from "metabase/selectors/settings";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
@@ -178,12 +177,23 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
     : schemeFromHash;
 
-  const colorSchemeFromSettings = useSelector((state) => {
-    const colorScheme = getSetting(state, "color-scheme");
-    return colorScheme && isValidColorScheme(colorScheme)
-      ? colorScheme
-      : undefined;
-  });
+  const [colorSchemeFromSettings, setColorSchemeFromSettings] =
+    useState<ColorScheme>(() => getUserColorScheme() ?? "auto");
+
+  // FIXME: Not only does this use a deprecated API, it also adds a complementary
+  // method to the already deprecated method to remove the listener. This is just
+  // done provisionally for CI testing purposes.
+  useEffect(() => {
+    const updateSetting = (value: ColorScheme) => {
+      if (value && isValidColorScheme(value)) {
+        setColorSchemeFromSettings(value);
+      }
+    };
+
+    MetabaseSettings.on("color-scheme", updateSetting);
+
+    return () => MetabaseSettings.off("color-scheme", updateSetting);
+  }, [setColorSchemeFromSettings]);
 
   const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
     await PUT("/api/setting/:key")({
