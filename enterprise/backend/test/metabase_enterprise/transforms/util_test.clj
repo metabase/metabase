@@ -6,8 +6,7 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.test :as mt]
-   [metabase.test.data.sql :as sql.tx]
-   [toucan2.core :as t2]))
+   [metabase.test.data.sql :as sql.tx]))
 
 (set! *warn-on-reflection* true)
 

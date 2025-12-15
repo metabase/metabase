@@ -540,7 +540,7 @@
                 (Thread/sleep 2000)
                 (let [updated-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
-                      "Updated data should show Alice/Bob with friends instead of ages")))))))))
+                      "Updated data should show Alice/Bob with friends instead of ages"))))))))))
 
 (deftest create-python-transform-with-table-ref-source-test
   (testing "Creating a Python transform with name-based source table refs is allowed"
@@ -567,4 +567,4 @@
               (testing "Source tables are preserved in response"
                 (is (map? (get-in response [:source :source-tables "input"])))
                 (is (= "transforms_products"
-                       (get-in response [:source :source-tables "input" :table])))))))))))))
+                       (get-in response [:source :source-tables "input" :table])))))))))))

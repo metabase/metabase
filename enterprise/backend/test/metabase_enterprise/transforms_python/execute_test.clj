@@ -168,4 +168,4 @@
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"Table not found: missing_table"
-                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual}))))))))))))
+                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual}))))))))))
