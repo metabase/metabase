@@ -223,7 +223,7 @@
                             {:workspace_id workspace-id
                              :ref_id       ref-id}
                             (fn [existing]
-                              (let [->table-id     (fn [schema table]
+                              (let [qry-table-id   (fn [schema table]
                                                      (t2/select-one-fn :id [:model/Table :id]
                                                                        :db_id db_id
                                                                        :schema schema
@@ -235,7 +235,7 @@
                                                        (get existing id-key)))
                                     id-fallback    (fn [schema-key schema table-key table id-key]
                                                      (or (id-if-match schema-key schema table-key table id-key)
-                                                         (->table-id schema table)))]
+                                                         (qry-table-id schema table)))]
                                 {:db_id             db_id
                                  :global_schema     schema
                                  :global_table      table
