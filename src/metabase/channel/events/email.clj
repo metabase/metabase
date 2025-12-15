@@ -18,7 +18,7 @@
    [:recipient-emails :any]
    [:actor            :any]])
 
-(derive ::alert-stopped-because-archived :event/email.alert-stopped-because-archived)
+(derive :event/email.alert-stopped-because-archived ::alert-stopped-because-archived)
 
 (methodical/defmethod events/publish-event! ::alert-stopped-because-archived
   [_topic {:keys [card recipient-emails actor]}]
@@ -38,7 +38,7 @@
    [:affected-users    :any]
    [:bad-parameters    :any]])
 
-(derive ::broken-subscription-notification :event/email.broken-subscription-notification)
+(derive :event/email.broken-subscription-notification ::broken-subscription-notification)
 
 (methodical/defmethod events/publish-event! ::broken-subscription-notification
   [_topic payload]
@@ -54,7 +54,7 @@
    [:notification        :any]
    [:unsubscribed-emails [:sequential :string]]])
 
-(derive ::you-unsubscribed-notification-card :event/email.you-unsubscribed-notification-card)
+(derive :event/email.you-unsubscribed-notification-card ::you-unsubscribed-notification-card)
 
 (methodical/defmethod events/publish-event! ::you-unsubscribed-notification-card
   [_topic {:keys [notification unsubscribed-emails]}]
@@ -71,7 +71,7 @@
    [:recipient-emails :any]
    [:actor            :any]])
 
-(derive ::alert-stopped-because-changed :event/email.alert-stopped-because-changed)
+(derive :event/email.alert-stopped-because-changed ::alert-stopped-because-changed)
 
 (methodical/defmethod events/publish-event! ::alert-stopped-because-changed
   [_topic {:keys [card recipient-emails actor]}]
@@ -88,7 +88,7 @@
    [:persisted-infos :any]
    [:trigger         :any]])
 
-(derive ::persistent-model-error :event/email.persistent-model-error)
+(derive :event/email.persistent-model-error ::persistent-model-error)
 
 (methodical/defmethod events/publish-event! ::persistent-model-error
   [_topic {:keys [database-id persisted-infos trigger]}]
@@ -105,7 +105,7 @@
    [:removed-emails :any]
    [:actor          :any]])
 
-(derive ::you-were-removed-notification-card :event/email.you-were-removed-notification-card)
+(derive :event/email.you-were-removed-notification-card ::you-were-removed-notification-card)
 
 (methodical/defmethod events/publish-event! ::you-were-removed-notification-card
   [_topic {:keys [notification removed-emails actor]}]
@@ -122,7 +122,7 @@
    [:added-user-emails :any]
    [:adder             :any]])
 
-(derive ::you-were-added-card-notification :event/email.you-were-added-card-notification)
+(derive :event/email.you-were-added-card-notification ::you-were-added-card-notification)
 
 (methodical/defmethod events/publish-event! ::you-were-added-card-notification
   [_topic {:keys [notification added-user-emails adder]}]
@@ -138,7 +138,7 @@
    [:new-user     :any]
    [:google-auth? {:optional true, :default false} [:maybe :boolean]]])
 
-(derive ::user-joined-admin-notification :event/email.user-joined-admin-notification)
+(derive :event/email.user-joined-admin-notification ::user-joined-admin-notification)
 
 (methodical/defmethod events/publish-event! ::user-joined-admin-notification
   [_topic {:keys [new-user google-auth?]}]
@@ -153,7 +153,7 @@
   [:map
    [:email :string]])
 
-(derive ::follow-up :event/email.follow-up)
+(derive :event/email.follow-up ::follow-up)
 
 (methodical/defmethod events/publish-event! ::follow-up
   [_topic {:keys [email]}]
@@ -170,7 +170,7 @@
    [:user :any]
    [:blob :any]])
 
-(derive ::creator-sentiment :event/email.creator-sentiment)
+(derive :event/email.creator-sentiment ::creator-sentiment)
 
 (methodical/defmethod events/publish-event! ::creator-sentiment
   [_topic {:keys [user blob]}]
@@ -188,7 +188,7 @@
    [:password-reset-url [:maybe :string]]
    [:is-active?         :any]])
 
-(derive ::password-reset :event/email.password-reset)
+(derive :event/email.password-reset ::password-reset)
 
 (methodical/defmethod events/publish-event! ::password-reset
   [_topic {:keys [email sso-source password-reset-url is-active?]}]
@@ -205,7 +205,7 @@
    [:login-history [:map
                     [:user_id pos-int?]]]])
 
-(derive ::login-from-new-device :event/email.login-from-new-device)
+(derive :event/email.login-from-new-device ::login-from-new-device)
 
 (methodical/defmethod events/publish-event! ::login-from-new-device
   [_topic {:keys [login-history]}]
