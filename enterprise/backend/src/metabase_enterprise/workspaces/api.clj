@@ -163,10 +163,14 @@
   "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (let [isolated-schema (api/check-404 (t2/select-one-fn :schema [:model/Workspace :schema] id))
-        order-by        {:order-by [:db_id :schema :table]}
-        outputs         (t2/select [:model/WorkspaceOutput :db_id :schema :table :ref_id] :workspace_id id order-by)
-        raw-inputs      (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id] :workspace_id id order-by)
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (let [order-by        {:order-by [:db_id :global_schema :global_table]}
+        outputs         (t2/select [:model/WorkspaceOutput
+                                    :db_id :global_schema :global_table :global_table_id
+                                    :isolated_schema :isolated_table :isolated_table_id :ref_id]
+                                   :workspace_id id order-by)
+        raw-inputs      (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
+                                   :workspace_id id {:order-by [:db_id :schema :table]})
         shadowed?       (into #{} (map (juxt :db_id :global_schema :global_table)) outputs)
         inputs          (remove (comp shadowed? (juxt :db_id :schema :table)) raw-inputs)
         ;; Build a map of [d s t] => id for every table that has been synced since the output row was written.
