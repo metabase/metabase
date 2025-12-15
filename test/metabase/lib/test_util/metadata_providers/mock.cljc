@@ -37,6 +37,8 @@
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card :metadata/card)]]]
    [:segments {:optional true}
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment :metadata/segment)]]]
+   [:measures {:optional true}
+    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/measure :metadata/measure)]]]
    [:native-query-snippets {:optional true}
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/native-query-snippet :metadata/native-query-snippet)]]]
    [:transforms {:optional true}
@@ -55,6 +57,7 @@
                      :metadata/column               :fields
                      :metadata/card                 :cards
                      :metadata/segment              :segments
+                     :metadata/measure              :measures
                      :metadata/native-query-snippet :native-query-snippets
                      :metadata/metric               :cards
                      :metadata/transform            :transforms)]

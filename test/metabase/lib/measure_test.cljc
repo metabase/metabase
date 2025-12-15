@@ -1,0 +1,130 @@
+(ns metabase.lib.measure-test
+  (:require
+   [clojure.test :refer [deftest is testing]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
+
+(defn- measure-definition-with-aggregation
+  "Create an MBQL5 measure definition with the given aggregation clause and metadata provider."
+  [mp aggregation-clause]
+  (-> (lib/query mp (meta/table-metadata :venues))
+      (lib/aggregate aggregation-clause)))
+
+(defn- measure-definition-referencing
+  "Create a measure definition that references another measure by ID."
+  [mp referenced-measure-id]
+  (measure-definition-with-aggregation mp [:measure {:lib/uuid (str (random-uuid))} referenced-measure-id]))
+
+(deftest ^:parallel check-measure-overwrite-no-refs-test
+  (testing "Measure with no measure references - should pass"
+    (let [mp         (lib.tu/mock-metadata-provider meta/metadata-provider {})
+          definition (measure-definition-with-aggregation mp (lib/count))]
+      (is (nil? (lib/check-measure-overwrite 1 definition))))))
+
+(deftest ^:parallel check-measure-overwrite-valid-ref-test
+  (testing "Measure referencing another measure (no cycle) - should pass"
+    (let [;; Measure 2 has no measure references - use base provider for its definition
+          measure-2-def (measure-definition-with-aggregation
+                         meta/metadata-provider
+                         (lib/count))
+          mp            (lib.tu/mock-metadata-provider
+                         meta/metadata-provider
+                         {:measures [{:id         2
+                                      :name       "Measure 2"
+                                      :table-id   (meta/id :venues)
+                                      :definition measure-2-def}]})
+          ;; Measure 1 references Measure 2 - use mp so it can find measure 2
+          measure-1-def (measure-definition-referencing mp 2)]
+      (is (nil? (lib/check-measure-overwrite 1 measure-1-def))))))
+
+(deftest ^:parallel check-measure-overwrite-self-reference-not-in-mp-test
+  (testing "Measure referencing itself - should throw (reported as does not exist since measure being saved isn't in mp)"
+    (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
+          measure-1-def (measure-definition-referencing mp 1)]
+      (is (thrown-with-msg?
+           #?(:clj Exception :cljs js/Error)
+           #"does not exist"
+           (lib/check-measure-overwrite 1 measure-1-def))))))
+
+(deftest ^:parallel check-measure-overwrite-self-reference-in-mp-test
+  (testing "Measure referencing itself (measure exists in mp) - should throw cycle"
+    (let [simple-def (measure-definition-with-aggregation
+                      meta/metadata-provider
+                      (lib/count))
+          mp         (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:measures [{:id         1
+                                   :name       "Measure 1"
+                                   :table-id   (meta/id :venues)
+                                   :definition simple-def}]})
+          measure-1-def (measure-definition-referencing mp 1)]
+      (is (thrown-with-msg?
+           #?(:clj Exception :cljs js/Error)
+           #"[Cc]ycle"
+           (lib/check-measure-overwrite 1 measure-1-def))))))
+
+(deftest ^:parallel check-measure-overwrite-indirect-cycle-test
+  (testing "Measure A -> Measure B -> Measure A - should throw"
+    (let [;; Measure 1 exists with a simple definition (will be overwritten)
+          simple-def    (measure-definition-with-aggregation
+                         meta/metadata-provider
+                         (lib/count))
+          ;; Measure 2 references Measure 1
+          measure-2-def (measure-definition-referencing meta/metadata-provider 1)
+          mp            (lib.tu/mock-metadata-provider
+                         meta/metadata-provider
+                         {:measures [{:id         1
+                                      :name       "Measure 1"
+                                      :table-id   (meta/id :venues)
+                                      :definition simple-def}
+                                     {:id         2
+                                      :name       "Measure 2"
+                                      :table-id   (meta/id :venues)
+                                      :definition measure-2-def}]})
+          ;; New definition for Measure 1 references Measure 2 -> creates cycle: 1 -> 2 -> 1
+          measure-1-def (measure-definition-referencing mp 2)]
+      (is (thrown-with-msg?
+           #?(:clj Exception :cljs js/Error)
+           #"[Cc]ycle"
+           (lib/check-measure-overwrite 1 measure-1-def))))))
+
+(deftest ^:parallel check-measure-overwrite-longer-cycle-test
+  (testing "Measure A -> B -> C -> A - should throw"
+    (let [;; Measure 1 exists with a simple definition (will be overwritten)
+          simple-def    (measure-definition-with-aggregation
+                         meta/metadata-provider
+                         (lib/count))
+          ;; Measure 3 references Measure 1
+          measure-3-def (measure-definition-referencing meta/metadata-provider 1)
+          ;; Measure 2 references Measure 3
+          measure-2-def (measure-definition-referencing meta/metadata-provider 3)
+          mp            (lib.tu/mock-metadata-provider
+                         meta/metadata-provider
+                         {:measures [{:id         1
+                                      :name       "Measure 1"
+                                      :table-id   (meta/id :venues)
+                                      :definition simple-def}
+                                     {:id         2
+                                      :name       "Measure 2"
+                                      :table-id   (meta/id :venues)
+                                      :definition measure-2-def}
+                                     {:id         3
+                                      :name       "Measure 3"
+                                      :table-id   (meta/id :venues)
+                                      :definition measure-3-def}]})
+          ;; New definition for Measure 1 references Measure 2 -> creates cycle: 1 -> 2 -> 3 -> 1
+          measure-1-def (measure-definition-referencing mp 2)]
+      (is (thrown-with-msg?
+           #?(:clj Exception :cljs js/Error)
+           #"[Cc]ycle"
+           (lib/check-measure-overwrite 1 measure-1-def))))))
+
+(deftest ^:parallel check-measure-overwrite-unknown-measure-test
+  (testing "Measure referencing unknown measure - should throw"
+    (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
+          measure-1-def (measure-definition-referencing mp 999)]
+      (is (thrown-with-msg?
+           #?(:clj Exception :cljs js/Error)
+           #"does not exist"
+           (lib/check-measure-overwrite 1 measure-1-def))))))

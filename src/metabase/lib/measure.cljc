@@ -9,8 +9,11 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv empty? select-keys]]))
 
@@ -111,6 +114,42 @@
                                                      aggregation-pos (assoc :aggregation-positions [aggregation-pos]))))
                                                measures)))))))
 
-(def keep-me
-  "Var to keep ns loaded for side-effects."
+(defn- check-measure-cycles
+  "DFS to detect cycles starting from `measure-id` with `definition`.
+  `metadata-provider` is used for looking up referenced measures.
+  `path-nodes` is the set of measure IDs currently in the DFS path (for cycle detection).
+  `visited` is the set of measure IDs we've fully processed (for avoiding redundant work).
+  Returns updated `visited` set. Throws if a cycle is detected or if a referenced measure doesn't exist."
+  ([metadata-provider definition measure-id]
+   (check-measure-cycles metadata-provider definition measure-id #{} #{}))
+  ([metadata-provider definition measure-id path-nodes visited]
+   (cond
+     (contains? path-nodes measure-id)
+     (throw (ex-info (i18n/tru "Measure cycle detected.")
+                     {:measure-id measure-id}))
+
+     (contains? visited measure-id)
+     visited
+
+     :else
+     (let [referenced-ids (lib.walk.util/all-measure-ids definition)
+           path-nodes'    (conj path-nodes measure-id)]
+       (reduce (fn [visited' ref-id]
+                 (if-let [measure (lib.metadata/measure metadata-provider ref-id)]
+                   (check-measure-cycles metadata-provider (:definition measure) ref-id path-nodes' visited')
+                   (throw (ex-info (i18n/tru "Measure {0} does not exist." ref-id)
+                                   {:measure-id ref-id}))))
+               (conj visited measure-id)
+               referenced-ids)))))
+
+(mu/defn check-measure-overwrite
+  "Check if saving a measure with `measure-id` and `definition` would create a cycle.
+  Returns nil if safe to save, throws an exception if it would create a cycle.
+
+  `measure-id` can be nil for new measures that don't have an ID yet.
+  `definition` is the measure's MBQL5 query which also serves as the metadata provider
+  for looking up referenced measures."
+  [measure-id :- [:maybe ::lib.schema.id/measure]
+   definition :- ::lib.schema/query]
+  (check-measure-cycles definition definition measure-id)
   nil)

@@ -451,9 +451,11 @@
  [metabase.lib.schema.util
   remove-lib-uuids]
  [lib.segment
-  available-segments]
+  available-segments
+  check-segment-overwrite]
  [lib.measure
-  available-measures]
+  available-measures
+  check-measure-overwrite]
  [metabase.lib.serialize
   prepare-for-serialization]
  [lib.stage

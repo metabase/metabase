@@ -78,12 +78,6 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-(t2/define-before-update :model/Measure [measure]
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes measure) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Measure."))))
-  measure)
-
 (defn- migrated-measure-definition
   [{:keys [definition], table-id :table_id}]
   (let [database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
@@ -91,8 +85,21 @@
 
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
-  (cond-> measure
-    (some? definition) (assoc :definition (migrated-measure-definition measure))))
+  (let [measure (cond-> measure
+                  (some? definition) (assoc :definition (migrated-measure-definition measure)))]
+    (when (seq (:definition measure))
+      (lib/check-measure-overwrite nil (:definition measure)))
+    measure))
+
+(t2/define-before-update :model/Measure [{:keys [id] :as measure}]
+  ;; throw an Exception if someone tries to update creator_id
+  (when (contains? (t2/changes measure) :creator_id)
+    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Measure."))))
+  ;; check for cycles if definition is being updated
+  (when-let [def-change (:definition (t2/changes measure))]
+    (let [normalized-def (migrated-measure-definition (assoc measure :definition def-change))]
+      (lib/check-measure-overwrite id normalized-def)))
+  measure)
 
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
