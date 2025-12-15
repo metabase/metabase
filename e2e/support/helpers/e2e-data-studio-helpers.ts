@@ -118,5 +118,6 @@ export const DataStudio = {
     visitBrokenEntities: () => cy.visit("/data-studio/tasks/broken"),
     visitUnreferencedEntities: () =>
       cy.visit("/data-studio/tasks/unreferenced"),
+    list: () => cy.findByTestId("dependency-list"),
   },
 };

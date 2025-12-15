@@ -5,15 +5,59 @@ import type { CardId, SegmentId, TableId } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
+const MODEL_1_NAME = "Model 1";
+const MODEL_2_NAME = "Model 2";
+const MODEL_3_NAME = "Model 3";
+const SEGMENT_1_NAME = "Segment 1";
+const SEGMENT_2_NAME = "Segment 2";
+const SEGMENT_3_NAME = "Segment 3";
+const SEGMENT_4_NAME = "Segment 4";
+const METRIC_1_NAME = "Metric 1";
+const METRIC_2_NAME = "Metric 2";
+const METRIC_3_NAME = "Metric 3";
+const SNIPPET_1_NAME = "Snippet 1";
+const SNIPPET_2_NAME = "Snippet 2";
+
+const ENTITY_NAMES = [
+  MODEL_1_NAME,
+  MODEL_2_NAME,
+  MODEL_3_NAME,
+  SEGMENT_1_NAME,
+  SEGMENT_2_NAME,
+  SEGMENT_3_NAME,
+  SEGMENT_4_NAME,
+  METRIC_1_NAME,
+  METRIC_2_NAME,
+  METRIC_3_NAME,
+  SNIPPET_1_NAME,
+  SNIPPET_2_NAME,
+];
+
 describe("scenarios > dependencies > unreferenced", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
   });
 
-  it("should be able to see unreferenced entities", () => {
+  it("should show unreferenced entities", () => {
     createEntities({ withReferences: false });
     H.DataStudio.Tasks.visitUnreferencedEntities();
+    H.DataStudio.Tasks.list().within(() => {
+      ENTITY_NAMES.forEach((name) => {
+        cy.findByText(name).should("be.visible");
+      });
+    });
+  });
+
+  it("should not show referenced entities", () => {
+    createEntities({ withReferences: true });
+    H.DataStudio.Tasks.visitUnreferencedEntities();
+    H.DataStudio.Tasks.list().within(() => {
+      ENTITY_NAMES.forEach((name) => {
+        cy.findByText(name).should("not.exist");
+      });
+    });
   });
 });
 
@@ -22,68 +66,180 @@ function createEntities({
 }: {
   withReferences?: boolean;
 }) {
-  createTableBasedModel({ name: "Model", tableId: ORDERS_ID }).then(
-    ({ body: model }) => {
+  createModelContent({ withReferences });
+  createSegmentContent({ withReferences });
+  createMetricContent({ withReferences });
+  createSnippetContent({ withReferences });
+}
+
+function createModelContent({
+  withReferences = false,
+}: {
+  withReferences?: boolean;
+}) {
+  createModelWithTableDataSource({
+    name: MODEL_1_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: model }) => {
+    if (withReferences) {
+      createQuestionWithModelDataSource({
+        name: `${MODEL_1_NAME} -> Question`,
+        modelId: model.id,
+      });
+    }
+  });
+  createModelWithTableDataSource({
+    name: MODEL_2_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: model }) => {
+    if (withReferences) {
+      createModelWithModelDataSource({
+        name: `${MODEL_2_NAME} -> Model`,
+        modelId: model.id,
+      });
+    }
+  });
+  createModelWithTableDataSource({
+    name: MODEL_3_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: model }) => {
+    if (withReferences) {
+      createMetricWithModelDataSource({
+        name: `${MODEL_3_NAME} -> Metric`,
+        modelId: model.id,
+      });
+    }
+  });
+}
+
+function createSegmentContent({
+  withReferences = false,
+}: {
+  withReferences?: boolean;
+}) {
+  createSegmentWithTableDataSource({
+    name: SEGMENT_1_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: segment }) => {
+    if (withReferences) {
+      createQuestionWithSegmentClause({
+        name: `${SEGMENT_1_NAME} -> Question`,
+        tableId: ORDERS_ID,
+        segmentId: segment.id,
+      });
+    }
+  });
+  createSegmentWithTableDataSource({
+    name: SEGMENT_2_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: segment }) => {
+    if (withReferences) {
+      createModelWithSegmentClause({
+        name: `${SEGMENT_2_NAME} -> Model`,
+        tableId: ORDERS_ID,
+        segmentId: segment.id,
+      });
+    }
+  });
+  createSegmentWithTableDataSource({
+    name: SEGMENT_3_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: segment }) => {
+    if (withReferences) {
+      createSegmentWithSegmentClause({
+        name: `${SEGMENT_3_NAME} -> Segment`,
+        tableId: ORDERS_ID,
+        segmentId: segment.id,
+      });
+    }
+  });
+  createSegmentWithTableDataSource({
+    name: SEGMENT_4_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: segment }) => {
+    if (withReferences) {
+      createMetricWithSegmentClause({
+        name: `${SEGMENT_4_NAME} -> Metric`,
+        tableId: ORDERS_ID,
+        segmentId: segment.id,
+      });
+    }
+  });
+}
+
+function createMetricContent({
+  withReferences = false,
+}: {
+  withReferences?: boolean;
+}) {
+  createMetricWithTableDataSource({
+    name: METRIC_1_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: metric }) => {
+    if (withReferences) {
+      createQuestionWithMetricClause({
+        name: `${METRIC_1_NAME} -> Question`,
+        tableId: ORDERS_ID,
+        metricId: metric.id,
+      });
+    }
+  });
+  createMetricWithTableDataSource({
+    name: METRIC_2_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: metric }) => {
+    if (withReferences) {
+      createModelWithMetricClause({
+        name: `${METRIC_2_NAME} -> Model`,
+        tableId: ORDERS_ID,
+        metricId: metric.id,
+      });
+    }
+  });
+  createMetricWithTableDataSource({
+    name: METRIC_3_NAME,
+    tableId: ORDERS_ID,
+  }).then(({ body: metric }) => {
+    if (withReferences) {
+      createMetricWithMetricClause({
+        name: `${METRIC_3_NAME} -> Metric`,
+        tableId: ORDERS_ID,
+        metricId: metric.id,
+      });
+    }
+  });
+}
+
+function createSnippetContent({
+  withReferences = false,
+}: {
+  withReferences?: boolean;
+}) {
+  createSnippetWithBasicFilter({ name: SNIPPET_1_NAME }).then(
+    ({ body: filter }) => {
       if (withReferences) {
-        createModelBasedQuestion({
-          name: "Model -> Question",
-          modelId: model.id,
+        createQuestionWithSnippetReference({
+          name: `${SNIPPET_1_NAME} -> Question`,
+          tableName: "ORDERS",
+          snippetName: filter.name,
         });
-        createModelBasedModel({ name: "Model -> Model", modelId: model.id });
-        createModelBasedMetric({ name: "Model -> Metric", modelId: model.id });
       }
     },
   );
-  createTableBasedSegment({ name: "Segment", tableId: ORDERS_ID }).then(
-    ({ body: segment }) => {
+
+  createSnippetWithBasicFilter({ name: SNIPPET_2_NAME }).then(
+    ({ body: filter }) => {
       if (withReferences) {
-        createSegmentBasedQuestion({
-          name: "Segment -> Question",
-          tableId: ORDERS_ID,
-          segmentId: segment.id,
-        });
-        createSegmentBasedModel({
-          name: "Segment -> Model",
-          tableId: ORDERS_ID,
-          segmentId: segment.id,
-        });
-        createSegmentBasedSegment({
-          name: "Segment -> Segment",
-          tableId: ORDERS_ID,
-          segmentId: segment.id,
-        });
-        createSegmentBasedMetric({
-          name: "Segment -> Metric",
-          tableId: ORDERS_ID,
-          segmentId: segment.id,
-        });
-      }
-    },
-  );
-  createTableBasedMetric({ name: "Metric", tableId: ORDERS_ID }).then(
-    ({ body: metric }) => {
-      if (withReferences) {
-        createMetricBasedQuestion({
-          name: "Metric -> Question",
-          tableId: ORDERS_ID,
-          metricId: metric.id,
-        });
-        createMetricBasedModel({
-          name: "Metric -> Model",
-          tableId: ORDERS_ID,
-          metricId: metric.id,
-        });
-        createMetricBasedMetric({
-          name: "Metric -> Metric",
-          tableId: ORDERS_ID,
-          metricId: metric.id,
+        createSnippetWithSnippetReference({
+          name: `${SNIPPET_2_NAME} -> Snippet`,
+          snippetName: filter.name,
         });
       }
     },
   );
 }
 
-function createModelBasedQuestion({
+function createQuestionWithModelDataSource({
   name,
   modelId,
 }: {
@@ -99,7 +255,7 @@ function createModelBasedQuestion({
   });
 }
 
-function createSegmentBasedQuestion({
+function createQuestionWithSegmentClause({
   name,
   tableId,
   segmentId,
@@ -118,7 +274,7 @@ function createSegmentBasedQuestion({
   });
 }
 
-function createMetricBasedQuestion({
+function createQuestionWithMetricClause({
   name,
   tableId,
   metricId,
@@ -137,7 +293,25 @@ function createMetricBasedQuestion({
   });
 }
 
-function createTableBasedModel({
+function createQuestionWithSnippetReference({
+  name,
+  tableName,
+  snippetName,
+}: {
+  name: string;
+  tableName: string;
+  snippetName: string;
+}) {
+  return H.createNativeQuestion({
+    name,
+    type: "question",
+    native: {
+      query: `select * from ${tableName} where {{snippet: ${snippetName}}}`,
+    },
+  });
+}
+
+function createModelWithTableDataSource({
   name,
   tableId,
 }: {
@@ -153,7 +327,7 @@ function createTableBasedModel({
   });
 }
 
-function createModelBasedModel({
+function createModelWithModelDataSource({
   name,
   modelId,
 }: {
@@ -169,7 +343,7 @@ function createModelBasedModel({
   });
 }
 
-function createSegmentBasedModel({
+function createModelWithSegmentClause({
   name,
   tableId,
   segmentId,
@@ -188,7 +362,7 @@ function createSegmentBasedModel({
   });
 }
 
-function createMetricBasedModel({
+function createModelWithMetricClause({
   name,
   tableId,
   metricId,
@@ -207,7 +381,7 @@ function createMetricBasedModel({
   });
 }
 
-function createTableBasedSegment({
+function createSegmentWithTableDataSource({
   name,
   tableId,
 }: {
@@ -224,7 +398,7 @@ function createTableBasedSegment({
   });
 }
 
-function createSegmentBasedSegment({
+function createSegmentWithSegmentClause({
   name,
   tableId,
   segmentId,
@@ -243,7 +417,7 @@ function createSegmentBasedSegment({
   });
 }
 
-function createTableBasedMetric({
+function createMetricWithTableDataSource({
   name,
   tableId,
 }: {
@@ -260,7 +434,7 @@ function createTableBasedMetric({
   });
 }
 
-function createModelBasedMetric({
+function createMetricWithModelDataSource({
   name,
   modelId,
 }: {
@@ -277,7 +451,7 @@ function createModelBasedMetric({
   });
 }
 
-function createSegmentBasedMetric({
+function createMetricWithSegmentClause({
   name,
   tableId,
   segmentId,
@@ -297,7 +471,7 @@ function createSegmentBasedMetric({
   });
 }
 
-function createMetricBasedMetric({
+function createMetricWithMetricClause({
   name,
   tableId,
   metricId,
@@ -313,5 +487,25 @@ function createMetricBasedMetric({
       "source-table": tableId,
       aggregation: [["metric", metricId]],
     },
+  });
+}
+
+function createSnippetWithBasicFilter({ name }: { name: string }) {
+  return H.createSnippet({
+    name,
+    content: "1 = 1",
+  });
+}
+
+function createSnippetWithSnippetReference({
+  name,
+  snippetName,
+}: {
+  name: string;
+  snippetName: string;
+}) {
+  return H.createSnippet({
+    name,
+    content: `{{snippet: ${snippetName}}}`,
   });
 }
