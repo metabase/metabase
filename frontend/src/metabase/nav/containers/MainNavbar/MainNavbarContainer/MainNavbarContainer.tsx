@@ -21,9 +21,13 @@ import Collections, {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  getUser,
+  getUserCanWriteToCollections,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -87,12 +91,18 @@ function MainNavbarContainer({
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const {
     data: trashCollection,
     isLoading,
     error,
-  } = useGetCollectionQuery({ id: "trash" });
+  } = useGetCollectionQuery(
+    {
+      id: "trash",
+    },
+    { skip: !canWriteToCollections },
+  );
 
   const { data: collections = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,

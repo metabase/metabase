@@ -20,11 +20,25 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Metabot :prompts]
   "Hydrate the list of prompts for a collection of metabots."
-  [_model k metabots]
+  [_model hydration-key metabots]
   (mi/instances-with-hydrated-data
-   metabots k
+   metabots
+   hydration-key
    #(group-by :metabot_id
               (t2/select :model/MetabotPrompt {:where [:in :metabot_id (map :id metabots)]}))
+   :id
+   {:default []}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Metabot :use_cases]
+  "Hydrate the list of use cases for a collection of metabots."
+  [_model hydration-key metabots]
+  (mi/instances-with-hydrated-data
+   metabots
+   hydration-key
+   #(group-by :metabot_id
+              (t2/select :model/MetabotUseCase
+                         {:where    [:in :metabot_id (map :id metabots)]
+                          :order-by [[:name :asc]]}))
    :id
    {:default []}))
 
@@ -35,8 +49,9 @@
   [:name])
 
 (defmethod serdes/dependencies "Metabot"
-  [{:keys [prompts]}]
-  (set (mapcat serdes/dependencies prompts)))
+  [{:keys [collection_id prompts]}]
+  (cond-> (set (mapcat serdes/dependencies prompts))
+    collection_id (conj [{:model "Collection" :id collection_id}])))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])
@@ -46,4 +61,5 @@
    :transform {:created_at    (serdes/date)
                :updated_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
-               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)}})
+               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)
+               :use_cases     (serdes/nested :model/MetabotUseCase :metabot_id opts)}})
