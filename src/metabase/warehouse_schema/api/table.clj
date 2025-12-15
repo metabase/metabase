@@ -238,12 +238,14 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)]
+    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
+          :let [origin-field (-> (t2/hydrate origin-field [:table :db])
+                                 (update :table schema.table/present-table))]
+          :when (-> origin-field :table :active)]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
-       :origin         (-> (t2/hydrate origin-field [:table :db])
-                           (update :table schema.table/present-table))
+       :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
        :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 
