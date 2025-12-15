@@ -1,16 +1,13 @@
 import { skipToken } from "@reduxjs/toolkit/query";
-import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import * as Urls from "metabase/lib/urls";
-import { getCollectionList } from "metabase/nav/components/CollectionBreadcrumbs/utils";
-import { Flex, Group, Text } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import type { Segment, Table } from "metabase-types/api";
-
-import S from "./SegmentBreadcrumbs.module.css";
 
 type SegmentBreadcrumbsProps = {
   table: Table;
@@ -21,39 +18,30 @@ export function PublishedTableSegmentBreadcrumbs({
   table,
   segment,
 }: SegmentBreadcrumbsProps) {
-  const collection = table.collection;
-  const ancestors = collection ? getCollectionList({ collection }) : [];
+  const { path, isLoadingPath } = useCollectionPath({
+    collectionId: table.collection_id,
+  });
 
   return (
-    <Group c="text-secondary" gap="sm" wrap="nowrap" my="md">
-      {ancestors.map((ancestor, index) => (
-        <Fragment key={ancestor.id}>
-          {index > 0 && <Separator />}
-          <BreadcrumbLink to={Urls.dataStudioCollection(ancestor.id)}>
-            <Ellipsified>{ancestor.name}</Ellipsified>
-          </BreadcrumbLink>
-        </Fragment>
+    <DataStudioBreadcrumbs loading={isLoadingPath}>
+      {path?.map((collection, i) => (
+        <Link
+          key={collection.id}
+          to={Urls.dataStudioLibrary({
+            expandedIds: path.slice(1, i + 1).map((c) => c.id),
+          })}
+        >
+          {collection.name}
+        </Link>
       ))}
-
-      {collection && (
-        <>
-          {ancestors.length > 0 && <Separator />}
-          <BreadcrumbLink to={Urls.dataStudioCollection(collection.id)}>
-            <Ellipsified>{collection.name}</Ellipsified>
-          </BreadcrumbLink>
-        </>
-      )}
-
-      <Separator />
-      <BreadcrumbLink to={Urls.dataStudioTableSegments(table.id)}>
-        <Ellipsified>{table.display_name}</Ellipsified>
-      </BreadcrumbLink>
-
-      <Separator />
-      <BreadcrumbText>
-        <Ellipsified>{segment?.name ?? t`New segment`}</Ellipsified>
-      </BreadcrumbText>
-    </Group>
+      <Link
+        key={`table-${table.id}`}
+        to={Urls.dataStudioTableSegments(table.id)}
+      >
+        {table.display_name}
+      </Link>
+      <span>{segment?.name ?? t`New Segment`}</span>
+    </DataStudioBreadcrumbs>
   );
 }
 
@@ -61,36 +49,35 @@ export function DataModelSegmentBreadcrumbs({
   table,
   segment,
 }: SegmentBreadcrumbsProps) {
-  const { data: schemas } = useListDatabaseSchemasQuery(
+  const { data: schemas, isLoading } = useListDatabaseSchemasQuery(
     table.db_id ? { id: table.db_id } : skipToken,
   );
 
   const showSchema = schemas && schemas.length > 1 && table.schema;
 
   return (
-    <Group c="text-secondary" gap="sm" wrap="nowrap" my="md">
+    <DataStudioBreadcrumbs loading={isLoading}>
       {table.db && (
-        <BreadcrumbLink to={Urls.dataStudioData({ databaseId: table.db_id })}>
-          <Ellipsified>{table.db.name}</Ellipsified>
-        </BreadcrumbLink>
+        <>
+          <Link to={Urls.dataStudioData({ databaseId: table.db_id })}>
+            <Ellipsified>{table.db.name}</Ellipsified>
+          </Link>
+        </>
       )}
 
       {showSchema && (
         <>
-          <Separator />
-          <BreadcrumbLink
+          <Link
             to={Urls.dataStudioData({
               databaseId: table.db_id,
               schemaName: table.schema,
             })}
           >
             <Ellipsified>{table.schema}</Ellipsified>
-          </BreadcrumbLink>
+          </Link>
         </>
       )}
-
-      <Separator />
-      <BreadcrumbLink
+      <Link
         to={Urls.dataStudioData({
           databaseId: table.db_id,
           schemaName: table.schema,
@@ -99,40 +86,8 @@ export function DataModelSegmentBreadcrumbs({
         })}
       >
         <Ellipsified>{table.display_name}</Ellipsified>
-      </BreadcrumbLink>
-
-      <Separator />
-      <BreadcrumbText>
-        <Ellipsified>{segment?.name ?? t`New segment`}</Ellipsified>
-      </BreadcrumbText>
-    </Group>
+      </Link>
+      {segment?.name ?? t`New segment`}
+    </DataStudioBreadcrumbs>
   );
-}
-
-function BreadcrumbLink({
-  to,
-  children,
-}: {
-  to: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link to={to} className={S.link}>
-      <Flex align="center" gap="xs" wrap="nowrap">
-        {children}
-      </Flex>
-    </Link>
-  );
-}
-
-function BreadcrumbText({ children }: { children: React.ReactNode }) {
-  return (
-    <Flex align="center" gap="xs" wrap="nowrap">
-      {children}
-    </Flex>
-  );
-}
-
-function Separator() {
-  return <Text span>/</Text>;
 }

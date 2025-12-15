@@ -150,7 +150,6 @@ const TableSectionBase = ({
   return (
     <Stack data-testid="table-section" gap={0} pb="lg">
       <Stack
-        bg="accent-gray-light"
         className={S.header}
         gap="lg"
         pb={12}

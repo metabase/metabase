@@ -98,6 +98,7 @@ export function NewSegmentPage({
   return (
     <PageContainer
       data-testid="new-segment-page"
+      gap="xl"
       header={
         <NewSegmentHeader
           previewUrl={previewUrl}

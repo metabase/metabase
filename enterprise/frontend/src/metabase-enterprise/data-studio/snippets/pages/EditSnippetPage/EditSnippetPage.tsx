@@ -141,15 +141,13 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
               }}
             />
           </Card>
-          <Card withBorder p="md" bg="bg-white" flex="0 0 320px">
-            <Stack gap="lg">
-              <SnippetDescriptionSection snippet={snippet} />
-              <EntityCreationInfo
-                createdAt={snippet.created_at}
-                creator={snippet.creator}
-              />
-            </Stack>
-          </Card>
+          <Stack p="md" gap="lg" flex="0 0 320px">
+            <SnippetDescriptionSection snippet={snippet} />
+            <EntityCreationInfo
+              createdAt={snippet.created_at}
+              creator={snippet.creator}
+            />
+          </Stack>
         </Flex>
       </PageContainer>
       <LeaveRouteConfirmModal

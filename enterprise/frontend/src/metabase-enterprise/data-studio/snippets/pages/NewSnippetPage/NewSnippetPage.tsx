@@ -14,7 +14,7 @@ import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { Card, Flex } from "metabase/ui";
+import { Card, Flex, Stack } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import type { RegularCollectionId } from "metabase-types/api";
@@ -142,14 +142,14 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               }}
             />
           </Card>
-          <Card p="md" bg="bg-white" withBorder flex="0 0 320px">
+          <Stack p="md" flex="0 0 320px">
             <EditableText
               initialValue={description}
               placeholder={t`No description`}
               isMarkdown
               onChange={setDescription}
             />
-          </Card>
+          </Stack>
         </Flex>
       </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={!isSaving} />
