@@ -85,15 +85,20 @@
             email (get jwt-data (jwt-attribute-email))
             first-name (get jwt-data (jwt-attribute-firstname))
             last-name (get jwt-data (jwt-attribute-lastname))
-            tenant-slug (get jwt-data (jwt-attribute-tenant))
+            tenant-slug (u/prog1 (get jwt-data (jwt-attribute-tenant))
+                          (when-not (or (nil? <>)
+                                        (string? <>)
+                                        (integer? <>))
+                            (throw (ex-info "Value of `@tenant` must be a string" {:status-code 400
+                                                                                   :error :invalid-tenant}))))
             user-attributes (jwt-data->user-attributes jwt-data)]
         (when-not email
-          (throw (ex-info (str (tru "JWT token missing email claim"))
+          (throw (ex-info "JWT token missing email claim"
                           {:status-code 400
                            :error :missing-email})))
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
         {:success? true
-         :tenant-slug tenant-slug
+         :tenant-slug (some-> tenant-slug str)
          :user-data (->> {:email email
                           :first_name first-name
                           :last_name last-name
