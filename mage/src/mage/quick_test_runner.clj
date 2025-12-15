@@ -110,19 +110,6 @@
   (or (first
        (keep (fn [suffix]
                (let [file-path (str partial-file-path suffix)]
-<<<<<<< HEAD
-                 (cond (str/starts-with? maybe-ns "metabase.")
-                       ;; src/metabase/...
-                       (let [path (str "src/" file-path)]
-                         (and (fs/exists? (str u/project-root-directory "/" path)) path))
-
-                       (str/starts-with? maybe-ns "metabase-enterprise.")
-                       ;; enterprise/backend/src/metabase_enterprise/...
-                       (or (let [path (str "enterprise/backend/src/" file-path)]
-                             (and (fs/exists? (str u/project-root-directory "/" path)) path))
-                           (let [path (str "enterprise/backend/test/" file-path)]
-                             (and (fs/exists? (str u/project-root-directory "/" path)) path))))))
-=======
                  (cond
                    ;; src/metabase/...
                    (str/starts-with? maybe-ns "metabase.")
@@ -133,7 +120,6 @@
                    (str/starts-with? maybe-ns "metabase-enterprise.")
                    (let [path (str "enterprise/backend/" file-path)]
                      (and (fs/exists? (str u/project-root-directory "/" path)) path)))))
->>>>>>> origin/workspaces-master
              [".clj" ".cljc" ".bb"]))
       (throw
        (ex-info "" {:mage/error (str "Could not find a file for namespace: "
