@@ -10,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO (crisptrutski 2025-12-10): When there are more entity types support, this should update those too.
+;; TODO (crisptrutski 2025/12/10): When there are more entity types support, this should update those too.
 (mu/defn merge-transform! :- [:map
                               [:op [:enum :create :delete :noop :update]]
                               [:ref_id ::ws.types/ref-id]
