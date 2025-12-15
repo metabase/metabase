@@ -93,11 +93,12 @@ describe(
         .should("be.visible")
         .should("be.disabled");
 
-      // Going to the next step adn selecting "Orders in a dashboard" explicitely
+      // Going to the next step and selecting "Orders in a dashboard" explicitely
       // because sometimes it selects another one that's been used recently
       // see EMB-1106
       cy.findByRole("button", { name: "Next" }).click();
       cy.get('[data-testid="embed-recent-item-card"]')
+        .should("have.length.greaterThan", 0)
         .contains("Orders in a dashboard")
         .click();
 
