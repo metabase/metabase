@@ -12,3 +12,13 @@ export function setupSegmentRevisionsEndpoint(
 ) {
   fetchMock.get(`path:/api/revision?entity=segment&id=${segmentId}`, revisions);
 }
+
+export function setupDocumentRevisionsEndpoint(
+  documentId: number,
+  revisions: Revision[],
+) {
+  fetchMock.get(
+    `path:/api/revision?entity=document&id=${documentId}`,
+    revisions,
+  );
+}
