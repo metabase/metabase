@@ -204,16 +204,19 @@
 (deftest collapse-test
   (let [ws (fn [ref-id] {:entity-type :workspace-transform, :id ref-id})
         t  (fn [id] {:entity-type :table, :id id})]
-    (is (= {(ws 1) [(ws 2) (ws 3) (ws 4)]
+    (is (= {(ws 1) [(ws 2) (ws 3)]
             (ws 2) []
-            (ws 3) []
-            (ws 4) []}
+            (ws 3) [(ws 5)]
+            (ws 4) []
+            (ws 5) []}
            (#'ws.dag/collapse
             #'ws.dag/table?
             {(ws 1) [(t 1) (t 2)]
              (t 1)  [(ws 2)]
-             (t 2)  [(ws 3) (t 5)]
+             (t 2)  [(ws 3)]
              (ws 2) [(t 3)]
              (ws 3) [(t 4)]
+             (t 4)  [(ws 5)]
              (t 5)  [(ws 4)]
-             (ws 4) []})))))
+             (ws 4) []
+             (ws 5) []})))))
