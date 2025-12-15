@@ -1,11 +1,13 @@
 (ns ^:mb/driver-tests metabase.warehouse-schema-rest.api.table-test
   "Tests for /api/table endpoints."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -1339,3 +1341,27 @@
                       (filter #(= (:db_id %) db-id))
                       (map :id)
                       set))))))))
+
+(deftest no-fks-for-missing-tables-test
+  (testing "Check that we don't return foreign keys for missing/inactive tables"
+    (mt/with-temp-test-data
+      [["continent" []
+        []]
+       ["country" [{:field-name "continent_id", :base-type :type/Integer}]
+        []]]
+      (let [db (mt/db)
+            db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+        ;; 1. add FK relationship in the database targeting continent_1
+        (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
+        (sync/sync-database! db {:scan :schema})
+        (testing "initially country's continent_id is targeting continent_1"
+          (is (= (mt/id :continent :id)
+                 (get-fk-target))))
+        (is (= 1 (count (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent))))))
+
+        ;; 2. drop the country table
+        (jdbc/execute! db-spec "DROP TABLE country;")
+        (sync/sync-database! db {:scan :schema})
+
+        (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
