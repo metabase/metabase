@@ -20,9 +20,11 @@ import {
   type CollectionPickerValueItem,
   getCollectionType,
 } from "metabase/common/components/Pickers/CollectionPicker";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionId,
   CollectionItem,
+  CollectionNamespace,
   RecentItem,
   SearchResult,
 } from "metabase-types/api";
@@ -34,6 +36,18 @@ interface BaseMoveModalProps {
   movingCollectionId?: CollectionId;
   entityType?: EntityType;
   recentAndSearchFilter?: (item: CollectionPickerItem) => boolean;
+  /**
+   * The type of item being moved. When set to a non-collection model,
+   * namespace root collections (like tenant root) will be disabled.
+   */
+  savingModel?: "collection" | "dashboard" | "question" | "model";
+  /**
+   * The namespace of the collection being moved. Used to restrict which
+   * collections are shown in the picker:
+   * - If "shared-tenant-collection", only tenant collections are shown
+   * - Otherwise, tenant collections are hidden from the picker
+   */
+  movingCollectionNamespace?: CollectionNamespace;
 }
 
 type MoveModalProps =
@@ -77,7 +91,12 @@ export const MoveModal = ({
   entityType,
   canMoveToDashboard,
   recentAndSearchFilter,
+  savingModel,
+  movingCollectionNamespace,
 }: MoveModalProps) => {
+  const isMovingTenantCollection = PLUGIN_TENANTS.isTenantNamespace(
+    movingCollectionNamespace,
+  );
   const shouldDisableItem = (item: CollectionPickerItem): boolean => {
     if (movingCollectionId) {
       if (
@@ -147,6 +166,12 @@ export const MoveModal = ({
     ? ["collection", "dashboard"]
     : ["collection"];
 
+  const restrictToNamespace: string | undefined = movingCollectionId
+    ? isMovingTenantCollection && PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+      ? PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+      : "default"
+    : undefined;
+
   return (
     <CollectionPickerModal
       title={title}
@@ -157,12 +182,15 @@ export const MoveModal = ({
       onChange={handleMove}
       models={models}
       options={{
-        showSearch: true,
+        showSearch: !isMovingTenantCollection,
         allowCreateNew: true,
         hasConfirmButtons: true,
-        showRootCollection: true,
-        showPersonalCollections: true,
+        showRootCollection: !isMovingTenantCollection,
+        showPersonalCollections: !isMovingTenantCollection,
         confirmButtonText: t`Move`,
+        savingModel,
+        hasRecents: !isMovingTenantCollection,
+        restrictToNamespace,
       }}
       shouldDisableItem={shouldDisableItem}
       entityType={entityType}

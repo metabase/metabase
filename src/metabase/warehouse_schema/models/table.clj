@@ -485,7 +485,8 @@
                   :database-id   :db_id
                   :view-count    true
                   :created-at    true
-                  :updated-at    true}
+                  :updated-at    true
+                  :is-published  :is_published}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}

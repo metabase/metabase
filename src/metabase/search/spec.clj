@@ -77,7 +77,8 @@
    :view-count              :int
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
-   :display-type            :text})
+   :display-type            :text
+   :is-published            :boolean})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -100,7 +101,8 @@
          :view-count
          :updated-at
          :non-temporal-dim-ids
-         :has-temporal-dim])
+         :has-temporal-dim
+         :is-published])
        distinct
        vec))
 

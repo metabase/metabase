@@ -6,9 +6,15 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  (mu/with-api-error-message
-   [:map-of ms/KeywordOrString :any]
-   (deferred-tru "login attribute keys must be a keyword or string")))
+  [:map-of
+   [:and
+    (mu/with-api-error-message
+     ms/KeywordOrString
+     (deferred-tru "login attribute keys must be a keyword or string"))
+    (mu/with-api-error-message
+     [:fn (fn [k] (re-matches #"^(?!@).*" (name k)))]
+     (deferred-tru "login attribute keys must not start with `@`"))]
+   :any])
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
@@ -21,4 +27,5 @@
    [:jwt_attributes   {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]
+   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]])

@@ -153,14 +153,12 @@
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
                :collection :collection_id :dashboard :dashboard_id
-               :document :document_id
-               :moderation_reviews]
+               :document :document_id]
    :snippet   [:name :description]
    :transform [:name :description :creator :table]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
-               :collection :collection_id
-               :moderation_reviews]
+               :collection :collection_id]
    :document  [:name :description :view_count
                :created_at :creator
                :collection :collection_id]
@@ -196,7 +194,7 @@
 ;; frontend/src/metabase-types/api/dependencies.ts
 ;; (See CardDependencyNodeData, DashboardDependencyNodeData, etc.)
 ;;
-;; Note: Some fields (like :creator, :collection, :moderation_reviews) are added via t2/hydrate,
+;; Note: Some fields (like :creator, :collection) are added via t2/hydrate,
 ;; and others (like :last-edit-info, :view_count) are computed/added separately.
 ;; This map only lists the base database columns to SELECT.
 (def ^:private entity-select-fields
@@ -366,12 +364,12 @@
               (let [model (entity-model entity-type)
                     fields (entity-select-fields entity-type)]
                 (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
-                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal] :moderation_reviews)
+                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal])
                                                  (->> (map collection.root/hydrate-root-collection))
                                                  (revisions/with-last-edit-info :card))
                        (= entity-type :table) (t2/hydrate :fields :db)
                        (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields)
-                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
+                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal])
                                                       (->> (map collection.root/hydrate-root-collection))
                                                       (revisions/with-last-edit-info :dashboard))
                        (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])

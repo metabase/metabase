@@ -921,6 +921,7 @@
            permissions
            premium-features
            request
+           settings
            util}}
 
   pivot
@@ -1426,6 +1427,12 @@
            task
            util}}
 
+  tenants
+  {:team "Admin Webapp"
+   :api  #{metabase.tenants.core}
+   :uses #{premium-features
+           util}}
+
   testing-api
   {:team "DevEx"
    :api  #{metabase.testing-api.api
@@ -1517,6 +1524,7 @@
            settings
            setup
            system
+           tenants
            util}}
 
   users-rest
@@ -1530,10 +1538,13 @@
            config
            events
            models
+           notification
            permissions
            premium-features
            request
+           settings
            sso
+           tenants
            users
            util
            enterprise/advanced-permissions}}
@@ -1965,6 +1976,7 @@
            appearance
            audit-app
            embedding
+           permissions
            premium-features
            enterprise/sso}}
 
@@ -2116,6 +2128,7 @@
            premium-features
            query-processor
            request
+           tenants
            users
            util
            warehouse-schema
@@ -2203,7 +2216,6 @@
    :uses #{api
            appearance
            auth-identity
-           channel
            embedding
            premium-features
            request
@@ -2240,6 +2252,21 @@
            request
            settings
            system
+           util}}
+
+  enterprise/tenants
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.tenants.api}
+   :uses #{api
+           audit-app
+           auth-identity
+           collections
+           events
+           models
+           permissions
+           premium-features
+           request
+           settings
            util}}
 
   enterprise/transforms
