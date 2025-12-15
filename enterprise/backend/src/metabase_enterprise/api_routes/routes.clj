@@ -134,13 +134,9 @@
    "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
    "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
    "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
-<<<<<<< HEAD
+   "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
    "/workspace"                    metabase-enterprise.workspaces.api/routes})
-=======
-   "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
-   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
->>>>>>> origin/workspaces-master
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map
