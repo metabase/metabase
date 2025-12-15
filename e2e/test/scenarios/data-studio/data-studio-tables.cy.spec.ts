@@ -50,11 +50,21 @@ describe("scenarios > data studio > library > tables", () => {
   });
 
   describe("overview", () => {
-    it("should be able to view the table data", () => {
+    beforeEach(() => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
-
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+    });
+
+    it("should show page breadcrumbs", () => {
+      H.DataStudio.breadcrumbs().within(() => {
+        cy.findByRole("link", { name: "Library" }).should("be.visible");
+        cy.findByRole("link", { name: "Data" }).should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+    });
+
+    it("should be able to view the table data", () => {
       H.queryVisualizationRoot().within(() => {
         cy.findByText("Subtotal").should("be.visible");
         cy.findByText("110.93").should("be.visible");
@@ -62,10 +72,6 @@ describe("scenarios > data studio > library > tables", () => {
     });
 
     it("should be able to change the description", () => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [ORDERS_ID] });
-
-      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.DataStudio.Tables.Overview.descriptionText()
         .should("contain.text", "orders for a product")
         .click();

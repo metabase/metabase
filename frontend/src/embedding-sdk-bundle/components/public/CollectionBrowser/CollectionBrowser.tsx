@@ -36,6 +36,7 @@ type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 export type CollectionBrowserListColumns =
   | "type"
   | "name"
+  | "description"
   | "lastEditedBy"
   | "lastEditedAt"
   | "archive";

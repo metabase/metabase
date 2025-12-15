@@ -40,6 +40,7 @@ export function getDataStudioTransformRoutes() {
           <Route path="new/python" component={NewPythonTransformPage} />
         )}
         <Route path=":transformId" component={TransformQueryPage} />
+        <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/target" component={TransformTargetPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (

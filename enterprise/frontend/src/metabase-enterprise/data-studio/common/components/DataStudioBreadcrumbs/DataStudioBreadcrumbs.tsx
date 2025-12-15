@@ -13,6 +13,7 @@ export const DataStudioBreadcrumbs = ({
     fz="sm"
     c="text-secondary"
     style={{ visibility: loading ? "hidden" : undefined }}
+    data-testid="data-studio-breadcrumbs"
     {...rest}
   />
 );

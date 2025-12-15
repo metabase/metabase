@@ -502,13 +502,13 @@ describe("dashboard filters auto-wiring", () => {
       goToFilterMapping("ID");
 
       H.undoToastList()
-        .findByText("Auto-connect “Orders Question” to “ID”?")
+        .contains("Auto-connect “Orders Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
         .click();
 
       H.undoToastList()
-        .findByText("Auto-connect “Reviews Question” to “ID”?")
+        .contains("Auto-connect “Reviews Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
         .click();

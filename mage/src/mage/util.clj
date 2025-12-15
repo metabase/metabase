@@ -195,7 +195,7 @@
     (println "  mage <task-name> -h")
     task+descriptions))
 
-(def ^:dynamic *skip-warning* false)
+(def ^:dynamic *skip-warning* "Skips warnings for can-run?" false)
 
 (defn can-run? [cmd]
   (try (boolean (sh (str "command -v " cmd)))

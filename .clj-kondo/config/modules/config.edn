@@ -105,7 +105,6 @@
    :uses #{api
            app-db
            appearance
-           channel
            config
            driver
            eid-translation
@@ -922,6 +921,7 @@
            permissions
            premium-features
            request
+           settings
            util}}
 
   pivot
@@ -1021,11 +1021,10 @@
 
   queries
   {:team "Querying"
-   :api  #{metabase.queries.api
-           metabase.queries.core
+   :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema} ; TODO FIXME
+           metabase.queries.schema}
    :uses #{analytics
            analyze
            api
@@ -1037,8 +1036,6 @@
            config
            content-verification
            dashboards
-           eid-translation
-           embedding
            events
            lib
            lib-be
@@ -1051,11 +1048,33 @@
            query-permissions
            query-processor
            request
-           revisions
            search
            util
            view-log
            warehouse-schema}}
+
+  queries-rest
+  {:team "Querying"
+   :api  #{metabase.queries-rest.api}
+   :uses #{analyze
+           api
+           collections
+           eid-translation
+           embedding
+           events
+           lib
+           lib-be
+           models
+           parameters
+           permissions
+           public-sharing
+           queries
+           query-permissions
+           query-processor
+           request
+           revisions
+           search
+           util}}
 
   query-permissions
   {:team "UX West"
@@ -1408,6 +1427,12 @@
            task
            util}}
 
+  tenants
+  {:team "Admin Webapp"
+   :api  #{metabase.tenants.core}
+   :uses #{premium-features
+           util}}
+
   testing-api
   {:team "DevEx"
    :api  #{metabase.testing-api.api
@@ -1499,6 +1524,7 @@
            settings
            setup
            system
+           tenants
            util}}
 
   users-rest
@@ -1512,10 +1538,13 @@
            config
            events
            models
+           notification
            permissions
            premium-features
            request
+           settings
            sso
+           tenants
            users
            util
            enterprise/advanced-permissions}}
@@ -1947,6 +1976,7 @@
            appearance
            audit-app
            embedding
+           permissions
            premium-features
            enterprise/sso}}
 
@@ -2098,6 +2128,7 @@
            premium-features
            query-processor
            request
+           tenants
            users
            util
            warehouse-schema
@@ -2185,7 +2216,6 @@
    :uses #{api
            appearance
            auth-identity
-           channel
            embedding
            premium-features
            request
@@ -2222,6 +2252,21 @@
            request
            settings
            system
+           util}}
+
+  enterprise/tenants
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.tenants.api}
+   :uses #{api
+           audit-app
+           auth-identity
+           collections
+           events
+           models
+           permissions
+           premium-features
+           request
+           settings
            util}}
 
   enterprise/transforms
