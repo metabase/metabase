@@ -5,7 +5,7 @@ import api from "metabase/lib/api";
 import { type AIStreamingConfig, processChatResponse } from "./process-stream";
 import type { JSONValue } from "./types";
 
-// keep track of inflight requests so that can be cancelled programmitcally from other
+// keep track of inflight requests so that can be cancelled programatically from other
 // places in the app w/o passing references to the abort controller directly
 export const inflightAiStreamingRequests = new Map<
   string,
