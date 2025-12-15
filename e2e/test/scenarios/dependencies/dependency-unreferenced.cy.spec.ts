@@ -13,6 +13,8 @@ const MODEL_FOR_NATIVE_QUESTION_CARD_TAG = "Model for native question card tag";
 const MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE =
   "Model for native question parameter source";
 const MODEL_FOR_DASHBOARD_CARD = "Model for dashboard card";
+const MODEL_FOR_DASHBOARD_PARAMETER_SOURCE =
+  "Model for dashboard parameter source";
 const SEGMENT_FOR_QUESTION_FILTER = "Segment for question filter";
 const SEGMENT_FOR_MODEL_FILTER = "Segment for model filter";
 const SEGMENT_FOR_SEGMENT_FILTER = "Segment for segment filter";
@@ -32,6 +34,7 @@ const ENTITY_NAMES = [
   MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
   MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
   MODEL_FOR_DASHBOARD_CARD,
+  MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
   SEGMENT_FOR_QUESTION_FILTER,
   SEGMENT_FOR_MODEL_FILTER,
   SEGMENT_FOR_SEGMENT_FILTER,
@@ -159,6 +162,19 @@ function createModelContent({
       createDashboardWithCard({
         name: `${MODEL_FOR_DASHBOARD_CARD} -> Dashboard Card`,
         cardId: model.id,
+      });
+    }
+  });
+
+  createModelWithTableDataSource({
+    name: MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
+    tableId: PRODUCTS_ID,
+  }).then(({ body: model }) => {
+    if (withReferences) {
+      createDashboardWithParameterWithCardSource({
+        name: `${MODEL_FOR_DASHBOARD_PARAMETER_SOURCE} -> Dashboard`,
+        cardId: model.id,
+        cardFieldName: "CATEGORY",
       });
     }
   });
@@ -664,5 +680,32 @@ function createDashboardWithCard({
         },
       ],
     });
+  });
+}
+
+function createDashboardWithParameterWithCardSource({
+  name,
+  cardId,
+  cardFieldName,
+}: {
+  name: string;
+  cardId: CardId;
+  cardFieldName: string;
+}) {
+  return H.createDashboard({
+    name,
+    parameters: [
+      createMockParameter({
+        id: "10422a0f",
+        name: "Filter",
+        slug: "filter",
+        type: "string/=",
+        values_source_type: "card",
+        values_source_config: {
+          card_id: cardId,
+          value_field: ["field", cardFieldName, { "base-type": "type/Text" }],
+        },
+      }),
+    ],
   });
 }
