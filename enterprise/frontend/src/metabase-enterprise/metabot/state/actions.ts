@@ -16,6 +16,7 @@ import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase-enterprise/api/ai-streaming";
+import type { ProcessedChatResponse } from "metabase-enterprise/api/ai-streaming/process-stream";
 import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -162,9 +163,14 @@ export const executeSlashCommand = createAsyncThunk<
 );
 
 export type MetabotPromptSubmissionResult =
-  | { prompt: string; success: true; shouldRetry?: void }
-  | { prompt: string; success: false; shouldRetry: false }
-  | { prompt: string; success: false; shouldRetry: true };
+  | {
+      prompt: string;
+      success: true;
+      shouldRetry?: void;
+      data?: SendAgentRequestResult;
+    }
+  | { prompt: string; success: false; shouldRetry: false; data?: void }
+  | { prompt: string; success: false; shouldRetry: true; data?: void };
 
 export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
@@ -220,7 +226,7 @@ export const submitInput = createAsyncThunk<
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState(), agentId);
       const messageId = createMessageId();
-      const message = getDeveloperMessage(state, agentId) + prompt;
+      const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
       dispatch(
         addUserMessage({
           id: messageId,
@@ -233,7 +239,7 @@ export const submitInput = createAsyncThunk<
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,
-          message,
+          message: promptWithDevMessage,
           agentId,
           conversation_id: convo.conversationId,
           ...agentMetadata,
@@ -245,18 +251,19 @@ export const submitInput = createAsyncThunk<
 
       const result = await sendMessageRequestPromise;
 
-      if (isRejected(result) && result.payload?.type === "error") {
-        dispatch(
+      if (isRejected(result)) {
+        if (result.payload?.type === "error") {
           stopProcessingAndNotify({
             agentId,
             message: result.payload?.errorMessage,
-          }),
-        );
-        return {
-          prompt,
-          success: false,
-          shouldRetry: result.payload?.shouldRetry ?? false,
-        };
+          });
+        }
+        const shouldRetry =
+          (result.payload &&
+            "shouldRetry" in result.payload &&
+            (result.payload?.shouldRetry ?? {})) ??
+          false;
+        return { prompt: rawPrompt, success: false, shouldRetry };
       }
 
       return { prompt, success: true, data: result.payload };
@@ -276,8 +283,12 @@ type SendAgentRequestError =
       unresolved_tool_calls: { toolCallId: string; toolName: string }[];
     } & MetabotAgentResponse);
 
+type SendAgentRequestResult = MetabotAgentResponse & {
+  processedResponse: ProcessedChatResponse;
+};
+
 export const sendAgentRequest = createAsyncThunk<
-  MetabotAgentResponse,
+  SendAgentRequestResult,
   MetabotAgentRequest & { agentId: MetabotAgentId },
   { rejectValue: SendAgentRequestError }
 >(
@@ -394,6 +405,7 @@ export const sendAgentRequest = createAsyncThunk<
         conversation_id: request.conversation_id,
         history: [...getHistory(getState(), agentId), ...response.history],
         state,
+        processedResponse: response,
       });
     } catch (error) {
       console.error(error);

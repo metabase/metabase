@@ -73,7 +73,10 @@ type PluginMetabotType = {
   MetabotAdminAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
-  useInlineSQLPrompt: (question: Question) => {
+  useInlineSQLPrompt: (
+    question: Question,
+    bufferId: string,
+  ) => {
     portalElement: React.ReactPortal | null;
     extensions: Extension[];
     proposedQuestion: Question | undefined;

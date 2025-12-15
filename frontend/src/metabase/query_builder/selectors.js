@@ -309,6 +309,28 @@ export const getQuestion = createSelector(
   },
 );
 
+export const getProposedQuestion = createSelector(
+  [
+    getQuestion,
+    (state) =>
+      state.plugins.metabotPlugin.reactions.suggestedCodeEdits?.qb?.value ?? "",
+  ],
+  (question, suggestedSQL) => {
+    if (!question || !suggestedSQL) {
+      return;
+    }
+
+    return question.setQuery(
+      Lib.withNativeQuery(question.query(), suggestedSQL),
+    );
+  },
+);
+
+export const getHasProposedQuestion = createSelector(
+  [getProposedQuestion],
+  (proposedQuestion) => !!proposedQuestion,
+);
+
 export const getTableId = createSelector([getQuestion], (question) => {
   if (!question) {
     return;
@@ -473,6 +495,7 @@ export function areQueriesEquivalent({
 export const getIsResultDirty = createSelector(
   [
     getQuestion,
+    getProposedQuestion,
     getOriginalQuestion,
     getLastRunQuestion,
     getLastRunParameterValues,
@@ -481,6 +504,7 @@ export const getIsResultDirty = createSelector(
   ],
   (
     question,
+    proposedQuestion,
     originalQuestion,
     lastRunQuestion,
     lastParameters,
@@ -490,14 +514,14 @@ export const getIsResultDirty = createSelector(
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
       !!question && Lib.queryDisplayInfo(question.query()).isEditable;
-
+    const currentQuestion = proposedQuestion ?? question;
     return (
       haveParametersChanged ||
       (isEditable &&
         !areQueriesEquivalent({
           originalQuestion,
           lastRunQuestion,
-          currentQuestion: question,
+          currentQuestion: currentQuestion,
           tableMetadata,
         }))
     );
@@ -581,7 +605,7 @@ export const getIsSavedQuestionChanged = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-  [getQuestion, getIsDirty],
+  [getQuestion, getIsDirty, getHasProposedQuestion],
   isQuestionRunnable,
 );
 

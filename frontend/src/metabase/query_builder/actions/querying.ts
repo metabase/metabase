@@ -21,6 +21,7 @@ import {
   getIsRunning,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
+  getProposedQuestion,
   getQueryResults,
   getQuestion,
   getTimeoutId,
@@ -276,7 +277,9 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
 
 export const runOrCancelQuestionOrSelectedQuery =
   () => (dispatch: Dispatch, getState: GetState) => {
-    const question = getQuestion(getState());
+    const state = getState();
+    const question = getQuestion(state);
+
     if (!question) {
       return;
     }
@@ -287,17 +290,22 @@ export const runOrCancelQuestionOrSelectedQuery =
       return;
     }
 
-    const query = question.query();
+    const proposedQuestion = getProposedQuestion(state);
+    const currentQuestion = proposedQuestion ?? question;
+
+    const query = currentQuestion.query();
     const queryInfo = Lib.queryDisplayInfo(query);
     const selectedText = getAllNativeEditorSelectedText(getState());
     if (queryInfo.isNative && selectedText) {
       const selectedQuery = Lib.withNativeQuery(query, selectedText);
       dispatch(
         runQuestionQuery({
-          overrideWithQuestion: question.setQuery(selectedQuery),
+          overrideWithQuestion: currentQuestion.setQuery(selectedQuery),
           shouldUpdateUrl: false,
         }),
       );
+    } else if (proposedQuestion) {
+      dispatch(runQuestionQuery({ overrideWithQuestion: proposedQuestion }));
     } else {
       dispatch(runQuestionQuery());
     }

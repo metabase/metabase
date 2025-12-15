@@ -4,12 +4,12 @@ import type { Extension } from "@uiw/react-codemirror";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import {
   addDeveloperMessage,
   getMetabotSuggestedCodeEdit,
   removeSuggestedCodeEdit,
+  resetConversation,
 } from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -23,10 +23,15 @@ import {
   toggleEffect,
 } from "./MetabotInlineSQLPromptWidget";
 import { extractMetabotBufferContext } from "./utils";
+import {
+  useMetabotDispatch,
+  useMetabotSelector,
+} from "metabase-enterprise/metabot/hooks/use-metabot-store";
 
 function useRegisterCodeEditorMetabotContext(
   buffer: EditorView | undefined,
   databaseId: DatabaseId | null,
+  bufferId: string,
 ): void {
   useRegisterMetabotContextProvider(
     async () =>
@@ -35,7 +40,9 @@ function useRegisterCodeEditorMetabotContext(
             user_is_viewing: [
               {
                 type: "code_editor",
-                buffers: [extractMetabotBufferContext(buffer, databaseId)],
+                buffers: [
+                  extractMetabotBufferContext(buffer, databaseId, bufferId),
+                ],
               },
             ],
           }
@@ -52,17 +59,21 @@ export interface UseInlineSqlEditResult {
   handleRejectProposed?: () => void;
 }
 
-export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
+export function useInlineSQLPrompt(
+  question: Question,
+  bufferId: string,
+): UseInlineSqlEditResult {
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
 
   useRegisterCodeEditorMetabotContext(
     portalTarget?.view,
     question.databaseId(),
+    bufferId,
   );
 
-  const dispatch = useDispatch();
-  const generatedSql = useSelector((state) =>
-    getMetabotSuggestedCodeEdit(state, "default"),
+  const dispatch = useMetabotDispatch();
+  const generatedSql = useMetabotSelector((state) =>
+    getMetabotSuggestedCodeEdit(state, bufferId),
   )?.value;
 
   const hideInput = useCallback(() => {
@@ -77,6 +88,19 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
       }
     },
     [generatedSql, hideInput],
+  );
+
+  const databaseId = question.databaseId();
+
+  useEffect(
+    function resetOnDbChangeAndUnmount() {
+      return () => {
+        hideInput();
+        dispatch(removeSuggestedCodeEdit(bufferId));
+        dispatch(resetConversation({ agentId: "sql" }));
+      };
+    },
+    [dispatch, hideInput, databaseId, bufferId],
   );
 
   const resetInput = useCallback(() => {
@@ -134,7 +158,10 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     extensions,
     portalElement: portalTarget
       ? createPortal(
-          <MetabotInlineSQLPrompt onClose={hideInput} />,
+          <MetabotInlineSQLPrompt
+            databaseId={databaseId}
+            onClose={hideInput}
+          />,
           portalTarget.container,
         )
       : null,

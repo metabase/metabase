@@ -2,27 +2,29 @@ import cx from "classnames";
 import { forwardRef } from "react";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Icon, UnstyledButton } from "metabase/ui";
 
-import { MetabotPromptInput } from "../../MetabotPromptInput";
+import {
+  MetabotPromptInput,
+  type MetabotPromptInputProps,
+} from "../../MetabotPromptInput";
 
 import S from "./MetabotChatEditor.module.css";
 
-interface Props {
-  value: string;
-  placeholder?: string;
-  autoFocus?: boolean;
-  isResponding?: boolean;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-  onStop: () => void;
-  suggestionModels: SuggestionModel[];
-}
+type MetabotChatEditorProps = Pick<
+  MetabotPromptInputProps,
+  | "value"
+  | "placeholder"
+  | "autoFocus"
+  | "onChange"
+  | "onSubmit"
+  | "onStop"
+  | "suggestionConfig"
+> & { isResponding?: boolean };
 
 export const MetabotChatEditor = forwardRef<
   MetabotPromptInputRef | null,
-  Props
+  MetabotChatEditorProps
 >(({ isResponding = false, ...props }, ref) => {
   return (
     <Box className={S.editorContainer}>

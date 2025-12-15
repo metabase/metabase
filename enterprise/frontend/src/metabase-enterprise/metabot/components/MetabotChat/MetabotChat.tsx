@@ -204,7 +204,7 @@ export const MetabotChat = ({
               onChange={metabot.setPrompt}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
-              suggestionModels={config.suggestionModels}
+              suggestionConfig={{ suggestionModels: config.suggestionModels }}
             />
           </Paper>
         </Box>

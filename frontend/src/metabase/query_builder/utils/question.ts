@@ -21,12 +21,13 @@ export function isQuestionDirty(
 export function isQuestionRunnable(
   question: Question | undefined,
   isDirty: boolean,
+  hasSuggestion?: boolean,
 ) {
   if (!question) {
     return false;
   }
 
-  if (!question.isSaved() || isDirty) {
+  if (!question.isSaved() || isDirty || hasSuggestion) {
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     return question.canRun() && isEditable;
   }

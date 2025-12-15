@@ -19,6 +19,7 @@ import {
 } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import type { EntitySearchOptions } from "metabase/rich_text_editing/tiptap/extensions/shared/useEntitySearch";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
 
@@ -28,7 +29,7 @@ import {
   serializeTiptapToMetabotMessage,
 } from "./utils";
 
-interface MetabotPromptInputProps {
+export interface MetabotPromptInputProps {
   value: string;
   placeholder?: string;
   autoFocus?: boolean;
@@ -36,7 +37,10 @@ interface MetabotPromptInputProps {
   onChange: (value: string) => void;
   onSubmit?: () => void;
   onStop: () => void;
-  suggestionModels: SuggestionModel[];
+  suggestionConfig: {
+    suggestionModels: SuggestionModel[];
+    searchOptions?: EntitySearchOptions;
+  };
 }
 export const MetabotPromptInput = forwardRef<
   MetabotPromptInputRef | null,
@@ -48,7 +52,7 @@ export const MetabotPromptInput = forwardRef<
       placeholder = t`Tell me to do something, or ask a question`,
       autoFocus,
       disabled,
-      suggestionModels,
+      suggestionConfig,
       onChange,
       onSubmit,
       onStop,
@@ -73,7 +77,8 @@ export const MetabotPromptInput = forwardRef<
         suggestion: {
           render: createSuggestionRenderer(
             createMentionSuggestion({
-              searchModels: suggestionModels,
+              searchModels: suggestionConfig.suggestionModels,
+              searchOptions: suggestionConfig.searchOptions,
               canFilterSearchModels: true,
               canBrowseAll: false,
             }),

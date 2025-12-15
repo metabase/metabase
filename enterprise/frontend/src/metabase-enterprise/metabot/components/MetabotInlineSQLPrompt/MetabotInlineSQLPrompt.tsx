@@ -7,16 +7,20 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import type { DatabaseId } from "metabase-types/api";
 
 import { MetabotPromptInput } from "../MetabotPromptInput";
 
 import S from "./MetabotInlineSQLPrompt.module.css";
+import { responseHasCodeEdit } from "./utils";
 
 interface MetabotInlineSQLPromptProps {
+  databaseId: DatabaseId | null;
   onClose: () => void;
 }
 
 export const MetabotInlineSQLPrompt = ({
+  databaseId,
   onClose,
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
@@ -34,8 +38,9 @@ export const MetabotInlineSQLPrompt = ({
       preventOpenSidebar: true,
     });
     if (
+      isRejected(action) ||
       (isFulfilled(action) && !action.payload?.success) ||
-      !isRejected(action)
+      !responseHasCodeEdit(action)
     ) {
       setHasError(true);
     }
@@ -74,9 +79,18 @@ export const MetabotInlineSQLPrompt = ({
           placeholder={t`Describe what SQL you want...`}
           autoFocus
           disabled={isDoingScience}
-          suggestionModels={["dataset", "metric", "card", "table", "database"]}
           onChange={setValue}
           onStop={handleClose}
+          suggestionConfig={{
+            suggestionModels: [
+              "dataset",
+              "metric",
+              "card",
+              "table",
+              "database",
+            ],
+            searchOptions: databaseId ? { table_db_id: databaseId } : undefined,
+          }}
         />
       </Box>
       <Flex justify="flex-start" align="center" gap="xs" mt="xs">

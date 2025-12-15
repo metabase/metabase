@@ -87,7 +87,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
     getHighlightedNativeQueryLineNumbers,
   );
 
-  const inlineSQLPrompt = PLUGIN_METABOT.useInlineSQLPrompt(question);
+  const inlineSQLPrompt = PLUGIN_METABOT.useInlineSQLPrompt(question, "qb");
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
