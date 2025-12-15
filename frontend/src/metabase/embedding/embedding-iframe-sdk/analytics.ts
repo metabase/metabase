@@ -13,29 +13,33 @@ import type { MetabaseEmbedElement } from "./embed";
 
 const DEFAULT_VALUES: DefaultValues = {
   dashboard: {
-    /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/components/SdkIframeEmbedRoute.tsx#L119} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L188} */
     drills: true,
-    /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L129} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L160} */
     with_downloads: false,
-    /** @see {@link https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L127} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L159} */
     with_title: true,
   },
   question: {
     /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/components/SdkIframeEmbedRoute.tsx#L149} */
+    // XXX: This depends on the question types. For guest embeds, defaults to false, for non guest embeds, defaults to true.
     drills: true,
-    /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L129} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L132} */
     with_downloads: false,
-    /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/components/SdkIframeEmbedRoute.tsx#L145} */
+    /**
+     * @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L234}
+     * @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L255}
+     */
     with_title: true,
-    /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/components/SdkIframeEmbedRoute.tsx#L157} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
     is_save_enabled: false,
   },
   exploration: {
-    /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/components/SdkIframeEmbedRoute.tsx#L157} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
     is_save_enabled: false,
   },
   browser: {
-    /** @see {@link https://github.com/metabase/metabase/blob/7aa3f7fed11113ed32901aad4e4227be68cff78f/enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/components/MetabaseBrowser.tsx#L39} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/MetabaseBrowser.tsx#L39} */
     read_only: true,
   },
 };
