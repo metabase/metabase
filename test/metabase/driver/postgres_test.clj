@@ -2107,12 +2107,6 @@
                       [2 "0" "00001111" "10101" "1001001"]]
                      (mt/rows (qp/process-query query)))))))))))
 
-(defn- caused-by?
-  "Return true if `ex` or any of its causes is an instance of `clazz`."
-  [clazz ex]
-  (some #(instance? clazz %)
-        (take-while some? (iterate #(.getCause %) ex))))
-
 (deftest set-network-timeout-test
   (mt/test-driver :postgres
     (testing "network hangs are interrupted after *network-timeout-ms*"
@@ -2127,7 +2121,8 @@
                   (with-open [stmt (.createStatement conn)]
                     (.execute stmt "SELECT pg_sleep(6)"))))
                (catch Exception e
-                 (is (caused-by? java.net.SocketTimeoutException e))
+                 (is (true? (some #(instance? java.net.SocketTimeoutException %)
+                                  (u/full-exception-chain e))))
                  (throw e)))))))
     (testing "network hangs are not interrupted before *network-timeout-ms*"
       (is (true?
