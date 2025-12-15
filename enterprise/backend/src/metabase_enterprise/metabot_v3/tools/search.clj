@@ -159,9 +159,8 @@
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
-        ;; For NLQ and omnibot use cases, restrict search to the metabot's configured collection
-        collection-id   (when (#{"nlq" "omnibot"} use-case)
-                          (:collection_id metabot))
+        ;; For NLQ use case, restrict search to the metabot's configured collection
+        collection-id   (when (= use-case "nlq") (:collection_id metabot))
         limit           (or limit 50)
         search-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
