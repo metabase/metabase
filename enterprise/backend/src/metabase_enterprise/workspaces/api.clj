@@ -133,7 +133,7 @@
                [:table :string]
                [:table_id [:maybe ::ws.t/appdb-id]]]]])
 
-(defn- batch-lookup-table-ids*
+(defn- batch-lookup-table-ids
   "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
   [db-id schema-key table-key table-refs]
   (when (seq table-refs)
@@ -154,7 +154,7 @@
                 :let [db_id (:db_id (first table-refs))]
                 ;; Guesstimating a number that prevents this query being too large.
                 table-refs (partition-all 20 table-refs)
-                map-entry (batch-lookup-table-ids* db_id schema-key table-key table-refs)]
+                map-entry (batch-lookup-table-ids db_id schema-key table-key table-refs)]
       map-entry)))
 
 (api.macros/defendpoint :get "/:id/table"
