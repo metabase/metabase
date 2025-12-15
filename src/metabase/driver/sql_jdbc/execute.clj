@@ -347,6 +347,9 @@
           (with-open [conn ^Connection (get-conn)]
             (f conn)))))))
 
+(defonce ^:private network-timeout-executor
+  (delay (Executors/newCachedThreadPool)))
+
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
@@ -407,7 +410,7 @@
             (catch Throwable e
               (log/debug e "Error setting connection autoCommit to false"))))
     (try
-      (.setNetworkTimeout conn (Executors/newSingleThreadExecutor) driver.settings/*network-timeout-ms*)
+      (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
       (catch Throwable e
         (log/debug e "Error setting network timeout for connection")))
     (try
@@ -415,6 +418,19 @@
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (catch Throwable e
         (log/debug e "Error setting default holdability for connection")))))
+
+(defn- wire-up-connection-close-timeout!
+  [^Connection conn timeout-ms]
+  (let [canceled?    (atom false)
+        timeout-chan (a/timeout timeout-ms)]
+    (a/go
+      (a/<! timeout-chan)
+      (when (and (not @canceled?) (not (.isClosed conn)))
+        (try
+          (.close conn)
+          (catch Throwable e
+            (log/warn e "Error aborting connection due to timeout")))))
+    #(reset! canceled? true)))
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
@@ -424,7 +440,11 @@
    options
    (fn [^Connection conn]
      (set-default-connection-options! driver db-or-id-or-spec conn options)
-     (f conn))))
+     (let [cancel-timeout! (wire-up-connection-close-timeout! conn driver.settings/*query-timeout-ms*)]
+       (try
+         (f conn)
+         (finally
+           (cancel-timeout!)))))))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
 ;; useful? Then we can actually do things like log what transformations are taking place
