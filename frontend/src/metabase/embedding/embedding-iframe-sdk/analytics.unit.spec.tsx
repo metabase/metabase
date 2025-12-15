@@ -72,6 +72,25 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         }),
       );
     });
+
+    it('should capture "guest" auth method', () => {
+      defineMetabaseConfig({
+        isGuest: true,
+        instanceUrl: "https://example.com",
+      });
+
+      expect(
+        createEmbeddedAnalyticsJsUsage(
+          new Set([createEmbeddedAnalyticsJsElement("metabase-question")]),
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          global: {
+            auth_method: "guest",
+          },
+        }),
+      );
+    });
   });
 
   describe("Component usage", () => {
