@@ -29,7 +29,7 @@ export const SqlParametersList = () => {
   } = useSdkQuestionContext();
 
   const metadata = useSelector(getMetadata);
-  // we cannot use `metadata` directly otherwise hooks will re-run on every metadata change
+  // we cannot use `metadata` directly otherwise component will re-run on every metadata change
   const metadataRef = useLatest(metadata);
 
   const isNativeQuestion = useMemo(() => {
