@@ -701,7 +701,7 @@
                  json/decode+kw))))))
 
 (deftest ^:parallel upgrade-card-schema-after-downgrade
-  (testing "We exit the loop if a chard_schema is higher than the current schema."
+  (testing "We exit the loop if a card_schema is higher than the current schema."
     (let [card {:id 1
                 :dataset_query {}
                 :card_schema (inc @#'card/current-schema-version)}]
