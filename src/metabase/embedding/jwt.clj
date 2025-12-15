@@ -30,7 +30,6 @@
   valid (i.e., check that it was signed with `embedding-secret-key`) and it's otherwise a valid JWT (e.g., not
   expired), or throw an Exception."
   [^String message]
-  (prn message)
   (when (seq message)
     (try
       (check-valid-alg message)
