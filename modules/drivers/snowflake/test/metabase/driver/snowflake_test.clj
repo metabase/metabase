@@ -176,7 +176,33 @@
         false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
-             (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
+             (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))
+    (testing "Legacy :schema key is removed from connection spec (#65493)"
+      (let [details-with-schema (assoc details :schema "OLD_SCHEMA")]
+        (is (not (contains? (sql-jdbc.conn/connection-details->spec :snowflake details-with-schema) :schema))
+            "Schema key should not be present in connection spec even if it exists in details")))))
+
+(deftest ^:parallel normalize-db-details-test
+  (testing "Legacy :schema field is removed from details (#65493)"
+    (let [database {:engine :snowflake
+                    :details {:account "test-account"
+                              :db "test-db"
+                              :schema "OLD_SCHEMA"
+                              :user "test-user"}}]
+      (is (not (contains? (:details (driver/normalize-db-details :snowflake database)) :schema))
+          "Schema key should be removed from details during normalization")))
+  (testing "Other fields are preserved during normalization"
+    (let [database {:engine :snowflake
+                    :details {:account "test-account"
+                              :db "test-db"
+                              :schema "OLD_SCHEMA"
+                              :user "test-user"
+                              :warehouse "test-warehouse"}}
+          normalized (driver/normalize-db-details :snowflake database)]
+      (is (= "test-account" (get-in normalized [:details :account])))
+      (is (= "test-db" (get-in normalized [:details :db])))
+      (is (= "test-user" (get-in normalized [:details :user])))
+      (is (= "test-warehouse" (get-in normalized [:details :warehouse]))))))
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"

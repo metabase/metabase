@@ -254,9 +254,11 @@
                      (dissoc :password))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
-                   (m/update-existing :schema upcase-not-nil)
                    resolve-private-key
-                   (dissoc :host :port :timezone)))
+                   ;; :schema was removed in v42 in favor of schema filters. If it exists in old connections,
+                   ;; it should not be passed to the JDBC driver as it takes precedence over schema specified
+                   ;; in the JDBC connection string. See https://github.com/metabase/metabase/issues/65493
+                   (dissoc :host :port :timezone :schema)))
         (sql-jdbc.common/handle-additional-options details)
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
@@ -830,6 +832,11 @@
     (not (str/blank? (-> database :details :regionid)))
     (-> (update-in [:details :account] #(str/join "." [% (-> database :details :regionid)]))
         (m/dissoc-in [:details :regionid]))
+
+    ;; Remove deprecated :schema field from details. It was removed in v42 in favor of schema filters.
+    ;; See https://github.com/metabase/metabase/issues/65493
+    (contains? (:details database) :schema)
+    (m/dissoc-in [:details :schema])
 
     (and
      (not (contains? (:details database) :use-password))
