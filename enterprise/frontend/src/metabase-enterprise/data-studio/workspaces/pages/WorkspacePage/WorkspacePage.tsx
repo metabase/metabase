@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push, replace } from "react-router-redux";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -73,7 +74,6 @@ import {
   type WorkspaceTab,
   useWorkspace,
 } from "./WorkspaceProvider";
-import { useLatest } from "react-use";
 
 type WorkspacePageProps = {
   params: {

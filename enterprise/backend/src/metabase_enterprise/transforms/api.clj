@@ -27,6 +27,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
@@ -108,6 +109,25 @@
     [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
   (get-transforms query-params))
 
+(defn create-transform!
+  "Create new transform in the appdb."
+  [body]
+  (let [transform (t2/with-transaction [_]
+                    (let [tag-ids (:tag_ids body)
+                          transform (t2/insert-returning-instance!
+                                     :model/Transform
+                                     (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                            ;; TODO: For workspace transfrom creation this user is not correct.
+                                            ;;       We should revisit this bit when working on https://linear.app/metabase/issue/BOT-691/easy-correctly-set-transformcreator-id-on-workspace-merge
+                                            :creator_id api/*current-user-id*))]
+                      ;; Add tag associations if provided
+                      (when (seq tag-ids)
+                        (transform.model/update-transform-tags! (:id transform) tag-ids))
+                      ;; Return with hydrated tag_ids
+                      (t2/hydrate transform :transform_tag_ids :creator)))]
+    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
+    transform))
+
 (api.macros/defendpoint :post "/"
   "Create a new transform."
   [_route-params
@@ -126,19 +146,7 @@
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
-  (let [transform (t2/with-transaction [_]
-                    (let [tag-ids (:tag_ids body)
-                          transform (t2/insert-returning-instance!
-                                     :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger])
-                                            :creator_id api/*current-user-id*))]
-                      ;; Add tag associations if provided
-                      (when (seq tag-ids)
-                        (transform.model/update-transform-tags! (:id transform) tag-ids))
-                      ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids :creator)))]
-    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    transform))
+  (create-transform! body))
 
 (defn get-transform
   "Get a specific transform."
