@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -26,7 +25,6 @@ type QueryEditorProps = {
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
-  topBarInnerContent?: ReactNode;
 };
 
 export function QueryEditor({
@@ -38,7 +36,6 @@ export function QueryEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
-  topBarInnerContent,
 }: QueryEditorProps) {
   const {
     question,
@@ -101,7 +98,6 @@ export function QueryEditor({
             isShowingSnippetSidebar={uiState.sidebarType === "snippet"}
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
-            shouldShowLibrary={uiOptions?.shouldShowLibrary}
             onChange={setQuestion}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
@@ -114,7 +110,6 @@ export function QueryEditor({
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
             editorHeight={uiOptions?.editorHeight}
-            topBarInnerContent={topBarInnerContent}
           />
           <QueryEditorVisualization
             question={question}

@@ -55,5 +55,4 @@ export type QueryEditorUiOptions = {
     item: QueryEditorDatabasePickerItem,
   ) => boolean;
   editorHeight?: number;
-  shouldShowLibrary?: false;
 };

@@ -5,7 +5,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
-import { JobListPage } from "./pages/JobListPage";
+import { JobEmptyPage } from "./pages/JobEmptyPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
 import {
@@ -16,9 +16,10 @@ import {
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
-import { TransformListPage } from "./pages/TransformListPage";
+import { TransformEmptyPage } from "./pages/TransformEmptyPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
+import { TransformSidebarLayout } from "./pages/TransformSidebarLayout";
 import { TransformTargetPage } from "./pages/TransformTargetPage";
 import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
 
@@ -28,9 +29,10 @@ export function getDataStudioTransformRoutes() {
       <Route path="runs" component={TransformTopNavLayout}>
         <IndexRoute component={RunListPage} />
       </Route>
-      <Route>
-        <IndexRoute component={TransformListPage} />
-        <Route path="jobs" component={JobListPage} />
+
+      <Route component={TransformSidebarLayout}>
+        <IndexRoute component={TransformEmptyPage} />
+        <Route path="jobs" component={JobEmptyPage} />
         <Route path="jobs/new" component={NewJobPage} />
         <Route path="jobs/:jobId" component={JobPage} />
         <Route path="new/query" component={NewQueryTransformPage} />
@@ -40,7 +42,6 @@ export function getDataStudioTransformRoutes() {
           <Route path="new/python" component={NewPythonTransformPage} />
         )}
         <Route path=":transformId" component={TransformQueryPage} />
-        <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/target" component={TransformTargetPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (

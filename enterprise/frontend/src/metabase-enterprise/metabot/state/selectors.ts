@@ -136,29 +136,32 @@ export const getProfileOverride = createSelector(
   (metabot) => metabot.experimental.profileOverride,
 );
 
-export const getUseCase = createSelector(
+export const getProfile = createSelector(
+  getProfileOverride,
   getLocation,
-  (location): "transforms" | "omnibot" => {
+  (profileOverride, location) => {
+    if (profileOverride) {
+      return profileOverride;
+    }
+
     return location.pathname.startsWith(Urls.transformList()) ||
       location.pathname.startsWith(Urls.dataStudioWorkspaceList())
-      ? "transforms"
-      : "omnibot";
+      ? "transforms_codegen"
+      : undefined;
   },
 );
 
 export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotState,
-  getUseCase,
-  getProfileOverride,
-  (history, state, useCase, profileOverride) => ({
+  getProfile,
+  (history, state, profile) => ({
     state,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
     ),
-    use_case: useCase,
-    ...(profileOverride ? { profile_id: profileOverride } : {}),
+    ...(profile ? { profile_id: profile } : {}),
   }),
 );
 

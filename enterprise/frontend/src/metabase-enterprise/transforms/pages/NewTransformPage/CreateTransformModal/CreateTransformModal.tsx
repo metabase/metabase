@@ -19,7 +19,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { slugify } from "metabase/lib/formatting/url";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
@@ -30,9 +29,8 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformCreated } from "../../../analytics";
-import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 
-import { TargetNameInput } from "./TargetNameInput";
+import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
 
 const DEFAULT_VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
@@ -47,9 +45,7 @@ const DEFAULT_VALIDATION_SCHEMA = Yup.object({
   targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
 });
 
-export type NewTransformValues = Yup.InferType<
-  typeof DEFAULT_VALIDATION_SCHEMA
->;
+export type NewTransformValues = Yup.InferType<typeof DEFAULT_VALIDATION_SCHEMA>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
@@ -205,7 +201,11 @@ function CreateTransformForm({
               data={schemas}
             />
           )}
-          <TargetNameInput />
+          <FormTextInput
+            name="targetName"
+            label={t`Table name`}
+            placeholder={t`descriptive_name`}
+          />
           {showIncrementalSettings && (
             <IncrementalTransformSettings source={source} />
           )}
@@ -228,13 +228,9 @@ function getInitialValues(
 ): NewTransformValues {
   return {
     name: "",
+    targetName: "",
     targetSchema: schemas?.[0] || null,
     ...defaultValues,
-    targetName: defaultValues.targetName
-      ? defaultValues.targetName
-      : defaultValues.name
-        ? slugify(defaultValues.name)
-        : "",
     checkpointFilter: null,
     checkpointFilterUniqueKey: null,
     incremental: false,
