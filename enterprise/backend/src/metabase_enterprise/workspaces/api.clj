@@ -134,7 +134,7 @@
                [:table_id [:maybe ::ws.t/appdb-id]]]]])
 
 (defn- batch-lookup-table-ids*
-  "Given a bounded list of tables all, within the same database, return an association list of [db schema table] => id"
+  "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
   [db-id schema-key table-key table-refs]
   (when (seq table-refs)
     (t2/select-fn-vec (juxt (juxt (constantly db-id) :schema :name) :id)
