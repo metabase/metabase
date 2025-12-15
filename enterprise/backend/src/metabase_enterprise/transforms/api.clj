@@ -213,30 +213,10 @@
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
-<<<<<<< HEAD
 (defn update-transform!
   "Update a transform. Validates features, database support, cycles, and target conflicts.
    Returns the updated transform with hydrated associations."
   [id body]
-=======
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
-  "Update a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   body :- [:map
-            [:name {:optional true} :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transforms.schema/transform-source]
-            [:target {:optional true} ::transforms.schema/transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
->>>>>>> origin/workspaces-master
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -261,7 +241,10 @@
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     transform))
 
-<<<<<<< HEAD
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a transform."
   [{:keys [id]} :- [:map
@@ -286,12 +269,10 @@
                           :user-id api/*current-user-id*})
   nil)
 
-=======
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
->>>>>>> origin/workspaces-master
 (api.macros/defendpoint :delete "/:id"
   "Delete a transform."
   [{:keys [id]} :- [:map
@@ -327,27 +308,12 @@
       (transforms.canceling/cancel-run! (:id run))))
   nil)
 
-<<<<<<< HEAD
 (defn run-transform!
   "Run a transform. Returns a 202 response with run_id.
    The transform must already be fetched and validated."
   [transform]
   (check-feature-enabled! transform)
   (let [start-promise (promise)]
-=======
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/run"
-  "Run a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        _         (check-feature-enabled! transform)
-        start-promise (promise)]
->>>>>>> origin/workspaces-master
     (u.jvm/in-virtual-thread*
      (transforms.execute/execute! transform {:start-promise start-promise
                                              :run-method :manual}))
@@ -360,6 +326,10 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/run"
   "Run a transform."
   [{:keys [id]} :- [:map

@@ -5,11 +5,6 @@
 (set! *warn-on-reflection* true)
 
 (defn execute!
-<<<<<<< HEAD
-  "Execute a transform."
-  [transform opts]
-  (transforms.i/execute! transform opts))
-=======
   "Run `transform` and sync its target table.
 
   This is executing synchronously, but supports being kicked off in the background
@@ -20,4 +15,3 @@
   ([transform opts]
    #_{:clj-kondo/ignore [:discouraged-var]}
    (transforms.i/execute! transform opts)))
->>>>>>> origin/workspaces-master
