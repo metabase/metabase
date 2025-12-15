@@ -10,7 +10,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.isolation :as isolation]
-   [metabase-enterprise.workspaces.sync :as ws.sync]
    [metabase-enterprise.workspaces.util :as ws.util]
    [metabase.util :as u]
    [metabase.util.log :as log])
