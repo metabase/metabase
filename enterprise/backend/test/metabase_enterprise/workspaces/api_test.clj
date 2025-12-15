@@ -485,7 +485,7 @@
 
       (testing "Conflict inside of workspace"
         (let [table (t2/select-one :model/Table :active true)]
-          (is (= "Must not target an isolated workspace schema"
+          (is (= "Another transform in this workspace already targets that table"
                  (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
                    (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
                                          {:db_id  (:db_id table)
