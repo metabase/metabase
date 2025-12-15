@@ -58,17 +58,18 @@
      :name     (:table replacement)}
     target))
 
-(defn- update-isolated-table-id!
-  "After successful transform execution, look up the isolated table and update workspace_output.
-   The isolated table should now exist in the metabase Table model after sync."
+(defn- backfill-isolated-table-id!
+  "Backfill workspace_output.isolated_table_id FK in the case where we just created the table for the first time."
   [ref-id]
+  ;; TODO we can roll this into a single query
   (when-let [table-id (:id (t2/query-one
                             {:from   [[:workspace_output :wo]]
                              :join   [[:metabase_table :t] [:and
                                                             [:= :t.db_id :wo.db_id]
                                                             [:= :t.schema :wo.isolated_schema]
                                                             [:= :t.name :wo.isolated_table]]]
-                             :select [:t.id]}))]
+                             :select [:t.id]
+                             :where [:not= :t.id :wo.isolated_table_id]}))]
     (t2/update! :model/WorkspaceOutput {:ref_id ref-id} {:isolated_table_id table-id})))
 
 (defn run-transform-with-remapping
@@ -93,7 +94,7 @@
           (u/prog1 (execution-results temp-xf)
             (when (= :succeeded (:status <>))
               (t2/update! :model/WorkspaceTransform ref_id {:last_run_at (t/offset-date-time)})
-              (update-isolated-table-id! ref_id))
+              (backfill-isolated-table-id! ref_id))
             (t2/delete! :model/Transform (:id temp-xf)))
           #_ ;; this just deletes also writes to :model/Table and actual output table too
             (throw (ex-info "rollback tx!" {::results (execution-results temp-xf)}))))

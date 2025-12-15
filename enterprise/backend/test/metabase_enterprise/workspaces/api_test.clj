@@ -485,7 +485,7 @@
 
       (testing "Conflict inside of workspace"
         (let [table (t2/select-one :model/Table :active true)]
-          (is (= "Must not target an isolated workspace schema"
+          (is (= "Another transform in this workspace already targets that table"
                  (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
                    (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
                                          {:db_id  (:db_id table)
@@ -783,3 +783,111 @@
                         xf5-id nil #_native-is-supported
                         xf6-id "card-reference"}
                        (u/index-by :id :checkout_disabled transforms)))))))))))
+
+;;; ---------------------------------------- Table ID Fallback Tests ----------------------------------------
+;; These tests verify that when WorkspaceOutput rows have null table IDs (e.g., because sync
+;; hasn't run yet), the /table endpoint will look up the IDs from metabase_table as a fallback.
+
+(deftest ^:parallel tables-endpoint-fallback-global-table-id-test
+  (testing "GET /api/ee/workspace/:id/table uses fallback for null global_table_id"
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-temp [:model/Workspace          workspace {:name        "Fallback Test WS"
+                                                          :database_id (mt/id)
+                                                          :schema      "ws_fallback_test"}
+                     :model/WorkspaceTransform ws-tx     {:workspace_id (:id workspace)
+                                                          :name         "Test Transform"
+                                                          :target       {:type     "table"
+                                                                         :database (mt/id)
+                                                                         :schema   "public"
+                                                                         :name     "fallback_test_table"}}
+                     ;; Create a table that exists but WorkspaceOutput doesn't know about yet
+                     :model/Table              table     {:db_id  (mt/id)
+                                                          :schema "public"
+                                                          :name   "fallback_test_table"
+                                                          :active true}
+                     ;; Create WorkspaceOutput with null global_table_id (simulating pre-sync state)
+                     :model/WorkspaceOutput    _         {:workspace_id      (:id workspace)
+                                                          :ref_id            (:ref_id ws-tx)
+                                                          :db_id             (mt/id)
+                                                          :global_schema     "public"
+                                                          :global_table      "fallback_test_table"
+                                                          :global_table_id   nil
+                                                          :isolated_schema   (:schema workspace)
+                                                          :isolated_table    "public__fallback_test_table"
+                                                          :isolated_table_id nil}]
+        (let [result (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))]
+          (testing "fallback populates global table_id from metabase_table"
+            (is (= (:id table)
+                   (-> result :outputs first :global :table_id))))
+          (testing "isolated table_id remains nil when table doesn't exist"
+            (is (nil? (-> result :outputs first :isolated :table_id)))))))))
+
+(deftest ^:parallel tables-endpoint-fallback-isolated-table-id-test
+  (testing "GET /api/ee/workspace/:id/table uses fallback for null isolated_table_id"
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-temp [:model/Workspace          workspace {:name        "Isolated Fallback Test WS"
+                                                          :database_id (mt/id)
+                                                          :schema      "ws_iso_fallback"}
+                     :model/WorkspaceTransform ws-tx     {:workspace_id (:id workspace)
+                                                          :name         "Test Transform"
+                                                          :target       {:type     "table"
+                                                                         :database (mt/id)
+                                                                         :schema   "public"
+                                                                         :name     "iso_fallback_table"}}
+                     ;; Create the isolated table in metabase_table
+                     :model/Table              iso-table {:db_id  (mt/id)
+                                                          :schema "ws_iso_fallback"
+                                                          :name   "public__iso_fallback_table"
+                                                          :active true}
+                     ;; Create WorkspaceOutput with null isolated_table_id
+                     :model/WorkspaceOutput    _         {:workspace_id      (:id workspace)
+                                                          :ref_id            (:ref_id ws-tx)
+                                                          :db_id             (mt/id)
+                                                          :global_schema     "public"
+                                                          :global_table      "iso_fallback_table"
+                                                          :global_table_id   nil
+                                                          :isolated_schema   "ws_iso_fallback"
+                                                          :isolated_table    "public__iso_fallback_table"
+                                                          :isolated_table_id nil}]
+        (let [result (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))]
+          (testing "fallback populates isolated table_id from metabase_table"
+            (is (= (:id iso-table)
+                   (-> result :outputs first :isolated :table_id)))))))))
+
+(deftest ^:parallel tables-endpoint-fallback-both-table-ids-test
+  (testing "GET /api/ee/workspace/:id/table uses fallback for both null table IDs"
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-temp [:model/Workspace          workspace    {:name        "Both Fallback Test WS"
+                                                             :database_id (mt/id)
+                                                             :schema      "ws_both_fallback"}
+                     :model/WorkspaceTransform ws-tx        {:workspace_id (:id workspace)
+                                                             :name         "Test Transform"
+                                                             :target       {:type     "table"
+                                                                            :database (mt/id)
+                                                                            :schema   "public"
+                                                                            :name     "both_fallback_table"}}
+                     ;; Create both tables
+                     :model/Table              global-table {:db_id  (mt/id)
+                                                             :schema "public"
+                                                             :name   "both_fallback_table"
+                                                             :active true}
+                     :model/Table              iso-table    {:db_id  (mt/id)
+                                                             :schema "ws_both_fallback"
+                                                             :name   "public__both_fallback_table"
+                                                             :active true}
+                     ;; Create WorkspaceOutput with both table IDs null
+                     :model/WorkspaceOutput    _            {:workspace_id      (:id workspace)
+                                                             :ref_id            (:ref_id ws-tx)
+                                                             :db_id             (mt/id)
+                                                             :global_schema     "public"
+                                                             :global_table      "both_fallback_table"
+                                                             :global_table_id   nil
+                                                             :isolated_schema   "ws_both_fallback"
+                                                             :isolated_table    "public__both_fallback_table"
+                                                             :isolated_table_id nil}]
+        (let [result (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))]
+          (testing "fallback populates both table IDs"
+            (is (= (:id global-table)
+                   (-> result :outputs first :global :table_id)))
+            (is (= (:id iso-table)
+                   (-> result :outputs first :isolated :table_id)))))))))

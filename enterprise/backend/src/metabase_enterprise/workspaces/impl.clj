@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- query-external-inputs
@@ -37,7 +38,9 @@
         _               (ws.deps/write-dependencies! workspace-id isolated-schema :transform (:ref_id transform) analysis)
         external-inputs (query-external-inputs workspace-id)]
     (if-not (:database_details workspace)
-      (throw (ex-info "No database details, unable to grant read only access to the service account." {}))
+      ;; TODO (chris 2025/12/15) we will want to make this strict before merging to master
+      #_(throw (ex-info "No database details, unable to grant read only access to the service account." {}))
+      (log/warn "No database details, unable to grant read only access to the service account.")
       (when (seq external-inputs)
         (let [database (t2/select-one :model/Database :id (:database_id workspace))
               tables   (mapv external-input->table external-inputs)]

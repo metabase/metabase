@@ -222,15 +222,33 @@
   (app-db/update-or-insert! :model/WorkspaceOutput
                             {:workspace_id workspace-id
                              :ref_id       ref-id}
-                            (constantly {:db_id           db_id
-                                         :global_schema   schema
-                                         :global_table    table
-                                         :global_table_id (t2/select-one-fn :id [:model/Table :id]
-                                                                            :db_id db_id
-                                                                            :schema schema
-                                                                            :name table)
-                                         :isolated_schema isolated-schema
-                                         :isolated_table  (ws.u/isolated-table-name schema table)})))
+                            (fn [existing]
+                              (let [isolated-table (ws.u/isolated-table-name schema table)
+                                    qry-table-id   (fn [schema table]
+                                                     (t2/select-one-fn :id [:model/Table :id]
+                                                                       :db_id db_id
+                                                                       :schema schema
+                                                                       :name table))
+                                    id-if-match    (fn [schema-key schema table-key table id-key]
+                                                     (when (and (= schema (get existing schema-key))
+                                                                (= table (get existing table-key)))
+                                                       (get existing id-key)))
+                                    id-fallback    (fn [schema-key schema table-key table id-key]
+                                                     (or (id-if-match schema-key schema table-key table id-key)
+                                                         (qry-table-id schema table)))]
+                                {:db_id             db_id
+                                 :global_schema     schema
+                                 :global_table      table
+                                 :global_table_id   (id-fallback
+                                                     :global_schema schema
+                                                     :global_table table
+                                                     :global_table_id)
+                                 :isolated_schema   isolated-schema
+                                 :isolated_table    isolated-table
+                                 :isolated_table_id (id-fallback
+                                                     :isolated_schema isolated-schema
+                                                     :isolated_table isolated-table
+                                                     :isolated_table_id)}))))
 
 (defn- build-output-lookup
   "Build a lookup map for workspace outputs: [db_id global_schema global_table] -> output_id.

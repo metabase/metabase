@@ -133,6 +133,30 @@
                [:table :string]
                [:table_id [:maybe ::ws.t/appdb-id]]]]])
 
+(defn- batch-lookup-table-ids
+  "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
+  [db-id schema-key table-key table-refs]
+  (when (seq table-refs)
+    (t2/select-fn-vec (juxt (juxt (constantly db-id) :schema :name) :id)
+                      [:model/Table :id :schema :name]
+                      :db_id db-id
+                      {:where (into [:or] (for [tr table-refs]
+                                            [:and
+                                             [:= :schema (get tr schema-key)]
+                                             [:= :name (get tr table-key)]]))})))
+
+(defn- table-ids-fallbacks
+  "Given a list of maps holding [db_id schema table], return a mapping from those tuples => table_id"
+  [schema-key table-key id-key table-refs]
+  (when-let [table-refs (seq (remove id-key table-refs))]
+    ;; These are ordered by db, so this will partition fine.
+    (u/for-map [table-refs (partition-by :db_id table-refs)
+                :let [db_id (:db_id (first table-refs))]
+                ;; Guesstimating a number that prevents this query being too large.
+                table-refs (partition-all 20 table-refs)
+                map-entry (batch-lookup-table-ids db_id schema-key table-key table-refs)]
+      map-entry)))
+
 (api.macros/defendpoint :get "/:id/table"
   :- [:map {:closed true}
       [:inputs [:sequential ::input-table]]
@@ -150,7 +174,11 @@
                                    :workspace_id id {:order-by [:db_id :schema :table]})
         ;; Some of our inputs may be shadowed by the outputs of other transforms. We only want external inputs.
         shadowed?       (into #{} (map (juxt :db_id :global_schema :global_table)) outputs)
-        inputs          (remove (comp shadowed? (juxt :db_id :schema :table)) raw-inputs)]
+        inputs          (remove (comp shadowed? (juxt :db_id :schema :table)) raw-inputs)
+        ;; Build a map of [d s t] => id for every table that has been synced since the output row was written.
+        fallback-map    (merge
+                         (table-ids-fallbacks :global_schema :global_table :global_table_id outputs)
+                         (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id outputs))]
     {:inputs  inputs
      :outputs (for [{:keys [ref_id db_id global_schema global_table global_table_id
                             isolated_schema isolated_table isolated_table_id]} outputs]
@@ -158,11 +186,11 @@
                  :global   {:transform_id nil
                             :schema       global_schema
                             :table        global_table
-                            :table_id     global_table_id}
+                            :table_id     (or global_table_id (get fallback-map [db_id global_schema global_table]))}
                  :isolated {:transform_id ref_id
                             :schema       isolated_schema
                             :table        isolated_table
-                            :table_id     isolated_table_id}})}))
+                            :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})}))
 
 (api.macros/defendpoint :get "/:id" :- Workspace
   "Get a single workspace by ID"
