@@ -1,18 +1,15 @@
 (ns metabase-enterprise.workspaces.execute
-  "Workspace transform execution using transaction-rollback pattern.
+  "This namespace is concerned with executing non-AppDB transforms, with optional reference re-mappings.
 
-   This module provides preview execution of workspace transforms by:
-   1. Creating temporary Transform/TransformRun records in a transaction
-   2. Executing using existing transform infrastructure
-   3. Scraping metadata (execution stats + table schema)
-   4. Rolling back the transaction (no app DB records persist)
+  It currently lives inside the workspace module, but eventually will become part of the transform module, so it should
+  not make any assumptions about being run within a workspace, having the input / output semantics of a workspace, and
+  especially it should not touch any of the Workspace entities inside AppDb, or any of the other workspace namespaces.
 
-   The warehouse DB changes (actual table data) DO persist in the isolated schema."
+  For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
+  decoupled from AppDb."
   (:require
-   [java-time.api :as t]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase.api.common :as api]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -61,29 +58,36 @@
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.
 
-  This is used by Workspaces to re-route the output of each transform to a non-production table, and
-  to re-write their queries where these outputs transitively become inputs to other transforms.
+   This is used by Workspaces to re-route the output of each transform to a non-production table, and
+   to re-write their queries where these outputs transitively become inputs to other transforms.
 
+   Returns an ::ws.t/execution-result map with status, timing, and table metadata.
 
+   -------
 
-   Returns an ::ws.t/execution-result map with status, timing, and table metadata."
-  [workspace {:keys [source target] :as transform} remapping]
-  (isolation/with-workspace-isolation workspace
-    (try
-      (t2/with-transaction [_conn]
-        (let [s-type  (transforms/transform-source-type source)
-              new-xf  (-> (select-keys transform [:name :description])
-                          (assoc :creator_id api/*current-user-id*
-                                 :source (remap-source (:tables remapping) (:fields remapping) s-type source)
-                                 :target (remap-target (:tables remapping) target)))
-              _       (assert (:target new-xf) "Target mapping must not be nil")
-              temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
-          (transforms.i/execute! temp-xf {:run-method :manual})
-          (u/prog1 (execution-results temp-xf)
-            (t2/update! :model/WorkspaceTransform (:ref_id transform) {:last_run_at (t/offset-date-time)})
-            (t2/delete! :model/Transform (:id temp-xf)))
-          #_ ;; this just deletes also writes to :model/Table and actual output table too
-            (throw (ex-info "rollback tx!" {::results (execution-results temp-xf)}))))
-      (catch Exception e
-        (or (::results (ex-data e))
-            (throw e))))))
+   NOTE: currently execution is done using transaction-rollback pattern, as a short-term hack.
+
+   1. Creating temporary Transform/TransformRun records in a transaction
+   2. Executing using existing transform infrastructure
+   3. Scraping metadata (execution stats + table schema)
+   4. Rolling back the transaction (no app DB records persist)
+
+   The warehouse DB changes (actual table data) DO persist in the isolated schema."
+  [{:keys [source target] :as transform} remapping]
+  (try
+    (t2/with-transaction [_conn]
+      (let [s-type  (transforms/transform-source-type source)
+            new-xf  (-> (select-keys transform [:name :description])
+                        (assoc :creator_id api/*current-user-id*
+                               :source (remap-source (:tables remapping) (:fields remapping) s-type source)
+                               :target (remap-target (:tables remapping) target)))
+            _       (assert (:target new-xf) "Target mapping must not be nil")
+            temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
+        (transforms.i/execute! temp-xf {:run-method :manual})
+        (u/prog1 (execution-results temp-xf)
+          (t2/delete! :model/Transform (:id temp-xf)))
+        #_;; this just deletes also writes to :model/Table and actual output table too
+          (throw (ex-info "rollback tx!" {::results (execution-results temp-xf)}))))
+    (catch Exception e
+      (or (::results (ex-data e))
+          (throw e)))))

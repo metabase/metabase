@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push, replace } from "react-router-redux";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -33,6 +34,7 @@ import {
   Text,
 } from "metabase/ui";
 import {
+  DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
   useGetExternalTransformsQuery,
   useGetWorkspaceQuery,
   useGetWorkspaceTablesQuery,
@@ -72,7 +74,6 @@ import {
   type WorkspaceTab,
   useWorkspace,
 } from "./WorkspaceProvider";
-import { useLatest } from "react-use";
 
 type WorkspacePageProps = {
   params: {
@@ -94,7 +95,7 @@ type MetabotConversationSnapshot = Pick<
 function WorkspacePageContent({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
   const dispatch = useDispatch();
-  const { sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [tab, setTab] = useState<string>("setup");
 
   const {
@@ -129,7 +130,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { data: externalTransforms } = useGetExternalTransformsQuery(id);
   const availableTransforms = externalTransforms ?? [];
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
-  const { data: workspaceTables = { inputs: [], outputs: [] } } =
+  const { data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE } =
     useGetWorkspaceTablesQuery(id);
   const openedTabsRef = useLatest(openedTabs);
   useEffect(() => {
@@ -377,10 +378,13 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         return;
       }
       dispatch(replace(Urls.transformList()));
+      sendSuccessToast(
+        t`Workspace '${response.workspace.name}' merged successfully`,
+      );
     } catch (error) {
       sendErrorToast(t`Failed to merge workspace`);
     }
-  }, [id, mergeWorkspace, sendErrorToast, dispatch]);
+  }, [id, mergeWorkspace, sendErrorToast, dispatch, sendSuccessToast]);
 
   const handleWorkspaceNameChange = useCallback(
     async (newName: string) => {

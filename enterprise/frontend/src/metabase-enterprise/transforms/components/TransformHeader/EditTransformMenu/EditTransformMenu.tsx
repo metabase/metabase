@@ -42,7 +42,8 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     useCreateWorkspaceTransformMutation();
   const [createWorkspace, { isLoading: isCreatingWorkspace }] =
     useCreateWorkspaceMutation();
-  const { data: checkoutData } = useGetWorkspaceCheckoutQuery(transform.id);
+  const { data: checkoutData, isLoading: isWorkspaceCheckoutLoading } =
+    useGetWorkspaceCheckoutQuery(transform.id);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [addedWorkspaceIds, setAddedWorkspaceIds] = useState<Set<number>>(
     () => new Set(),
@@ -71,12 +72,8 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     () =>
       workspaces
         .filter((workspace) => !existingWorkspaceIds.has(workspace.id))
-        .filter((workspace) =>
-          sourceDatabaseId == null
-            ? true
-            : workspace.database_id === sourceDatabaseId,
-        ),
-    [workspaces, sourceDatabaseId, existingWorkspaceIds],
+        .filter((workspace) => !workspace.archived),
+    [workspaces, existingWorkspaceIds],
   );
 
   const isBusy = isAddingToWorkspace || isCreatingWorkspace;
@@ -169,7 +166,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
         </Menu.Item>
         <Menu.Divider />
 
-        {isLoadingWorkspaces ? (
+        {isLoadingWorkspaces || isWorkspaceCheckoutLoading ? (
           <Flex justify="center" align="center" py="md">
             <Loader size="sm" />
           </Flex>
@@ -191,9 +188,11 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
                 >
                   <Stack gap={2} align="flex-start">
                     <Text fw={600}>{workspace.name}</Text>
-                    <Text size="sm" c="text-light">
-                      {formatWorkspaceDate(workspace.created_at)}
-                    </Text>
+                    {workspace.created_at && (
+                      <Text size="sm" c="text-light">
+                        {formatWorkspaceDate(workspace.created_at)}
+                      </Text>
+                    )}
                   </Stack>
                 </Menu.Item>
               ))}
