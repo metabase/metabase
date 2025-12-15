@@ -18,7 +18,7 @@ import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { Card } from "metabase-types/api";
+import type { Card as CardType } from "metabase-types/api";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { MetricHeader } from "../../components/MetricHeader";
@@ -50,7 +50,7 @@ export function MetricQueryPage({ params, route }: MetricQueryPageProps) {
 }
 
 type MetricQueryPageBodyProps = {
-  card: Card;
+  card: CardType;
   route: Route;
 };
 
