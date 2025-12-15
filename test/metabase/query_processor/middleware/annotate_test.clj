@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -345,3 +346,17 @@
                    {:cols [{:name "sleep", :base_type :type/*, :database_type "void"}]}
                    [[""]])
                   :cols))))))
+
+(deftest ^:sequential expected-cols-no-infinite-loop-test
+  (testing "In case of a lib vs. driver column count mismatch, don't loop infinitely (#66955)"
+    (let [query       (lib/query meta/metadata-provider
+                                 (meta/table-metadata :orders))
+          all-cols    (mapv #(select-keys % [:name :base-type]) (lib/returned-columns query))
+          missing-one (butlast all-cols)]
+      (is (= 9 (count (annotate/expected-cols query all-cols))))
+      (testing "in dev and test modes, we throw an error when the counts differ"
+        (is (thrown-with-msg? Exception #"column number mismatch"
+                              (annotate/expected-cols query missing-one))))
+      (testing "in prod, we log and append nils to make the counts line up - this looped forever before #66955!"
+        (with-redefs [config/is-prod? true]
+          (is (= 8 (count (annotate/expected-cols query missing-one)))))))))
