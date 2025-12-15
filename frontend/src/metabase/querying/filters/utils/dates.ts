@@ -7,6 +7,11 @@ import {
   DATE_PICKER_OPERATORS,
   DATE_PICKER_TRUNCATION_UNITS,
 } from "metabase/querying/filters/constants";
+import { getDateFormatFromStyle } from "metabase/lib/formatting/date";
+import {
+  DEFAULT_DATE_STYLE,
+} from "metabase/lib/formatting/datetime-utils";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import type {
   DateFilterDisplayOpts,
   DateFilterValue,
@@ -249,12 +254,13 @@ function getQuarterYearFilterClause(
 export function getDateFilterDisplayName(
   value: DateFilterValue,
   { withPrefix }: DateFilterDisplayOpts = {},
+  options: OptionsType = {},
 ) {
   return match(value)
     .with(
       { type: "specific", operator: "=" },
       ({ values: [date], hasTime }) => {
-        const dateText = formatDate(date, hasTime);
+        const dateText = formatDate(date, hasTime, options);
         return withPrefix
           ? c("On a date. Example: On Jan 20.").t`On ${dateText}`
           : dateText;
@@ -264,20 +270,20 @@ export function getDateFilterDisplayName(
       { type: "specific", operator: "<" },
       ({ values: [date], hasTime }) => {
         return c("Before a date. Example: Before Jan 20.")
-          .t`Before ${formatDate(date, hasTime)}`;
+          .t`Before ${formatDate(date, hasTime, options)}`;
       },
     )
     .with(
       { type: "specific", operator: ">" },
       ({ values: [date], hasTime }) => {
         return c("After a date. Example: After Jan 20.")
-          .t`After ${formatDate(date, hasTime)}`;
+          .t`After ${formatDate(date, hasTime, options)}`;
       },
     )
     .with(
       { type: "specific", operator: "between" },
       ({ values: [startDate, endDate], hasTime }) => {
-        return `${formatDate(startDate, hasTime)} - ${formatDate(endDate, hasTime)}`;
+        return `${formatDate(startDate, hasTime, options)} - ${formatDate(endDate, hasTime, options)}`;
       },
     )
     .with(
@@ -322,8 +328,26 @@ export function getDateFilterDisplayName(
     .exhaustive();
 }
 
-export function formatDate(date: Date, hasTime: boolean) {
-  return hasTime ? dayjs(date).format("LL hh:mm A") : dayjs(date).format("LL");
+export function formatDate(
+  date: Date,
+  hasTime: boolean,
+  options: OptionsType = {},
+) {
+  const dateStyle = options.date_style || DEFAULT_DATE_STYLE;
+  const dateSeparator = options.date_separator;
+  const dateFormat = getDateFormatFromStyle(
+    dateStyle,
+    "day",
+    dateSeparator,
+    false,
+  );
+
+  if (hasTime) {
+    const timeFormat = options.time_style || "h:mm A";
+    return dayjs(date).format(`${dateFormat} ${timeFormat}`);
+  }
+
+  return dayjs(date).format(dateFormat);
 }
 
 function formatMonth(month: number, year: number) {
