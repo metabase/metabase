@@ -3,9 +3,10 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
-import type { TestPythonTransformResponse } from "metabase-types/api";
-
-import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
+import type {
+  PythonTransformSourceDraft,
+  TestPythonTransformResponse,
+} from "metabase-types/api";
 
 type TestPythonScriptState = {
   isRunning: boolean;
