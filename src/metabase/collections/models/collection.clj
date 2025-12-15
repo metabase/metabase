@@ -1825,10 +1825,15 @@
           :is_sample
           :name
           :namespace
-          :slug
-          :type]
+          :slug]
    :skip []
-   :transform {:created_at        (serdes/date)
+   :transform {;; handle importing v58 remote-sync exports into a v57 instance
+               :type {:import-with-context
+                      (fn [ingested _k _v]
+                        (or (:type ingested)
+                            (when (:is_remote_synced ingested) "remote-synced")))
+                      :export identity}
+               :created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose
