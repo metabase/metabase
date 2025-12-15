@@ -23,18 +23,15 @@ import type {
   ParameterId,
   ParameterValueOrArray,
 } from "./parameters";
+import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
+
 export type CardType = "model" | "question" | "metric";
-export type DownloadPermission =
-  | "no"
-  | "ten-thousand-rows"
-  | "one-million-rows"
-  | "full";
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
@@ -87,7 +84,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
 
-  download_perm?: DownloadPermission;
+  download_perms?: DownloadPermission;
 }
 
 export interface PublicCard {

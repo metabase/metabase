@@ -4,6 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import Toggle from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
@@ -29,11 +30,7 @@ export default class EmailAttachmentPicker extends Component {
     pulse: PropTypes.object.isRequired,
     setPulse: PropTypes.func.isRequired,
     cards: PropTypes.array.isRequired,
-    downloadPermission: PropTypes.oneOf([
-      "ten-thousand-rows",
-      "one-million-rows",
-      "full",
-    ]),
+    downloadPermission: PropTypes.oneOf(Object.values(DataPermissionValue)),
   };
 
   componentDidMount() {
@@ -82,7 +79,10 @@ export default class EmailAttachmentPicker extends Component {
 
   canAttachFiles() {
     const { downloadPermission } = this.props;
-    return downloadPermission === undefined || downloadPermission !== "no";
+    return (
+      downloadPermission === undefined ||
+      downloadPermission !== DataPermissionValue.NONE
+    );
   }
 
   getAttachmentDisabledReason() {
@@ -165,12 +165,21 @@ export default class EmailAttachmentPicker extends Component {
   toggleAttach = (includeAttachment) => {
     if (!includeAttachment) {
       this.disableAllCards();
+      this.setState({
+        isEnabled: false,
+        isAttachmentOnly: false,
+      });
+    } else {
+      // When enabling attachments, select all cards by default
+      const allCardIds = this.cardIds();
+      this.setState({
+        isEnabled: true,
+        selectedCardIds: allCardIds,
+        isAttachmentOnly: false,
+      });
+      // Update the pulse with all cards selected
+      this.updatePulseCards(this.state.selectedAttachmentType, allCardIds);
     }
-
-    this.setState({
-      isEnabled: includeAttachment,
-      isAttachmentOnly: includeAttachment ? this.state.isAttachmentOnly : false,
-    });
   };
 
   /*

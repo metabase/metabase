@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import SchedulePicker, {
   type ScheduleChangeProp,
 } from "metabase/common/components/SchedulePicker";
@@ -85,7 +86,12 @@ export const AddEditEmailSidebar = ({
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getCurrentUser);
 
-  const downloadPermission = pulse.cards?.[0]?.download_perm;
+  // Check download permissions for all cards - use the most restrictive permission
+  const downloadPermission = pulse.cards?.every(
+    (card) => card.download_perms !== DataPermissionValue.NONE,
+  )
+    ? pulse.cards?.[0]?.download_perms
+    : DataPermissionValue.NONE;
 
   useEffect(() => {
     if (isEmbeddingSdk()) {

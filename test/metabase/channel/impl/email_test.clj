@@ -15,13 +15,13 @@
       (with-redefs [email/send-email! (fn [_ message]
                                         (reset! sent-message message))]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"
-                                           email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587
-                                           bcc-enabled? false]
-          (channel/send! {:type :channel/email} {:subject "Test"
-                                                 :recipients ["ngoc@metabase.com"]
+                                           email-smtp-host    "fake_smtp_host"
+                                           email-smtp-port    587
+                                           bcc-enabled?       false]
+          (channel/send! {:type :channel/email} {:subject      "Test"
+                                                 :recipients   ["ngoc@metabase.com"]
                                                  :message-type :html
-                                                 :message "Test message"})
+                                                 :message      "Test message"})
           (is (=? {:to ["ngoc@metabase.com"]}
                   @sent-message)))))))
 
