@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
@@ -8,7 +7,6 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -16,13 +14,10 @@ import {
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
-  ActionIcon,
   Box,
   Center,
   FixedSizeIcon,
   Flex,
-  Group,
-  Icon,
   type IconName,
   Loader,
   Stack,
@@ -32,6 +27,7 @@ import {
 } from "metabase/ui";
 
 import S from "./DataStudioLayout.module.css";
+import { WorkspacesSection } from "./WorkspaceSection";
 import { getCurrentTab } from "./utils";
 
 type DataStudioLayoutProps = {
@@ -90,7 +86,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
       justify="space-between"
       data-testid="data-studio-nav"
     >
-      <Stack gap="0.75rem">
+      <Stack gap="0.75rem" flex={1} mih={0}>
         <DataStudioNavbarToggle
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
@@ -139,6 +135,9 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
+        {canAccessTransforms && (
+          <WorkspacesSection showLabel={isNavbarOpened} />
+        )}
       </Stack>
       <Stack gap="0.75rem">
         {canAccessTransforms && (
@@ -159,6 +158,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
+
         <DataStudioTab
           label={t`Exit`}
           icon="exit"
@@ -248,172 +248,4 @@ function DataStudioNavbarToggle({
       )}
     </Flex>
   );
-}
-
-type DataStudioNavToggleProps = {
-  isNavExpanded: boolean;
-  onNavToggle: (isExpanded: boolean) => void;
-};
-
-function DataStudioNavToggle({
-  isNavExpanded,
-  onNavToggle,
-}: DataStudioNavToggleProps) {
-  return (
-    <Tooltip
-      label={isNavExpanded ? t`Collapse navigation` : t`Expand navigation`}
-      position="right"
-      openDelay={TOOLTIP_OPEN_DELAY}
-    >
-      <UnstyledButton
-        className={S.toggle}
-        p="0.75rem"
-        bdrs="md"
-        onClick={() => onNavToggle(!isNavExpanded)}
-      >
-        <FixedSizeIcon name={isNavExpanded ? "chevronleft" : "chevronright"} />
-      </UnstyledButton>
-    </Tooltip>
-  );
-}
-
-interface WorkspaceItemProps {
-  workspace: Workspace;
-  isSelected: boolean;
-  onOpen: (workspaceId: WorkspaceId) => void;
-  onArchive: (workspaceId: WorkspaceId) => Promise<void>;
-  onUnarchive: (workspaceId: WorkspaceId) => Promise<void>;
-  onDelete: (workspaceId: WorkspaceId) => Promise<void>;
-}
-
-function WorkspaceItem({
-  workspace,
-  isSelected,
-  onOpen,
-  onArchive,
-  onUnarchive,
-  onDelete,
-}: WorkspaceItemProps) {
-  const [
-    deleteModalOpened,
-    { open: openDeleteModal, close: closeDeleteModal },
-  ] = useDisclosure();
-  const timeAgo = workspace.updated_at
-    ? dayjs(workspace.updated_at).fromNow()
-    : null;
-
-  const handleArchive = () => {
-    onArchive(workspace.id);
-  };
-
-  const handleUnarchive = () => {
-    onUnarchive(workspace.id);
-  };
-
-  const handleDelete = () => {
-    openDeleteModal();
-  };
-
-  const handleConfirmDelete = async () => {
-    await onDelete(workspace.id);
-    closeDeleteModal();
-  };
-
-  const status = getWorkspaceListStatus(workspace);
-
-  return (
-    <UnstyledButton
-      className={cx(S.workspaceItem, { [S.selected]: isSelected })}
-      onClick={() => onOpen(workspace.id)}
-      p="0.75rem"
-      bdrs="md"
-    >
-      <Flex align="flex-start" justify="space-between" gap="xs">
-        <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
-          <Text size="sm" fw={600} truncate>
-            {workspace.name}
-          </Text>
-          {status && (
-            <Group gap="xs" align="center" wrap="nowrap">
-              <Icon name={status.icon} size={10} c={status.color} />
-              <Text size="xs" fw={500} c={status.color}>
-                {status.label}
-              </Text>
-            </Group>
-          )}
-          {timeAgo && (
-            <Text size="xs" c="text-secondary" truncate>
-              {t`Updated ${timeAgo}`}
-            </Text>
-          )}
-        </Stack>
-        <Menu position="right" withinPortal>
-          <Menu.Target>
-            <ActionIcon
-              className={S.workspaceMenuButton}
-              aria-label={t`More actions`}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              size="sm"
-              variant="subtle"
-            >
-              <Icon name="ellipsis" size={16} />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            {workspace.archived ? (
-              <Menu.Item
-                leftSection={<Icon name="revert" />}
-                onClick={handleUnarchive}
-              >
-                {t`Restore`}
-              </Menu.Item>
-            ) : (
-              <Menu.Item
-                leftSection={<Icon name="archive" />}
-                onClick={handleArchive}
-              >
-                {t`Archive`}
-              </Menu.Item>
-            )}
-            <Menu.Divider />
-            <Menu.Item
-              c="error"
-              leftSection={<Icon name="trash" />}
-              onClick={handleDelete}
-              color="danger"
-            >
-              {t`Delete`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-      </Flex>
-
-      <ConfirmModal
-        confirmButtonText={t`Delete`}
-        message={t`This can't be undone.`}
-        opened={deleteModalOpened}
-        title={t`Delete ${workspace.name}?`}
-        onClose={closeDeleteModal}
-        onConfirm={handleConfirmDelete}
-      />
-    </UnstyledButton>
-  );
-}
-
-type WorkspaceListStatus = {
-  label: string;
-  icon: IconName;
-  color: string;
-};
-
-function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
-  if (workspace.archived) {
-    return { label: t`Archived`, icon: "archive", color: "text-light" };
-  }
-
-  if (workspace.status === "pending") {
-    return { label: t`Pending setup`, icon: "clock", color: "warning" };
-  }
-
-  return { label: t`Ready`, icon: "check", color: "success" };
 }
