@@ -161,7 +161,7 @@
             (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                         :view_count]
                                        :id (mt/id :venues))
-                        :pk_field)
+                        :pk_field :collection)
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
@@ -182,7 +182,7 @@
                 (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                             :view_count]
                                            :id table-id)
-                            :pk_field)
+                            :pk_field :collection)
                 {:schema       ""
                  :name         "schemaless_table"
                  :display_name "Schemaless"
@@ -243,8 +243,9 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                             :id (mt/id :users))
+              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                                         :id (mt/id :users))
+                          :collection)
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -324,8 +325,9 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                             :id (mt/id :users))
+              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                                         :id (mt/id :users))
+                          :collection)
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -418,7 +420,8 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details])))
-              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
+              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+                          :pk_field :collection)
               {:description     "What a nice table!"
                :entity_type     nil
                :schema          ""
@@ -705,7 +708,8 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+            (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+                        :collection)
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
@@ -770,6 +774,14 @@
                                        :table_id (mt/id :categories)}]
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
+
+(deftest ^:parallel table-segment-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata"
+    (testing "segments include :definition_description"
+      (mt/with-temp [:model/Segment _ {:table_id (mt/id :venues)
+                                       :definition (:query (mt/mbql-query venues {:filter [:= $price 4]}))}]
+        (is (=? {:segments [{:definition_description "Filtered by Price is equal to 4"}]}
+                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
 
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))

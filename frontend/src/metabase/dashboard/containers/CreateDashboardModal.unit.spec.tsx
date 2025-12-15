@@ -5,6 +5,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
   setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
@@ -54,6 +55,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   mockGetBoundingClientRect();
   setupRecentViewsAndSelectionsEndpoints([]);
   setupLibraryEndpoints();
+  setupDatabasesEndpoints([]);
   const onClose = jest.fn();
 
   const settings = mockSettings({});

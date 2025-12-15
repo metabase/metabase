@@ -12,7 +12,7 @@ services:
       - 5404:5432
 
   mongo-sample:
-    image: metabase/qa-databases:mongo-sample-5.0
+    image: metabase/qa-databases:mongo-sample-5
     ports:
       - 27004:27017
 

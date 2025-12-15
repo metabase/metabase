@@ -11,6 +11,7 @@ const validModels: CollectionItemModel[] = [
   "card",
   "dataset",
   "metric",
+  "table",
 ];
 
 const getValidCollectionItemModels = (models?: CollectionItemModel[]) =>
@@ -26,7 +27,7 @@ export const CollectionItemList = ({
   shouldShowItem,
 }: CollectionItemListProps) => {
   const {
-    data: collectionItems,
+    data: items,
     error,
     isLoading,
   } = useListCollectionItemsQuery<{
@@ -40,13 +41,14 @@ export const CollectionItemList = ({
       ? {
           ...query,
           models: getValidCollectionItemModels(query.models),
+          include_can_run_adhoc_query: true,
         }
       : skipToken,
   );
 
   return (
     <ItemList
-      items={collectionItems?.data}
+      items={items?.data}
       isLoading={isLoading}
       error={error}
       onClick={onClick}

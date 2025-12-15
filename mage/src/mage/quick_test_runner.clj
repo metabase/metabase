@@ -9,6 +9,7 @@
    [mage.be-dev :as backend]
    [mage.color :as c]
    [mage.shell :as shell]
+   [mage.sound :as sound]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -19,7 +20,7 @@
 (defn- gather-file-tests []
   (->> (concat
         (fs/glob test-path "**.clj{,c}")
-        (fs/glob enterprise-path "**.clj?c"))
+        (fs/glob enterprise-path "**.clj{,c}"))
        (mapv (fn [f] (str (fs/relativize u/project-root-directory f))))
        (remove #(str/includes? % "mage"))
        vec))
@@ -73,6 +74,7 @@
      (str/join "\n" (map #(str " - " %) test-dirs)))
     (let [out (backend/nrepl-eval the-ns the-cmd)
           elapsed (u/since-ms start)]
+      (println)
       (try (u/pp (edn/read-string out)) (catch Exception _ #_:clj-kondo/ignore (prn out)))
       (println (c/green (str "Tests completed in " elapsed " ms.\n")))
       (when (u/env "MAGE_DEBUG" (constantly nil))
@@ -95,6 +97,7 @@
                             (prn out)))
             exit-code (if (zero? (+ (:fail out-data) (:error out-data))) 0 1)]
         (println (feedback-bar out-data))
+        (if (zero? exit-code) @(sound/success) @(sound/error))
         (u/exit exit-code)))))
 
 ;; namespaces will be converted to their file paths, so this check will work.
@@ -167,20 +170,27 @@
 (defn go
   "Interactively select directories to run tests against."
   [{:keys [arguments options] :as _parsed}]
-  (let [tests (setup-test-files arguments options)]
-    (if (and (backend/nrepl-open?)
-             ;; No testing against the mage nrepl!
-             (not= :bb (backend/nrepl-type)))
+  (let [tests (setup-test-files arguments options)
+        port (:port options)
+        nrepl-open? (backend/nrepl-open? port)
+        nrepl-type (backend/nrepl-type port)]
+    (u/debug (pr-str ["INFO" {:port port :nrepl-open? nrepl-open? :nrepl-type nrepl-type}]))
+    (cond
+      (not nrepl-open?)
+      (do
+        (println (c/red "Unable to find a backend nrepl."))
+        (println "Running via " (c/bold (c/magenta "the command line")) "."
+                 (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECOMMENDED!! "))
+                 "Please consider starting a backend \nFor quicker test runs, use: " (c/magenta "  clj -M:test:dev:ee:ee-dev:drivers:drivers-dev:dev-start"))
+        (println "\n" (banner {:text "Please open a REPL!"
+                               :font bling.fonts.drippy/drippy
+                               :gradient-direction :to-right
+                               :gradient-colors [:magenta :red]}))
+        (run-tests-cli tests))
+      (and nrepl-open? (= :clj nrepl-type))
       (do
         (println "Running tests via ⏩🏎️✨" (c/green (c/bold "THE REPL")) "✨🏎️⏪.")
         (run-tests-over-nrepl tests options))
-      (do
-        (println "Running via " (c/bold (c/magenta "the command line")) "."
-                 (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECCOMENDED!! "))
-                 "Please consider starting a backend \nFor quicker test runs, use: " (c/magenta "  clj -M:test:dev:ee:ee-dev:drivers:drivers-dev:dev-start"))
-        (println "\n" (banner
-                       {:font               bling.fonts.drippy/drippy
-                        :text               "Please open a REPL!"
-                        :gradient-direction :to-top
-                        :gradient-colors    [:magenta :red]}))
-        (run-tests-cli tests)))))
+      (and nrepl-open? (not= :clj nrepl-type))
+      (println (str "You have a non-clojure nrepl: " (c/yellow (name nrepl-type)) " at port " (c/yellow port) ".\n"
+                    "Either use -p <backend port>, or run 'echo {server-nrepl-port} > .nrepl-port' to run tests via the backend repl.")))))

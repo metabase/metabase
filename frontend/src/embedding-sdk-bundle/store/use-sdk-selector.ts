@@ -6,7 +6,7 @@ import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { MetabaseReduxContext } from "metabase/lib/redux";
 
 // eslint-disable-next-line no-literal-metabase-strings -- this string only shows in the console.
-export const USE_OUTSIDE_OF_CONTEXT_MESSAGE = `Hooks from the Metabase Embedding SDK must be used within a component wrapped by the MetabaseProvider`;
+export const USE_OUTSIDE_OF_CONTEXT_MESSAGE = `Hooks from the Metabase modular embedding SDK must be used within a component wrapped by the MetabaseProvider`;
 
 const _useSdkSelector: TypedUseSelectorHook<SdkStoreState> =
   createSelectorHook(MetabaseReduxContext);

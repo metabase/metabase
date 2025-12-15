@@ -143,6 +143,7 @@ export const CodeMirrorEditor = forwardRef<
       ref={editorRef}
       data-testid="native-query-editor"
       className={S.editor}
+      editable={!readOnly}
       extensions={extensions}
       value={value}
       readOnly={readOnly}
