@@ -338,30 +338,6 @@
            ;; Perhaps we want to expose some of this later?
            #_(t2/hydrate transforms :last_run :creator))}))
 
-(defn- build-remapping [workspace]
-  ;; Build table remapping from stored WorkspaceOutput data.
-  ;; Maps [db_id global_schema global_table] -> {:db-id :schema :table :id} for isolated tables.
-  ;; This is used to remap transform targets (and later SQL/python sources) to isolated tables.
-  (let [outputs    (t2/select [:model/WorkspaceOutput
-                               :db_id :global_schema :global_table
-                               :isolated_schema :isolated_table :isolated_table_id]
-                              :workspace_id (:id workspace))
-        table-map  (into {}
-                         (map (fn [{:keys [db_id global_schema global_table
-                                           isolated_schema isolated_table isolated_table_id]}]
-                                [[db_id global_schema global_table]
-                                 {:db-id  db_id
-                                  :schema isolated_schema
-                                  :table  isolated_table
-                                  :id     isolated_table_id}]))
-                         outputs)]
-    {:tables (fn [[d s t]]
-               ;; Look up from stored data, fall back to computing if not found (for new transforms)
-               (or (get table-map [d s t])
-                   {:db-id d, :schema (:schema workspace), :table (ws.u/isolated-table-name s t), :id nil}))
-     ;; We won't need the field-map until we support MBQL.
-     :fields nil}))
-
 (api.macros/defendpoint :post "/:ws-id/run"
   :- [:map
       [:succeeded [:sequential ::ws.t/ref-id]]
@@ -376,30 +352,7 @@
   (let [workspace (t2/select-one :model/Workspace :id ws-id)]
     (api/check-404 workspace)
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
-    (let [remapping (build-remapping workspace)]
-      (reduce
-       (fn [acc {ref-id :ref_id :as transform}]
-         (try
-           ;; Perhaps we want to return some of the metadata from this as well?
-           (if (= :succeeded (:status (ws.execute/run-transform-with-remapping workspace transform remapping)))
-             (update acc :succeeded conj ref-id)
-             ;; Perhaps the status might indicate it never ran?
-             (update acc :failed conj ref-id))
-           (catch Exception e
-             (log/error e "Failed to execute transform" {:workspace-id ws-id, :transform-ref-id ref-id})
-             (update acc :failed conj ref-id))))
-       {:succeeded []
-        :failed    []
-        :not_run   []}
-       ;; Right now we're running things in random order, and skipping all the enclosed transforms (because
-       ;; we don't about them yet). Once we've got the graph analysis, we can order things appropriately, and
-       ;; skip execution of anything with a failed ancestor.
-       ;; Or, for simplicity and frugality, we might want to just shortcircuit on the first failure.
-       (t2/select [:model/WorkspaceTransform :ref_id :name :description :source :target] :workspace_id ws-id
-                  ;; 1. Depending on what we end up storing in this field, we might not be considering stale ancestors.
-                  ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
-                  ;; Why is there all this weird code then? To avoid unused references.
-                  (if stale_only {:where [:= :stale true]} {}))))))
+    (ws.impl/execute-workspace! workspace {:stale-only stale_only})))
 
 (mr/def ::graph-node-type [:enum :table :output-table :transform :workspace-transform])
 
@@ -647,7 +600,7 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    (ws.execute/run-transform-with-remapping workspace transform (build-remapping workspace))))
+    (ws.impl/run-transform! workspace transform)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/checkout"
