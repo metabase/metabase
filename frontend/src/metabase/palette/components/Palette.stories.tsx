@@ -132,6 +132,7 @@ export const Search = {
     );
 
     await canvas.findByRole("option", { name: "Results" });
+    await canvas.findByText("Orders for each product"); // make sure we see the last item in the list
 
     asyncCallback();
   },
