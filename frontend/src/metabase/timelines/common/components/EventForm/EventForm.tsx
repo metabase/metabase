@@ -83,6 +83,9 @@ const EventForm = ({
       initialValues={{
         ...initialValues,
         timestamp: initialValues.timestamp || dayjs().utc(true).toISOString(),
+        timeline_id: initialValues.timeline_id
+          ? String(initialValues.timeline_id)
+          : undefined,
       }}
       validationSchema={EVENT_SCHEMA}
       onSubmit={onSubmit}
@@ -165,10 +168,10 @@ const EventForm = ({
                 </Group>
               )}
             />
-            {timelines.length > 1 && (
+            {timelines?.length > 1 && (
               <FormSelect
                 name="timeline_id"
-                title={t`Timeline`}
+                label={t`Timeline`}
                 data={timelineOptions}
               />
             )}
