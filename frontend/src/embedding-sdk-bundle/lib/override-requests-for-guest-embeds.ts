@@ -49,7 +49,7 @@ const EMBED_URL_TRANSFORMATIONS: Record<
     method: "GET",
   }),
   [URL_PATTERNS.CARD_PARAMETER_SEARCH]: () => ({
-    url: `${getEmbedBase()}/card/:token/ms/:paramId/search/:query`,
+    url: `${getEmbedBase()}/card/:token/params/:paramId/search/:query`,
     method: "GET",
   }),
   [URL_PATTERNS.CARD_PARAMETER_REMAPPING]: ({ url }) => ({
