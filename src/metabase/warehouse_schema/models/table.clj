@@ -464,15 +464,10 @@
    :transform {:created_at     (serdes/date)
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
-<<<<<<< HEAD
-               :workspace_id   (serdes/fk :model/Workspace)
-               :data_layer  (serdes/optional-kw)
-               :db_id      (serdes/fk :model/Database :name)}})
-=======
                :data_layer     (serdes/optional-kw)
+               :workspace_id   (serdes/fk :model/Workspace)
                :db_id          (serdes/fk :model/Database :name)
                :collection_id  (serdes/fk :model/Collection)}})
->>>>>>> origin/workspaces-master
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))
