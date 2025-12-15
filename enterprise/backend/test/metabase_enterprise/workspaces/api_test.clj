@@ -104,46 +104,46 @@
         ;; todo: check the schema / tables and user are gone
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
-(deftest archive-workspace-calls-destroy-isolation-test
+(deftest ^:parallel archive-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
-      (with-redefs [ws.isolation/destroy-workspace-isolation!
-                    (fn [_database _workspace]
-                      (reset! called? true))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (reset! called? true))]
         (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
         (is @called? "destroy-workspace-isolation! should be called when archiving")))))
 
-(deftest delete-workspace-calls-destroy-isolation-test
+(deftest ^:parallel delete-workspace-calls-destroy-isolation-test
   (testing "DELETE /api/ee/workspace/:id calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Delete Isolation Test")]
-      (with-redefs [ws.isolation/destroy-workspace-isolation!
-                    (fn [_database _workspace]
-                      (reset! called? true))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (reset! called? true))]
         (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" (:id workspace)))
         (is @called? "destroy-workspace-isolation! should be called when deleting")))))
 
-(deftest merge-workspace-calls-destroy-isolation-test
+(deftest ^:parallel merge-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
-      (with-redefs [ws.isolation/destroy-workspace-isolation!
-                    (fn [_database _workspace]
-                      (reset! called? true))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (reset! called? true))]
         (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/merge"))
         (is @called? "destroy-workspace-isolation! should be called when merging")))))
 
-(deftest unarchive-workspace-calls-ensure-isolation-test
+(deftest ^:parallel unarchive-workspace-calls-ensure-isolation-test
   (testing "POST /api/ee/workspace/:id/unarchive calls ensure-database-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
       ;; First archive the workspace
       (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
-      (with-redefs [ws.isolation/ensure-database-isolation!
-                    (fn [_workspace _database]
-                      (reset! called? true)
-                      {:schema "test_schema" :database_details {}})]
+      (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
+                                  (fn [_workspace _database]
+                                    (reset! called? true)
+                                    {:schema "test_schema" :database_details {}})]
         (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
         (is @called? "ensure-database-isolation! should be called when unarchiving")))))
 
