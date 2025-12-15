@@ -73,8 +73,6 @@
 
 (defn- table? [{:keys [entity-type]}] (= :table entity-type))
 
-(defn- ws-tx? [{:keys [entity-type]}] (= :ws-transform entity-type))
-
 (defn- node-parents [ws-id {:keys [node-type id]}]
   (case node-type
     :ws-transform     (ws-transform-parents ws-id id)
