@@ -634,8 +634,8 @@
   "Get all downstream transforms for a transform that is not in a workspace.
    Returns the transforms that were mirrored from this upstream transform, with workspace info."
   [_route-params
-   {:keys [transform_id]} :- [:map {:closed true} [:transform_id ms/PositiveInt]]]
-  (let [transforms       (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id] :global_id transform_id)
+   {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
+  (let [transforms       (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id] :global_id transform-id)
         workspace-ids    (map :workspace_id transforms)
         workspaces-by-id (when (seq transforms)
                            (t2/select-fn->fn :id identity [:model/Workspace :id :name] :id [:in workspace-ids]))]
