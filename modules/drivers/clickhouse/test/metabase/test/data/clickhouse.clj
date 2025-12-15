@@ -13,7 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
+   [metabase.query-processor.alternative-date-test :as qp.alternative-date-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -33,7 +33,7 @@
 (defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields]
   [_driver _feature _db] false)
 
-(defmethod driver/database-supports? [:clickhouse :metabase.query-processor-test.parameters-test/get-parameter-count]
+(defmethod driver/database-supports? [:clickhouse :metabase.query-processor.parameters-test/get-parameter-count]
   [_driver _feature _db] false)
 
 (defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse

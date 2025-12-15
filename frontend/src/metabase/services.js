@@ -1,17 +1,20 @@
 import _ from "underscore";
 
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 
+import { getIsEmbedPreview } from "./get-is-embed-preview";
+
 export const internalBase = "/api";
 export const publicBase = "/api/public";
 // use different endpoints for embed previews
-export const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
+export function getEmbedBase() {
+  return getIsEmbedPreview() ? "/api/preview_embed" : "/api/embed";
+}
 
 export const ActivityApi = {
   most_recently_viewed_dashboard: GET(
@@ -200,20 +203,21 @@ export const PublicApi = {
   prefetchDashcardValues: GET(
     `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
-  document: GET(`/api/ee/public/document/:uuid`),
-  documentCardQuery: GET(`/api/ee/public/document/:uuid/card/:cardId`),
+  document: GET(`/api/public/document/:uuid`),
+  documentCardQuery: GET(`/api/public/document/:uuid/card/:cardId`),
 };
 
 export const EmbedApi = {
-  card: GET(embedBase + "/card/:token"),
-  cardQuery: GET(embedBase + "/card/:token/query"),
-  cardQueryPivot: GET(embedBase + "/pivot/card/:token/query"),
-  dashboard: GET(embedBase + "/dashboard/:token"),
+  card: GET(getEmbedBase() + "/card/:token"),
+  cardQuery: GET(getEmbedBase() + "/card/:token/query"),
+  cardQueryPivot: GET(getEmbedBase() + "/pivot/card/:token/query"),
+  dashboard: GET(getEmbedBase() + "/dashboard/:token"),
   dashboardCardQuery: GET(
-    embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+    getEmbedBase() + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
   dashboardCardQueryPivot: GET(
-    embedBase + "/pivot/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+    getEmbedBase() +
+      "/pivot/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
 };
 
@@ -349,7 +353,7 @@ export function setPublicDashboardEndpoints(uuid) {
  */
 export function setEmbedQuestionEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
-  setCardEndpoints({ base: embedBase, encodedToken });
+  setCardEndpoints({ base: getEmbedBase(), encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
@@ -358,7 +362,7 @@ export function setEmbedQuestionEndpoints(token) {
  */
 export function setEmbedDashboardEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
-  setDashboardEndpoints({ base: embedBase, encodedToken });
+  setDashboardEndpoints({ base: getEmbedBase(), encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 

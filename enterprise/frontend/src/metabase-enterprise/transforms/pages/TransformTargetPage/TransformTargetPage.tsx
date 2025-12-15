@@ -3,11 +3,11 @@ import { useState } from "react";
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Center } from "metabase/ui";
+import { Box, Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
-import { ColumnLayout, ColumnLayoutBody } from "../../components/ColumnLayout";
+import { ColumnLayout } from "../../components/ColumnLayout";
 import { TransformHeader } from "../../components/TransformHeader";
 import { POLLING_INTERVAL } from "../../constants";
 import {
@@ -50,11 +50,11 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
   }
 
   return (
-    <ColumnLayout>
+    <ColumnLayout px="3.5rem" data-testid="transforms-target-content">
       <TransformHeader transform={transform} />
-      <ColumnLayoutBody>
+      <Box pt="3rem">
         <TargetSection transform={transform} />
-      </ColumnLayoutBody>
+      </Box>
     </ColumnLayout>
   );
 }

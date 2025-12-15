@@ -82,7 +82,7 @@ function getFormattedQuery(
   if (engine === null) {
     return data.query;
   }
-  return formatNativeQuery(data.query, engine);
+  return formatNativeQuery(data.query);
 }
 
 function NativeCodePanel({

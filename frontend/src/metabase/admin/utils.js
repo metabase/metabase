@@ -4,6 +4,7 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { MetabaseReduxContext, connect } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 
 export const createAdminRouteGuard = (routeKey, Component) => {
   const Wrapper = connectedReduxRedirect({
@@ -41,3 +42,18 @@ export const RedirectToAllowedSettings = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(_RedirectToAllowedSettings);
+
+export const createTenantsRouteGuard = () => {
+  const Wrapper = connectedReduxRedirect({
+    wrapperDisplayName: "CanAccessTenants",
+    redirectPath: "/admin/people",
+    allowRedirectBack: false,
+    authenticatedSelector: (state) =>
+      getAdminPaths(state)?.find((path) => path.key === "people") != null &&
+      getSetting(state, "use-tenants"),
+    redirectAction: routerActions.replace,
+    context: MetabaseReduxContext,
+  });
+
+  return Wrapper(({ children }) => children);
+};

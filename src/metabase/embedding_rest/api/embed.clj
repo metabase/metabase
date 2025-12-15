@@ -65,6 +65,10 @@
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token"
   "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -96,6 +100,10 @@
      :constraints       constraints
      :options           options)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -110,7 +118,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/card/:token/query/:export-format", :export-format qp.schema/export-formats-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map
@@ -133,6 +146,10 @@
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -177,6 +194,10 @@
      :qp               qp
      :middleware       middleware)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
@@ -196,7 +217,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                               :export-format qp.schema/export-formats-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -229,6 +255,10 @@
 ;; variables whose name includes `id-` e.g. `id-query-params` below are ones that are keyed by ID; ones whose name
 ;; includes `slug-` are keyed by slug.
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [{:keys [token param-key]} :- [:map
@@ -238,6 +268,10 @@
   (api.embed.common/dashboard-param-values token param-key nil
                                            (api.embed.common/parse-query-params query-params)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [{:keys [token param-key prefix]}
@@ -245,12 +279,20 @@
   (api.embed.common/dashboard-param-values token param-key prefix
                                            (api.embed.common/parse-query-params query-params)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
   "Embedded version of the remapped dashboard param value endpoint."
   [{:keys [token param-key]}
    {:keys [value]}]
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
   [{:keys [token param-key]} :- [:map
@@ -264,6 +306,10 @@
                                          :card           card
                                          :param-key      param-key})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [{:keys [token param-key prefix]}] :- [:map
@@ -279,6 +325,10 @@
                                          :param-key      param-key
                                          :search-prefix  prefix})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/params/:param-key/remapping"
   "Embedded version of api.card filter values endpoint."
   [{:keys [token param-key]} :- [:map
@@ -294,6 +344,10 @@
                                                  :param-key      param-key
                                                  :value          (codec/url-decode value)})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -308,6 +362,10 @@
                                       :api (api.embed.common/parse-query-params query-params)
                                       :qp qp.pivot/run-pivot-query))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
@@ -320,6 +378,10 @@
                                                 :api (api.embed.common/parse-query-params query-params)
                                                 :qp qp.pivot/run-pivot-query))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y"
   "Generates a single tile image for an embedded Card using the map visualization."
   [{:keys [token zoom x y]}
@@ -342,6 +404,10 @@
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
   [{:keys [token dashcard-id card-id zoom x y]}

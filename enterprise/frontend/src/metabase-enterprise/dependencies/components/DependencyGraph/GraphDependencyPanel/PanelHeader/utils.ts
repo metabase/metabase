@@ -31,5 +31,7 @@ export function getHeaderLabel(
       return t`Documents that use ${nodeLabel}`;
     case "sandbox":
       return t`Row and column security rules that use ${nodeLabel}`;
+    case "segment":
+      return t`Segments that use ${nodeLabel}`;
   }
 }

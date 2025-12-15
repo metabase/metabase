@@ -249,6 +249,8 @@
                        {:description "Number of queries with metrics processed by the metrics adjust middleware."})
    (prometheus/counter :metabase-query-processor/metrics-adjust-errors
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
+   (prometheus/gauge   :metabase-query-processor/computed-weak-map-queries
+                       {:description "Number of queries cached in lib.computed/weak-map."})
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
                       :labels [:driver :healthy :reason]})

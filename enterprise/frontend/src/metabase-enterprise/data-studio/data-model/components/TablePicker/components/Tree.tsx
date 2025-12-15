@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import type { TableId } from "metabase-types/api";
@@ -55,23 +55,47 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   } = useSelection();
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
-  const { tree, reload } = useTableLoader(path);
+  const { tree, reload } = useTableLoader();
+
+  /**
+   * onUpdateCallback depends on the items, and they are changing very often.
+   * We don't want to re-register it each time items changed.
+   * Otherwise, it causes an infinity loop.
+   */
+  const items = useMemo(
+    () =>
+      flatten(tree, {
+        isExpanded,
+        addLoadingNodes: true,
+        canFlattenSingleSchema: true,
+        selection: {
+          tables: selectedTables,
+          schemas: selectedSchemas,
+          databases: selectedDatabases,
+        },
+      }),
+    [tree, isExpanded, selectedTables, selectedSchemas, selectedDatabases],
+  );
+
+  /**
+   * Initial loading of all databases, schemas, tables for the current path
+   */
+  useEffect(() => {
+    reload(path);
+  }, [reload, path]);
+
+  const refetchSelectedTables = useCallback(() => {
+    const selectedTableNodes = items
+      .filter((item) => isTableNode(item))
+      .filter((tableNode) => selectedTables.has(tableNode.value.tableId));
+
+    selectedTableNodes.forEach((tableNode) => reload(tableNode.value));
+  }, [items, reload, selectedTables]);
 
   useEffect(() => {
-    setOnUpdateCallback(() => () => reload(path));
+    setOnUpdateCallback(() => refetchSelectedTables);
     return () => setOnUpdateCallback(null);
-  }, [path, reload, setOnUpdateCallback]);
-
-  const items = flatten(tree, {
-    isExpanded,
-    addLoadingNodes: true,
-    canFlattenSingleSchema: true,
-    selection: {
-      tables: selectedTables,
-      schemas: selectedSchemas,
-      databases: selectedDatabases,
-    },
-  });
+  }, [refetchSelectedTables, setOnUpdateCallback]);
 
   useEffect(() => {
     const expandedDatabases = items.filter(

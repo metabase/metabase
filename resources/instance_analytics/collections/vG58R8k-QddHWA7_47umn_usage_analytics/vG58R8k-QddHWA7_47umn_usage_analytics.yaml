@@ -10,9 +10,8 @@ personal_owner_id: null
 namespace: analytics
 authority_level: null
 serdes/meta:
-- id: vG58R8k-QddHWA7_47umn
-  label: usage_analytics
-  model: Collection
+- {id: vG58R8k-QddHWA7_47umn, label: usage_analytics, model: Collection}
 archive_operation_id: null
 archived_directly: null
+is_remote_synced: false
 is_sample: false
