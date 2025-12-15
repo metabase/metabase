@@ -148,6 +148,8 @@ export function getNodeIconWithType(
       return "permissions_limited";
     case "segment":
       return "segment";
+    case "measure":
+      return "sum";
   }
 }
 
@@ -214,6 +216,19 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this segment`,
         url: Urls.dataModelSegment(node.id),
       };
+    case "measure":
+      if (node.data.table != null) {
+        return {
+          label: t`View this measure`,
+          url: Urls.dataStudioDataModelMeasure({
+            databaseId: node.data.table.db_id,
+            schemaName: node.data.table.schema,
+            tableId: node.data.table.id,
+            measureId: node.id,
+          }),
+        };
+      }
+      return null;
     case "snippet":
       return null;
   }
@@ -276,6 +291,7 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
       }
       return null;
     case "segment":
+    case "measure":
       if (node.data.table != null) {
         return [
           {
@@ -312,6 +328,7 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "snippet":
     case "sandbox":
     case "segment":
+    case "measure":
       return null;
   }
 }
@@ -366,5 +383,7 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Row and column security rule`, color: "error" };
     case "segment":
       return { label: t`Segment`, color: "accent2" };
+    case "measure":
+      return { label: t`Measure`, color: "summarize" };
   }
 }

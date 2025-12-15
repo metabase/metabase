@@ -24,6 +24,7 @@
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.fix-bad-field-id-refs :as fix-bad-field-id-refs]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.middleware.measures :as measures]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
@@ -66,6 +67,7 @@
    #'drop-fields-in-summaries/drop-fields-in-summaries
    #'expand-aggregations/expand-aggregations
    #'metrics/adjust
+   #'measures/adjust
    #'expand-macros/expand-macros
    #'qp.resolve-referenced/resolve-referenced-card-resources
    #'parameters/substitute-parameters

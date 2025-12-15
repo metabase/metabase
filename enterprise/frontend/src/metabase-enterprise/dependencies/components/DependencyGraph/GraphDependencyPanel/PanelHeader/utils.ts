@@ -33,5 +33,7 @@ export function getHeaderLabel(
       return t`Row and column security rules that use ${nodeLabel}`;
     case "segment":
       return t`Segments that use ${nodeLabel}`;
+    case "measure":
+      return t`Measures that use ${nodeLabel}`;
   }
 }

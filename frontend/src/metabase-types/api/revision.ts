@@ -32,13 +32,15 @@ export interface Revision {
   };
 }
 
+export type RevisionEntityType = "card" | "dashboard" | "segment" | "measure";
+
 export interface ListRevisionRequest {
-  entity: "card" | "dashboard" | "segment";
+  entity: RevisionEntityType;
   id: number | string;
 }
 
 export interface RevertRevisionRequest {
-  entity: "card" | "dashboard" | "segment";
+  entity: RevisionEntityType;
   id: number | string;
   revision_id: number;
 }

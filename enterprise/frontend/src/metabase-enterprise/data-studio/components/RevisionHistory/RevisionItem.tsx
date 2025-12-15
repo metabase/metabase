@@ -8,22 +8,29 @@ import { getUserId } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
 import type { Revision, TableId } from "metabase-types/api";
 
-import { SegmentRevisionDiff } from "./SegmentRevisionDiff";
-import S from "./SegmentRevisionHistory.module.css";
+import { RevisionDiff } from "./RevisionDiff";
+import S from "./RevisionHistory.module.css";
+import type { DefinitionType, RevisionActionDescriptor } from "./types";
 
 dayjs.extend(relativeTime);
 
-type SegmentRevisionItemProps = {
+type RevisionItemProps = {
   revision: Revision;
   tableId: TableId;
   userColor?: string;
+  getActionDescription: RevisionActionDescriptor;
+  definitionLabel: string;
+  definitionType: DefinitionType;
 };
 
-export function SegmentRevisionItem({
+export function RevisionItem({
   revision,
   tableId,
   userColor,
-}: SegmentRevisionItemProps) {
+  getActionDescription,
+  definitionLabel,
+  definitionType,
+}: RevisionItemProps) {
   const currentUserId = useSelector(getUserId);
   const isCurrentUser = revision.user.id === currentUserId;
   const userName = isCurrentUser ? t`You` : revision.user.common_name;
@@ -63,11 +70,13 @@ export function SegmentRevisionItem({
         {diffKeys.length > 0 && (
           <Stack gap="sm" mt="sm">
             {diffKeys.map((key) => (
-              <SegmentRevisionDiff
+              <RevisionDiff
                 key={key}
                 property={key}
                 diff={getDiffForKey(revision.diff, key)}
                 tableId={tableId}
+                definitionLabel={definitionLabel}
+                definitionType={definitionType}
               />
             ))}
           </Stack>
@@ -77,41 +86,14 @@ export function SegmentRevisionItem({
   );
 }
 
-function getActionDescription(revision: Revision): string {
-  if (revision.is_creation) {
-    return t`created this segment`;
-  }
-  if (revision.is_reversion) {
-    return t`reverted to a previous version`;
-  }
-
-  const changedKeys = Object.keys(revision.diff || {});
-  if (changedKeys.length === 1) {
-    switch (changedKeys[0]) {
-      case "name":
-        return t`renamed the segment`;
-      case "description":
-        return t`updated the description`;
-      case "definition":
-        return t`changed the filter definition`;
-    }
-  }
-
-  if (changedKeys.length > 1) {
-    return t`made multiple changes`;
-  }
-
-  return t`made changes`;
-}
-
-type RevisionDiff = Record<string, { before?: unknown; after?: unknown }>;
+type RevisionDiffMap = Record<string, { before?: unknown; after?: unknown }>;
 
 function getDiffKeys(revision: Revision): string[] {
   if (!revision.diff) {
     return [];
   }
 
-  const diff = revision.diff as unknown as RevisionDiff;
+  const diff = revision.diff as unknown as RevisionDiffMap;
   let keys = Object.keys(diff);
 
   if (revision.is_creation) {
@@ -129,6 +111,6 @@ function getDiffForKey(
     return undefined;
   }
 
-  const revisionDiff = diff as unknown as RevisionDiff;
+  const revisionDiff = diff as unknown as RevisionDiffMap;
   return revisionDiff[key];
 }

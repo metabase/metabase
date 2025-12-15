@@ -230,6 +230,11 @@
 
 (lib.hierarchy/derive :segment ::ref)
 
+(mbql-clause/define-tuple-mbql-clause :measure :- :type/Number
+  #_measure-id [:schema [:ref ::id/measure]])
+
+(lib.hierarchy/derive :measure ::ref)
+
 (mbql-clause/define-tuple-mbql-clause :metric :- ::expression/type.unknown
   #_metric-id [:schema [:ref ::id/card]])
 

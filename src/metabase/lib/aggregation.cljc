@@ -298,7 +298,8 @@
   [:or
    [:ref ::lib.schema.aggregation/aggregation]
    [:ref ::lib.schema.common/external-op]
-   [:ref ::lib.schema.metadata/metric]])
+   [:ref ::lib.schema.metadata/metric]
+   [:ref ::lib.schema.metadata/measure]])
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
@@ -308,8 +309,8 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     aggregable :- ::aggregable]
-   ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
-   (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
+   ;; if this is a Metric or Measure metadata, convert it to `:metric` or `:measure` MBQL clause before adding.
+   (if (#{:metadata/metric :metadata/measure} (lib.dispatch/dispatch-value aggregable))
      (recur query stage-number (lib.ref/ref aggregable))
      (lib.util/add-summary-clause query stage-number :aggregation aggregable))))
 

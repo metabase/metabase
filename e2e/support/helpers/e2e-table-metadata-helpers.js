@@ -19,3 +19,25 @@ export const createSegment = ({
     definition,
   });
 };
+
+/**
+ * @param {object} measure
+ * @param {string} measure.name
+ * @param {TableId} measure.table_id
+ * @param {string|null} [measure.description]
+ * @param {object} measure.definition
+ */
+export const createMeasure = ({
+  name,
+  table_id,
+  definition,
+  description = null,
+}) => {
+  cy.log(`Create a measure: ${name}`);
+  return cy.request("POST", "/api/measure", {
+    name,
+    description,
+    table_id,
+    definition,
+  });
+};

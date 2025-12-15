@@ -20,6 +20,7 @@ export * from "./field";
 export * from "./google";
 export * from "./ldap";
 export * from "./login-history";
+export * from "./measure";
 export * from "./model-index";
 export * from "./moderation";
 export * from "./notification";
