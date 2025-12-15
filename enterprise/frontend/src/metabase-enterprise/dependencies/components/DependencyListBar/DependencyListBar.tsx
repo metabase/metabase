@@ -37,6 +37,7 @@ export const DependencyListBar = memo(function DependencyListBar({
         flex={1}
         leftSection={<Icon name="search" />}
         rightSection={hasLoader ? <Loader size="sm" /> : undefined}
+        data-testid="dependency-list-search-input"
         onChange={handleSearchChange}
       />
       <FilterOptionsPicker

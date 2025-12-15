@@ -27,7 +27,7 @@ const SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG =
   "Snippet for native question card tag";
 const SNIPPET_FOR_SNIPPET_TAG = "Snippet for snippet tag";
 
-const ENTITY_NAMES = [
+const MODEL_NAMES = [
   MODEL_FOR_QUESTION_DATA_SOURCE,
   MODEL_FOR_MODEL_DATA_SOURCE,
   MODEL_FOR_METRIC_DATA_SOURCE,
@@ -35,16 +35,32 @@ const ENTITY_NAMES = [
   MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
   MODEL_FOR_DASHBOARD_CARD,
   MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
+];
+
+const SEGMENT_NAMES = [
   SEGMENT_FOR_QUESTION_FILTER,
   SEGMENT_FOR_MODEL_FILTER,
   SEGMENT_FOR_SEGMENT_FILTER,
   SEGMENT_FOR_METRIC_FILTER,
+];
+
+const METRIC_NAMES = [
   METRIC_FOR_QUESTION_AGGREGATION,
   METRIC_FOR_MODEL_AGGREGATION,
   METRIC_FOR_METRIC_AGGREGATION,
   METRIC_FOR_DASHBOARD_CARD,
+];
+
+const SNIPPET_NAMES = [
   SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
   SNIPPET_FOR_SNIPPET_TAG,
+];
+
+const ENTITY_NAMES = [
+  ...MODEL_NAMES,
+  ...SEGMENT_NAMES,
+  ...METRIC_NAMES,
+  ...SNIPPET_NAMES,
 ];
 
 describe("scenarios > dependencies > unreferenced", () => {
@@ -54,22 +70,48 @@ describe("scenarios > dependencies > unreferenced", () => {
     H.activateToken("bleeding-edge");
   });
 
-  it("should show unreferenced entities", () => {
-    createEntities({ withReferences: false });
-    H.DataStudio.Tasks.visitUnreferencedEntities();
-    H.DataStudio.Tasks.list().within(() => {
-      ENTITY_NAMES.forEach((name) => {
-        cy.findByText(name).should("be.visible");
+  describe("analysis", () => {
+    it("should show unreferenced entities", () => {
+      createEntities({ withReferences: false });
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.list().within(() => {
+        ENTITY_NAMES.forEach((name) => {
+          cy.findByText(name).should("be.visible");
+        });
+      });
+    });
+
+    it("should not show referenced entities", () => {
+      createEntities({ withReferences: true });
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.list().within(() => {
+        ENTITY_NAMES.forEach((name) => {
+          cy.findByText(name).should("not.exist");
+        });
       });
     });
   });
 
-  it("should not show referenced entities", () => {
-    createEntities({ withReferences: true });
-    H.DataStudio.Tasks.visitUnreferencedEntities();
-    H.DataStudio.Tasks.list().within(() => {
-      ENTITY_NAMES.forEach((name) => {
-        cy.findByText(name).should("not.exist");
+  describe("search", () => {
+    it("should search for entities", () => {
+      createEntities({ withReferences: true });
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.searchInput().type(MODEL_FOR_QUESTION_DATA_SOURCE);
+      H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_QUESTION_DATA_SOURCE).should("be.visible");
+        cy.findByText(MODEL_FOR_MODEL_DATA_SOURCE).should("not.exist");
+      });
+    });
+
+    it("should search for entities with type filters", () => {
+      createEntities({ withReferences: true });
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Model").click();
+      H.DataStudio.Tasks.searchInput().type("tag");
+      H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
+        cy.findByText(SNIPPET_FOR_SNIPPET_TAG).should("not.exist");
       });
     });
   });

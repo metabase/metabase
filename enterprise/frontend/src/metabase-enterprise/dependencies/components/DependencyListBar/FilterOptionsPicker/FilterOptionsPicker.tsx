@@ -26,6 +26,7 @@ export function FilterOptionsPicker({
       <Popover.Target>
         <Button
           leftSection={<FixedSizeIcon name="filter" aria-hidden />}
+          data-testid="dependency-list-filter-button"
           onClick={toggle}
         >
           {t`Filter`}
