@@ -124,6 +124,11 @@ export function createEmbeddedAnalyticsJsUsage(
           properties.withTitle,
           usage,
         );
+        usage = incrementComponentPropertyCount(
+          "dashboard.with_subscriptions",
+          properties.withSubscriptions,
+          usage,
+        );
       })
       .with(
         { componentName: "metabase-question", questionId: "new" },
