@@ -223,12 +223,12 @@
                             {:workspace_id workspace-id
                              :ref_id       ref-id}
                             (fn [existing]
-                              (let [qry-table-id   (fn [schema table]
+                              (let [isolated-table (ws.u/isolated-table-name schema table)
+                                    qry-table-id   (fn [schema table]
                                                      (t2/select-one-fn :id [:model/Table :id]
                                                                        :db_id db_id
                                                                        :schema schema
                                                                        :name table))
-                                    isolated-table (ws.u/isolated-table-name schema table)
                                     id-if-match    (fn [schema-key schema table-key table id-key]
                                                      (when (and (= schema (get existing schema-key))
                                                                 (= table (get existing table-key)))
