@@ -1,5 +1,6 @@
-import type { LoaderProps } from "@mantine/core";
-import { Loader as MantineLoader, getSize } from "@mantine/core";
+import type { LoaderProps as MantineLoaderProps } from "@mantine/core";
+import { Loader as MantineLoader, Stack, Text, getSize } from "@mantine/core";
+import type React from "react";
 
 const SIZES: Record<string, string> = {
   xs: "1rem",
@@ -9,17 +10,31 @@ const SIZES: Record<string, string> = {
   xl: "3.5rem",
 };
 
-type CustomLoader = (() => React.JSX.Element) | undefined;
+interface LoaderProps extends MantineLoaderProps {
+  label?: string;
+}
 
-let customLoader: CustomLoader;
+type CustomLoaderType = React.ComponentType<{ label?: string }> | undefined;
 
-export const setCustomLoader = (component: CustomLoader) => {
-  customLoader = component;
+let CustomLoader: CustomLoaderType;
+
+export const setCustomLoader = (component: CustomLoaderType) => {
+  CustomLoader = component;
 };
 
-export const Loader = ({ size = "md", ...props }: LoaderProps) => {
-  if (customLoader) {
-    return customLoader();
+export const Loader = ({ size = "md", label, ...props }: LoaderProps) => {
+  if (CustomLoader) {
+    return <CustomLoader label={label} />;
   }
-  return <MantineLoader {...props} size={getSize(SIZES[size])} />;
+
+  return label ? (
+    <Stack justify="center" align="center" gap="sm" mt="xl">
+      <MantineLoader {...props} size={getSize(SIZES[size])} />
+      <Text c="text-light" size="xl">
+        {label}
+      </Text>
+    </Stack>
+  ) : (
+    <MantineLoader {...props} size={getSize(SIZES[size])} />
+  );
 };

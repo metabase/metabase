@@ -11,7 +11,6 @@ import {
   setErrorComponent,
   setEventHandlers,
   setIsGuestEmbed,
-  setLoaderComponent,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
@@ -65,7 +64,6 @@ export const ComponentProviderInternal = (
     reduxStore,
     locale,
     errorComponent,
-    loaderComponent,
     allowConsoleLog,
     isLocalHost,
   } = useNormalizeComponentProviderProps(props);
@@ -105,10 +103,6 @@ export const ComponentProviderInternal = (
   useEffect(() => {
     reduxStore.dispatch(setEventHandlers(eventHandlers || null));
   }, [reduxStore, eventHandlers]);
-
-  useEffect(() => {
-    reduxStore.dispatch(setLoaderComponent(loaderComponent ?? null));
-  }, [reduxStore, loaderComponent]);
 
   useEffect(() => {
     reduxStore.dispatch(setErrorComponent(errorComponent ?? null));
