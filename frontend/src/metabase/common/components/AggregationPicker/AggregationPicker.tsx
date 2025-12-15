@@ -132,7 +132,7 @@ export function AggregationPicker({
   );
 
   const onSelect = useCallback(
-    function (aggregation: Lib.Aggregable) {
+    function(aggregation: Lib.Aggregable) {
       const isUpdate = clause != null && clauseIndex != null;
       if (isUpdate) {
         const nextQuery = Lib.replaceClause(
