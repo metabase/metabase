@@ -317,6 +317,10 @@ export default class NativeQuery {
       );
   }
 
+  validateTemplateTags(): ValidationError[] {
+    return this._validateTemplateTags();
+  }
+
   private _allTemplateTagsAreValid() {
     const tagErrors = this._validateTemplateTags();
     return tagErrors.length === 0;

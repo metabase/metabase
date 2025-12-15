@@ -24,7 +24,7 @@ import {
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { Alert, Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -141,6 +141,39 @@ interface NativeQueryEditorState {
   isSelectedTextPopoverOpen: boolean;
   isCollapsing: boolean;
 }
+
+interface ValidationErrorBannerProps {
+  query: NativeQuery;
+}
+
+const ValidationErrorBanner = ({ query }: ValidationErrorBannerProps) => {
+  const validationErrors = query.validateTemplateTags();
+
+  if (validationErrors.length === 0) {
+    return null;
+  }
+
+  return (
+    <div style={{ padding: "1rem 1rem 0 1rem" }}>
+      <Alert
+        color="warning"
+        icon="warning"
+        title={t`Cannot run or save query`}
+      >
+        {validationErrors.length === 1
+          ? validationErrors[0].message
+          : t`${validationErrors.length} variables need to be configured:`}
+        {validationErrors.length > 1 && (
+          <ul style={{ margin: "0.5rem 0 0 0", paddingLeft: "1.5rem" }}>
+            {validationErrors.map((error, index) => (
+              <li key={index}>{error.message}</li>
+            ))}
+          </ul>
+        )}
+      </Alert>
+    </div>
+  );
+};
 
 class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
@@ -319,6 +352,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           className={S.editorWrapper}
           onTransitionEnd={this.handleTransitionEnd}
         >
+          {!readOnly && !this.props.isRunnable && query.queryText().length > 0 && (
+            <ValidationErrorBanner query={query} />
+          )}
           <ResizableBox
             ref={this.resizeBox}
             height={this.state.initialHeight}

@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { Box, Tabs } from "metabase/ui";
+import { Alert, Box, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -80,6 +80,7 @@ export function TagEditorSidebar({
 
         {effectiveSection === "settings" ? (
           <SettingsPane
+            query={query}
             tags={tags}
             parametersById={parametersById}
             database={database}
@@ -104,6 +105,7 @@ export function TagEditorSidebar({
 }
 
 interface SettingsPaneProps {
+  query: NativeQuery;
   tags: TemplateTag[];
   database?: Database | null;
   databases: Database[];
@@ -114,6 +116,7 @@ interface SettingsPaneProps {
 }
 
 const SettingsPane = ({
+  query,
   tags,
   parametersById,
   database,
@@ -122,22 +125,44 @@ const SettingsPane = ({
   setParameterValue,
   getEmbeddedParameterVisibility,
 }: SettingsPaneProps) => {
-  return tags.map((tag) => (
-    <div key={tag.id}>
-      <TagEditorParam
-        tag={tag}
-        key={tag.name}
-        parameter={parametersById[tag.id]}
-        embeddedParameterVisibility={
-          parametersById[tag.id]
-            ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
-            : null
-        }
-        database={database}
-        databases={databases}
-        setTemplateTag={setTemplateTag}
-        setParameterValue={setParameterValue}
-      />
-    </div>
-  ));
+  const validationErrors = query.validateTemplateTags();
+
+  return (
+    <>
+      {validationErrors.length > 0 && (
+        <Box p="lg" pb={0}>
+          <Alert color="warning" title={t`Variables need attention`}>
+            {validationErrors.length === 1
+              ? validationErrors[0].message
+              : t`${validationErrors.length} variables need to be configured:`}
+            {validationErrors.length > 1 && (
+              <ul style={{ margin: "0.5rem 0 0 0", paddingLeft: "1.5rem" }}>
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error.message}</li>
+                ))}
+              </ul>
+            )}
+          </Alert>
+        </Box>
+      )}
+      {tags.map((tag) => (
+        <div key={tag.id}>
+          <TagEditorParam
+            tag={tag}
+            key={tag.name}
+            parameter={parametersById[tag.id]}
+            embeddedParameterVisibility={
+              parametersById[tag.id]
+                ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
+                : null
+            }
+            database={database}
+            databases={databases}
+            setTemplateTag={setTemplateTag}
+            setParameterValue={setParameterValue}
+          />
+        </div>
+      ))}
+    </>
+  );
 };
