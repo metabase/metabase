@@ -50,6 +50,14 @@
                     [output-table (:id transform)])))
           transforms)))
 
+(defn- target-ref-map
+  "Build a map from [database_id schema table_name] -> transform_id for all transforms."
+  [transforms]
+  (into {}
+        (map (fn [{:keys [id target]}]
+               [[(:database target) (:schema target) (:name target)] id]))
+        transforms))
+
 (defn transform-ordering
   "Computes an 'ordering' of a given list of transforms.
 
@@ -64,6 +72,8 @@
                                        {db-id [transform]})))
                               (apply merge-with into))
         transform-ids (into #{} (map :id) transforms)
+        ;; Map [database_id schema name] -> transform_id for name-based ref resolution
+        target-refs (target-ref-map transforms)
         {:keys [output-tables dependencies]} (->> transforms-by-db
                                                   (map (mu/fn [[db-id db-transforms] :- [:tuple
                                                                                          [:maybe ::lib.schema.id/database]
@@ -73,9 +83,12 @@
                                                             :dependencies  (dependency-map db-transforms)})))
                                                   (apply merge-with merge))]
     (update-vals dependencies #(into #{}
-                                     (keep (fn [{:keys [table transform]}]
+                                     (keep (fn [{:keys [table transform table-ref]}]
                                              (or (output-tables table)
-                                                 (transform-ids transform))))
+                                                 (transform-ids transform)
+                                                 (when table-ref
+                                                   (let [{:keys [database_id schema table]} table-ref]
+                                                     (target-refs [database_id schema table]))))))
                                      %))))
 
 (defn find-cycle
@@ -125,9 +138,15 @@
         db-transforms    (filter #(= (get-in % [:source :query :database]) db-id) transforms)
         output-tables    (output-table-map mp db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
-        node->children   #(->> % transforms-by-id transforms.i/table-dependencies (keep (fn [{:keys [table transform]}]
-                                                                                          (or (output-tables table)
-                                                                                              (transform-ids transform)))))
+        ;; Map [database_id schema name] -> transform_id for name-based ref resolution
+        target-refs      (target-ref-map transforms)
+        node->children   #(->> % transforms-by-id transforms.i/table-dependencies
+                               (keep (fn [{:keys [table transform table-ref]}]
+                                       (or (output-tables table)
+                                           (transform-ids transform)
+                                           (when table-ref
+                                             (let [{:keys [database_id schema table]} table-ref]
+                                               (target-refs [database_id schema table])))))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]
     (when cycle
