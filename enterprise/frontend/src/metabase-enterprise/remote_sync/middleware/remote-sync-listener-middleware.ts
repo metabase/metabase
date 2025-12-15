@@ -37,11 +37,6 @@ function invalidateRemoteSyncTags(dispatch: any) {
   dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any));
 }
 
-function isDeactivatingRemoteSync(action: any): boolean {
-  const settings = action.meta?.arg?.originalArgs;
-  return settings?.["remote-sync-url"] === "";
-}
-
 const ALL_INVALIDATION_TAGS = [
   tag("action"),
   tag("alert"),
@@ -328,19 +323,18 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: remoteSyncApi.endpoints.updateRemoteSyncSettings.matchPending,
+  matcher: remoteSyncApi.endpoints.updateRemoteSyncSettings.matchFulfilled,
   effect: async (action, { dispatch }) => {
-    if (!isDeactivatingRemoteSync(action)) {
+    const response = action.payload;
+    // Only show modal if a task was actually started (indicated by task_id presence)
+    if (response.task_id) {
       dispatch(taskStarted({ taskType: "import" }));
     }
   },
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: isAnyOf(
-    remoteSyncApi.endpoints.importChanges.matchRejected,
-    remoteSyncApi.endpoints.updateRemoteSyncSettings.matchRejected,
-  ),
+  matcher: remoteSyncApi.endpoints.importChanges.matchRejected,
   effect: async (_action, { dispatch }) => {
     dispatch(taskCleared());
   },

@@ -47,8 +47,8 @@ export function SharedCombinedEmbeddingSettings({
   return (
     <>
       <EmbeddingSettingsCard
-        title={t`Guest embeds`}
-        description={t`A secure way to embed charts and dashboards when you don’t want to offer ad-hoc querying or chart drill-through.`}
+        title={t`Enable guest embeds`}
+        description={t`A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through. Enables modular embedding and static embedding.`}
         settingKey="enable-embedding-static"
         actionButton={<NewEmbedButton />}
         dependentSettingKeys={dependentSettingKeys}

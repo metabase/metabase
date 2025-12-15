@@ -1,4 +1,8 @@
-import { completeWizard, navigateToEntitySelectionStep } from "./helpers";
+import {
+  getEmbedSidebar,
+  navigateToEntitySelectionStep,
+  navigateToGetCodeStep,
+} from "./helpers";
 
 const { H } = cy;
 
@@ -34,9 +38,17 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
   });
 
   it("should close wizard when clicking `Done` button on the last step", () => {
-    completeWizard({
+    navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+    });
+
+    H.publishChanges("dashboard");
+
+    cy.button("Unpublish").should("be.visible");
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Done").click();
     });
 
     H.modal().should("not.exist");

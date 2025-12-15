@@ -695,7 +695,8 @@
                           {:card-id (:id card)}))
           ;; Plausible and has the schema, so run the upgrades over it.
           (loop [card card]
-            (if (= (:card_schema card) current-schema-version)
+            ;; Use >= to allow for downgrades.
+            (if (>= (:card_schema card) current-schema-version)
               card
               (let [new-version (inc (:card_schema card))]
                 (recur (assoc (upgrade-card-schema-to card new-version)
@@ -1348,7 +1349,10 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where        [:and [:= :collection.namespace nil] [:= :this.document_id nil]]
+   :where [:and [:or [:= :collection.namespace nil]
+                 [:= :collection.namespace "shared-tenant-collection"]
+                 [:= :collection.namespace "tenant-specific"]]
+           [:= :this.document_id nil]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]

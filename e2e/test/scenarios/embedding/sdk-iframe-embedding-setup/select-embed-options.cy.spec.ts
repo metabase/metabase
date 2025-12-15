@@ -35,9 +35,7 @@ describe("OSS", { tags: "@OSS" }, () => {
         resourceName: DASHBOARD_NAME,
       });
 
-      assertUpsellForOption("Allow people to drill through on data points");
-      assertUpsellForOption("Allow downloads");
-      assertUpsellForOption("Allow subscriptions");
+      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
     });
   });
 });
@@ -58,33 +56,16 @@ describe("EE without license", () => {
       mockEmbedJsToDevServer();
     });
 
-    it("should show upsell for Allow subscriptions option", () => {
+    it("should show upsell banner", () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: DASHBOARD_NAME,
       });
 
-      assertUpsellForOption("Allow people to drill through on data points");
-      assertUpsellForOption("Allow downloads");
-      assertUpsellForOption("Allow subscriptions");
+      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
     });
   });
 });
-
-function assertUpsellForOption(label: string) {
-  getEmbedSidebar()
-    .findByLabelText(label)
-    .closest("[data-testid=tooltip-warning]")
-    .icon("gem")
-    .realHover();
-
-  H.hovercard().should("contain.text", "Get more powerful embedding");
-  H.hovercard().should(
-    "contain.text",
-    "Upgrade to get access to embeds with single sign-on, drill through, advanced theming, the SDK for React, and more.",
-  );
-  H.hovercard().should("contain.text", "Upgrade to Metabase Pro");
-}
 
 describe(suiteTitle, () => {
   beforeEach(() => {
@@ -273,6 +254,23 @@ describe(suiteTitle, () => {
       cy.findByRole("heading", { name: "Email this dashboard" }).should(
         "be.visible",
       );
+
+      /**
+       * It seems `should("be.visible")` above doesn't not work in iframe.
+       * It can only check the existence of the element but not its visibility.
+       */
+      cy.findByTestId("dashboard").then(($dashboard) => {
+        const EXPECTED_APPROX_WIDTH = 800;
+        const ERROR_TOLERANCE = 50;
+        const dashboardWidth = $dashboard.width();
+        expect(
+          dashboardWidth,
+          "EAJS preview should scale when opening a dashboard sidebar (EMB-1120)",
+        ).to.be.within(
+          EXPECTED_APPROX_WIDTH - ERROR_TOLERANCE,
+          EXPECTED_APPROX_WIDTH + ERROR_TOLERANCE,
+        );
+      });
     });
 
     getEmbedSidebar()
@@ -307,6 +305,10 @@ describe(suiteTitle, () => {
       resourceName: DASHBOARD_NAME,
     });
 
+    H.publishChanges("dashboard");
+
+    cy.button("Unpublish").should("be.visible");
+
     getEmbedSidebar()
       .findByLabelText("Show dashboard title")
       .should("be.checked");
@@ -331,7 +333,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,authType=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-title="false"');
@@ -380,6 +382,10 @@ describe(suiteTitle, () => {
       resourceName: QUESTION_NAME,
     });
 
+    H.publishChanges("card");
+
+    cy.button("Unpublish").should("be.visible");
+
     getEmbedSidebar()
       .findByLabelText("Allow downloads")
       .should("not.be.checked");
@@ -404,7 +410,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=chart,guestEmbedEnabled=false,authType=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -573,6 +579,10 @@ describe(suiteTitle, () => {
       resourceName: DASHBOARD_NAME,
     });
 
+    H.publishChanges("dashboard");
+
+    cy.button("Unpublish").should("be.visible");
+
     cy.log("brand color should be visible");
     getEmbedSidebar().within(() => {
       cy.findByText("Brand color").should("be.visible");
@@ -607,7 +617,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,authType=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
     });
 
     codeBlock().should("contain", '"theme": {');

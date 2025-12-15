@@ -185,12 +185,18 @@ describe("scenarios > dependencies > dependency checks", () => {
   });
 
   describe("transforms", () => {
+    const goToEditorAndType = (queryString: string) => {
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
+      H.NativeEditor.clear().type(queryString);
+    };
+
     it("should be able to confirm or cancel breaking changes to a SQL transform after it was run", () => {
       createSqlTransformWithDependentMbqlQuestions();
 
       cy.log("make breaking changes");
       cy.get<number>("@transformId").then(H.visitTransform);
-      H.NativeEditor.clear().type('SELECT name FROM "Schema A"."Animals"');
+      goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
 
       cy.log("cancel breaking changes");
       H.DataStudio.Transforms.saveChangesButton().click();
@@ -201,6 +207,8 @@ describe("scenarios > dependencies > dependency checks", () => {
         cy.button("Cancel").click();
       });
       cy.get("@updateTransform.all").should("have.length", 0);
+
+      goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
 
       cy.log("confirm breaking changes");
       H.DataStudio.Transforms.saveChangesButton().click();
@@ -216,9 +224,7 @@ describe("scenarios > dependencies > dependency checks", () => {
     it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
       createSqlTransformWithDependentMbqlQuestions();
       cy.get<number>("@transformId").then(H.visitTransform);
-      H.NativeEditor.clear().type(
-        'SELECT score, name FROM "Schema A"."Animals"',
-      );
+      goToEditorAndType('SELECT score, name FROM "Schema A"."Animals"');
       H.DataStudio.Transforms.saveChangesButton().click();
       cy.wait("@updateTransform");
     });
@@ -228,6 +234,7 @@ describe("scenarios > dependencies > dependency checks", () => {
 
       cy.log("make breaking changes");
       cy.get<number>("@transformId").then(H.visitTransform);
+      H.DataStudio.Transforms.editDefinition().click();
       H.getNotebookStep("data").findByLabelText("Pick columns").click();
       H.popover().findByLabelText("Score").click();
 
@@ -240,6 +247,10 @@ describe("scenarios > dependencies > dependency checks", () => {
         cy.button("Cancel").click();
       });
       cy.get("@updateTransform.all").should("have.length", 0);
+
+      H.DataStudio.Transforms.editDefinition().click();
+      H.getNotebookStep("data").findByLabelText("Pick columns").click();
+      H.popover().findByLabelText("Score").click();
 
       cy.log("confirm breaking changes");
       H.DataStudio.Transforms.saveChangesButton().click();
@@ -254,6 +265,7 @@ describe("scenarios > dependencies > dependency checks", () => {
     it("should not show a confirmation if there are no breaking changes when updating a MBQL transform before it was run", () => {
       createMbqlTransformWithDependentSqlTransforms();
       cy.get<number>("@transformId").then(H.visitTransform);
+      H.DataStudio.Transforms.editDefinition().click();
       H.getNotebookStep("data").button("Sort").click();
       H.popover().findByText("Score").click();
       H.DataStudio.Transforms.saveChangesButton().click();

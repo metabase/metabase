@@ -473,7 +473,7 @@ export type ClickActionPerformedEvent = ValidateEvent<{
 
 export type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
   event: "remote_sync_branch_switched";
-  triggered_from: "sidebar" | "admin-settings";
+  triggered_from: "admin-settings" | "app-bar";
 }>;
 
 export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
@@ -483,13 +483,13 @@ export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
 
 export type RemoteSyncPullChangesEvent = ValidateEvent<{
   event: "remote_sync_pull_changes";
-  triggered_from: "sidebar" | "admin-settings";
+  triggered_from: "admin-settings" | "app-bar";
   event_detail?: "force";
 }>;
 
 export type RemoteSyncPushChangesEvent = ValidateEvent<{
   event: "remote_sync_push_changes";
-  triggered_from: "sidebar" | "conflict-modal";
+  triggered_from: "conflict-modal" | "app-bar";
   event_detail?: "force";
 }>;
 
@@ -552,6 +552,12 @@ export type DataStudioEvent =
   | DataStudioGlossaryEditedEvent
   | DataStudioGlossaryDeletedEvent;
 
+export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
+  event: "unsaved_changes_warning_displayed";
+  triggered_from: "document";
+  target_id: number | null;
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -604,4 +610,5 @@ export type SimpleEvent =
   | BookmarkEvent
   | RemoteSyncEvent
   | ClickActionPerformedEvent
-  | DataStudioEvent;
+  | DataStudioEvent
+  | UnsavedChangesWarningDisplayedEvent;

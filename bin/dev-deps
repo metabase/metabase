@@ -50,7 +50,7 @@ check_required_tools() {
     if [ ${#missing[@]} -gt 0 ]; then
         echo -e "${RED}${BOLD}Missing required tools:${NC} ${missing[*]}"
         echo ""
-        echo "Run ./bin/dev-requirements to check your development environment."
+        echo "Run './bin/mage doctor' to check your development environment."
         echo ""
         echo "If you'd like an automated setup, run ./bin/dev-install (uses mise)."
         exit 1

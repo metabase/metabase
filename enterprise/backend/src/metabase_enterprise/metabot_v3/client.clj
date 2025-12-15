@@ -137,12 +137,13 @@
    Response chunks are encoded in the format understood by the frontend and AI Service, Clojure backend doesn't
    know anything about it and just shuttles them over.
    "
-  [{:keys [context message history profile-id conversation-id session-id state on-complete]}
+  [{:keys [context message history use-case profile-id conversation-id session-id state on-complete]}
    :- [:map
        [:context :map]
        [:message ::metabot-v3.client.schema/message]
        [:history ::metabot-v3.client.schema/messages]
-       [:profile-id :string]
+       [:use-case :string]
+       [:profile-id {:optional true} [:maybe :string]]
        [:conversation-id :string]
        [:session-id :string]
        [:state :map]
@@ -153,6 +154,7 @@
           body     {:messages        (conj (vec history) message)
                     :context         context
                     :conversation_id conversation-id
+                    :use_case        use-case
                     :profile_id      profile-id
                     :user_id         api/*current-user-id*
                     :state           state}
