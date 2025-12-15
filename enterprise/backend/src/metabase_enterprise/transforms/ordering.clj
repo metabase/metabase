@@ -71,17 +71,17 @@
                                      (let [db-id (transforms.i/target-db-id transform)]
                                        {db-id [transform]})))
                               (apply merge-with into))
-        transform-ids (into #{} (map :id) transforms)
-        ;; Map [database_id schema name] -> transform_id for name-based ref resolution
-        target-refs (target-ref-map transforms)
-        {:keys [output-tables dependencies]} (->> transforms-by-db
-                                                  (map (mu/fn [[db-id db-transforms] :- [:tuple
-                                                                                         [:maybe ::lib.schema.id/database]
-                                                                                         [:maybe [:sequential :any]]]]
-                                                         (let [mp (lib-be/application-database-metadata-provider db-id)]
-                                                           {:output-tables (output-table-map mp db-transforms)
-                                                            :dependencies  (dependency-map db-transforms)})))
-                                                  (apply merge-with merge))]
+        transform-ids    (into #{} (map :id) transforms)
+        target-refs      (target-ref-map transforms)
+        {:keys [output-tables
+                dependencies]} (->> transforms-by-db
+                                    (map (mu/fn [[db-id db-transforms] :- [:tuple
+                                                                           [:maybe ::lib.schema.id/database]
+                                                                           [:maybe [:sequential :any]]]]
+                                           (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                             {:output-tables (output-table-map mp db-transforms)
+                                              :dependencies  (dependency-map db-transforms)})))
+                                    (apply merge-with merge))]
     (update-vals dependencies #(into #{}
                                      (keep (fn [{:keys [table transform table-ref]}]
                                              (or (output-tables table)
@@ -138,7 +138,6 @@
         db-transforms    (filter #(= (get-in % [:source :query :database]) db-id) transforms)
         output-tables    (output-table-map mp db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
-        ;; Map [database_id schema name] -> transform_id for name-based ref resolution
         target-refs      (target-ref-map transforms)
         node->children   #(->> % transforms-by-id transforms.i/table-dependencies
                                (keep (fn [{:keys [table transform table-ref]}]

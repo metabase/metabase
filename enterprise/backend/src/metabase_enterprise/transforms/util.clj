@@ -441,16 +441,14 @@
   (when (seq refs)
     (let [db-ids  (set (map :database_id refs))
           schemas (set (map :schema refs))
-          names   (set (map :table refs))
-          rows    (t2/select [:model/Table :id :db_id :schema :name]
-                             {:where [:and
-                                      [:in :db_id db-ids]
-                                      (if (contains? schemas nil)
-                                        [:or [:in :schema (disj schemas nil)] [:is :schema nil]]
-                                        [:in :schema schemas])
-                                      [:in :name names]]})]
-      (into {} (for [{:keys [id db_id schema name]} rows]
-                 [[db_id schema name] id])))))
+          names   (set (map :table refs))]
+      (t2/select-fn->fn (juxt :db_id :schema :name) :id [:model/Table :id :db_id :schema :name]
+                        {:where [:and
+                                 [:in :db_id db-ids]
+                                 (if (contains? schemas nil)
+                                   [:or [:in :schema (disj schemas nil)] [:is :schema nil]]
+                                   [:in :schema schemas])
+                                 [:in :name names]]}))))
 
 (defn- source-table-ref->key
   "Convert a source table ref map to a lookup key [db_id schema name]."
@@ -462,7 +460,7 @@
   Integer entries pass through unchanged. Map entries get table_id populated
   if the table exists in the database."
   [source-tables]
-  (let [refs   (filter map? (vals source-tables))
+  (let [refs   (filter #(and (map? %) (nil? (:table_id %))) (vals source-tables))
         lookup (or (batch-lookup-table-ids refs) {})]
     (update-vals source-tables
                  (fn [v]
