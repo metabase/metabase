@@ -26,17 +26,17 @@ export function PublishTableModal({
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
   const { sendSuccessToast } = useMetadataToasts();
   const [publishTables] = usePublishTablesMutation();
-  const [table, setTable] = useState<TablePickerItem | null>(null);
+  const [item, setItem] = useState<TablePickerItem | null>(null);
 
   const onConfirm = async () => {
-    if (!table) {
+    if (!item) {
       return;
     }
-    await publishTables({ table_ids: [table.id] });
+    await publishTables({ table_ids: [item.id] });
     onClose();
     sendSuccessToast(t`Published`);
-    trackDataStudioTablePublished(table.id);
-    onPublished(table);
+    trackDataStudioTablePublished(item.id);
+    onPublished(item);
   };
 
   if (!opened) {
@@ -47,7 +47,7 @@ export function PublishTableModal({
     <EntityPickerModal
       title={t`Select a table to publish`}
       searchModels={["table"]}
-      canSelectItem
+      canSelectItem={item?.model === "table"}
       options={{
         hasRecents: false,
         hasConfirmButtons: true,
@@ -75,10 +75,10 @@ export function PublishTableModal({
           ),
         },
       ]}
-      onItemSelect={setTable}
+      onItemSelect={setItem}
       onClose={onClose}
       onConfirm={onConfirm}
-      selectedItem={table}
+      selectedItem={item}
     />
   );
 }
