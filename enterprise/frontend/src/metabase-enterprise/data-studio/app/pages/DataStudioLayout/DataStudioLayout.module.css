@@ -1,17 +1,27 @@
 .nav {
   border-right: 1px solid var(--mb-color-border);
-  transition: width 200ms ease;
-  width: auto;
-  min-width: 250px;
+  overflow: auto;
 }
 
-.navCollapsed {
-  width: 60px;
-  min-width: 60px;
+.opened {
+  width: 300px;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  margin: 0 -8px;
+  display: block;
+}
+
+.icon {
+  color: var(--mb-color-text-secondary);
 }
 
 .tab {
-  background-color: var(--mb-color-bg-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 
   &:hover,
   &.selected {
@@ -21,12 +31,17 @@
 
 .tab,
 .toggle {
+  position: relative;
   color: var(--mb-color-text-primary);
   font-weight: 600;
 
   &:hover,
   &.selected {
     color: var(--mb-color-brand);
+
+    .icon {
+      color: inherit;
+    }
   }
 }
 
@@ -117,4 +132,34 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  .hoverButton {
+    &:hover {
+      .showOnHover {
+        opacity: 1;
+      }
+
+      .hideOnHover {
+        opacity: 0;
+      }
+    }
+  }
+}
+
+.showOnHover {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.hideOnHover {
+  opacity: 1;
+  transition: opacity 400ms ease;
+}
+
+.disablePointer {
+  cursor: default;
 }

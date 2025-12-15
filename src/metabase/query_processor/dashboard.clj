@@ -1,6 +1,6 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
-  (:refer-clojure :exclude [some select-keys not-empty])
+  (:refer-clojure :exclude [some select-keys not-empty get-in])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -18,7 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys some not-empty]]
+   [metabase.util.performance :refer [select-keys some not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))

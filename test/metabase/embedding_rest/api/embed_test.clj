@@ -7,7 +7,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -17,7 +16,7 @@
    [metabase.parameters.chain-filter-test :as chain-filer-test]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing-rest.api-test :as public-test]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -26,13 +25,14 @@
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
-(defn random-embedding-secret-key [] (crypto-random/hex 32))
+(defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
 (def ^:dynamic *secret-key* nil)
 

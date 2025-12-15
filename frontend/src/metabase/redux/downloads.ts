@@ -161,7 +161,7 @@ export const downloadQueryResults = createAsyncThunk(
         dispatch(downloadToImage(false));
       }
     } else {
-      dispatch(downloadDataset({ opts, id: Date.now() }));
+      await dispatch(downloadDataset({ opts, id: Date.now() }));
     }
   },
 );
@@ -228,7 +228,7 @@ const getPublicDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/public/document/${documentUuid}/card/${cardId}/${type}`,
+  url: `/api/public/document/${documentUuid}/card/${cardId}/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,
@@ -327,7 +327,7 @@ const getInternalDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/document/${documentId}/card/${cardId}/query/${type}`,
+  url: `/api/document/${documentId}/card/${cardId}/query/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,

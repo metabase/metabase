@@ -2,7 +2,14 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.permissions.path :as permissions.path]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]))
+
+(defenterprise user->tenant-collection-and-descendant-ids
+  "OSS version of user->tenant-collection-and-descendant-ids. Returns an empty vector since tenants are an EE feature."
+  metabase-enterprise.tenants.model
+  [_user-or-id]
+  [])
 
 (defn user-permissions-set
   "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
@@ -15,6 +22,11 @@
                 (map permissions.path/collection-readwrite-path
                      ((requiring-resolve 'metabase.collections.models.collection/user->personal-collection-and-descendant-ids)
                       user-or-id))
+
+                ;; Current User always gets readwrite perms for their Tenant Collection and for its descendants! (3 DB Calls)
+                (map permissions.path/collection-readwrite-path
+                     (user->tenant-collection-and-descendant-ids user-or-id))
+
                 ;; include the other Perms entries for any Group this User is in (1 DB Call)
                 (map :object (app-db/query {:select [:p.object]
                                             :from   [[:permissions_group_membership :pgm]]

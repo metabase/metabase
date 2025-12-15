@@ -12,8 +12,13 @@ is_on_demand: false
 is_sample: false
 is_audit: false
 is_attached_dwh: false
+<<<<<<< HEAD
 metadata_sync_schedule: 0 5 * * * ? *
 cache_field_values_schedule: 0 0 23 * * ? *
+=======
+metadata_sync_schedule: 0 51 * * * ? *
+cache_field_values_schedule: 0 0 19 * * ? *
+>>>>>>> origin/workspaces-master
 settings:
   database-source-dataset-name: test-data
 caveats: null

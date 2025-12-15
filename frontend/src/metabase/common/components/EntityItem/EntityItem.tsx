@@ -81,7 +81,7 @@ const EntityIconCheckBox = ({
           defaultElement={
             <Icon
               name={icon.name}
-              color={icon.color ?? "inherit"}
+              c={icon.color ?? "inherit"}
               size={iconSize}
             />
           }
@@ -89,11 +89,7 @@ const EntityIconCheckBox = ({
           isSwapped={selected || showCheckbox}
         />
       ) : (
-        <Icon
-          name={icon.name}
-          color={icon.color ?? "inherit"}
-          size={iconSize}
-        />
+        <Icon name={icon.name} c={icon.color ?? "inherit"} size={iconSize} />
       )}
     </EntityIconWrapper>
   );

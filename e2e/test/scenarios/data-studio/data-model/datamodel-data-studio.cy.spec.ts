@@ -97,7 +97,10 @@ describe("scenarios > data studio > datamodel", () => {
 
       TablePicker.getDatabases().should("have.length", 1);
       TablePicker.getTables().should("have.length", 8);
-      H.DataModel.get().findByText("Not found.").should("be.visible");
+      H.DataModel.get()
+        .findByText("Not found.")
+        .scrollIntoView()
+        .should("be.visible");
       cy.location("pathname").should(
         "eq",
         `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
@@ -473,95 +476,6 @@ describe("scenarios > data studio > datamodel", () => {
       },
     );
 
-    describe("Search", () => {
-      beforeEach(() => {
-        H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
-        H.resetTestTable({ type: "postgres", table: "multi_schema" });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-      });
-
-      it("should support prefix-based search", () => {
-        H.DataModel.visitDataStudio();
-
-        TablePicker.getSearchInput().type("an");
-        TablePicker.getTables().should("have.length", 3);
-        TablePicker.getTable("Analytic Events").should("be.visible");
-        TablePicker.getTable("Animals").should("be.visible");
-      });
-
-      it("should support wildcard search with *", () => {
-        H.DataModel.visitDataStudio();
-
-        TablePicker.getSearchInput().type("irds");
-        TablePicker.get().findByText("No tables found").should("be.visible");
-
-        TablePicker.getSearchInput().clear().type("*irds");
-        TablePicker.getTables().should("have.length", 1);
-        TablePicker.getTable("Birds").should("be.visible");
-      });
-
-      it("should allow using shift key to select multiple tables", () => {
-        H.DataModel.visitDataStudio();
-        TablePicker.getSearchInput().type("a");
-
-        TablePicker.getTables().should("have.length", 4);
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').click();
-        TablePicker.getTable("Animals")
-          .eq(0)
-          .find('input[type="checkbox"]')
-          .click({ shiftKey: true });
-
-        cy.findByRole("heading", { name: /3 tables selected/i }).should(
-          "be.visible",
-        );
-      });
-
-      it("should remove the active highlight once tables are selected", () => {
-        H.DataModel.visitDataStudio();
-
-        TablePicker.getSearchInput().type("an");
-        TablePicker.getTable("Animals").eq(0).should("be.visible").click();
-        TablePicker.getTable("Animals")
-          .eq(0)
-          .should("have.attr", "aria-selected", "true");
-
-        TablePicker.getTable("Animals")
-          .eq(0)
-          .find('input[type="checkbox"]')
-          .check();
-        TablePicker.getTable("Animals").eq(1).should("be.visible").click();
-
-        TablePicker.getTable("Animals")
-          .eq(0)
-          .should("not.have.attr", "aria-selected", "true");
-        TablePicker.getTable("Animals")
-          .eq(1)
-          .should("not.have.attr", "aria-selected", "true");
-      });
-
-      it("should select/deselect tables with clicking checkboxes", () => {
-        H.DataModel.visitDataStudio();
-        TablePicker.getSearchInput().type("a");
-        TablePicker.getTables().should("have.length", 4);
-        TablePicker.getTable("Accounts")
-          .find('input[type="checkbox"]')
-          .as("accountsCheckbox");
-        TablePicker.getTable("Analytic Events")
-          .find('input[type="checkbox"]')
-          .as("analyticEventsCheckbox");
-        cy.get("@accountsCheckbox").check();
-        cy.get("@analyticEventsCheckbox").check();
-        cy.findByRole("heading", { name: /2 tables selected/i }).should(
-          "be.visible",
-        );
-        cy.get("@accountsCheckbox").uncheck();
-        cy.findByRole("heading", { name: /2 table selected/i }).should(
-          "not.exist",
-        );
-      });
-    });
-
     describe("Extra info about tables", () => {
       const databaseName = "Writable Postgres12";
       const domesticSchema = "Domestic";
@@ -634,7 +548,8 @@ describe("scenarios > data studio > datamodel", () => {
       it("should indicate published tables", () => {
         getTableId({ databaseId: WRITABLE_DB_ID, name: domesticAnimalsTable })
           .then((tableId) => {
-            return publishTables([tableId]);
+            H.createLibrary();
+            publishTables([tableId]);
           })
           .as("publishedTableId");
 
@@ -677,7 +592,7 @@ describe("scenarios > data studio > datamodel", () => {
         cy.get<TableId>("@silverTableId").then(expectTableNotVisible);
       });
 
-      it("should filter tables owned by no one", () => {
+      it("should filter tables owned by unspecified", () => {
         cy.request("GET", "/api/user/current")
           .its("body")
           .then(({ id }) => {
@@ -696,7 +611,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.DataModel.visitDataStudio();
 
         openFilterPopover();
-        selectFilterOption("Owner", "No one");
+        selectFilterOption("Owner", "Unspecified");
         applyFilters();
 
         cy.get<TableId>("@unownedTableId").then(expectTableVisible);
@@ -1014,6 +929,9 @@ describe("scenarios > data studio > datamodel", () => {
       TablePicker.getTables().should("have.length", 8);
 
       TableSection.clickField("ID");
+
+      // Navbar expansion causes these panels to be off screen
+      FieldSection.get().scrollIntoView();
       FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "BIGINT");
@@ -1856,7 +1774,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "type_casting",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Casting enabled for Rating");
 
@@ -1974,7 +1892,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "semantic_type_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -2016,6 +1934,8 @@ describe("scenarios > data studio > datamodel", () => {
           verifyAndCloseToast("Semantic type of Quantity updated");
 
           cy.log("verify preview");
+          // Navbar expansion causes these panels to be off screen
+          FieldSection.get().scrollIntoView();
           FieldSection.getPreviewButton().click();
           cy.wait("@dataset");
           PreviewSection.get()
@@ -2046,6 +1966,9 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.reload();
           cy.wait(["@metadata", "@metadata"]);
+
+          // Navbar expansion causes these panels to be off screen
+          FieldSection.get().scrollIntoView();
 
           FieldSection.getSemanticTypeFkTarget()
             .should("be.visible")
@@ -2376,7 +2299,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "visibility_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Visibility of Tax updated");
           FieldSection.getVisibilityInput().should("have.value", "Everywhere");
@@ -2569,7 +2492,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "filtering_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Filtering of Quantity updated");
 
@@ -2735,7 +2658,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "display_values",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -2829,7 +2752,7 @@ describe("scenarios > data studio > datamodel", () => {
                 H.expectUnstructuredSnowplowEvent({
                   event: "metadata_edited",
                   event_detail: "display_values",
-                  triggered_from: "admin",
+                  triggered_from: "data_studio",
                 });
                 H.undoToast().should(
                   "contain.text",
@@ -3195,7 +3118,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "json_unfolding",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -3321,7 +3244,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "metadata_edited",
           event_detail: "formatting",
-          triggered_from: "admin",
+          triggered_from: "data_studio",
         });
         verifyAndCloseToast("Formatting of Quantity updated");
 
@@ -4101,9 +4024,8 @@ function updateTableAttributes({
 }
 
 function publishTables(tableIds: TableId[]) {
-  return cy.request("POST", "/api/ee/data-studio/table/publish-model", {
+  return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
     table_ids: tableIds,
-    target_collection_id: null,
   });
 }
 

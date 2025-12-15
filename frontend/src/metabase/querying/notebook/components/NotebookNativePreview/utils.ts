@@ -16,7 +16,7 @@ export function createNativeQuestion(
     database.id,
     question.metadata(),
   );
-  const rawQuery = formatNativeQuery(response.query, database.engine);
+  const rawQuery = formatNativeQuery(response.query);
   const newQuery = Lib.nativeQuery(database.id, metadataProvider, rawQuery);
   const newQueryWithCollection =
     response.collection != null

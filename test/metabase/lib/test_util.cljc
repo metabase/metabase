@@ -7,6 +7,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -22,7 +23,9 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.namespaces :as shared.ns]))
+   [metabase.util.namespaces :as shared.ns])
+  #?@(:clj ((:import
+             [metabase.lib.metadata.cached_provider CachedProxyMetadataProvider]))))
 
 (comment providers.cards-for-queries/keep-me
          providers.merged-mock/keep-me
@@ -212,6 +215,19 @@
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
+
+(defn base-metadata-provider
+  "Given a `MetadataProvider` with a `CachedProvider` at the top level, returns the inner `MetadataProvider`.
+  Returns any other kind of provider directly.
+
+  This is not smart enough to dig into a [[lib/composed-metadata-provider]] or similar, but it's sometimes useful in
+  test helpers to keep the caching separated."
+  [metadata-provider]
+  (if (instance? #?(:clj  CachedProxyMetadataProvider
+                    :cljs metabase.lib.metadata.cached-provider/CachedProxyMetadataProvider)
+                 metadata-provider)
+    (.-metadata-provider metadata-provider)
+    metadata-provider))
 
 (defn make-mock-cards
   "Create mock cards against a set of tables in meta/metadata-provider. See [[mock-cards]]"

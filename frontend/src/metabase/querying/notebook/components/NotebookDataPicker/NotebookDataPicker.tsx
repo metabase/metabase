@@ -54,6 +54,7 @@ export interface NotebookDataPickerProps {
   ) => boolean;
   shouldDisableDatabase?: (item: QueryEditorDatabasePickerItem) => boolean;
   columnPicker: React.ReactNode;
+  shouldShowLibrary?: boolean;
 }
 
 export function NotebookDataPicker({
@@ -70,6 +71,7 @@ export function NotebookDataPicker({
   onChange,
   shouldDisableItem,
   shouldDisableDatabase,
+  shouldShowLibrary,
   columnPicker,
 }: NotebookDataPickerProps) {
   const store = useStore();
@@ -133,6 +135,7 @@ export function NotebookDataPicker({
         onChange={handleChange}
         shouldDisableItem={shouldDisableItem}
         shouldDisableDatabase={shouldDisableDatabase}
+        shouldShowLibrary={shouldShowLibrary}
       />
     );
   }
@@ -154,6 +157,7 @@ type ModernDataPickerProps = {
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
+  shouldShowLibrary?: boolean;
 };
 
 function ModernDataPicker({
@@ -169,6 +173,7 @@ function ModernDataPicker({
   onChange,
   shouldDisableItem,
   shouldDisableDatabase,
+  shouldShowLibrary,
 }: ModernDataPickerProps) {
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
@@ -225,6 +230,7 @@ function ModernDataPicker({
           setIsOpened(false);
         }}
         shouldHide={shouldHide}
+        shouldShowLibrary={shouldShowLibrary}
       />
       {isOpened && isBrowsing && (
         <DataPickerModal

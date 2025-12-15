@@ -394,28 +394,46 @@
         (is (some? (t2/update! :model/Table table-id {:data_source nil})))
         (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
 
-(deftest published-as-model-test
-  (testing "hydrating :published_as_model"
-    (mt/with-temp [:model/Table {t1 :id :as table1} {}
-                   :model/Table {t2 :id :as table2} {}
-                   :model/Card  {_c1 :id} {:type :model :published_table_id t1}
-                   :model/Card  {_c2 :id} {:type :model :published_table_id t1 :archived true}
-                   :model/Card  {_c3 :id} {:type :model :published_table_id t1}
-                   :model/Card  {_c4 :id} {:type :model :published_table_id t2 :archived_directly true}
-                   :model/Card  {_c5 :id} {:type :metric :published_table_id t2}]
-      (is (= {t1 true, t2 false}
-             (->> (t2/hydrate [table1 table2] :published_as_model)
-                  (u/index-by :id :published_as_model)))))))
+(deftest is-published-and-collection-id-test
+  (testing "is_published defaults to false"
+    (mt/with-temp [:model/Table {table-id :id} {}]
+      (is (false? (t2/select-one-fn :is_published :model/Table :id table-id)))))
+  (testing "can create a table with is_published=true and collection_id"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Table {table-id :id} {:is_published true :collection_id coll-id}]
+      (let [table (t2/select-one :model/Table :id table-id)]
+        (is (true? (:is_published table)))
+        (is (= coll-id (:collection_id table))))))
+  (testing "collection_id FK constraint prevents referencing non-existent collection"
+    (is (thrown?
+         Exception
+         (mt/with-temp [:model/Table _ {:collection_id Integer/MAX_VALUE}]))))
+  (testing "deleting a collection unpublishes the tables in it"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}
+                   :model/Table {table-2-id :id} {:is_published true :collection_id coll-id}]
+      (t2/delete! :model/Collection :id coll-id)
+      (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
+                                              :id [:in [table-1-id table-2-id]]))))))
 
-(deftest published-models-test
-  (testing "hydrating :published_models"
-    (mt/with-temp [:model/Table {t1 :id :as table1} {}
-                   :model/Table {t2 :id :as table2} {}
-                   :model/Card  {c1 :id} {:type :model :published_table_id t1}
-                   :model/Card  {_c2 :id} {:type :model :published_table_id t1 :archived true}
-                   :model/Card  {c3 :id} {:type :model :published_table_id t1}
-                   :model/Card  {_c4 :id} {:type :model :published_table_id t2 :archived_directly true}
-                   :model/Card  {_c5 :id} {:type :metric :published_table_id t2}]
-      (is (= {t1 [c1 c3], t2 []}
-             (->> (t2/hydrate [table1 table2] :published_models)
-                  (u/index-by :id (comp (partial mapv :id) :published_models))))))))
+(deftest collection-hydration-test
+  (testing "hydrating :collection on a table"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Table table {:is_published true :collection_id coll-id}]
+      (let [hydrated (t2/hydrate table :collection)]
+        (is (= coll-id (-> hydrated :collection :id)))
+        (is (= "Test Collection" (-> hydrated :collection :name))))))
+  (testing "hydrating :collection on a table with no collection_id returns nil"
+    (mt/with-temp [:model/Table table {}]
+      (let [hydrated (t2/hydrate table :collection)]
+        (is (nil? (:collection hydrated))))))
+  (testing "batched hydration works for multiple tables"
+    (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1"}
+                   :model/Collection {coll2-id :id} {:name "Collection 2"}
+                   :model/Table table1 {:is_published true :collection_id coll1-id}
+                   :model/Table table2 {:is_published true :collection_id coll2-id}
+                   :model/Table table3 {}]
+      (let [hydrated (t2/hydrate [table1 table2 table3] :collection)]
+        (is (= coll1-id (-> hydrated first :collection :id)))
+        (is (= coll2-id (-> hydrated second :collection :id)))
+        (is (nil? (-> hydrated (nth 2) :collection)))))))

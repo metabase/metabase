@@ -85,10 +85,10 @@ const DefaultCollectionEmptyState = ({
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
   switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection?.type)) {
-    case "models":
+    case "data":
       return {
-        title: t`No models yet`,
-        description: t`Put models in the Library to see them here.`,
+        title: t`No published tables yet`,
+        description: t`Publish tables in the Library to see them here.`,
       };
     case "metrics":
       return {

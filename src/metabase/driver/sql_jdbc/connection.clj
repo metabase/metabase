@@ -1,7 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
-  (:refer-clojure :exclude [some select-keys])
+  (:refer-clojure :exclude [get-in some select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.driver :as driver]
@@ -13,7 +13,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some select-keys]]
+   [metabase.util.performance :refer [get-in select-keys some]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -423,6 +423,7 @@
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
+<<<<<<< HEAD
     (let [database-id  (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to calculate details hash)
           db-original  (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
@@ -442,6 +443,24 @@
         ;; not in [[database-id->connection-pool]].
         (:is-audit db)
         {:datasource (driver-api/data-source)}
+=======
+    (let [database-id (u/the-id db-or-id-or-spec)
+          ;; we need the Database instance no matter what (in order to compare details hash with cached value)
+          db          (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
+                            (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
+                          (when (= (:lib/type db-or-id-or-spec) :metadata/database)
+                            db-or-id-or-spec)
+                          (driver-api/with-metadata-provider database-id
+                            (driver-api/database (driver-api/metadata-provider))))
+          get-fn      (fn [db-id log-invalidation?]
+                        (let [details (get @database-id->connection-pool db-id ::not-found)]
+                          (cond
+                            ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
+                            ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
+                            ;; not in [[database-id->connection-pool]].
+                            (or (:is-audit db) (get-in db [:details :is-audit-dev]))
+                            {:datasource (driver-api/data-source)}
+>>>>>>> origin/workspaces-master
 
         ;; Swapped pool: use Guava cache with TTL
         has-swap?
@@ -510,7 +529,8 @@
   `SELECT 1` query."
   [driver details]
   (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (can-connect-with-spec? jdbc-spec)))
+    (or (:is-audit-dev details)
+        (can-connect-with-spec? jdbc-spec))))
 
 (defmethod driver/connection-spec :sql-jdbc [_driver db]
   (db->pooled-connection-spec  db))

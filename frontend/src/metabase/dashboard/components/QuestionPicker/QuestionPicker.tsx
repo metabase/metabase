@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListDatabasesQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
 import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import Input from "metabase/common/components/Input";
@@ -17,7 +16,10 @@ import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 import { Button, Flex, Icon, type IconProps } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -61,13 +63,8 @@ function QuestionPickerInner({
     ? allCollections.filter(isPublicCollection)
     : allCollections;
 
-  const { data } = useListDatabasesQuery();
-  const databases = useMemo(() => data?.data ?? [], [data]);
-  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
-  const hasNativeWrite = useMemo(
-    () => getHasNativeWrite(databases),
-    [databases],
-  );
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
   const { onNewQuestion } = useDashboardContext();
   const onNewNativeQuestion = () => dispatch(addDashboardQuestion("native"));
