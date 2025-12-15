@@ -13,7 +13,7 @@ export const PageContainer = ({
       h="100%"
       pb="2rem"
       px="3.5rem"
-      style={{ overflow: "hidden" }}
+      style={{ overflow: "auto" }}
       {...rest}
     >
       {header}

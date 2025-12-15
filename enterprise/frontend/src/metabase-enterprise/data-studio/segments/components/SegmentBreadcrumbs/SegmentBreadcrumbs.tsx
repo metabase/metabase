@@ -40,7 +40,7 @@ export function PublishedTableSegmentBreadcrumbs({
       >
         {table.display_name}
       </Link>
-      <span>{segment?.name ?? t`New Segment`}</span>
+      <span>{segment?.name ?? t`New segment`}</span>
     </DataStudioBreadcrumbs>
   );
 }

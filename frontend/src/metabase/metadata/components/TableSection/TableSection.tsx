@@ -157,6 +157,7 @@ const TableSectionBase = ({
         pt="lg"
         px="lg"
         top={0}
+        bg="bg-light"
       >
         {withName && (
           <NameDescriptionInput
