@@ -91,14 +91,12 @@ export function assertPermissionForItem(
  * @param {string} permission
  * @param {boolean} isDisabled
  */
-export function isPermissionDisabled(index, permission, isDisabled) {
+export function isPermissionDisabled(row, index, permission, isDisabled) {
   // eslint-disable-next-line no-unsafe-element-filtering
-  return cy
-    .findAllByTestId("permissions-select")
+  return getPermissionRowPermissions(row)
     .eq(index)
-    .contains(permission)
-    .closest("a")
-    .should("have.attr", "aria-disabled", isDisabled.toString());
+    .should("have.attr", "aria-disabled", isDisabled.toString())
+    .contains(permission);
 }
 
 export const dismissSplitPermsModal = () => {
@@ -115,7 +113,7 @@ export function savePermissions() {
 
 export function selectImpersonatedAttribute(attribute) {
   cy.findByRole("dialog").within(() => {
-    cy.findByTestId("select-button").click();
+    cy.findByRole("textbox", { name: "User attribute" }).click();
   });
 
   popover().findByText(attribute).click();
