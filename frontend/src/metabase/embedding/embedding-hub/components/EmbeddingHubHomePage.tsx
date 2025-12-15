@@ -30,10 +30,7 @@ export const EmbeddingHubHomePage = (): ReactNode => {
         <Group gap="sm">
           <MetabotGreeting />
 
-          <Text
-            fw={700}
-            fz="lg"
-          >{t`Get started with Embedded Analytics JS`}</Text>
+          <Text fw={700} fz="lg">{t`Get started with modular embedding`}</Text>
         </Group>
 
         <Menu position="bottom-end">

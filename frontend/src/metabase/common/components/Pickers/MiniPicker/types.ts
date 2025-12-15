@@ -8,7 +8,7 @@ import type {
 
 export type MiniPickerCollectionItem = Pick<
   CollectionItem,
-  "id" | "name" | "model" | "here" | "below"
+  "id" | "name" | "model" | "here" | "below" | "display" | "collection"
 > & {
   id: CollectionItem["id"] | CollectionId;
 };
@@ -33,7 +33,15 @@ export type MiniPickerTableItem = {
   model: "table";
   id: TableId;
   db_id: DatabaseId;
+  database_name?: string;
+  table_schema?: string;
   name: string;
+};
+
+export const isTableItem = (
+  item: MiniPickerItem,
+): item is MiniPickerTableItem => {
+  return item.model === "table";
 };
 
 export type MiniPickerDatabaseItem = {

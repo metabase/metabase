@@ -75,7 +75,7 @@ describe("Collections plugin utils", () => {
     });
 
     it("should return the default icon for a regular question", () => {
-      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+      expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
     });
 
     describe("enterprise icons", () => {

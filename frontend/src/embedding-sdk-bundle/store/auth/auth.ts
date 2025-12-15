@@ -21,23 +21,10 @@ export const PLUGIN_EMBEDDING_SDK_AUTH = {
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (
-    {
-      metabaseInstanceUrl,
-      preferredAuthMethod,
-      apiKey,
-      isLocalHost,
-    }: MetabaseAuthConfig & { isLocalHost?: boolean },
+    authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
     { dispatch },
   ) => {
-    return await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(
-      {
-        metabaseInstanceUrl,
-        preferredAuthMethod,
-        apiKey,
-        isLocalHost,
-      },
-      { dispatch },
-    );
+    return await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(authConfig, { dispatch });
   },
 );
 
@@ -47,13 +34,19 @@ export const refreshTokenAsync = createAsyncThunk(
     {
       metabaseInstanceUrl,
       preferredAuthMethod,
-    }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
+      jwtProviderUri,
+    }: {
+      metabaseInstanceUrl: string;
+      preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+      jwtProviderUri?: string;
+    },
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     return await PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync(
       {
         metabaseInstanceUrl,
         preferredAuthMethod,
+        jwtProviderUri,
       },
       { getState },
     );

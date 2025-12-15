@@ -16,6 +16,12 @@ import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
+export type CollectionNamespace =
+  | null
+  | "snippets"
+  | "tenant-specific"
+  | "shared-tenant-collection";
+
 // Collection ID can be either a numeric or entity id
 export type RegularCollectionId = number | string;
 
@@ -24,6 +30,7 @@ export type CollectionId =
   | "root"
   | "personal"
   | "users"
+  | "tenant"
   | "trash";
 
 export type CollectionContentModel = "card" | "dataset" | "metric";
@@ -35,8 +42,10 @@ export type CollectionType =
   | "trash"
   | "remote-synced"
   | "library"
-  | "library-models"
+  | "library-data"
   | "library-metrics"
+  | "shared-tenant-collection"
+  | "tenant-specific-root-collection"
   | null;
 
 export type LastEditInfo = Pick<
@@ -77,6 +86,7 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
+  namespace: CollectionNamespace;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -126,6 +136,7 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
+  collection_namespace?: CollectionNamespace; // namespace of the parent collection
   display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
@@ -136,12 +147,13 @@ export interface CollectionItem {
   can_write?: boolean;
   can_restore?: boolean;
   can_delete?: boolean;
+  can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  getIcon: () => IconProps;
+  getIcon?: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (
     isArchived: boolean,
@@ -152,6 +164,9 @@ export interface CollectionItem {
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
+  is_shared_tenant_collection?: boolean;
+  is_tenant_dashboard?: boolean;
+  is_remote_synced?: boolean;
 }
 
 export interface CollectionListQuery {
@@ -159,18 +174,19 @@ export interface CollectionListQuery {
   "exclude-other-user-collections"?: boolean;
   "exclude-archived"?: boolean;
   "personal-only"?: boolean;
-  namespace?: string;
+  namespace?: CollectionNamespace;
   tree?: boolean;
 }
 
 export type getCollectionRequest = {
   id: CollectionId;
-  namespace?: "snippets";
+  namespace?: CollectionNamespace;
   ignore_error?: boolean;
 };
 
 export type ListCollectionItemsSortColumn =
   | "name"
+  | "description"
   | "last_edited_at"
   | "last_edited_by"
   | "model";
@@ -180,8 +196,9 @@ export type ListCollectionItemsRequest = {
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  namespace?: "snippets";
+  namespace?: CollectionNamespace;
   collection_type?: CollectionType;
+  include_can_run_adhoc_query?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
@@ -198,19 +215,21 @@ export interface UpdateCollectionRequest {
   parent_id?: RegularCollectionId | null;
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
+  is_remote_synced?: boolean;
 }
 
 export interface CreateCollectionRequest {
   name: string;
-  description?: string;
+  description?: string | null;
   parent_id?: CollectionId | null;
-  namespace?: string;
+  namespace?: CollectionNamespace;
   authority_level?: CollectionAuthorityLevel;
+  is_shared_tenant_collection?: boolean;
 }
 
 export interface ListCollectionsRequest {
   archived?: boolean;
-  namespace?: string;
+  namespace?: CollectionNamespace;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
   collection_type?: CollectionType;
@@ -219,10 +238,12 @@ export interface ListCollectionsTreeRequest {
   "exclude-archived"?: boolean;
   "exclude-other-user-collections"?: boolean;
   "include-library"?: boolean;
-  namespace?: string;
+  namespace?: CollectionNamespace;
+  namespaces?: string[];
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
+  "include-tenant-collections"?: boolean;
 }
 
 export interface DeleteCollectionRequest {
@@ -258,3 +279,13 @@ export interface MoveCollectionDashboardCandidatesRequest {
 export interface MoveCollectionDashboardCandidatesResult {
   moved: CardId[];
 }
+
+type LibraryChild = {
+  description: string;
+  id: number;
+  name: string;
+};
+
+export type GetLibraryCollectionResponse =
+  | (CollectionItem & { effective_children: LibraryChild[] })
+  | { data: null };

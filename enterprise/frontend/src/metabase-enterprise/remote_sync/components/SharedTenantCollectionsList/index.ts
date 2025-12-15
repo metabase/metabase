@@ -1,0 +1,1 @@
+export { SharedTenantCollectionsList } from "./SharedTenantCollectionsList";

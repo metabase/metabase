@@ -16,6 +16,8 @@ export const TAG_TYPES = [
   "database",
   "dataset",
   "document",
+  "public-document",
+  "comment",
   "embedding-hub-checklist",
   "field",
   "field-values",
@@ -49,6 +51,7 @@ export const TAG_TYPES = [
   "public-action",
   "unique-tasks",
   "user-key-value",
+  "tenant",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
