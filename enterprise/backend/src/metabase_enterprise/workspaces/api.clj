@@ -678,7 +678,7 @@
     {:transforms (for [transform transforms]
                    (assoc transform :workspace (get workspaces-by-id (:workspace_id transform))))}))
 
-(api.macros/defendpoint :post "/:id/merge"
+(api.macros/defendpoint :post "/:ws-id/merge"
   :- [:or
       [:map
        [:merged
@@ -702,12 +702,13 @@
    1. Update original transforms with workspace versions
    2. Delete the workspace and clean up isolated resources
    Returns a report of merged entities, or error in errors key."
-  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
-  (let [ws               (u/prog1 (t2/select-one :model/Workspace :id id)
+  [{:keys [ws-id] :as _query-params} :- [:map [:id ::ws.t/appdb-id]]
+   _body-params]
+  (let [ws               (u/prog1 (t2/select-one :model/Workspace :id ws-id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged
-                errors]} (-> (ws.merge/merge-workspace! id)
+                errors]} (-> (ws.merge/merge-workspace! ws-id)
                              (update :errors
                                      (partial mapv #(-> %
                                                         (update :error (fn [e] (.getMessage ^Throwable e)))
@@ -715,16 +716,16 @@
     (u/prog1
       {:merged      merged
        :errors      errors
-       :workspace   {:id id, :name (:name ws)}
+       :workspace   {:id ws-id, :name (:name ws)}
        :archived_at (when-not (seq errors)
                       ;; TODO call a ws.common method, which can handle the clean-up too
-                      (t2/update! :model/Workspace :id id {:archived_at [:now]})
-                      (t2/select-one-fn :archived_at [:model/Workspace :archived_at] :id id))}
+                      (t2/update! :model/Workspace :id ws-id {:archived_at [:now]})
+                      (t2/select-one-fn :archived_at [:model/Workspace :archived_at] :id ws-id))}
       (when-not (seq errors)
         ;; Most of the APIs and the FE are not respecting when a Workspace is archived yet.
-        (t2/delete! :model/Workspace id)))))
+        (t2/delete! :model/Workspace :id ws-id)))))
 
-(api.macros/defendpoint :post "/:id/transform/:txid/merge"
+(api.macros/defendpoint :post "/:ws-id/transform/:tx-id/merge"
   :- [:map
       [:op [:enum :create :delete :update :noop]]
       [:global_id [:maybe ::ws.t/appdb-id]]
@@ -732,10 +733,11 @@
       [:message {:optional true} :string]]
   "Merge single transform from workspace back to the core. If workspace transform is archived
   the corresponding core transform is deleted."
-  [{:keys [id txid]} :- [:map
-                         [:id ::ws.t/appdb-id]
-                         [:txid ::ws.t/ref-id]]]
-  (let [ws-transform (u/prog1 (t2/select-one :model/WorkspaceTransform :workspace_id id :ref_id txid)
+  [{:keys [ws-id tx-id] :as _query-params} :- [:map
+                                               [:ws-id ::ws.t/appdb-id]
+                                               [:tx-id ::ws.t/ref-id]]
+   _body-params]
+  (let [ws-transform (u/prog1 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id)
                        (api/check-404 <>))
         {:keys [error] :as result} (ws.merge/merge-transform! ws-transform)]
     (if error
