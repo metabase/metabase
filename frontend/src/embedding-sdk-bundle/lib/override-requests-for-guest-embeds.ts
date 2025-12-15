@@ -53,7 +53,7 @@ const EMBED_URL_TRANSFORMATIONS: Record<
     method: "GET",
   }),
   [URL_PATTERNS.CARD_PARAMETER_REMAPPING]: ({ url }) => ({
-    // We don't overrider URL, just the base path via `replaceWithEmbedBase`,
+    // We don't override URL, just the base path via `replaceWithEmbedBase`,
     // because we already receive an url with replaced values, It happens in `frontend/src/metabase/plugins/oss/api.ts`
     url,
     method: "GET",
@@ -67,7 +67,7 @@ const EMBED_URL_TRANSFORMATIONS: Record<
     method: "GET",
   }),
   [URL_PATTERNS.DASHBOARD_PARAMETER_REMAPPING]: ({ url }) => ({
-    // We don't overrider URL, just the base path via `replaceWithEmbedBase`,
+    // We don't override URL, just the base path via `replaceWithEmbedBase`,
     // because we already receive an url with replaced values, It happens in `frontend/src/metabase/plugins/oss/api.ts`
     url,
     method: "GET",
