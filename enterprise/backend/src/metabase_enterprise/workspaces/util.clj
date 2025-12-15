@@ -59,12 +59,15 @@
     (format "mb__isolation_%s_%s" instance-slug clean-workspace-id)))
 
 (defn isolated-table-name
-  "Generate name for a table mirroring transform target table in the isolated database namespace."
-  [schema table]
+  "Generate name for a table mirroring transform target table in the isolated database namespace.
+   Returns schema__name when schema is present, or __name when schema is nil (to distinguish from global tables)."
+  [schema name]
   ;; TODO: This naming scheme is not guaranteed to give a unique name, even if it's likely
   ;; to always be unique in practice. Consider adding a hash suffix or conflict detection
   ;; before merging to master.
-  (format "%s__%s" schema table))
+  (if schema
+    (format "%s__%s" schema name)
+    (format "__%s" name)))
 
 (defn isolation-user-name
   "Generate username for workspace isolation."

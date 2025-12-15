@@ -81,6 +81,9 @@
   ^BigQuery [details :- :map]
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         ;; Check if we should impersonate a different service account
+        ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
+        ;; so the 1-hour lifetime is just the initial token validity period.
+        ;; Each query creates a fresh client, and the credentials handle refresh internally.
         final-creds  (if-let [target-sa (:impersonate-service-account details)]
                        (do
                          (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
@@ -996,7 +999,6 @@
   [_driver connection-details queries]
   ;; connection-details is either database details directly (from transforms)
   ;; or a database map with :details key (from other contexts)
-  ;; JUST need to get the connection right
   (let [details (get connection-details :details connection-details)
         client (database-details->client details)]
     (try

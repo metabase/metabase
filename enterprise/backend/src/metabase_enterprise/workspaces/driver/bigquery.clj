@@ -345,42 +345,6 @@
       (let [table-id (TableId/of project-id schema name)]
         (grant-table-read-access! client table-id ws-sa-email)))))
 
-(defmethod isolation/duplicate-output-table! :bigquery-cloud-sdk
-  [database workspace output]
-  (let [details         (:details database)
-        client          (database-details->client details)
-        project-id      (get-project-id details)
-        source-schema   (:schema output)
-        source-table    (:name output)
-        isolated-schema (:schema workspace)
-        isolated-table  (driver.common/isolated-table-name output)
-
-        source-table-id   (TableId/of project-id source-schema source-table)
-        isolated-table-id (TableId/of project-id isolated-schema isolated-table)]
-
-    (assert (every? some? [source-schema source-table isolated-schema isolated-table])
-            "All table identifiers must be present")
-
-    (log/debugf "Duplicating table structure: %s.%s -> %s.%s"
-                source-schema source-table isolated-schema isolated-table)
-
-    ;; Get source table schema and create isolated copy if it doesn't exist
-    (when-not (.getTable client isolated-table-id (into-array BigQuery$TableOption []))
-      (let [source-table-obj (.getTable client source-table-id (into-array BigQuery$TableOption []))
-            _                (when-not source-table-obj
-                               (throw (ex-info "Source table not found"
-                                               {:source-schema source-schema
-                                                :source-table source-table})))
-            schema           (.. source-table-obj getDefinition getSchema)
-            table-info       (-> (TableInfo/newBuilder isolated-table-id
-                                                       (StandardTableDefinition/of schema))
-                                 (.build))]
-        (.create client table-info (into-array BigQuery$TableOption []))))
-
-    ;; Sync the new table metadata into Metabase
-    (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]
-      (select-keys table-metadata [:id :schema :name]))))
-
 (defmethod isolation/drop-isolated-tables! :bigquery-cloud-sdk
   [database s+t-tuples]
   (when (seq s+t-tuples)
