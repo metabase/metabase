@@ -881,6 +881,9 @@
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
+   {:name      :tenants
+    :enabled   (setting/get :use-tenants)
+    :available (premium-features/enable-tenants?)}
    {:name      :starburst-legacy-impersonation
     :available true
     :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")

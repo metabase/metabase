@@ -995,7 +995,213 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v58.2025-12-10T00:00:01
+      id: v58.2025-12-10T16:00:00
+      author: noahmoss
+      comment: Create metabot_use_case table
+      changes:
+        - createTable:
+            tableName: metabot_use_case
+            remarks: Use cases available for a metabot instance
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique identifier for the use case
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this use case belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for entity
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  remarks: The name of the use case (e.g., nlq, sql, transforms, omnibot, embedding)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: profile
+                  type: varchar(255)
+                  remarks: The AI service profile to use for this use case
+                  constraints:
+                    nullable: false
+              - column:
+                  name: enabled
+                  type: ${boolean.type}
+                  remarks: Whether this use case is enabled
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this use case was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this use case was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: metabot_use_case
+
+  - changeSet:
+      id: v58.2025-12-10T16:01:00
+      author: noahmoss
+      comment: Add index on metabot_use_case.metabot_id
+      changes:
+        - createIndex:
+            tableName: metabot_use_case
+            indexName: idx_metabot_use_case_metabot_id
+            columns:
+              - column:
+                  name: metabot_id
+      rollback:
+        - dropIndex:
+            tableName: metabot_use_case
+            indexName: idx_metabot_use_case_metabot_id
+
+  - changeSet:
+      id: v58.2025-12-10T16:02:00
+      author: noahmoss
+      comment: Add unique constraint on metabot_use_case (metabot_id, name)
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_use_case
+            columnNames: metabot_id, name
+            constraintName: unique_metabot_use_case_metabot_id_name
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabot_use_case
+            constraintName: unique_metabot_use_case_metabot_id_name
+
+  - changeSet:
+      id: v58.2025-12-10T16:03:00
+      author: noahmoss
+      comment: Add unique constraint on metabot_use_case.entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_use_case
+            columnNames: entity_id
+            constraintName: metabot_use_case_entity_id_key
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabot_use_case
+            constraintName: metabot_use_case_entity_id_key
+
+  - changeSet:
+      id: v58.2025-12-10T16:04:00
+      author: noahmoss
+      comment: Add foreign key constraint on metabot_use_case.metabot_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_use_case
+            baseColumnNames: metabot_id
+            constraintName: fk_metabot_use_case_metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_use_case
+            constraintName: fk_metabot_use_case_metabot_id
+
+  - changeSet:
+      id: v58.2025-12-10T16:05:00
+      author: noahmoss
+      comment: Create default use cases for internal metabot
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM metabot_use_case
+              WHERE metabot_id = (SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot');
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot_use_case (metabot_id, entity_id, name, profile, enabled, created_at, updated_at)
+              VALUES
+                  ((SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot'), 'usecasenlqinternal000', 'nlq', 'internal', true, now(), now())
+                , ((SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot'), 'usecasesqlinternal000', 'sql', 'internal', true, now(), now())
+                , ((SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot'), 'usecasetransforms000', 'transforms', 'transforms_codegen', true, now(), now())
+                , ((SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot'), 'usecaseomnibot000000', 'omnibot', 'internal', true, now(), now());
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM metabot_use_case
+              WHERE metabot_id = (SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot');
+
+  - changeSet:
+      id: v58.2025-12-10T16:06:00
+      author: noahmoss
+      comment: Create default use cases for embedded metabot
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM metabot_use_case
+              WHERE metabot_id = (SELECT id FROM metabot WHERE entity_id = 'embeddedmetabotmetabo');
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot_use_case (metabot_id, entity_id, name, profile, enabled, created_at, updated_at)
+              VALUES
+                  ((SELECT id FROM metabot WHERE entity_id = 'embeddedmetabotmetabo'), 'usecaseembedding0000', 'embedding', 'embedding', true, now(), now());
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM metabot_use_case
+              WHERE metabot_id = (SELECT id FROM metabot WHERE entity_id = 'embeddedmetabotmetabo');
+
+  - changeSet:
+      id: v58.2025-12-10T16:07:00
+      author: noahmoss
+      comment: Add use_case column to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: use_case
+                  type: ${text.type}
+                  remarks: Name of the use case this message belongs to
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-12-10T16:08:00
+      author: noahmoss
+      comment: Make profile_id nullable on metabot_message
+      changes:
+        - dropNotNullConstraint:
+            tableName: metabot_message
+            columnName: profile_id
+            columnDataType: ${text.type}
+      rollback:
+        - addNotNullConstraint:
+            tableName: metabot_message
+            columnName: profile_id
+            columnDataType: ${text.type}
+
+  - changeSet:
+      id: v58.2025-12-11T00:00:01
       author: bshepherdson
       comment: Create analysis finding table
       changes:
@@ -1050,7 +1256,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v58.2025-12-10T00:00:02
+      id: v58.2025-12-11T00:00:02
       author: bshepherdson
       comment: Unique constraint to prevent duplicate analyses
       changes:
@@ -1060,7 +1266,7 @@ databaseChangeLog:
             constraintName: idx_unique_analysis_finding
 
   - changeSet:
-      id: v58.2025-12-10T00:00:03
+      id: v58.2025-12-11T00:00:03
       author: bshepherdson
       comment: Index for analysis_finding by analyzed entity
       changes:
@@ -1074,7 +1280,7 @@ databaseChangeLog:
                   name: analyzed_entity_id
 
   - changeSet:
-      id: v58.2025-12-10T00:00:04
+      id: v58.2025-12-11T00:00:04
       author: bshepherdson
       comment: Index for analysis_finding by analysis result
       changes:

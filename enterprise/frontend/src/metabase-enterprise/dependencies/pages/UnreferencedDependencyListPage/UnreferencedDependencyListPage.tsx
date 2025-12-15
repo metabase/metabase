@@ -88,7 +88,7 @@ export function UnreferencedDependencyListPage() {
         />
         {isLoading || error != null || nodes.length === 0 ? (
           <DependencyListEmptyState
-            label={t`No unreferenced dependencies found`}
+            label={t`No unreferenced entities found`}
             isLoading={isLoading}
             error={error}
           />

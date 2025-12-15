@@ -39,6 +39,7 @@ export type SAMLFormSettings = Pick<
   | "saml-attribute-email"
   | "saml-attribute-firstname"
   | "saml-attribute-lastname"
+  | "saml-attribute-tenant"
   | "saml-identity-provider-uri"
   | "saml-identity-provider-issuer"
   | "saml-identity-provider-certificate"
@@ -151,6 +152,16 @@ export function SettingsSAMLForm() {
                       settingDetails?.["saml-attribute-lastname"],
                     )}
                   />
+                  {settingValues["use-tenants"] && (
+                    <FormTextInput
+                      name="saml-attribute-tenant"
+                      label={t`Tenant assignment attribute`}
+                      hasCopyButton
+                      {...getExtraFormFieldProps(
+                        settingDetails?.["saml-attribute-tenant"],
+                      )}
+                    />
+                  )}
                 </Stack>
               </FormSection>
 
@@ -284,6 +295,7 @@ const getFormValues = (
     "saml-attribute-email",
     "saml-attribute-firstname",
     "saml-attribute-lastname",
+    "saml-attribute-tenant",
     "saml-identity-provider-uri",
     "saml-identity-provider-issuer",
     "saml-identity-provider-certificate",

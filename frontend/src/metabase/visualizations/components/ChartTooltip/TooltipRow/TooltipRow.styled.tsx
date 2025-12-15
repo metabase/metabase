@@ -71,7 +71,7 @@ export const ValueCell = styled(Cell)`
 
 export const PercentCell = styled(Cell)`
   padding-left: 1rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-tooltip-text-secondary);
   text-align: right;
 `;
 

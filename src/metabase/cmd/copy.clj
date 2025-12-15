@@ -123,11 +123,13 @@
     :model/CommentReaction]
    (when config/ee-available?
      [:model/Sandbox
+      :model/Tenant
       :model/ConnectionImpersonation
       :model/Metabot
       :model/MetabotConversation
       :model/MetabotMessage
-      :model/MetabotPrompt])))
+      :model/MetabotPrompt
+      :model/MetabotUseCase])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`

@@ -88,7 +88,7 @@ export function BrokenDependencyListPage() {
         />
         {isLoading || error != null || nodes.length === 0 ? (
           <DependencyListEmptyState
-            label={t`No broken dependencies found`}
+            label={t`No broken entities found`}
             isLoading={isLoading}
             error={error}
           />

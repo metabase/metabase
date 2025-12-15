@@ -1,89 +1,43 @@
-import {
-  useUpdateCardEmbeddingParamsMutation,
-  useUpdateCardEnableEmbeddingMutation,
-  useUpdateDashboardEmbeddingParamsMutation,
-  useUpdateDashboardEnableEmbeddingMutation,
-} from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { useToggleResourceEmbedding } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-toggle-resource-embedding";
 import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
 import { EmbedModalContentStatusBar } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/EmbedModalContentStatusBar";
-import type { StaticEmbedSetupPaneProps } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
 import { getHasParamsChanged } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-params-changed";
-import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { Card } from "metabase/ui";
 
-type Props = Pick<StaticEmbedSetupPaneProps, "resource" | "resourceType"> & {
-  initialEmbeddingParameters: EmbeddingParameters;
-};
-
-const SdkIframeGuestEmbedStatusBarInner = ({
-  resource,
-  resourceType,
-  initialEmbeddingParameters,
-}: Props) => {
-  const exampleDashboardId = useSetting("example-dashboard-id");
+export const SdkIframeGuestEmbedStatusBar = () => {
   const {
-    availableParameters: resourceParameters,
+    currentStep,
+    settings,
+    resource,
     embeddingParameters,
     isFetching,
-    onEmbeddingParametersChange,
+    initialEmbeddingParameters,
   } = useSdkIframeEmbedSetupContext();
 
-  const [updateDashboardEmbeddingParams] =
-    useUpdateDashboardEmbeddingParamsMutation();
-  const [updateDashboardEnableEmbedding] =
-    useUpdateDashboardEnableEmbeddingMutation();
-  const [updateCardEmbeddingParams] = useUpdateCardEmbeddingParamsMutation();
-  const [updateCardEnableEmbedding] = useUpdateCardEnableEmbeddingMutation();
+  const toggleEmbedding = useToggleResourceEmbedding();
 
-  const handleEnableEmbedding = async (enableEmbedding: boolean) => {
-    const handlersMap = {
-      dashboard: updateDashboardEnableEmbedding,
-      question: updateCardEnableEmbedding,
-    } as const;
+  const isGuestEmbed = !!settings.isGuest;
+  const shouldShowForStep = isStepWithResource(currentStep);
+  const shouldShowForResource =
+    toggleEmbedding?.resourceType === "dashboard" ||
+    toggleEmbedding?.resourceType === "question";
 
-    await handlersMap[resourceType]?.({
-      id: resource.id as number,
-      enable_embedding: enableEmbedding,
-      embedding_type: enableEmbedding ? GUEST_EMBED_EMBEDDING_TYPE : null,
-    });
-  };
+  if (!isGuestEmbed || !shouldShowForStep || !shouldShowForResource) {
+    return null;
+  }
 
-  const handleUpdateEmbeddingParams = async (
-    embeddingParams: EmbeddingParameters,
-  ) => {
-    const handlersMap = {
-      dashboard: updateDashboardEmbeddingParams,
-      question: updateCardEmbeddingParams,
-    } as const;
+  if (!resource || !toggleEmbedding || !initialEmbeddingParameters) {
+    return null;
+  }
 
-    await handlersMap[resourceType]?.({
-      id: resource.id as number,
-      embedding_params: embeddingParams,
-      embedding_type: GUEST_EMBED_EMBEDDING_TYPE,
-    });
-  };
+  const { handleSave, handleUnpublish, handleDiscard, resourceType } =
+    toggleEmbedding;
 
   const hasParamsChanged = getHasParamsChanged({
     initialEmbeddingParams: initialEmbeddingParameters,
     embeddingParams: embeddingParameters,
   });
-
-  const { handleSave, handleUnpublish, handleDiscard } =
-    getStaticEmbedSetupPublishHandlers({
-      resource,
-      resourceType,
-      resourceParameters,
-      onUpdateEnableEmbedding: handleEnableEmbedding,
-      onUpdateEmbeddingParams: handleUpdateEmbeddingParams,
-      embeddingParams: embeddingParameters,
-      setEmbeddingParams: onEmbeddingParametersChange,
-      exampleDashboardId,
-    });
 
   return (
     <Card>
@@ -97,39 +51,5 @@ const SdkIframeGuestEmbedStatusBarInner = ({
         onDiscard={handleDiscard}
       />
     </Card>
-  );
-};
-
-export const SdkIframeGuestEmbedStatusBar = () => {
-  const {
-    currentStep,
-    settings,
-    resource,
-    experience,
-    initialEmbeddingParameters,
-  } = useSdkIframeEmbedSetupContext();
-
-  const isGuestEmbed = !!settings.isGuest;
-
-  const resourceType = getResourceTypeFromExperience(experience);
-
-  const shouldShowForStep = isStepWithResource(currentStep);
-  const shouldShowForResource =
-    resourceType === "dashboard" || resourceType === "question";
-
-  if (!isGuestEmbed || !shouldShowForStep || !shouldShowForResource) {
-    return null;
-  }
-
-  if (!resource || !resourceType || !initialEmbeddingParameters) {
-    return null;
-  }
-
-  return (
-    <SdkIframeGuestEmbedStatusBarInner
-      resource={resource}
-      resourceType={resourceType}
-      initialEmbeddingParameters={initialEmbeddingParameters}
-    />
   );
 };

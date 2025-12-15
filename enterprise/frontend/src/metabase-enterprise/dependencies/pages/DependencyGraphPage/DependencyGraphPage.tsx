@@ -1,6 +1,7 @@
 import type { Location } from "history";
 import { useContext } from "react";
 
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Stack } from "metabase/ui";
@@ -28,7 +29,7 @@ export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
     defaultEntry == null || (entry != null && !isSameNode(entry, defaultEntry));
 
   return (
-    <Stack h="100%">
+    <Stack h="100%" className={CS.borderTop}>
       <DependencyGraph
         entry={entry ?? defaultEntry}
         getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
