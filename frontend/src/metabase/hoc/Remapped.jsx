@@ -55,7 +55,7 @@ export default (ComposedComponent) =>
             field: this.props.column,
             cardId: nextProps.cardId,
             dashboardId: nextProps.dashboardId,
-            token: this.props.token,
+            token: nextProps.token,
           });
         }
       }
