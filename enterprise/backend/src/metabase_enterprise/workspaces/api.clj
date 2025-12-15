@@ -8,8 +8,8 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
-   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.merge :as ws.merge]
+   [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -265,8 +265,7 @@
    _body-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id id))]
     (api/check-400 (nil? (:archived_at ws)) "You cannot archive an archived workspace")
-    ;; TODO tear down the isolated database resources, and delete the graph
-    (t2/update! :model/Workspace id {:archived_at [:now]})
+    (ws.model/archive! ws)
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
 
@@ -277,8 +276,7 @@
    _body-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id id))]
     (api/check-400 (some? (:archived_at ws)) "You cannot unarchive a workspace that is not archived")
-    ;; TODO re-provision the isolated database resources, and recompute the graph
-    (t2/update! :model/Workspace id {:archived_at nil})
+    (ws.model/unarchive! ws)
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
 
@@ -288,15 +286,7 @@
    _query-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id ws-id))]
     (api/check-400 (some? (:archived_at ws)) "You cannot delete a workspace without first archiving it")
-    ;; TODO delete actual schema and user too (we shouldn't rely on our metadata for all the table names)
-    ;;      see: https://linear.app/metabase/issue/BOT-690/workspacesisolation-delete-workspace-isolation
-    (let [database (t2/select-one :model/Database (:database_id ws))
-          s+ts     (t2/select-fn-vec (juxt :isolated_schema :isolated_table)
-                                     [:model/WorkspaceOutput :isolated_schema :isolated_table]
-                                     :workspace_id ws-id
-                                     :db_id (:database_id ws))]
-      (ws.isolation/drop-isolated-tables! database s+ts))
-    (t2/delete! :model/Workspace ws-id)
+    (ws.model/delete! ws)
     {:ok true}))
 
 (def ^:private ExternalTransform
@@ -651,12 +641,11 @@
        :errors      errors
        :workspace   {:id id, :name (:name ws)}
        :archived_at (when-not (seq errors)
-                      ;; TODO call a ws.common method, which can handle the clean-up too
                       (t2/update! :model/Workspace :id id {:archived_at [:now]})
                       (t2/select-one-fn :archived_at [:model/Workspace :archived_at] :id id))}
       (when-not (seq errors)
         ;; Most of the APIs and the FE are not respecting when a Workspace is archived yet.
-        (t2/delete! :model/Workspace id)))))
+        (ws.model/delete! ws)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
