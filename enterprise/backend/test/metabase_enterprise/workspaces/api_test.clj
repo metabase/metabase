@@ -292,6 +292,7 @@
                                      :workspace_id ws-id :ref_id (:ref_id ws-x-1))))
             (is (nil? (t2/select-one :model/WorkspaceTransform
                                      :workspace_id ws-id :ref_id (:ref_id ws-x-2)))))
+          ;; This should change going forward. Deletion of workspace is temporary.
           (testing "Workspace has been deleted"
             (is (nil? (t2/select-one :model/Workspace :id ws-id)))))))))
 
@@ -305,6 +306,7 @@
         (is (=? {:errors []
                  :merged {:transforms []}}
                 resp))))
+    ;; This should change going forward. Deletion of workspace is temporary.
     (testing "Workspace has been deleted"
       (is (nil? (t2/select-one :model/Workspace :id ws-id))))))
 
