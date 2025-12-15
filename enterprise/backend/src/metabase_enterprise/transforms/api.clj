@@ -117,6 +117,8 @@
                           transform (t2/insert-returning-instance!
                                      :model/Transform
                                      (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                            ;; TODO: For workspace transfrom creation this user is not correct.
+                                            ;;       We should revisit this bit when working on https://linear.app/metabase/issue/BOT-691/easy-correctly-set-transformcreator-id-on-workspace-merge
                                             :creator_id api/*current-user-id*))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
