@@ -86,12 +86,10 @@ export const AddEditEmailSidebar = ({
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getCurrentUser);
 
-  // Check download permissions for all cards - use the most restrictive permission
-  const downloadPermission = pulse.cards?.every(
+  // Return true if the results of all cards can be downloaded
+  const allowDownload = pulse.cards?.every(
     (card) => card.download_perms !== DataPermissionValue.NONE,
-  )
-    ? pulse.cards?.[0]?.download_perms
-    : DataPermissionValue.NONE;
+  );
 
   useEffect(() => {
     if (isEmbeddingSdk()) {
@@ -195,7 +193,7 @@ export const AddEditEmailSidebar = ({
           cards={pulse.cards}
           pulse={pulse}
           setPulse={setPulse}
-          downloadPermission={downloadPermission}
+          allowDownload={allowDownload}
         />
         {pulse.id != null && (
           <DeleteSubscriptionAction
