@@ -142,7 +142,7 @@
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
       ;; First archive the workspace
-      (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
+      (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
                                   (fn [_workspace _database]
                                     (reset! called? true)
@@ -158,7 +158,7 @@
 
   (testing "Cannot merge an already archived workspace"
     (ws.tu/with-workspaces [workspace {:name "Archived Workspace"}]
-      (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
+      (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (is (= "Cannot merge an archived workspace"
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/merge")))))))
 

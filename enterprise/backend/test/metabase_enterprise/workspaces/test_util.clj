@@ -53,7 +53,7 @@
   [name]
   (create-workspace-for-test! {:name name}))
 
-(defn do-with-workspaces
+(defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
   Takes a sequence of props for workspace creation and a thunk that receives
   the created workspaces as a vector. Each workspace is cleaned up by its own
@@ -63,9 +63,9 @@
     (thunk [])
     (let [ws (create-workspace-for-test! (first props-list))]
       (try
-        (do-with-workspaces (rest props-list)
-                            (fn [rest-workspaces]
-                              (thunk (into [ws] rest-workspaces))))
+        (do-with-workspaces! (rest props-list)
+                             (fn [rest-workspaces]
+                               (thunk (into [ws] rest-workspaces))))
         (finally
           (when ws
             (try
@@ -92,7 +92,7 @@
   (let [pairs      (partition 2 bindings)
         syms       (mapv first pairs)
         props-list (mapv second pairs)]
-    `(do-with-workspaces
+    `(do-with-workspaces!
       [~@props-list]
       (fn [[~@syms]]
         ~@body))))

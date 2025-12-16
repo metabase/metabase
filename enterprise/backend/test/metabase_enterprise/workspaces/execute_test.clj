@@ -42,7 +42,7 @@
                    :table      {:name   #(str/includes? % output-table)
                                 :schema ws-schema}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.execute/run-transform-with-remapping workspace ws-transform {:tables table-map :fields nil}))))
+                    (ws.execute/run-transform-with-remapping ws-transform {:tables table-map :fields nil}))))
           (is (=? {:last_run_at some?}
                   (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))
           (is (=? [{:workspace_id      (:id workspace)
