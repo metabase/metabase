@@ -81,7 +81,7 @@ export async function setup(
     tokenFeatures = createMockTokenFeatures(),
     questionName,
     uuid,
-    specificPlugins = [],
+    specificPlugins,
   }: SetupOpts = { questionName: "", uuid: "" },
 ) {
   const settings = mockSettings({
@@ -89,7 +89,7 @@ export async function setup(
   });
 
   if (hasEnterprisePlugins) {
-    if (specificPlugins.length > 0) {
+    if (specificPlugins) {
       specificPlugins.forEach((plugin) => {
         setupEnterpriseOnlyPlugin(plugin);
       });

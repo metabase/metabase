@@ -13,12 +13,12 @@ const QUESTION_NAME = "Public question";
 
 function setupPremium(opts?: Partial<SetupOpts>) {
   return setup({
-    ...opts,
     hasEnterprisePlugins: true,
     tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
     specificPlugins: ["whitelabel"],
     questionName: QUESTION_NAME,
     uuid: FAKE_UUID,
+    ...opts,
   });
 }
 
@@ -41,7 +41,10 @@ describe("PublicOrEmbeddedQuestion", () => {
     });
 
     it("should not allow downloading results when downloads are disabled", async () => {
-      await setupPremium({ hash: { downloads: "false" } });
+      await setupPremium({
+        hash: { downloads: "false" },
+        specificPlugins: ["resource_downloads"],
+      });
 
       expect(queryIcon("download")).not.toBeInTheDocument();
     });
