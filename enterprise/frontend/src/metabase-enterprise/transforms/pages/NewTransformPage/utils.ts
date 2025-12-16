@@ -1,3 +1,4 @@
+import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/form";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -5,8 +6,6 @@ import type {
   QueryTransformSource,
   SuggestedTransform,
 } from "metabase-types/api";
-
-import type { NewTransformValues } from "./CreateTransformModal/CreateTransformModal";
 
 export function getInitialQuerySource(): QueryTransformSource {
   const question = Question.create({ DEPRECATED_RAW_MBQL_type: "query" });

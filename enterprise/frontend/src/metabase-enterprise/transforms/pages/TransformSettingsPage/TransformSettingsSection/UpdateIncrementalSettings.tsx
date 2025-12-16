@@ -1,9 +1,7 @@
-import { useCallback } from "react";
 import _ from "underscore";
 
-import { Form, FormObserver, FormProvider } from "metabase/forms";
+import { Form, FormInlineUpdater, FormProvider } from "metabase/forms";
 import {
-  type IncrementalSettingsFormValues,
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
 } from "metabase-enterprise/transforms/components/IncrementalTransform";
@@ -11,28 +9,11 @@ import type { Transform } from "metabase-types/api";
 
 type Props = {
   transform: Transform;
-  onUpdate?: () => void;
 };
 
-export const UpdateIncrementalSettings = ({ transform, onUpdate }: Props) => {
-  const { initialValues, validationSchema } =
+export const UpdateIncrementalSettings = ({ transform }: Props) => {
+  const { initialValues, validationSchema, update } =
     useUpdateIncrementalSettings(transform);
-
-  // const handleSubmit = async (values: IncrementalSettingsFormValues) => {
-  //   try {
-  //     await update(values);
-  //     onUpdate?.();
-  //   } catch (err) {}
-  // };
-
-  const handleChange = useCallback(
-    (values: IncrementalSettingsFormValues) => {
-      if (values.incremental) {
-        onUpdate?.();
-      }
-    },
-    [onUpdate],
-  );
 
   return (
     <FormProvider
@@ -41,7 +22,7 @@ export const UpdateIncrementalSettings = ({ transform, onUpdate }: Props) => {
       onSubmit={_.noop}
     >
       <Form>
-        <FormObserver onChange={handleChange} />
+        <FormInlineUpdater update={update} />
         <IncrementalTransformSettings
           source={transform.source}
           checkOnMount

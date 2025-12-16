@@ -82,7 +82,10 @@ export const buildIncrementalSource = (
   formValues: IncrementalSettingsFormValues,
 ): TransformSource => {
   if (!formValues.incremental) {
-    return source;
+    return {
+      ...source,
+      "source-incremental-strategy": undefined,
+    };
   }
 
   // Build strategy fields based on which checkpoint field is present
