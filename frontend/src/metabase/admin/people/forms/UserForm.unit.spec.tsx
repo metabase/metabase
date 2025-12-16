@@ -58,6 +58,7 @@ const setup = ({
 
   if (hasEnterprisePlugins) {
     setupEnterpriseOnlyPlugin("sandboxes");
+    setupEnterpriseOnlyPlugin("tenants");
   }
 
   renderWithProviders(
