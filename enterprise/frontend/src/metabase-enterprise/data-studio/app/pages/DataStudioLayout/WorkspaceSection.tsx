@@ -57,13 +57,17 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
 
   const workspaces = useMemo(
     () =>
-      [...(workspacesData?.items ?? [])]
-        // .filter((w) => !w.archived)
-        .sort((a, b) => {
-          const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-          const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-          return bDate - aDate;
-        }),
+      [...(workspacesData?.items ?? [])].sort((a, b) => {
+        // Archived workspaces should be placed at the end
+        if (a.archived !== b.archived) {
+          return a.archived ? 1 : -1;
+        }
+
+        // Within each group (archived/unarchived), sort by updated_at descending
+        const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        return bDate - aDate;
+      }),
     [workspacesData],
   );
 
