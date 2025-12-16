@@ -22,6 +22,7 @@ import {
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
 import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
+import type { IncrementalSettingsFormValues } from "./form";
 
 export const IncrementalTransformSettings = ({
   source,
@@ -31,7 +32,7 @@ export const IncrementalTransformSettings = ({
   checkOnMount?: boolean;
 }) => {
   const metadata = useSelector(getMetadata);
-  const { values } = useFormikContext<NewTransformValues>();
+  const { values } = useFormikContext<IncrementalSettingsFormValues>();
   // Convert DatasetQuery to Lib.Query via Question
   const libQuery = useMemo(() => {
     if (source.type !== "query") {
