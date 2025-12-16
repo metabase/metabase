@@ -1387,7 +1387,8 @@
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [{:keys [id schema]} :- [:map
-                           [:id ms/PositiveInt]]
+                           [:id ms/PositiveInt]
+                           [:schema ms/NonBlankString]]
    {:keys [include_hidden include_editable_data_model]} :- [:map
                                                             [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
                                                             [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]

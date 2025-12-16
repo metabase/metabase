@@ -331,3 +331,23 @@
           ["aggregation-options"
            ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]]
            {"name" "Sum", "display-name" "Sum"}]))))
+
+(deftest ^:parallel normalize-widget-type-test
+  (is (= :category
+         (lib/normalize ::mbql.s/WidgetType "category/=")))
+  (is (= {:widget-type  :category
+          :id           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
+          :name         "device_category"
+          :display-name "Device category"
+          :type         :dimension
+          :dimension    [:field 298221 nil]
+          :default      nil}
+         (lib/normalize
+          ::mbql.s/TemplateTag
+          {"id"           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
+           "name"         "device_category"
+           "display-name" "Device category"
+           "type"         "dimension"
+           "dimension"    ["field" 298221 nil]
+           "widget-type"  "category/="
+           "default"      nil}))))
