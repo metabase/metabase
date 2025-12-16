@@ -31,7 +31,7 @@ export function GlossaryPage() {
       header={
         <PaneHeader
           breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Glossary`}</DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs role="heading">{t`Glossary`}</DataStudioBreadcrumbs>
           }
         />
       }
