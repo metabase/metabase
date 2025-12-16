@@ -809,10 +809,10 @@ function createSnippetBasedCard({
     native: {
       query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
       "template-tags": {
-        [`snippet:${snippetName}`]: {
+        [`snippet: ${snippetName}`]: {
           id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-          name: `snippet:${snippetName}`,
-          "display-name": `snippet:${snippetName}`,
+          name: `snippet: ${snippetName}`,
+          "display-name": `snippet: ${snippetName}`,
           type: "snippet",
           "snippet-id": snippetId,
           "snippet-name": snippetName,
@@ -993,10 +993,10 @@ function createSnippetBasedTransform({
         native: {
           query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
           "template-tags": {
-            [`snippet:${snippetName}`]: {
+            [`snippet: ${snippetName}`]: {
               id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-              name: `snippet:${snippetName}`,
-              "display-name": `snippet:${snippetName}`,
+              name: `snippet: ${snippetName}`,
+              "display-name": `snippet: ${snippetName}`,
               type: "snippet",
               "snippet-id": snippetId,
               "snippet-name": snippetName,
