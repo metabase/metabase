@@ -1274,3 +1274,17 @@
                    (-> result :outputs first :global :table_id)))
             (is (= (:id iso-table)
                    (-> result :outputs first :isolated :table_id)))))))))
+
+(deftest graph-test
+  (testing "GET /api/ee/workspace/:id/graph"
+    (ws.tu/with-workspaces! [ws {:name "Workspace 1"}]
+      (mt/with-temp [:model/WorkspaceTransform _tx {:name         "Transform in WS1"
+                                                    :workspace_id (:id ws)}]
+        (testing "returns empty when no transforms"
+          ;; TODO replace dummy graph with real expectation
+          (is (= {:nodes [{:id 1, :type "input-table", :data {:name "Bob"}, :dependents_count {:workspace-transform 1}}
+                          {:id "2", :type "workspace-transform", :data {:name "MyTrans"}, :dependents_count {:output-table 1}}
+                          {:id 3, :type "output-table", :data {:external {:table_id 2, :name "Clarence"}, :internal {:name "_-sdre4rcc@"}}, :dependents_count {}}]
+                  :edges [{:from_entity_type "input-table", :from_entity_id 1, :to_entity_type "workspace-transform", :to_entity_id "3"}
+                          {:from_entity_type "workspace-transform", :from_entity_id "3", :to_entity_type "output-table", :to_entity_id 3}]}
+                 (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph")))))))))

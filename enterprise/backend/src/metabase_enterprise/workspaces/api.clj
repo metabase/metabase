@@ -371,11 +371,11 @@
    _query-params]
   (api/check-404 (t2/select-one :model/Workspace :id id))
   ;; TODO decide on whether to show output tables, or to rather show dependencies directly between transforms.
-  {:nodes [{:id 1, :type "table", :data {:name "Bob"}, :dependants_count {:workspace-transform 1}}
-           {:id "2", :type "workspace-transform", :data {:name "MyTrans"}, :dependants_count {:output-table 1}}
-           {:id 3, :type "output-table", :data {:external {:table_id 2, :name "Clarence"}, :internal {:name "_-sdre4rcc@"}}, :dependants_count {}}]
+  {:nodes [{:id 1, :type :input-table, :data {:name "Bob"}, :dependents_count {:workspace-transform 1}}
+           {:id "2", :type :workspace-transform, :data {:name "MyTrans"}, :dependents_count {:output-table 1}}
+           {:id 3, :type :output-table, :data {:external {:table_id 2, :name "Clarence"}, :internal {:name "_-sdre4rcc@"}}, :dependents_count {}}]
    ;; I can't remember which way this is supposed to point - it might be meant to point *backwards* rather.
-   :edges [{:from_entity_type "table"
+   :edges [{:from_entity_type "input-table"
             :from_entity_id   1
             :to_entity_type   "workspace-transform"
             :to_entity_id     "3"}
