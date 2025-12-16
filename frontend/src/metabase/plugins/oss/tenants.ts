@@ -1,6 +1,5 @@
 import type React from "react";
 
-import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker/types";
 import type {
   Collection,
   CollectionId,
@@ -37,9 +36,9 @@ const getDefaultPluginTenants = () => ({
     null as React.ReactElement | null,
   TenantGroupHintIcon: PluginPlaceholder,
   MainNavSharedCollections: PluginPlaceholder,
-  TenantCollectionItemList: (_props: CollectionItemListProps) =>
+  TenantCollectionItemList: (_props: { pathIndex: number }) =>
     null as React.ReactElement | null,
-  TenantSpecificCollectionsItemList: (_props: CollectionItemListProps) =>
+  TenantSpecificCollectionsItemList: (_props: { pathIndex: number }) =>
     null as React.ReactElement | null,
   TenantCollectionList: PluginPlaceholder,
   GroupDescription: (_props: { group: Group }) =>
@@ -82,10 +81,10 @@ export const PLUGIN_TENANTS: {
   TenantGroupHintIcon: React.ComponentType;
   MainNavSharedCollections: React.ComponentType;
   TenantCollectionItemList: (
-    props: CollectionItemListProps,
+    props: { pathIndex: number },
   ) => React.ReactElement | null;
   TenantSpecificCollectionsItemList: (
-    props: CollectionItemListProps,
+    props: { pathIndex: number },
   ) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
   GroupDescription: (props: { group: Group }) => React.ReactElement | null;

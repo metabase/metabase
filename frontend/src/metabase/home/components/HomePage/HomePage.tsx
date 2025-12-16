@@ -1,19 +1,23 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
+import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
+import { Button } from "metabase/ui";
 
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";
 
 export const HomePage = (): JSX.Element => {
   const { isLoadingDash } = useDashboardRedirect();
+  const [isOpen, { open, close }] = useDisclosure(false);
   if (isLoadingDash) {
     return <LoadingAndErrorWrapper loading={isLoadingDash} />;
   }
@@ -21,6 +25,44 @@ export const HomePage = (): JSX.Element => {
   return (
     <HomeLayout>
       <HomeContent />
+      <Button onClick={open} mt="xl">OmniPicker</Button>
+      {isOpen && (
+        <EntityPickerModal
+          models={["table", "dashboard", "card", "dataset", "metric", "document"]}
+          onClose={close}
+          // initialValue={{
+          //   id: 1671,
+          //   model: "dataset",
+          // }}
+          // initialValue={{
+          //   id: 1642,
+          //   model: "card",
+          // }}
+          // initialValue={{
+          //   id: 7783,
+          //   model: "table",
+          // }}
+          // initialValue={{
+          //   id: 19,
+          //   model: "dashboard",
+          // }}
+          initialValue={{
+            id: 2,
+            model: "database",
+          }}
+
+          onChange={console.log}
+          options={{
+            showLibrary: true,
+            showDatabases: true,
+            hasConfirmButtons: true,
+            confirmButtonText: t`Yes Please`,
+            showRootCollection: true,
+            showPersonalCollections: true,
+            showRecents: true,
+          }}
+        />
+      )}
     </HomeLayout>
   );
 };

@@ -1,8 +1,8 @@
 import { useListCollectionItemsQuery } from "metabase/api";
 import { useOmniPickerContext } from "metabase/common/components/EntityPicker/context";
 
-import { ItemList, type OmniPickerItem } from "../../../EntityPicker";
-import { getValidCollectionItemModels } from "../../../EntityPicker/utils";
+import { ItemList, type OmniPickerItem } from "../..";
+import { getValidCollectionItemModels } from "../../utils";
 
 export const CollectionItemList = ({
   parentItem,
@@ -18,9 +18,10 @@ export const CollectionItemList = ({
     error,
     isLoading,
   } = useListCollectionItemsQuery({
-    id: parentItem.id,
+    id: !parentItem.id ? "root" : parentItem.id,
     models: getValidCollectionItemModels(models),
     include_can_run_adhoc_query: true,
+    namespace: "namespace" in parentItem ? parentItem.namespace : undefined,
   });
 
   return (

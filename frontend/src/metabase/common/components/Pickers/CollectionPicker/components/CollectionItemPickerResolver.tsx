@@ -1,54 +1,39 @@
-import _ from "underscore";
-
-import { TablePicker } from "metabase/common/components/Pickers/TablePicker";
+import type { OmniPickerFolderItem, OmniPickerItem } from "metabase/common/components/EntityPicker";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
-import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 import { CollectionItemList } from "./CollectionItemList";
 import { DashboardItemList } from "./DashboardItemList";
+import { DbItemList } from "./DbItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
-import { RootItemList } from "./RootItemList";
+import { RecentsItemList } from "./RecentsItemList";
+import { SearchResultsItemList } from "./SearchResultsItemList";
+
+const isDbItem = (item: OmniPickerItem): item is OmniPickerFolderItem => {
+  return (
+    (item.model === "collection" && item.id === "databases")
+    || item.model === "database"
+    || item.model === "schema"
+  );
+}
 
 export const CollectionItemPickerResolver = ({
-  onClick,
-  selectedItem,
-  options,
-  query,
-  isFolder,
-  isCurrentLevel,
-  shouldDisableItem,
-  shouldShowItem,
-  entity = "collection",
-  initialValue,
-  tablesPath,
-  onTablesPathChange,
-}: CollectionItemListProps) => {
-  if (!query) {
-    return (
-      <RootItemList
-        options={options}
-        selectedItem={selectedItem}
-        onClick={onClick}
-        isFolder={isFolder}
-        isCurrentLevel={isCurrentLevel}
-        shouldDisableItem={shouldDisableItem}
-        shouldShowItem={shouldShowItem}
-      />
-    );
+  parentItem,
+  pathIndex,
+}: {
+  parentItem: OmniPickerFolderItem;
+  pathIndex: number;
+}) => {
+  if (!parentItem) {
+    console.error("No parent item");
+    return null;
   }
 
-  if (query.id === PERSONAL_COLLECTIONS.id) {
+  if (parentItem.id === PERSONAL_COLLECTIONS.id) {
     return (
       <PersonalCollectionsItemList
-        onClick={onClick}
-        selectedItem={selectedItem}
-        isFolder={isFolder}
-        isCurrentLevel={isCurrentLevel}
-        shouldDisableItem={shouldDisableItem}
-        shouldShowItem={shouldShowItem}
-        options={options}
+        pathIndex={pathIndex}
       />
     );
   }
@@ -86,44 +71,37 @@ export const CollectionItemPickerResolver = ({
   if (entity === "dashboard") {
     return (
       <DashboardItemList
-        query={query}
-        onClick={onClick}
-        selectedItem={selectedItem}
-        isFolder={isFolder}
-        isCurrentLevel={isCurrentLevel}
-        shouldDisableItem={shouldDisableItem}
-        shouldShowItem={shouldShowItem}
-        options={options}
+        parentItem={parentItem}
+        pathIndex={pathIndex}
       />
     );
   }
 
-  if (query?.id === "databases") {
+  if (isDbItem(parentItem)) {
     return (
-      <TablePicker
-        value={initialValue}
-        onItemSelect={(i) => onClick(i as unknown as CollectionPickerItem)}
-        path={tablesPath}
-        onPathChange={onTablesPathChange || _.noop}
-        shouldDisableItem={(i) =>
-          shouldDisableItem?.(i as unknown as CollectionPickerItem) ||
-          !shouldShowItem?.(i as unknown as CollectionPickerItem) ||
-          false
-        }
+      <DbItemList
+        parentItem={parentItem}
+        pathIndex={pathIndex}
       />
+    );
+  }
+
+  if (parentItem.id === "search-results") {
+    return (
+      <SearchResultsItemList />
+    );
+  }
+
+  if (parentItem.id === "recents") {
+    return (
+      <RecentsItemList />
     );
   }
 
   return (
     <CollectionItemList
-      query={query}
-      onClick={onClick}
-      selectedItem={selectedItem}
-      isFolder={isFolder}
-      isCurrentLevel={isCurrentLevel}
-      shouldDisableItem={shouldDisableItem}
-      shouldShowItem={shouldShowItem}
-      options={options}
+      parentItem={parentItem}
+      pathIndex={pathIndex}
     />
   );
 };
