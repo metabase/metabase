@@ -32,7 +32,7 @@ export function PublishTableModal({
     if (!item) {
       return;
     }
-    await publishTables({ table_ids: [item.id] });
+    await publishTables({ table_ids: [item.id] }).unwrap(); // unwrap() allows EntityPicker's error handling to take over
     onClose();
     sendSuccessToast(t`Published`);
     trackDataStudioTablePublished(item.id);
