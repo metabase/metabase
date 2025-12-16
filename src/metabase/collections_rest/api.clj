@@ -1591,6 +1591,9 @@
                                                                   [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+    ;; tenant-specific-root-collection collections cannot be updated
+    (api/check-400
+     (not= (:type collection-before-update) "tenant-specific-root-collection"))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority-level) (:authority_level collection-before-update)))
