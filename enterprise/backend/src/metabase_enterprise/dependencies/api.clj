@@ -19,7 +19,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -36,21 +35,18 @@
   (let [broken-card-ids (keys card)
         broken-cards (when (seq broken-card-ids)
                        (-> (t2/select :model/Card :id [:in broken-card-ids])
-                           (t2/hydrate [:collection :effective_ancestors] :dashboard)))
+                           (t2/hydrate [:collection :effective_ancestors] :dashboard :document)))
         broken-transform-ids (keys transform)
         broken-transforms (when (seq broken-transform-ids)
                             (t2/select :model/Transform :id [:in broken-transform-ids]))]
     {:success (and (empty? broken-card-ids)
                    (empty? broken-transform-ids))
-     :bad_cards (into [] (comp (filter (fn [card]
-                                         (if (mi/can-read? card)
-                                           card
-                                           (do (log/debugf "Eliding broken card %d - not readable by the user" (:id card))
-                                               nil))))
+     :bad_cards (into [] (comp (filter mi/can-read?)
                                (map (fn [card]
                                       (-> card
                                           collection.root/hydrate-root-collection
-                                          (update :dashboard #(some-> % (select-keys [:id :name])))))))
+                                          (update :dashboard #(some-> % (select-keys [:id :name])))
+                                          (update :document #(some-> % (select-keys [:id :name])))))))
                       broken-cards)
      :bad_transforms (into [] broken-transforms)}))
 
@@ -157,13 +153,12 @@
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
                :collection :collection_id :dashboard :dashboard_id
-               :moderation_reviews]
+               :document :document_id]
    :snippet   [:name :description]
    :transform [:name :description :creator :table]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
-               :collection :collection_id
-               :moderation_reviews]
+               :collection :collection_id]
    :document  [:name :description :view_count
                :created_at :creator
                :collection :collection_id]
@@ -174,6 +169,7 @@
   (case (t2/model entity)
     :model/Collection (select-keys entity [:id :name :authority_level :is_personal])
     :model/Dashboard  (select-keys entity [:id :name])
+    :model/Document   (select-keys entity [:id :name])
     entity))
 
 (defn- entity-value [entity-type {:keys [id] :as entity} usages]
@@ -198,11 +194,11 @@
 ;; frontend/src/metabase-types/api/dependencies.ts
 ;; (See CardDependencyNodeData, DashboardDependencyNodeData, etc.)
 ;;
-;; Note: Some fields (like :creator, :collection, :moderation_reviews) are added via t2/hydrate,
+;; Note: Some fields (like :creator, :collection) are added via t2/hydrate,
 ;; and others (like :last-edit-info, :view_count) are computed/added separately.
 ;; This map only lists the base database columns to SELECT.
 (def ^:private entity-select-fields
-  {:card      [:id :name :description :type :display :database_id :collection_id :dashboard_id :result_metadata
+  {:card      [:id :name :description :type :display :database_id :collection_id :dashboard_id :document_id :result_metadata
                :created_at :creator_id
                ;; :card_schema always has to be selected
                :card_schema]
@@ -368,12 +364,12 @@
               (let [model (entity-model entity-type)
                     fields (entity-select-fields entity-type)]
                 (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
-                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
+                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal])
                                                  (->> (map collection.root/hydrate-root-collection))
                                                  (revisions/with-last-edit-info :card))
                        (= entity-type :table) (t2/hydrate :fields :db)
                        (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields)
-                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
+                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal])
                                                       (->> (map collection.root/hydrate-root-collection))
                                                       (revisions/with-last-edit-info :dashboard))
                        (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])

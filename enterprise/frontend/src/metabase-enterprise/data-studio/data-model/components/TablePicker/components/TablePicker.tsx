@@ -22,7 +22,6 @@ import type { ChangeOptions, FilterState, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
 
 import { FilterPopover } from "./FilterPopover";
-import { PublishModelsModal } from "./PublishModelsModal";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
 
@@ -31,6 +30,7 @@ interface TablePickerProps {
   path: TreePath;
   className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
 export function TablePicker({
@@ -38,10 +38,9 @@ export function TablePicker({
   path,
   className,
   onChange,
+  setOnUpdateCallback,
 }: TablePickerProps) {
-  const { selectedTables, selectedSchemas, selectedDatabases, resetSelection } =
-    useSelection();
-
+  const { resetSelection } = useSelection();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const previousDeferredQuery = usePrevious(deferredQuery);
@@ -54,18 +53,6 @@ export function TablePicker({
   });
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
-
-  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
-  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
-    null,
-  );
-
-  function handlePublishSuccess() {
-    if (onUpdateCallback) {
-      onUpdateCallback();
-    }
-    resetSelection();
-  }
 
   useEffect(() => {
     const togglingBetweenSearchAndTree =
@@ -105,9 +92,14 @@ export function TablePicker({
           onChange={(event) => setQuery(event.target.value)}
         />
 
-        <Popover width={rem(340)} position="bottom-start" opened={isOpen}>
+        <Popover
+          width={rem(340)}
+          position="bottom-start"
+          opened={isOpen}
+          onChange={toggle}
+        >
           <Popover.Target>
-            <Tooltip label={t`Filter`}>
+            <Tooltip label={t`Filter`} disabled={isOpen}>
               <Button
                 aria-label={t`Filter`}
                 leftSection={
@@ -151,23 +143,9 @@ export function TablePicker({
             setOnUpdateCallback={setOnUpdateCallback}
           />
         ) : (
-          <SearchNew
-            query={deferredQuery}
-            params={params}
-            filters={filters}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
+          <SearchNew query={deferredQuery} params={params} filters={filters} />
         )}
       </Box>
-
-      <PublishModelsModal
-        tables={selectedTables}
-        schemas={selectedSchemas}
-        databases={selectedDatabases}
-        isOpen={isCreateModelsModalOpen}
-        onClose={() => setIsCreateModelsModalOpen(false)}
-        onSuccess={handlePublishSuccess}
-      />
     </Stack>
   );
 }

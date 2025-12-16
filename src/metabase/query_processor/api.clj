@@ -1,6 +1,6 @@
 (ns metabase.query-processor.api
   "/api/dataset endpoints."
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [not-empty get-in])
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -32,7 +32,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :refer [not-empty]]
+   [metabase.util.performance :refer [not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
@@ -62,7 +62,8 @@
       (when-not database
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
-      (api/read-check :model/Database database))
+      (when-not (mi/can-read? :model/Database database)
+        (api/throw-403)))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)

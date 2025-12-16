@@ -27,6 +27,17 @@
 
 (set! *warn-on-reflection* true)
 
+(def EncodedToken
+  "Malli schema for a JWT token"
+  [:string {:api/regex #"[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+=]*"}])
+
+(def SearchParams
+  "Malli schema for route params of search paths"
+  [:map
+   [:token EncodedToken]
+   [:param-key ms/NonBlankString]
+   [:prefix ms/NonBlankString]])
+
 (comment
   ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
   ;; the benefit of tests
@@ -299,6 +310,15 @@
         (remove-locked-and-disabled-params (or embedding-params
                                                (t2/select-one-fn :embedding_params :model/Card :id card-id))))))
 
+(defn- get-embed-card-context
+  "If a certain export-format is given, return the correct embedded card context."
+  [export-format]
+  (case (keyword export-format)
+    :csv  :embedded-csv-download
+    :xlsx :embedded-xlsx-download
+    :json :embedded-json-download
+    :embedded-question))
+
 (defn process-query-for-card-with-params
   "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
    an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
@@ -310,7 +330,7 @@
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply api.public/process-query-for-card-with-id
               card-id export-format parameters
-              :context     :embedded-question
+              :context     (get-embed-card-context export-format)
               :constraints constraints
               :qp          qp
               options)))

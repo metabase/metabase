@@ -4,35 +4,22 @@ description: null
 created_at: '2023-10-31T21:26:32.933732Z'
 active: true
 visibility_type: normal
-table_id:
-- Internal Metabase Database
-- public
-- v_fields
+table_id: [Internal Metabase Database, public, v_fields]
 database_type: int4
 base_type: type/Integer
 effective_type: type/Integer
 semantic_type: type/FK
 database_is_auto_increment: false
 database_required: false
-fk_target_field_id:
-- Internal Metabase Database
-- public
-- v_fields
-- entity_id
+fk_target_field_id: [Internal Metabase Database, public, v_fields, entity_id]
 dimensions:
 - created_at: '2025-04-01T14:04:21.490499Z'
   entity_id: Dl90EVZMrh8F4vog-lzt1
-  human_readable_field_id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - name
+  human_readable_field_id: [Internal Metabase Database, public, v_fields, name]
   name: Fk Target Field ID
   type: external
   serdes/meta:
-  - id: Dl90EVZMrh8F4vog-lzt1
-    label: fk_target_field_id
-    model: Dimension
+  - {id: Dl90EVZMrh8F4vog-lzt1, label: fk_target_field_id, model: Dimension}
 json_unfolding: false
 parent_id: null
 coercion_strategy: null
@@ -46,14 +33,13 @@ caveats: null
 points_of_interest: null
 nfc_path: null
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_fields
-  model: Table
-- id: fk_target_field_id
-  model: Field
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_fields, model: Table}
+- {id: fk_target_field_id, model: Field}
+database_default: null
 database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
 database_partitioned: null
-entity_id: 5zaCuhruN4ma2YWCAzpql

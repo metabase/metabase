@@ -220,6 +220,8 @@ describe(suiteTitle, () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+
       cy.findByText("Browser").click();
       cy.findByText("Next").click();
       cy.findByText("Select a collection to embed").should("be.visible");
@@ -301,6 +303,8 @@ describe(suiteTitle, () => {
 
     it("can open a collection picker from browser empty state", () => {
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
 

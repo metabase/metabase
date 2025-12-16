@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some get-in])
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
@@ -14,7 +14,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]])
+   [metabase.util.performance :refer [some get-in]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))

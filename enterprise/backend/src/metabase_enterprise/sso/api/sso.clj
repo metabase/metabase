@@ -9,9 +9,9 @@
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
-   [metabase.channel.urls :as urls]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -105,7 +105,7 @@
         :issuer (sso-settings/saml-application-name)
         :user-email email
         :relay-state (u/encode-base64
-                      (str (urls/site-url) metabase-slo-redirect-url))))}))
+                      (str (system/site-url) metabase-slo-redirect-url))))}))
 
 ;; POST /auth/sso/to_session
 ;;

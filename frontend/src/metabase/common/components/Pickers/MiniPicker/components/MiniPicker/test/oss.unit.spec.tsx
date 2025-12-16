@@ -185,6 +185,7 @@ describe("MiniPicker", () => {
           name: "Rosings",
           collection_id: 101,
           collection: createMockCollection({
+            id: 101,
             effective_location: "/",
           }),
         }),
@@ -209,6 +210,28 @@ describe("MiniPicker", () => {
       await setup({ searchQuery: "e" });
       expect(await screen.findByText("Forster")).toBeInTheDocument();
       expect(await screen.findByText("Bingley")).toBeInTheDocument();
+    });
+
+    it("shows the collection name for collection items in search results", async () => {
+      await setup({ searchQuery: "bing" });
+      expect(await screen.findByText("Bingley")).toBeInTheDocument();
+      expect(await screen.findByText("Misc Metrics")).toBeInTheDocument();
+    });
+
+    it("shows db and schema names for table items in search results", async () => {
+      await setup({ searchQuery: "wick" });
+      expect(await screen.findByText("wickham")).toBeInTheDocument();
+      expect(await screen.findByText("london (lydia)")).toBeInTheDocument();
+    });
+
+    it("shows collection name for a table in a collection", async () => {
+      await setup({ searchQuery: "kit" });
+      expect(await screen.findByText("Kitty")).toBeInTheDocument();
+      expect(await screen.findByText("Misc Tables")).toBeInTheDocument();
+
+      // should not show table or schema
+      expect(screen.queryByText(/big_secret/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/also_secret/)).not.toBeInTheDocument();
     });
 
     it("properly filters search results", async () => {

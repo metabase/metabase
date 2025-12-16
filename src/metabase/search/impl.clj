@@ -55,10 +55,9 @@
 
 (defmethod check-permissions-for-model :document
   [search-ctx instance]
-  (and (premium-features/enable-documents?)
-       (if (:archived? search-ctx)
-         (can-write? search-ctx instance)
-         true)))
+  (if (:archived? search-ctx)
+    (can-write? search-ctx instance)
+    true))
 
 (defmethod check-permissions-for-model :transform
   [search-ctx instance]
@@ -184,7 +183,9 @@
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
                                         [:id :name :authority_level :type])
-                           (merge {:id              collection_id
+                           (merge {:id              (if (and (nil? collection_id) (some? collection_name))
+                                                      "root"
+                                                      collection_id)
                                    :name            collection_name
                                    :authority_level collection_authority_level
                                    :type            collection_type}

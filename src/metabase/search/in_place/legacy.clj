@@ -114,7 +114,9 @@
    :pk_ref              :text
    :model_index_id      :integer
    ;; returned for Card and Action
-   :dataset_query       :text))
+   :dataset_query       :text
+   ;; returned for Table
+   :is_published        :boolean))
 
 (mu/defn- canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of lists of canonical columns for the search query with the given `model` Will return column names
@@ -170,7 +172,11 @@
   "Add a `WHERE` clause to the query to only return tables the current user has access to"
   [qry model search-ctx]
   (sql.helpers/where qry (case model
-                           "table" (search.permissions/permitted-tables-clause search-ctx :table.id)
+                           "table" [:and
+                                    (search.permissions/permitted-tables-clause search-ctx :table.id)
+                                    [:or
+                                     [:not :is_published]
+                                     (search.permissions/permitted-collections-clause search-ctx :collection_id)]]
                            "search-index" [:or
                                            [:= :search_index.model nil]
                                            [:!= :search_index.model [:inline "table"]]
@@ -188,13 +194,17 @@
                                  "collection"    :collection.id
                                  "search-index"  :search_index.collection_id
                                  :collection_id)
-        permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        permitted-clause       [:or
+                                (when (= model "table")
+                                  [:not :is_published])
+                                (search.permissions/permitted-collections-clause search-ctx collection-id-col)]
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
-    (cond-> honeysql-query
+    (-> honeysql-query
+        (sql.helpers/where permitted-clause)
+        (cond->
       ;; add a JOIN against Collection *unless* the source table is already Collection
-      (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
-      true                      (sql.helpers/where permitted-clause)
-      personal-clause           (sql.helpers/where personal-clause))))
+         (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+         personal-clause           (sql.helpers/where personal-clause)))))
 
 (mu/defn- replace-select :- :map
   "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column, throw an error if
@@ -443,6 +453,13 @@
    [:table.schema :table_schema]
    [:table.name :table_name]
    [:table.description :table_description]
+   [:table.collection_id :collection_id]
+   [[:case [:and [:= :table.collection_id nil] [:= :table.is_published true]]
+     [:inline "Our analytics"]
+     :else
+     :collection.name] :collection_name]
+   [:collection.authority_level :collection_authority_level]
+   [:collection.type :collection_type]
    [:metabase_database.name :database_name]])
 
 (defmethod columns-for-model "transform"
@@ -599,6 +616,7 @@
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
         (add-table-where-clauses model search-ctx)
+        (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defmethod search.engine/model-set :search.engine/in-place
