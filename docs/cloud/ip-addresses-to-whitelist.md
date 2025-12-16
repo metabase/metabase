@@ -40,20 +40,20 @@ Here are the IP addresses we use in each region.
 18.139.48.211
 ```
 
-## South America (São Paulo)
-
-```sh
-18.228.120.123
-54.207.106.108
-18.228.120.162
-```
-
 ## Asia Pacific (Sydney)
 
 ```sh
 13.238.131.1
 3.105.237.132
 54.252.39.14
+```
+
+## South America (São Paulo)
+
+```sh
+18.228.120.123
+54.207.106.108
+18.228.120.162
 ```
 
 ## Changing regions
