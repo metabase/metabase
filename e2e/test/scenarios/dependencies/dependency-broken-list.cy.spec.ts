@@ -211,8 +211,8 @@ describe("scenarios > dependencies > broken list", () => {
       openSidebarAndCheckErrors(BROKEN_CARD_ERRORS);
     });
 
-    it("should show the sidebar for models with error info", () => {
-      createBrokenCards({ type: "question" });
+    it("should show the sidebar for metrics with error info", () => {
+      createBrokenCards({ type: "metric" });
       H.DataStudio.Tasks.visitBrokenEntities();
       openSidebarAndCheckErrors(BROKEN_MBQL_CARD_ERRORS);
     });

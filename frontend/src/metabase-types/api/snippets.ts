@@ -13,12 +13,12 @@ export interface NativeQuerySnippet {
   template_tags: TemplateTags | null;
   collection_id: RegularCollectionId | null;
   creator_id: UserId;
-  creator: UserInfo;
   archived: boolean;
   entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;
 
+  creator?: UserInfo;
   collection?: Collection;
 }
 

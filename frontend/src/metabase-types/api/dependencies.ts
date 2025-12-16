@@ -88,6 +88,7 @@ export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
   | "name"
   | "description"
+  | "creator_id"
   | "creator"
   | "created_at"
   | "collection_id"
