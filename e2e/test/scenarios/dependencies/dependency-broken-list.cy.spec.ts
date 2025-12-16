@@ -12,43 +12,52 @@ import type {
 
 const { ORDERS_ID, ORDERS, REVIEWS_ID, REVIEWS } = SAMPLE_DATABASE;
 
-const VALID_QUESTION_COLUMN_ID = "Valid question column with id";
-const VALID_QUESTION_COLUMN_NAME = "Valid question column with name";
-const VALID_NATIVE_QUESTION = "Valid native question";
+const VALID_CARD_COLUMN_ID = "Valid card column with id";
+const VALID_CARD_COLUMN_NAME = "Valid card column with name";
+const VALID_NATIVE_CARD = "Valid native card";
 const VALID_SEGMENT = "Valid segment";
+const VALID_METRIC = "Valid metric";
 
 const VALID_ENTITY_NAMES = [
-  VALID_QUESTION_COLUMN_ID,
-  VALID_QUESTION_COLUMN_NAME,
-  VALID_NATIVE_QUESTION,
+  VALID_CARD_COLUMN_ID,
+  VALID_CARD_COLUMN_NAME,
+  VALID_NATIVE_CARD,
   VALID_SEGMENT,
+  VALID_METRIC,
 ];
 
-const QUESTION_COLUMN_ID_MISSING =
-  "Question with a non-existing column with an id";
-const QUESTION_COLUMN_WRONG_TABLE = "Question with a column on a wrong table";
-const QUESTION_COLUMN_NAME_MISSING =
-  "Question with a non-existing column with a name";
-const QUESTION_SEGMENT_MISSING = "Question with a non-existing segment";
-const QUESTION_SEGMENT_WRONG_TABLE = "Question with a segment on a wrong table";
-const NATIVE_QUESTION_COLUMN_MISSING =
-  "Native question with a non-existing column";
-const NATIVE_QUESTION_TABLE_ALIAS_MISSING =
-  "Native question with a missing table alias";
-const NATIVE_QUESTION_SYNTAX_ERROR = "Native question with a syntax error";
+const CARD_COLUMN_ID_MISSING = "Card with a non-existing column with an id";
+const CARD_COLUMN_WRONG_TABLE = "Card with a column on a wrong table";
+const CARD_COLUMN_NAME_MISSING = "Card with a non-existing column with a name";
+const CARD_SEGMENT_MISSING = "Card with a non-existing segment";
+const CARD_SEGMENT_WRONG_TABLE = "Card with a segment on a wrong table";
+const CARD_METRIC_MISSING = "Card with a non-existing metric";
+const CARD_METRIC_WRONG_TABLE = "Card with a metric on a wrong table";
+const NATIVE_CARD_COLUMN_MISSING = "Native card with a non-existing column";
+const NATIVE_CARD_TABLE_ALIAS_MISSING =
+  "Native card with a missing table alias";
+const NATIVE_CARD_SYNTAX_ERROR = "Native card with a syntax error";
 
-const BROKEN_QUESTION_NAMES = [
-  QUESTION_COLUMN_ID_MISSING,
-  QUESTION_COLUMN_WRONG_TABLE,
-  QUESTION_COLUMN_NAME_MISSING,
-  QUESTION_SEGMENT_MISSING,
-  QUESTION_SEGMENT_WRONG_TABLE,
-  NATIVE_QUESTION_COLUMN_MISSING,
-  NATIVE_QUESTION_TABLE_ALIAS_MISSING,
-  NATIVE_QUESTION_SYNTAX_ERROR,
+const BROKEN_MBQL_CARD_NAMES = [
+  CARD_COLUMN_ID_MISSING,
+  CARD_COLUMN_WRONG_TABLE,
+  CARD_COLUMN_NAME_MISSING,
+  CARD_SEGMENT_MISSING,
+  CARD_SEGMENT_WRONG_TABLE,
+  CARD_METRIC_MISSING,
+  CARD_METRIC_WRONG_TABLE,
 ];
 
-const BROKEN_ENTITY_NAMES = [...BROKEN_QUESTION_NAMES];
+const BROKEN_NATIVE_CARD_NAMES = [
+  NATIVE_CARD_COLUMN_MISSING,
+  NATIVE_CARD_TABLE_ALIAS_MISSING,
+  NATIVE_CARD_SYNTAX_ERROR,
+];
+
+const BROKEN_CARD_NAMES = [
+  ...BROKEN_MBQL_CARD_NAMES,
+  ...BROKEN_NATIVE_CARD_NAMES,
+];
 
 describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
@@ -59,11 +68,37 @@ describe("scenarios > dependencies > broken list", () => {
   });
 
   describe("analysis", () => {
-    it("should show broken entities", () => {
-      createEntities();
+    it("should show broken questions", () => {
+      createCardContent({ type: "question" });
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.list().within(() => {
-        BROKEN_ENTITY_NAMES.forEach((name) => {
+        BROKEN_CARD_NAMES.forEach((name) => {
+          cy.findByText(name).should("be.visible");
+        });
+        VALID_ENTITY_NAMES.forEach((name) => {
+          cy.findByText(name).should("not.exist");
+        });
+      });
+    });
+
+    it("should show broken models", () => {
+      createCardContent({ type: "model" });
+      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DataStudio.Tasks.list().within(() => {
+        BROKEN_CARD_NAMES.forEach((name) => {
+          cy.findByText(name).should("be.visible");
+        });
+        VALID_ENTITY_NAMES.forEach((name) => {
+          cy.findByText(name).should("not.exist");
+        });
+      });
+    });
+
+    it("should show broken metrics", () => {
+      createCardContent({ type: "metric" });
+      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DataStudio.Tasks.list().within(() => {
+        BROKEN_MBQL_CARD_NAMES.forEach((name) => {
           cy.findByText(name).should("be.visible");
         });
         VALID_ENTITY_NAMES.forEach((name) => {
@@ -74,23 +109,23 @@ describe("scenarios > dependencies > broken list", () => {
   });
 });
 
-function createEntities() {
+function createCardContent({ type }: { type: CardType }) {
   createCardWithFieldIdRef({
-    name: VALID_QUESTION_COLUMN_ID,
-    type: "question",
+    name: VALID_CARD_COLUMN_ID,
+    type,
     tableId: ORDERS_ID,
     fieldId: ORDERS.TOTAL,
   });
   createCardWithFieldNameRef({
-    name: VALID_QUESTION_COLUMN_NAME,
-    type: "question",
+    name: VALID_CARD_COLUMN_NAME,
+    type,
     cardId: ORDERS_QUESTION_ID,
     fieldName: "TOTAL",
     baseType: "type/Float",
   });
   createNativeCard({
-    name: VALID_NATIVE_QUESTION,
-    type: "question",
+    name: VALID_NATIVE_CARD,
+    type,
     query: "SELECT ID, TOTAL FROM ORDERS",
   });
 
@@ -100,52 +135,74 @@ function createEntities() {
     fieldId: ORDERS.TOTAL,
   }).then(({ body: segment }) => {
     createCardWithFieldIdRef({
-      name: QUESTION_COLUMN_WRONG_TABLE,
-      type: "question",
+      name: VALID_METRIC,
+      type: "metric",
       tableId: ORDERS_ID,
-      fieldId: REVIEWS.RATING,
+      fieldId: ORDERS.TOTAL,
+    }).then(({ body: metric }) => {
+      createCardWithFieldIdRef({
+        name: CARD_COLUMN_WRONG_TABLE,
+        type,
+        tableId: ORDERS_ID,
+        fieldId: REVIEWS.RATING,
+      });
+      createCardWithFieldIdRef({
+        name: CARD_COLUMN_ID_MISSING,
+        type,
+        tableId: ORDERS_ID,
+        fieldId: 1000,
+      });
+      createCardWithFieldNameRef({
+        name: CARD_COLUMN_NAME_MISSING,
+        type,
+        cardId: ORDERS_QUESTION_ID,
+        fieldName: "BAD_NAME",
+        baseType: "type/Integer",
+      });
+      createCardWithSegmentClause({
+        name: CARD_SEGMENT_WRONG_TABLE,
+        type,
+        tableId: REVIEWS_ID,
+        segmentId: segment.id,
+      });
+      createCardWithSegmentClause({
+        name: CARD_SEGMENT_MISSING,
+        type,
+        tableId: REVIEWS_ID,
+        segmentId: 1000,
+      });
+      createCardWithMetricClause({
+        name: CARD_METRIC_WRONG_TABLE,
+        type,
+        tableId: REVIEWS_ID,
+        metricId: metric.id,
+      });
+      createCardWithMetricClause({
+        name: CARD_METRIC_MISSING,
+        type,
+        tableId: REVIEWS_ID,
+        metricId: metric.id,
+      });
     });
-    createCardWithFieldIdRef({
-      name: QUESTION_COLUMN_ID_MISSING,
-      type: "question",
-      tableId: ORDERS_ID,
-      fieldId: 1000,
-    });
-    createCardWithFieldNameRef({
-      name: QUESTION_COLUMN_NAME_MISSING,
-      type: "question",
-      cardId: ORDERS_QUESTION_ID,
-      fieldName: "BAD_NAME",
-      baseType: "type/Integer",
-    });
-    createCardWithSegmentClause({
-      name: QUESTION_SEGMENT_WRONG_TABLE,
-      type: "question",
-      tableId: REVIEWS_ID,
-      segmentId: segment.id,
-    });
-    createCardWithSegmentClause({
-      name: QUESTION_SEGMENT_MISSING,
-      type: "question",
-      tableId: REVIEWS_ID,
-      segmentId: 1000,
-    });
+  });
+
+  if (type !== "metric") {
     createNativeCard({
-      name: NATIVE_QUESTION_COLUMN_MISSING,
-      type: "question",
+      name: NATIVE_CARD_COLUMN_MISSING,
+      type,
       query: "SELECT ID, RATING FROM ORDERS",
     });
     createNativeCard({
-      name: NATIVE_QUESTION_TABLE_ALIAS_MISSING,
-      type: "question",
+      name: NATIVE_CARD_TABLE_ALIAS_MISSING,
+      type,
       query: "SELECT P.ID, P.PRICE FROM ORDERS",
     });
     createNativeCard({
-      name: NATIVE_QUESTION_SYNTAX_ERROR,
-      type: "question",
+      name: NATIVE_CARD_SYNTAX_ERROR,
+      type,
       query: "SELECT FROM",
     });
-  });
+  }
 }
 
 function createCardWithFieldIdRef({
@@ -212,6 +269,27 @@ function createCardWithSegmentClause({
       "source-table": tableId,
       filter: ["segment", segmentId],
       aggregation: [["count"]],
+    },
+  });
+}
+
+function createCardWithMetricClause({
+  name,
+  type,
+  tableId,
+  metricId,
+}: {
+  name: string;
+  type: CardType;
+  tableId: TableId;
+  metricId: CardId;
+}) {
+  return H.createQuestion({
+    name,
+    type,
+    query: {
+      "source-table": tableId,
+      aggregation: [["metric", metricId]],
     },
   });
 }
