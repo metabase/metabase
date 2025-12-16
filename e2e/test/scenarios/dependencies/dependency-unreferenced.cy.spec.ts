@@ -1,7 +1,13 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { CardId, FieldId, SegmentId, TableId } from "metabase-types/api";
+import type {
+  CardId,
+  FieldId,
+  NativeQuerySnippetId,
+  SegmentId,
+  TableId,
+} from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -68,6 +74,7 @@ describe("scenarios > dependencies > unreferenced", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    cy.viewport(1280, 1400);
   });
 
   describe("analysis", () => {
@@ -108,8 +115,9 @@ describe("scenarios > dependencies > unreferenced", () => {
       H.DataStudio.Tasks.visitUnreferencedEntities();
       H.DataStudio.Tasks.searchInput().type("tag");
       H.DataStudio.Tasks.list().within(() => {
+        cy.findByText(MODEL_FOR_QUESTION_DATA_SOURCE).should("not.exist");
         cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
-        cy.findByText(SNIPPET_FOR_SNIPPET_TAG).should("not.exist");
+        cy.findByText(SNIPPET_FOR_SNIPPET_TAG).should("be.visible");
       });
 
       H.DataStudio.Tasks.filterButton().click();
@@ -143,7 +151,6 @@ describe("scenarios > dependencies > unreferenced", () => {
         cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
       });
 
-      H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Segment").click();
       H.DataStudio.Tasks.list().within(() => {
         cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
@@ -152,7 +159,6 @@ describe("scenarios > dependencies > unreferenced", () => {
         cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
       });
 
-      H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Metric").click();
       H.DataStudio.Tasks.list().within(() => {
         cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
@@ -161,12 +167,11 @@ describe("scenarios > dependencies > unreferenced", () => {
         cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
       });
 
-      H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Snippet").click();
       H.DataStudio.Tasks.list().within(() => {
         cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
         cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
-        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("not.exist");
+        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
         cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should(
           "be.visible",
         );
@@ -397,22 +402,23 @@ function createSnippetContent({
 }) {
   createSnippetWithBasicFilter({
     name: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-  }).then(({ body: filter }) => {
+  }).then(({ body: snippet }) => {
     if (withReferences) {
       createNativeQuestionWithSnippetTag({
         name: `${SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG} -> Question`,
         tableName: "ORDERS",
-        snippetName: filter.name,
+        snippetId: snippet.id,
+        snippetName: snippet.name,
       });
     }
   });
 
   createSnippetWithBasicFilter({ name: SNIPPET_FOR_SNIPPET_TAG }).then(
-    ({ body: filter }) => {
+    ({ body: snippet }) => {
       if (withReferences) {
         createSnippetWithSnippetTag({
           name: `${SNIPPET_FOR_SNIPPET_TAG} -> Snippet`,
-          snippetName: filter.name,
+          snippetName: snippet.name,
         });
       }
     },
@@ -480,13 +486,13 @@ function createNativeQuestionWithCardTag({
   name: string;
   cardId: CardId;
 }) {
-  const tagName = `{{#${cardId}}}`;
+  const tagName = `#${cardId}`;
 
   return H.createNativeQuestion({
     name,
     type: "question",
     native: {
-      query: `select * from ${tagName}`,
+      query: `select * from {{${tagName}}}`,
       "template-tags": {
         [tagName]: {
           id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
@@ -548,17 +554,31 @@ function createNativeQuestionWithParameterWithCardSource({
 function createNativeQuestionWithSnippetTag({
   name,
   tableName,
+  snippetId,
   snippetName,
 }: {
   name: string;
   tableName: string;
+  snippetId: NativeQuerySnippetId;
   snippetName: string;
 }) {
+  const tagName = `snippet: ${snippetName}`;
+
   return H.createNativeQuestion({
     name,
     type: "question",
     native: {
-      query: `select * from ${tableName} where {{snippet: ${snippetName}}}`,
+      query: `select * from ${tableName} where {{${tagName}}}`,
+      "template-tags": {
+        [tagName]: {
+          id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+          type: "snippet",
+          name: tagName,
+          "display-name": snippetName,
+          "snippet-id": snippetId,
+          "snippet-name": snippetName,
+        },
+      },
     },
   });
 }
