@@ -172,7 +172,7 @@
               (->> (lib/returned-columns query-regex)
                    (m/find-first #(= (:name %) "HOMEPAGE"))
                    (lib/column-extractions query-regex)))))
-    (testing "when the database does not support :regex URL extraction is not available"
+    (testing "when the database does not support `:regex/lookaheads-and-lookbehinds` URL extraction is not available"
       (is (empty? (->> (lib/returned-columns query-no-regex)
                        (m/find-first #(= (:name %) "HOMEPAGE"))
                        (lib/column-extractions query-no-regex)))))))
