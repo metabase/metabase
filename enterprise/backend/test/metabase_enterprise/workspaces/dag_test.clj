@@ -221,12 +221,20 @@
              (ws 4) []
              (ws 5) []})))))
 
+(defn tx->table [kw]
+  (when (transform? kw)
+    (keyword (str "t" (kw->id kw)))))
+
 (defn- solve-in-memory [init-nodes graph]
-  (#'ws.dag/path-induced-subgraph* init-nodes
-                                   {:node-parents (dag-abstract/expand-shorthand graph)
-                                    :table?       table?
-                                    :table-sort   kw->id
-                                    :unwrap-table identity}))
+  (let [tx-nodes (filter transform? init-nodes)
+        tables   (map tx->table tx-nodes)]
+    (#'ws.dag/path-induced-subgraph*
+     ;; Include all changeset targets in the init-nodes
+     (distinct (into init-nodes tables))
+     {:node-parents (dag-abstract/expand-shorthand graph)
+      :table?       table?
+      :table-sort   kw->id
+      :unwrap-table identity})))
 
 (deftest in-memory-path-induced-subgraph-test
   (testing "singleton"
