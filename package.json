@@ -291,7 +291,7 @@
     "jest-watch-typeahead": "^2.2.1",
     "jose": "^5.6.3",
     "json-to-pretty-yaml": "^1.2.2",
-    "jsonwebtoken": "^9.0.0",
+    "jsonwebtoken": "^9.0.3",
     "knex": "^2.4.2",
     "lint-staged": "^14",
     "loki": "^0.35.1",
