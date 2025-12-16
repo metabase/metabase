@@ -1719,6 +1719,27 @@ databaseChangeLog:
             tableName: workspace_mapping_transform
             constraintName: pk_workspace_mapping_transform
 
+# Following is hack to enable rollback without breaking staging.
+# I.e. no changes to existing migraitons.
+# The v58.2025-11-26T13:34:59 removes the foreign key on rollback.
+# The v58.2025-11-26T12:00:12 attempts that again on rollback.
+# This adds the missing foreign key on rollback.
+# Changeset is here because there were no available ids closer the changeset
+# that removes the fk.
+  - changeSet:
+      id: v58.2025-11-26T13:34:52
+      author: lbrdnk
+      comment: Fix up fk_collection_workspace_id for rollback
+      changes:
+        - empty: {}
+      rollback:
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE collection
+              ADD CONSTRAINT fk_collection_workspace_id
+              FOREIGN KEY (workspace_id) REFERENCES workspace(id)
+
   - changeSet:
       id: v58.2025-11-26T13:34:53
       validCheckSum: ANY
