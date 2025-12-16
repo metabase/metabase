@@ -157,7 +157,7 @@ describe("CollectionBrowser", () => {
   it("should resolve collectionId=tenant to user's tenant collection", async () => {
     const tenantCollection = createMockCollection({
       id: 999,
-      name: "Tenant Collection Root",
+      name: "Tenant Collection: Acme Inc",
       archived: false,
       can_write: true,
       description: null,
