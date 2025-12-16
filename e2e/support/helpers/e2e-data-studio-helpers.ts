@@ -126,11 +126,10 @@ export const DataStudio = {
     Sidebar: {
       get: () => cy.findByTestId("dependency-list-sidebar"),
       header: () => cy.findByTestId("dependency-list-sidebar-header"),
-      locationInfo: () =>
-        cy.findByTestId("dependency-list-sidebar-location-info"),
-      errorInfo: () => cy.findByTestId("dependency-list-sidebar-error-info"),
+      locationInfo: () => cy.findByRole("region", { name: "Location" }),
+      errorInfo: (label: string) => cy.findByRole("region", { name: label }),
       creationInfo: () =>
-        cy.findByTestId("dependency-list-sidebar-creation-info"),
+        cy.findByRole("region", { name: "Creator and last editor" }),
     },
   },
 };

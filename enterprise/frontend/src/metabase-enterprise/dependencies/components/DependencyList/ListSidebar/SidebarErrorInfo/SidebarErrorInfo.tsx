@@ -21,7 +21,7 @@ export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
     .filter((detail) => detail != null);
 
   return (
-    <Stack gap="sm" data-testid="dependency-list-sidebar-error-info">
+    <Stack gap="sm" role="region" aria-label={title}>
       <Title order={4}>{title}</Title>
       {details.length > 0 && (
         <Card p={0} shadow="none" withBorder>

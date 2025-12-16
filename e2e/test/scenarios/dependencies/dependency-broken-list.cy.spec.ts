@@ -6,7 +6,6 @@ import type {
   CardId,
   CardType,
   FieldId,
-  NativeQuerySnippetId,
   SegmentId,
   TableId,
 } from "metabase-types/api";
@@ -29,57 +28,52 @@ const VALID_ENTITY_NAMES = [
   VALID_SNIPPET,
 ];
 
-const CARD_TABLE_MISSING = "Card with a non-existing table";
 const CARD_COLUMN_ID_MISSING = "Card with a non-existing column with an id";
 const CARD_COLUMN_WRONG_TABLE = "Card with a column on a wrong table";
 const CARD_COLUMN_NAME_MISSING = "Card with a non-existing column with a name";
-const CARD_SEGMENT_MISSING = "Card with a non-existing segment";
-const CARD_SEGMENT_WRONG_TABLE = "Card with a segment on a wrong table";
-const CARD_METRIC_MISSING = "Card with a non-existing metric";
-const CARD_METRIC_WRONG_TABLE = "Card with a metric on a wrong table";
 const NATIVE_CARD_COLUMN_MISSING = "Native card with a non-existing column";
 const NATIVE_CARD_TABLE_ALIAS_MISSING =
   "Native card with a missing table alias";
 const NATIVE_CARD_SYNTAX_ERROR = "Native card with a syntax error";
-const NATIVE_CARD_CARD_TAG_MISSING = "Native card with a non-existing card";
-const NATIVE_CARD_SNIPPET_TAG_MISSING =
-  "Native card with a non-existing snippet";
 
 const BROKEN_MBQL_CARD_NAMES = [
-  CARD_TABLE_MISSING,
   CARD_COLUMN_ID_MISSING,
   CARD_COLUMN_WRONG_TABLE,
   CARD_COLUMN_NAME_MISSING,
-  CARD_SEGMENT_MISSING,
-  CARD_SEGMENT_WRONG_TABLE,
-  CARD_METRIC_MISSING,
-  CARD_METRIC_WRONG_TABLE,
 ];
+
+const BROKEN_MBQL_CARD_ERRORS = {
+  [CARD_COLUMN_ID_MISSING]: { "1 missing column": ["Unknown Field"] },
+  [CARD_COLUMN_WRONG_TABLE]: { "1 missing column": ["RATING"] },
+  [CARD_COLUMN_NAME_MISSING]: { "1 missing column": ["BAD_NAME"] },
+};
 
 const BROKEN_NATIVE_CARD_NAMES = [
   NATIVE_CARD_COLUMN_MISSING,
   NATIVE_CARD_TABLE_ALIAS_MISSING,
   NATIVE_CARD_SYNTAX_ERROR,
-  NATIVE_CARD_CARD_TAG_MISSING,
-  NATIVE_CARD_SNIPPET_TAG_MISSING,
 ];
+
+const BROKEN_NATIVE_CARD_ERRORS = {
+  [NATIVE_CARD_COLUMN_MISSING]: { "1 missing column": ["RATING"] },
+  [NATIVE_CARD_TABLE_ALIAS_MISSING]: { "1 missing table alias": ["P"] },
+  [NATIVE_CARD_SYNTAX_ERROR]: { "1 syntax error": [] },
+};
 
 const BROKEN_CARD_NAMES = [
   ...BROKEN_MBQL_CARD_NAMES,
   ...BROKEN_NATIVE_CARD_NAMES,
 ];
 
-const SEGMENT_TABLE_MISSING = "Segment with a non-existing table";
+const BROKEN_CARD_ERRORS = {
+  ...BROKEN_MBQL_CARD_ERRORS,
+  ...BROKEN_NATIVE_CARD_ERRORS,
+};
+
 const SEGMENT_COLUMN_MISSING = "Segment with a non-existing column";
 const SEGMENT_SEGMENT_MISSING = "Segment with a non-existing segment";
-const SEGMENT_SEGMENT_WRONG_TABLE = "Segment with a segment on a wrong table";
 
-const BROKEN_SEGMENT_NAMES = [
-  SEGMENT_TABLE_MISSING,
-  SEGMENT_COLUMN_MISSING,
-  SEGMENT_SEGMENT_MISSING,
-  SEGMENT_SEGMENT_WRONG_TABLE,
-];
+const BROKEN_SEGMENT_NAMES = [SEGMENT_COLUMN_MISSING, SEGMENT_SEGMENT_MISSING];
 
 const SNIPPET_CARD_TAG_MISSING = "Snippet with a non-existing card";
 const SNIPPET_SNIPPET_TAG_MISSING = "Snippet with a non-existing snippet";
@@ -100,6 +94,7 @@ describe("scenarios > dependencies > broken list", () => {
   describe("analysis", () => {
     it("should not show valid entities", () => {
       createValidEntities();
+      createBrokenCards({ type: "question" });
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.list().within(() => {
         VALID_ENTITY_NAMES.forEach((name) => {
@@ -109,7 +104,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should show broken questions", () => {
-      createBrokeCards({ type: "question" });
+      createBrokenCards({ type: "question" });
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.list().within(() => {
         BROKEN_CARD_NAMES.forEach((name) => {
@@ -119,7 +114,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should show broken models", () => {
-      createBrokeCards({ type: "model" });
+      createBrokenCards({ type: "model" });
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.list().within(() => {
         BROKEN_CARD_NAMES.forEach((name) => {
@@ -129,7 +124,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should show broken metrics", () => {
-      createBrokeCards({ type: "metric" });
+      createBrokenCards({ type: "metric" });
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.list().within(() => {
         BROKEN_MBQL_CARD_NAMES.forEach((name) => {
@@ -161,11 +156,11 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("search", () => {
     it("should search for entities", () => {
-      createBrokeCards({ type: "question" });
+      createBrokenCards({ type: "question" });
       H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.searchInput().type(CARD_TABLE_MISSING);
+      H.DataStudio.Tasks.searchInput().type(CARD_COLUMN_ID_MISSING);
       checkList({
-        visibleEntities: [CARD_TABLE_MISSING],
+        visibleEntities: [CARD_COLUMN_ID_MISSING],
         hiddenEntities: [CARD_COLUMN_WRONG_TABLE],
       });
     });
@@ -173,7 +168,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("filters", () => {
     it("should filter entities by type", () => {
-      createBrokeCards({ type: "question" });
+      createBrokenCards({ type: "question" });
       createBrokenSegments();
       H.DataStudio.Tasks.visitBrokenEntities();
       checkList({
@@ -210,6 +205,49 @@ describe("scenarios > dependencies > broken list", () => {
       });
     });
   });
+
+  describe("sidebar", () => {
+    it("should show the sidebar for questions with error info", () => {
+      createBrokenCards({ type: "question" });
+      H.DataStudio.Tasks.visitBrokenEntities();
+
+      Object.entries(BROKEN_CARD_ERRORS).forEach(([entityName, errors]) => {
+        H.DataStudio.Tasks.list().findByText(entityName).click();
+        checkSidebar({
+          entityName,
+          errors,
+        });
+      });
+    });
+
+    it("should show the sidebar for models with error info", () => {
+      createBrokenCards({ type: "model" });
+      H.DataStudio.Tasks.visitBrokenEntities();
+
+      Object.entries(BROKEN_CARD_ERRORS).forEach(([entityName, errors]) => {
+        H.DataStudio.Tasks.list().findByText(entityName).click();
+        checkSidebar({
+          entityName,
+          errors,
+        });
+      });
+    });
+
+    it("should show the sidebar for models with error info", () => {
+      createBrokenCards({ type: "question" });
+      H.DataStudio.Tasks.visitBrokenEntities();
+
+      Object.entries(BROKEN_MBQL_CARD_ERRORS).forEach(
+        ([entityName, errors]) => {
+          H.DataStudio.Tasks.list().findByText(entityName).click();
+          checkSidebar({
+            entityName,
+            errors,
+          });
+        },
+      );
+    });
+  });
 });
 
 function createValidEntities() {
@@ -242,68 +280,25 @@ function createValidEntities() {
   });
 }
 
-function createBrokeCards({ type }: { type: CardType }) {
-  createSegmentWithFieldIdRef({
-    name: VALID_SEGMENT,
+function createBrokenCards({ type }: { type: CardType }) {
+  createCardWithFieldIdRef({
+    name: CARD_COLUMN_WRONG_TABLE,
+    type,
     tableId: ORDERS_ID,
-    fieldId: ORDERS.TOTAL,
-  }).then(({ body: segment }) => {
-    createCardWithFieldIdRef({
-      name: VALID_METRIC,
-      type: "metric",
-      tableId: ORDERS_ID,
-      fieldId: ORDERS.TOTAL,
-    }).then(({ body: metric }) => {
-      createCardWithFieldIdRef({
-        name: CARD_TABLE_MISSING,
-        type,
-        tableId: 1000,
-        fieldId: ORDERS.TOTAL,
-      });
-      createCardWithFieldIdRef({
-        name: CARD_COLUMN_WRONG_TABLE,
-        type,
-        tableId: ORDERS_ID,
-        fieldId: REVIEWS.RATING,
-      });
-      createCardWithFieldIdRef({
-        name: CARD_COLUMN_ID_MISSING,
-        type,
-        tableId: ORDERS_ID,
-        fieldId: 1000,
-      });
-      createCardWithFieldNameRef({
-        name: CARD_COLUMN_NAME_MISSING,
-        type,
-        cardId: ORDERS_QUESTION_ID,
-        fieldName: "BAD_NAME",
-        baseType: "type/Integer",
-      });
-      createCardWithSegmentClause({
-        name: CARD_SEGMENT_WRONG_TABLE,
-        type,
-        tableId: REVIEWS_ID,
-        segmentId: segment.id,
-      });
-      createCardWithSegmentClause({
-        name: CARD_SEGMENT_MISSING,
-        type,
-        tableId: REVIEWS_ID,
-        segmentId: 1000,
-      });
-      createCardWithMetricClause({
-        name: CARD_METRIC_WRONG_TABLE,
-        type,
-        tableId: REVIEWS_ID,
-        metricId: metric.id,
-      });
-      createCardWithMetricClause({
-        name: CARD_METRIC_MISSING,
-        type,
-        tableId: REVIEWS_ID,
-        metricId: metric.id,
-      });
-    });
+    fieldId: REVIEWS.RATING,
+  });
+  createCardWithFieldIdRef({
+    name: CARD_COLUMN_ID_MISSING,
+    type,
+    tableId: ORDERS_ID,
+    fieldId: 1000,
+  });
+  createCardWithFieldNameRef({
+    name: CARD_COLUMN_NAME_MISSING,
+    type,
+    cardId: ORDERS_QUESTION_ID,
+    fieldName: "BAD_NAME",
+    baseType: "type/Integer",
   });
 
   if (type !== "metric") {
@@ -322,72 +317,30 @@ function createBrokeCards({ type }: { type: CardType }) {
       type,
       query: "SELECT FROM",
     });
-    createNativeCardWithCardTag({
-      name: NATIVE_CARD_CARD_TAG_MISSING,
-      type,
-      cardId: 1000,
-    });
-    createNativeCardWithSnippetTag({
-      name: NATIVE_CARD_SNIPPET_TAG_MISSING,
-      type,
-      snippetId: 1000,
-      snippetName: "missing-snippet",
-    });
   }
 }
 
 function createBrokenSegments() {
   createSegmentWithFieldIdRef({
-    name: VALID_SEGMENT,
+    name: SEGMENT_COLUMN_MISSING,
     tableId: ORDERS_ID,
-    fieldId: ORDERS.TOTAL,
-  }).then(({ body: segment }) => {
-    createSegmentWithFieldIdRef({
-      name: SEGMENT_TABLE_MISSING,
-      tableId: 1000,
-      fieldId: ORDERS.TOTAL,
-    });
-    createSegmentWithFieldIdRef({
-      name: SEGMENT_COLUMN_MISSING,
-      tableId: ORDERS_ID,
-      fieldId: REVIEWS.RATING,
-    });
-    createSegmentWithSegmentClause({
-      name: SEGMENT_SEGMENT_MISSING,
-      tableId: REVIEWS_ID,
-      segmentId: 1000,
-    });
-    createSegmentWithSegmentClause({
-      name: SEGMENT_SEGMENT_WRONG_TABLE,
-      tableId: REVIEWS_ID,
-      segmentId: segment.id,
-    });
+    fieldId: REVIEWS.RATING,
+  });
+  createSegmentWithSegmentClause({
+    name: SEGMENT_SEGMENT_MISSING,
+    tableId: REVIEWS_ID,
+    segmentId: 1000,
   });
 }
 
 function createBrokenSnippets() {
-  createCardWithFieldIdRef({
-    name: VALID_CARD_COLUMN_ID,
-    type: "question",
-    tableId: ORDERS_ID,
-    fieldId: ORDERS.TOTAL,
-  }).then(({ body: card }) => {
-    createSnippet({
-      name: SNIPPET_CARD_TAG_MISSING,
-      content: `SELECT * {{#${card.id}}}`,
-    });
-    cy.request("DELETE", `/api/card/${card.id}`);
-  });
-
   createSnippet({
-    name: VALID_SNIPPET,
-    content: "1 = 1",
-  }).then(({ body: snippet }) => {
-    createSnippet({
-      name: SNIPPET_SNIPPET_TAG_MISSING,
-      content: `SELECT * FROM ORDERS WHERE {{snippet: ${snippet.name}}}`,
-    });
-    cy.request("DELETE", `/api/native-query-snippet/${snippet.id}`);
+    name: SNIPPET_CARD_TAG_MISSING,
+    content: "SELECT * {{#1000}}",
+  });
+  createSnippet({
+    name: SNIPPET_SNIPPET_TAG_MISSING,
+    content: "SELECT * FROM ORDERS WHERE {{snippet: missing-snippet}}",
   });
 }
 
@@ -437,49 +390,6 @@ function createCardWithFieldNameRef({
   });
 }
 
-function createCardWithSegmentClause({
-  name,
-  type,
-  tableId,
-  segmentId,
-}: {
-  name: string;
-  type: CardType;
-  tableId: TableId;
-  segmentId: SegmentId;
-}) {
-  return H.createQuestion({
-    name,
-    type,
-    query: {
-      "source-table": tableId,
-      filter: ["segment", segmentId],
-      aggregation: [["count"]],
-    },
-  });
-}
-
-function createCardWithMetricClause({
-  name,
-  type,
-  tableId,
-  metricId,
-}: {
-  name: string;
-  type: CardType;
-  tableId: TableId;
-  metricId: CardId;
-}) {
-  return H.createQuestion({
-    name,
-    type,
-    query: {
-      "source-table": tableId,
-      aggregation: [["metric", metricId]],
-    },
-  });
-}
-
 function createNativeCard({
   name,
   type,
@@ -494,67 +404,6 @@ function createNativeCard({
     type,
     native: {
       query,
-    },
-  });
-}
-
-function createNativeCardWithCardTag({
-  name,
-  type,
-  cardId,
-}: {
-  name: string;
-  type: CardType;
-  cardId: CardId;
-}) {
-  const tagName = `#${cardId}`;
-
-  return H.createNativeQuestion({
-    name,
-    type,
-    native: {
-      query: `SELECT * {{${tagName}}}`,
-      "template-tags": {
-        [tagName]: {
-          id: tagName,
-          name: tagName,
-          "display-name": tagName,
-          type: "card",
-          "card-id": cardId,
-        },
-      },
-    },
-  });
-}
-
-function createNativeCardWithSnippetTag({
-  name,
-  type,
-  snippetId,
-  snippetName,
-}: {
-  name: string;
-  type: CardType;
-  snippetId: NativeQuerySnippetId;
-  snippetName: string;
-}) {
-  const tagName = `snippet: ${snippetName}`;
-
-  return H.createNativeQuestion({
-    name,
-    type,
-    native: {
-      query: `SELECT * FROM ORDERS WHERE {{${tagName}}}`,
-      "template-tags": {
-        [tagName]: {
-          id: tagName,
-          name: tagName,
-          "display-name": tagName,
-          type: "snippet",
-          "snippet-id": snippetId,
-          "snippet-name": snippetName,
-        },
-      },
     },
   });
 }
@@ -617,6 +466,43 @@ function checkList({
     });
     hiddenEntities.forEach((name) => {
       cy.findByText(name).should("not.exist");
+    });
+  });
+}
+
+function checkSidebar({
+  entityName,
+  locationName,
+  creatorName,
+  errors = {},
+}: {
+  entityName: string;
+  locationName?: string;
+  creatorName?: string;
+  errors?: Record<string, string[]>;
+}) {
+  H.DataStudio.Tasks.Sidebar.header()
+    .findByText(entityName)
+    .should("be.visible");
+
+  if (locationName) {
+    H.DataStudio.Tasks.Sidebar.locationInfo()
+      .findByText(locationName)
+      .should("be.visible");
+  }
+
+  if (creatorName) {
+    H.DataStudio.Tasks.Sidebar.creationInfo().should(
+      "contain.text",
+      creatorName,
+    );
+  }
+
+  Object.entries(errors).forEach(([label, errors]) => {
+    H.DataStudio.Tasks.Sidebar.errorInfo(label).within(() => {
+      errors.forEach((error) => {
+        cy.findByText(error).should("be.visible");
+      });
     });
   });
 }

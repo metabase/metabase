@@ -16,6 +16,7 @@ type SidebarCreationInfoProps = {
 };
 
 export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
+  const title = t`Creator and last editor`;
   const createdAt = getNodeCreatedAt(node);
   const createdBy = getNodeCreatedBy(node);
   const editedAt = getNodeLastEditedAt(node);
@@ -28,8 +29,8 @@ export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
   }
 
   return (
-    <Stack gap="sm" data-testid="dependency-list-sidebar-creation-info">
-      <Title order={4}>{t`Creator and last editor`}</Title>
+    <Stack gap="sm" role="region" aria-label={title}>
+      <Title order={4}>{title}</Title>
       <Card p="md" shadow="none" withBorder>
         <EntityCreationInfo
           createdAt={createdAt}

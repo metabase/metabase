@@ -12,14 +12,16 @@ type SidebarLocationInfoProps = {
 };
 
 export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
+  const title = t`Location`;
   const locationInfo = getNodeLocationInfo(node);
+
   if (locationInfo == null) {
     return null;
   }
 
   return (
-    <Stack gap="sm" data-testid="dependency-list-sidebar-location-info">
-      <Title order={4}>{t`Location`}</Title>
+    <Stack gap="sm" role="region" aria-label={title}>
+      <Title order={4}>{title}</Title>
       <Card p="md" shadow="none" withBorder>
         {locationInfo.links.map((link, linkIndex) => (
           <Fragment key={linkIndex}>
