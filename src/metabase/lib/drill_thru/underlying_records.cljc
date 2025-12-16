@@ -28,7 +28,7 @@
   Question transformation:
 
   - Set display \"table\""
-  (:refer-clojure :exclude [mapv empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [mapv empty? #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -50,7 +50,7 @@
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv empty? #?(:clj for)]]))
 
 (mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
   "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
@@ -85,34 +85,43 @@
   ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
 
   ;; This function returns the table name and row count, since that's used for pluralization of the name.
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             (lib.underlying/has-aggregation-or-breakout? query)
-             ;; Either we clicked the aggregation, or there are dimensions.
-             (or (lib.underlying/aggregation-sourced? query column)
-                 (not-empty dimensions))
-             ;; Either we need both column and value (cell/map/data point click) or neither (chart legend click).
-             (or (and column (some? value))
-                 (and (nil? column) (nil? value)))
-             ;; If the column exists, it must not be a structured column like JSON.
-             (not (and column (lib.types.isa/structured? column))))
-    {:lib/type   :metabase.lib.drill-thru/drill-thru
-     :type       :drill-thru/underlying-records
-     ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?
-     ;; Note that some languages have different plurals for exactly 2, or for 1, 2-5, and 6+.
-     :row-count  (if (and (number? value)
-                          (not (neg? value)))
-                   value
-                   2)
-     :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
-                                              (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
-                   (lib.metadata.calculation/display-name query stage-number table-or-card))
-     :dimensions dimensions
-     ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
-     ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by
-     ;; aggregations like sum-where.
-     :column-ref (if (lib.underlying/strictly-underlying-aggregation? query column)
-                   (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
-                   column-ref)}))
+  ;; Filter dimensions to only those that can be traced back to the top-level query. Dimensions that reference
+  ;; expressions defined in later stages (after aggregation) cannot be used for filtering, since those expressions
+  ;; don't exist in the top-level query. See issue #66715.
+  (let [traceable-dimensions        (lib.underlying/traceable-dimensions query dimensions)
+        ;; If dimensions were provided but none are traceable, we can't offer this drill - it would show
+        ;; unfiltered results which is confusing. Only allow aggregation-sourced clicks when there were
+        ;; no dimensions to begin with (single-row aggregation with no breakouts).
+        dimensions-are-untraceable? (and (seq dimensions) (not traceable-dimensions))]
+    (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+               (lib.underlying/has-aggregation-or-breakout? query)
+               (not dimensions-are-untraceable?)
+               ;; Either we clicked the aggregation, or there are traceable dimensions.
+               (or (lib.underlying/aggregation-sourced? query column)
+                   traceable-dimensions)
+               ;; Either we need both column and value (cell/map/data point click) or neither (chart legend click).
+               (or (and column (some? value))
+                   (and (nil? column) (nil? value)))
+               ;; If the column exists, it must not be a structured column like JSON.
+               (not (and column (lib.types.isa/structured? column))))
+      {:lib/type   :metabase.lib.drill-thru/drill-thru
+       :type       :drill-thru/underlying-records
+       ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?
+       ;; Note that some languages have different plurals for exactly 2, or for 1, 2-5, and 6+.
+       :row-count  (if (and (number? value)
+                            (not (neg? value)))
+                     value
+                     2)
+       :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
+                                                (some->> query lib.util/source-card-id (lib.metadata/card query)))]
+                     (lib.metadata.calculation/display-name query stage-number table-or-card))
+       :dimensions traceable-dimensions
+       ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
+       ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by
+       ;; aggregations like sum-where.
+       :column-ref (if (lib.underlying/strictly-underlying-aggregation? query column)
+                     (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
+                     column-ref)})))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/underlying-records
   [_query _stage-number {:keys [row-count table-name]}]
