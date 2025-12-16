@@ -31,7 +31,11 @@ export function EntityCreationInfo({
     <Stack gap="sm" lh="1rem">
       {withTitle && <Title order={6}>{t`Creator and last editor`}</Title>}
       {createdAt != null && creator != null && (
-        <Group gap="sm" wrap="nowrap">
+        <Group
+          gap="sm"
+          wrap="nowrap"
+          data-testid="entity-creation-info-created"
+        >
           <FixedSizeIcon name="ai" />
           <Box>
             {c(
@@ -43,7 +47,7 @@ export function EntityCreationInfo({
         </Group>
       )}
       {lastEditedAt != null && lastEditor != null && (
-        <Group gap="sm" wrap="nowrap">
+        <Group gap="sm" wrap="nowrap" data-testid="entity-creation-info-edited">
           <FixedSizeIcon name="pencil" />
           <Box>
             {c(

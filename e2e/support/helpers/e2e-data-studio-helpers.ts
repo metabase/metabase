@@ -122,5 +122,7 @@ export const DataStudio = {
     searchInput: () => cy.findByTestId("dependency-list-search-input"),
     filterButton: () => cy.findByTestId("dependency-list-filter-button"),
     sidebar: () => cy.findByTestId("dependency-list-sidebar"),
+    sidebarCreatedInfo: () => cy.findByTestId("entity-creation-info-created"),
+    sidebarEditedInfo: () => cy.findByTestId("entity-creation-info-edited"),
   },
 };

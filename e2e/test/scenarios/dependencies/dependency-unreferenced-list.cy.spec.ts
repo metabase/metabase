@@ -1,8 +1,10 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
   CardId,
+  CollectionId,
   FieldId,
   NativeQuerySnippetId,
   SegmentId,
@@ -181,43 +183,50 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
   describe("sidebar", () => {
     it("should show the sidebar for supported entities", () => {
+      function checkSidebar({
+        entityName,
+        locationName,
+        creatorName,
+      }: {
+        entityName: string;
+        locationName?: string;
+        creatorName?: string;
+      }) {
+        H.DataStudio.Tasks.sidebar().within(() => {
+          cy.findByText(entityName).should("be.visible");
+          if (locationName) {
+            cy.findByText(locationName).should("be.visible");
+          }
+          if (creatorName) {
+            H.DataStudio.Tasks.sidebarCreatedInfo().should(
+              "contain.text",
+              creatorName,
+            );
+          }
+        });
+      }
+
       createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
-
-      H.DataStudio.Tasks.list()
-        .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
-        .click();
-      H.DataStudio.Tasks.sidebar().within(() => {
-        cy.findByText(MODEL_FOR_QUESTION_DATA_SOURCE).should("be.visible");
-        cy.findByText("Our analytics").should("be.visible");
-        cy.findAllByText(/Bobby Tables/).should("have.length.gte", 1);
+      checkSidebar({
+        entityName: MODEL_FOR_QUESTION_DATA_SOURCE,
+        locationName: "Our analytics",
+        creatorName: "Bobby Tables",
       });
-
-      H.DataStudio.Tasks.list().findByText(SEGMENT_FOR_QUESTION_FILTER).click();
-      H.DataStudio.Tasks.sidebar().within(() => {
-        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
-        cy.findByText("Orders").should("be.visible");
-        cy.findAllByText(/Bobby Tables/).should("have.length.gte", 1);
+      checkSidebar({
+        entityName: SEGMENT_FOR_QUESTION_FILTER,
+        locationName: "Orders",
+        creatorName: "Bobby Tables",
       });
-
-      H.DataStudio.Tasks.list()
-        .findByText(METRIC_FOR_QUESTION_AGGREGATION)
-        .click();
-      H.DataStudio.Tasks.sidebar().within(() => {
-        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
-        cy.findByText("Our analytics").should("be.visible");
-        cy.findAllByText(/Bobby Tables/).should("have.length.gte", 1);
+      checkSidebar({
+        entityName: METRIC_FOR_QUESTION_AGGREGATION,
+        locationName: "Our analytics",
+        creatorName: "Bobby Tables",
       });
-
-      H.DataStudio.Tasks.list()
-        .findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG)
-        .click();
-      H.DataStudio.Tasks.sidebar().within(() => {
-        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should(
-          "be.visible",
-        );
-        cy.findByText("Location").should("not.exist");
-        cy.findByText("Creator and last editor").should("not.exist");
+      checkSidebar({
+        entityName: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        locationName: "Our analytics",
+        creatorName: "Bobby Tables",
       });
     });
   });
@@ -252,6 +261,7 @@ function createModelContent({
   createModelWithTableDataSource({
     name: MODEL_FOR_MODEL_DATA_SOURCE,
     tableId: ORDERS_ID,
+    collectionId: FIRST_COLLECTION_ID,
   }).then(({ body: model }) => {
     if (withReferences) {
       createModelWithModelDataSource({
@@ -343,6 +353,7 @@ function createSegmentContent({
       });
     }
   });
+
   createSegmentWithTableDataSource({
     name: SEGMENT_FOR_MODEL_FILTER,
     tableId: ORDERS_ID,
@@ -355,6 +366,7 @@ function createSegmentContent({
       });
     }
   });
+
   createSegmentWithTableDataSource({
     name: SEGMENT_FOR_SEGMENT_FILTER,
     tableId: ORDERS_ID,
@@ -367,6 +379,7 @@ function createSegmentContent({
       });
     }
   });
+
   createSegmentWithTableDataSource({
     name: SEGMENT_FOR_METRIC_FILTER,
     tableId: ORDERS_ID,
@@ -402,6 +415,7 @@ function createMetricContent({
   createMetricWithTableDataSource({
     name: METRIC_FOR_MODEL_AGGREGATION,
     tableId: ORDERS_ID,
+    collectionId: FIRST_COLLECTION_ID,
   }).then(({ body: metric }) => {
     if (withReferences) {
       createModelWithMetricClause({
@@ -629,9 +643,11 @@ function createNativeQuestionWithSnippetTag({
 function createModelWithTableDataSource({
   name,
   tableId,
+  collectionId,
 }: {
   name: string;
   tableId: TableId;
+  collectionId?: CollectionId;
 }) {
   return H.createQuestion({
     name,
@@ -639,6 +655,7 @@ function createModelWithTableDataSource({
     query: {
       "source-table": tableId,
     },
+    collection_id: collectionId,
   });
 }
 
@@ -735,9 +752,11 @@ function createSegmentWithSegmentClause({
 function createMetricWithTableDataSource({
   name,
   tableId,
+  collectionId,
 }: {
   name: string;
   tableId: TableId;
+  collectionId?: CollectionId;
 }) {
   return H.createQuestion({
     name,
@@ -746,6 +765,7 @@ function createMetricWithTableDataSource({
       "source-table": tableId,
       aggregation: [["count"]],
     },
+    collection_id: collectionId,
   });
 }
 
