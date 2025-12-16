@@ -22,12 +22,40 @@ const BROKEN_NATIVE_QUESTION_COLUMN = "Broken native question column";
 const BROKEN_NATIVE_QUESTION_TABLE_ALIAS = "Broken native question table";
 const BROKEN_NATIVE_QUESTION_SYNTAX = "Broken native question syntax";
 
-const BROKEN_ENTITY_NAMES = [
+const BROKEN_MODEL_FIELD_ID_REF = "Broken model field id ref";
+const BROKEN_MODEL_FIELD_NAME_REF = "Broken model field name ref";
+const BROKEN_MODEL_COLUMN = "Broken model column";
+const BROKEN_MODEL_TABLE_ALIAS = "Broken model table alias";
+const BROKEN_MODEL_SYNTAX = "Broken model syntax";
+
+const BROKEN_METRIC_FIELD_ID_REF = "Broken metric field id ref";
+const BROKEN_METRIC_FIELD_NAME_REF = "Broken metric field name ref";
+
+const BROKEN_QUESTION_NAMES = [
   BROKEN_QUESTION_FIELD_ID_REF,
   BROKEN_QUESTION_FIELD_NAME_REF,
   BROKEN_NATIVE_QUESTION_COLUMN,
   BROKEN_NATIVE_QUESTION_TABLE_ALIAS,
   BROKEN_NATIVE_QUESTION_SYNTAX,
+];
+
+const BROKEN_MODEL_NAMES = [
+  BROKEN_MODEL_FIELD_ID_REF,
+  BROKEN_MODEL_FIELD_NAME_REF,
+  BROKEN_MODEL_COLUMN,
+  BROKEN_MODEL_TABLE_ALIAS,
+  BROKEN_MODEL_SYNTAX,
+];
+
+const BROKEN_METRIC_NAMES = [
+  BROKEN_METRIC_FIELD_ID_REF,
+  BROKEN_METRIC_FIELD_NAME_REF,
+];
+
+const BROKEN_ENTITY_NAMES = [
+  ...BROKEN_QUESTION_NAMES,
+  ...BROKEN_MODEL_NAMES,
+  ...BROKEN_METRIC_NAMES,
 ];
 
 describe("scenarios > dependencies > broken list", () => {
@@ -102,6 +130,47 @@ function createBrokenEntities() {
     name: BROKEN_NATIVE_QUESTION_SYNTAX,
     type: "question",
     query: "SELECT FROM",
+  });
+
+  createCardWithFieldIdRef({
+    name: BROKEN_MODEL_FIELD_ID_REF,
+    type: "model",
+    tableId: ORDERS_ID,
+    fieldId: REVIEWS.RATING,
+  });
+  createCardWithFieldNameRef({
+    name: BROKEN_MODEL_FIELD_NAME_REF,
+    type: "model",
+    cardId: ORDERS_QUESTION_ID,
+    fieldName: "BAD_NAME",
+  });
+  createNativeCard({
+    name: BROKEN_MODEL_COLUMN,
+    type: "model",
+    query: "SELECT ID, RATING FROM ORDERS",
+  });
+  createNativeCard({
+    name: BROKEN_MODEL_TABLE_ALIAS,
+    type: "model",
+    query: "SELECT P.ID, P.PRICE FROM ORDERS",
+  });
+  createNativeCard({
+    name: BROKEN_MODEL_SYNTAX,
+    type: "model",
+    query: "SELECT FROM",
+  });
+
+  createCardWithFieldIdRef({
+    name: BROKEN_METRIC_FIELD_ID_REF,
+    type: "metric",
+    tableId: ORDERS_ID,
+    fieldId: REVIEWS.RATING,
+  });
+  createCardWithFieldNameRef({
+    name: BROKEN_METRIC_FIELD_NAME_REF,
+    type: "metric",
+    cardId: ORDERS_QUESTION_ID,
+    fieldName: "BAD_NAME",
   });
 }
 
