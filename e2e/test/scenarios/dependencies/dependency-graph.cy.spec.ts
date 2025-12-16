@@ -802,17 +802,19 @@ function createSnippetBasedCard({
   snippetId: NativeQuerySnippetId;
   snippetName: string;
 }) {
+  const tagName = `snippet: ${snippetName}`;
+
   return H.createNativeQuestion({
     name,
     type,
     database: WRITABLE_DB_ID,
     native: {
-      query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
+      query: `SELECT * FROM ${tableName} WHERE {{${tagName}}}`,
       "template-tags": {
-        [`snippet:${snippetName}`]: {
+        [tagName]: {
           id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-          name: `snippet:${snippetName}`,
-          "display-name": `snippet:${snippetName}`,
+          name: tagName,
+          "display-name": tagName,
           type: "snippet",
           "snippet-id": snippetId,
           "snippet-name": snippetName,
@@ -983,6 +985,8 @@ function createSnippetBasedTransform({
   snippetId: NativeQuerySnippetId;
   snippetName: string;
 }) {
+  const tagName = `snippet: ${snippetName}`;
+
   return H.createTransform({
     name: SNIPPET_BASED_TRANSFORM_NAME,
     source: {
@@ -991,12 +995,12 @@ function createSnippetBasedTransform({
         database: WRITABLE_DB_ID,
         type: "native",
         native: {
-          query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
+          query: `SELECT * FROM ${tableName} WHERE {{${tagName}}}`,
           "template-tags": {
-            [`snippet:${snippetName}`]: {
+            [tagName]: {
               id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-              name: `snippet:${snippetName}`,
-              "display-name": `snippet:${snippetName}`,
+              name: tagName,
+              "display-name": tagName,
               type: "snippet",
               "snippet-id": snippetId,
               "snippet-name": snippetName,

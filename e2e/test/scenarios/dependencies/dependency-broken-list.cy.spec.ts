@@ -1,10 +1,13 @@
 const { H } = cy;
 
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { CardId, CardType, FieldId, TableId } from "metabase-types/api";
 
 const { ORDERS_ID, ORDERS, REVIEWS } = SAMPLE_DATABASE;
+
+const WRITABLE_TABLE_NAME = "scoreboard_actions";
 
 const VALID_CARD_COLUMN_ID = "Valid card column with id";
 const VALID_CARD_COLUMN_NAME = "Valid card column with name";
@@ -62,14 +65,42 @@ const BROKEN_CARD_ERRORS = {
   ...BROKEN_NATIVE_CARD_ERRORS,
 };
 
-const SEGMENT_COLUMN_MISSING = "Segment with a non-existing column";
-const BROKEN_SEGMENT_NAMES = [SEGMENT_COLUMN_MISSING];
+const SEGMENT_COLUMN_ID_MISSING =
+  "Segment with a non-existing column with an id";
+const BROKEN_SEGMENT_NAMES = [SEGMENT_COLUMN_ID_MISSING];
+
+const TRANSFORM_COLUMN_ID_MISSING =
+  "Transform with a non-existing column with an id";
+const TRANSFORM_COLUMN_WRONG_TABLE = "Transform with a column on a wrong table";
+const TRANSFORM_CARD_COLUMN_MISSING =
+  "Native transform with a non-existing column";
+const TRANSFORM_CARD_TABLE_ALIAS_MISSING =
+  "Native transform with a missing table alias";
+const TRANSFORM_CARD_SYNTAX_ERROR = "Native transform with a syntax error";
+
+const BROKEN_TRANSFORM_NAMES = [
+  TRANSFORM_COLUMN_ID_MISSING,
+  TRANSFORM_COLUMN_WRONG_TABLE,
+  TRANSFORM_CARD_COLUMN_MISSING,
+  TRANSFORM_CARD_TABLE_ALIAS_MISSING,
+  TRANSFORM_CARD_SYNTAX_ERROR,
+];
+
+const BROKEN_TRANSFORM_ERRORS = {
+  [TRANSFORM_COLUMN_ID_MISSING]: { "1 missing column": ["Unknown Field"] },
+  [TRANSFORM_COLUMN_WRONG_TABLE]: { "1 missing column": ["Unknown Field"] },
+  [TRANSFORM_CARD_COLUMN_MISSING]: { "1 missing column": ["rating"] },
+  [TRANSFORM_CARD_TABLE_ALIAS_MISSING]: { "1 missing table alias": ["P"] },
+  [TRANSFORM_CARD_SYNTAX_ERROR]: { "1 syntax error": [] },
+};
 
 describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.resetTestTable({ type: "postgres", table: WRITABLE_TABLE_NAME });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TABLE_NAME });
     cy.viewport(1600, 1400);
   });
 
@@ -124,6 +155,16 @@ describe("scenarios > dependencies > broken list", () => {
         });
       });
     });
+
+    it("should show broken transforms", () => {
+      createBrokenTransforms();
+      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DataStudio.Tasks.list().within(() => {
+        BROKEN_TRANSFORM_NAMES.forEach((name) => {
+          cy.findByText(name).should("be.visible");
+        });
+      });
+    });
   });
 
   describe("search", () => {
@@ -142,25 +183,17 @@ describe("scenarios > dependencies > broken list", () => {
     it("should filter entities by type", () => {
       createBrokenCards({ type: "question" });
       createBrokenSegments();
+      createBrokenTransforms();
       H.DataStudio.Tasks.visitBrokenEntities();
       checkList({
-        visibleEntities: [...BROKEN_CARD_NAMES, ...BROKEN_SEGMENT_NAMES],
+        visibleEntities: [...BROKEN_CARD_NAMES, ...BROKEN_TRANSFORM_NAMES],
       });
 
       H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Question").click();
       checkList({
         visibleEntities: [...BROKEN_CARD_NAMES],
-        hiddenEntities: [...BROKEN_SEGMENT_NAMES],
-      });
-
-      H.popover().within(() => {
-        cy.findByText("Question").click();
-        cy.findByText("Segment").click();
-      });
-      checkList({
-        visibleEntities: [...BROKEN_SEGMENT_NAMES],
-        hiddenEntities: [...BROKEN_CARD_NAMES],
+        hiddenEntities: [...BROKEN_TRANSFORM_NAMES],
       });
     });
   });
@@ -169,42 +202,25 @@ describe("scenarios > dependencies > broken list", () => {
     it("should show the sidebar for questions with error info", () => {
       createBrokenCards({ type: "question" });
       H.DataStudio.Tasks.visitBrokenEntities();
-
-      Object.entries(BROKEN_CARD_ERRORS).forEach(([entityName, errors]) => {
-        H.DataStudio.Tasks.list().findByText(entityName).click();
-        checkSidebar({
-          entityName,
-          errors,
-        });
-      });
+      openSidebarAndCheckErrors(BROKEN_CARD_ERRORS);
     });
 
     it("should show the sidebar for models with error info", () => {
       createBrokenCards({ type: "model" });
       H.DataStudio.Tasks.visitBrokenEntities();
-
-      Object.entries(BROKEN_CARD_ERRORS).forEach(([entityName, errors]) => {
-        H.DataStudio.Tasks.list().findByText(entityName).click();
-        checkSidebar({
-          entityName,
-          errors,
-        });
-      });
+      openSidebarAndCheckErrors(BROKEN_CARD_ERRORS);
     });
 
     it("should show the sidebar for models with error info", () => {
       createBrokenCards({ type: "question" });
       H.DataStudio.Tasks.visitBrokenEntities();
+      openSidebarAndCheckErrors(BROKEN_MBQL_CARD_ERRORS);
+    });
 
-      Object.entries(BROKEN_MBQL_CARD_ERRORS).forEach(
-        ([entityName, errors]) => {
-          H.DataStudio.Tasks.list().findByText(entityName).click();
-          checkSidebar({
-            entityName,
-            errors,
-          });
-        },
-      );
+    it("should show the sidebar for transforms with error info", () => {
+      createBrokenTransforms();
+      H.DataStudio.Tasks.visitBrokenEntities();
+      openSidebarAndCheckErrors(BROKEN_TRANSFORM_ERRORS);
     });
   });
 });
@@ -277,10 +293,39 @@ function createBrokenCards({ type }: { type: CardType }) {
 
 function createBrokenSegments() {
   createSegmentWithFieldIdRef({
-    name: SEGMENT_COLUMN_MISSING,
+    name: SEGMENT_COLUMN_ID_MISSING,
     tableId: ORDERS_ID,
     fieldId: REVIEWS.RATING,
   });
+}
+
+function createBrokenTransforms() {
+  H.getTableId({ name: WRITABLE_TABLE_NAME, databaseId: WRITABLE_DB_ID }).then(
+    (tableId) => {
+      createTransformWithFieldIdRef({
+        name: TRANSFORM_COLUMN_ID_MISSING,
+        tableId: tableId,
+        fieldId: 1000,
+      });
+      createTransformWithFieldIdRef({
+        name: TRANSFORM_COLUMN_WRONG_TABLE,
+        tableId: tableId,
+        fieldId: ORDERS.TOTAL,
+      });
+      createNativeTransform({
+        name: TRANSFORM_CARD_COLUMN_MISSING,
+        query: `SELECT RATING FROM "${WRITABLE_TABLE_NAME}"`,
+      });
+      createNativeTransform({
+        name: TRANSFORM_CARD_TABLE_ALIAS_MISSING,
+        query: `SELECT P.ID, P.PRICE FROM "${WRITABLE_TABLE_NAME}"`,
+      });
+      createNativeTransform({
+        name: TRANSFORM_CARD_SYNTAX_ERROR,
+        query: "SELECT FROM",
+      });
+    },
+  );
 }
 
 function createCardWithFieldIdRef({
@@ -366,6 +411,63 @@ function createSegmentWithFieldIdRef({
   });
 }
 
+function createTransformWithFieldIdRef({
+  name,
+  tableId,
+  fieldId,
+}: {
+  name: string;
+  tableId: TableId;
+  fieldId: FieldId;
+}) {
+  return H.createTransform({
+    name,
+    source: {
+      type: "query",
+      query: {
+        type: "query",
+        database: WRITABLE_DB_ID,
+        query: {
+          "source-table": tableId,
+          filter: ["not-null", ["field", fieldId, null]],
+        },
+      },
+    },
+    target: {
+      type: "table",
+      database: WRITABLE_DB_ID,
+      name,
+      schema: "public",
+    },
+  });
+}
+
+function createNativeTransform({
+  name,
+  query,
+}: {
+  name: string;
+  query: string;
+}) {
+  return H.createTransform({
+    name,
+    source: {
+      type: "query",
+      query: {
+        database: WRITABLE_DB_ID,
+        type: "native",
+        native: { query },
+      },
+    },
+    target: {
+      type: "table",
+      database: WRITABLE_DB_ID,
+      name,
+      schema: "public",
+    },
+  });
+}
+
 function checkList({
   visibleEntities = [],
   hiddenEntities = [],
@@ -416,6 +518,18 @@ function checkSidebar({
       errors.forEach((error) => {
         cy.findByText(error).should("be.visible");
       });
+    });
+  });
+}
+
+function openSidebarAndCheckErrors(
+  errors: Record<string, Record<string, string[]>>,
+) {
+  Object.entries(errors).forEach(([entityName, errors]) => {
+    H.DataStudio.Tasks.list().findByText(entityName).click();
+    checkSidebar({
+      entityName,
+      errors,
     });
   });
 }
