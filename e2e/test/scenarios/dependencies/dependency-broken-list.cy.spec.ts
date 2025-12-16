@@ -8,18 +8,26 @@ const { ORDERS_ID, ORDERS, REVIEWS } = SAMPLE_DATABASE;
 
 const VALID_QUESTION_FIELD_ID_REF = "Valid question field id ref";
 const VALID_QUESTION_FIELD_NAME_REF = "Valid question field name ref";
+const VALID_NATIVE_CARD = "Valid native card";
 
 const VALID_ENTITY_NAMES = [
   VALID_QUESTION_FIELD_ID_REF,
   VALID_QUESTION_FIELD_NAME_REF,
+  VALID_NATIVE_CARD,
 ];
 
 const BROKEN_QUESTION_FIELD_ID_REF = "Broken question field id ref";
 const BROKEN_QUESTION_FIELD_NAME_REF = "Broken question field name ref";
+const BROKEN_NATIVE_QUESTION_COLUMN = "Broken native question column";
+const BROKEN_NATIVE_QUESTION_TABLE_ALIAS = "Broken native question table";
+const BROKEN_NATIVE_QUESTION_SYNTAX = "Broken native question syntax";
 
 const BROKEN_ENTITY_NAMES = [
   BROKEN_QUESTION_FIELD_ID_REF,
   BROKEN_QUESTION_FIELD_NAME_REF,
+  BROKEN_NATIVE_QUESTION_COLUMN,
+  BROKEN_NATIVE_QUESTION_TABLE_ALIAS,
+  BROKEN_NATIVE_QUESTION_SYNTAX,
 ];
 
 describe("scenarios > dependencies > broken list", () => {
@@ -49,16 +57,21 @@ describe("scenarios > dependencies > broken list", () => {
 
 function createValidEntities() {
   createCardWithFieldIdRef({
-    name: "Valid question field id ref",
+    name: VALID_QUESTION_FIELD_ID_REF,
     type: "question",
     tableId: ORDERS_ID,
     fieldId: ORDERS.TOTAL,
   });
   createCardWithFieldNameRef({
-    name: "Valid question field name ref",
+    name: VALID_QUESTION_FIELD_NAME_REF,
     type: "question",
     cardId: ORDERS_QUESTION_ID,
     fieldName: "TOTAL",
+  });
+  createNativeCard({
+    name: VALID_NATIVE_CARD,
+    type: "question",
+    query: "SELECT ID, TOTAL FROM ORDERS",
   });
 }
 
@@ -74,6 +87,21 @@ function createBrokenEntities() {
     type: "question",
     cardId: ORDERS_QUESTION_ID,
     fieldName: "BAD_NAME",
+  });
+  createNativeCard({
+    name: BROKEN_NATIVE_QUESTION_COLUMN,
+    type: "question",
+    query: "SELECT ID, RATING FROM ORDERS",
+  });
+  createNativeCard({
+    name: BROKEN_NATIVE_QUESTION_TABLE_ALIAS,
+    type: "question",
+    query: "SELECT P.ID, P.PRICE FROM ORDERS",
+  });
+  createNativeCard({
+    name: BROKEN_NATIVE_QUESTION_SYNTAX,
+    type: "question",
+    query: "SELECT FROM",
   });
 }
 
@@ -117,6 +145,24 @@ function createCardWithFieldNameRef({
       aggregation: [
         ["sum", ["field", fieldName, { "base-type": "type/Integer" }]],
       ],
+    },
+  });
+}
+
+function createNativeCard({
+  name,
+  type,
+  query,
+}: {
+  name: string;
+  type: CardType;
+  query: string;
+}) {
+  return H.createNativeQuestion({
+    name,
+    type,
+    native: {
+      query,
     },
   });
 }
