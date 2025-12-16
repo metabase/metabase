@@ -6,9 +6,11 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { Collections, getCollectionType,
+import {
+  Collections,
+  getCollectionType,
   normalizedCollection,
- } from "metabase/entities/collections";
+} from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,
@@ -229,4 +231,3 @@ function getLabel(card) {
 
   return t`question`;
 }
-

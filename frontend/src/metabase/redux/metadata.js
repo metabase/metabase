@@ -2,10 +2,10 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import { cardApi, dashboardApi, datasetApi } from "metabase/api";
-import { Databases } from "metabase/entities/databases"
-import { Fields } from "metabase/entities/fields"
-import { Segments } from "metabase/entities/segments"
-import { Tables } from "metabase/entities/tables"
+import { Databases } from "metabase/entities/databases";
+import { Fields } from "metabase/entities/fields";
+import { Segments } from "metabase/entities/segments";
+import { Tables } from "metabase/entities/tables";
 import { isProduction } from "metabase/env";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction, fetchData } from "metabase/lib/redux";

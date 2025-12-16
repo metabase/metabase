@@ -256,4 +256,3 @@ const transformFieldValuesData = (data, table_id) => {
   // table_id is required for uniqueFieldId as it's a way to know if field is virtual
   return { id: field_id, ...rest, ...(table_id && { table_id }) };
 };
-

@@ -8,9 +8,11 @@ import {
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import { Collections, ROOT_COLLECTION,
+import {
+  Collections,
+  ROOT_COLLECTION,
   getCollectionIcon,
- } from "metabase/entities/collections";
+} from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import {

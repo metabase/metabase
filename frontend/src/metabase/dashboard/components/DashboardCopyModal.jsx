@@ -8,7 +8,7 @@ import _ from "underscore";
 
 import { Collections } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import { Dashboards } from "metabase/entities/dashboards"
+import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 

@@ -102,4 +102,3 @@ export const Pulses = createEntity({
 const useGetQuery = ({ id }, options) => {
   return useGetSubscriptionQuery(id, options);
 };
-

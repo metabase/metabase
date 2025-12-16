@@ -6,7 +6,7 @@ import Button from "metabase/common/components/Button";
 import Link from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Actions } from "metabase/entities/actions";
-import { Databases } from "metabase/entities/databases"
+import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import * as Urls from "metabase/lib/urls";

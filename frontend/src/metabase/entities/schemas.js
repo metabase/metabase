@@ -9,7 +9,7 @@ import {
   useListSyncableDatabaseSchemasQuery,
   useListVirtualDatabaseTablesQuery,
 } from "metabase/api";
-import { Questions } from "metabase/entities/questions"
+import { Questions } from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { SchemaSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -165,7 +165,6 @@ export const Schemas = createEntity({
     return state;
   },
 });
-
 
 function getPreviousSchemaContainingTheQuestion(
   state,

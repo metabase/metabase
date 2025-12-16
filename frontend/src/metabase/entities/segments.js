@@ -77,4 +77,3 @@ export const Segments = createEntity({
 const useGetQuery = ({ id }, options) => {
   return useGetSegmentQuery(id, options);
 };
-

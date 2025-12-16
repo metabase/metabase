@@ -15,9 +15,9 @@ import {
   useListDatabaseSchemaTablesQuery,
   useListTablesQuery,
 } from "metabase/api";
-import { Fields } from "metabase/entities/fields"
-import { Questions } from "metabase/entities/questions"
-import { Segments } from "metabase/entities/segments"
+import { Fields } from "metabase/entities/fields";
+import { Questions } from "metabase/entities/questions";
+import { Segments } from "metabase/entities/segments";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,
@@ -471,4 +471,3 @@ function getUseListQueryEndpoint(dbId, schemaName) {
 
   return "listTables";
 }
-

@@ -83,4 +83,3 @@ export const Groups = createEntity({
 const useGetQuery = ({ id }) => {
   return useGetPermissionsGroupQuery(id);
 };
-

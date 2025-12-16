@@ -111,4 +111,3 @@ const useGetQuery = ({ id, type }, options) => {
 
   return type === "byModelId" ? persistedInfoByCard : persistedInfo;
 };
-

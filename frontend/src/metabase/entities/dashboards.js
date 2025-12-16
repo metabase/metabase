@@ -184,4 +184,3 @@ export const Dashboards = createEntity({
     return type && `collection=${type}`;
   },
 });
-

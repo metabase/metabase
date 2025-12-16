@@ -129,4 +129,3 @@ export const Documents = createEntity({
     getColor: () => color("brand"),
   },
 });
-

@@ -7,9 +7,9 @@ import _ from "underscore";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { Actions } from "metabase/entities/actions";
-import { Databases } from "metabase/entities/databases"
-import { Questions } from "metabase/entities/questions"
-import { Tables } from "metabase/entities/tables"
+import { Databases } from "metabase/entities/databases";
+import { Questions } from "metabase/entities/questions";
+import { Tables } from "metabase/entities/tables";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
