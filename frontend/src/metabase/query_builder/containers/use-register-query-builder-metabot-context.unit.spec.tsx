@@ -102,6 +102,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
       }),
     );
     setupEnterpriseOnlyPlugin("metabot");
+    setupEnterpriseOnlyPlugin("ai-entity-analysis");
   });
 
   beforeEach(() => {

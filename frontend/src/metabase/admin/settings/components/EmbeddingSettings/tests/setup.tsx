@@ -33,9 +33,6 @@ export interface SetupOpts {
   specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
-// SETTINGS OVERRIDES:
-PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
-
 export async function setup({
   renderCallback,
   showSdkEmbedTerms = true,
@@ -59,6 +56,9 @@ export async function setup({
   });
 
   if (hasEnterprisePlugins) {
+    // SETTINGS OVERRIDES:
+    PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
+
     if (specificPlugins) {
       specificPlugins.forEach((plugin) => {
         setupEnterpriseOnlyPlugin(plugin);

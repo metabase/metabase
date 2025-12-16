@@ -194,6 +194,8 @@ export function setupQuestionSharingMenu({
 
   if (isEnterprise) {
     setupEnterpriseOnlyPlugin("audit_app");
+    setupEnterpriseOnlyPlugin("application_permissions");
+    setupEnterpriseOnlyPlugin("collections");
   }
 
   renderWithProviders(
