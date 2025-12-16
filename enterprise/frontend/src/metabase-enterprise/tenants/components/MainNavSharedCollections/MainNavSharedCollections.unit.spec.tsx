@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Collection } from "metabase-types/api";
@@ -20,42 +21,23 @@ const setup = ({
   isAdmin = false,
   tenantCollections = MOCK_TENANT_COLLECTIONS,
   currentUser = createMockUser({ is_superuser: isAdmin }),
-  rootCollectionCanWrite,
+  canWriteToSharedCollectionRoot = false,
 }: {
   isAdmin?: boolean;
   tenantCollections?: Collection[];
   currentUser?: ReturnType<typeof createMockUser>;
-  rootCollectionCanWrite?: boolean;
+  canWriteToSharedCollectionRoot?: boolean;
 } = {}) => {
   const settings = mockSettings({ "use-tenants": true });
 
-  fetchMock.get("path:/api/collection", (call) => {
-    const url = new URL(call.url);
-    const namespace = url.searchParams.get("namespace");
-
-    return namespace === "shared-tenant-collection" ? tenantCollections : [];
-  });
-
-  fetchMock.get("path:/api/collection/tree", (call) => {
-    const url = new URL(call.url);
-    const namespace = url.searchParams.get("namespace");
-
-    return namespace === "shared-tenant-collection" ? tenantCollections : [];
-  });
-
-  fetchMock.get("path:/api/collection/root", (call) => {
-    const url = new URL(call.url);
-
-    if (url.searchParams.get("namespace") === "shared-tenant-collection") {
-      return createMockCollection({
-        id: "root",
-        name: "Root shared collection",
-        namespace: "shared-tenant-collection",
-        can_write: rootCollectionCanWrite,
-      });
-    }
-
-    return 404;
+  setupCollectionsEndpoints({
+    collections: tenantCollections,
+    rootCollection: createMockCollection({
+      id: "root",
+      name: "Root shared collection",
+      namespace: "shared-tenant-collection",
+      can_write: canWriteToSharedCollectionRoot,
+    }),
   });
 
   renderWithProviders(<MainNavSharedCollections />, {
@@ -65,7 +47,7 @@ const setup = ({
 
 describe("MainNavSharedCollections > create shared tenant collection button", () => {
   it("shows the create button if the user can write to root collection", async () => {
-    setup({ rootCollectionCanWrite: true });
+    setup({ canWriteToSharedCollectionRoot: true });
     await screen.findByText("External collections");
 
     expect(screen.getByRole("button", { name: /add/i })).toBeInTheDocument();
@@ -83,7 +65,7 @@ describe("MainNavSharedCollections > create shared tenant collection button", ()
 
 describe("MainNavSharedCollections > section visibility", () => {
   it("shows the section if they can write to root collection", async () => {
-    setup({ rootCollectionCanWrite: true, tenantCollections: [] });
+    setup({ canWriteToSharedCollectionRoot: true, tenantCollections: [] });
 
     expect(await screen.findByText("External collections")).toBeInTheDocument();
   });
@@ -95,7 +77,11 @@ describe("MainNavSharedCollections > section visibility", () => {
   });
 
   it("hides the section for non-admins when there are no collections", () => {
-    setup({ isAdmin: false, tenantCollections: [] });
+    setup({
+      isAdmin: false,
+      tenantCollections: [],
+      canWriteToSharedCollectionRoot: false,
+    });
 
     expect(screen.queryByText("External collections")).not.toBeInTheDocument();
   });
@@ -128,26 +114,6 @@ describe("MainNavSharedCollections > section visibility", () => {
 
     renderWithProviders(<MainNavSharedCollections />, {
       storeInitialState: createMockState({ settings, currentUser }),
-    });
-
-    expect(screen.queryByText("External collections")).not.toBeInTheDocument();
-  });
-
-  it("shows the section for non-admins when they can create shared collections (curate permission on root tenant collection)", async () => {
-    setup({
-      isAdmin: false,
-      tenantCollections: [],
-      rootCollectionCanWrite: true,
-    });
-
-    expect(await screen.findByText("External collections")).toBeInTheDocument();
-  });
-
-  it("hides the section for non-admins when they cannot create shared collections and have no visible collections", () => {
-    setup({
-      isAdmin: false,
-      tenantCollections: [],
-      rootCollectionCanWrite: false,
     });
 
     expect(screen.queryByText("External collections")).not.toBeInTheDocument();
