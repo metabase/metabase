@@ -32,7 +32,7 @@ export const UserCollectionList = () => {
   const items = users
     .filter((user) => user.personal_collection_id)
     .map((user) => ({
-      key: user.personal_collection_id!,
+      key: user.personal_collection_id,
       name: user.common_name,
       icon: "person" as const,
       link: `/collection/${user.personal_collection_id}`,

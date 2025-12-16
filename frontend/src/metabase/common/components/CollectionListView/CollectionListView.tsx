@@ -5,7 +5,7 @@ import { Grid, GridItem } from "metabase/common/components/Grid";
 import Link from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
-import { Box, Card, Flex, Group, Icon, Loader, Text } from "metabase/ui";
+import { Box, Card, Flex, Group, Icon, Loader, Title } from "metabase/ui";
 
 import styles from "./CollectionListView.module.css";
 
@@ -77,14 +77,9 @@ export const CollectionListView = ({
                   >
                     <Group gap="xs">
                       <Icon name={item.icon} className={CS.mr1} size={18} />
-                      <Text
-                        fw={600}
-                        lh="1.2"
-                        component="h3"
-                        style={{ color: "inherit" }}
-                      >
+                      <Title order={6} component="h3">
                         {item.name}
-                      </Text>
+                      </Title>
                     </Group>
                   </Card>
                 </Link>

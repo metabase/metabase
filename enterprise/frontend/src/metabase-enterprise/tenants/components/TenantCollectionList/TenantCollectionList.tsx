@@ -18,15 +18,14 @@ export const TenantCollectionList = () => {
     { title: t`Tenant collections` },
   ];
 
-  const items =
-    tenants
-      .filter((tenant) => tenant.tenant_collection_id)
-      .map((tenant) => ({
-        key: tenant.id,
-        name: tenant.name,
-        icon: "folder" as const,
-        link: `/collection/${tenant.tenant_collection_id}`,
-      })) ?? [];
+  const items = tenants
+    .filter((tenant) => tenant.tenant_collection_id)
+    .map((tenant) => ({
+      key: tenant.id,
+      name: tenant.name,
+      icon: "folder" as const,
+      link: `/collection/${tenant.tenant_collection_id}`,
+    }));
 
   return (
     <CollectionListView crumbs={crumbs} loading={isLoading} items={items} />
