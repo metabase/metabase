@@ -228,9 +228,9 @@ function getAuthMethod(firstEmbed: MetabaseEmbedElement): AUTH_TYPES {
 
 function incrementComponentPropertyCount(
   propertyPath: FlattenObjectKeys<DefaultValues>,
-  value: any | undefined,
+  value: boolean | undefined,
   usage: EmbeddedAnalyticsJsEventSchema,
-  getDefaultValue: (path: string[]) => any = defaultGetDefaultValue,
+  getDefaultValue: (path: string[]) => boolean = defaultGetDefaultValue,
 ) {
   const path = propertyPath.split(".");
 
@@ -241,6 +241,6 @@ function incrementComponentPropertyCount(
   );
 }
 
-function defaultGetDefaultValue(path: string[]): any {
+function defaultGetDefaultValue(path: string[]): boolean {
   return getIn(DEFAULT_VALUES, path);
 }
