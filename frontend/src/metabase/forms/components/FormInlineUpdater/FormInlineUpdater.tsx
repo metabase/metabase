@@ -15,8 +15,9 @@ const DEFAULT_INLINE_UPDATE_DEBOUNCE_MS = 300;
 
 /**
  * Calls the update function when form values change.
- * Rolls back to the last successful state on error.
  * Processes updates sequentially to avoid race conditions.
+ *
+ * Note: To enable automatic form rollback on error, use `enableReinitialize` on FormProvider.
  *
  * @param update - Async function called with new form values
  * @param onSuccess - Optional callback called with the update result on success
@@ -25,7 +26,7 @@ const DEFAULT_INLINE_UPDATE_DEBOUNCE_MS = 300;
  *
  * @example
  * ```tsx
- * <FormProvider initialValues={...} onSubmit={_.noop}>
+ * <FormProvider initialValues={...} onSubmit={_.noop} enableReinitialize>
  *   <Form>
  *     <FormInlineUpdater update={async (values) => await updateSettings(values)} debounceMs={300} />
  *     <FormTextInput name="field" />
@@ -41,7 +42,6 @@ export const FormInlineUpdater = <T, TSuccess>({
 }: Props<T, TSuccess>) => {
   const { initialValues } = useFormikContext<T>();
   const lastSuccessfulValues = useRef<T>(initialValues);
-  const skipNextChange = useRef(false);
   const updateInProgress = useRef(false);
   const pendingUpdate = useRef<T | null>(null);
 
@@ -60,13 +60,9 @@ export const FormInlineUpdater = <T, TSuccess>({
         lastSuccessfulValues.current = values;
         onSuccess?.(result);
       } catch (err) {
-        // On error, discard any pending updates and rollback
+        // On error, discard any pending updates
         pendingUpdate.current = null;
         onError?.(err);
-        // if (lastSuccessfulValues.current !== null) {
-        //   skipNextChange.current = true;
-        //   await setValues(lastSuccessfulValues.current);
-        // }
         updateInProgress.current = false;
         return;
       }
@@ -84,10 +80,6 @@ export const FormInlineUpdater = <T, TSuccess>({
   );
 
   const handleChange = useDebouncedCallback(async (values: T) => {
-    if (skipNextChange.current) {
-      skipNextChange.current = false;
-      return;
-    }
     // Skip update if values haven't changed from last successful state
     if (_.isEqual(values, lastSuccessfulValues.current)) {
       return;

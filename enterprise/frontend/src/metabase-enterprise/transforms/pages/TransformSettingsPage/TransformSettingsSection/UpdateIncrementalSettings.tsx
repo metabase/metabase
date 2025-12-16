@@ -32,6 +32,7 @@ export const UpdateIncrementalSettings = ({ transform }: Props) => {
       initialValues={initialValues}
       validationSchema={validationSchema}
       onSubmit={_.noop}
+      enableReinitialize
     >
       <Form>
         <FormInlineUpdater
