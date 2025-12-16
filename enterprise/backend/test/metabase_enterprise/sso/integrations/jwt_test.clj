@@ -1107,6 +1107,51 @@
                     (testing "user is not assigned to groups not mentioned in JWT claims"
                       (is (not (contains? (group-memberships (u/the-id user)) "tenant-admins"))))))))))))))
 
+(deftest non-string-tenant-slugs-are-handled-correctly
+  (with-jwt-default-setup!
+    (mt/with-additional-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-model-cleanup [:model/User :model/Tenant]
+          (testing "Integers are allowed, converted to strings"
+            (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email "tenant-user@metabase.com"
+                                                          :first_name "Tenant"
+                                                          :last_name "User"
+                                                          "@tenant" 123}
+                                                         default-jwt-secret))]
+              (is (saml-test/successful-login? response))
+              (is (t2/exists? :model/Tenant :slug "123"))))
+          (testing "Other non-string values are rejected"
+            (let [response (client/client-real-response :get 401 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email "tenant-user@metabase.com"
+                                                          :first_name "Tenant"
+                                                          :last_name "User"
+                                                          "@tenant" false}
+                                                         default-jwt-secret))]
+              (is (= "Value of `@tenant` must be a string" (:body response)))
+              (is (not (saml-test/successful-login? response)))))
+          (testing "Other non-string values are rejected"
+            (let [response (client/client-real-response :get 401 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email "tenant-user@metabase.com"
+                                                          :first_name "Tenant"
+                                                          :last_name "User"
+                                                          "@tenant" {"foo" "bar"}}
+                                                         default-jwt-secret))]
+              (is (= "Value of `@tenant` must be a string" (:body response)))
+              (is (not (saml-test/successful-login? response))))))))))
+
 (deftest tenant-user-group-sync-on-subsequent-login-test
   (testing "JWT tenant user group memberships are synced correctly on subsequent logins"
     (with-jwt-default-setup!
