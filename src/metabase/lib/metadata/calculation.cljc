@@ -655,6 +655,10 @@
              (lib.util/first-stage? query stage-number))
     (let [existing-ids (into #{} (keep :id) source-cols)]
       (for [column source-cols
+            :let   [fk-id (:fk-target-field-id column)]
+            :when  fk-id
+            :let   [fk-field (lib.metadata/field query fk-id)]
+            :when  (not= :sensitive (:visibility-type fk-field))
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
                         (not (false? (:active remapped)))
