@@ -5,7 +5,16 @@ import { Grid, GridItem } from "metabase/common/components/Grid";
 import Link from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
-import { Box, Card, Flex, Group, Icon, Loader, Title } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Flex,
+  Group,
+  Icon,
+  type IconName,
+  Loader,
+  Title,
+} from "metabase/ui";
 
 import styles from "./CollectionListView.module.css";
 
@@ -14,7 +23,7 @@ type Crumb = NonNullable<ComponentProps<typeof BrowserCrumbs>["crumbs"]>;
 type CollectionListItem = {
   key: Key;
   name: ReactNode;
-  icon: ComponentProps<typeof Icon>["name"];
+  icon: IconName;
   link: string;
 };
 

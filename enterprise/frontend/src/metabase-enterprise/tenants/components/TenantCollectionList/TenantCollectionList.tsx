@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import * as Urls from "metabase/lib/urls";
+import type { IconName } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 export const TenantCollectionList = () => {
@@ -23,7 +24,7 @@ export const TenantCollectionList = () => {
     .map((tenant) => ({
       key: tenant.id,
       name: tenant.name,
-      icon: "folder" as const,
+      icon: "folder" as const satisfies IconName,
       link: `/collection/${tenant.tenant_collection_id}`,
     }));
 

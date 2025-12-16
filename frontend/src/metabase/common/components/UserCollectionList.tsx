@@ -9,6 +9,7 @@ import {
   ROOT_COLLECTION,
 } from "metabase/entities/collections/constants";
 import * as Urls from "metabase/lib/urls";
+import type { IconName } from "metabase/ui";
 
 export const UserCollectionList = () => {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
@@ -34,7 +35,7 @@ export const UserCollectionList = () => {
     .map((user) => ({
       key: user.personal_collection_id,
       name: user.common_name,
-      icon: "person" as const,
+      icon: "person" as const satisfies IconName,
       link: `/collection/${user.personal_collection_id}`,
     }));
 
