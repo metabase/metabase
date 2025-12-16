@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
-import { Box, Center, Stack } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
@@ -40,10 +40,7 @@ export function RunListPage({ location }: RunListPageProps) {
       }
       gap={0}
     >
-      <Stack>
-        <Box>{t`When each transform ran.`}</Box>
-        <RunListPageBody params={params} />
-      </Stack>
+      <RunListPageBody params={params} />
     </PageContainer>
   );
 }
