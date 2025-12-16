@@ -1294,7 +1294,7 @@
         ;; Cheeky dag test, that really belongs in dag-test
         ;; TODO move to dag-test
         (is (=? {:dependencies {{:id (:ref_id tx), :node-type :workspace-transform}
-                                [{:id {:db (mt/id) :schema nil, :table "venues", :id int?}, :entity-type :table}]},
+                                [{:id {:db (mt/id) :schema nil, :table "venues", :id int?}, :node-type :table}]},
                  :entities     [{:id (:ref_id tx), :node-type :workspace-transform}],
                  :inputs       [{:db (mt/id), :id int?, :schema nil, :table "venues"}],
                  :outputs      [{:db     (mt/id),

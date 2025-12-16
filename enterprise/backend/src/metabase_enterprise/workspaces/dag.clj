@@ -27,7 +27,7 @@
 
 (defn- global-parents
   "Dependencies analyzed by global hooks - may be incomplete. For example, excluding transforms that have not been run."
-  [ws-id entity-type id]
+  [ws-id node-type id]
   ;; Note: from_entity_type is transformed to a keyword by the Dependency model
   (t2/select-fn-vec (fn [{:keys [from_entity_type from_entity_id]}]
                       (case from_entity_type
@@ -35,7 +35,7 @@
                         :table     {:node-type :table,              :id (table-id->coord from_entity_id)}
                         :transform {:node-type :external-transform, :id from_entity_id}))
                     [:model/Dependency :from_entity_type :from_entity_id]
-                    :to_entity_type entity-type
+                    :to_entity_type node-type
                     :to_entity_id id
                     ;; Exclude transforms which are being overridden in the workspace.
                     ;; Note: use string "transform" in SQL WHERE clause (db stores strings)
@@ -50,7 +50,7 @@
 (defn- ws-transform-parents [ws-id ref-id]
   ;; We assume there are no card dependencies yet
   (t2/select-fn-vec (fn [table-coord]
-                      {:entity-type :table, :id (t2.realize/realize table-coord)})
+                      {:node-type :table, :id (t2.realize/realize table-coord)})
                     [:model/WorkspaceInput [:db_id :db] :schema :table [:table_id :id]]
                     :workspace_id ws-id
                     :id [:in {:select [:to_entity_id]
@@ -77,12 +77,10 @@
       [{:node-type :workspace-transform :id tx-ref-id}]
       (global-parents ws-id "table" id))))
 
-;; TODO straighten out node-type and entity-type
-(defn- table? [{:keys [node-type entity-type]}] (= :table (or node-type entity-type)))
+(defn- table? [{:keys [node-type]}] (= :table node-type))
 
-(defn- node-parents [ws-id {:keys [entity-type node-type id]}]
-  ;; TODO straighten out entity-type versus node-type (do we really need both)
-  (case (or node-type entity-type)
+(defn- node-parents [ws-id {:keys [node-type id]}]
+  (case node-type
     :workspace-transform (ws-transform-parents ws-id id)
     :external-transform  (global-parents ws-id "transform" id)
     :external-card       (global-parents ws-id "card" id)
@@ -177,7 +175,7 @@
                        :transform {:node-type :workspace-transform, :id id}))
         outputs    (when (seq tx-nodes)
                      (t2/select-fn-vec (fn [row]
-                                         {:entity-type :table, :id (t2.realize/realize row)})
+                                         {:node-type :table, :id (t2.realize/realize row)})
                                        [:model/WorkspaceOutput
                                         [:db_id :db]
                                         [:global_schema :schema]

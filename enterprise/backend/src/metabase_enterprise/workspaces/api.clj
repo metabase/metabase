@@ -366,20 +366,14 @@
    [:nodes [:sequential ::graph-node]]
    [:edges [:sequential ::graph-edge]]])
 
-;; TODO sort type nonsense out
-(defn- node-or-entity-type
-  "Workaround for lack of type hygeine in dag module"
-  [x]
-  (or (:entity-type x) (:node-type x)))
-
 (defn- node-type [node]
-  (let [nt (node-or-entity-type node)]
+  (let [nt (:node-type node)]
     (case nt
       :table :input-table
       nt)))
 
 (defn- node-id [{:keys [id] :as node}]
-  (case (node-or-entity-type node)
+  (case (:node-type node)
     :workspace-transform id
     :external-transform id
     :table (str (:db id) "-" (:schema id) "-" (:table id))))
@@ -408,7 +402,7 @@
                        :id               (:id e)
                        :data             e
                        ;; TODO Actually we need the inverse of this dependents, not dependencies
-                       :dependents_count {} #_(frequencies (map node-or-entity-type (get dependencies e)))}))
+                       :dependents_count {} #_(frequencies (map :node-type (get dependencies e)))}))
      :edges (for [[child parents] dependencies, parent parents]
               ;; Yeah, this graph points to dependents, not dependencies
               {:from_entity_type (name (node-type parent))
