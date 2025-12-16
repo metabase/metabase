@@ -6,10 +6,12 @@ import * as Yup from "yup";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import Link from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
   useValidateTableNameMutation,
@@ -89,11 +91,17 @@ export const TransformTab = ({
   const wsTransform = transform as WorkspaceTransform;
 
   // Run transform hook - handles run state, API calls, and error handling
-  const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
-    useWorkspaceTransformRun({
-      workspaceId,
-      transform: wsTransform,
-    });
+  const {
+    statusRun,
+    buttonRun,
+    isRunStatusLoading,
+    isRunning,
+    handleRun,
+    output,
+  } = useWorkspaceTransformRun({
+    workspaceId,
+    transform: wsTransform,
+  });
 
   const normalizeSource = useCallback(
     (source: DraftTransformSource) => {
@@ -281,14 +289,26 @@ export const TransformTab = ({
           </Group>
 
           <Group>
-            {isSaved && (
-              <WorkspaceRunButton
-                id={transform.id}
-                run={buttonRun}
-                isDisabled={hasChanges}
-                onRun={handleRun}
-              />
-            )}
+            <Group gap="sm">
+              {isSaved && (
+                <WorkspaceRunButton
+                  id={transform.id}
+                  run={buttonRun}
+                  isDisabled={hasChanges}
+                  onRun={handleRun}
+                />
+              )}
+              {output && (
+                <Link
+                  target="_blank"
+                  rel="noreferrer"
+                  tooltip={t`View transform output`}
+                  to={Urls.queryBuilderTable(output.table_id, output.db_id)}
+                >
+                  <Text c="brand">{t`[results]`}</Text>
+                </Link>
+              )}
+            </Group>
 
             {isSaved && (
               <SaveTransformButton
