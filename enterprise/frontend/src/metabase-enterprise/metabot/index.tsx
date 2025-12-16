@@ -17,7 +17,6 @@ import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.modu
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
-import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { getMetabotVisible, metabotReducer } from "./state";
 
@@ -64,7 +63,6 @@ export function initializePlugin() {
     PLUGIN_METABOT.getMetabotVisible =
       getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
 
-    PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
     PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
     PLUGIN_METABOT.MetabotDataStudioButton = MetabotDataStudioButton;
     PLUGIN_METABOT.MetabotDataStudioSidebar = MetabotDataStudioSidebar;

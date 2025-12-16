@@ -82,6 +82,9 @@ export const resetReactionState = (
       state.reactions.navigateToPath = null;
       state.reactions.suggestedTransforms = [];
     })
+    .with("sql", () => {
+      state.reactions.suggestedCodeEdits = {};
+    })
     .otherwise(() => {});
 };
 

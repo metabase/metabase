@@ -1,7 +1,14 @@
 import type { EditorView } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 import type { Extension } from "@uiw/react-codemirror";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
@@ -81,6 +88,11 @@ export function useInlineSQLPrompt(
     portalTarget?.view.focus();
   }, [portalTarget?.view]);
 
+  const hideInputRef = useRef(hideInput);
+  useLayoutEffect(() => {
+    hideInputRef.current = hideInput;
+  });
+
   useEffect(
     function autoCloseOnResult() {
       if (generatedSql) {
@@ -95,12 +107,12 @@ export function useInlineSQLPrompt(
   useEffect(
     function resetOnDbChangeAndUnmount() {
       return () => {
-        hideInput();
+        hideInputRef.current();
         dispatch(removeSuggestedCodeEdit(bufferId));
         dispatch(resetConversation({ agentId: "sql" }));
       };
     },
-    [dispatch, hideInput, databaseId, bufferId],
+    [dispatch, databaseId, bufferId],
   );
 
   const resetInput = useCallback(() => {

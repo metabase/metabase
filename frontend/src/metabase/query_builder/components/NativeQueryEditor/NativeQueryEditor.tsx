@@ -239,7 +239,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         snippets: true,
         promptInput: true,
         formatQuery: true,
-        aiGeneration: true,
       },
       hasTopBar = true,
       hasEditingSidebar = true,
