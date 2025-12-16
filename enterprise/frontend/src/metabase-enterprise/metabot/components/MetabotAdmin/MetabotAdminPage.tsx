@@ -97,37 +97,33 @@ export function MetabotAdminPage() {
               <SettingsSection>
                 <MetabotUseCaseSection
                   metabot={metabot}
-                  useCase={METABOT_USE_CASES.NLQ}
-                  title={t`Natural Language Querying`}
-                  description={t`Allow users to query data using natural language`}
-                  switchLabel={t`Enable NLQ`}
+                  useCase={METABOT_USE_CASES.OMNIBOT}
+                  title={t`Metabot chat`}
+                  switchLabel={t`Let users chat with Metabot via the chat sidebar`}
                 />
               </SettingsSection>
               <SettingsSection>
                 <MetabotUseCaseSection
                   metabot={metabot}
                   useCase={METABOT_USE_CASES.SQL}
-                  title={t`SQL Generation`}
-                  description={t`Generate SQL queries from natural language inputs`}
-                  switchLabel={t`Enable SQL generation`}
+                  title={t`SQL editor`}
+                  switchLabel={t`Enable the in-editor SQL assistant when writing native queries`}
                 />
               </SettingsSection>
               <SettingsSection>
                 <MetabotUseCaseSection
                   metabot={metabot}
-                  useCase={METABOT_USE_CASES.OMNIBOT}
-                  title={t`Omnibot`}
-                  description={t`Enable the multi-modal AI assistant`}
-                  switchLabel={t`Enable Omnibot`}
+                  useCase={METABOT_USE_CASES.NLQ}
+                  title={t`Natural language questions`}
+                  switchLabel={t`Enable starting new queries via natural language`}
                 />
               </SettingsSection>
               <SettingsSection>
                 <MetabotUseCaseSection
                   metabot={metabot}
                   useCase={METABOT_USE_CASES.TRANSFORMS}
-                  title={t`Transforms`}
-                  description={t`Allow Metabot to write and edit transforms`}
-                  switchLabel={t`Enable Transforms`}
+                  title={t`Data studio`}
+                  switchLabel={t`Enable transform assistant`}
                 />
               </SettingsSection>
             </>
@@ -194,7 +190,7 @@ function MetabotUseCaseSection({
   metabot: MetabotInfo;
   useCase: MetabotUseCase;
   title: string;
-  description: string;
+  description?: string;
   switchLabel: string;
 }) {
   const { isEnabled, isLoading, handleToggle } = useUseCaseToggle(
@@ -207,9 +203,11 @@ function MetabotUseCaseSection({
       <Text fw={600} c="text-dark" fz="h4">
         {title}
       </Text>
-      <Text c="text-medium" maw="38rem">
-        {description}
-      </Text>
+      {description && (
+        <Text c="text-medium" maw="38rem">
+          {description}
+        </Text>
+      )}
       <Switch
         label={switchLabel}
         checked={isEnabled}
