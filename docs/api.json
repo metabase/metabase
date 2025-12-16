@@ -5631,7 +5631,7 @@
         }
       },
       "metabase.legacy-mbql.schema.WidgetType" : {
-        "description" : "Schema for valid values of `:widget-type` for a [[::TemplateTag.FieldFilter]].",
+        "description" : "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`.",
         "$ref" : "#/components/schemas/metabase.lib.schema.parameter.widget-type"
       },
       "metabase.legacy-mbql.schema.abs" : {
@@ -12974,7 +12974,7 @@
     "/api/collection/tree" : {
       "get" : {
         "summary" : "GET /api/collection/tree",
-        "description" : "Similar to `GET /`, but returns Collections in a tree structure, e.g.\n\n  ```\n  [{:name     \"A\"\n  :below    #{:card :dataset}\n  :children [{:name \"B\"}\n             {:name     \"C\"\n              :here     #{:dataset :card}\n              :below    #{:dataset :card}\n              :children [{:name     \"D\"\n                          :here     #{:dataset}\n                          :children [{:name \"E\"}]}\n                         {:name     \"F\"\n                          :here     #{:card}\n                          :children [{:name \"G\"}]}]}]}\n  {:name \"H\"}]\n  ```\n\n  The here and below keys indicate the types of items at this particular level of the tree (here) and in its\n  subtree (below).\n\n  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at\n  some point in the future.\n\n  By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a\n  `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look\n  at. For example, `namespaces=analytics&namespaces=` would match the default behavior.",
+        "description" : "Similar to `GET /`, but returns Collections in a tree structure, e.g.\n\n  ```\n  [{:name     \"A\"\n  :below    #{:card :dataset}\n  :children [{:name \"B\"}\n             {:name     \"C\"\n              :here     #{:dataset :card}\n              :below    #{:dataset :card}\n              :children [{:name     \"D\"\n                          :here     #{:dataset}\n                          :children [{:name \"E\"}]}\n                         {:name     \"F\"\n                          :here     #{:card}\n                          :children [{:name \"G\"}]}]}]}\n  {:name \"H\"}]\n  ```\n\n  The here and below keys indicate the types of items at this particular level of the tree (here) and in its\n  subtree (below).\n\n  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at\n  some point in the future.\n\n  By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a\n  `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look\n  at. For example, `namespaces=analytics&namespaces=` would match the default behavior.\n\n  When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or\n  the root, if `collection-id` is `nil`).",
         "parameters" : [ {
           "in" : "query",
           "name" : "exclude-archived",
@@ -14635,7 +14635,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         }, {
           "in" : "query",
@@ -14674,6 +14675,14 @@
           "description" : "value must be an integer greater than zero."
         }, {
           "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
           "name" : "query",
           "required" : true,
           "schema" : {
@@ -14708,6 +14717,14 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -15526,6 +15543,14 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
         }, {
           "in" : "query",
           "name" : "include_hidden",
@@ -17342,7 +17367,8 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -23030,7 +23056,8 @@
           "name" : "path",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -23054,7 +23081,8 @@
           "name" : "path",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -23426,7 +23454,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         }, {
           "in" : "query",
@@ -23454,7 +23483,30 @@
       "get" : {
         "summary" : "GET /api/embed/card/{token}/params/{param-key}/search/{prefix}",
         "description" : "Embedded version of chain filter search endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "prefix",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -23485,7 +23537,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -23653,6 +23706,13 @@
         "description" : "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the\n  `embedding-secret-key` return the data in one of the export formats",
         "parameters" : [ {
           "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
           "name" : "dashcard-id",
           "required" : true,
           "schema" : {
@@ -23711,7 +23771,22 @@
       "get" : {
         "summary" : "GET /api/embed/dashboard/{token}/params/{param-key}/remapping",
         "description" : "Embedded version of the remapped dashboard param value endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -23730,7 +23805,30 @@
       "get" : {
         "summary" : "GET /api/embed/dashboard/{token}/params/{param-key}/search/{prefix}",
         "description" : "Embedded version of chain filter search endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "prefix",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -23761,7 +23859,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -26752,8 +26851,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -26786,7 +26884,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         }, {
           "in" : "query",
@@ -26819,8 +26918,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -26846,8 +26944,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -26873,8 +26970,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -26913,7 +27009,22 @@
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/remapping",
         "description" : "Embedded version of the remapped dashboard param value endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -26932,7 +27043,30 @@
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}",
         "description" : "Embedded version of chain filter search endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "prefix",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -26951,7 +27085,22 @@
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/values",
         "description" : "Embedded version of chain filter values endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -26975,8 +27124,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -27002,8 +27150,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -31736,7 +31883,23 @@
       "delete" : {
         "summary" : "DELETE /api/user-key-value/namespace/{namespace}/key/{key}",
         "description" : "Deletes a KV-pair for the user",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "namespace",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -32059,6 +32222,14 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "modal",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "qbnewb", "datasetnewb" ]
+          }
         } ],
         "responses" : {
           "2XX" : {
