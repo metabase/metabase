@@ -151,31 +151,3 @@
                                   :workspace_id workspace-id))]
       (ws.impl/sync-transform-dependencies! workspace transform)
       transform)))
-
-#_:clj-kondo/ignore
-(comment
-  (defn- clean-up-ws!* [& [ws-id]]
-    ;; Pass nil to clean up all workspaces
-    (let [ws-clause (or ws-id [:not= nil])]
-      (t2/delete! :model/Collection :workspace_id ws-clause)
-      (t2/delete! :model/Transform :workspace_id ws-clause)
-      (doseq [[db_id schema] (t2/select-fn-set (juxt :db_id :schema) :model/Table :workspace_id [:not= nil])]
-        (t2/delete! :model/Table :schema schema)
-        (let [db        (t2/select-one :model/Database db_id)
-              driver    (metabase.driver.util/database->driver db)
-              make-spec (requiring-resolve 'metabase.driver.sql-jdbc.connection/connection-details->spec)
-              jdbc-spec (make-spec driver (:details db))]
-          (clojure.java.jdbc/execute! jdbc-spec [(str "DROP SCHEMA \"" schema "\" CASCADE")])))
-      (t2/delete! :model/Workspace :id ws-clause)))
-
-  (def upstream-id (t2/select-one-pk :model/Transform :workspace_id nil {:order-by [:id]}))
-  (def upstream-ids (t2/select-pks-vec :model/Transform :workspace_id nil {:order-by [:id]}))
-
-  ;; Ensure output table exists
-  (#'metabase-enterprise.transforms.execute/run-mbql-transform! (t2/select-one :model/Transform upstream-id))
-
-  (let [admin-id (t2/select-one-pk :model/User :is_superuser true {:order-by [:id]})]
-    (binding [api/*current-user-id* admin-id]
-      (create-workspace! admin-id {:name "Workplace Workspace", :upstream {:transforms upstream-ids #_[upstream-id]}})))
-
-  (clean-up-ws!*))
