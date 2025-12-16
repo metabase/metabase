@@ -158,6 +158,58 @@ describe("scenarios > dependencies > broken list", () => {
       });
     });
   });
+
+  describe("search", () => {
+    it("should search for entities", () => {
+      createBrokeCards({ type: "question" });
+      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DataStudio.Tasks.searchInput().type(CARD_TABLE_MISSING);
+      checkList({
+        visibleEntities: [CARD_TABLE_MISSING],
+        hiddenEntities: [CARD_COLUMN_WRONG_TABLE],
+      });
+    });
+  });
+
+  describe("filters", () => {
+    it("should filter entities by type", () => {
+      createBrokeCards({ type: "question" });
+      createBrokenSegments();
+      H.DataStudio.Tasks.visitBrokenEntities();
+      checkList({
+        visibleEntities: [
+          ...BROKEN_CARD_NAMES,
+          ...BROKEN_SEGMENT_NAMES,
+          ...BROKEN_SNIPPET_NAMES,
+        ],
+      });
+
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Question").click();
+      checkList({
+        visibleEntities: [...BROKEN_CARD_NAMES],
+        hiddenEntities: [...BROKEN_SEGMENT_NAMES, ...BROKEN_SNIPPET_NAMES],
+      });
+
+      H.popover().within(() => {
+        cy.findByText("Question").click();
+        cy.findByText("Segment").click();
+      });
+      checkList({
+        visibleEntities: [...BROKEN_SEGMENT_NAMES],
+        hiddenEntities: [...BROKEN_CARD_NAMES, ...BROKEN_SNIPPET_NAMES],
+      });
+
+      H.popover().within(() => {
+        cy.findByText("Question").click();
+        cy.findByText("Snippet").click();
+      });
+      checkList({
+        visibleEntities: [...BROKEN_SNIPPET_NAMES],
+        hiddenEntities: [...BROKEN_CARD_NAMES, ...BROKEN_SEGMENT_NAMES],
+      });
+    });
+  });
 });
 
 function createValidEntities() {
@@ -549,5 +601,22 @@ function createSnippet({ name, content }: { name: string; content: string }) {
   return H.createSnippet({
     name,
     content,
+  });
+}
+
+function checkList({
+  visibleEntities = [],
+  hiddenEntities = [],
+}: {
+  visibleEntities?: string[];
+  hiddenEntities?: string[];
+}) {
+  H.DataStudio.Tasks.list().within(() => {
+    visibleEntities.forEach((name) => {
+      cy.findByText(name).should("be.visible");
+    });
+    hiddenEntities.forEach((name) => {
+      cy.findByText(name).should("not.exist");
+    });
   });
 }
