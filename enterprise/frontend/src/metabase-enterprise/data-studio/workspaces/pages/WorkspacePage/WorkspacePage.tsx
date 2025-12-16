@@ -777,7 +777,7 @@ export const WorkspacePage = ({ params }: WorkspacePageProps) => {
       <WorkspacePageContent
         key={workspaceId}
         params={params}
-        transformId={new URLSearchParams(search).get("transform_id")}
+        transformId={new URLSearchParams(search).get("transformId")}
       />
     </WorkspaceProvider>
   );

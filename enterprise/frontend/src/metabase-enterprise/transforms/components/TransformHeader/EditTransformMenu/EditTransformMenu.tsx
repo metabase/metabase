@@ -131,7 +131,11 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
       setAddedWorkspaceIds((prev) => new Set(prev).add(workspace.id));
       handleCloseCreateModal();
-      dispatch(push(`/data-studio/workspaces/${workspace.id}`));
+      dispatch(
+        push(
+          `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
+        ),
+      );
     } catch (error) {
       sendErrorToast(t`Failed to create workspace`);
     }
