@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
@@ -365,11 +366,17 @@
    [:nodes [:sequential ::graph-node]]
    [:edges [:sequential ::graph-edge]]])
 
-(api.macros/defendpoint :get "/:id/graph" :- GraphResult
+(api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+
+  #_(ws.dag/path-induced-subgraph
+     ws-id
+     (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
+                       [:model/WorkspaceTransform :ref_id] :workspace_id ws-id))
+
   ;; TODO decide on whether to show output tables, or to rather show dependencies directly between transforms.
   {:nodes [{:id 1, :type :input-table, :data {:name "Bob"}, :dependents_count {:workspace-transform 1}}
            {:id "2", :type :workspace-transform, :data {:name "MyTrans"}, :dependents_count {:output-table 1}}

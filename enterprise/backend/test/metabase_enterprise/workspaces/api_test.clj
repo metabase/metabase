@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -1278,8 +1279,27 @@
 (deftest graph-test
   (testing "GET /api/ee/workspace/:id/graph"
     (ws.tu/with-workspaces! [ws {:name "Workspace 1"}]
-      (mt/with-temp [:model/WorkspaceTransform _tx {:name         "Transform in WS1"
-                                                    :workspace_id (:id ws)}]
+      ;; TODO use dag creation helper
+      (mt/with-temp [:model/WorkspaceTransform tx {:name         "Transform in WS1"
+                                                   :workspace_id (:id ws)}]
+
+        ;; Resubmit transform to trigger analysis
+        (mt/user-http-request :crowberto :put 200 (ws-url (:id ws) "transform" (:ref_id tx))
+                              ;; with-temp doesn't populate a database id, and doesn't query a table
+                              (-> tx
+                                  (select-keys [:source :target])
+                                  (assoc-in [:target :database] (mt/id))
+                                  (assoc-in [:source :query :stages 0 :native] "SELECT 1 as numb FROM venues")))
+
+        (is (=? {:dependencies {{:id (:ref_id tx), :node-type :workspace-transform} []},
+                 :entities     [{:id (:ref_id tx), :node-type :workspace-transform}],
+                 :inputs       [{:db (mt/id), :id int?, :schema nil, :table "venues"}],
+                 :outputs      [{:db     (mt/id),
+                                 :id     nil,
+                                 :schema nil,
+                                 :table  #"test_table_.*"}]}
+                (ws.dag/path-induced-subgraph (:id ws) [{:entity-type :transform, :id (:ref_id tx)}])))
+
         (testing "returns empty when no transforms"
           ;; TODO replace dummy graph with real expectation
           (is (= {:nodes [{:id 1, :type "input-table", :data {:name "Bob"}, :dependents_count {:workspace-transform 1}}

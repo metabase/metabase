@@ -9,7 +9,8 @@
   (:require
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;; Is this working with appdb-ids or ref-ids?
 (defn unsupported-dependency?
@@ -49,10 +50,15 @@
 (defn- ws-transform-parents [ws-id ref-id]
   ;; We assume there are no card dependencies yet
   (t2/select-fn-vec (fn [table-coord]
-                      {:entity-type :table, :id table-coord})
+                      {:entity-type :table, :id (t2.realize/realize table-coord)})
                     [:model/WorkspaceInput [:db_id :db] :schema :table [:table_id :id]]
                     :workspace_id ws-id
-                    :ref_id ref-id))
+                    :id [:in {:select [:to_entity_id]
+                              :from   [:workspace_dependency]
+                              :where  [:and
+                                       [:= "transform" :from_entity_type]
+                                       [:= ref-id :from_entity_id]
+                                       [:= "input" :to_entity_type]]}]))
 
 (defn- table-producers [ws-id id-or-coord]
   ;; Work with either logical co-ords or an id
@@ -71,10 +77,12 @@
       [{:node-type :workspaces-transform :id tx-ref-id}]
       (global-parents ws-id "table" id))))
 
-(defn- table? [{:keys [node-type]}] (= :table node-type))
+;; TODO straighten out node-type and entity-type
+(defn- table? [{:keys [node-type entity-type]}] (= :table (or node-type entity-type)))
 
-(defn- node-parents [ws-id {:keys [node-type id]}]
-  (case node-type
+(defn- node-parents [ws-id {:keys [entity-type node-type id]}]
+  ;; TODO straighten out entity-type versus node-type (do we really need both)
+  (case (or node-type entity-type)
     :workspace-transform (ws-transform-parents ws-id id)
     :external-transform  (global-parents ws-id "transform" id)
     :external-card       (global-parents ws-id "card" id)
@@ -91,13 +99,27 @@
               :when (not (pred child))]
     [child (mapcat (partial node->allowed-parents pred deps) parents)]))
 
-(defn- render-graph [entities parents deps & {:keys [table? table-sort unwrap-table]
-                                              :or   {table?       table?
-                                                     table-sort   identity
-                                                     unwrap-table :id}}]
+;; This will only get the outputs for workspace transforms, not for enclosed ones.
+(defn- entity-outputs [entities]
+  (let [tx-ref-ids (->> entities (filter (comp #{:workspace-transform} :node-type)) (map :id) seq)]
+    (when tx-ref-ids (t2/select-fn-vec (fn [row]
+                                         {:entity-type :table, :id (t2.realize/realize row)})
+                                       [:model/WorkspaceOutput
+                                        [:db_id :db]
+                                        [:global_schema :schema]
+                                        [:global_table :table]
+                                        [:global_table_id :id]]
+                                       :ref_id [:in tx-ref-ids]))))
+
+(defn- render-graph [entities parents deps & {:keys [table? table-sort unwrap-table entity-outputs]
+                                              :or   {table?         table?
+                                                     table-sort     identity
+                                                     entity-outputs entity-outputs
+                                                     unwrap-table   :id}}]
   (let [table-nodes (filter table? entities)
         ;; Any table that has a parent in the subgraph is an output
-        outputs     (filter deps table-nodes)
+        #_#_outputs     (filter deps table-nodes)
+        outputs     (entity-outputs entities)
         ;; Anything other parent table is an input
         inputs      (->> entities (mapcat parents) (filter table?) (remove (set outputs)) distinct)
         entities    (->> (ws.u/toposort-dfs deps) (remove table?))]
@@ -155,7 +177,7 @@
   (ws.u/assert-transforms! changeset)
   (let [init-nodes (for [{:keys [entity-type id]} changeset]
                      (case entity-type
-                       :transform {:node-type :workspaces-transform, :id id}))
+                       :transform {:node-type :workspace-transform, :id id}))
         fns        {:node-parents (partial node-parents ws-id)
                     :table?       table?}]
     (path-induced-subgraph* init-nodes fns)))

@@ -229,7 +229,14 @@
                                     :unwrap-table identity}))
 
 (deftest in-memory-path-induced-subgraph-test
-  (testing "todo testing message"
+  (testing "singleton"
+    (is (= {:inputs       [:t1]
+            :outputs      [:t2]
+            :entities     [:x2]
+            :dependencies {:x2 []}}
+           (solve-in-memory [:x2] {:x2 [:t1]}))))
+
+  (testing "larger graph"
     (is (= {:inputs       [:t1 :t2 :t5 :t9]
             :outputs      [:t3 :t4 :t11]
             :entities     [:m10 :x11 :m12 :m13 :x3 :x4 :m6]
