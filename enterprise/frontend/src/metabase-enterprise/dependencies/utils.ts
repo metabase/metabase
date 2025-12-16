@@ -165,7 +165,10 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         url: Urls.dataStudioSegment(node.id),
       };
     case "snippet":
-      return null;
+      return {
+        label: t`View this snippet`,
+        url: Urls.dataStudioSnippet(node.id),
+      };
   }
 }
 
@@ -273,10 +276,10 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "dashboard":
     case "document":
     case "segment":
+    case "snippet":
+    case "transform":
       return node.data.created_at;
     case "table":
-    case "transform":
-    case "snippet":
     case "sandbox":
       return null;
   }
@@ -288,10 +291,10 @@ export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
     case "dashboard":
     case "document":
     case "segment":
+    case "snippet":
+    case "transform":
       return node.data.creator ?? null;
     case "table":
-    case "transform":
-    case "snippet":
     case "sandbox":
       return null;
   }

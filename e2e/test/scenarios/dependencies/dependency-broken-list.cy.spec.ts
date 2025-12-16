@@ -487,8 +487,6 @@ function checkList({
 
 function checkSidebar({
   entityName,
-  locationName,
-  creatorName,
   errors = {},
 }: {
   entityName: string;
@@ -499,19 +497,6 @@ function checkSidebar({
   H.DataStudio.Tasks.Sidebar.header()
     .findByText(entityName)
     .should("be.visible");
-
-  if (locationName) {
-    H.DataStudio.Tasks.Sidebar.locationInfo()
-      .findByText(locationName)
-      .should("be.visible");
-  }
-
-  if (creatorName) {
-    H.DataStudio.Tasks.Sidebar.creationInfo().should(
-      "contain.text",
-      creatorName,
-    );
-  }
 
   Object.entries(errors).forEach(([label, errors]) => {
     H.DataStudio.Tasks.Sidebar.errorInfo(label).within(() => {

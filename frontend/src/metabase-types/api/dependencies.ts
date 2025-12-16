@@ -61,7 +61,7 @@ export type TableDependencyNodeData = Pick<
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table"
+  "name" | "description" | "table" | "creator" | "created_at"
 >;
 
 export type CardDependencyNodeData = Pick<
@@ -86,7 +86,7 @@ export type CardDependencyNodeData = Pick<
 
 export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
-  "name" | "description"
+  "name" | "description" | "creator" | "created_at"
 >;
 
 export type DashboardDependencyNodeData = Pick<

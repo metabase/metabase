@@ -155,7 +155,7 @@
           :created_at :creator :creator_id :description
           :result_metadata :last-edit-info
           :collection :collection_id :dashboard :dashboard_id :document :document_id]
-   :snippet [:name :description]
+   :snippet [:name :description :created_at :creator :creator_id]
    :transform [:name :description :creator :table :last_run]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
@@ -214,7 +214,7 @@
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source]
-   :snippet [:id :name :description]
+   :snippet [:id :name :description :created_at :creator_id]
    :sandbox [:id :table_id]
    :segment   [:id :name :description :created_at :creator_id :table_id]})
 
@@ -396,6 +396,7 @@
                                  (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                                (->> (map collection.root/hydrate-root-collection)))
                                  (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
+                                 (= entity-type :snippet) (t2/hydrate :creator)
                                  (= entity-type :segment) (t2/hydrate :creator [:table :db]))
                                (map (fn [entity]
                                       [[entity-type (:id entity)]
