@@ -2,7 +2,11 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useLatest } from "react-use";
 
 import { FormSelect, FormTextInput } from "metabase/forms";
-import { Loader } from "metabase/ui";
+import {
+  type DataAttributes,
+  type InputDescriptionProps,
+  Loader,
+} from "metabase/ui";
 import { useExtractColumnsFromQueryMutation } from "metabase-enterprise/api";
 import * as Lib from "metabase-lib";
 
@@ -10,6 +14,7 @@ type NativeQueryColumnSelectProps = {
   name: string;
   label: string;
   description: ReactNode;
+  descriptionProps?: InputDescriptionProps & DataAttributes;
   placeholder: string;
   query: Lib.Query;
 };
@@ -18,6 +23,7 @@ export function NativeQueryColumnSelect({
   name,
   label,
   description,
+  descriptionProps,
   placeholder,
   query,
 }: NativeQueryColumnSelectProps) {
@@ -85,6 +91,7 @@ export function NativeQueryColumnSelect({
       label={label}
       placeholder={placeholder}
       description={description}
+      descriptionProps={descriptionProps}
     />
   );
 }

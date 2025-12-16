@@ -4,6 +4,7 @@ import { type ReactNode, useMemo } from "react";
 import { useGetTableQueryMetadataQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { PythonTransformTableAliases } from "metabase-types/api";
 
@@ -14,6 +15,7 @@ type PythonKeysetColumnSelectProps = {
   label: string;
   placeholder: string;
   description: ReactNode;
+  descriptionProps?: InputDescriptionProps & DataAttributes;
   sourceTables: PythonTransformTableAliases;
 };
 
@@ -22,6 +24,7 @@ export function PythonKeysetColumnSelect({
   label,
   placeholder,
   description,
+  descriptionProps,
   sourceTables,
 }: PythonKeysetColumnSelectProps) {
   const metadata = useSelector(getMetadata);
@@ -64,6 +67,7 @@ export function PythonKeysetColumnSelect({
       label={label}
       placeholder={placeholder}
       description={description}
+      descriptionProps={descriptionProps}
       query={query}
       disabled={isLoading || !!error}
     />

@@ -171,17 +171,17 @@ export const IncrementalTransformSettings = ({
   if (variant === "standalone") {
     return (
       <TitleSection label={label} description={description}>
-        <Group p="md">{renderIncrementalSwitch()}</Group>
+        <Group p="lg">{renderIncrementalSwitch()}</Group>
         {values?.incremental && (
           <>
             {complexityWarningAlert && (
               <>
                 <Divider />
-                <Group p="md">{complexityWarningAlert}</Group>
+                <Group p="lg">{complexityWarningAlert}</Group>
               </>
             )}
             <Divider />
-            <Group p="md">
+            <Group p="lg">
               <SourceStrategyFields
                 source={source}
                 query={query}
@@ -282,12 +282,8 @@ function SourceStrategyFields({
               name="checkpointFilterUniqueKey"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
-              description={
-                <Text
-                  c="text-secondary"
-                  size="sm"
-                >{t`Pick the field that we should scan to determine which records are new or changed`}</Text>
-              }
+              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              descriptionProps={{ c: "text-secondary", mb: "xs" }}
               query={query}
             />
           )}
@@ -296,12 +292,8 @@ function SourceStrategyFields({
               name="checkpointFilter"
               label={t`Column to check for new values`}
               placeholder={t`Pick a column`}
-              description={
-                <Text
-                  c="text-secondary"
-                  size="sm"
-                >{t`Pick the column that we should scan to determine which records are new or changed`}</Text>
-              }
+              description={t`Pick the column that we should scan to determine which records are new or changed`}
+              descriptionProps={{ c: "text-secondary", mb: "xs" }}
               query={query}
             />
           )}
@@ -310,12 +302,8 @@ function SourceStrategyFields({
               name="checkpointFilterUniqueKey"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
-              description={
-                <Text
-                  c="text-secondary"
-                  size="sm"
-                >{t`Pick the field that we should scan to determine which records are new or changed`}</Text>
-              }
+              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              descriptionProps={{ c: "text-secondary", mb: "xs" }}
               sourceTables={source["source-tables"]}
             />
           )}
