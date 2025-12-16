@@ -26,7 +26,15 @@ export const getCollectionIdValueFromReference = createSelector(
   ): CollectionId | null => {
     return match(collectionReference)
       .with("personal", () => personalCollectionId as RegularCollectionId)
-      .with("tenant", () => tenantCollectionId as RegularCollectionId)
+      .with("tenant", () => {
+        if (!tenantCollectionId) {
+          throw new Error(
+            "You must be a tenant member to access the tenant collection.",
+          );
+        }
+
+        return tenantCollectionId as RegularCollectionId;
+      })
       .with("root", () => null)
       .with(P.union(P.number, P.string), (id) => id)
       .otherwise(() => {
@@ -56,7 +64,15 @@ export const getCollectionIdSlugFromReference = createSelector(
   ): CollectionId => {
     return match(collectionReference)
       .with("personal", () => personalCollectionId as RegularCollectionId)
-      .with("tenant", () => tenantCollectionId as RegularCollectionId)
+      .with("tenant", () => {
+        if (!tenantCollectionId) {
+          throw new Error(
+            "You must be a tenant member to access the tenant collection.",
+          );
+        }
+
+        return tenantCollectionId as RegularCollectionId;
+      })
       .with("root", () => "root" as const)
       .with(P.union(P.number, P.string), (id) => id)
       .otherwise(() => {
