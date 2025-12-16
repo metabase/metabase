@@ -1,27 +1,24 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
+import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
-import { getNodeDescription } from "../../../../utils";
+import {
+  getNodeCreatedAt,
+  getNodeCreatedBy,
+  getNodeDescription,
+  getNodeLastEditedAt,
+  getNodeLastEditedBy,
+} from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
 import { GraphLink } from "../../GraphLink";
 
 import S from "./PanelBody.module.css";
-import {
-  getNodeCreatedAt,
-  getNodeCreatedBy,
-  getNodeFields,
-  getNodeFieldsLabel,
-  getNodeLastEditedAt,
-  getNodeLastEditedBy,
-  getNodeTableInfo,
-} from "./utils";
+import { getNodeFields, getNodeFieldsLabel, getNodeTableInfo } from "./utils";
 
 type PanelBodyProps = {
   node: DependencyNode;
@@ -69,33 +66,12 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
   }
 
   return (
-    <Stack gap="sm" lh="1rem">
-      <Title order={6}>{t`Creator and last editor`}</Title>
-      {createdAt != null && createdBy != null && (
-        <Group gap="sm" wrap="nowrap">
-          <FixedSizeIcon name="ai" />
-          <Box>
-            {c(
-              "Describes when an entity was created. {0} is a date/time and {1} is a person's name",
-            ).jt`${(
-              <DateTime unit="day" value={createdAt} key="date" />
-            )} by ${getUserName(createdBy)}`}
-          </Box>
-        </Group>
-      )}
-      {editedAt != null && editedBy != null && (
-        <Group gap="sm" wrap="nowrap">
-          <FixedSizeIcon name="pencil" />
-          <Box>
-            {c(
-              "Describes when an entity was last edited. {0} is a date/time and {1} is a person's name",
-            ).jt`${(
-              <DateTime unit="day" value={editedAt} key="date" />
-            )} by ${getUserName(editedBy)}`}
-          </Box>
-        </Group>
-      )}
-    </Stack>
+    <EntityCreationInfo
+      createdAt={createdAt}
+      creator={createdBy}
+      lastEditedAt={editedAt}
+      lastEditor={editedBy}
+    />
   );
 }
 

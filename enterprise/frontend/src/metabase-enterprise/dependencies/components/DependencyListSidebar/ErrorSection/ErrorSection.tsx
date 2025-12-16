@@ -21,7 +21,7 @@ export function ErrorSection({ type, errors }: ErrorSectionProps) {
     .filter((detail) => detail != null);
 
   return (
-    <Stack gap="md">
+    <Stack gap="sm">
       <Title order={4}>{title}</Title>
       {details.length > 0 && (
         <Card p={0} shadow="none" withBorder>

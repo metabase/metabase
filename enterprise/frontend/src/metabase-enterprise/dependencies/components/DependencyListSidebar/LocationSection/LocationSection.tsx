@@ -18,7 +18,7 @@ export function LocationSection({ node }: LocationSectionProps) {
   }
 
   return (
-    <Stack gap="md">
+    <Stack gap="sm">
       <Title order={4}>{t`Location`}</Title>
       <Card p="md" shadow="none" withBorder>
         {locationInfo.links.map((link, linkIndex) => (

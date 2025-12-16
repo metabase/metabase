@@ -74,7 +74,7 @@ describe("scenarios > dependencies > unreferenced", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    cy.viewport(1280, 1400);
+    cy.viewport(1600, 1400);
   });
 
   describe("analysis", () => {
@@ -190,12 +190,14 @@ describe("scenarios > dependencies > unreferenced", () => {
       H.DataStudio.Tasks.sidebar().within(() => {
         cy.findByText(MODEL_FOR_QUESTION_DATA_SOURCE).should("be.visible");
         cy.findByText("Our analytics").should("be.visible");
+        cy.findAllByText(/Bobby Tables/).should("have.length.gte", 1);
       });
 
       H.DataStudio.Tasks.list().findByText(SEGMENT_FOR_QUESTION_FILTER).click();
       H.DataStudio.Tasks.sidebar().within(() => {
         cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
         cy.findByText("Orders").should("be.visible");
+        cy.findAllByText(/Bobby Tables/).should("have.length.gte", 1);
       });
 
       H.DataStudio.Tasks.list()
@@ -204,6 +206,7 @@ describe("scenarios > dependencies > unreferenced", () => {
       H.DataStudio.Tasks.sidebar().within(() => {
         cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
         cy.findByText("Our analytics").should("be.visible");
+        cy.findAllByText(/Bobby Tables/).should("have.length.gte", 1);
       });
 
       H.DataStudio.Tasks.list()
@@ -214,6 +217,7 @@ describe("scenarios > dependencies > unreferenced", () => {
           "be.visible",
         );
         cy.findByText("Location").should("not.exist");
+        cy.findByText("Creator and last editor").should("not.exist");
       });
     });
   });

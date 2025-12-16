@@ -3,6 +3,7 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { CreatorAndLastEditorSection } from "./CreatorAndLastEditorSection";
 import S from "./DependencyListSidebar.module.css";
 import { ErrorSection } from "./ErrorSection";
 import { LocationSection } from "./LocationSection";
@@ -29,6 +30,7 @@ export const DependencyListSidebar = memo(function DependencyListSidebar({
       data-testid="dependency-list-sidebar"
     >
       <PanelHeader node={node} onClose={onClose} />
+      <CreatorAndLastEditorSection node={node} />
       <LocationSection node={node} />
       {errorGroups.map((errorGroup) => (
         <ErrorSection
