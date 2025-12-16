@@ -122,6 +122,7 @@
       :model/MetabotConversation
       :model/MetabotMessage
       :model/MetabotPrompt
+      :model/MetabotUseCase
       :model/Document
       :model/DocumentBookmark
       :model/Comment

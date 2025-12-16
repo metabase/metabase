@@ -113,7 +113,7 @@
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt"]))
+                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt" "MetabotUseCase"]))
              (set (->> (concat entity-id-models
                                entities-external-name)
                        (map name))))))

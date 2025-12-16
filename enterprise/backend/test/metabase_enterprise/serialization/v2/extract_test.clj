@@ -1853,8 +1853,9 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "metabot depends on its model entities"
-            (is (= #{[{:model "Card" :id model-eid}]}
+          (testing "metabot depends on its model entities and collection"
+            (is (= #{[{:model "Card" :id model-eid}]
+                     [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest metabot-collection-test
@@ -1900,8 +1901,9 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "metabot depends on its prompts' cards"
-            (is (= #{[{:model "Card" :id card-eid}]}
+          (testing "metabot depends on its prompts' cards and collection"
+            (is (= #{[{:model "Card" :id card-eid}]
+                     [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest document-test
