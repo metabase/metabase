@@ -6,6 +6,7 @@ import type {
   CardId,
   CardType,
   FieldId,
+  NativeQuerySnippetId,
   SegmentId,
   TableId,
 } from "metabase-types/api";
