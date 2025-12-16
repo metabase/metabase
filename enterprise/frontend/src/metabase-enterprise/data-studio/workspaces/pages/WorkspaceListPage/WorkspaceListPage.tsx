@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box, Text } from "metabase/ui";
+import { Box, Text, Title } from "metabase/ui";
 import { useGetWorkspacesQuery } from "metabase-enterprise/api";
 
 export function WorkspaceListPage() {
@@ -17,10 +17,11 @@ export function WorkspaceListPage() {
     isFetching,
   } = useGetWorkspacesQuery();
 
-  const workspaces = useMemo(
-    () => workspacesData?.items ?? [],
-    [workspacesData],
-  );
+  // const workspaces = useMemo(
+  //   () => workspacesData?.items ?? [],
+  //   [workspacesData],
+  // );
+  const workspaces = [];
 
   const firstWorkspaceId = workspaces[0]?.id;
 
@@ -48,8 +49,9 @@ export function WorkspaceListPage() {
 
   return (
     <Box data-testid="workspaces-page" p="lg">
+      <Title size="lg">{t`No active workspaces`}</Title>
       <Text c="text-secondary">
-        {t`No active workspaces. Create a new one from the left panel or by editing an existing transform`}
+        {t`Create a new one from the left panel or by editing an existing transform.`}
       </Text>
     </Box>
   );
