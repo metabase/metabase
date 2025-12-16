@@ -2320,34 +2320,38 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
-describe("scenarios > admin > transforms > python runner", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "many_schemas" });
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+describe(
+  "scenarios > admin > transforms > python runner",
+  { tags: ["@python"] },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_schemas" });
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    setPythonRunnerSettings();
-  });
+      setPythonRunnerSettings();
+    });
 
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
 
-  it("should be possible to test run a Python script", () => {
-    H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
-      createPythonLibrary(
-        "common.py",
-        dedent`
+    it("should be possible to test run a Python script", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonLibrary(
+            "common.py",
+            dedent`
               def useful_calculation(a, b):
                 return a + b
             `,
-      );
+          );
 
-      createPythonTransform({
-        body: dedent`
+          createPythonTransform({
+            body: dedent`
           import pandas as pd
           import common
 
@@ -2356,34 +2360,36 @@ describe("scenarios > admin > transforms > python runner", () => {
             print("Hello, world!")
             return pd.DataFrame([{"foo": common.useful_calculation(40, 2) }])
         `,
-        sourceTables: { foo: id },
-        visitTransform: true,
+            sourceTables: { foo: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      cy.log("running the script should work");
+      runPythonScriptAndWaitForSuccess();
+      H.assertTableData({
+        columns: ["foo"],
+        firstRows: [["42"]],
       });
-    });
 
-    cy.log("running the script should work");
-    runPythonScriptAndWaitForSuccess();
-    H.assertTableData({
-      columns: ["foo"],
-      firstRows: [["42"]],
-    });
-
-    cy.log("updating the common library should affect the results");
-    createPythonLibrary(
-      "common.py",
-      dedent`
+      cy.log("updating the common library should affect the results");
+      createPythonLibrary(
+        "common.py",
+        dedent`
               def useful_calculation(a, b):
                 return a + b + 1
             `,
-    );
+      );
 
-    runPythonScriptAndWaitForSuccess();
-    H.assertTableData({
-      columns: ["foo"],
-      firstRows: [["43"]],
+      runPythonScriptAndWaitForSuccess();
+      H.assertTableData({
+        columns: ["foo"],
+        firstRows: [["43"]],
+      });
     });
-  });
-});
+  },
+);
 
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Transforms" });
