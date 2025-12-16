@@ -163,11 +163,7 @@ function ExecutionOutputLogs({
       {executionResult?.logs ? (
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
-        <Text
-          c="text-light"
-          fz="sm"
-          fs="italic"
-        >{t`No output to display`}</Text>
+        <Text c="text-light" fz="sm" fs="italic">{t`No logs to display`}</Text>
       )}
     </Box>
   );
