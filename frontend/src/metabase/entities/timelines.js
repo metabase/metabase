@@ -19,7 +19,7 @@ import {
 import { getDefaultTimeline, getTimelineName } from "metabase/lib/timelines";
 import { TimelineSchema } from "metabase/schema";
 
-import TimelineEvents from "./timeline-events";
+import { TimelineEvents } from "./timeline-events";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -167,4 +167,3 @@ function useListQuery({ collectionId, ...params } = {}, options) {
 
   return collectionId ? collectionTimelines : timelines;
 }
-

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isPublicCollection } from "metabase/collections/utils";
-import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import Input from "metabase/common/components/Input";
 import SelectList from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
@@ -11,7 +11,7 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Collections, ROOT_COLLECTION  } from "metabase/entities/collections";
+import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";

@@ -26,12 +26,12 @@ import {
   isTrashedCollection,
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
-import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer"
+import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { Bookmarks } from "metabase/entities/bookmarks"
+import { Bookmarks } from "metabase/entities/bookmarks";
 import { Collections } from "metabase/entities/collections";
-import { Search } from "metabase/entities/search"
+import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";

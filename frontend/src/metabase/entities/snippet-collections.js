@@ -4,7 +4,8 @@ import _ from "underscore";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import NormalCollections, {
+import {
+  Collections,
   getExpandedCollectionsById,
   useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
@@ -31,7 +32,7 @@ export const SnippetCollections = createEntity({
   },
 
   api: _.mapObject(
-    NormalCollections.api,
+    Collections.api,
     (request) =>
       (opts, ...rest) =>
         request({ ...opts, namespace: "snippets" }, ...rest),
@@ -87,4 +88,3 @@ const useGetQuery = (query, options) => {
 function useListQuery(query, options) {
   return useListCollectionsQuery({ ...query, namespace: "snippets" }, options);
 }
-

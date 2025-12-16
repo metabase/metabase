@@ -10,7 +10,7 @@ import {
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-import { CollectionName } from "metabase/common/components/CollectionName";
+import CollectionName from "metabase/common/components/CollectionName";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import FormField from "metabase/common/components/FormField";
 import {

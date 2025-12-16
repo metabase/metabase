@@ -6,7 +6,7 @@ import _ from "underscore";
 import { bookmarkApi, useListBookmarksQuery } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
-import Documents from "metabase/entities/documents";
+import { Documents } from "metabase/entities/documents";
 import { Questions } from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { addUndo } from "metabase/redux/undo";

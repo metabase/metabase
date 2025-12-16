@@ -14,7 +14,7 @@ import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
-import { LimitPopover } from "metabase/query_builder/components/LimitPopover";
+import LimitPopover from "metabase/query_builder/components/LimitPopover";
 import {
   getFirstQueryResult,
   getIsResultDirty,
