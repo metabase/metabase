@@ -1,6 +1,4 @@
 import type {
-  PythonTransformSource,
-  PythonTransformSourceDraft,
   PythonTransformTableAliases,
   Table,
   TableId,
@@ -139,10 +137,4 @@ ${tableAliases
 `;
 
   return script + functionTemplate;
-}
-
-export function isPythonTransformSource(
-  source: PythonTransformSourceDraft,
-): source is PythonTransformSource {
-  return source.type === "python" && source["source-database"] !== undefined;
 }

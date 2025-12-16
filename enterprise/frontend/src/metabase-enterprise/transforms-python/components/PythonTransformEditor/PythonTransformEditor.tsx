@@ -4,11 +4,13 @@ import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
 import type { PythonTransformTableAliases, Table } from "metabase-types/api";
 
+import { isPythonTransformSource } from "../../utils";
+
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
 import { useTestPythonTransform } from "./hooks";
-import { isPythonTransformSource, updateTransformSignature } from "./utils";
+import { updateTransformSignature } from "./utils";
 
 export function PythonTransformEditor({
   source,
