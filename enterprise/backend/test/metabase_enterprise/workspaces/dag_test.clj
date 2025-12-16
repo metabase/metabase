@@ -236,6 +236,13 @@
       :table-sort   kw->id
       :unwrap-table identity})))
 
+(defn- chain->deps [chain]
+  (reduce
+   (fn [deps [from to]]
+     (assoc deps from [to]))
+   {}
+   (partition 2 1 (reverse chain))))
+
 (deftest in-memory-path-induced-subgraph-test
   (testing "singleton"
     (is (= {:inputs       [:t1]
@@ -243,6 +250,15 @@
             :entities     [:x2]
             :dependencies {:x2 []}}
            (solve-in-memory [:x2] {:x2 [:t1]}))))
+
+  (testing "encloses middle of a chain"
+    (is (= {:inputs       [:t1]
+            :outputs      [:t2 :t3 :t4]
+            :entities     [:x2 :x3 :x4]
+            :dependencies {:x2 []
+                           :x3 [:x2]
+                           :x4 [:x3]}}
+           (solve-in-memory [:x2 :x4] (chain->deps [:x1 :x2 :x3 :x4 :x5])))))
 
   (testing "larger graph"
     (is (= {:inputs       [:t1 :t2 :t5 :t9]
