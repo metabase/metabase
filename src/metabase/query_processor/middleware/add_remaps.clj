@@ -136,8 +136,6 @@
                          (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
                          (let [field (lib.metadata/field query field-id)]
                            (name-generator (:name field))))]
-    (println "JJJ")
-    (clojure.pprint/pprint (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path))
     (not-empty
      (into []
            (comp
@@ -146,7 +144,6 @@
             (keep (fn [{:keys [id], :as col}]
                     (when-let [dimension (when (pos-int? id)
                                            (field-id->remapping-dimension query id))]
-                      (prn dimension)
                       (let [original-ref (lib/ref col)]
                         {:original-field-clause original-ref
                          :new-field-clause      [:field
