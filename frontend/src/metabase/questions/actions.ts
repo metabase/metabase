@@ -1,5 +1,5 @@
 import { cardApi, datasetApi } from "metabase/api";
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables"
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Card, TableId, UnsavedCard } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";

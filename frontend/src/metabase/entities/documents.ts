@@ -27,7 +27,7 @@ import type { Dispatch } from "metabase-types/store";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Documents = createEntity({
+export const Documents = createEntity({
   name: "documents",
   nameOne: "document",
   path: "/api/document",
@@ -130,5 +130,3 @@ const Documents = createEntity({
   },
 });
 
-// eslint-disable-next-line import/no-default-export
-export default Documents;

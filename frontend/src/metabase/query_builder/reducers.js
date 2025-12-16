@@ -6,7 +6,7 @@ import {
   EDIT_QUESTION,
   NAVIGATE_TO_NEW_CARD,
 } from "metabase/dashboard/actions";
-import TimelineEvents from "metabase/entities/timeline-events";
+import { TimelineEvents } from "metabase/entities/timeline-events"
 import { copy } from "metabase/lib/utils";
 
 import {

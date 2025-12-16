@@ -5,12 +5,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
-import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
+import { FilteredToUrlTable } from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import Button from "metabase/common/components/Button";
 import Link from "metabase/common/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import Segments from "metabase/entities/segments";
+import { Segments } from "metabase/entities/segments";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 

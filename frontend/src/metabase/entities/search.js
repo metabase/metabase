@@ -15,7 +15,7 @@ import { ObjectUnionSchema } from "metabase/schema";
 
 import Actions from "./actions";
 import Bookmarks from "./bookmarks";
-import Collections from "./collections";
+import { Collections } from "./collections";
 import Dashboards from "./dashboards";
 import Pulses from "./pulses";
 import Questions from "./questions";
@@ -26,7 +26,7 @@ import Snippets from "./snippets";
 /**
  * @deprecated use "metabase/api" instead
  */
-export default createEntity({
+export const Search = createEntity({
   name: "search",
   path: "/api/search",
 

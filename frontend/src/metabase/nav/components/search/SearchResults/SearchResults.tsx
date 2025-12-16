@@ -6,7 +6,7 @@ import { t } from "ttag";
 import EmptyState from "metabase/common/components/EmptyState";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search"
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,

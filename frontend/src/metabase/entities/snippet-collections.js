@@ -14,7 +14,7 @@ import { SnippetCollectionSchema } from "metabase/schema";
 /**
  * @deprecated use "metabase/api" instead
  */
-const SnippetCollections = createEntity({
+export const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,
 
@@ -88,4 +88,3 @@ function useListQuery(query, options) {
   return useListCollectionsQuery({ ...query, namespace: "snippets" }, options);
 }
 
-export default SnippetCollections;

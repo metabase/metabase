@@ -50,7 +50,7 @@ export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Fields = createEntity({
+export const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
@@ -257,4 +257,3 @@ const transformFieldValuesData = (data, table_id) => {
   return { id: field_id, ...rest, ...(table_id && { table_id }) };
 };
 
-export default Fields;

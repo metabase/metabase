@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search"
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card } from "metabase-types/api";

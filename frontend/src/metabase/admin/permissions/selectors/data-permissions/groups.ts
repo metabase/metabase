@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import Groups from "metabase/entities/groups";
+import { Groups } from "metabase/entities/groups"
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Group } from "metabase-types/api";

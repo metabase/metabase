@@ -11,7 +11,7 @@ import { TimelineEventSchema } from "metabase/schema";
 /**
  * @deprecated use "metabase/api" instead
  */
-const TimelineEvents = createEntity({
+export const TimelineEvents = createEntity({
   name: "timelineEvents",
   nameOne: "timelineEvent",
   path: "/api/timeline-event",
@@ -76,4 +76,3 @@ const useGetQuery = ({ id }, options) => {
   return useGetTimelineEventQuery(id, options);
 };
 
-export default TimelineEvents;

@@ -25,7 +25,7 @@ export const FETCH_DATABASE_METADATA =
 /**
  * @deprecated use "metabase/api" instead
  */
-const Databases = createEntity({
+export const Databases = createEntity({
   name: "databases",
   path: "/api/database",
   schema: DatabaseSchema,
@@ -145,4 +145,3 @@ const Databases = createEntity({
   },
 });
 
-export default Databases;

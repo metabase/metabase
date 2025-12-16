@@ -6,10 +6,9 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import Collections, {
-  getCollectionType,
+import { Collections, getCollectionType,
   normalizedCollection,
-} from "metabase/entities/collections";
+ } from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,
@@ -31,7 +30,7 @@ export const INJECT_RTK_QUERY_QUESTION_VALUE =
 /**
  * @deprecated use "metabase/api" instead
  */
-const Questions = createEntity({
+export const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
@@ -231,4 +230,3 @@ function getLabel(card) {
   return t`question`;
 }
 
-export default Questions;

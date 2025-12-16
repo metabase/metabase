@@ -10,7 +10,7 @@ import {
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-import CollectionName from "metabase/common/components/CollectionName";
+import { CollectionName } from "metabase/common/components/CollectionName";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import FormField from "metabase/common/components/FormField";
 import {
@@ -21,9 +21,9 @@ import {
 } from "metabase/common/components/Pickers/CollectionPicker";
 import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
-import Dashboard from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -46,7 +46,7 @@ function ItemName({
     return (
       <Flex align="center" gap="sm">
         <Icon name="dashboard" c="brand" />
-        <Dashboard.Name id={dashboardId} />
+        <Dashboards.Name id={dashboardId} />
       </Flex>
     );
   }
@@ -134,7 +134,7 @@ export function FormCollectionAndDashboardPicker({
 
   const selectedItem = useSelector(
     (state) =>
-      Dashboard.selectors.getObject(state, {
+      Dashboards.selectors.getObject(state, {
         entityId: dashboardIdInput.value,
       }) ||
       Collections.selectors.getObject(state, {

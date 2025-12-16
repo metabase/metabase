@@ -24,7 +24,7 @@ import TimelineEvents from "./timeline-events";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Timelines = createEntity({
+export const Timelines = createEntity({
   name: "timelines",
   nameOne: "timeline",
   path: "/api/timeline",
@@ -168,4 +168,3 @@ function useListQuery({ collectionId, ...params } = {}, options) {
   return collectionId ? collectionTimelines : timelines;
 }
 
-export default Timelines;

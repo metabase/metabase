@@ -8,7 +8,7 @@ import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Snippets = createEntity({
+export const Snippets = createEntity({
   name: "snippets",
   nameOne: "snippet",
   path: "/api/native-query-snippet",
@@ -59,4 +59,3 @@ const useGetQuery = ({ id }, options) => {
   return useGetSnippetQuery(id, options);
 };
 
-export default Snippets;
