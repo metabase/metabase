@@ -1,4 +1,7 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -20,6 +23,7 @@ export interface SetupOpts {
   showMetabaseLinks?: boolean;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
@@ -28,6 +32,7 @@ export const setup = ({
   showMetabaseLinks = true,
   hasEnterprisePlugins,
   tokenFeatures = {},
+  specificPlugins = [],
 }: SetupOpts) => {
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -41,7 +46,13 @@ export const setup = ({
   });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    if (specificPlugins.length > 0) {
+      specificPlugins.forEach((plugin) => {
+        setupEnterpriseOnlyPlugin(plugin);
+      });
+    } else {
+      setupEnterprisePlugins();
+    }
   }
 
   const metadata = createMockMetadata({

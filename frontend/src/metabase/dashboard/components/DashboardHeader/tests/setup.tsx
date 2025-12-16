@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
@@ -46,7 +46,7 @@ export const setup = async ({
   slack = false,
   collections = [],
   hasEnterprisePlugins = false,
-  tokenFeatures = {},
+  tokenFeatures = {} as any,
 }) => {
   setupCollectionsEndpoints({ collections });
   setupCollectionByIdEndpoint({ collections });
@@ -56,8 +56,8 @@ export const setup = async ({
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (hasEnterprisePlugins && tokenFeatures?.audit_app) {
+    setupEnterpriseOnlyPlugin("audit_app");
   }
 
   const channelData: {

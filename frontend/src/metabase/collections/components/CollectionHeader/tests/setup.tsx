@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDashboardQuestionCandidatesEndpoint,
   setupUserKeyValueEndpoints,
@@ -70,7 +70,15 @@ export const setup = ({
   const state = createMockState({ settings });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    const plugins: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] = [];
+    if (tokenFeatures?.audit_app) {
+      plugins.push("audit_app");
+    }
+    if (tokenFeatures?.official_collections) {
+      plugins.push("advanced_permissions");
+    }
+
+    plugins.forEach((plugin) => setupEnterpriseOnlyPlugin(plugin));
   }
 
   renderWithProviders(

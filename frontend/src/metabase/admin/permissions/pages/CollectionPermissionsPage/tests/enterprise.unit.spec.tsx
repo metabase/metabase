@@ -95,7 +95,8 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        specificPlugins: ["audit_app"],
       });
 
       await assertCollectionAccessForGroup("Administrators", "View");
@@ -113,7 +114,8 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        specificPlugins: ["audit_app"],
       });
 
       await assertCollectionAccessForGroup("Administrators", "View");
@@ -137,7 +139,8 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        specificPlugins: ["audit_app"],
       });
 
       // change all users users view to no access

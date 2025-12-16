@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupUserRecipientsEndpoint,
@@ -72,8 +72,8 @@ const setup = ({
   });
   reinitialize();
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (hasEnterprisePlugins && tokenFeatures.official_collections) {
+    setupEnterpriseOnlyPlugin("advanced_permissions");
   }
 
   renderWithProviders(<SearchResult result={result} index={0} />, {

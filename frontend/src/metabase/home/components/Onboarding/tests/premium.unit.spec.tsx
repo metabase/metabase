@@ -6,6 +6,7 @@ function setup(opts?: SetupProps) {
   baseSetup({
     hasEnterprisePlugins: true,
     tokenFeatures: { whitelabel: true },
+    specificPlugins: ["whitelabel"],
     ...opts,
   });
 }

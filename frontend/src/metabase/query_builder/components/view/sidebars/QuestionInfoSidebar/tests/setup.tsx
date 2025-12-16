@@ -1,6 +1,9 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
   setupCardEndpoints,
@@ -34,6 +37,7 @@ export interface SetupOpts {
   settings?: Settings;
   hasEnterprisePlugins?: boolean;
   user?: Partial<User>;
+  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = async ({
@@ -41,6 +45,7 @@ export const setup = async ({
   settings = createMockSettings(),
   user,
   hasEnterprisePlugins = false,
+  specificPlugins = [],
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
@@ -63,7 +68,13 @@ export const setup = async ({
   const onSave = jest.fn();
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    if (specificPlugins.length > 0) {
+      specificPlugins.forEach((plugin) => {
+        setupEnterpriseOnlyPlugin(plugin);
+      });
+    } else {
+      setupEnterprisePlugins();
+    }
   }
 
   setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });

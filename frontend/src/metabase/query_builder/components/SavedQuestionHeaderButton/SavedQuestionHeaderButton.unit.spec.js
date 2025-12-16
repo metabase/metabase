@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
@@ -27,8 +27,10 @@ function setup({ question, tokenFeatures = {}, hasEnterprisePlugins = false }) {
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (hasEnterprisePlugins && tokenFeatures.content_verification) {
+    setupEnterpriseOnlyPlugin("content_verification");
+  } else if (hasEnterprisePlugins && tokenFeatures.audit_app) {
+    setupEnterpriseOnlyPlugin("audit_app");
   }
 
   renderWithProviders(

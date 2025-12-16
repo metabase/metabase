@@ -1,4 +1,7 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
@@ -40,6 +43,7 @@ export interface SetupOpts {
   showMetabaseLinks?: boolean;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = async ({
@@ -51,6 +55,7 @@ export const setup = async ({
   showMetabaseLinks = true,
   hasEnterprisePlugins = false,
   tokenFeatures = {},
+  specificPlugins = [],
 }: SetupOpts = {}) => {
   const currentUser = createMockUser();
   const databases = [createMockDatabase()];
@@ -107,7 +112,13 @@ export const setup = async ({
   });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    if (specificPlugins.length > 0) {
+      specificPlugins.forEach((plugin) => {
+        setupEnterpriseOnlyPlugin(plugin);
+      });
+    } else {
+      setupEnterprisePlugins();
+    }
   }
 
   renderWithProviders(

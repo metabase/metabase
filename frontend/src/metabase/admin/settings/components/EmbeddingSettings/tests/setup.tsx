@@ -1,4 +1,7 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   findRequests,
   setupPropertiesEndpoints,
@@ -26,6 +29,7 @@ export interface SetupOpts {
   isHosted?: Settings["is-hosted?"];
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
@@ -36,6 +40,7 @@ export async function setup({
   isHosted = false,
   hasEnterprisePlugins = false,
   tokenFeatures = {},
+  specificPlugins = [],
 }: SetupOpts) {
   const settings = createMockSettings({
     "show-sdk-embed-terms": showSdkEmbedTerms,
@@ -50,7 +55,13 @@ export async function setup({
   });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    if (specificPlugins.length > 0) {
+      specificPlugins.forEach((plugin) => {
+        setupEnterpriseOnlyPlugin(plugin);
+      });
+    } else {
+      setupEnterprisePlugins();
+    }
     setupTokenStatusEndpoint({ valid: true });
   }
 

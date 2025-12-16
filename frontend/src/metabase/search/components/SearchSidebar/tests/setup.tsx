@@ -1,4 +1,7 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -16,6 +19,7 @@ export interface SearchSidebarSetupOptions {
   hasEnterprisePlugins?: boolean;
   value?: URLSearchFilterQueryParams;
   onChange?: (filters: URLSearchFilterQueryParams) => void;
+  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 const TEST_DATABASE = createMockDatabase();
@@ -25,6 +29,7 @@ export const setup = ({
   hasEnterprisePlugins = false,
   value = {},
   onChange = jest.fn(),
+  specificPlugins = [],
 }: SearchSidebarSetupOptions = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
 
@@ -35,7 +40,13 @@ export const setup = ({
   });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    if (specificPlugins.length > 0) {
+      specificPlugins.forEach((plugin) => {
+        setupEnterpriseOnlyPlugin(plugin);
+      });
+    } else {
+      setupEnterprisePlugins();
+    }
   }
 
   renderWithProviders(<SearchSidebar value={value} onChange={onChange} />, {

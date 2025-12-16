@@ -2,7 +2,10 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
@@ -68,6 +71,7 @@ export type SetupOpts = {
   tokenFeatures?: TokenFeatures;
   questionName: string;
   uuid: string;
+  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export async function setup(
@@ -77,6 +81,7 @@ export async function setup(
     tokenFeatures = createMockTokenFeatures(),
     questionName,
     uuid,
+    specificPlugins = [],
   }: SetupOpts = { questionName: "", uuid: "" },
 ) {
   const settings = mockSettings({
@@ -84,7 +89,13 @@ export async function setup(
   });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    if (specificPlugins.length > 0) {
+      specificPlugins.forEach((plugin) => {
+        setupEnterpriseOnlyPlugin(plugin);
+      });
+    } else {
+      setupEnterprisePlugins();
+    }
   }
 
   setupPublicQuestionEndpoints(

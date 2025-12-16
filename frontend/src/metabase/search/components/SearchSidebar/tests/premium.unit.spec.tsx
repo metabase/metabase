@@ -8,6 +8,7 @@ const setupPremium = async (opts?: SearchSidebarSetupOptions) => {
     ...opts,
     tokenFeatures: createMockTokenFeatures({ content_verification: true }),
     hasEnterprisePlugins: true,
+    specificPlugins: ["content_verification"],
   });
 };
 

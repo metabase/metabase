@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -57,7 +57,7 @@ const setup = ({
   });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("sandboxes");
   }
 
   renderWithProviders(

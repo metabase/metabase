@@ -16,6 +16,7 @@ function setupPremium(opts?: Partial<SetupOpts>) {
     ...opts,
     hasEnterprisePlugins: true,
     tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
+    specificPlugins: ["whitelabel"],
     questionName: QUESTION_NAME,
     uuid: FAKE_UUID,
   });

@@ -13,6 +13,7 @@ function setup(opts: Partial<SetupOpts> = {}) {
     ...opts,
     hasEnterprisePlugins: true,
     tokenFeatures: { whitelabel: true },
+    specificPlugins: ["whitelabel"],
   });
 }
 

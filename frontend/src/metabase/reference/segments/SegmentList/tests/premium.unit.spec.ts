@@ -8,6 +8,7 @@ function setup(opts: SetupOpts) {
   baseSetup({
     hasEnterprisePlugins: true,
     tokenFeatures: { whitelabel: true },
+    specificPlugins: ["whitelabel"],
     ...opts,
   });
 }

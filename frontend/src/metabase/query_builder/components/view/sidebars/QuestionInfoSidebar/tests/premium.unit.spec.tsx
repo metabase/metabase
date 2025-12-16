@@ -23,6 +23,7 @@ const setupEnterprise = (opts: SetupOpts) => {
       }),
     }),
     hasEnterprisePlugins: true,
+    specificPlugins: ["content_verification", "entities", "audit_app"],
   });
 };
 

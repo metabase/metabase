@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupParameterValuesEndpoints,
   setupTokenStatusEndpoint,
@@ -94,8 +94,8 @@ export async function setup({
     settings: settings,
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (hasEnterprisePlugins && tokenFeatures?.whitelabel) {
+    setupEnterpriseOnlyPlugin("whitelabel");
   }
 
   const view = renderWithProviders(

@@ -1,6 +1,9 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
   setupPropertiesEndpoints,
@@ -32,6 +35,7 @@ export type SetupProps = {
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export const setup = ({
@@ -44,6 +48,7 @@ export const setup = ({
   openItem,
   showMetabaseLinks = true,
   tokenFeatures = {},
+  specificPlugins = [],
 }: SetupProps = {}) => {
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
   setupPropertiesEndpoints(createMockSettings());
@@ -69,7 +74,13 @@ export const setup = ({
   });
 
   if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+    if (specificPlugins.length > 0) {
+      specificPlugins.forEach((plugin) => {
+        setupEnterpriseOnlyPlugin(plugin);
+      });
+    } else {
+      setupEnterprisePlugins();
+    }
   }
 
   renderWithProviders(
