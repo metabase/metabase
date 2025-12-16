@@ -74,7 +74,7 @@
                                                [:= :global_table table]]]]})]
     (if tx-ref-id
       ;; If there is a workspace transform that targets this table, ignore any global transform that also targets it.
-      [{:node-type :workspaces-transform :id tx-ref-id}]
+      [{:node-type :workspace-transform :id tx-ref-id}]
       (global-parents ws-id "table" id))))
 
 ;; TODO straighten out node-type and entity-type
@@ -99,27 +99,13 @@
               :when (not (pred child))]
     [child (mapcat (partial node->allowed-parents pred deps) parents)]))
 
-;; This will only get the outputs for workspace transforms, not for enclosed ones.
-(defn- entity-outputs [entities]
-  (let [tx-ref-ids (->> entities (filter (comp #{:workspace-transform} :node-type)) (map :id) seq)]
-    (when tx-ref-ids (t2/select-fn-vec (fn [row]
-                                         {:entity-type :table, :id (t2.realize/realize row)})
-                                       [:model/WorkspaceOutput
-                                        [:db_id :db]
-                                        [:global_schema :schema]
-                                        [:global_table :table]
-                                        [:global_table_id :id]]
-                                       :ref_id [:in tx-ref-ids]))))
-
-(defn- render-graph [entities parents deps & {:keys [table? table-sort unwrap-table entity-outputs]
+(defn- render-graph [entities parents deps & {:keys [table? table-sort unwrap-table]
                                               :or   {table?         table?
                                                      table-sort     identity
-                                                     entity-outputs entity-outputs
                                                      unwrap-table   :id}}]
   (let [table-nodes (filter table? entities)
         ;; Any table that has a parent in the subgraph is an output
-        #_#_outputs     (filter deps table-nodes)
-        outputs     (entity-outputs entities)
+        outputs     (filter deps table-nodes)
         ;; Anything other parent table is an input
         inputs      (->> entities (mapcat parents) (filter table?) (remove (set outputs)) distinct)
         entities    (->> (ws.u/toposort-dfs deps) (remove table?))]
@@ -175,9 +161,19 @@
    - :dependencies - association list for the subgraph, with keys and values both in topological order"
   [ws-id changeset]
   (ws.u/assert-transforms! changeset)
-  (let [init-nodes (for [{:keys [entity-type id]} changeset]
+  (let [tx-nodes   (for [{:keys [entity-type id]} changeset]
                      (case entity-type
                        :transform {:node-type :workspace-transform, :id id}))
+        outputs    (when (seq tx-nodes)
+                     (t2/select-fn-vec (fn [row]
+                                         {:entity-type :table, :id (t2.realize/realize row)})
+                                       [:model/WorkspaceOutput
+                                        [:db_id :db]
+                                        [:global_schema :schema]
+                                        [:global_table :table]
+                                        [:global_table_id :id]]
+                                       :ref_id [:in (map :id tx-nodes)]))
+        init-nodes (concat tx-nodes outputs)
         fns        {:node-parents (partial node-parents ws-id)
                     :table?       table?}]
     (path-induced-subgraph* init-nodes fns)))
