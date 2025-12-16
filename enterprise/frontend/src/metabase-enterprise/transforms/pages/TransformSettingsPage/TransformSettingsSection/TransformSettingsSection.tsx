@@ -17,6 +17,7 @@ import {
   Icon,
   type IconName,
   Loader,
+  Stack,
   Text,
 } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
@@ -32,23 +33,22 @@ type Props = {
 };
 
 export const TransformSettingsSection = ({ transform }: Props) => (
-  <TitleSection
-    label={t`Transform target`}
-    description={t`Change what this transform generates and where.`}
-  >
-    <Group p="lg">
-      <TargetInfo transform={transform} />
-    </Group>
-    <Divider />
-    <Group p="lg">
-      <EditTargetButton transform={transform} />
-      <EditMetadataButton transform={transform} />
-    </Group>
-
-    <Group p="lg">
-      <UpdateIncrementalSettings transform={transform} />
-    </Group>
-  </TitleSection>
+  <Stack gap="2.5rem">
+    <TitleSection
+      label={t`Transform target`}
+      description={t`Change what this transform generates and where.`}
+    >
+      <Group p="lg">
+        <TargetInfo transform={transform} />
+      </Group>
+      <Divider />
+      <Group p="lg">
+        <EditTargetButton transform={transform} />
+        <EditMetadataButton transform={transform} />
+      </Group>
+    </TitleSection>
+    <UpdateIncrementalSettings transform={transform} />
+  </Stack>
 );
 
 type TargetInfoProps = {

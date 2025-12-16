@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -22,18 +22,24 @@ export const useUpdateIncrementalSettings = (transform: Transform) => {
   );
   const validationSchema = useMemo(() => getValidationSchema(), []);
 
-  const update = async (values: IncrementalSettingsFormValues) => {
-    const requestData = convertTransformFormToUpdateRequest(transform, values);
-    try {
-      return await updateTransform(requestData).unwrap();
-    } catch (error) {
-      sendToast({
-        message: getErrorMessage(error, t`Failed to update transform`),
-        icon: "warning",
-      });
-      throw error;
-    }
-  };
+  const update = useCallback(
+    async (values: IncrementalSettingsFormValues) => {
+      const requestData = convertTransformFormToUpdateRequest(
+        transform,
+        values,
+      );
+      try {
+        return await updateTransform(requestData).unwrap();
+      } catch (error) {
+        sendToast({
+          message: getErrorMessage(error, t`Failed to update transform`),
+          icon: "warning",
+        });
+        throw error;
+      }
+    },
+    [updateTransform, transform, sendToast],
+  );
 
   return {
     initialValues,
