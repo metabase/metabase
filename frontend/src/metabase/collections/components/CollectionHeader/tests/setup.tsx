@@ -72,7 +72,7 @@ export const setup = ({
   if (hasEnterprisePlugins) {
     const plugins: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] = [];
     if (tokenFeatures?.audit_app) {
-      plugins.push("audit_app");
+      plugins.push("audit_app", "collections");
     }
     if (tokenFeatures?.official_collections) {
       plugins.push("advanced_permissions");

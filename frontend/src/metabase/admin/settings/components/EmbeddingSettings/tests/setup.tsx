@@ -13,6 +13,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { waitFor } from "__support__/ui";
+import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -32,6 +33,9 @@ export interface SetupOpts {
   specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
+// SETTINGS OVERRIDES:
+PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
+
 export async function setup({
   renderCallback,
   showSdkEmbedTerms = true,
@@ -40,7 +44,7 @@ export async function setup({
   isHosted = false,
   hasEnterprisePlugins = false,
   tokenFeatures = {},
-  specificPlugins = [],
+  specificPlugins,
 }: SetupOpts) {
   const settings = createMockSettings({
     "show-sdk-embed-terms": showSdkEmbedTerms,
@@ -55,7 +59,7 @@ export async function setup({
   });
 
   if (hasEnterprisePlugins) {
-    if (specificPlugins.length > 0) {
+    if (specificPlugins) {
       specificPlugins.forEach((plugin) => {
         setupEnterpriseOnlyPlugin(plugin);
       });

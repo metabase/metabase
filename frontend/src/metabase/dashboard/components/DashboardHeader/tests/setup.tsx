@@ -58,6 +58,9 @@ export const setup = async ({
 
   if (hasEnterprisePlugins && tokenFeatures?.audit_app) {
     setupEnterpriseOnlyPlugin("audit_app");
+
+    setupEnterpriseOnlyPlugin("database_routing");
+    setupEnterpriseOnlyPlugin("collections");
   }
 
   const channelData: {

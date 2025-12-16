@@ -21,7 +21,7 @@ const setupEnterprise = (opts: SetupOpts) => {
       }),
     }),
     hasEnterprisePlugins: true,
-    specificPlugins: ["entities"],
+    specificPlugins: ["collections"],
   });
 };
 

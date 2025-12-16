@@ -74,6 +74,7 @@ const setup = ({
 
   if (hasEnterprisePlugins && tokenFeatures.official_collections) {
     setupEnterpriseOnlyPlugin("advanced_permissions");
+    setupEnterpriseOnlyPlugin("collections");
   }
 
   renderWithProviders(<SearchResult result={result} index={0} />, {

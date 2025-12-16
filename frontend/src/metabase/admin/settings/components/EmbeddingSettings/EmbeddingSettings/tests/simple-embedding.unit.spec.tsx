@@ -12,7 +12,6 @@ const setup = (opts: SetupOpts = {}) =>
       embedding_sdk: true,
       embedding_simple: true,
     },
-    specificPlugins: ["embedding"],
     ...opts,
   });
 

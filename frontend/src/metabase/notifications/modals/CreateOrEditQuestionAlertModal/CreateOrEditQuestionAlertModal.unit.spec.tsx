@@ -408,6 +408,7 @@ function setup({
   });
 
   setupEnterpriseOnlyPlugin("advanced_permissions");
+  setupEnterpriseOnlyPlugin("application_permissions");
 
   const mockCard = createMockCard({
     display: "line",

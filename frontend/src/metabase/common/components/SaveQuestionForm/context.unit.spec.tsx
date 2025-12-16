@@ -64,6 +64,7 @@ const setup = ({
   });
 
   setupEnterpriseOnlyPlugin("audit_app");
+  setupEnterpriseOnlyPlugin("collections");
 
   renderWithProviders(
     <SaveQuestionProvider

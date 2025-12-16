@@ -23,7 +23,12 @@ const setupEnterprise = (opts: SetupOpts) => {
       }),
     }),
     hasEnterprisePlugins: true,
-    specificPlugins: ["content_verification", "entities", "audit_app"],
+    specificPlugins: [
+      "content_verification",
+      "audit_app",
+      "collections",
+      "moderation",
+    ],
   });
 };
 

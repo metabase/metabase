@@ -29,8 +29,10 @@ function setup({ question, tokenFeatures = {}, hasEnterprisePlugins = false }) {
 
   if (hasEnterprisePlugins && tokenFeatures.content_verification) {
     setupEnterpriseOnlyPlugin("content_verification");
+    setupEnterpriseOnlyPlugin("moderation");
   } else if (hasEnterprisePlugins && tokenFeatures.audit_app) {
     setupEnterpriseOnlyPlugin("audit_app");
+    setupEnterpriseOnlyPlugin("collections");
   }
 
   renderWithProviders(

@@ -24,7 +24,7 @@ const setup = async ({
     tokenFeatures: {
       embedding_sdk: isEmbeddingSdkEnabled,
     },
-    specificPlugins: isEmbeddingSdkEnabled ? ["embedding"] : [],
+    specificPlugins: isEmbeddingSdkEnabled ? ["embedding-sdk"] : [],
   });
 
   expect(await screen.findByText("Security")).toBeInTheDocument();
