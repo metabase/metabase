@@ -166,11 +166,8 @@ jobs:
           snowplow: true
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
