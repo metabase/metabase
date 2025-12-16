@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
 import { useGetVersionInfoQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
@@ -58,7 +58,10 @@ export function WhatsNewNotification() {
       <Stack gap="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
-          <IconButtonWrapper className={S.DismissIconButtonWrapper} onClick={dismiss}>
+          <IconButtonWrapper
+            className={S.DismissIconButtonWrapper}
+            onClick={dismiss}
+          >
             <Icon name="close" />
           </IconButtonWrapper>
         </Flex>
