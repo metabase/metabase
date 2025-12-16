@@ -19,14 +19,14 @@ const VALID_ENTITY_NAMES = [
 const BROKEN_QUESTION_FIELD_ID_REF = "Broken question field id ref";
 const BROKEN_QUESTION_FIELD_NAME_REF = "Broken question field name ref";
 const BROKEN_NATIVE_QUESTION_COLUMN = "Broken native question column";
-const BROKEN_NATIVE_QUESTION_TABLE_ALIAS = "Broken native question table";
+const BROKEN_NATIVE_QUESTION_TABLE_ALIAS = "Broken native question table alias";
 const BROKEN_NATIVE_QUESTION_SYNTAX = "Broken native question syntax";
 
 const BROKEN_MODEL_FIELD_ID_REF = "Broken model field id ref";
 const BROKEN_MODEL_FIELD_NAME_REF = "Broken model field name ref";
-const BROKEN_MODEL_COLUMN = "Broken model column";
-const BROKEN_MODEL_TABLE_ALIAS = "Broken model table alias";
-const BROKEN_MODEL_SYNTAX = "Broken model syntax";
+const BROKEN_MODEL_COLUMN = "Broken native model column";
+const BROKEN_MODEL_TABLE_ALIAS = "Broken native model table alias";
+const BROKEN_MODEL_SYNTAX = "Broken native model syntax";
 
 const BROKEN_METRIC_FIELD_ID_REF = "Broken metric field id ref";
 const BROKEN_METRIC_FIELD_NAME_REF = "Broken metric field name ref";
