@@ -1260,6 +1260,21 @@
    :api  #{metabase.secrets.core}
    :uses #{api driver models premium-features util}}
 
+  measures
+  {:team "Querying"
+   :api  #{metabase.measures.api
+           metabase.measures.schema}
+   :uses #{api
+           events
+           legacy-mbql
+           lib
+           lib-be
+           models
+           permissions
+           search
+           util
+           xrays}}
+
   segments
   {:team "Querying"
    :api  #{metabase.segments.api
