@@ -2,7 +2,7 @@
   overflow: auto;
   width: 100%;
 
-  @media screen and (max-width: 40em) {
+  @media screen and (max-width: --breakpoint-max-sm) {
     min-height: 220px;
   }
 }

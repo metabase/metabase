@@ -7,7 +7,7 @@
   &.isSidebarOpen {
     display: none;
 
-    @media screen and (min-width: 40em) {
+    @media screen and (max-width: --breakpoint-min-sm) {
       display: inherit;
     }
   }

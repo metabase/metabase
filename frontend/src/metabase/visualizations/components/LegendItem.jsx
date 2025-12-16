@@ -6,10 +6,9 @@ import { Component, createRef } from "react";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Icon, Tooltip } from "metabase/ui";
+import { Box, Icon, Tooltip } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
-import S from "./LegendItem.module.css";
 import { LegendItemDot } from "./legend/LegendItemDot";
 
 const propTypes = {
@@ -87,9 +86,9 @@ export default class LegendItem extends Component {
         onClick={onClick}
       >
         {icon && (
-          <div className={S.IconContainer}>
+          <Box pr="xs">
             <Icon {...icon} />
-          </div>
+          </Box>
         )}
         {showDot && (
           <Tooltip

@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
+import { Box } from "metabase/ui";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
 import TimelineEmptyState from "../TimelineEmptyState";
 import TimelineList from "../TimelineList";
-
-import S from "./TimelinePanel.module.css";
 
 export interface TimelinePanelProps {
   timelines: Timeline[];
@@ -39,11 +38,11 @@ const TimelinePanel = ({
   const canWrite = collection.can_write;
 
   return (
-    <div className={S.PanelRoot}>
+    <Box mx="lg">
       {!isEmpty && canWrite && (
-        <div className={S.PanelToolbar}>
+        <Box mb="md">
           <Button onClick={onNewEvent}>{t`Create event`}</Button>
-        </div>
+        </Box>
       )}
       {!isEmpty ? (
         <TimelineList
@@ -64,7 +63,7 @@ const TimelinePanel = ({
           onNewEvent={onNewEvent}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

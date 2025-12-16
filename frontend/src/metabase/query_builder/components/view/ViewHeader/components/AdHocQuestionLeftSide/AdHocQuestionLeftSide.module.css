@@ -1,5 +1,5 @@
 .AdHocLeftSideRoot {
-  @media screen and (max-width: 40em) {
+  @media screen and (max-width: --breakpoint-max-sm) {
     padding: 0 1.25rem;
   }
 }

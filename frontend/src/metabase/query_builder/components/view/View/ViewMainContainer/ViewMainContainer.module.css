@@ -15,12 +15,12 @@
   /* editor can be wider than a container */
   overflow: hidden;
 
-  @media screen and (max-width: 40em) {
+  @media screen and (max-width: --breakpoint-max-sm) {
     position: relative;
   }
 
   &.isSidebarOpen {
-    @media screen and (max-width: 40em) {
+    @media screen and (max-width: --breakpoint-max-sm) {
       display: none !important;
     }
   }
