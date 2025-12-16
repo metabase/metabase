@@ -215,11 +215,11 @@ export function getNodeLocationInfo(
           links: [
             {
               label: node.data.db.name,
-              url: Urls.dataModel({ databaseId: node.data.db_id }),
+              url: Urls.dataStudioData({ databaseId: node.data.db_id }),
             },
             {
               label: node.data.schema,
-              url: Urls.dataModel({
+              url: Urls.dataStudioData({
                 databaseId: node.data.db_id,
                 schemaName: node.data.schema,
               }),
@@ -249,10 +249,11 @@ export function getNodeLocationInfo(
           links: [
             {
               label: node.data.table.display_name,
-              url: Urls.dataModel({
+              url: Urls.dataStudioDataModelSegment({
                 databaseId: node.data.table.db_id,
                 schemaName: node.data.table.schema,
                 tableId: node.data.table.id,
+                segmentId: node.id,
               }),
             },
           ],
