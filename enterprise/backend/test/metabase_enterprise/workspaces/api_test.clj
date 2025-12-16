@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.api :as transforms.api]
-   [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
@@ -689,7 +689,7 @@
                                                    :schema   "public"
                                                    :name     orig-name}}]
         ;; create the global table
-        (transforms.i/execute! x1 {:run-method :manual})
+        (transforms.execute/execute! x1 {:run-method :manual})
         (let [workspace    (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                                  {:name        "Test Workspace"
                                                                   :database_id (mt/id)}))

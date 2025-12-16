@@ -9,7 +9,7 @@
   decoupled from AppDb."
   (:require
    [metabase-enterprise.transforms.core :as transforms]
-   [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -83,7 +83,7 @@
                                :target (remap-target (:tables remapping) target)))
             _       (assert (:target new-xf) "Target mapping must not be nil")
             temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
-        (transforms.i/execute! temp-xf {:run-method :manual})
+        (transforms.execute/execute! temp-xf {:run-method :manual})
         (u/prog1 (execution-results temp-xf)
           (t2/delete! :model/Transform (:id temp-xf)))
         #_;; this just deletes also writes to :model/Table and actual output table too

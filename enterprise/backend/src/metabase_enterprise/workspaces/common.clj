@@ -91,7 +91,7 @@
         (str/includes? msg "UNIQUE"))))
 
 (defn- run-workspace-setup!
-  "Background job: runs isolation, mirroring, grants. Updates status to :ready when done."
+  "Background job: runs isolation, grants. Updates status to :ready when done."
   [{ws-id :id :as workspace} database]
   (ws.log/track! ws-id :workspace-setup
     (let [{:keys [_database_details]} (ws.log/track! ws-id :database-isolation
@@ -99,7 +99,7 @@
                                            ;; it actually returns just those, this is more like a doc than behavior
                                             (select-keys [:schema :database_details])
                                             (u/prog1 (t2/update! :model/Workspace ws-id <>))))
-          ;; TODO analyze graph. in the
+          ;; TODO get graph analysis here
           {:keys [inputs]}           {}]
       (when-let [table-ids (seq (keep #(when (= :table (:type %)) (:id %)) inputs))]
         (ws.log/track! ws-id :grant-read-access
@@ -151,48 +151,6 @@
                                   :workspace_id workspace-id))]
       (ws.impl/sync-transform-dependencies! workspace transform)
       transform)))
-
-(defn- mirror-table-to-delete-where
-  [database-id targets]
-  (let [s+t (mapv (fn [[schema name]]
-                    [:and
-                     [:= [:inline schema] :schema]
-                     [:= [:inline name] :name]])
-                  targets)]
-    (into [:and
-           [:= [:inline database-id] :db_id]
-           (into [:or] s+t)])))
-
-(defn remove-entities!
-  "Remove multiple entities from the workspace."
-  [workspace entities]
-  ;; count does not have to be 1
-  (assert (= 1 (count entities))
-          "Single kv")
-  (assert (= :transforms (-> entities keys first))
-          "For transforms")
-  (assert (every? pos-int? (:transforms entities))
-          "With seq of ids")
-
-  ;; drop transform, drop its target table, no checking of dependencies
-  (let [mirror-transforms-ids (set (:transforms entities))
-        mirror-transforms-data (t2/select :model/Transform :id [:in mirror-transforms-ids])
-        database (t2/select-one :model/Database :id (:database_id workspace))
-        targets (mapv (fn [{:keys [target]}]
-                        (assert (= "table" (:type target)))
-                        [(:schema target) (:name target)])
-                      mirror-transforms-data)
-        _ (assert (< 0 (count targets)))
-        tables-where-clause (mirror-table-to-delete-where (:database_id workspace) targets)
-        tables-data (t2/select :model/Table {:where tables-where-clause})
-        tables-ids (into #{} (map :id) tables-data)]
-    (assert (every? pos-int? tables-ids))
-    (when (seq targets)
-      (ws.isolation/drop-isolated-tables! database targets))
-    (when (seq tables-ids)
-      (t2/delete! :model/Table :id [:in tables-ids]))
-    (when (seq mirror-transforms-ids)
-      (t2/delete! :model/Transform :id [:in mirror-transforms-ids]))))
 
 #_:clj-kondo/ignore
 (comment
