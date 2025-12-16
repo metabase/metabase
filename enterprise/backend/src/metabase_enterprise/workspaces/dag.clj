@@ -91,32 +91,38 @@
               :when (not (pred child))]
     [child (mapcat (partial node->allowed-parents pred deps) parents)]))
 
-(defn- render-graph [entities deps]
-  (let [table-nodes     (filter table? entities)
+(defn- render-graph [entities parents deps & {:keys [table? table-sort unwrap-table]
+                                              :or   {table?       table?
+                                                     table-sort   identity
+                                                     unwrap-table :id}}]
+  (let [table-nodes (filter table? entities)
         ;; Any table that has a parent in the subgraph is an output
-        outputs        (filter deps table-nodes)
-        ;; Anything else is an input
-        ;; TODO I suspect this is incomplete (may have some transforms without keys in deps yet)
-        inputs         (remove (set outputs) table-nodes)
-        entities       (->> (ws.u/toposort-dfs deps) (remove table?))]
-    {:inputs       (map :id inputs)
-     :outputs      (map :id outputs)
+        outputs     (filter deps table-nodes)
+        ;; Anything other parent table is an input
+        inputs      (->> entities (mapcat parents) (filter table?) (remove (set outputs)) distinct)
+        entities    (->> (ws.u/toposort-dfs deps) (remove table?))]
+    {:inputs       (sort-by table-sort (map unwrap-table inputs))
+     :outputs      (sort-by table-sort (map unwrap-table outputs))
      :entities     entities
      ;; collapse tables out, directly connecting transforms? smaller graphs are easier for humans to read
      :dependencies (collapse table? deps)}))
 
 (defn- path-induced-subgraph*
   "Implementation for [[path-induced-subgraph]] that takes the lookup functions as arguments. Useful for testing."
-  [ws-id init-nodes node-parents-fn]
-  (loop [members (into #{} init-nodes)
+  [init-nodes {:keys [node-parents] :as fns}]
+  (loop [members (set init-nodes)
+         cache   {}
          ;; Association list sets from nodes to their direct dependencies
          deps    (u/for-map [node init-nodes] [node #{}])
          ;; Paths are vectors sorted from child to parent
          [path & paths] (for [ref members] [ref])]
     (if-not path
-      (render-graph members deps)
-      (let [parents  (node-parents-fn ws-id (peek path))
-            continue (remove members parents)]
+      (render-graph members cache deps fns)
+      ;; Look-up from cache first
+      (let [head     (peek path)
+            parents  (cache head (node-parents head))
+            cache    (assoc cache head parents)
+            continue (when parents (remove members parents))]
         (if (not= parents continue)
           ;; At least one parent is in the enclosed subgraph, so this entire path is as well.
           (let [add-dep    (fn [deps [child parent]]
@@ -126,9 +132,9 @@
                                    (map (fn [end] [(peek path) end]) (filter members parents)))
                 ;; Since everything along this path will now be added to deps already, we can truncate the paths.
                 next-paths (into paths (for [c continue] [(peek path) c]))]
-            (recur (into members path) (reduce add-dep deps pairs) next-paths))
+            (recur (into members path) cache (reduce add-dep deps pairs) next-paths))
           ;; We have not reached another member of the enclosed subgraph yet, so keep extending.
-          (recur members deps (into paths (for [c continue] (conj path c)))))))))
+          (recur members cache deps (into paths (for [c continue] (conj path c)))))))))
 
 ;;;; Public API
 
@@ -149,8 +155,10 @@
   (ws.u/assert-transforms! changeset)
   (let [init-nodes (for [{:keys [entity-type id]} changeset]
                      (case entity-type
-                       :transform {:node-type :workspaces-transform, :id id}))]
-    (path-induced-subgraph* ws-id init-nodes node-parents)))
+                       :transform {:node-type :workspaces-transform, :id id}))
+        fns        {:node-parents (partial node-parents ws-id)
+                    :table?       table?}]
+    (path-induced-subgraph* init-nodes fns)))
 
 ;; source-table ---------> checked-out-transform
 ;;          \____external-transform__/

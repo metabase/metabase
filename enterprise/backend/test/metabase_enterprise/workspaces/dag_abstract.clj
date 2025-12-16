@@ -31,21 +31,20 @@
 (defn expand-shorthand
   "As shorthand, we can use transforms in the place of their induced tables.
    This function expands the graph to insert the induced tables, and replace the corresponding references."
-  [{:keys [dependencies] :as graph}]
-  (assoc graph :dependencies
-         (let [xs (set (filter #(is? :x %) (concat (keys dependencies) (mapcat val dependencies))))]
-           (into (sorted-map-by #(compare (lexico %1) (lexico %2)))
-                 (merge (zipmap (map x->t xs) (map vector xs))
-                        (into {} (filter (comp #(is? :t %) key)) dependencies)
-                        (update-vals
-                         (into {} (remove (comp #(is? :t %) key)) dependencies)
-                         (fn [deps] (->> deps
-                                         (map (fn [id]
-                                                (if (is? :x id)
-                                                  (x->t id)
-                                                  id)))
-                                         (sort-by lexico)
-                                         (vec)))))))))
+  [dependencies]
+  (let [xs (set (filter #(is? :x %) (concat (keys dependencies) (mapcat val dependencies))))]
+    (into (sorted-map-by #(compare (lexico %1) (lexico %2)))
+          (merge (zipmap (map x->t xs) (map vector xs))
+                 (into {} (filter (comp #(is? :t %) key)) dependencies)
+                 (update-vals
+                  (into {} (remove (comp #(is? :t %) key)) dependencies)
+                  (fn [deps] (->> deps
+                                  (map (fn [id]
+                                         (if (is? :x id)
+                                           (x->t id)
+                                           id)))
+                                  (sort-by lexico)
+                                  (vec))))))))
 
 ;;;; Graph traversal helpers
 

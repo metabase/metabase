@@ -18,15 +18,14 @@
 
 ;;;; Example graphs for testing
 
-(def ^:private example
-  {:check-outs   #{:x3 :m6 :m10 :m13}
-   :dependencies {:x3  [:x1 :t2]
-                  :x4  [:x3]
-                  :m6  [:x4 :t5]
-                  :m10 [:t9]
-                  :x11 [:m10]
-                  :m12 [:x11]
-                  :m13 [:x11 :m12]}})
+(def ^:private example-graph
+  {:x3  [#_:x1 :t2]
+   :x4  [:x3]
+   :m6  [:x4 :t5]
+   :m10 [:t9]
+   :x11 [:m10]
+   :m12 [:x11]
+   :m13 [:x11 :m12]})
 
 ;;;; Test data helpers
 
@@ -143,19 +142,18 @@
 
 (deftest expand-solver-test
   (testing "expand-shorthand inserts interstitial nodes for transform output tables"
-    (is (= {:check-outs   #{:x3 :m6 :m10 :m13}
-            :dependencies {:t1  [:x1]
-                           :x3  [:t1 :t2]
-                           :t3  [:x3]
-                           :x4  [:t3]
-                           :t4  [:x4]
-                           :m6  [:t4 :t5]
-                           :m10 [:t9]
-                           :x11 [:m10]
-                           :t11 [:x11]
-                           :m12 [:t11]
-                           :m13 [:t11 :m12]}}
-           (dag-abstract/expand-shorthand example)))))
+    (is (= {:t1  [:x1]
+            :x3  [:t1 :t2]
+            :t3  [:x3]
+            :x4  [:t3]
+            :t4  [:x4]
+            :m6  [:t4 :t5]
+            :m10 [:t9]
+            :x11 [:m10]
+            :t11 [:x11]
+            :m12 [:t11]
+            :m13 [:t11 :m12]}
+           (dag-abstract/expand-shorthand example-graph)))))
 
 (deftest abstract-path-induced-subgraph-test
   (testing "path-induced-subgraph computes correct result for example graph"
@@ -172,7 +170,9 @@
                            :x3  []
                            :x4  [:t3]
                            :m6  [:t4])}
-           (dag-abstract/path-induced-subgraph (dag-abstract/expand-shorthand example))))))
+           (dag-abstract/path-induced-subgraph
+            {:check-outs   #{:x3 :m6 :m10 :m13}
+             :dependencies (dag-abstract/expand-shorthand example-graph)})))))
 
 ;;;; Card dependency detection tests
 
@@ -220,3 +220,32 @@
              (t 5)  [(ws 4)]
              (ws 4) []
              (ws 5) []})))))
+
+(defn- solve-in-memory [init-nodes graph]
+  (#'ws.dag/path-induced-subgraph* init-nodes
+                                   {:node-parents (dag-abstract/expand-shorthand graph)
+                                    :table?       table?
+                                    :table-sort   kw->id
+                                    :unwrap-table identity}))
+
+(deftest in-memory-path-induced-subgraph-test
+  (testing "todo testing message"
+    (is (= {:inputs       [:t1 :t2 :t5 :t9]
+            :outputs      [:t3 :t4 :t11]
+            :entities     [:m10 :x11 :m12 :m13 :x3 :x4 :m6]
+            :dependencies {:m10 []
+                           :m12 [:x11]
+                           :m13 [:m12 :x11]
+                           :m6  [:x4]
+                           :x11 [:m10]
+                           :x3  []
+                           :x4  [:x3]}}
+           (solve-in-memory
+            [:x3 :m6 :m10 :m13]
+            {:x3  [:x1 :t2]
+             :x4  [:x3]
+             :m6  [:x4 :t5]
+             :m10 [:t9]
+             :x11 [:m10]
+             :m12 [:x11]
+             :m13 [:x11 :m12]})))))
