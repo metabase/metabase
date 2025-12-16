@@ -64,13 +64,9 @@ export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
     "have.length",
     n,
   );
-  cy.get("iframe[data-iframe-loaded]", { timeout: 40_000 }).should(
-    "have.length",
-    n,
-    {
-      timeout: 40_000, // the iframe can slow to load, we need to wait to decrease flakiness
-    },
-  );
+  cy.get("iframe[data-iframe-loaded]").should("have.length", n, {
+    timeout: 40_000, // the iframe can be slow to load, we need to wait to decrease flakiness
+  });
 };
 
 export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
