@@ -121,7 +121,9 @@ export const useSdkIframeEmbedSettings = ({
       .otherwise((initialState) =>
         getDefaultSdkIframeEmbedSettings({
           experience: "dashboard",
-          resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+          resourceId: isRecentsLoading
+            ? null
+            : (recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID),
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
@@ -135,6 +137,7 @@ export const useSdkIframeEmbedSettings = ({
     isGuestEmbedsEnabled,
     isSsoEnabledAndConfigured,
     recentDashboards,
+    isRecentsLoading,
   ]);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();

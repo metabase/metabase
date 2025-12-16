@@ -214,6 +214,21 @@ describe(suiteTitle, () => {
     cy.findByTestId("preview-loading-indicator").should("not.exist");
   });
 
+  it("should respect slow loading of recent dashboard and avoid recent conditions", () => {
+    cy.intercept("GET", "/api/activity/recents*", (req) => {
+      req.on("response", (res) => {
+        res.setThrottle(0.3); // Slow down the response
+      });
+    }).as("getRecents");
+
+    visitNewEmbedPage();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Person overview").should("not.exist");
+      cy.findByText("Orders in a dashboard").should("be.visible");
+    });
+  });
+
   it("shows Metabot experience when selected", () => {
     visitNewEmbedPage();
 
