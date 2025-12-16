@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
-import { useUserSetting } from "metabase/common/hooks";
+import { useSetting, useUserSetting } from "metabase/common/hooks";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   USER_SETTINGS_DEBOUNCE_MS,
@@ -90,6 +90,8 @@ export const useSdkIframeEmbedSettings = ({
     isSimpleEmbedFeatureAvailable,
   });
 
+  const exampleDashboardId = useSetting("example-dashboard-id");
+
   const defaultSettings = useMemo(() => {
     return match(initialState)
       .with(
@@ -123,7 +125,9 @@ export const useSdkIframeEmbedSettings = ({
           experience: "dashboard",
           resourceId: isRecentsLoading
             ? null
-            : (recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID),
+            : (recentDashboards[0]?.id ??
+              exampleDashboardId ??
+              EMBED_FALLBACK_DASHBOARD_ID),
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
@@ -136,6 +140,7 @@ export const useSdkIframeEmbedSettings = ({
     isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
     isSsoEnabledAndConfigured,
+    exampleDashboardId,
     recentDashboards,
     isRecentsLoading,
   ]);
