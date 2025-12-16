@@ -20,23 +20,22 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^ArrayBlockingQueue global-field-value-invalidate-queue
-  "Queue used to recalculate the field values for updated columns in the background."
-  (ArrayBlockingQueue. 1000))
-
-(def ^:dynamic *field-value-invalidate-queue*
-  "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
-  nil)
-
 (defn- batch-invalidate-field-values!
   "Recalculate the field values for the given fields."
   [field-batches]
   (->> (t2/select :model/Field :id [:in (into #{} cat field-batches)])
        (run! field-values/create-or-update-full-field-values!)))
 
-(defmethod queue/init-listener! ::FieldValueInvalidation [_]
-  (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!
-                 {:max-batch-messages 10, :max-next-ms 10}))
+(def ^:private global-field-value-invalidate-queue
+  (queue/create-array-blocking-queue-listener "field-value-invalidate"
+                                              batch-invalidate-field-values!
+                                              {:max-batch-messages 10
+                                               :max-next-ms 10
+                                               :queue-size 1000}))
+
+(def ^:dynamic *field-value-invalidate-queue*
+  "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
+  nil)
 
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."
@@ -148,8 +147,7 @@
                           (apply concat))]
     ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
     (when (seq stale-fields)
-      (let [^ArrayBlockingQueue queue (or *field-value-invalidate-queue* global-field-value-invalidate-queue)]
-        (.offer queue stale-fields)))))
+      (queue/put! (or *field-value-invalidate-queue* global-field-value-invalidate-queue) stale-fields))))
 
 ;; TODO this is fairly dirty, would be cleaner to map from db values to de-coerced values via middleware
 ;;      invalidation could perhaps be done in response to effect, or in middleware (to dedupe for chained actions)
