@@ -43,14 +43,16 @@
 
 (def ^:private DashboardTemplate
   (mu/with-api-error-message
-   [:fn (fn [dashboard-template]
-          (some (fn [toplevel]
-                  (some (comp automagic-dashboards.dashboard-templates/get-dashboard-template
-                              (fn [prefix]
-                                [toplevel prefix dashboard-template])
-                              :dashboard-template-name)
-                        (automagic-dashboards.dashboard-templates/get-dashboard-templates [toplevel])))
-                ["table" "metric" "field"]))]
+   [:fn
+    {:api/regex #"[A-Za-z]+"}
+    (fn [dashboard-template]
+      (some (fn [toplevel]
+              (some (comp automagic-dashboards.dashboard-templates/get-dashboard-template
+                          (fn [prefix]
+                            [toplevel prefix dashboard-template])
+                          :dashboard-template-name)
+                    (automagic-dashboards.dashboard-templates/get-dashboard-templates [toplevel])))
+            ["table" "metric" "field"]))]
    (deferred-tru "invalid value for dashboard template name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
