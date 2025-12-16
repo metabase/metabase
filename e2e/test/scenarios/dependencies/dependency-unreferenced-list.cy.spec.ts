@@ -106,9 +106,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
       createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
       H.DataStudio.Tasks.searchInput().type(MODEL_FOR_QUESTION_DATA_SOURCE);
-      H.DataStudio.Tasks.list().within(() => {
-        cy.findByText(MODEL_FOR_QUESTION_DATA_SOURCE).should("be.visible");
-        cy.findByText(MODEL_FOR_MODEL_DATA_SOURCE).should("not.exist");
+      checkList({
+        visibleEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
+        hiddenEntities: [MODEL_FOR_MODEL_DATA_SOURCE],
       });
     });
 
@@ -116,17 +116,19 @@ describe("scenarios > dependencies > unreferenced list", () => {
       createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
       H.DataStudio.Tasks.searchInput().type("tag");
-      H.DataStudio.Tasks.list().within(() => {
-        cy.findByText(MODEL_FOR_QUESTION_DATA_SOURCE).should("not.exist");
-        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
-        cy.findByText(SNIPPET_FOR_SNIPPET_TAG).should("be.visible");
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+          SNIPPET_FOR_SNIPPET_TAG,
+        ],
+        hiddenEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
       });
 
       H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Model").click();
-      H.DataStudio.Tasks.list().within(() => {
-        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
-        cy.findByText(SNIPPET_FOR_SNIPPET_TAG).should("not.exist");
+      checkList({
+        visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
+        hiddenEntities: [SNIPPET_FOR_SNIPPET_TAG],
       });
     });
   });
@@ -135,94 +137,74 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should filter entities by type", () => {
       createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
-        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
-        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
-        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should(
-          "be.visible",
-        );
-      });
+      checkList({ visibleEntities: ENTITY_NAMES });
 
       H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Model").click();
-      H.DataStudio.Tasks.list().within(() => {
-        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
-        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("not.exist");
-        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("not.exist");
-        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
-      });
+      checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
 
       H.popover().findByText("Segment").click();
-      H.DataStudio.Tasks.list().within(() => {
-        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
-        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
-        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("not.exist");
-        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+          SEGMENT_FOR_QUESTION_FILTER,
+        ],
       });
 
       H.popover().findByText("Metric").click();
-      H.DataStudio.Tasks.list().within(() => {
-        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
-        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
-        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
-        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should("not.exist");
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+          SEGMENT_FOR_QUESTION_FILTER,
+          METRIC_FOR_QUESTION_AGGREGATION,
+        ],
       });
 
       H.popover().findByText("Snippet").click();
-      H.DataStudio.Tasks.list().within(() => {
-        cy.findByText(MODEL_FOR_NATIVE_QUESTION_CARD_TAG).should("be.visible");
-        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
-        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
-        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should(
-          "be.visible",
-        );
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+          SEGMENT_FOR_QUESTION_FILTER,
+          METRIC_FOR_QUESTION_AGGREGATION,
+          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        ],
       });
     });
   });
 
   describe("sidebar", () => {
     it("should show the sidebar for supported entities", () => {
-      function checkSidebar({
-        entityName,
-        locationName,
-        creatorName,
-      }: {
-        entityName: string;
-        locationName?: string;
-        creatorName?: string;
-      }) {
-        H.DataStudio.Tasks.sidebar().within(() => {
-          cy.findByText(entityName).should("be.visible");
-          if (locationName) {
-            cy.findByText(locationName).should("be.visible");
-          }
-          if (creatorName) {
-            H.DataStudio.Tasks.sidebarCreatedInfo().should(
-              "contain.text",
-              creatorName,
-            );
-          }
-        });
-      }
-
       createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
+
+      H.DataStudio.Tasks.list()
+        .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
+        .click();
       checkSidebar({
         entityName: MODEL_FOR_QUESTION_DATA_SOURCE,
         locationName: "Our analytics",
         creatorName: "Bobby Tables",
       });
+
+      H.DataStudio.Tasks.list().findByText(SEGMENT_FOR_QUESTION_FILTER).click();
       checkSidebar({
         entityName: SEGMENT_FOR_QUESTION_FILTER,
         locationName: "Orders",
         creatorName: "Bobby Tables",
       });
+
+      H.DataStudio.Tasks.list()
+        .findByText(METRIC_FOR_QUESTION_AGGREGATION)
+        .click();
       checkSidebar({
         entityName: METRIC_FOR_QUESTION_AGGREGATION,
         locationName: "Our analytics",
         creatorName: "Bobby Tables",
       });
+
+      H.DataStudio.Tasks.list()
+        .findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG)
+        .click();
       checkSidebar({
         entityName: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         locationName: "Our analytics",
@@ -888,5 +870,45 @@ function createDashboardWithParameterWithCardSource({
         },
       }),
     ],
+  });
+}
+
+function checkList({
+  visibleEntities = [],
+  hiddenEntities = [],
+}: {
+  visibleEntities?: string[];
+  hiddenEntities?: string[];
+}) {
+  H.DataStudio.Tasks.list().within(() => {
+    visibleEntities.forEach((name) => {
+      cy.findByText(name).should("be.visible");
+    });
+    hiddenEntities.forEach((name) => {
+      cy.findByText(name).should("not.exist");
+    });
+  });
+}
+
+function checkSidebar({
+  entityName,
+  locationName,
+  creatorName,
+}: {
+  entityName: string;
+  locationName?: string;
+  creatorName?: string;
+}) {
+  H.DataStudio.Tasks.sidebar().within(() => {
+    cy.findByText(entityName).should("be.visible");
+    if (locationName) {
+      cy.findByText(locationName).should("be.visible");
+    }
+    if (creatorName) {
+      H.DataStudio.Tasks.sidebarCreatedInfo().should(
+        "contain.text",
+        creatorName,
+      );
+    }
   });
 }
