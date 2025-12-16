@@ -11,7 +11,6 @@ const VALID_CARD_COLUMN_NAME = "Valid card column with name";
 const VALID_NATIVE_CARD = "Valid native card";
 const VALID_SEGMENT = "Valid segment";
 const VALID_METRIC = "Valid metric";
-const VALID_SNIPPET = "Valid snippet";
 
 const VALID_ENTITY_NAMES = [
   VALID_CARD_COLUMN_ID,
@@ -19,7 +18,6 @@ const VALID_ENTITY_NAMES = [
   VALID_NATIVE_CARD,
   VALID_SEGMENT,
   VALID_METRIC,
-  VALID_SNIPPET,
 ];
 
 const CARD_COLUMN_ID_MISSING = "Card with a non-existing column with an id";
@@ -235,10 +233,6 @@ function createValidEntities() {
     tableId: ORDERS_ID,
     fieldId: ORDERS.TOTAL,
   });
-  createSnippet({
-    name: VALID_SEGMENT,
-    content: `SELECT * FROM {{#${ORDERS_QUESTION_ID}}}`,
-  });
 }
 
 function createBrokenCards({ type }: { type: CardType }) {
@@ -369,13 +363,6 @@ function createSegmentWithFieldIdRef({
       "source-table": tableId,
       filter: ["not-null", ["field", fieldId, null]],
     },
-  });
-}
-
-function createSnippet({ name, content }: { name: string; content: string }) {
-  return H.createSnippet({
-    name,
-    content,
   });
 }
 
