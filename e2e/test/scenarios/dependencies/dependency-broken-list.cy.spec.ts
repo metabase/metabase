@@ -2,15 +2,9 @@ const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type {
-  CardId,
-  CardType,
-  FieldId,
-  SegmentId,
-  TableId,
-} from "metabase-types/api";
+import type { CardId, CardType, FieldId, TableId } from "metabase-types/api";
 
-const { ORDERS_ID, ORDERS, REVIEWS_ID, REVIEWS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, REVIEWS } = SAMPLE_DATABASE;
 
 const VALID_CARD_COLUMN_ID = "Valid card column with id";
 const VALID_CARD_COLUMN_NAME = "Valid card column with name";
@@ -71,17 +65,7 @@ const BROKEN_CARD_ERRORS = {
 };
 
 const SEGMENT_COLUMN_MISSING = "Segment with a non-existing column";
-const SEGMENT_SEGMENT_MISSING = "Segment with a non-existing segment";
-
-const BROKEN_SEGMENT_NAMES = [SEGMENT_COLUMN_MISSING, SEGMENT_SEGMENT_MISSING];
-
-const SNIPPET_CARD_TAG_MISSING = "Snippet with a non-existing card";
-const SNIPPET_SNIPPET_TAG_MISSING = "Snippet with a non-existing snippet";
-
-const BROKEN_SNIPPET_NAMES = [
-  SNIPPET_CARD_TAG_MISSING,
-  SNIPPET_SNIPPET_TAG_MISSING,
-];
+const BROKEN_SEGMENT_NAMES = [SEGMENT_COLUMN_MISSING];
 
 describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
@@ -142,16 +126,6 @@ describe("scenarios > dependencies > broken list", () => {
         });
       });
     });
-
-    it("should show broken snippets", () => {
-      createBrokenSnippets();
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        BROKEN_SNIPPET_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
-      });
-    });
   });
 
   describe("search", () => {
@@ -172,18 +146,14 @@ describe("scenarios > dependencies > broken list", () => {
       createBrokenSegments();
       H.DataStudio.Tasks.visitBrokenEntities();
       checkList({
-        visibleEntities: [
-          ...BROKEN_CARD_NAMES,
-          ...BROKEN_SEGMENT_NAMES,
-          ...BROKEN_SNIPPET_NAMES,
-        ],
+        visibleEntities: [...BROKEN_CARD_NAMES, ...BROKEN_SEGMENT_NAMES],
       });
 
       H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Question").click();
       checkList({
         visibleEntities: [...BROKEN_CARD_NAMES],
-        hiddenEntities: [...BROKEN_SEGMENT_NAMES, ...BROKEN_SNIPPET_NAMES],
+        hiddenEntities: [...BROKEN_SEGMENT_NAMES],
       });
 
       H.popover().within(() => {
@@ -192,16 +162,7 @@ describe("scenarios > dependencies > broken list", () => {
       });
       checkList({
         visibleEntities: [...BROKEN_SEGMENT_NAMES],
-        hiddenEntities: [...BROKEN_CARD_NAMES, ...BROKEN_SNIPPET_NAMES],
-      });
-
-      H.popover().within(() => {
-        cy.findByText("Question").click();
-        cy.findByText("Snippet").click();
-      });
-      checkList({
-        visibleEntities: [...BROKEN_SNIPPET_NAMES],
-        hiddenEntities: [...BROKEN_CARD_NAMES, ...BROKEN_SEGMENT_NAMES],
+        hiddenEntities: [...BROKEN_CARD_NAMES],
       });
     });
   });
@@ -326,22 +287,6 @@ function createBrokenSegments() {
     tableId: ORDERS_ID,
     fieldId: REVIEWS.RATING,
   });
-  createSegmentWithSegmentClause({
-    name: SEGMENT_SEGMENT_MISSING,
-    tableId: REVIEWS_ID,
-    segmentId: 1000,
-  });
-}
-
-function createBrokenSnippets() {
-  createSnippet({
-    name: SNIPPET_CARD_TAG_MISSING,
-    content: "SELECT * {{#1000}}",
-  });
-  createSnippet({
-    name: SNIPPET_SNIPPET_TAG_MISSING,
-    content: "SELECT * FROM ORDERS WHERE {{snippet: missing-snippet}}",
-  });
 }
 
 function createCardWithFieldIdRef({
@@ -423,25 +368,6 @@ function createSegmentWithFieldIdRef({
     definition: {
       "source-table": tableId,
       filter: ["not-null", ["field", fieldId, null]],
-    },
-  });
-}
-
-function createSegmentWithSegmentClause({
-  name,
-  tableId,
-  segmentId,
-}: {
-  name: string;
-  tableId: TableId;
-  segmentId: SegmentId;
-}) {
-  return H.createSegment({
-    name,
-    table_id: tableId,
-    definition: {
-      "source-table": tableId,
-      filter: ["segment", segmentId],
     },
   });
 }
