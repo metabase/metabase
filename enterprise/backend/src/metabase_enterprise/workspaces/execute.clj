@@ -47,7 +47,7 @@
 ;; You might prefer a multi-method? I certainly would.
 
 (defn- remap-target [table-map {d :database, s :schema, t :name :as target}]
-  (if-let [replacement (table-map [d s t])]
+  (if-let [replacement (get table-map [d s t])]
     ;; Always fallback to tables for re-mapped outputs, regardless of the type used in the original target.
     {:type     (:type replacement "table")
      :database (:db-id replacement)

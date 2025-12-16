@@ -103,7 +103,7 @@
 
 (defn- render-graph [entities parents deps & {:keys [table? table-sort unwrap-table]
                                               :or   {table?         table?
-                                                     table-sort     identity
+                                                     table-sort     (juxt :db :schema :table)
                                                      unwrap-table   :id}}]
   (let [table-nodes (filter table? entities)
         ;; Any table that has a parent in the subgraph is an output

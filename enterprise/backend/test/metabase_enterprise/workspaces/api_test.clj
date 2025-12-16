@@ -8,6 +8,8 @@
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.workspaces.dag :as ws.dag]
+   [metabase-enterprise.workspaces.execute :as ws.execute]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -1313,4 +1315,62 @@
                            :from_entity_id   (str (mt/id) "--venues")
                            :to_entity_type   "workspace-transform"
                            :to_entity_id     (:ref_id tx)}]}
+                 (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph")))))))))
+
+(deftest fancier-graph-test
+  (testing "GET /api/ee/workspace/:id/graph"
+    (ws.tu/with-workspaces! [ws {:name "Workspace 1"}]
+      ;; TODO use dag creation helper
+      (mt/with-temp [:model/WorkspaceTransform tx-1 {:name "A Tx in WS1", :workspace_id (:id ws)}
+                     :model/Transform          tx-2 {:name "An external Tx"}
+                     :model/WorkspaceTransform tx-3 {:name "Another Tx in WS1", :workspace_id (:id ws)}]
+
+        ;; Resubmit transform to trigger analysis
+        (mt/user-http-request :crowberto :put 200 (ws-url (:id ws) "transform" (:ref_id tx-1))
+                              ;; with-temp doesn't populate a database id, and doesn't query a table
+                              (-> tx-1
+                                  (select-keys [:source :target])
+                                  (assoc-in [:target :database] (mt/id))
+                                  (assoc-in [:source :query :stages 0 :native] "SELECT * FROM venues")))
+
+        ;; Global dependency analysis requires tables to actually exist
+        ;; Note - we need the transform to run **without** remapping, to generate the global table
+        (mt/with-test-user :crowberto
+          (ws.execute/run-transform-with-remapping (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id tx-1)) {}))
+
+        ;; Toucan hook will analyze this for us.
+        (t2/update! :model/Transform (:id tx-2) {:source (assoc-in (:source tx-2) [:query :stages 0 :native] (str "SELECT * FROM " (:name (:target tx-1))))})
+        ;; Run it to complete the analysis
+        #_(transforms.execute/execute! (t2/select-one :model/Transform (:id tx-2)) {:run-method :manual})
+
+        ;#p (t2/select [:model/Dependency] :from_entity_type :transform :from_entity_id (:id tx-2))
+        ;#p (t2/select [:model/Dependency] :to_entity_type :transform :to_entity_id (:id tx-2))
+
+        ;; Naive code currently tries to grant permissions to the output of the external dependency, not realizing it is already shadowed.
+        ;; TODO fix eager analysis to be aware of shadowing
+        (mt/user-http-request :crowberto :put 200 (ws-url (:id ws) "transform" (:ref_id tx-3))
+                              ;; with-temp doesn't populate a database id, and doesn't query a table
+                              (-> tx-3
+                                  (select-keys [:source :target])
+                                  (assoc-in [:target :database] (mt/id))
+                                  (assoc-in [:source :query :stages 0 :native] (str "SELECT * FROM " (:name (:target tx-2))))))
+
+        ;; TODO investigate why the enclosed transform is not being included, could be bad setup
+        (testing "returns enclosed external transform too"
+          (is (= {:nodes [{:type "input-table", :id (str (mt/id) "--venues"), :data {:db 2, :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
+                          {:type "workspace-transform", :id (:ref_id tx-1), :data {:ref_id (:ref_id tx-1), :name "A Tx in WS1"}, :dependents_count {} #_{:global-transform 1}}
+                          #_{:type "global-transform",    :id (:id tx-2),     :data {:id     (:id tx-1),     :name "An external Tx"}, :dependents_count {:workspace-transform 1}}
+                          {:type "workspace-transform", :id (:ref_id tx-3), :data {:ref_id (:ref_id tx-3), :name "Another Tx in WS1"}, :dependents_count {}}],
+                  :edges [{:from_entity_type "input-table"
+                           :from_entity_id   (str (mt/id) "--venues")
+                           :to_entity_type   "workspace-transform"
+                           :to_entity_id     (:ref_id tx-1)}
+                          #_{:from_entity_type "workspace-transform"
+                             :from_entity_id   (:ref_id tx-1)
+                             :to_entity_type   "global-transform"
+                             :to_entity_id     (:id tx-2)}
+                          #_{:from_entity_type "global-transform"
+                             :from_entity_id   (:id tx-2)
+                             :to_entity_type   "workspace-transform"
+                             :to_entity_id     (:ref_id tx-3)}]}
                  (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph")))))))))
