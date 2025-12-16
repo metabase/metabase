@@ -16,6 +16,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -161,12 +162,26 @@
         [:int {:title "table-id" :min 0}]
         ::permissions.schema/data-permission-value]]]]]])
 
+(defn- error-on-conflicting-entries [data-perms]
+  (let [grouped (group-by (fn [perm]
+                            [(:group-id perm) (:db-id perm) (:type perm)])
+                          data-perms)]
+    (run!
+     (fn [[[group-id db-id perm-type] perms]]
+       (let [db-level (first (filter (comp nil? :table-id) perms))
+             individual (filter :table-id perms)]
+         (when (and db-level (seq individual))
+           (log/errorf "Conflicting entries for db_id:%s, group_id:%s, perm_type:%s, IDS: db-level:%s table-level:[%s]" db-id group-id (symbol perm-type)
+                       (:id db-level) (str/join ", " (map :id individual))))))
+     grouped)))
+
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
   for permission enforcement, as it will read much more data than necessary."
   [& {:keys [group-id group-ids db-id perm-type audit?]}]
   (let [data-perms (t2/select [:model/DataPermissions
+                               :id
                                [:perm_type :type]
                                [:group_id :group-id]
                                [:perm_value :value]
@@ -178,7 +193,8 @@
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
                                        (when group-ids [:in :group_id group-ids])
-                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})
+        _ (error-on-conflicting-entries data-perms)]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
