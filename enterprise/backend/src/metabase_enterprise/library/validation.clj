@@ -11,7 +11,7 @@
   :feature :data-studio
   [content-type collection-id]
   (when collection-id
-    (when-let [collection-type (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
+    (when-let [{collection-type :type collection-ns :namespace} (t2/select-one [:model/Collection :type :namespace] :id collection-id)]
       (when (and (= collection-type collection/library-collection-type) (not (contains? #{collection/library-data-collection-type
                                                                                           collection/library-metrics-collection-type}
                                                                                         content-type)))
@@ -19,7 +19,15 @@
       (when (and (= collection-type collection/library-data-collection-type) (not (= :table content-type)))
         (throw (ex-info "Can only add tables to the 'Data' collection" {})))
       (when (and (= collection-type collection/library-metrics-collection-type) (not (= :metric content-type)))
-        (throw (ex-info "Can only add metrics to the 'Metrics' collection" {})))))
+        (throw (ex-info "Can only add metrics to the 'Metrics' collection" {})))
+      (when (and (= collection-ns collection/transforms-ns) (some? content-type) (not (= :model/Transform content-type)))
+        (throw (ex-info "Can only add transforms to the 'Transforms' collections" {})))
+      (when (and (= collection-ns collection/snippets-ns) (some? content-type) (not (= :model/NativeQuerySnippet content-type)))
+        (throw (ex-info "Can only add snippets to the 'Snippets' collections" {})))
+      (when (and (= :model/Transform content-type) (not (= collection-ns collection/transforms-ns)))
+        (throw (ex-info "Cannot add transforms to non-'Transforms' collections" {})))
+      (when (and (= :model/NativeQuerySnippet content-type) (not (= collection-ns collection/snippets-ns)))
+        (throw (ex-info "Cannot add snippets to non-'Snippets' collections" {})))))
   true)
 
 (defenterprise check-library-update

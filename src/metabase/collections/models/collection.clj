@@ -75,6 +75,14 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def transforms-ns
+  "Namespace for transforms"
+  :transforms)
+
+(def snippets-ns
+  "Namespace for snippets"
+  :snippets)
+
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
