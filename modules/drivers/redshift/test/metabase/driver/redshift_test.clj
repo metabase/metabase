@@ -514,6 +514,14 @@
                                          ["float(10)" :type/Float]
                                          ["datetime" :type/DateTime]
                                          ["year" :type/Integer]
+                                         ;; Iceberg table types
+                                         ["string" :type/Text]
+                                         [:string :type/Text]
+                                         [:STRING :type/Text]
+                                         ;; MySQL federated table enum types
+                                         ["enum('A','B')" :type/Text]
+                                         ["enum('open','closed')" :type/Text]
+                                         ["enum('active','inactive')" :type/Text]
                                          ;; nonsense
                                          ["fadlsjfldskajfl" nil]]]
     (testing (format "database-type %s" (pr-str database-type))

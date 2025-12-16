@@ -224,6 +224,12 @@
         (str/starts-with? stn "mediumtext") :type/Text
         (str/starts-with? stn "longtext")   :type/Text
 
+        ;; Iceberg table types - https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+        (= stn "string")                    :type/Text
+
+        ;; MySQL federated table enum types
+        (str/starts-with? stn "enum(")      :type/Text
+
         (= stn "datetime")                  :type/DateTime
         (= stn "year")                      :type/Integer))))
 
