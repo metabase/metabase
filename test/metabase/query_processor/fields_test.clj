@@ -2,6 +2,10 @@
   "Tests for the `:fields` clause."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
@@ -28,3 +32,35 @@
                   {:fields   [$name $id]
                    :limit    10
                    :order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel fk-do-not-include-should-not-break-test
+  (testing "Check that we don't error when there's a do-not-include (sensitive) foreign key (#64050)"
+    (let [mp (-> (mt/metadata-provider)
+                 (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                 (mt/id :products :title))
+                 (lib.tu/merged-mock-metadata-provider
+                  {:fields [{:id (mt/id :products :id)
+                             :visibility-type :sensitive}]}))
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/limit 1))]
+      (is (seq (mt/rows (qp/process-query query)))))))
+
+(deftest ^:parallel fk-do-not-include-should-not-break-nested-test
+  (testing "Check that we don't error when there's a do-not-include (sensitive) foreign key (#64050)"
+    (let [mp (-> (mt/metadata-provider)
+                 (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                 (mt/id :products :title))
+                 (lib.tu/merged-mock-metadata-provider
+                  {:fields [{:id (mt/id :products :id)
+                             :visibility-type :sensitive}]}))
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/limit 1))
+          mp (lib.tu/mock-metadata-provider mp {:cards
+                                                [{:id              1
+                                                  :name            "NATIVE"
+                                                  :database-id     (mt/id)
+                                                  :dataset-query   query
+                                                  :type :model}]})]
+      (let [q2 (-> (lib/query mp (lib.metadata/card mp 1))
+                   (lib/limit 1))]
+        (is (seq (mt/rows (qp/process-query q2))))))))
