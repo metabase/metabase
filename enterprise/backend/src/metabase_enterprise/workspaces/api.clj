@@ -345,12 +345,12 @@
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
     (ws.impl/execute-workspace! workspace {:stale-only stale_only})))
 
-(mr/def ::graph-node-type [:enum :table :output-table :transform :workspace-transform])
+(mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
 
 (mr/def ::graph-node
   [:map
    [:id ::appdb-or-ref-id]
-   [:type [:enum :input-table :output-table :workspace-transform]]
+   [:type [:enum :input-table :external-transform :workspace-transform]]
    [:dependents_count [:map-of ::graph-node-type ms/PositiveInt]]
    [:data :map]])
 

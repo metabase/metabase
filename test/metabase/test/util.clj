@@ -333,7 +333,7 @@
       :source {:type  "query"
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
-               :name (str "test_table_" (u/generate-nano-id))}})
+               :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))}})
 
    :model/TransformJob
    (fn [_]
@@ -380,7 +380,7 @@
        :source {:type  "query"
                 :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
        :target {:type "table"
-                :name (str "test_table_" (u/generate-nano-id))}}))})
+                :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))}}))})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]

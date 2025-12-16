@@ -29,23 +29,23 @@
   "Dependencies analyzed by global hooks - may be incomplete. For example, excluding transforms that have not been run."
   [ws-id node-type id]
   ;; Note: from_entity_type is transformed to a keyword by the Dependency model
-  (t2/select-fn-vec (fn [{:keys [from_entity_type from_entity_id]}]
-                      (case from_entity_type
-                        :card      {:node-type :external-card,      :id from_entity_id}
-                        :table     {:node-type :table,              :id (table-id->coord from_entity_id)}
-                        :transform {:node-type :external-transform, :id from_entity_id}))
-                    [:model/Dependency :from_entity_type :from_entity_id]
-                    :to_entity_type node-type
-                    :to_entity_id id
+  (t2/select-fn-vec (fn [{id :to_entity_id entity-type :to_entity_type}]
+                      (case entity-type
+                        :card {:node-type :external-card, :id id}
+                        :table {:node-type :table, :id (table-id->coord id)}
+                        :transform {:node-type :external-transform, :id id}))
+                    [:model/Dependency :to_entity_type :to_entity_id]
+                    :from_entity_type node-type
+                    :from_entity_id id
                     ;; Exclude transforms which are being overridden in the workspace.
                     ;; Note: use string "transform" in SQL WHERE clause (db stores strings)
                     {:where [:not [:and
-                                   [:= "transform" :from_entity_type]
+                                   [:= "transform" :to_entity_type]
                                    [:exists {:select [1]
                                              :from   [[:workspace_transform :wt]]
                                              :where  [:and
                                                       [:= :wt.workspace_id ws-id]
-                                                      [:= :wt.global_id :from_entity_id]]}]]]}))
+                                                      [:= :wt.global_id :to_entity_id]]}]]]}))
 
 (defn- ws-transform-parents [ws-id ref-id]
   ;; We assume there are no card dependencies yet
