@@ -4,7 +4,10 @@ import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding-iframe-sdk/constants";
-import { EMBED_FALLBACK_QUESTION_ID } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
+import {
+  EMBED_FALLBACK_DASHBOARD_ID,
+  EMBED_FALLBACK_QUESTION_ID,
+} from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { getDefaultSdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting";
@@ -40,7 +43,10 @@ export const useHandleExperienceChange = () => {
         )
         .with(
           "dashboard",
-          () => recentDashboards[0]?.id ?? exampleDashboardId ?? null,
+          () =>
+            recentDashboards[0]?.id ??
+            exampleDashboardId ??
+            EMBED_FALLBACK_DASHBOARD_ID,
         )
         .with(P.union("exploration", "browser", "metabot"), () => 0) // resource id does not apply
         .exhaustive();

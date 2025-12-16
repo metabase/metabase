@@ -96,6 +96,9 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   },
 ];
 
+/** If the activity log of the user is completely empty, we fallback to this dashboard. */
+export const EMBED_FALLBACK_DASHBOARD_ID = 1;
+
 /** If the activity log of the user is completely empty, we fallback to this question. */
 export const EMBED_FALLBACK_QUESTION_ID = 1;
 

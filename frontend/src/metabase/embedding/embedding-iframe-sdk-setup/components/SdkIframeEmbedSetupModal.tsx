@@ -73,7 +73,7 @@ export const SdkIframeEmbedSetupContent = () => {
     ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
     : isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted;
 
-  const isMissingResource = !isLoading && !resource;
+  const isMissingResource = !isLoading && (!resource || resource.archived);
 
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
