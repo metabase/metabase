@@ -476,7 +476,7 @@ export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 
 export type GetRemappedCardParameterValueRequest = {
-  card_id: CardId;
+  card_id: CardId | string;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };

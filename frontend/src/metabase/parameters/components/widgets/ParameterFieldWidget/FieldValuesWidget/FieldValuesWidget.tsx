@@ -751,7 +751,7 @@ function RemappedValue({
   const { data: cardData } = useGetRemappedCardParameterValueQuery(
     cardId != null && value != null && isRemapped
       ? {
-          card_id: (token as unknown as number) ?? cardId,
+          card_id: token ?? cardId,
           parameter_id: parameter.id,
           value,
         }
