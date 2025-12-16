@@ -133,7 +133,8 @@
     transform))
 
 ;; TODO (chris 2025/12/16) fully populate the result schema
-(api.macros/defendpoint :post "/" :- [:map [:name :string] [:description :string]]
+;; TODO (lbrdnk 2025/12/16) relaxed result schema to unblock FE. This should be properly handled later.
+(api.macros/defendpoint :post "/" :- [:map [:name :string] [:description {:optional true} [:maybe :string]]]
   "Create a new transform."
   [_route-params
    _query-params
