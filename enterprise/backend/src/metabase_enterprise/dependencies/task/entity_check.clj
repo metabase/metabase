@@ -75,7 +75,5 @@
 
 (defmethod task/init! ::DependencyEntityCheck [_]
   (if (pos? (deps.settings/dependency-entity-check-batch-size))
-    (schedule-next-run! (if config/is-test?
-                          0
-                          (rand-int (* (deps.settings/dependency-entity-check-variance-minutes) 60))))
+    (schedule-next-run! (rand-int (* (deps.settings/dependency-entity-check-variance-minutes) 60)))
     (log/info "Not starting dependency entity check job because the batch size is not positive")))

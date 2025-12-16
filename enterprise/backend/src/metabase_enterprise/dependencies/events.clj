@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -264,9 +265,10 @@
 
 (methodical/defmethod events/publish-event! ::check-card-dependents
   [_ {:keys [object]}]
-  (lib-be/with-metadata-provider-cache
-    (deps.findings/upsert-analysis! object)
-    (check-dependents :card object)))
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object)
+      (check-dependents :card object))))
 
 (derive ::check-transform :metabase/event)
 (derive :event/create-transform ::check-transform)
@@ -275,8 +277,9 @@
 
 (methodical/defmethod events/publish-event! ::check-transform
   [_ {:keys [object]}]
-  (lib-be/with-metadata-provider-cache
-    (deps.findings/upsert-analysis! object)))
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object))))
 
 (derive ::check-segment-dependents :metabase/event)
 (derive :event/segment-create ::check-segment-dependents)
@@ -285,14 +288,16 @@
 
 (methodical/defmethod events/publish-event! ::check-segment-dependents
   [_ {:keys [object]}]
-  (lib-be/with-metadata-provider-cache
-    (deps.findings/upsert-analysis! object)
-    (check-dependents :segment object)))
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object)
+      (check-dependents :segment object))))
 
 (derive ::check-transform-dependents :metabase/event)
 (derive :event/transform-run-complete ::check-transform-dependents)
 
 (methodical/defmethod events/publish-event! ::check-transform-dependents
   [_ {:keys [object]}]
-  (lib-be/with-metadata-provider-cache
-    (check-dependents :transform {:id (:transform-id object)})))
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (check-dependents :transform {:id (:transform-id object)}))))

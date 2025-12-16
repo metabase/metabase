@@ -19,6 +19,7 @@
    [metabase.events.core :as events]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.util Map Set)
@@ -187,3 +188,9 @@
                           0
                           (rand-int (* (deps.settings/dependency-backfill-variance-minutes) 60))))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))
+
+(derive ::backfill :metabase/event)
+(derive :event/serdes-load ::backfill)
+(methodical/defmethod events/publish-event! ::backfill
+  [_ _]
+  (backfill-dependencies!))
