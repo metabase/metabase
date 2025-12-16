@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
@@ -36,6 +37,8 @@ const NewItemMenuView = ({
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
+
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const menuItems = useMemo(() => {
     const items = [];
@@ -76,18 +79,21 @@ const NewItemMenuView = ({
         </Menu.Item>,
       );
     }
-    items.push(
-      <Menu.Item
-        key="dashboard"
-        onClick={() => {
-          trackNewMenuItemClicked("dashboard");
-          dispatch(setOpenModal("dashboard"));
-        }}
-        leftSection={<Icon name="dashboard" />}
-      >
-        {t`Dashboard`}
-      </Menu.Item>,
-    );
+
+    if (canWriteToCollections) {
+      items.push(
+        <Menu.Item
+          key="dashboard"
+          onClick={() => {
+            trackNewMenuItemClicked("dashboard");
+            dispatch(setOpenModal("dashboard"));
+          }}
+          leftSection={<Icon name="dashboard" />}
+        >
+          {t`Dashboard`}
+        </Menu.Item>,
+      );
+    }
 
     items.push(
       <Menu.Item
@@ -108,7 +114,12 @@ const NewItemMenuView = ({
     lastUsedDatabaseId,
     hasDatabaseWithJsonEngine,
     dispatch,
+    canWriteToCollections,
   ]);
+
+  if (menuItems.length === 0) {
+    return null;
+  }
 
   return (
     <Menu position="bottom-end">

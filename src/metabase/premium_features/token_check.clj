@@ -73,7 +73,11 @@
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
-                            (t2/count :model/User :is_active true :type :personal))]
+
+                            ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
+                            ;; the `after-select` method on users, which calls an EE method that needs ... a token
+                            ;; check :|
+                            (t2/count (t2/table-name :model/User) :is_active true :type "personal"))]
                (log/debug (u/colorize :green "=>") result)
                result))
       lock (Object.)]
@@ -187,7 +191,9 @@
         (when (pos? max-users) max-users)))))
 
 (defn- active-user-count []
-  (t2/count :model/User :is_active true, :type :personal))
+  ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid the `after-select` method
+  ;; on users, which calls an EE method that needs ... a token check :|
+  (t2/count (t2/table-name :model/User) :is_active true, :type "personal"))
 
 (defn assert-valid-airgap-user-count!
   "Asserts that, in an airgap context, the current user count does not exceed the allowed maximum.
@@ -205,7 +211,7 @@
    Throws if adding another user would overflow the limit. Called in user pre-insert."
   []
   (when-let [max-users (max-users-allowed)]
-    (when (>= (active-user-count) max-users)
+   (when (>= (active-user-count) max-users)
       (throw (Exception.
               (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
                    max-users))))))

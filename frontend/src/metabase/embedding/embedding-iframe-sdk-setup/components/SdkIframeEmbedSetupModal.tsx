@@ -47,6 +47,7 @@ export const SdkIframeEmbedSetupContent = () => {
     handleNext,
     handleBack,
     canGoBack,
+    resource,
     settings,
   } = useSdkIframeEmbedSetupContext();
 
@@ -75,6 +76,7 @@ export const SdkIframeEmbedSetupContent = () => {
     .with("get-code", () => (
       <Button
         variant="filled"
+        disabled={resource?.enable_embedding === false}
         onClick={handleEmbedDone}
         leftSection={<Icon name="check_filled" />}
       >
@@ -108,11 +110,12 @@ export const SdkIframeEmbedSetupContent = () => {
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
           <Stack className={S.SidebarContent} gap="md">
-            <Stack gap="md">
+            <Stack gap="md" flex={1}>
               <SdkIframeStepHeader />
 
               <Stack
                 gap="md"
+                flex={1}
                 opacity={allowPreviewAndNavigation ? 1 : 0.5}
                 className={cx(
                   !allowPreviewAndNavigation && CS.pointerEventsNone,

@@ -259,5 +259,76 @@ describe("scenarios - embedding hub", () => {
         .findByText("Get started with modular embedding")
         .should("not.exist");
     });
+
+    it('"Set up tenants" card should navigate to admin settings', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      H.main().findByText("Set up tenants").should("be.visible").click();
+
+      H.modal().within(() => {
+        cy.findByText("User strategy").should("be.visible");
+        cy.findByText("Multi tenant").click();
+        cy.button("Apply").click();
+      });
+
+      cy.log("the internal prefix should show up on the page");
+      H.main()
+        .findAllByText("Internal Users")
+        .should("have.length", 2)
+        .should("be.visible");
+
+      cy.visit("/");
+
+      cy.log("'Set up tenants' should now be marked as done");
+      H.main()
+        .findByText("Set up tenants")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done", { timeout: 10_000 })
+        .should("be.visible");
+
+      cy.log("clicking on tenants should go to tenants page");
+      H.main().findByText("Set up tenants").click();
+      cy.url().should("include", "/admin/tenants");
+    });
+
+    it("should link to user strategy when tenants are disabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/people/user-strategy");
+    });
+
+    it("should link to tenants page when tenants are enabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      H.updateSetting("use-tenants", true);
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/tenants");
+    });
   });
 });

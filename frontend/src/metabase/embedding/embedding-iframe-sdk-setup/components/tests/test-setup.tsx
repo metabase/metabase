@@ -33,7 +33,9 @@ export const setup = (options?: {
   const { hasEnterprisePlugins = true } = options ?? {};
 
   const mockDatabase = createMockDatabase();
-  const mockDashboard = createMockDashboard();
+  const mockDashboard = createMockDashboard({
+    enable_embedding: true,
+  });
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();

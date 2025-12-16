@@ -18,21 +18,41 @@ const changeInput = async (fromValue: string, toValue: string) => {
 };
 
 const simpleAttributes: UserAttributeMap = {
+  "@tenant.slug": "bug_gym",
+  color: "green",
+  type: "insect",
   personal: "secret",
-  session: "abc123",
 };
 
 const structuredAttributes: StructuredUserAttributes = {
+  type: {
+    // overridden tenant attribute
+    source: "user",
+    frozen: false,
+    value: "insect",
+    original: {
+      source: "tenant",
+      frozen: false,
+      value: "bug",
+    },
+  },
+  color: {
+    // inherited tenant attribute
+    source: "tenant",
+    frozen: false,
+    value: "green",
+  },
   personal: {
     // personal attribute
     source: "user",
     frozen: false,
     value: "secret",
   },
-  session: {
-    source: "jwt",
-    frozen: false,
-    value: "abc123",
+  "@tenant.slug": {
+    // immutable tenant slug
+    source: "system",
+    frozen: true,
+    value: "bug_gym",
   },
 };
 
@@ -72,16 +92,17 @@ describe("LoginAttributesWidget", () => {
     const submittedValues = onSubmit.mock.calls[0][0];
     expect(submittedValues).toEqual({
       login_attributes: {
+        type: "insect",
         personal: "super",
       },
     });
   });
 
-  it("should not save a user attribute with the same key and value as a JWT attribute", async () => {
+  it("should not save a user attribute with the same key and value as a tenant attribute", async () => {
     const { onSubmit } = setup();
 
     await screen.findByText("Attributes");
-    await changeInput("abc123", "abc123");
+    await changeInput("insect", "bug");
     await userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
     const submittedValues = onSubmit.mock.calls[0][0];

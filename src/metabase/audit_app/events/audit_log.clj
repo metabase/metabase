@@ -355,3 +355,11 @@
                   (get-in event [:details :scope :table_id]))]
       (audit-log/record-event! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))
       (audit-log/record-event! topic event))))
+
+(derive ::tenant-event ::event)
+(derive :event/tenant-create ::tenant-event)
+(derive :event/tenant-update ::tenant-event)
+
+(methodical/defmethod events/publish-event! ::tenant-event
+  [topic event]
+  (audit-log/record-event! topic event))
