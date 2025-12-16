@@ -47,6 +47,7 @@ export const SdkIframeEmbedSetupContent = () => {
     handleNext,
     handleBack,
     canGoBack,
+    isLoading,
     resource,
     settings,
   } = useSdkIframeEmbedSetupContext();
@@ -71,6 +72,8 @@ export const SdkIframeEmbedSetupContent = () => {
   const allowPreviewAndNavigation = isSimpleEmbedFeatureAvailable
     ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
     : isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted;
+
+  const isMissingResource = !isLoading && !resource;
 
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
@@ -148,7 +151,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
           <SdkIframeGuestEmbedStatusBar />
 
-          {allowPreviewAndNavigation ? (
+          {allowPreviewAndNavigation && !isMissingResource ? (
             <SdkIframeEmbedPreview />
           ) : (
             <Card h="100%">

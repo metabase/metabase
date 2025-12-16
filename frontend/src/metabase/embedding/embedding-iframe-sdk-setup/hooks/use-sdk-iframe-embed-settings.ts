@@ -3,10 +3,7 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useSetting, useUserSetting } from "metabase/common/hooks";
-import {
-  EMBED_FALLBACK_DASHBOARD_ID,
-  USER_SETTINGS_DEBOUNCE_MS,
-} from "metabase/embedding/embedding-iframe-sdk-setup/constants";
+import { USER_SETTINGS_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupSettings,
@@ -125,9 +122,7 @@ export const useSdkIframeEmbedSettings = ({
           experience: "dashboard",
           resourceId: isRecentsLoading
             ? null
-            : (recentDashboards[0]?.id ??
-              exampleDashboardId ??
-              EMBED_FALLBACK_DASHBOARD_ID),
+            : (recentDashboards[0]?.id ?? exampleDashboardId ?? null),
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
