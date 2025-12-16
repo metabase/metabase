@@ -64,8 +64,8 @@
         duplicated-fields (->> output-fields
                                (group-by :name)
                                vals
-                               (map #(when (> (count %) 1)
-                                       (lib/duplicate-column (-> % first :name))))
+                               (keep #(when (> (count %) 1)
+                                        (lib/duplicate-column (-> % first :name))))
                                seq)]
     (cond-> (check-query driver query)
       duplicated-fields (into duplicated-fields))))

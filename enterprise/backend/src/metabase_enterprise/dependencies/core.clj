@@ -10,7 +10,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -41,7 +43,7 @@
    (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
      (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
 
-(mu/defn- check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
+(mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
   to check that everything is still sound.
 
@@ -85,10 +87,7 @@
 
     @by-db))
 
-;; TODO: (Braden 09/22/2025) More precise schemas for the errors this function returns. Currently they're pretty
-;; opaque, since the consumers of this function really care about "working/broken" and not the details of what's wrong
-;; with any particular card.
-(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:or :boolean [:sequential :any]]]]
+(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 
