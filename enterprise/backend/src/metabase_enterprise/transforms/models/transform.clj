@@ -232,15 +232,15 @@
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
-  {:copy [:name :description :entity_id]
-   :skip [:dependency_analysis_version :source_type]
-   :transform {:created_at (serdes/date)
-               :creator_id (serdes/fk :model/User)
+  {:copy      [:name :description :entity_id]
+   :skip      [:dependency_analysis_version :source_type]
+   :transform {:created_at    (serdes/date)
+               :creator_id    (serdes/fk :model/User)
                :collection_id (serdes/fk :model/Collection)
-               :source     {:export #(update % :query serdes/export-mbql)
-                            :import #(update % :query serdes/import-mbql)}
-               :target     {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags       (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+               :source        {:export #(update % :query serdes/export-mbql)
+                               :import #(update % :query serdes/import-mbql)}
+               :target        {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags          (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source tags]}]
