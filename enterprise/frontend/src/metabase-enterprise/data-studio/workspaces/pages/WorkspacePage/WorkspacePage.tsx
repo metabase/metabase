@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push, replace } from "react-router-redux";
-import { useLatest } from "react-use";
+import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -39,6 +39,7 @@ import {
   useGetWorkspaceQuery,
   useGetWorkspaceTablesQuery,
   useGetWorkspaceTransformsQuery,
+  useLazyGetTransformQuery,
   useLazyGetWorkspaceTransformQuery,
   useListTransformsQuery,
   useMergeWorkspaceMutation,
@@ -78,6 +79,7 @@ import {
 type WorkspacePageProps = {
   params: {
     workspaceId: string;
+    transformId?: string;
   };
 };
 
@@ -92,11 +94,12 @@ type MetabotConversationSnapshot = Pick<
   | "conversationId"
 >;
 
-function WorkspacePageContent({ params }: WorkspacePageProps) {
-  const id = Number(params.workspaceId);
+function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [tab, setTab] = useState<string>("setup");
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 10 },
+  });
 
   const {
     openedTabs,
@@ -117,18 +120,55 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     unsavedTransforms,
   } = useWorkspace();
 
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 10 },
-  });
-
   // RTK
+  const id = Number(params.workspaceId);
   const { data: databases = { data: [] } } = useListDatabasesQuery({});
   const { data: allDbTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
   const { data: workspaceTransforms = [] } = useGetWorkspaceTransformsQuery(id);
-  const { data: externalTransforms } = useGetExternalTransformsQuery(id);
-  const availableTransforms = externalTransforms ?? [];
+  const { data: externalTransforms, isLoading: isLoadingExternalTransforms } =
+    useGetExternalTransformsQuery(id);
+  const availableTransforms = useMemo(
+    () => externalTransforms ?? [],
+    [externalTransforms],
+  );
+  const [fetchTransform] = useLazyGetTransformQuery();
+  useEffect(() => {
+    // Initialize transform tab if redirected from transform page.
+    if (transformId) {
+      (async () => {
+        if (isLoadingExternalTransforms) {
+          return;
+        }
+
+        const transform = availableTransforms.find(
+          (transform) => transform.id === Number(transformId),
+        );
+        if (transform) {
+          const { data } = await fetchTransform(transform.id, true);
+          if (data) {
+            addOpenedTransform(data);
+            setActiveTransform(data);
+          }
+        } else {
+          sendErrorToast(t`Transform ${transformId} not found`);
+        }
+        dispatch(replace(Urls.dataStudioWorkspace(id)));
+      })();
+    }
+  }, [
+    transformId,
+    setActiveTransform,
+    availableTransforms,
+    addOpenedTransform,
+    fetchTransform,
+    dispatch,
+    id,
+    isLoadingExternalTransforms,
+    sendErrorToast,
+  ]);
+
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   const { data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE } =
     useGetWorkspaceTablesQuery(id);
@@ -159,6 +199,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   // Metabot
   const metabotState = useSelector(getMetabot as any) as MetabotState;
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
+  const { navigateToPath, setNavigateToPath } = useMetabotReactions();
+  const {
+    resetConversation: resetMetabotConversation,
+    visible: isMetabotVisible,
+  } = useMetabotAgent();
   const metabotStateRef = useRef<MetabotState>(metabotState);
   useEffect(() => {
     metabotStateRef.current = metabotState;
@@ -172,11 +217,18 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     }
     return { default_database_id: workspace.database_id };
   }, [workspace?.database_id]);
-  const { navigateToPath, setNavigateToPath } = useMetabotReactions();
-  const {
-    resetConversation: resetMetabotConversation,
-    visible: isMetabotVisible,
-  } = useMetabotAgent();
+  const [metabotContextTransform, setMetabotContextTransform] = useState<
+    Transform | undefined
+  >();
+  const [metabotContextSource, setMetabotContextSource] = useState<
+    DraftTransformSource | undefined
+  >();
+  useEffect(() => {
+    if (isMetabotAvailable && isMetabotVisible) {
+      setTab("metabot");
+      setActiveTab(undefined);
+    }
+  }, [isMetabotAvailable, isMetabotVisible, setActiveTab]);
 
   const sourceDb = databases?.data.find(
     (db) => db.id === workspace?.database_id,
@@ -201,27 +253,19 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       }),
     [allDbTransforms, sourceDb],
   );
-
-  const [metabotContextTransform, setMetabotContextTransform] = useState<
-    Transform | undefined
-  >();
-  const [metabotContextSource, setMetabotContextSource] = useState<
-    DraftTransformSource | undefined
-  >();
-
   const allTransforms = useMemo(
     () => [...unsavedTransforms, ...workspaceTransforms],
     [unsavedTransforms, workspaceTransforms],
   );
 
+  const tabsListRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<string>("setup");
   useEffect(() => {
     // Sync UI tabs with active tab changes from workspace.
     if (activeTab) {
       setTab(activeTab.id);
     }
   }, [id, activeTab, setTab]);
-
-  const tabsListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Scroll to active tab on change.
@@ -275,13 +319,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       resetMetabotConversation();
     };
   }, [id, dispatch, resetMetabotConversation]);
-
-  useEffect(() => {
-    if (isMetabotAvailable && isMetabotVisible) {
-      setTab("metabot");
-      setActiveTab(undefined);
-    }
-  }, [isMetabotAvailable, isMetabotVisible, setActiveTab]);
 
   useEffect(() => {
     if (!navigateToPath) {
@@ -735,10 +772,15 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
 export const WorkspacePage = ({ params }: WorkspacePageProps) => {
   const workspaceId = Number(params.workspaceId);
+  const { search } = useLocation();
 
   return (
     <WorkspaceProvider workspaceId={workspaceId}>
-      <WorkspacePageContent key={workspaceId} params={params} />
+      <WorkspacePageContent
+        key={workspaceId}
+        params={params}
+        transformId={new URLSearchParams(search).get("transform_id")}
+      />
     </WorkspaceProvider>
   );
 };
