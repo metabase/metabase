@@ -4,7 +4,6 @@
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.isolation :as isolation]
-   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))

@@ -27,7 +27,6 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
@@ -133,7 +132,8 @@
     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
     transform))
 
-(api.macros/defendpoint :post "/"
+;; TODO (chris 2025/12/16) fully populate the result schema
+(api.macros/defendpoint :post "/" :- [:map [:name :string] [:description :string]]
   "Create a new transform."
   [_route-params
    _query-params
