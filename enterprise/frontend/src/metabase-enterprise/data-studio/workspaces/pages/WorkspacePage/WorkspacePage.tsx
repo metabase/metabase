@@ -15,6 +15,7 @@ import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -480,11 +481,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   }
 
   if (!workspace) {
-    return (
-      <Box p="lg">
-        <Text c="text-dark">{t`No workspaces found.`}</Text>
-      </Box>
-    );
+    return <NotFound />;
   }
 
   return (

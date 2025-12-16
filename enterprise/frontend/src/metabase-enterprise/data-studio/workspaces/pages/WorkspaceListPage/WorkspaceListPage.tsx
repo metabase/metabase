@@ -1,102 +1,56 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  Anchor,
-  Box,
-  Card,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 import { useGetWorkspacesQuery } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
-
-function WorkspaceCard({ workspace }: { workspace: Workspace }) {
-  return (
-    <Card key={workspace.id} p="md" shadow="none" withBorder>
-      <Group justify="space-between">
-        <Anchor
-          component={ForwardRefLink}
-          to={Urls.dataStudioWorkspace(workspace.id)}
-          fw={500}
-        >
-          {workspace.name}
-        </Anchor>
-        {workspace.created_at && (
-          <Text c="text-secondary" size="sm">
-            {t`Created ${new Date(workspace.created_at).toLocaleDateString()}`}
-          </Text>
-        )}
-      </Group>
-    </Card>
-  );
-}
 
 export function WorkspaceListPage() {
-  const { data: workspacesData, error, isLoading } = useGetWorkspacesQuery();
+  const dispatch = useDispatch();
+  const {
+    data: workspacesData,
+    error,
+    isLoading,
+    isFetching,
+  } = useGetWorkspacesQuery();
 
   const workspaces = useMemo(
     () => workspacesData?.items ?? [],
     [workspacesData],
   );
 
-  const activeWorkspaces = useMemo(
-    () => workspaces.filter((w) => !w.archived),
-    [workspaces],
-  );
+  const firstWorkspaceId = workspaces[0]?.id;
 
-  const archivedWorkspaces = useMemo(
-    () => workspaces.filter((w) => w.archived),
-    [workspaces],
-  );
+  useEffect(() => {
+    if (error || firstWorkspaceId == null) {
+      return;
+    }
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+    dispatch(replace(Urls.dataStudioWorkspace(firstWorkspaceId)));
+  }, [dispatch, error, firstWorkspaceId]);
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} loading={false} />;
+  }
+
+  if (firstWorkspaceId != null) {
+    return null;
+  }
+
+  if (isLoading || isFetching) {
+    return (
+      <LoadingAndErrorWrapper error={error} loading={isLoading || isFetching} />
+    );
   }
 
   return (
     <Box data-testid="workspaces-page" p="lg">
-      {workspaces.length === 0 ? (
-        <Text c="text-secondary">{t`No workspaces yet`}</Text>
-      ) : (
-        <Stack gap="xl">
-          <Stack gap="md">
-            <Title order={4} display="flex" style={{ alignItems: "center" }}>
-              <Icon mr="sm" name="check" c="success" />
-              {t`Active`}
-            </Title>
-            {activeWorkspaces.length === 0 ? (
-              <Text c="text-secondary">{t`No active workspaces`}</Text>
-            ) : (
-              <Stack gap="md">
-                {activeWorkspaces.map((workspace) => (
-                  <WorkspaceCard key={workspace.id} workspace={workspace} />
-                ))}
-              </Stack>
-            )}
-          </Stack>
-
-          {archivedWorkspaces.length > 0 && (
-            <Stack gap="md">
-              <Title order={4} display="flex" style={{ alignItems: "center" }}>
-                <Icon mr="sm" name="archive" c="text-light" />
-                {t`Archived`}
-              </Title>
-              <Stack gap="md">
-                {archivedWorkspaces.map((workspace) => (
-                  <WorkspaceCard key={workspace.id} workspace={workspace} />
-                ))}
-              </Stack>
-            </Stack>
-          )}
-        </Stack>
-      )}
+      <Text c="text-secondary">
+        {t`No active workspaces. Create a new one from the left panel or by editing an existing transform`}
+      </Text>
     </Box>
   );
 }
