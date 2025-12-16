@@ -90,7 +90,11 @@
 
 (defn- node->allowed-parents
   [pred deps node]
-  (if-not (pred node) [node] (mapcat (partial node->allowed-parents pred deps) (deps node))))
+  (if-not (pred node)
+    [node]
+    ;; Collapse to the things that *produce* node. If it is a root node, leave it in.
+    (or (seq (mapcat (partial node->allowed-parents pred deps) (deps node)))
+        [node])))
 
 (defn- collapse
   "Remove nodes that satisfy pred, in-lining their transitive dependencies instead."
@@ -108,12 +112,19 @@
         outputs     (filter deps table-nodes)
         ;; Anything other parent table is an input
         inputs      (->> entities (mapcat parents) (filter table?) (remove (set outputs)) distinct)
-        entities    (->> (ws.u/toposort-dfs deps) (remove table?))]
+        entities    (->> (ws.u/toposort-dfs deps) (remove table?))
+        deps+input  (reduce
+                     (fn [deps [c parents]]
+                       (if-not (deps c)
+                         deps
+                         (update deps c into parents)))
+                     deps
+                     parents)]
     {:inputs       (sort-by table-sort (map unwrap-table inputs))
      :outputs      (sort-by table-sort (map unwrap-table outputs))
      :entities     entities
      ;; collapse tables out, directly connecting transforms? smaller graphs are easier for humans to read
-     :dependencies (collapse table? deps)}))
+     :dependencies (collapse table? deps+input)}))
 
 (defn- path-induced-subgraph*
   "Implementation for [[path-induced-subgraph]] that takes the lookup functions as arguments. Useful for testing."

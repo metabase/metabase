@@ -205,7 +205,7 @@
   (let [ws (fn [ref-id] {:node-type :workspace-transform, :id ref-id})
         t  (fn [id] {:node-type :table, :id id})]
     (is (= {(ws 1) [(ws 2) (ws 3)]
-            (ws 2) []
+            (ws 2) [(t 3)]
             (ws 3) [(ws 5)]
             (ws 4) []
             (ws 5) []}
@@ -248,14 +248,14 @@
     (is (= {:inputs       [:t1]
             :outputs      [:t2]
             :entities     [:x2]
-            :dependencies {:x2 []}}
+            :dependencies {:x2 [:t1]}}
            (solve-in-memory [:x2] {:x2 [:t1]}))))
 
   (testing "encloses middle of a chain"
     (is (= {:inputs       [:t1]
             :outputs      [:t2 :t3 :t4]
             :entities     [:x2 :x3 :x4]
-            :dependencies {:x2 []
+            :dependencies {:x2 [:t1]
                            :x3 [:x2]
                            :x4 [:x3]}}
            (solve-in-memory [:x2 :x4] (chain->deps [:x1 :x2 :x3 :x4 :x5])))))
@@ -264,12 +264,12 @@
     (is (= {:inputs       [:t1 :t2 :t5 :t9]
             :outputs      [:t3 :t4 :t11]
             :entities     [:m10 :x11 :m12 :m13 :x3 :x4 :m6]
-            :dependencies {:m10 []
+            :dependencies {:m10 [:t9]
                            :m12 [:x11]
                            :m13 [:m12 :x11]
-                           :m6  [:x4]
+                           :m6  [:x4 :t5]
                            :x11 [:m10]
-                           :x3  []
+                           :x3  [:t2 :t1]
                            :x4  [:x3]}}
            (solve-in-memory
             [:x3 :m6 :m10 :m13]

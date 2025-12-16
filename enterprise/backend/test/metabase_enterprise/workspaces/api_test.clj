@@ -1291,7 +1291,10 @@
                                   (assoc-in [:target :database] (mt/id))
                                   (assoc-in [:source :query :stages 0 :native] "SELECT 1 as numb FROM venues")))
 
-        (is (=? {:dependencies {{:id (:ref_id tx), :node-type :workspace-transform} []},
+        ;; Cheeky dag test, that really belongs in dag-test
+        ;; TODO move to dag-test
+        (is (=? {:dependencies {{:id (:ref_id tx), :node-type :workspace-transform}
+                                [{:id {:db (mt/id) :schema nil, :table "venues", :id int?}, :entity-type :table}]},
                  :entities     [{:id (:ref_id tx), :node-type :workspace-transform}],
                  :inputs       [{:db (mt/id), :id int?, :schema nil, :table "venues"}],
                  :outputs      [{:db     (mt/id),
@@ -1301,10 +1304,13 @@
                 (ws.dag/path-induced-subgraph (:id ws) [{:entity-type :transform, :id (:ref_id tx)}])))
 
         (testing "returns empty when no transforms"
-          ;; TODO replace dummy graph with real expectation
-          (is (= {:nodes [{:id 1, :type "input-table", :data {:name "Bob"}, :dependents_count {:workspace-transform 1}}
-                          {:id "2", :type "workspace-transform", :data {:name "MyTrans"}, :dependents_count {:output-table 1}}
-                          {:id 3, :type "output-table", :data {:external {:table_id 2, :name "Clarence"}, :internal {:name "_-sdre4rcc@"}}, :dependents_count {}}]
-                  :edges [{:from_entity_type "input-table", :from_entity_id 1, :to_entity_type "workspace-transform", :to_entity_id "3"}
-                          {:from_entity_type "workspace-transform", :from_entity_id "3", :to_entity_type "output-table", :to_entity_id 3}]}
+          ;; TODO not sure what we want to pass for "data", maybe leave it out for now?
+          ;;      i guess stuff like "name" is useful for transforms...
+          ;; TODO fix dependents count for inputs
+          (is (= {:nodes [{:type "input-table", :id (str (mt/id) "--venues"), :data {:db 2, :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {} #_{:workspace-tranform 1}}
+                          {:type "workspace-transform", :id (:ref_id tx), :data {:node-type "workspace-transform", :id (:ref_id tx)}, :dependents_count {}}],
+                  :edges [{:from_entity_type "input-table"
+                           :from_entity_id   (str (mt/id) "--venues")
+                           :to_entity_type   "workspace-transform"
+                           :to_entity_id     (:ref_id tx)}]}
                  (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph")))))))))

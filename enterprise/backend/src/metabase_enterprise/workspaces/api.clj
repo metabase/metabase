@@ -366,30 +366,55 @@
    [:nodes [:sequential ::graph-node]]
    [:edges [:sequential ::graph-edge]]])
 
+;; TODO sort type nonsense out
+(defn- node-or-entity-type
+  "Workaround for lack of type hygeine in dag module"
+  [x]
+  (or (:entity-type x) (:node-type x)))
+
+(defn- node-type [node]
+  (let [nt (node-or-entity-type node)]
+    (case nt
+      :table :input-table
+      nt)))
+
+(defn- node-id [{:keys [id] :as node}]
+  (case (node-or-entity-type node)
+    :workspace-transform id
+    :external-transform id
+    :table (str (:db id) "-" (:schema id) "-" (:table id))))
+
 (api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (api/check-404 (t2/select-one :model/Workspace :id ws-id))
 
-  #_(ws.dag/path-induced-subgraph
-     ws-id
-     (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
-                       [:model/WorkspaceTransform :ref_id] :workspace_id ws-id))
+  (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
+                                    [:model/WorkspaceTransform :ref_id] :workspace_id ws-id)
+        {:keys [inputs entities dependencies]} (ws.dag/path-induced-subgraph ws-id changeset)]
 
-  ;; TODO decide on whether to show output tables, or to rather show dependencies directly between transforms.
-  {:nodes [{:id 1, :type :input-table, :data {:name "Bob"}, :dependents_count {:workspace-transform 1}}
-           {:id "2", :type :workspace-transform, :data {:name "MyTrans"}, :dependents_count {:output-table 1}}
-           {:id 3, :type :output-table, :data {:external {:table_id 2, :name "Clarence"}, :internal {:name "_-sdre4rcc@"}}, :dependents_count {}}]
-   ;; I can't remember which way this is supposed to point - it might be meant to point *backwards* rather.
-   :edges [{:from_entity_type "input-table"
-            :from_entity_id   1
-            :to_entity_type   "workspace-transform"
-            :to_entity_id     "3"}
-           {:from_entity_type "workspace-transform"
-            :from_entity_id   "3"
-            :to_entity_type   "output-table"
-            :to_entity_id     3}]})
+    {:nodes (concat (for [i inputs]
+                      {:type             :input-table
+                       ;; Use an id that's independent of whether the table exists yet.
+                       :id               (node-id {:id i, :node-type :table})
+                       :data             i
+                       ;; Graph analysis doesn't return this currently
+                       ;; We can get it for workspace entities via WorkspaceDependency
+                       ;; We can get it for external entities via Dependency
+                       :dependents_count {}})
+                    (for [e entities]
+                      {:type             (node-type e)
+                       :id               (:id e)
+                       :data             e
+                       ;; TODO Actually we need the inverse of this dependents, not dependencies
+                       :dependents_count {} #_(frequencies (map node-or-entity-type (get dependencies e)))}))
+     :edges (for [[child parents] dependencies, parent parents]
+              ;; Yeah, this graph points to dependents, not dependencies
+              {:from_entity_type (name (node-type parent))
+               :from_entity_id   (node-id parent)
+               :to_entity_type   (name (node-type child))
+               :to_entity_id     (node-id child)})}))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
 
