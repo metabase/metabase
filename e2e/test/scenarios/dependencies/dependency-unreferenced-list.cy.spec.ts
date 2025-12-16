@@ -186,6 +186,13 @@ describe("scenarios > dependencies > unreferenced list", () => {
         creatorName: "Bobby Tables",
       });
 
+      H.DataStudio.Tasks.list().findByText(MODEL_FOR_MODEL_DATA_SOURCE).click();
+      checkSidebar({
+        entityName: MODEL_FOR_MODEL_DATA_SOURCE,
+        locationName: "First collection",
+        creatorName: "Bobby Tables",
+      });
+
       H.DataStudio.Tasks.list().findByText(SEGMENT_FOR_QUESTION_FILTER).click();
       checkSidebar({
         entityName: SEGMENT_FOR_QUESTION_FILTER,
@@ -199,6 +206,15 @@ describe("scenarios > dependencies > unreferenced list", () => {
       checkSidebar({
         entityName: METRIC_FOR_QUESTION_AGGREGATION,
         locationName: "Our analytics",
+        creatorName: "Bobby Tables",
+      });
+
+      H.DataStudio.Tasks.list()
+        .findByText(METRIC_FOR_MODEL_AGGREGATION)
+        .click();
+      checkSidebar({
+        entityName: METRIC_FOR_MODEL_AGGREGATION,
+        locationName: "First collection",
         creatorName: "Bobby Tables",
       });
 
