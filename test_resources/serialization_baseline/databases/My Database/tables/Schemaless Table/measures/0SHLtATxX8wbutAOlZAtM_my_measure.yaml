@@ -1,0 +1,30 @@
+archived: false
+created_at: '2025-12-16T20:33:13.171335Z'
+creator_id: ann@heart.band
+definition:
+  database: My Database
+  query:
+    aggregation:
+    - - sum
+      - - field
+        - - My Database
+          - null
+          - Schemaless Table
+          - Some Field
+        - base-type: type/Text
+    source-table:
+    - My Database
+    - null
+    - Schemaless Table
+  type: query
+description: null
+entity_id: 0SHLtATxX8wbutAOlZAtM
+name: My Measure
+table_id:
+- My Database
+- null
+- Schemaless Table
+serdes/meta:
+- id: 0SHLtATxX8wbutAOlZAtM
+  label: my_measure
+  model: Measure

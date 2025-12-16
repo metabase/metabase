@@ -6,6 +6,7 @@
   ["Database"
    "Field"
    "FieldUserSettings"
+   "Measure"
    "Segment"
    "Table"
    "Channel"])

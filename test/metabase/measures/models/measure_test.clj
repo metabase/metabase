@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -35,6 +36,16 @@
   "Create a measure definition that references another measure by ID."
   [referenced-measure-id]
   (measure-definition [:measure {:lib/uuid (str (random-uuid))} referenced-measure-id]))
+
+(deftest identity-hash-test
+  (testing "Measure hashes are composed of the measure name and table identity-hash"
+    (let [now #t "2022-09-01T12:34:56Z"]
+      (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
+                     :model/Table table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                     :model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
+                                             :definition (measure-definition (lib/count))}]
+        (is (= (serdes/raw-hash ["total sales" (serdes/identity-hash table) (:created_at measure)])
+               (serdes/identity-hash measure)))))))
 
 (deftest update-measure-cycle-detection-test
   (testing "Updating a measure to reference a non-existent measure should fail"
