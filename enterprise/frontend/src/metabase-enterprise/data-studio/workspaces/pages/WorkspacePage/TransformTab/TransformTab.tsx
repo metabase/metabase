@@ -43,7 +43,6 @@ import type {
 } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
-import { CheckOutTransformButton } from "../CheckOutTransformButton";
 import { SaveTransformButton } from "../SaveTransformButton";
 import { TransformEditor } from "../TransformEditor";
 import type { EditedTransform } from "../WorkspaceProvider";
@@ -72,9 +71,10 @@ export const TransformTab = ({
 }: Props) => {
   const {
     updateTransformState,
-    removeUnsavedTransform,
     setActiveTransform,
-    unsavedTransforms,
+    removeUnsavedTransform,
+    removeOpenedTransform,
+    removeEditedTransform,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
@@ -140,10 +140,11 @@ export const TransformTab = ({
   const hasChanges = hasSourceChanged;
 
   const isSaved = workspaceTransforms.some(
-    (t) => t.ref_id === transform.ref_id,
+    (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
   );
-  const isEditable =
-    isSaved || unsavedTransforms.some((t) => t.id === transform.id);
+  // Enable inline editing in the editor by default; execution actions are still
+  // gated by saved state and the presence of unsaved changes.
+  const isEditable = true;
 
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [_validateTableName] = useValidateTableNameMutation();
@@ -216,6 +217,30 @@ export const TransformTab = ({
       sendErrorToast(t`Failed to save transform`);
       throw error;
     }
+  };
+
+  const handleSaveExternalTransform = async () => {
+    // Only applicable for global transforms (numeric IDs) that are not yet
+    // saved into the workspace.
+    if (typeof transform.id !== "number") {
+      return;
+    }
+
+    const savedTransform = await createWorkspaceTransform({
+      id: workspaceId,
+      global_id: transform.id,
+      name: editedTransform.name,
+      description: transform.description,
+      // Cast to TransformSource to satisfy the createWorkspaceTransform request.
+      source: editedTransform.source as DraftTransformSource,
+      target: transform.target,
+      tag_ids: transform.tag_ids,
+    }).unwrap();
+
+    removeEditedTransform(transform.id);
+    removeOpenedTransform(transform.id);
+    setActiveTransform(savedTransform);
+    onOpenTransform(savedTransform.id);
   };
 
   const validationSchemaExtension = useTransformValidation({
@@ -327,12 +352,13 @@ export const TransformTab = ({
               >{t`Save`}</Button>
             )}
 
-            {!isSaved && transform.id >= 0 && (
-              <CheckOutTransformButton
-                transform={transform}
-                workspaceId={workspaceId}
-                onOpenTransform={onOpenTransform}
-              />
+            {!isSaved && transform.id >= 0 && hasChanges && (
+              <Button
+                leftSection={<Icon name="check" />}
+                size="sm"
+                variant="filled"
+                onClick={handleSaveExternalTransform}
+              >{t`Save`}</Button>
             )}
           </Group>
         </Group>
