@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.models.remote-sync-object
   (:require
+   [clojure.set :as set]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -80,25 +81,6 @@
               [[:inline "timeline"] :model]
               [:rs_obj.status :sync_status]]})
 
-(defn- build-dirty-union-all
-  "Builds a HoneySQL select statement that returns dirty children of a collection.
-
-  Takes a map of model-type to HoneySQL select clause configurations.
-
-  Returns a HoneySQL union-all query that counts dirty objects across all synced model types."
-  [select-options]
-  (let [queries (mapv (fn [[table entity-type]]
-                        (let [id-col (keyword (str (name table) ".id"))]
-                          {:select (select-options table)
-                           :from [table]
-                           :inner-join [[:remote_sync_object :rs_obj]
-                                        [:and
-                                         [:= :rs_obj.model_id id-col]
-                                         [:= :rs_obj.model_type [:inline entity-type]]]]
-                           :where [:not= :status "synced"]}))
-                      synced-models)]
-    {:union-all queries}))
-
 (defn dirty-global?
   "Checks if any collection has changes since the last sync.
 
@@ -112,4 +94,13 @@
   Returns a sequence of model maps that have changed since the last remote sync, including details about their
   current state and sync status."
   []
-  (t2/query (build-dirty-union-all items-select)))
+  (->> (t2/select :model/RemoteSyncObject :status [:not= "synced"])
+       (map #(-> %
+                 (dissoc :id)
+                 (set/rename-keys {:model_id :id
+                                   :model_name :name
+                                   :model_type :model
+                                   :model_collection_id :collection_id
+                                   :model_display :display
+                                   :status :sync_status})))
+       (into [])))

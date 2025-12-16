@@ -855,3 +855,30 @@
                               :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 0 (count entries)))))))
+
+(deftest soft-delete-then-hard-delete-preserves-dirty-status-test
+  (testing "doc that is soft-deleted then hard-deleted should maintain dirty status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Document doc {:name "Test Doc"
+                                        :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+
+      ;; Trash the doc
+      (t2/update! :model/Document (:id doc) {:archived true})
+      (events/publish-event! :event/document-update
+                             {:object (assoc doc :archived true)
+                              :user-id (mt/user->id :rasta)})
+
+      (let [soft-delete-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id doc))]
+        (is (= "delete" (:status soft-delete-entry))))
+
+      ;; Permanently delete from trash
+      (t2/delete! :model/Document (:id doc))
+      (events/publish-event! :event/document-delete
+                             {:object doc :user-id (mt/user->id :rasta)})
+
+      ;; The remote sync object entry should still exist with delete status
+      ;; so the collection remains dirty
+      (let [hard-delete-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id doc))]
+        (is (= "delete" (:status hard-delete-entry)))
+        (is (not (nil? hard-delete-entry)))))))
