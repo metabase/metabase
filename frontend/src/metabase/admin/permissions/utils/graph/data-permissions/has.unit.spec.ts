@@ -1,23 +1,41 @@
-import _ from "underscore";
-
 import {
   DataPermission,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
+import type { DatabasePermissionInfo } from "metabase/admin/permissions/utils/database-metadata";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type { GroupsPermissions } from "metabase-types/api";
 
 import { hasPermissionValueInSubgraph } from "./has";
 
+/**
+ * Helper to create a mock database that satisfies DatabasePermissionInfo.
+ */
+function createMockDatabase(
+  schemas: Array<{ name: string; tables: Array<{ id: number }> }>,
+): DatabasePermissionInfo {
+  const schemaInfos = schemas.map((s) => ({
+    name: s.name,
+    getTables: () => s.tables.map((t) => ({ id: t.id, db_id: 1, schema_name: s.name || null })),
+  }));
+
+  return {
+    schemas: schemaInfos,
+    schema: (name: string | undefined) =>
+      schemaInfos.find((schema) => schema.name === (name ?? "")) ?? null,
+    getTables: () =>
+      schemas.flatMap((s) =>
+        s.tables.map((t) => ({ id: t.id, db_id: 1, schema_name: s.name || null })),
+      ),
+  };
+}
+
 describe("data permissions", () => {
   describe("hasPermissionValueInSubgraph", () => {
     it("should handle database entity ids", async () => {
-      const schemas = [{ name: "", getTables: () => [{ id: 1 }, { id: 2 }] }];
-      const database = {
-        schemas,
-        schema: (name: string) =>
-          schemas.find((schema) => schema.name === name),
-      };
+      const database = createMockDatabase([
+        { name: "", tables: [{ id: 1 }, { id: 2 }] },
+      ]);
 
       const testPermissions: GroupsPermissions = {
         "1": {
@@ -33,38 +51,47 @@ describe("data permissions", () => {
         },
       };
 
-      const testFn1 = _.partial(
-        hasPermissionValueInSubgraph,
-        testPermissions,
-        1,
-        { databaseId: 1 },
-        database,
-      );
+      // Test for database 1
+      expect(
+        hasPermissionValueInSubgraph(
+          testPermissions,
+          1,
+          { databaseId: 1 },
+          database,
+          DataPermission.VIEW_DATA,
+          DataPermissionValue.UNRESTRICTED,
+        ),
+      ).toBe(true);
 
       expect(
-        testFn1(DataPermission.VIEW_DATA, DataPermissionValue.UNRESTRICTED),
-      ).toBe(true);
-      expect(
-        testFn1(
+        hasPermissionValueInSubgraph(
+          testPermissions,
+          1,
+          { databaseId: 1 },
+          database,
           DataPermission.CREATE_QUERIES,
           DataPermissionValue.QUERY_BUILDER,
         ),
       ).toBe(true);
 
-      const testFn2 = _.partial(
-        hasPermissionValueInSubgraph,
-        testPermissions,
-        1,
-        { databaseId: 2 },
-        database,
-      );
-
+      // Test for database 2
       expect(
-        testFn2(DataPermission.VIEW_DATA, DataPermissionValue.UNRESTRICTED),
+        hasPermissionValueInSubgraph(
+          testPermissions,
+          1,
+          { databaseId: 2 },
+          database,
+          DataPermission.VIEW_DATA,
+          DataPermissionValue.UNRESTRICTED,
+        ),
       ).toBe(false);
 
       expect(
-        testFn2(
+        hasPermissionValueInSubgraph(
+          testPermissions,
+          1,
+          { databaseId: 2 },
+          database,
           DataPermission.CREATE_QUERIES,
           DataPermissionValue.QUERY_BUILDER,
         ),
@@ -72,15 +99,10 @@ describe("data permissions", () => {
     });
 
     it("should handle databases with multiple schemas", async () => {
-      const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
-      ];
-      const database = {
-        schemas,
-        schema: (name: string) =>
-          schemas.find((schema) => schema.name === name),
-      };
+      const database = createMockDatabase([
+        { name: "public", tables: [{ id: 1 }] },
+        { name: "public2", tables: [{ id: 2 }] },
+      ]);
 
       const testPermissions: GroupsPermissions = {
         "1": {
@@ -93,30 +115,45 @@ describe("data permissions", () => {
         },
       };
 
-      const testFn = _.partial(
-        hasPermissionValueInSubgraph,
-        testPermissions,
-        1,
-        { databaseId: 1 },
-        database,
-        DataPermission.VIEW_DATA,
-      );
+      expect(
+        hasPermissionValueInSubgraph(
+          testPermissions,
+          1,
+          { databaseId: 1 },
+          database,
+          DataPermission.VIEW_DATA,
+          DataPermissionValue.UNRESTRICTED,
+        ),
+      ).toBe(true);
 
-      expect(testFn(DataPermissionValue.UNRESTRICTED)).toBe(true);
-      expect(testFn(DataPermissionValue.LEGACY_NO_SELF_SERVICE)).toBe(true);
-      expect(testFn(DataPermissionValue.BLOCKED)).toBe(false);
+      expect(
+        hasPermissionValueInSubgraph(
+          testPermissions,
+          1,
+          { databaseId: 1 },
+          database,
+          DataPermission.VIEW_DATA,
+          DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+        ),
+      ).toBe(true);
+
+      expect(
+        hasPermissionValueInSubgraph(
+          testPermissions,
+          1,
+          { databaseId: 1 },
+          database,
+          DataPermission.VIEW_DATA,
+          DataPermissionValue.BLOCKED,
+        ),
+      ).toBe(false);
     });
 
     it("should handle schema entity ids", async () => {
-      const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
-      ];
-      const database = {
-        schemas,
-        schema: (name: string) =>
-          schemas.find((schema) => schema.name === name),
-      };
+      const database = createMockDatabase([
+        { name: "public", tables: [{ id: 1 }] },
+        { name: "public2", tables: [{ id: 2 }] },
+      ]);
 
       const testPermissions: GroupsPermissions = {
         "1": {
@@ -175,15 +212,10 @@ describe("data permissions", () => {
     });
 
     it("should handle default permissions omitted from the graph", async () => {
-      const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
-      ];
-      const database = {
-        schemas,
-        schema: (name: string) =>
-          schemas.find((schema) => schema.name === name),
-      };
+      const database = createMockDatabase([
+        { name: "public", tables: [{ id: 1 }] },
+        { name: "public2", tables: [{ id: 2 }] },
+      ]);
 
       const testPermissions: GroupsPermissions = {
         "1": {

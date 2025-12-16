@@ -7,8 +7,8 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import type { DatabasePermissionInfo } from "metabase/admin/permissions/utils/database-metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Dataset,
   Group,
@@ -88,7 +88,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     entityId: EntityId,
     permission: DataPermission,
     value: DataPermissionValue,
-    database: Database,
+    database: DatabasePermissionInfo,
   ) => boolean;
 
   upgradeViewPermissionsIfNeeded:
@@ -97,7 +97,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
         groupId: number,
         entityId: EntityId,
         value: any,
-        database: Database,
+        database: DatabasePermissionInfo,
         permission: DataPermission,
       ) => GroupPermissions)
     | null;
@@ -112,8 +112,10 @@ export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
 
 const getDefaultAdvancedPermissions = () => ({
-  addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
-    permissions,
+  addDatabasePermissionOptions: (
+    permissions: any[],
+    _database: DatabasePermissionInfo,
+  ) => permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>
     permissions,
   addTablePermissionOptions: (permissions: any[], _value: string) =>

@@ -8,6 +8,7 @@ import type {
   SchemaEntityId,
 } from "metabase/admin/permissions/types";
 import { isSchemaEntityId } from "metabase/admin/permissions/utils/data-entity-id";
+import type { DatabasePermissionInfo } from "metabase/admin/permissions/utils/database-metadata";
 import type {
   ConcreteTableId,
   DatabasePermissions,
@@ -22,21 +23,11 @@ import {
   getTablesPermission,
 } from "./get";
 
-// subtypes to make testing easier and avoid using deprecated Database / Schema types
-type SchemaPartial = {
-  name: string;
-  getTables: () => { id: number | string }[];
-};
-type DatabasePartial = {
-  schemas?: SchemaPartial[];
-  schema(schemaName: string | undefined): SchemaPartial | null | undefined;
-};
-
 export function hasPermissionValueInSubgraph(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: DatabaseEntityId | SchemaEntityId,
-  database: DatabasePartial,
+  database: DatabasePermissionInfo,
   permission: DataPermission,
   value: DataPermissionValue,
 ) {
