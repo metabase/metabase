@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -248,6 +248,12 @@ export const TransformTab = ({
     target: transform.target,
     workspaceId,
   });
+  const initialCreateTransformValues = useMemo(
+    () => ({
+      name: transform.name,
+    }),
+    [transform.name],
+  );
 
   const handleSourceChange = (source: DraftTransformSource) => {
     onChange({ source });
@@ -400,7 +406,7 @@ export const TransformTab = ({
       {saveModalOpen && (
         <CreateTransformModal
           source={editedTransform.source}
-          defaultValues={{ name: transform.name }}
+          defaultValues={initialCreateTransformValues}
           onClose={() => setSaveModalOpen(false)}
           schemas={allowedSchemas}
           showIncrementalSettings={true}
