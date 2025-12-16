@@ -7,13 +7,11 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
-   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -22,8 +20,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -400,6 +397,7 @@
    (db+schema+table target)))
 
 (api.macros/defendpoint :post "/:ws-id/transform/validate/target"
+  :- [:map [:status :int] [:body [:or :string i18n/LocalizedString]]]
   "Validate the target table for a workspace transform"
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    {:keys [transform-id]} :- [:map [:transform-id {:optional true} ::ws.t/ref-id]]
@@ -478,6 +476,7 @@
 (def ^:private workspace-transform-alias {:target_stale :stale})
 
 (api.macros/defendpoint :post "/:id/transform"
+  :- WorkspaceTransform
   "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
    _query-params
@@ -642,7 +641,7 @@
    1. Update original transforms with workspace versions
    2. Delete the workspace and clean up isolated resources
    Returns a report of merged entities, or error in errors key."
-  [{:keys [ws-id] :as _query-params} :- [:map [:id ::ws.t/appdb-id]]
+  [{:keys [ws-id] :as _query-params} :- [:map [:ws-id ::ws.t/appdb-id]]
    _body-params]
   (let [ws               (u/prog1 (t2/select-one :model/Workspace :id ws-id)
                            (api/check-404 <>)

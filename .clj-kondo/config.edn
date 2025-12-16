@@ -178,6 +178,11 @@
      metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
+     ;; Workspace isolation functions are safe in parallel tests because they operate on
+     ;; isolated, test-specific workspaces and databases that don't affect other tests
+     metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
+     metabase-enterprise.workspaces.isolation/ensure-database-isolation!
+     metabase-enterprise.workspaces.test-util/create-ready-ws!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!

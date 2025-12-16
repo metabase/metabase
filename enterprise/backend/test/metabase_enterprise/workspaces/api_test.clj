@@ -123,6 +123,7 @@
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
+        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
         (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" (:id workspace)))
         (is @called? "destroy-workspace-isolation! should be called when deleting")))))
 
@@ -179,8 +180,8 @@
         (testing "We've got our workspace with transform to merge"
           (is (int? ws-id))
           ;; (sanya) TODO: maybe switch to using transform APIs once we get our own
-          (let [x2-id (t2/select-one-fn :downstream_id :model/WorkspaceMappingTransform :upstream_id (:id x1))]
-            (t2/update! :model/Transform :id x2-id {:description "Modified in workspace"})))
+          (let [ref-id (t2/select-one-fn :ref_id :model/WorkspaceTransform :global_id (:id x1))]
+            (t2/update! :model/WorkspaceTransform :ref_id ref-id {:description "Modified in workspace"})))
         (testing "returns merged transforms"
           (is (=? {:merged    {:transforms [{:global_id (:id x1)}]}
                    :errors    []
@@ -248,10 +249,10 @@
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
                   (is (empty? (get-in resp [:merged :transforms])))
                   (is (= 1 (count (:errors resp))))
-                  (is (= {:op "update"
+                  (is (= {:op        "update"
                           :global_id (:id x2)
-                          :ref_id ws-x-2-id
-                          :message "boom"}
+                          :ref_id    ws-x-2-id
+                          :message   "boom"}
                          (first (:errors resp))))))
               (testing "Core transforms are left unchanged"
                 (is (= (:name x1)
