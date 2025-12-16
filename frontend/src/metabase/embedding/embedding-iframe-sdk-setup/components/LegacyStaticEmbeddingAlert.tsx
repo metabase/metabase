@@ -47,7 +47,7 @@ export const LegacyStaticEmbeddingAlert = () => {
 
         <Stack>
           <Text c="text-primary" lh="lg">
-            {t`This embed was originally published with static embedding. The code snippet in this UI uses the new modular embedding, which supports deep theming. Using modular embedding is recommended over static embedding.`}
+            {t`This embed was originally published with static embedding. We recommend using this new, modular embedding code snippet. Your embed won't change; you'll just have better theming options.`}
           </Text>
 
           <Anchor
@@ -79,7 +79,7 @@ export const LegacyStaticEmbeddingAlert = () => {
             }}
           >
             {c("A link that toggles the static embedding wizard.")
-              .t`Switch to static embedding`}
+              .t`Use static embedding instead`}
           </Anchor>
         </Stack>
       </Flex>
