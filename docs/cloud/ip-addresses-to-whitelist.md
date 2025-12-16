@@ -48,6 +48,14 @@ Here are the IP addresses we use in each region.
 18.228.120.162
 ```
 
+## Asia Pacific (Sydney)
+
+```sh
+13.238.131.1
+3.105.237.132
+54.252.39.14
+```
+
 ## Changing regions
 
 To change regions, check out [Changing which region your Metabase is hosted in](./change-region.md).
