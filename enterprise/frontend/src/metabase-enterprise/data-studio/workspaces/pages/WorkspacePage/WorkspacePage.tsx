@@ -622,6 +622,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                             />
                             {tab.name}
                             <ActionIcon
+                              component="span"
                               size="1rem"
                               p="0"
                               ml="xs"

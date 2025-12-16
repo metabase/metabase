@@ -342,6 +342,7 @@ function WorkspaceItem({
           <Menu.Target>
             <ActionIcon
               className={S.workspaceMenuButton}
+              component="span"
               aria-label={t`More actions`}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
               size="sm"
