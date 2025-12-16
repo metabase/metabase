@@ -1078,32 +1078,15 @@
                          (mt/user-http-request user-id :post 403 "dataset"
                                                (mt/mbql-query venues {:limit 1})))))))))))))
 
-(deftest fk-do-not-include-should-not-break-test
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "Check that we don't 500 when there's a do-not-include (sensitive) foreign key"
-      (mtu/with-temp-vals-in-db :model/Database (mt/id) {:details {:db "file:/Users/ericnormand/code/metabase/plugins/sample-database.db;USER=GUEST;PASSWORD=guest"}}
-        (mtu/with-temp-vals-in-db :model/Field (mt/id :products :id) {:visibility_type :sensitive
-                                                                      :description "What"
-                                                                      :database_indexed true}
-          (mtu/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:database_indexed true}
-            (clojure.pprint/pprint
-             (take 2
-                   (clojure.data/diff
-                    (t2/select-one :model/Database (mt/id))
-                    (t2/select-one :model/Database 1))))
-            (sync/sync-database! (mt/db))
-            (clojure.pprint/pprint
-             (take 2
-                   (clojure.data/diff (into {} (t2/select-one :model/Field (mt/id :products :id)))
-                                      (into {} (t2/select-one :model/Field 8)))))
-
-            (clojure.pprint/pprint
-             (clojure.data/diff (into {} (t2/select-one :model/Field (mt/id :orders :product_id)))
-                                (into {} (t2/select-one :model/Field 14))))
-
-            (let [mp (mt/metadata-provider)
-                  query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                            (dissoc :lib/metadata))]
-              (is (some? (mt/user-http-request :crowberto :post 200 "dataset/native"
-                                               #_query
-                                               {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql, :source-table 2}], :database 1}))))))))))
+(deftest ^:parallel fk-do-not-include-should-not-break-test
+  (testing "Check that we don't error when there's a do-not-include (sensitive) foreign key (#64050)"
+    (let [mp (-> (mt/metadata-provider)
+                 (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                 (mt/id :products :title))
+                 (lib.tu/merged-mock-metadata-provider
+                  {:fields [{:id (mt/id :products :id)
+                             :visibility-type :sensitive}]}))
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/limit 1))]
+      (is (= :ok
+             (qp/process-query query))))))
