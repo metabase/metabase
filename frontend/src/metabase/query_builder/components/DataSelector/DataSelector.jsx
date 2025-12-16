@@ -623,7 +623,7 @@ export class UnconnectedDataSelector extends Component {
     if (!nextStep) {
       await this.setStateWithComputedState({
         ...stateChange,
-        isPopoverOpen: !this.state.isPopoverOpen,
+        isPopoverOpen: false,
       });
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
