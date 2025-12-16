@@ -60,6 +60,8 @@ export interface MetabaseElement {
   };
 }
 export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
+  // we do need _all_ these timeouts to decrease flakiness
+  // see https://github.com/metabase/metabase/pull/66954#issuecomment-3661512082
   cy.get("iframe[data-metabase-embed]", { timeout: 40_000 }).should(
     "have.length",
     n,

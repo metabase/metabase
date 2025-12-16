@@ -101,7 +101,9 @@ describe(
       cy.log("Preview should load after embedding is enabled");
       H.waitForSimpleEmbedIframesToLoad();
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders in a dashboard", { timeout: 60_000 }).should(
+          "be.visible",
+        );
       });
     });
 
