@@ -1735,6 +1735,7 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: mysql,mariadb
+            failOnError: false
             sql: |
               ALTER TABLE collection
               ADD CONSTRAINT fk_collection_workspace_id
