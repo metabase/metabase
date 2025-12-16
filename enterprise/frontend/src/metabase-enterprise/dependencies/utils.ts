@@ -126,7 +126,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "table":
       return {
         label: t`View metadata`,
-        url: Urls.dataModel({
+        url: Urls.dataStudioData({
           databaseId: node.data.db_id,
           schemaName: node.data.schema,
           tableId: node.id,
