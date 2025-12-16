@@ -10,7 +10,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         showSdkEmbedTerms: false,
       });
       expect(
-        screen.queryByText(/Enable SDK for React/i),
+        screen.queryByText(/Enable modular embedding SDK/i),
       ).not.toBeInTheDocument();
     });
   });

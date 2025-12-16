@@ -1,20 +1,23 @@
 ---
-title: Embedded analytics JS
-summary: Getting started with Embedded Analytics JS for embedding Metabase entities into external applications
+title: Modular embedding
+summary: Getting started with modular embedding for embedding Metabase entities into external applications
+redirect_from:
+  - /docs/latest/embedding/embedded-analytics-js
 ---
 
-# Embedded analytics JS
+# Modular embedding
 
-{% include plans-blockquote.html feature="Embedded analytics JS" convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Modular embedding" convert_pro_link_to_embbedding=true %}
 
-Embedded analytics JS lets you embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
+Modular embedding lets you embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
 
 {% include shared/in-page-promo-embedding-workshop.html %}
 
-Embedded Analytics JS is a JavaScript library built on top of Metabase's [Embedded Analytics React SDK](./sdk/introduction.md). But it does not require using React or setting up full SDK embedding.
-Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
+Modular embedding allows you to embed individual Metabase components (like questions, dashboards, or a query builder) using a simple drop-in script. You don't need to write embedding code on your own - just use the built-in wizard to create a code snippet, and paste it into your app.
 
-Embedded Analytics JS uses [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md) to authenticate people and automatically apply the right permissions.
+Unlike with [full app embedding](./full-app-embedding.md), where you embed the entire Metabase app in an iframe, modular embedding lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
+
+Modular embedding uses [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md) to authenticate people and automatically apply the right permissions.
 
 Currently you can choose to embed:
 
@@ -28,18 +31,18 @@ Currently you can choose to embed:
 
 You can also follow the setup guide directly in Metabase in **Admin settings > Embedding > Setup guide**. We're recording the steps here for convenience.
 
-### 1. Enable Embedded Analytics JS
+### 1. Enable modular embedding
 
-1. In Metabase, go to **Admin settings > Embedding > Modular embedding**.
-2. Toggle on **Embedded Analytics JS**.
+1. In Metabase, go to **Admin settings > Embedding**.
+2. Toggle on **Enable modular embedding**.
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
 4. If you are embedding Metabase components in a domain that's different from your Metabase's domain (including when you're testing the app locally but use Metabase Cloud), go to **Admin settings > Embedding > Security** and set **SameSite cookie** to **None**.
 
 ### 2. Create a new embed
 
-1. In Metabase, go to **Admin > Embedding > Modular embedding**, and select **New embed** next to **Embedded analytics JS**.
+1. In Metabase, open a command palette with Ctrl/Cmd+K, type "New embed" and select "new embed" command. This will open the interactive wizard that you can use to set up your embed.
 
-   If you're planning to embed an existing question or dashboard, you can instead go straight to that question or dashboard, click on the **Share** button, and choose **Embedded Analytics JS**.
+   If you're planning to embed an existing question or dashboard, you can instead go straight to that question or dashboard, click on the **Share** button, and choose **Embed**.
 
 2. Choose the _type_ of entity to embed:
 
@@ -83,17 +86,17 @@ Add the code snippet into your app, and refresh the page.
 
 Each end-user must have their own Metabase account.
 
-The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the Embedded analytics JS, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
+The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the modular embedding, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
 
 If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
 
-In addition to this, we consider shared accounts to be unfair usage. Fair usage of Embedded Analytics JS involves giving each end-user of the embedded analytics their own Metabase account.
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of modular embedding involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Embed code snippets
 
-The code snippets to embed Metabase entities using Embedded Analytics JS should have three parts:
+The code snippets to embed Metabase entities using modular embedding should have three parts:
 
-1. Loading the Embedded Analytics JS library from your Metabase instance.
+1. Loading the modular embedding library from your Metabase instance.
 2. Global configuration settings to be used for all embeds, like the URL of your Metabase instance, appearance themes, etc. See [Configuring embeds](#configuring-embeds).
 3. Components for Metabase entities to be embedded, with their parameters. See [Components](#components).
 
@@ -131,7 +134,7 @@ Note the `defer` attribute and the reference to your Metabase URL in the script 
 
 If you're embedding multiple entities in a single page, you only need to include the `<script>` tags once globally.
 
-You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **Admin > Embedding > Setup guide > Embed in your code**. Check out the [quickstart](#quickstart).
+You can also generate the code snippet for modular embedding interactively in Metabase through **Admin > Embedding > Setup guide > Embed in your code**. Check out the [quickstart](#quickstart).
 
 ## Customizing embeds
 

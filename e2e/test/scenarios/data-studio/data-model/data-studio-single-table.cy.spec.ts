@@ -94,9 +94,7 @@ describe("Table editing", () => {
       H.modal().findByText("Unpublish this table").click();
       cy.wait("@unpublishTables");
       H.DataStudio.nav().findByLabelText("Library").click();
-      H.DataStudio.Library.libraryPage()
-        .findByText("No tables, metrics, or snippets yet")
-        .should("be.visible");
+      H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
   );
 
