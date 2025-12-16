@@ -178,6 +178,45 @@ describe("scenarios > dependencies > unreferenced", () => {
       });
     });
   });
+
+  describe("sidebar", () => {
+    it("should show the sidebar for supported entities", () => {
+      createEntities();
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+
+      H.DataStudio.Tasks.list()
+        .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
+        .click();
+      H.DataStudio.Tasks.sidebar().within(() => {
+        cy.findByText(MODEL_FOR_QUESTION_DATA_SOURCE).should("be.visible");
+        cy.findByText("Our analytics").should("be.visible");
+      });
+
+      H.DataStudio.Tasks.list().findByText(SEGMENT_FOR_QUESTION_FILTER).click();
+      H.DataStudio.Tasks.sidebar().within(() => {
+        cy.findByText(SEGMENT_FOR_QUESTION_FILTER).should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+
+      H.DataStudio.Tasks.list()
+        .findByText(METRIC_FOR_QUESTION_AGGREGATION)
+        .click();
+      H.DataStudio.Tasks.sidebar().within(() => {
+        cy.findByText(METRIC_FOR_QUESTION_AGGREGATION).should("be.visible");
+        cy.findByText("Our analytics").should("be.visible");
+      });
+
+      H.DataStudio.Tasks.list()
+        .findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG)
+        .click();
+      H.DataStudio.Tasks.sidebar().within(() => {
+        cy.findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG).should(
+          "be.visible",
+        );
+        cy.findByText("Location").should("not.exist");
+      });
+    });
+  });
 });
 
 function createEntities({

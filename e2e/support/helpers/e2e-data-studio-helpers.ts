@@ -121,5 +121,6 @@ export const DataStudio = {
     list: () => cy.findByTestId("dependency-list"),
     searchInput: () => cy.findByTestId("dependency-list-search-input"),
     filterButton: () => cy.findByTestId("dependency-list-filter-button"),
+    sidebar: () => cy.findByTestId("dependency-list-sidebar"),
   },
 };

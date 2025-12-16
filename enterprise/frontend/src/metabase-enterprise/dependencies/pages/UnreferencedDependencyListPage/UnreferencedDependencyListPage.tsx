@@ -19,7 +19,7 @@ import { DependencyList } from "../../components/DependencyList";
 import { DependencyListBar } from "../../components/DependencyListBar";
 import { DependencyListEmptyState } from "../../components/DependencyListEmptyState";
 import { DependencyListHeader } from "../../components/DependencyListHeader";
-import { DependencyListPanel } from "../../components/DependencyListPanel";
+import { DependencyListSidebar } from "../../components/DependencyListSidebar";
 import type { DependencyFilterOptions } from "../../types";
 import {
   getCardTypes,
@@ -33,8 +33,8 @@ const EMPTY_NODES: DependencyNode[] = [];
 export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = [
   "model",
   "metric",
-  "snippet",
   "segment",
+  "snippet",
 ];
 
 export function UnreferencedDependencyListPage() {
@@ -119,7 +119,7 @@ export function UnreferencedDependencyListPage() {
         )}
       </Stack>
       {selectedNode != null && (
-        <DependencyListPanel node={selectedNode} onClose={handleClosePanel} />
+        <DependencyListSidebar node={selectedNode} onClose={handleClosePanel} />
       )}
     </Flex>
   );

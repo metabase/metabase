@@ -3,25 +3,31 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import S from "./DependencyPanel.module.css";
+import S from "./DependencyListSidebar.module.css";
 import { ErrorSection } from "./ErrorSection";
 import { LocationSection } from "./LocationSection";
 import { PanelHeader } from "./PanelHeader";
 import { getDependencyErrorGroups } from "./utils";
 
-type DependencyListPanelProps = {
+type DependencyListSidebarProps = {
   node: DependencyNode;
   onClose: () => void;
 };
 
-export const DependencyListPanel = memo(function DependencyListPanel({
+export const DependencyListSidebar = memo(function DependencyListSidebar({
   node,
   onClose,
-}: DependencyListPanelProps) {
+}: DependencyListSidebarProps) {
   const errorGroups = getDependencyErrorGroups(node.errors ?? []);
 
   return (
-    <Stack className={S.panel} p="lg" w="25rem" gap="lg">
+    <Stack
+      className={S.panel}
+      p="lg"
+      w="25rem"
+      gap="lg"
+      data-testid="dependency-list-sidebar"
+    >
       <PanelHeader node={node} onClose={onClose} />
       <LocationSection node={node} />
       {errorGroups.map((errorGroup) => (
