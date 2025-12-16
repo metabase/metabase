@@ -1307,8 +1307,8 @@
           ;; TODO not sure what we want to pass for "data", maybe leave it out for now?
           ;;      i guess stuff like "name" is useful for transforms...
           ;; TODO fix dependents count for inputs
-          (is (= {:nodes [{:type "input-table", :id (str (mt/id) "--venues"), :data {:db 2, :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {} #_{:workspace-tranform 1}}
-                          {:type "workspace-transform", :id (:ref_id tx), :data {:node-type "workspace-transform", :id (:ref_id tx)}, :dependents_count {}}],
+          (is (= {:nodes [{:type "input-table", :id (str (mt/id) "--venues"), :data {:db 2, :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
+                          {:type "workspace-transform", :id (:ref_id tx), :data {:ref_id (:ref_id tx), :name "Transform in WS1"}, :dependents_count {}}],
                   :edges [{:from_entity_type "input-table"
                            :from_entity_id   (str (mt/id) "--venues")
                            :to_entity_type   "workspace-transform"

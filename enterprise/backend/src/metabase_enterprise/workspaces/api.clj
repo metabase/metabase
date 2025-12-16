@@ -372,11 +372,19 @@
       :table :input-table
       nt)))
 
-(defn- node-id [{:keys [id] :as node}]
-  (case (:node-type node)
+(defn- node-id [{:keys [node-type id]}]
+  (case node-type
     :workspace-transform id
     :external-transform id
     :table (str (:db id) "-" (:schema id) "-" (:table id))))
+
+;; TODO we'll want to bulk query this of course...
+(defn- node-data [{:keys [node-type id]}]
+  (case node-type
+    :table id
+    :external-transform (t2/select-one [:model/Transform :id :name] id)
+    ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
+    :workspace-transform (t2/select-one [:model/WorkspaceTransform :ref_id :name] :ref_id id)))
 
 (api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
@@ -386,23 +394,27 @@
 
   (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
                                     [:model/WorkspaceTransform :ref_id] :workspace_id ws-id)
-        {:keys [inputs entities dependencies]} (ws.dag/path-induced-subgraph ws-id changeset)]
+        {:keys [inputs entities dependencies]} (ws.dag/path-induced-subgraph ws-id changeset)
+        ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
+        ;;      It could be cheaper to build it as we go.
+        inverted (reduce
+                  (fn [inv [c parents]]
+                    (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
+                  {}
+                  dependencies)
+        dep-count #(frequencies (map node-type (get inverted %)))]
 
     {:nodes (concat (for [i inputs]
                       {:type             :input-table
                        ;; Use an id that's independent of whether the table exists yet.
                        :id               (node-id {:id i, :node-type :table})
                        :data             i
-                       ;; Graph analysis doesn't return this currently
-                       ;; We can get it for workspace entities via WorkspaceDependency
-                       ;; We can get it for external entities via Dependency
-                       :dependents_count {}})
+                       :dependents_count (dep-count {:node-type :table, :id i})})
                     (for [e entities]
                       {:type             (node-type e)
                        :id               (:id e)
-                       :data             e
-                       ;; TODO Actually we need the inverse of this dependents, not dependencies
-                       :dependents_count {} #_(frequencies (map :node-type (get dependencies e)))}))
+                       :data             (node-data e)
+                       :dependents_count (dep-count e)}))
      :edges (for [[child parents] dependencies, parent parents]
               ;; Yeah, this graph points to dependents, not dependencies
               {:from_entity_type (name (node-type parent))
