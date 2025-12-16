@@ -7,16 +7,21 @@ import type { DependencyNode } from "metabase-types/api";
 import { TOOLTIP_OPEN_DELAY } from "../../../../constants";
 import { getNodeLabel, getNodeLink } from "../../../../utils";
 
-type PanelHeaderProps = {
+type SidebarHeaderProps = {
   node: DependencyNode;
   onClose: () => void;
 };
 
-export function PanelHeader({ node, onClose }: PanelHeaderProps) {
+export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
   const link = getNodeLink(node);
 
   return (
-    <Group gap="0.75rem" wrap="nowrap" align="start">
+    <Group
+      gap="0.75rem"
+      wrap="nowrap"
+      align="start"
+      data-testid="dependency-list-sidebar-header"
+    >
       <Title flex={1} order={3} lh="1.5rem">
         {getNodeLabel(node)}
       </Title>

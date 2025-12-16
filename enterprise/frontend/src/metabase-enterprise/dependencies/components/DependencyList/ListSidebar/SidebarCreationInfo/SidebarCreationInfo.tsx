@@ -11,13 +11,11 @@ import {
   getNodeLastEditedBy,
 } from "../../../../utils";
 
-type CreatorAndLastEditorSectionProps = {
+type SidebarCreationInfoProps = {
   node: DependencyNode;
 };
 
-export function CreatorAndLastEditorSection({
-  node,
-}: CreatorAndLastEditorSectionProps) {
+export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
   const createdAt = getNodeCreatedAt(node);
   const createdBy = getNodeCreatedBy(node);
   const editedAt = getNodeLastEditedAt(node);
@@ -30,7 +28,7 @@ export function CreatorAndLastEditorSection({
   }
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" data-testid="dependency-list-sidebar-creation-info">
       <Title order={4}>{t`Creator and last editor`}</Title>
       <Card p="md" shadow="none" withBorder>
         <EntityCreationInfo

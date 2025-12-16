@@ -7,21 +7,21 @@ import {
   getDependencyErrorTypeCountMessage,
 } from "../../../../utils";
 
-import S from "./ErrorSection.module.css";
+import S from "./SidebarErrorInfo.module.css";
 
-type ErrorSectionProps = {
+type SidebarErrorInfoProps = {
   type: DependencyErrorType;
   errors: DependencyError[];
 };
 
-export function ErrorSection({ type, errors }: ErrorSectionProps) {
+export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
   const title = getDependencyErrorTypeCountMessage(type, errors.length);
   const details = errors
     .map((error) => getDependencyErrorDetail(error))
     .filter((detail) => detail != null);
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" data-testid="dependency-list-sidebar-error-info">
       <Title order={4}>{title}</Title>
       {details.length > 0 && (
         <Card p={0} shadow="none" withBorder>

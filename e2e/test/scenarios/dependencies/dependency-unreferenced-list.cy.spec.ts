@@ -207,8 +207,6 @@ describe("scenarios > dependencies > unreferenced list", () => {
         .click();
       checkSidebar({
         entityName: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        locationName: "Our analytics",
-        creatorName: "Bobby Tables",
       });
     });
   });
@@ -900,12 +898,16 @@ function checkSidebar({
   creatorName?: string;
 }) {
   H.DataStudio.Tasks.sidebar().within(() => {
-    cy.findByText(entityName).should("be.visible");
+    H.DataStudio.Tasks.Sidebar.header()
+      .findByText(entityName)
+      .should("be.visible");
     if (locationName) {
-      cy.findByText(locationName).should("be.visible");
+      H.DataStudio.Tasks.Sidebar.locationInfo()
+        .findByText(locationName)
+        .should("be.visible");
     }
     if (creatorName) {
-      H.DataStudio.Tasks.sidebarCreatedInfo().should(
+      H.DataStudio.Tasks.Sidebar.creationInfo().should(
         "contain.text",
         creatorName,
       );

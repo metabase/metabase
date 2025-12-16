@@ -7,18 +7,18 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
 
-type LocationSectionProps = {
+type SidebarLocationInfoProps = {
   node: DependencyNode;
 };
 
-export function LocationSection({ node }: LocationSectionProps) {
+export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
   const locationInfo = getNodeLocationInfo(node);
   if (locationInfo == null) {
     return null;
   }
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" data-testid="dependency-list-sidebar-location-info">
       <Title order={4}>{t`Location`}</Title>
       <Card p="md" shadow="none" withBorder>
         {locationInfo.links.map((link, linkIndex) => (
