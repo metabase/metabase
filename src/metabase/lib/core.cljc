@@ -376,6 +376,7 @@
   fully-parameterized-query?
   has-template-tag-variables?
   has-write-permission
+  match-and-normalize-tag-name
   native-extras
   native-query
   raw-native-query

@@ -26,7 +26,7 @@
   (match [value]
     [s :guard string?] s
     [{:type :metabase.lib.parse/param
-      :name name}] (params/->Param (str/trim name))
+      :name name}] (params/->Param (lib/match-and-normalize-tag-name name))
     [{:type :metabase.lib.parse/optional
       :contents contents}] (params/->Optional (map ->param contents))))
 
