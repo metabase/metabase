@@ -1,7 +1,8 @@
 (ns metabase.lib.measure
   "A Measure is a saved MBQL query stage snippet with `:aggregation`. Measures are numeric expressions."
-  (:refer-clojure :exclude [mapv empty? select-keys])
+  (:refer-clojure :exclude [mapv empty? some])
   (:require
+   [clojure.string :as str]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -13,17 +14,18 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk.util :as lib.walk.util]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? select-keys]]))
+   [metabase.util.performance :refer [mapv empty? some]]))
 
 (defn- resolve-measure [query measure-id]
   (when (integer? measure-id)
     (lib.metadata/measure query measure-id)))
 
 (defmethod lib.ref/ref-method :metadata/measure
-  [{:keys [id name]}]
-  (lib.options/ensure-uuid [:measure {:display-name name} id]))
+  [{:keys [id], measure-name :name}]
+  (lib.options/ensure-uuid [:measure {:display-name measure-name} id]))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/measure
   [_query _stage-number _measure-metadata]
@@ -114,29 +116,33 @@
                                                      aggregation-pos (assoc :aggregation-positions [aggregation-pos]))))
                                                measures)))))))
 
-(defn- check-measure-cycles
+(defn check-measure-cycles
   "DFS to detect cycles starting from `measure-id` with `definition`.
   `metadata-provider` is used for looking up referenced measures.
-  `path-nodes` is the set of measure IDs currently in the DFS path (for cycle detection).
+  `path` is a vector of measure IDs representing the current DFS path (for cycle detection and reporting).
   `visited` is the set of measure IDs we've fully processed (for avoiding redundant work).
   Returns updated `visited` set. Throws if a cycle is detected or if a referenced measure doesn't exist."
   ([metadata-provider definition measure-id]
-   (check-measure-cycles metadata-provider definition measure-id #{} #{}))
-  ([metadata-provider definition measure-id path-nodes visited]
+   (check-measure-cycles metadata-provider definition measure-id [] #{}))
+  ([metadata-provider definition measure-id path visited]
    (cond
-     (contains? path-nodes measure-id)
-     (throw (ex-info (i18n/tru "Measure cycle detected.")
-                     {:measure-id measure-id}))
+     (some #{measure-id} path)
+     (let [cycle-start-idx (u/index-of #{measure-id} path)
+           cycle-path      (conj (subvec path cycle-start-idx) measure-id)]
+       (throw (ex-info (i18n/tru "Measure cycle detected: {0}" (str/join " → " cycle-path))
+                       {:measure-id measure-id
+                        :cycle-path cycle-path
+                        :path       path})))
 
      (contains? visited measure-id)
      visited
 
      :else
      (let [referenced-ids (lib.walk.util/all-measure-ids definition)
-           path-nodes'    (conj path-nodes measure-id)]
+           path'          (conj path measure-id)]
        (reduce (fn [visited' ref-id]
                  (if-let [measure (lib.metadata/measure metadata-provider ref-id)]
-                   (check-measure-cycles metadata-provider (:definition measure) ref-id path-nodes' visited')
+                   (check-measure-cycles metadata-provider (:definition measure) ref-id path' visited')
                    (throw (ex-info (i18n/tru "Measure {0} does not exist." ref-id)
                                    {:measure-id ref-id}))))
                (conj visited measure-id)

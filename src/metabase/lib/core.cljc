@@ -455,6 +455,7 @@
   check-segment-overwrite]
  [lib.measure
   available-measures
+  check-measure-cycles
   check-measure-overwrite]
  [metabase.lib.serialize
   prepare-for-serialization]

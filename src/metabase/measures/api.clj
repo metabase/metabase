@@ -11,11 +11,27 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
-(api.macros/defendpoint :post "/"
+(mr/def ::measure
+  "Schema for a Measure entity as returned from the API."
+  [:map
+   [:id          ms/PositiveInt]
+   [:name        ms/NonBlankString]
+   [:table_id    ms/PositiveInt]
+   [:definition  :map]
+   [:description {:optional true} [:maybe :string]]
+   [:archived    :boolean]
+   [:creator_id  ms/PositiveInt]
+   [:created_at  :any]
+   [:updated_at  :any]
+   [:entity_id   {:optional true} [:maybe :string]]
+   [:creator     {:optional true} [:maybe :map]]])
+
+(api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`."
   [_route-params
    _query-params
@@ -39,13 +55,13 @@
   (-> (api/read-check (t2/select-one :model/Measure :id id))
       (t2/hydrate :creator)))
 
-(api.macros/defendpoint :get "/:id"
+(api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (hydrated-measure id))
 
-(api.macros/defendpoint :get "/"
+(api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
   (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}) measures
@@ -76,7 +92,7 @@
       (events/publish-event! (if archive? :event/measure-delete :event/measure-update)
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
-(api.macros/defendpoint :put "/:id"
+(api.macros/defendpoint :put "/:id" :- ::measure
   "Update a `Measure` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
@@ -90,7 +106,7 @@
   (write-check-and-update-measure! id body))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- :nil
   "Archive a Measure. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
@@ -98,8 +114,12 @@
                                   [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/measure/:id is deprecated. Instead, change its `archived` value via PUT /api/measure/:id.")
   (write-check-and-update-measure! id {:archived true, :revision_message revision_message})
-  api/generic-204-no-content)
+  nil)
 
+;; TODO: please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
   [{:keys [id]} :- [:map
