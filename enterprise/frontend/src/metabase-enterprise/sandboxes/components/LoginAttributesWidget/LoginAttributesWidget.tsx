@@ -78,11 +78,14 @@ export const LoginAttributesWidget = ({
   };
 
   return (
-    <FormField className={className} style={style} description={description}>
+    <FormField className={className} style={style}>
       <Accordion mt="xl">
         <Accordion.Item value="login-attributes">
           <Accordion.Control>
             <Text fz="lg">{title}</Text>
+            <Text c="text-secondary" fw="normal">
+              {description}
+            </Text>
           </Accordion.Control>
           <Accordion.Panel>
             <Box pt="md">
