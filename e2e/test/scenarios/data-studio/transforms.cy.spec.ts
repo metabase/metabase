@@ -86,7 +86,7 @@ describe("scenarios > admin > transforms", () => {
         event: "transform_trigger_manual_run",
       });
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -150,7 +150,7 @@ describe("scenarios > admin > transforms", () => {
         event: "transform_trigger_manual_run",
       });
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -330,7 +330,7 @@ describe("scenarios > admin > transforms", () => {
           "Executing Python transform",
         );
 
-        H.DataStudio.Transforms.targetTab().click();
+        H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(1);
@@ -392,7 +392,7 @@ describe("scenarios > admin > transforms", () => {
           event: "transform_trigger_manual_run",
         });
 
-        H.DataStudio.Transforms.targetTab().click();
+        H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(3);
@@ -432,7 +432,7 @@ LIMIT
         event: "transform_trigger_manual_run",
       });
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -484,7 +484,7 @@ LIMIT
         cy.wait("@createTransform");
       });
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "true")
@@ -503,7 +503,7 @@ LIMIT
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "false")
@@ -530,7 +530,7 @@ LIMIT
         cy.wait("@createTransform");
       });
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
@@ -542,7 +542,7 @@ LIMIT
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink().should("have.attr", "aria-disabled", "false");
       getTableLink().should("have.attr", "aria-disabled", "false").click();
       H.assertQueryBuilderRowCount(3);
@@ -821,7 +821,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("modify the transform before running");
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
@@ -845,7 +845,7 @@ LIMIT
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA_2)
         .should("have.attr", "aria-disabled", "false");
@@ -862,7 +862,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("modify the transform before running");
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
@@ -886,7 +886,7 @@ LIMIT
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
@@ -905,7 +905,7 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("modify the transform after running");
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
@@ -926,7 +926,7 @@ LIMIT
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
@@ -951,7 +951,7 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("modify the transform after running");
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
@@ -973,7 +973,7 @@ LIMIT
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
@@ -998,7 +998,7 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("delete the old target without creating the new one");
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
@@ -1021,7 +1021,7 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("verify the target is available");
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -1031,7 +1031,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("change the target to an existing table");
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
@@ -1048,7 +1048,7 @@ LIMIT
     it("should be able to edit table metadata after table creation", () => {
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent()
         .findByText("Edit this table's metadata")
         .should("not.exist");
@@ -1056,7 +1056,7 @@ LIMIT
       cy.log("after table creation");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent()
         .findByText("Edit this table's metadata")
         .click();
@@ -1074,7 +1074,7 @@ LIMIT
     it("should be able to see the target schema", () => {
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink().should("have.text", TARGET_SCHEMA);
       getSchemaLink().click();
       H.main().within(() => {
@@ -1086,7 +1086,7 @@ LIMIT
       cy.go("back");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink().click();
       H.main().within(() => {
         cy.findByText("Animals").should("be.visible");
@@ -1097,7 +1097,7 @@ LIMIT
     it("should be able to see the target database", () => {
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getDatabaseLink().should("have.text", DB_NAME);
       getDatabaseLink().click();
       H.main().within(() => {
@@ -1109,7 +1109,7 @@ LIMIT
       cy.go("back");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getDatabaseLink().click();
       H.main().within(() => {
         cy.findByText(TARGET_SCHEMA).should("be.visible");
@@ -1173,7 +1173,7 @@ LIMIT
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
@@ -1198,7 +1198,7 @@ LIMIT
       cy.log("run the transform and make sure the query has changed");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
@@ -1230,7 +1230,7 @@ LIMIT
       cy.log("run the transform and make sure the query has changed");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
@@ -1304,7 +1304,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().should("have.attr", "aria-disabled", "false");
 
       cy.log("delete the transform but keep the table");
@@ -1327,7 +1327,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
-      H.DataStudio.Transforms.targetTab().click();
+      H.DataStudio.Transforms.settingsTab().click();
       getTableLink().should("have.attr", "aria-disabled", "false");
 
       cy.log("delete the transform and the table");
@@ -1593,7 +1593,7 @@ LIMIT
 
         H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
-        H.DataStudio.Transforms.targetTab().click();
+        H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
           .findByText("Python Transform")
@@ -1615,7 +1615,7 @@ LIMIT
         );
         H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
-        H.DataStudio.Transforms.targetTab().click();
+        H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
           .findByText("Python Transform")
@@ -1663,7 +1663,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
       targetSchema: null,
     });
 
-    H.DataStudio.Transforms.targetTab().click();
+    H.DataStudio.Transforms.settingsTab().click();
     getTransformsTargetContent().button("Change target").click();
 
     H.modal().findByLabelText("Schema").should("not.exist");
