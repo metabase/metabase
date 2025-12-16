@@ -79,21 +79,13 @@ export const MetabotChat = ({
       side="right"
       width="30rem"
       aria-hidden={!metabot.visible}
-      style={{
-        boxShadow: metabot.profileOverride
-          ? // TODO: do not merge to master, just meant to highlight another profile is set for now
-            "inset 0px 0px 33px -10px var(--mb-color-brand)"
-          : "unset",
-      }}
     >
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}
         <Box ref={headerRef} className={Styles.header}>
           <Flex align-items="center">
             <Text lh={1} fz="sm" c="text-secondary">
-              {metabot.profileOverride
-                ? t`Using profile: ${metabot.profileOverride}`
-                : t`Metabot isn't perfect. Double-check results.`}
+              {t`Metabot isn't perfect. Double-check results.`}
             </Text>
           </Flex>
 

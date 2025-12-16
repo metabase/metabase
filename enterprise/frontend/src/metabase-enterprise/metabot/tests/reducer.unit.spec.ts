@@ -62,7 +62,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
-            suggestedCodeEdits: [],
+            suggestedCodeEdits: {},
             suggestedTransforms: [existingTransform],
           },
         });
@@ -109,7 +109,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
-            suggestedCodeEdits: [],
+            suggestedCodeEdits: {},
             suggestedTransforms: [transform1, transform2, transform3],
           },
         });
@@ -145,7 +145,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
-            suggestedCodeEdits: [],
+            suggestedCodeEdits: {},
             suggestedTransforms: [newTransform],
           },
         });
@@ -185,7 +185,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
-            suggestedCodeEdits: [],
+            suggestedCodeEdits: {},
             suggestedTransforms: [transform1, transform2, transform3],
           },
         });
@@ -218,7 +218,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
-            suggestedCodeEdits: [],
+            suggestedCodeEdits: {},
             suggestedTransforms: [newTransform],
           },
         });

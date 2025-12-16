@@ -8,8 +8,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import {
   addDeveloperMessage,
-  deactivateSuggestedCodeEdit,
   getMetabotSuggestedCodeEdit,
+  removeSuggestedCodeEdit,
 } from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -80,7 +80,7 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
   );
 
   const resetInput = useCallback(() => {
-    dispatch(deactivateSuggestedCodeEdit("default"));
+    dispatch(removeSuggestedCodeEdit("default"));
     hideInput();
   }, [dispatch, hideInput]);
 
@@ -104,7 +104,7 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
         resetInput();
         dispatch(
           addDeveloperMessage({
-            agentId: "inline_sql",
+            agentId: "sql",
             message: `User rejected the following suggestion:\n\n${generatedSql}`,
           }),
         );

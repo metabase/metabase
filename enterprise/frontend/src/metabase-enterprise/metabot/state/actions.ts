@@ -74,7 +74,7 @@ export const {
   createAgent,
   destroyAgent,
   addSuggestedCodeEdit,
-  deactivateSuggestedCodeEdit,
+  removeSuggestedCodeEdit,
 } = metabot.actions;
 
 type PromptErrorOutcome = {

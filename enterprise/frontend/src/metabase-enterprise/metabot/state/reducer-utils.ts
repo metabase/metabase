@@ -42,8 +42,8 @@ export const getRequestConversation = (
 const agentOverridesByAgentId: Partial<
   Record<MetabotAgentId, Partial<MetabotConverstationState>>
 > = {
-  inline_sql: {
-    profileOverride: "inline_sql",
+  sql: {
+    profileOverride: "sql",
   },
 };
 
@@ -122,11 +122,11 @@ export const getMetabotInitialState = (): MetabotState => {
   return {
     conversations: {
       omnibot: createConversation("omnibot"),
-      inline_sql: createConversation("inline_sql"),
+      sql: createConversation("sql"),
     },
     reactions: {
       navigateToPath: null,
-      suggestedCodeEdits: [],
+      suggestedCodeEdits: {},
       // NOTE: suggestedTransforms should be folded into suggestedCodeEdits eventually
       suggestedTransforms: [],
     },

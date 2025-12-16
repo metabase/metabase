@@ -229,7 +229,5 @@ export const getMetabotSuggestedCodeEdits = createSelector(
 
 export const getMetabotSuggestedCodeEdit = createSelector(
   [getMetabotSuggestedCodeEdits, (_, bufferId: string) => bufferId],
-  (codeEdits, bufferId) => {
-    return codeEdits.findLast((t) => t.bufferId === bufferId && t.active);
-  },
+  (suggestedCodeEdits, bufferId) => suggestedCodeEdits[bufferId],
 );

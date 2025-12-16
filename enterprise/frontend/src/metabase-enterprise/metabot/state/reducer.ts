@@ -250,19 +250,13 @@ export const metabot = createSlice({
       state,
       { payload }: PayloadAction<MetabotCodeEdit>,
     ) => {
-      // mark all other edits w/ same buffer id as inactive before adding new one
-      state.reactions.suggestedCodeEdits.forEach((t) => {
-        t.active = t.bufferId === payload.bufferId ? false : t.active;
-      });
-      state.reactions.suggestedCodeEdits.push(payload);
+      state.reactions.suggestedCodeEdits[payload.bufferId] = payload;
     },
-    deactivateSuggestedCodeEdit: (
+    removeSuggestedCodeEdit: (
       state,
-      action: PayloadAction<MetabotCodeEdit["bufferId"] | undefined>,
+      action: PayloadAction<MetabotCodeEdit["bufferId"]>,
     ) => {
-      state.reactions.suggestedCodeEdits.forEach((t) => {
-        t.active = t.bufferId === action.payload ? false : t.active;
-      });
+      delete state.reactions.suggestedCodeEdits[action.payload];
     },
   },
   extraReducers: (builder) => {
