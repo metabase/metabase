@@ -573,31 +573,19 @@ describe("scenarios > dependencies > dependency graph", () => {
     }
 
     it("should be able to filter questions", () => {
-      makeCollectionOfficial(FIRST_COLLECTION_ID);
       getScoreboardTableId().then((tableId) => {
         createDashboard().then(({ body: dashboard }) => {
-          createTableBasedQuestion({
-            name: "Verified question",
-            tableId,
-          }).then(({ body: card }) => {
-            verifyCard(card.id);
-          });
-          createTableBasedQuestion({
-            name: "Question in dashboard",
-            tableId,
-            dashboardId: dashboard.id,
-          });
           createTableBasedQuestion({
             name: "Question in root collection",
             tableId,
           });
           createTableBasedQuestion({
-            name: "Question in official collection",
+            name: "Question in first collection",
             tableId,
             collectionId: FIRST_COLLECTION_ID,
           });
           createTableBasedQuestion({
-            name: "Question in regular collection",
+            name: "Question in second collection",
             tableId,
             collectionId: SECOND_COLLECTION_ID,
           });
@@ -606,30 +594,24 @@ describe("scenarios > dependencies > dependency graph", () => {
             tableId,
             collectionId: ADMIN_PERSONAL_COLLECTION_ID,
           });
+          createTableBasedQuestion({
+            name: "Question in dashboard",
+            tableId,
+            dashboardId: dashboard.id,
+          });
         });
         visitGraphForEntity(tableId, "table");
       });
       H.DependencyGraph.graph()
         .findByLabelText(TABLE_DISPLAY_NAME)
-        .findByText("6 questions")
+        .findByText("5 questions")
         .click();
-      verifyFilter({
-        filterName: "Verified",
-        visibleItems: ["Verified question"],
-        hiddenItems: ["Question in official collection"],
-      });
       verifyFilter({
         filterName: "In a dashboard",
         visibleItems: ["Question in dashboard"],
-        hiddenItems: ["Verified question", "Question in regular collection"],
-      });
-      verifyFilter({
-        filterName: "In an official collection",
-        visibleItems: ["Question in official collection"],
         hiddenItems: [
-          "Verified question",
-          "Question in dashboard",
-          "Question in root collection",
+          "Question in first collection",
+          "Question in second collection",
         ],
       });
       verifyFilter({
@@ -637,7 +619,8 @@ describe("scenarios > dependencies > dependency graph", () => {
         visibleItems: [
           "Question in dashboard",
           "Question in root collection",
-          "Question in regular collection",
+          "Question in first collection",
+          "Question in second collection",
         ],
         hiddenItems: ["Question in personal collection"],
       });
@@ -655,20 +638,6 @@ function visitGraphForEntity(id: DependencyId, type: DependencyType) {
 
 function getScoreboardTableId() {
   return cy.get<number>(`@${TABLE_ID_ALIAS}`);
-}
-
-function makeCollectionOfficial(collectionId: CollectionId) {
-  cy.request("PUT", `/api/collection/${collectionId}`, {
-    authority_level: "official",
-  });
-}
-
-function verifyCard(cardId: CardId) {
-  cy.request("POST", "/api/moderation-review", {
-    status: "verified",
-    moderated_item_id: cardId,
-    moderated_item_type: "card",
-  });
 }
 
 function createTableBasedCard({

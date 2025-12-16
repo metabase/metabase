@@ -67,7 +67,7 @@
 (methodical/defmethod auth-identity/login! ::create-tenant-if-not-exists
   [provider {:keys [tenant-slug]
              :as request}]
-  (let [existing-tenant (t2/select-one :model/Tenant :slug tenant-slug)]
+  (let [existing-tenant (when tenant-slug (t2/select-one :model/Tenant :slug tenant-slug))]
     (next-method provider (create-tenant-if-not-exists! request existing-tenant))))
 
 (methodical/prefer-method! #'auth-identity/login! :metabase.auth-identity.provider/provider ::create-tenant-if-not-exists)

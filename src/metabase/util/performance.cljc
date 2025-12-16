@@ -198,9 +198,12 @@
      (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4)))))
 
 (defn mapv
-  "Drop-in replacement for `clojure.core/mapv`.
+  "**Nearly** drop-in replacement for `clojure.core/mapv`.
+
   Iterates multiple collections more efficiently and uses Java iterators under the hood (the CLJ version). CLJS
-  version is only optimized for a single collection arity."
+  version is only optimized for a single collection arity.
+
+  Checks the `count` of all inputs - DO NOT give this infinite sequences!"
   ([f coll1]
    (let [n (count coll1)]
      (cond (= n 0) []
