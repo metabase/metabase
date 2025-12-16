@@ -12,7 +12,7 @@ export function ListEmptyState({ label }: ListEmptyStateProps) {
     <Stack p="xl" align="center">
       <img
         src={EmptyDashboardBot}
-        alt={t`Empty dashboard`}
+        alt={t`Empty list`}
         width={100}
         height={100}
       />

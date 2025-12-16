@@ -15,11 +15,9 @@ export function ErrorsCell({ node }: ErrorsCellProps) {
   }
 
   return (
-    <>
-      <div>
-        <span>{errorsInfo.label}</span>{" "}
-        {errorsInfo.detail && <strong>{errorsInfo.detail}</strong>}
-      </div>
-    </>
+    <div>
+      <span>{errorsInfo.label}</span>{" "}
+      {errorsInfo.detail && <strong>{errorsInfo.detail}</strong>}
+    </div>
   );
 }
