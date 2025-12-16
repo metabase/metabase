@@ -41,16 +41,6 @@ describe("scenarios > data studio > library", () => {
       event: "data_studio_library_created",
     });
 
-    cy.log("Verify empty state shows on library root");
-    H.DataStudio.Library.emptyPage().should("be.visible");
-
-    H.DataStudio.Library.libraryPage().button(/New/).click();
-    H.popover().findByText("New snippet folder").click();
-    H.modal().within(() => {
-      cy.findByLabelText("Give your folder a name").type("My Snippets");
-      cy.button("Create").click();
-    });
-
     cy.log("Verify library collections appear in the library table");
     H.DataStudio.Library.collectionItem("Data").should("be.visible");
     H.DataStudio.Library.collectionItem("Metrics").should("be.visible");

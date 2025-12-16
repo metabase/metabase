@@ -1241,7 +1241,8 @@
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [{:keys [id param-key]}      :- [:map
-                                   [:id ms/PositiveInt]]
+                                   [:id ms/PositiveInt]
+                                   [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
   (lib-be/with-metadata-provider-cache
     (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
@@ -1264,6 +1265,7 @@
   Currently limited to first 1000 results."
   [{:keys [id param-key query]} :- [:map
                                     [:id    ms/PositiveInt]
+                                    [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
    constraint-param-key->value  :- [:map-of string? any?]]
   (lib-be/with-metadata-provider-cache
@@ -1284,7 +1286,7 @@
     GET /api/dashboard/1/params/abc/remapping?value=100"
   [{:keys [id param-key]} :- [:map
                               [:id ms/PositiveInt]
-                              [:param-key :string]]
+                              [:param-key ms/NonBlankString]]
    {:keys [value]}        :- [:map [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]

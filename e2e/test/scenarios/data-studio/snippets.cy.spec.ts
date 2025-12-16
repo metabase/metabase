@@ -16,7 +16,7 @@ describe("scenarios > data studio > snippets", () => {
 
   describe("creation", () => {
     it("should create a new snippet with proper validation", () => {
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("New snippet").click();
@@ -62,7 +62,7 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
@@ -85,7 +85,7 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
@@ -106,7 +106,7 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
@@ -131,7 +131,7 @@ describe("scenarios > data studio > snippets", () => {
         description: "**Bold text** and *italic text*",
       });
 
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
       H.DataStudio.Snippets.editPage().within(() => {
@@ -148,7 +148,7 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
@@ -175,7 +175,7 @@ describe("scenarios > data studio > snippets", () => {
     });
 
     it("should be able to create a folder and snippet inside it", () => {
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("New snippet folder").click();
@@ -218,7 +218,7 @@ describe("scenarios > data studio > snippets", () => {
         name: "Test Folder",
       });
 
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 
@@ -242,7 +242,7 @@ describe("scenarios > data studio > snippets", () => {
         name: "Test Folder",
       });
 
-      visitLibraryPage();
+      H.DataStudio.Library.visit();
 
       H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 
@@ -256,8 +256,3 @@ describe("scenarios > data studio > snippets", () => {
     });
   });
 });
-
-function visitLibraryPage() {
-  cy.visit("/data-studio/library");
-  H.DataStudio.Library.libraryPage().should("be.visible");
-}
