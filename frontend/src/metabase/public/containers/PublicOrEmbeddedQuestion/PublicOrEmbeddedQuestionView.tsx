@@ -24,6 +24,7 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
@@ -31,7 +32,7 @@ export interface PublicOrEmbeddedQuestionViewProps {
   metadata: Metadata;
   result: Dataset | null;
   uuid: string;
-  token: string;
+  token: EntityToken;
   getParameters: () => UiParameter[];
   parameterValues: ParameterValuesMap;
   setParameterValue: (parameterId: ParameterId, value: any) => Promise<void>;

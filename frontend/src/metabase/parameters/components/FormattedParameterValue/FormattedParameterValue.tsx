@@ -22,13 +22,14 @@ import type {
   ParameterValue,
   RowValue,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 export type FormattedParameterValueProps = {
   parameter: UiParameter;
   value: string | number | number[] | ParameterValue;
   cardId?: CardId;
   dashboardId?: DashboardId;
-  token?: string | null;
+  token?: EntityToken | null;
   placeholder?: string;
   isPopoverOpen?: boolean;
   dataTestId?: string;

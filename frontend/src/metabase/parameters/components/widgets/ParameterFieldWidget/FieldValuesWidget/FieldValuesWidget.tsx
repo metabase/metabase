@@ -54,6 +54,7 @@ import type {
   ParameterValueOrArray,
   RowValue,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { State } from "metabase-types/store";
 
 import { Value as ValueComponent } from "../Value";
@@ -113,7 +114,7 @@ export interface IFieldValuesWidgetProps {
   fields: Field[];
   dashboardId?: DashboardId;
   cardId?: CardId;
-  token?: string | null;
+  token?: EntityToken | null;
 
   value: RowValue[];
   onChange: (value: RowValue[]) => void;
@@ -692,7 +693,7 @@ function renderValue({
   parameter?: Parameter;
   cardId?: CardId;
   dashboardId?: DashboardId;
-  token?: string | null;
+  token?: EntityToken | null;
   autoLoad?: boolean;
   compact?: boolean;
   displayValue?: string;
@@ -721,7 +722,7 @@ type RemappedValueProps = {
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
-  token?: string | null;
+  token?: EntityToken | null;
   tc: ContentTranslationFunction;
 };
 

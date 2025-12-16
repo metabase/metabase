@@ -10,13 +10,14 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import Question from "metabase-lib/v1/Question";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
   isGuestEmbed: boolean;
-  token: string | null | undefined;
+  token: EntityToken | null | undefined;
   onQuestionChange: (question: Question) => void;
   onClearQueryResults: () => void;
 }

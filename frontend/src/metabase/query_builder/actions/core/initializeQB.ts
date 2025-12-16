@@ -24,6 +24,7 @@ import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery"
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, SegmentId } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
@@ -120,7 +121,7 @@ async function fetchAndPrepareSavedQuestionCards(
     token,
   }: {
     cardId: string | number;
-    token?: string | null;
+    token?: EntityToken | null;
   },
   dispatch: Dispatch,
   getState: GetState,
@@ -180,7 +181,7 @@ export async function resolveCards({
   getState,
 }: {
   cardId?: string | number;
-  token?: string | null;
+  token?: EntityToken | null;
   deserializedCard?: Card;
   options: BlankQueryOptions;
   dispatch: Dispatch;

@@ -15,9 +15,10 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import type { EntityToken } from "metabase-types/api/entity";
 
 type LoadQuestionSdkParams = LoadSdkQuestionParams & {
-  token: string | null | undefined;
+  token: EntityToken | null | undefined;
 };
 
 export const loadQuestionSdk =
