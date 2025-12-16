@@ -1276,12 +1276,12 @@
 (defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (t2/select-one :model/Card :id id)
         query              (not-empty (:dataset_query card))
-        source-card        (some-> query lib/source-card-id)
+        source-cards       (some-> query lib/all-source-card-ids)
         template-tags      (some-> query lib/all-template-tags)
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> template-tags (keep :snippet-id))]
     (into {} (concat
-              (when source-card
+              (for [source-card source-cards]
                 {["Card" source-card] {"Card" id}})
               (for [{:keys [card-id]} template-tags
                     :when             card-id]
