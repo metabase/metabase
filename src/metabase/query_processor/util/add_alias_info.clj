@@ -167,10 +167,14 @@
       :mbql.stage/native
       desired-column-alias
 
+      ;; ERIC
       :mbql.stage/mbql
       (let [desired-alias->escaped (or (::desired-alias->escaped (get-in query stage-path))
                                        (throw (ex-info "Stage is missing ::desired-alias->escaped"
                                                        {:stage-path stage-path})))]
+        (prn :QUERY query)
+        (prn :DAE desired-alias->escaped)
+        (prn :DCA desired-column-alias)
         (or (get desired-alias->escaped desired-column-alias)
             (throw (ex-info (format "Missing ::desired-alias->escaped for %s" (pr-str desired-column-alias))
                             {:path                   stage-path

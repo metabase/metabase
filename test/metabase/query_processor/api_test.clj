@@ -9,12 +9,14 @@
                                           toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
+   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -29,10 +31,12 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.util :as mtu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -1073,3 +1077,33 @@
                        (mt/with-current-user user-id
                          (mt/user-http-request user-id :post 403 "dataset"
                                                (mt/mbql-query venues {:limit 1})))))))))))))
+
+(deftest fk-do-not-include-should-not-break-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Check that we don't 500 when there's a do-not-include (sensitive) foreign key"
+      (mtu/with-temp-vals-in-db :model/Database (mt/id) {:details {:db "file:/Users/ericnormand/code/metabase/plugins/sample-database.db;USER=GUEST;PASSWORD=guest"}}
+        (mtu/with-temp-vals-in-db :model/Field (mt/id :products :id) {:visibility_type :sensitive
+                                                                      :description "What"
+                                                                      :database_indexed true}
+          (mtu/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:database_indexed true}
+            (clojure.pprint/pprint
+             (take 2
+                   (clojure.data/diff
+                    (t2/select-one :model/Database (mt/id))
+                    (t2/select-one :model/Database 1))))
+            (sync/sync-database! (mt/db))
+            (clojure.pprint/pprint
+             (take 2
+                   (clojure.data/diff (into {} (t2/select-one :model/Field (mt/id :products :id)))
+                                      (into {} (t2/select-one :model/Field 8)))))
+
+            (clojure.pprint/pprint
+             (clojure.data/diff (into {} (t2/select-one :model/Field (mt/id :orders :product_id)))
+                                (into {} (t2/select-one :model/Field 14))))
+
+            (let [mp (mt/metadata-provider)
+                  query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            (dissoc :lib/metadata))]
+              (is (some? (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                               #_query
+                                               {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql, :source-table 2}], :database 1}))))))))))
