@@ -263,8 +263,20 @@ export function getNodeLocationInfo(
         };
       }
       return null;
-    case "transform":
     case "snippet":
+      if (node.data.collection != null) {
+        return {
+          icon: "collection",
+          links: [
+            {
+              label: node.data.collection.name,
+              url: Urls.dataStudioLibrary(),
+            },
+          ],
+        };
+      }
+      return null;
+    case "transform":
     case "sandbox":
       return null;
   }

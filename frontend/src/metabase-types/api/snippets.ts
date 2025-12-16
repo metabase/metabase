@@ -1,4 +1,4 @@
-import type { RegularCollectionId } from "./collection";
+import type { Collection, RegularCollectionId } from "./collection";
 import type { TemplateTags } from "./dataset";
 import type { BaseEntityId } from "./entity-id";
 import type { UserId, UserInfo } from "./user";
@@ -18,6 +18,8 @@ export interface NativeQuerySnippet {
   entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;
+
+  collection?: Collection;
 }
 
 export interface ListSnippetsParams {

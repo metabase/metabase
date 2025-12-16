@@ -223,6 +223,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         .click();
       checkSidebar({
         entityName: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        locationName: "SQL snippets",
         creatorName: "Bobby Tables",
       });
     });

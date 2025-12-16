@@ -86,7 +86,12 @@ export type CardDependencyNodeData = Pick<
 
 export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
-  "name" | "description" | "creator" | "created_at"
+  | "name"
+  | "description"
+  | "creator"
+  | "created_at"
+  | "collection_id"
+  | "collection"
 >;
 
 export type DashboardDependencyNodeData = Pick<
