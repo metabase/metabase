@@ -1970,6 +1970,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.wait(["@metadata", "@metadata"]);
 
           FieldSection.getSemanticTypeFkTarget()
+            .scrollIntoView() //This should not be necessary, but CI consistently fails to scroll into view on mount
             .should("be.visible")
             .and("have.value", "Products → ID");
         });
