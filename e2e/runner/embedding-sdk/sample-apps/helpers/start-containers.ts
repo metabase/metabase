@@ -1,15 +1,19 @@
 import { shell } from "../../../cypress-runner-utils";
 import { waitForHealth } from "../../shared/helpers/wait-for-health";
 
+import { getLogsCommand } from "./get-logs-command";
+
 export async function startContainers({
   cwd,
   env,
+  appName,
   dockerUpCommand,
   dockerDownCommand,
   healthcheckPorts,
 }: {
   cwd: string;
   env: Record<string, string | number>;
+  appName: string;
   dockerUpCommand: string;
   dockerDownCommand: string;
   healthcheckPorts: number[];
@@ -28,7 +32,10 @@ export async function startContainers({
     });
 
     await Promise.all(healthcheckPromises);
+
+    shell(getLogsCommand(appName));
   } catch {
+    shell(getLogsCommand(appName));
     shell(dockerDownCommand, { cwd, env });
   }
 }
