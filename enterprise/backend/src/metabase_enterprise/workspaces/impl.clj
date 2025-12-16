@@ -3,7 +3,7 @@
   (:require
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
    [metabase-enterprise.workspaces.execute :as ws.execute]
-   [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -93,7 +93,7 @@
    (run-transform! workspace transform (build-remapping workspace)))
   ([workspace transform remapping]
    (let [ref-id (:ref_id transform)
-         result (isolation/with-workspace-isolation workspace (ws.execute/run-transform-with-remapping transform remapping))]
+         result (ws.isolation/with-workspace-isolation workspace (ws.execute/run-transform-with-remapping transform remapping))]
      (when (= :succeeded (:status result))
        (t2/update! :model/WorkspaceTransform ref-id {:last_run_at (:end_time result)})
        (backfill-isolated-table-id! ref-id))
