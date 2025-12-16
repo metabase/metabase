@@ -918,6 +918,7 @@
   {:team "UX West"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
+           app-db
            audit-app
            events
            permissions

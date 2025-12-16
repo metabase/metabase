@@ -3,7 +3,6 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
@@ -23,7 +22,7 @@ const colorsByVariant = {
   background: {
     info: "var(--mb-color-bg-light)",
     error: color("background-error"),
-    warning: lighten("warning", 0.5),
+    warning: color("bg-yellow"),
   },
   icon: {
     info: color("text-dark"),
