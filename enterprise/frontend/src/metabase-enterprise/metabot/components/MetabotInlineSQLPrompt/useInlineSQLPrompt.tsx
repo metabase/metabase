@@ -6,6 +6,10 @@ import { createPortal } from "react-dom";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import {
+  useMetabotDispatch,
+  useMetabotSelector,
+} from "metabase-enterprise/metabot/hooks/use-metabot-store";
+import {
   addDeveloperMessage,
   getMetabotSuggestedCodeEdit,
   removeSuggestedCodeEdit,
@@ -23,10 +27,6 @@ import {
   toggleEffect,
 } from "./MetabotInlineSQLPromptWidget";
 import { extractMetabotBufferContext } from "./utils";
-import {
-  useMetabotDispatch,
-  useMetabotSelector,
-} from "metabase-enterprise/metabot/hooks/use-metabot-store";
 
 function useRegisterCodeEditorMetabotContext(
   buffer: EditorView | undefined,
@@ -104,9 +104,9 @@ export function useInlineSQLPrompt(
   );
 
   const resetInput = useCallback(() => {
-    dispatch(removeSuggestedCodeEdit("default"));
+    dispatch(removeSuggestedCodeEdit(bufferId));
     hideInput();
-  }, [dispatch, hideInput]);
+  }, [dispatch, hideInput, bufferId]);
 
   // NOTE: ref is needed for the extension to not be recalculated in the useMemo
   // below, while still being able to reset the suggestion state on close
