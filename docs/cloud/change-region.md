@@ -31,6 +31,7 @@ To change regions, go to your [Metabase Store page](https://store.metabase.com/)
 - Europe (Frankfurt)
 - Asia Pacific (Singapore)
 - South America (São Paulo)
+- Australia (Sydney)
 
 ## Add the relevant IP addresses to your whitelist
 
