@@ -105,10 +105,34 @@
      ;; collapse tables out, directly connecting transforms? smaller graphs are easier for humans to read
      :dependencies (collapse table? deps)}))
 
+(defn- path-induced-subgraph*
+  "Implementation for [[path-induced-subgraph]] that takes the lookup functions as arguments. Useful for testing."
+  [ws-id init-nodes node-parents-fn]
+  (loop [members (into #{} init-nodes)
+         ;; Association list sets from nodes to their direct dependencies
+         deps    (u/for-map [node init-nodes] [node #{}])
+         ;; Paths are vectors sorted from child to parent
+         [path & paths] (for [ref members] [ref])]
+    (if-not path
+      (render-graph members deps)
+      (let [parents  (node-parents-fn ws-id (peek path))
+            continue (remove members parents)]
+        (if (not= parents continue)
+          ;; At least one parent is in the enclosed subgraph, so this entire path is as well.
+          (let [add-dep    (fn [deps [child parent]]
+                             (update deps child (fnil conj #{}) parent))
+                ;; Break up the path into adjacent child-parent pairs.
+                pairs      (concat (partition 2 1 path)
+                                   (map (fn [end] [(peek path) end]) (filter members parents)))
+                ;; Since everything along this path will now be added to deps already, we can truncate the paths.
+                next-paths (into paths (for [c continue] [(peek path) c]))]
+            (recur (into members path) (reduce add-dep deps pairs) next-paths))
+          ;; We have not reached another member of the enclosed subgraph yet, so keep extending.
+          (recur members deps (into paths (for [c continue] (conj path c)))))))))
+
 ;;;; Public API
 
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- path-induced-subgraph
+(defn path-induced-subgraph
   "Given a map of entity types to IDs, compute the path-induced subgraph.
    `entities-by-type` is a map like {:transform [1 2 3]}.
 
@@ -126,27 +150,7 @@
   (let [init-nodes (for [{:keys [entity-type id]} changeset]
                      (case entity-type
                        :transform {:node-type :workspaces-transform, :id id}))]
-    (loop [members (into #{} init-nodes)
-           ;; Association list sets from nodes to their direct dependencies
-           deps    (u/for-map [node init-nodes] [node #{}])
-           ;; Paths are vectors sorted from child to parent
-           [path & paths] (for [ref members] [ref])]
-      (if-not path
-        (render-graph members deps)
-        (let [parents  (node-parents ws-id (peek path))
-              continue (remove members parents)]
-          (if (not= parents continue)
-            ;; At least one parent is in the enclosed subgraph, so this entire path is as well.
-            (let [add-dep    (fn [deps [child parent]]
-                               (update deps child (fnil conj #{}) parent))
-                  ;; Break up the path into adjacent child-parent pairs.
-                  pairs      (concat (partition 2 1 path)
-                                     (map (fn [end] [(peek path) end]) (filter members parents)))
-                  ;; Since everything along this path will now be added to deps already, we can truncate the paths.
-                  next-paths (into paths (for [c continue] [(peek path) c]))]
-              (recur (into members path) (reduce add-dep deps pairs) next-paths))
-            ;; We have not reached another member of the enclosed subgraph yet, so keep extending.
-            (recur members deps (into paths (for [c continue] (conj path c))))))))))
+    (path-induced-subgraph* ws-id init-nodes node-parents)))
 
 ;; source-table ---------> checked-out-transform
 ;;          \____external-transform__/
