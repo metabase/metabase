@@ -37,6 +37,9 @@ const NATIVE_CARD_COLUMN_MISSING = "Native card with a non-existing column";
 const NATIVE_CARD_TABLE_ALIAS_MISSING =
   "Native card with a missing table alias";
 const NATIVE_CARD_SYNTAX_ERROR = "Native card with a syntax error";
+const NATIVE_CARD_CARD_TAG_MISSING = "Native card with a missing card tag";
+const NATIVE_CARD_SNIPPET_TAG_MISSING =
+  "Native card with a missing snippet tag";
 
 const BROKEN_MBQL_CARD_NAMES = [
   CARD_COLUMN_ID_MISSING,
@@ -52,6 +55,8 @@ const BROKEN_NATIVE_CARD_NAMES = [
   NATIVE_CARD_COLUMN_MISSING,
   NATIVE_CARD_TABLE_ALIAS_MISSING,
   NATIVE_CARD_SYNTAX_ERROR,
+  NATIVE_CARD_CARD_TAG_MISSING,
+  NATIVE_CARD_SNIPPET_TAG_MISSING,
 ];
 
 const BROKEN_CARD_NAMES = [
@@ -68,15 +73,22 @@ describe("scenarios > dependencies > broken list", () => {
   });
 
   describe("analysis", () => {
+    it("should not show valid entities", () => {
+      createCardContent({ type: "question" });
+      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DataStudio.Tasks.list().within(() => {
+        VALID_ENTITY_NAMES.forEach((name) => {
+          cy.findByText(name).should("not.exist");
+        });
+      });
+    });
+
     it("should show broken questions", () => {
       createCardContent({ type: "question" });
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.list().within(() => {
         BROKEN_CARD_NAMES.forEach((name) => {
           cy.findByText(name).should("be.visible");
-        });
-        VALID_ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("not.exist");
         });
       });
     });
@@ -88,9 +100,6 @@ describe("scenarios > dependencies > broken list", () => {
         BROKEN_CARD_NAMES.forEach((name) => {
           cy.findByText(name).should("be.visible");
         });
-        VALID_ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("not.exist");
-        });
       });
     });
 
@@ -100,9 +109,6 @@ describe("scenarios > dependencies > broken list", () => {
       H.DataStudio.Tasks.list().within(() => {
         BROKEN_MBQL_CARD_NAMES.forEach((name) => {
           cy.findByText(name).should("be.visible");
-        });
-        VALID_ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("not.exist");
         });
       });
     });
@@ -201,6 +207,17 @@ function createCardContent({ type }: { type: CardType }) {
       name: NATIVE_CARD_SYNTAX_ERROR,
       type,
       query: "SELECT FROM",
+    });
+    createNativeCardWithCardTag({
+      name: NATIVE_CARD_CARD_TAG_MISSING,
+      type,
+      cardId: 1000,
+    });
+    createNativeCardWithSnippetTag({
+      name: NATIVE_CARD_SNIPPET_TAG_MISSING,
+      type,
+      snippetId: 1000,
+      snippetName: "missing-snippet",
     });
   }
 }
@@ -308,6 +325,67 @@ function createNativeCard({
     type,
     native: {
       query,
+    },
+  });
+}
+
+function createNativeCardWithCardTag({
+  name,
+  type,
+  cardId,
+}: {
+  name: string;
+  type: CardType;
+  cardId: CardId;
+}) {
+  const tagName = `#${cardId}`;
+
+  return H.createNativeQuestion({
+    name,
+    type,
+    native: {
+      query: `SELECT * {{${tagName}}}`,
+      "template-tags": {
+        [tagName]: {
+          id: tagName,
+          name: tagName,
+          "display-name": tagName,
+          type: "card",
+          "card-id": cardId,
+        },
+      },
+    },
+  });
+}
+
+function createNativeCardWithSnippetTag({
+  name,
+  type,
+  snippetId,
+  snippetName,
+}: {
+  name: string;
+  type: CardType;
+  snippetId: NativeQuerySnippetId;
+  snippetName: string;
+}) {
+  const tagName = `snippet: ${snippetName}`;
+
+  return H.createNativeQuestion({
+    name,
+    type,
+    native: {
+      query: `SELECT * FROM ORDERS WHERE {{${tagName}}}`,
+      "template-tags": {
+        [tagName]: {
+          id: tagName,
+          name: tagName,
+          "display-name": tagName,
+          type: "snippet",
+          "snippet-id": snippetId,
+          "snippet-name": snippetName,
+        },
+      },
     },
   });
 }
