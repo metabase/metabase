@@ -8,19 +8,20 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Alert, Box, Stack, Text } from "metabase/ui";
 import { useLazyCheckQueryComplexityQuery } from "metabase-enterprise/api";
 import {
-  KeysetColumnSelect,
-  PythonKeysetColumnSelect,
-} from "metabase-enterprise/transforms/components/IncrementalTransform/KeysetColumnSelect";
-import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/IncrementalTransform/NativeQueryColumnSelect";
-import {
   CHECKPOINT_TEMPLATE_TAG,
   SOURCE_STRATEGY_OPTIONS,
   TARGET_STRATEGY_OPTIONS,
 } from "metabase-enterprise/transforms/constants";
-import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
+import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/form";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { TransformSource } from "metabase-types/api";
+
+import {
+  KeysetColumnSelect,
+  PythonKeysetColumnSelect,
+} from "./KeysetColumnSelect";
+import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
 
 export const IncrementalTransformSettings = ({
   source,
@@ -119,7 +120,7 @@ export const IncrementalTransformSettings = ({
   ]);
 
   return (
-    <>
+    <Stack gap="lg">
       <Box>
         <Text fw="bold">{t`Incremental transformation`}</Text>
         <Text size="sm" c="text-secondary" mb="sm">
@@ -174,7 +175,7 @@ export const IncrementalTransformSettings = ({
           <TargetStrategyFields />
         </>
       )}
-    </>
+    </Stack>
   );
 };
 

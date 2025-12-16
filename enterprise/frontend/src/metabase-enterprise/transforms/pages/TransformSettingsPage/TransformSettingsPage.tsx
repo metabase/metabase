@@ -16,17 +16,17 @@ import {
   isTransformSyncing,
 } from "../../utils";
 
-import { TargetSection } from "./TargetSection";
+import { TransformSettingsSection } from "./TransformSettingsSection";
 
-type TransformTargetPageParams = {
+type TransformSettingsPageParams = {
   transformId: string;
 };
 
 type TransformTargetPageProps = {
-  params: TransformTargetPageParams;
+  params: TransformSettingsPageParams;
 };
 
-export function TransformTargetPage({ params }: TransformTargetPageProps) {
+export const TransformSettingsPage = ({ params }: TransformTargetPageProps) => {
   const [isPolling, setIsPolling] = useState(false);
   const transformId = Urls.extractEntityId(params.transformId);
   const {
@@ -52,12 +52,12 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
   return (
     <ColumnLayout px="3.5rem" data-testid="transforms-target-content">
       <TransformHeader transform={transform} />
-      <Box pt="3rem">
-        <TargetSection transform={transform} />
+      <Box pt="1.5rem">
+        <TransformSettingsSection transform={transform} />
       </Box>
     </ColumnLayout>
   );
-}
+};
 
 function isPollingNeeded(transform?: Transform) {
   return (

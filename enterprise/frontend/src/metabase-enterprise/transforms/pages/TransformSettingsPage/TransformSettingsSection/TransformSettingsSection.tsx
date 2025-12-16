@@ -24,31 +24,32 @@ import type { Transform } from "metabase-types/api";
 import { TitleSection } from "../../../components/TitleSection";
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
-import { UpdateIncrementalModal } from "./UpdateIncrementalModal";
+import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
-type TargetSectionProps = {
+type Props = {
   transform: Transform;
 };
 
-export function TargetSection({ transform }: TargetSectionProps) {
-  return (
-    <TitleSection
-      label={t`Transform target`}
-      description={t`Change what this transform generates and where.`}
-    >
-      <Group p="lg">
-        <TargetInfo transform={transform} />
-      </Group>
-      <Divider />
-      <Group p="lg">
-        <EditTargetButton transform={transform} />
-        <EditIncrementalButton transform={transform} />
-        <EditMetadataButton transform={transform} />
-      </Group>
-    </TitleSection>
-  );
-}
+export const TransformSettingsSection = ({ transform }: Props) => (
+  <TitleSection
+    label={t`Transform target`}
+    description={t`Change what this transform generates and where.`}
+  >
+    <Group p="lg">
+      <TargetInfo transform={transform} />
+    </Group>
+    <Divider />
+    <Group p="lg">
+      <EditTargetButton transform={transform} />
+      <EditMetadataButton transform={transform} />
+    </Group>
+
+    <Group p="lg">
+      <UpdateIncrementalSettings transform={transform} />
+    </Group>
+  </TitleSection>
+);
 
 type TargetInfoProps = {
   transform: Transform;
@@ -192,44 +193,6 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
       </Button>
       {isModalOpened && (
         <UpdateTargetModal
-          transform={transform}
-          onUpdate={handleUpdate}
-          onClose={closeModal}
-        />
-      )}
-    </>
-  );
-}
-
-type EditIncrementalButtonProps = {
-  transform: Transform;
-};
-
-function EditIncrementalButton({ transform }: EditIncrementalButtonProps) {
-  const [isModalOpened, { open: openModal, close: closeModal }] =
-    useDisclosure();
-  const { sendSuccessToast } = useMetadataToasts();
-
-  const isIncremental = transform.target.type === "table-incremental";
-
-  const handleUpdate = () => {
-    closeModal();
-    sendSuccessToast(t`Incremental settings updated`);
-  };
-
-  return (
-    <>
-      <Button
-        leftSection={<Icon name="refresh" aria-hidden />}
-        disabled={isTransformRunning(transform)}
-        onClick={openModal}
-      >
-        {isIncremental
-          ? t`Edit incremental settings`
-          : t`Make transform incremental`}
-      </Button>
-      {isModalOpened && (
-        <UpdateIncrementalModal
           transform={transform}
           onUpdate={handleUpdate}
           onClose={closeModal}
