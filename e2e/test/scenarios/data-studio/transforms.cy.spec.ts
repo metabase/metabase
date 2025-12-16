@@ -635,7 +635,7 @@ LIMIT
         visitTransform: true,
       });
 
-      getTransformPage().findByText("Edit query").click();
+      H.DataStudio.Transforms.editDefinition().click();
 
       getQueryEditor().within(() => {
         cy.findByTestId("run-button").eq(0).click();
