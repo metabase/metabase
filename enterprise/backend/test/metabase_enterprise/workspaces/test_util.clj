@@ -74,8 +74,8 @@
                 ;; Workspace may already be deleted by the test
                 nil))))))))
 
-(defmacro with-workspaces
-  "Execute body with properly initialized workspaces that are cleaned up afterwards.
+(defmacro with-workspaces!
+  "Execute body with properly initialized workspaces that are cleaned up afterward.
 
   Creates each workspace using `ws.common/create-workspace!` and waits for it to
   be ready. After body execution (or on error), cleans up using `ws.model/delete!`

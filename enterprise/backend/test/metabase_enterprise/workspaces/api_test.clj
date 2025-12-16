@@ -33,7 +33,7 @@
   (reduce append-part (str "ee/workspace/" id) (map str path)))
 
 (deftest workspace-endpoints-require-superuser-test
-  (ws.tu/with-workspaces [workspace {:name "Private Workspace"}]
+  (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
     (testing "GET /api/ee/workspace requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "ee/workspace"))))
@@ -47,18 +47,18 @@
              (mt/user-http-request :rasta :post 403 "ee/workspace"
                                    {:name "Unauthorized Workspace"})))))
 
-  (ws.tu/with-workspaces [workspace {:name "Put Workspace"}]
+  (ws.tu/with-workspaces! [workspace {:name "Put Workspace"}]
     (testing "PUT /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (ws-url (:id workspace) "")
                                    {:name "Updated"})))))
 
-  (ws.tu/with-workspaces [workspace {:name "Delete Workspace"}]
+  (ws.tu/with-workspaces! [workspace {:name "Delete Workspace"}]
     (testing "DELETE /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace) ""))))))
 
-  (ws.tu/with-workspaces [workspace {:name "Promote Workspace"}]
+  (ws.tu/with-workspaces! [workspace {:name "Promote Workspace"}]
     (testing "POST /api/ee/workspace/:id/promote requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge")))))))
@@ -150,14 +150,14 @@
         (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
         (is @called? "ensure-database-isolation! should be called when unarchiving")))))
 
-(deftest ^:parallel promote-workspace-test
+(deftest merge-workspace-test
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
-    (ws.tu/with-workspaces [workspace {:name "Promote Test"}]
+    (ws.tu/with-workspaces! [workspace {:name "Promote Test"}]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge"))))))
 
   (testing "Cannot merge an already archived workspace"
-    (ws.tu/with-workspaces [workspace {:name "Archived Workspace"}]
+    (ws.tu/with-workspaces! [workspace {:name "Archived Workspace"}]
       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (is (= "Cannot merge an archived workspace"
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/merge")))))))
@@ -544,7 +544,7 @@
 
 (deftest create-workspace-transform-permissions-test
   (testing "POST /api/ee/workspace/:id/transform requires superuser"
-    (ws.tu/with-workspaces [workspace {:name "Transform Test"}]
+    (ws.tu/with-workspaces! [workspace {:name "Transform Test"}]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
                                    {:name   "Should Fail"
@@ -555,7 +555,7 @@
 
 (deftest create-workspace-transform-archived-test
   (testing "Cannot create transform in archived workspace"
-    (ws.tu/with-workspaces [workspace {:name "Archived"}]
+    (ws.tu/with-workspaces! [workspace {:name "Archived"}]
       (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
       (is (= "Cannot create transforms in an archived workspace"
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/transform")
@@ -614,7 +614,7 @@
 
 (deftest add-entities-requires-superuser-test
   (testing "POST /api/ee/workspace/:id/add requires superuser"
-    (ws.tu/with-workspaces [workspace {:name "Permission Test"}]
+    (ws.tu/with-workspaces! [workspace {:name "Permission Test"}]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
                                    {:name "blah", :source {}, :target {}}))))))
@@ -806,7 +806,7 @@
 
 (deftest rename-workspace-test
   (testing "POST /api/ee/workspace/:id/name updates the workspace name"
-    (ws.tu/with-workspaces [workspace {:name "Original Name"}]
+    (ws.tu/with-workspaces! [workspace {:name "Original Name"}]
       (let [response (mt/user-http-request :crowberto :put 200 (ws-url (:id workspace))
                                            {:name "Updated Name"})]
         (is (= "Updated Name"
@@ -814,13 +814,13 @@
                (t2/select-one-fn :name :model/Workspace :id (:id workspace)))))))
 
   (testing "Requires superuser"
-    (ws.tu/with-workspaces [workspace {:name "Permission Test"}]
+    (ws.tu/with-workspaces! [workspace {:name "Permission Test"}]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (ws-url (:id workspace))
                                    {:name "Should Fail"})))))
 
   (testing "Cannot rename an archived workspace"
-    (ws.tu/with-workspaces [workspace {:name "Archived"}]
+    (ws.tu/with-workspaces! [workspace {:name "Archived"}]
       (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
       (is (= "Cannot update an archived workspace"
              (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
@@ -841,7 +841,7 @@
 
 (deftest validate-target-test
   (let [table (t2/select-one :model/Table :active true {:where [:not [:like :schema "mb__%"]]})]
-    (ws.tu/with-workspaces [ws {:name "test"}]
+    (ws.tu/with-workspaces! [ws {:name "test"}]
       (mt/with-temp [:model/WorkspaceTransform _x1 {:workspace_id (:id ws)
                                                     :target       {:database (:db_id table)
                                                                    :type     "table"
@@ -855,8 +855,8 @@
                                           :target {:type   "table"
                                                    :schema "public"
                                                    :name   (str/replace (str (random-uuid)) "-" "_")}})))))
-      ;; We've decided to defer this error until merge.
-      ;; Also, this logic is going to become more relaxed, where we're allowed to take over a "dormant" table.
+        ;; We've decided to defer this error until merge.
+        ;; Also, this logic is going to become more relaxed, where we're allowed to take over a "dormant" table.
         #_(testing "Conflict outside of workspace"
             (is (= "A table with that name already exists."
                    (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
@@ -941,7 +941,7 @@
 
 (deftest get-workspace-transforms-test
   (testing "GET /api/ee/workspace/:id/transform"
-    (ws.tu/with-workspaces [workspace {:name "List Transforms Test"}]
+    (ws.tu/with-workspaces! [workspace {:name "List Transforms Test"}]
       (mt/with-temp [:model/WorkspaceTransform tx1  {:name         "Transform 1"
                                                      :workspace_id (:id workspace)}
                      :model/WorkspaceTransform tx2  {:name         "Transform 2"
@@ -955,7 +955,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "/transform")))))))
     (testing "returns empty list when no transforms"
-      (ws.tu/with-workspaces [workspace {:name "Empty Workspace"}]
+      (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
         (is (= {:transforms []}
                (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform"))))))
     (testing "returns 404 for non-existent workspace"
@@ -964,8 +964,8 @@
 
 (deftest get-workspace-transform-by-id-test
   (testing "GET /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces [workspace1 {:name "Workspace 1"}
-                            workspace2 {:name "Workspace 2"}]
+    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
+                             workspace2 {:name "Workspace 2"}]
       (mt/with-temp [:model/WorkspaceTransform transform {:name         "My Transform"
                                                           :description  "Test description"
                                                           :workspace_id (:id workspace1)}]
@@ -986,8 +986,8 @@
 
 (deftest update-workspace-transform-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces [workspace1 {:name "Workspace 1"}
-                            workspace2 {:name "Workspace 2"}]
+    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
+                             workspace2 {:name "Workspace 2"}]
       (mt/with-temp [:model/WorkspaceTransform transform {:name         "Original Name"
                                                           :description  "Original description"
                                                           :workspace_id (:id workspace1)}]
@@ -1013,8 +1013,8 @@
 
 (deftest delete-workspace-transform-test
   (testing "DELETE /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces [workspace1 {:name "Workspace 1"}
-                            workspace2 {:name "Workspace 2"}]
+    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
+                             workspace2 {:name "Workspace 2"}]
       (mt/with-temp [:model/WorkspaceTransform transform1 {:name         "Transform in WS1"
                                                            :workspace_id (:id workspace1)}
                      :model/WorkspaceTransform transform2 {:name         "To Delete"
@@ -1036,8 +1036,8 @@
 (deftest run-workspace-transform-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run"
     (transforms.tu/with-transform-cleanup! [output-table "ws_api"]
-      (ws.tu/with-workspaces [ws1 {:name "Workspace 1"}
-                              ws2 {:name "Workspace 2"}]
+      (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
+                               ws2 {:name "Workspace 2"}]
         (mt/with-temp [:model/Transform x1 {:name   "Transform in WS1"
                                             :source {:type  "query"
                                                      :query (mt/native-query {:query "SELECT count(*) from orders"})}
@@ -1073,8 +1073,8 @@
 
 (deftest run-workspace-test
   (testing "POST /api/ee/workspace/:id/execute"
-    (ws.tu/with-workspaces [workspace1 {:name "Workspace 1"}
-                            workspace2 {:name "Workspace 2"}]
+    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
+                             workspace2 {:name "Workspace 2"}]
       (mt/with-temp [:model/WorkspaceTransform transform {:name         "Transform in WS1"
                                                           :workspace_id (:id workspace1)}]
         (testing "returns empty when no transforms"
@@ -1113,8 +1113,8 @@
   (testing "GET /api/ee/workspace/id/external/transform"
     (mt/with-premium-features #{:transforms :workspaces}
       (let [db-1 (mt/id)]
-        (ws.tu/with-workspaces [ws1 {:name "Our Workspace"}
-                                ws2 {:name "Their Workspace"}]
+        (ws.tu/with-workspaces! [ws1 {:name "Our Workspace"}
+                                 ws2 {:name "Their Workspace"}]
           (mt/with-temp [;; Global transforms (workspace_id = null)
                          :model/Dashboard          {db-2 :id}   {:name "Other Db"}
                          :model/Transform          {xf1-id :id} {:name   "Checked out - 1"
@@ -1173,10 +1173,10 @@
 ;; These tests verify that when WorkspaceOutput rows have null table IDs (e.g., because sync
 ;; hasn't run yet), the /table endpoint will look up the IDs from metabase_table as a fallback.
 
-(deftest ^:parallel tables-endpoint-fallback-global-table-id-test
+(deftest tables-endpoint-fallback-global-table-id-test
   (testing "GET /api/ee/workspace/:id/table uses fallback for null global_table_id"
     (mt/with-premium-features #{:workspaces}
-      (ws.tu/with-workspaces [workspace {:name "Fallback Test WS"}]
+      (ws.tu/with-workspaces! [workspace {:name "Fallback Test WS"}]
         (mt/with-temp [:model/WorkspaceTransform ws-tx {:workspace_id (:id workspace)
                                                         :name         "Test Transform"
                                                         :target       {:type     "table"
