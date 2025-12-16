@@ -18,6 +18,7 @@ import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -150,6 +151,61 @@ describe("CollectionBrowser", () => {
     const columnTexts = columnHeaders.map((header) => header.textContent);
 
     expect(columnTexts).toContain("Description");
+  });
+
+  it("should resolve collectionId=tenant to user's tenant collection", async () => {
+    useLocaleMock.mockReturnValue({ isLocaleLoading: false });
+
+    const tenantCollectionId = 999;
+    const dashboardName = "Acme Dashboard";
+    const tenantCollectionRootName = "Tenant Collection Root";
+
+    const TENANT_COLLECTION = createMockCollection({
+      archived: false,
+      can_write: true,
+      description: null,
+      id: tenantCollectionId,
+      location: "/",
+      name: tenantCollectionRootName,
+    });
+
+    setupCollectionsEndpoints({
+      collections: [TENANT_COLLECTION],
+      rootCollection: TENANT_COLLECTION,
+    });
+
+    fetchMock.get(
+      `path:/api/collection/${tenantCollectionId}`,
+      TENANT_COLLECTION,
+    );
+
+    setupCollectionItemsEndpoint({
+      collection: TENANT_COLLECTION,
+      collectionItems: [
+        createMockCollectionItem({
+          id: 4,
+          name: dashboardName,
+          model: "dashboard",
+        }),
+      ],
+    });
+
+    renderWithSDKProviders(<CollectionBrowserInner collectionId="tenant" />, {
+      componentProviderProps: { authConfig: createMockSdkConfig() },
+      storeInitialState: setupSdkState({
+        currentUser: createMockUser({
+          tenant_collection_id: tenantCollectionId,
+        }),
+      }),
+    });
+
+    expect(await screen.findByTestId("collection-table")).toBeInTheDocument();
+
+    expect(
+      await screen.findByText(tenantCollectionRootName),
+    ).toBeInTheDocument();
+
+    expect(await screen.findByText(dashboardName)).toBeInTheDocument();
   });
 });
 
