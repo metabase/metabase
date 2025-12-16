@@ -12,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { SdkIframeStepHeader } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepHeader";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { useDispatch } from "metabase/lib/redux";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal } from "metabase/redux/ui";
@@ -48,6 +49,7 @@ export const SdkIframeEmbedSetupContent = () => {
     handleBack,
     canGoBack,
     isLoading,
+    experience,
     resource,
     settings,
   } = useSdkIframeEmbedSetupContext();
@@ -73,7 +75,13 @@ export const SdkIframeEmbedSetupContent = () => {
     ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
     : isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted;
 
-  const isMissingResource = !isLoading && (!resource || resource.archived);
+  const isQuestionOrDashboard = isQuestionOrDashboardSettings(
+    experience,
+    settings,
+  );
+
+  const isMissingResource =
+    isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
 
   const nextStepButton = match(currentStep)
     .with("get-code", () => (

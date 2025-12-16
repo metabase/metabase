@@ -214,7 +214,7 @@ describe(suiteTitle, () => {
     cy.findByTestId("preview-loading-indicator").should("not.exist");
   });
 
-  it("should respect slow loading of recent dashboard and avoid recent conditions", () => {
+  it("should respect slow loading of recent dashboars and wait till loading complete", () => {
     cy.intercept("GET", "/api/activity/recents*", (req) => {
       req.on("response", (res) => {
         res.setThrottle(0.3); // Slow down the response
