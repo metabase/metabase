@@ -170,9 +170,9 @@
                 [2 "williamson-domenica@yahoo.com" "yahoo" "yahoo.com"]]
                (mt/formatted-rows [int str str str] (qp/process-query query))))))))
 
-(deftest ^:parallel url-extractions-test
-  (testing "`:domain`, `:subdomain`, `:host`, and `:path` extractions from URLs should work correctly"
-    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex/lookaheads-and-lookbehinds)
+(deftest ^:parallel domain-host-path-extraction-test
+  (testing "`:domain`, `:host`, and `:path` extractions from URLs should work correctly"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
       (let [mp          (mt/metadata-provider)
             people      (lib.metadata/table mp (mt/id :people))
             people-id   (lib.metadata/field mp (mt/id :people :id))
@@ -181,8 +181,21 @@
                             (lib/limit 1)
                             (lib/with-fields [people-id])
                             (lib/expression "Domain"    [:domain    {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
-                            (lib/expression "Subdomain" [:subdomain {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
                             (lib/expression "Host"      [:host      {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
                             (lib/expression "Path"      [:path      {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"]))]
-        (is (= [[1 "bbc" "x" "bbc.co.uk" "/some/path"]]
+        (is (= [[1 "bbc" "bbc.co.uk" "/some/path"]]
+               (mt/formatted-rows [int str str str str] (qp/process-query query))))))))
+
+(deftest ^:parallel subdomain-extraction-test
+  (testing "`:subdomain` extractions from URLs should work correctly"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex/lookaheads-and-lookbehinds)
+      (let [mp          (mt/metadata-provider)
+            people      (lib.metadata/table mp (mt/id :people))
+            people-id   (lib.metadata/field mp (mt/id :people :id))
+            query       (-> (lib/query mp people)
+                            (lib/order-by people-id)
+                            (lib/limit 1)
+                            (lib/with-fields [people-id])
+                            (lib/expression "Subdomain" [:subdomain {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"]))]
+        (is (= [[1 "x"]]
                (mt/formatted-rows [int str str str str] (qp/process-query query))))))))

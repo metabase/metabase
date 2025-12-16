@@ -6,7 +6,13 @@
 (defn non-capturing-group
   "Wrap regex `pattern` in a non-capturing group."
   [pattern]
-  (re-pattern (format "(?:%s)" pattern)))
+  (re-pattern (str "(?:" pattern ")")))
+
+(defn- atomic-group [pattern]
+  (str "(?>" pattern ")"))
+
+(defn- capturing-group [pattern]
+  (str "(" pattern ")"))
 
 (defn re-or
   "Combine regex `patterns` into a single pattern by joining with or (i.e., a logical disjunction)."
@@ -18,10 +24,41 @@
   [pattern]
   (str (non-capturing-group pattern) "?"))
 
+(defn re-optional-non-greedy
+  "Make regex `pattern` optional."
+  [pattern]
+  (str (non-capturing-group pattern) "??"))
+
+(defn- re-optional-possessive [pattern]
+  (str (non-capturing-group pattern) "?+"))
+
 (defn re-negate
   "Make regex `pattern` negated."
   [pattern]
   (str "(?!" pattern ")"))
+
+(defn- zero-or-more
+  [pattern]
+  (str pattern "*"))
+
+(defn- zero-or-more-non-greedy
+  [pattern]
+  (str pattern "*?"))
+
+(defn- one-or-more
+  [pattern]
+  (str pattern "+"))
+
+(defn- one-or-more-possessive
+  [pattern]
+  (str pattern "++"))
+
+(defn- one-or-more-non-greedy
+  [pattern]
+  (str pattern "+?"))
+
+(defn- re-range [arg min-occurrences max-occurrences]
+  (format "%s{%d,%d}" arg (or min-occurrences "") (or max-occurrences "")))
 
 (defmulti ^:private rx-dispatch
   {:arglists '([listt])}
@@ -33,7 +70,19 @@
 
 (defmethod rx-dispatch :?
   [[_ & args]]
-  (re-optional (rx* (into [:and] args))))
+  (re-optional (rx* (cons :and args))))
+
+(defmethod rx-dispatch :optional
+  [[_ & args]]
+  (re-optional (rx* (cons :and args))))
+
+(defmethod rx-dispatch :optional-non-greedy
+  [[_ & args]]
+  (re-optional-non-greedy (rx* (cons :and args))))
+
+(defmethod rx-dispatch :optional-possessive
+  [[_ & args]]
+  (re-optional-possessive (rx* (cons :and args))))
 
 (defmethod rx-dispatch :or
   [[_ & args]]
@@ -44,8 +93,44 @@
   (apply str (map rx* args)))
 
 (defmethod rx-dispatch :not
-  [[_ arg]]
-  (re-negate (rx* arg)))
+  [[_ & args]]
+  (re-negate (rx* (cons :and args))))
+
+(defmethod rx-dispatch :non-capturing-group
+  [[_ & args]]
+  (non-capturing-group (rx* (cons :and args))))
+
+(defmethod rx-dispatch :atomic-group
+  [[_ & args]]
+  (atomic-group (rx* (cons :and args))))
+
+(defmethod rx-dispatch :capturing-group
+  [[_ & args]]
+  (capturing-group (rx* (cons :and args))))
+
+(defmethod rx-dispatch :zero-or-more
+  [[_ & args]]
+  (zero-or-more (rx* (cons :and args))))
+
+(defmethod rx-dispatch :zero-or-more-non-greedy
+  [[_ & args]]
+  (zero-or-more-non-greedy (rx* (cons :and args))))
+
+(defmethod rx-dispatch :one-or-more
+  [[_ & args]]
+  (one-or-more (rx* (cons :and args))))
+
+(defmethod rx-dispatch :one-or-more-possessive
+  [[_ & args]]
+  (one-or-more-possessive (rx* (cons :and args))))
+
+(defmethod rx-dispatch :one-or-more-non-greedy
+  [[_ & args]]
+  (one-or-more-non-greedy (rx* (cons :and args))))
+
+(defmethod rx-dispatch :range
+  [[_ arg min-occurrences max-occurrences]]
+  (re-range arg min-occurrences max-occurrences))
 
 (defn- rx*
   [x]
