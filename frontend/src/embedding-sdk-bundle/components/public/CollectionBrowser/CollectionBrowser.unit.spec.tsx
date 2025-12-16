@@ -15,6 +15,7 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import type { Collection, CollectionItem, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -154,82 +155,70 @@ describe("CollectionBrowser", () => {
   });
 
   it("should resolve collectionId=tenant to user's tenant collection", async () => {
-    useLocaleMock.mockReturnValue({ isLocaleLoading: false });
-
-    const tenantCollectionId = 999;
-    const dashboardName = "Acme Dashboard";
-    const tenantCollectionRootName = "Tenant Collection Root";
-
-    const TENANT_COLLECTION = createMockCollection({
+    const tenantCollection = createMockCollection({
+      id: 999,
+      name: "Tenant Collection Root",
       archived: false,
       can_write: true,
       description: null,
-      id: tenantCollectionId,
       location: "/",
-      name: tenantCollectionRootName,
     });
 
-    setupCollectionsEndpoints({
-      collections: [TENANT_COLLECTION],
-      rootCollection: TENANT_COLLECTION,
+    const dashboardItem = createMockCollectionItem({
+      id: 4,
+      name: "Acme Dashboard",
+      model: "dashboard",
     });
 
-    fetchMock.get(
-      `path:/api/collection/${tenantCollectionId}`,
-      TENANT_COLLECTION,
-    );
-
-    setupCollectionItemsEndpoint({
-      collection: TENANT_COLLECTION,
-      collectionItems: [
-        createMockCollectionItem({
-          id: 4,
-          name: dashboardName,
-          model: "dashboard",
-        }),
-      ],
-    });
-
-    renderWithSDKProviders(<CollectionBrowserInner collectionId="tenant" />, {
-      componentProviderProps: { authConfig: createMockSdkConfig() },
-      storeInitialState: setupSdkState({
-        currentUser: createMockUser({
-          tenant_collection_id: tenantCollectionId,
-        }),
+    await setup({
+      props: { collectionId: "tenant" },
+      collections: [tenantCollection],
+      rootCollection: tenantCollection,
+      currentUser: createMockUser({
+        tenant_collection_id: tenantCollection.id,
       }),
+      collectionItems: [dashboardItem],
     });
 
-    expect(await screen.findByTestId("collection-table")).toBeInTheDocument();
-
-    expect(
-      await screen.findByText(tenantCollectionRootName),
-    ).toBeInTheDocument();
-
-    expect(await screen.findByText(dashboardName)).toBeInTheDocument();
+    expect(await screen.findByText(tenantCollection.name)).toBeInTheDocument();
+    expect(await screen.findByText(dashboardItem.name)).toBeInTheDocument();
   });
 });
 
 async function setup({
   props,
+  collections = TEST_COLLECTIONS,
+  rootCollection = ROOT_TEST_COLLECTION,
+  currentUser,
+  collectionItems = [
+    createMockCollectionItem({ id: 2, model: "dashboard" }),
+    createMockCollectionItem({ id: 3, model: "card" }),
+  ],
 }: {
   props?: Partial<ComponentProps<typeof CollectionBrowserInner>>;
+  collections?: Collection[];
+  rootCollection?: Collection;
+  currentUser?: User;
+  collectionItems?: CollectionItem[];
 } = {}) {
   useLocaleMock.mockReturnValue({ isLocaleLoading: false });
 
   setupCollectionsEndpoints({
-    collections: TEST_COLLECTIONS,
-    rootCollection: ROOT_TEST_COLLECTION,
+    collections,
+    rootCollection,
   });
+
+  // Mock individual collection endpoint if it has a numeric ID
+  if (typeof rootCollection.id === "number") {
+    fetchMock.get(`path:/api/collection/${rootCollection.id}`, rootCollection);
+  }
 
   setupCollectionItemsEndpoint({
-    collection: ROOT_TEST_COLLECTION,
-    collectionItems: [
-      createMockCollectionItem({ id: 2, model: "dashboard" }),
-      createMockCollectionItem({ id: 3, model: "card" }),
-    ],
+    collection: rootCollection,
+    collectionItems,
   });
 
-  const state = setupSdkState();
+  const state = setupSdkState(currentUser ? { currentUser } : {});
 
   renderWithSDKProviders(
     <CollectionBrowserInner collectionId="root" {...props} />,
@@ -246,7 +235,7 @@ async function setup({
   await waitFor(() => {
     expect(
       fetchMock.callHistory.calls(
-        `path:/api/collection/${ROOT_TEST_COLLECTION.id}/items`,
+        `path:/api/collection/${rootCollection.id}/items`,
       ),
     ).toHaveLength(1);
   });
