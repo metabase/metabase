@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   useCreateCollectionMutation,
+  useGetCollectionQuery,
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
@@ -36,6 +37,14 @@ export const MainNavSharedCollections = () => {
       skip: !isTenantsEnabled,
     },
   );
+
+  const { data: sharedCollectionRoot } = useGetCollectionQuery(
+    { id: "root", namespace: "shared-tenant-collection" },
+    { skip: !isTenantsEnabled },
+  );
+
+  // Non-admins can create shared collections if they have curate permissions on the root shared collection
+  const canCreateSharedCollection = sharedCollectionRoot?.can_write ?? false;
 
   // Fetch flat list of tenant collections to check if any are remote-synced
   const { data: tenantCollectionsList = [] } = useListCollectionsQuery(
@@ -99,8 +108,9 @@ export const MainNavSharedCollections = () => {
 
   const userTenantCollectionId = currentUser?.tenant_collection_id;
   const hasVisibleTenantCollections = tenantCollectionTree.length > 0;
+
   const shouldShowSharedCollectionsSection =
-    isAdmin || hasVisibleTenantCollections;
+    hasVisibleTenantCollections || canCreateSharedCollection;
 
   return (
     <>
@@ -118,9 +128,14 @@ export const MainNavSharedCollections = () => {
 
       {shouldShowSharedCollectionsSection && (
         <SidebarSection>
-          <Flex align="center" justify="space-between">
+          <Flex
+            align="center"
+            justify="space-between"
+            // add spacing in place of the add button if it is hidden
+            mb={canCreateSharedCollection ? 0 : "sm"}
+          >
             <SidebarHeading>{t`External collections`}</SidebarHeading>
-            {isAdmin && (
+            {canCreateSharedCollection && (
               <Tooltip label={t`Create a shared collection`}>
                 <ActionIcon
                   color="text-medium"
