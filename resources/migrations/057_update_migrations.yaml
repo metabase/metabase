@@ -2605,18 +2605,6 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v57.2025-12-09T12:45:01
-      author: dpsutton
-      comment: >-
-        Copy legacy MBQL queries from report_card.legacy_query to report_card.dataset_query where the parsed query is erroneously '{}'
-      changes:
-        - sql: >-
-            UPDATE report_card
-            SET dataset_query = legacy_query
-            where dataset_query = '{}' and legacy_query is not null;
-      rollback: # nothing to undo
-
-  - changeSet:
       id: v57.2025-12-08T19:05:23
       author: nvoxland
       comment: Add remote_sync_object.model_name
@@ -2697,6 +2685,19 @@ databaseChangeLog:
             columnName: model_name
             columnDataType: varchar(255)
 
+
+
+  - changeSet:
+      id: v57.2025-12-09T12:45:01
+      author: dpsutton
+      comment: >-
+        Copy legacy MBQL queries from report_card.legacy_query to report_card.dataset_query where the parsed query is erroneously '{}'
+      changes:
+        - sql: >-
+            UPDATE report_card
+            SET dataset_query = legacy_query
+            where dataset_query = '{}' and legacy_query is not null;
+      rollback: # nothing to undo
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
