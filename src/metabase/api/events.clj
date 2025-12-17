@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(derive :event/api-handler-update :metabase/event)
+(derive ::api-events :metabase/event)
 (derive :event/api-handler-update ::api-events)
 
 ;; Should be triggered in dev mode only to update the openapi.json doc when api schemas change
