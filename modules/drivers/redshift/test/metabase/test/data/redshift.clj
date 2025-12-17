@@ -171,16 +171,16 @@
   [^java.sql.Connection conn]
   (let [{old-convention   :old
          caches-with-info :cache
-         isolation :isolation} (reduce (fn [acc s]
-                                         (cond (sql.tu.unique-prefix/old-dataset-name? s)
-                                               (update acc :old conj s)
-                                               (str/starts-with? s "metabase_cache_")
-                                               (update acc :cache conj s)
-                                               (str/starts-with? s "mb__isolation")
-                                               (update acc :isolation conj s)
-                                               :else acc))
-                                       {:old [] :cache [] :isolation []}
-                                       (fetch-schemas conn))
+         isolation        :isolation} (reduce (fn [acc s]
+                                                (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                                      (update acc :old conj s)
+                                                      (str/starts-with? s "metabase_cache_")
+                                                      (update acc :cache conj s)
+                                                      (str/starts-with? s "mb__isolation")
+                                                      (update acc :isolation conj s)
+                                                      :else acc))
+                                              {:old [] :cache [] :isolation []}
+                                              (fetch-schemas conn))
         {:keys [expired
                 old-style-cache
                 lacking-created-at]} (classify-cache-schemas conn caches-with-info)
