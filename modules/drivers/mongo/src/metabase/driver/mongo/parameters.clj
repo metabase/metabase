@@ -64,17 +64,12 @@
     (pr-str x)))
 
 (mu/defn- field->name
-  ([field alias]
-   (field->name field alias true))
-
-  ([field :- driver-api/schema.metadata.column
-    alias
-    pr?]
-   ;; for native parameters we serialize and don't need the extra pr
-   (cond-> (if (str/blank? alias)
-             (mongo.qp/field->name field ".")
-             alias)
-     pr? pr-str)))
+  [field :- driver-api/schema.metadata.column
+   alias]
+  (let [name (if (str/blank? alias)
+               (mongo.qp/field->name field ".")
+               alias)]
+    (pr-str name)))
 
 (defn- substitute-one-field-filter-date-range [{field :field, alias :alias, {value :value} :value}]
   (let [{:keys [start end]} (params.dates/date-string->range value {:inclusive-end? false})
@@ -134,10 +129,13 @@
           (params.ops/operator? (get-in v [:value :type]))
           #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
+                field-name (if (str/blank? (:alias v))
+                             (mongo.qp/field->name (:field v) ".")
+                             (:alias v))
                 compiled-clause (-> (assoc param
                                            :target
                                            [:dimension
-                                            [:field (field->name (:field v) (:alias v) false)
+                                            [:field field-name
                                              {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
