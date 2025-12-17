@@ -127,7 +127,7 @@
 
 (defn- path-induced-subgraph*
   "Implementation for [[path-induced-subgraph]] that takes the lookup functions as arguments. Useful for testing."
-  [init-nodes {:keys [node-parents] :as fns}]
+  [init-nodes fns]
   (loop [members (set init-nodes)
          cache   {}
          ;; Association list sets from nodes to their direct dependencies
@@ -141,7 +141,8 @@
       (let [_        (when (some #(not= 1 (val %)) (frequencies path))
                        (throw (ex-info "Cycle detected" {:path path})))
             head     (peek path)
-            parents  (cache head (node-parents head))
+            node-parents* (:node-parents fns)
+            parents  (cache head (node-parents* head))
             cache    (assoc cache head parents)
             continue (when parents (remove members parents))]
         (if (not= parents continue)
