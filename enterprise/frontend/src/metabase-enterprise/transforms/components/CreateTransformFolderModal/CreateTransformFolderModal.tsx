@@ -4,6 +4,7 @@ import * as Yup from "yup";
 
 import { useCreateCollectionMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,
@@ -15,8 +16,6 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { Button, Group, Modal, Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
-
-import { TransformCollectionPicker } from "../TransformCollectionPicker";
 
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
@@ -80,9 +79,10 @@ export function CreateTransformFolderModal({
               placeholder={t`My collection`}
               data-autofocus
             />
-            <TransformCollectionPicker
+            <FormCollectionPicker
               name="parent_id"
-              label={t`Parent collection`}
+              title={t`Parent collection`}
+              type="transform-collections"
             />
             <Group justify="flex-end">
               <FormErrorMessage />

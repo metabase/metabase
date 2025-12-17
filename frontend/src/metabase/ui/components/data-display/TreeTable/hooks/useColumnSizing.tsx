@@ -2,7 +2,6 @@ import { type Row, type Table, flexRender } from "@tanstack/react-table";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Root } from "react-dom/client";
 
-import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
 import {
   MeasurementProviders,
   createMeasurementContainer,
@@ -30,7 +29,7 @@ interface UseColumnSizingOptions<TData extends TreeNodeData> {
   indentWidth?: number;
 }
 
-function needsMeasurement<TData extends TreeNodeData>(
+export function needsMeasurement<TData extends TreeNodeData>(
   column: TreeTableColumnDef<TData>,
 ): boolean {
   return column.minWidth === "auto";
@@ -38,15 +37,22 @@ function needsMeasurement<TData extends TreeNodeData>(
 
 function pickTreeRowsToMeasure<TData>(
   rows: Row<TData>[],
-  accessorFn: (row: TData) => unknown,
+  columnId: string,
   count: number = MEASUREMENT_ROW_COUNT,
 ): Row<TData>[] {
-  const rowsData = rows.map((row) => row.original);
-  const indexes = pickRowsToMeasure(rowsData, accessorFn, count);
-  return indexes.map((i) => rows[i]);
+  const result: Row<TData>[] = [];
+  for (const row of rows) {
+    if (row.getValue(columnId) != null) {
+      result.push(row);
+      if (result.length >= count) {
+        break;
+      }
+    }
+  }
+  return result;
 }
 
-function getMinConstraint<TData extends TreeNodeData>(
+export function getMinConstraint<TData extends TreeNodeData>(
   column: TreeTableColumnDef<TData>,
   colIndex: number,
   contentWidths: Record<string, number>,
@@ -73,7 +79,7 @@ function getMinConstraint<TData extends TreeNodeData>(
   return minConstraint;
 }
 
-function calculateColumnWidths<TData extends TreeNodeData>(
+export function calculateColumnWidths<TData extends TreeNodeData>(
   columns: TreeTableColumnDef<TData>[],
   containerWidth: number,
   contentWidths: Record<string, number>,
@@ -224,21 +230,7 @@ function MeasureContent<TData extends TreeNodeData>({
     <div ref={handleRef} style={{ display: "flex" }}>
       {columnsToMeasure.map((column) => {
         const colIndex = columns.findIndex((c) => c.id === column.id);
-        const colAccessorFn =
-          "accessorFn" in column ? column.accessorFn : undefined;
-        const colAccessorKey =
-          "accessorKey" in column ? column.accessorKey : undefined;
-        const accessorFn = (data: TData): unknown => {
-          if (colAccessorFn) {
-            return colAccessorFn(data, 0);
-          }
-          if (colAccessorKey) {
-            return (data as Record<string, unknown>)[String(colAccessorKey)];
-          }
-          return undefined;
-        };
-
-        const rowsToMeasure = pickTreeRowsToMeasure(rows, accessorFn);
+        const rowsToMeasure = pickTreeRowsToMeasure(rows, column.id);
 
         return (
           <div
@@ -264,7 +256,7 @@ function MeasureContent<TData extends TreeNodeData>({
 
               const cellContent = columnDef?.cell
                 ? flexRender(columnDef.cell, cell.getContext())
-                : String(accessorFn(row.original) ?? "");
+                : String(cell.getValue() ?? "");
 
               return (
                 <div

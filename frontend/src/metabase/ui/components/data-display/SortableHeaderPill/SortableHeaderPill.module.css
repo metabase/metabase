@@ -1,0 +1,26 @@
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--mb-color-brand);
+  white-space: nowrap;
+  border-radius: 6px;
+  background-color: var(--mb-color-brand-lighter);
+  cursor: pointer;
+  transition: background-color 200ms ease-in-out;
+}
+
+.pill:hover {
+  background-color: var(--mb-color-brand-light);
+}
+
+.alignRight {
+  flex-direction: row-reverse;
+}
+
+.sortIcon {
+  flex-shrink: 0;
+}

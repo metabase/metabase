@@ -1,7 +1,7 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
-import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -36,18 +36,29 @@ import { ListLoadingState } from "metabase-enterprise/transforms/components/List
 import { type TreeNode, getCollectionNodeId } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";
 
-function useTargetCollectionId(): number | null {
-  const location = useLocation();
-  return useMemo(() => {
-    const searchParams = new URLSearchParams(location.search ?? "");
-    const param = searchParams.get("collectionId");
-    return param ? parseInt(param, 10) : null;
-  }, [location.search]);
-}
+const getNodeId = (node: TreeNode) => node.id;
+const getSubRows = (node: TreeNode) => node.children;
+const isFilterable = (node: TreeNode) => node.nodeType === "transform";
 
-export const TransformListPage = () => {
+const globalFilterFn = (
+  row: { original: TreeNode },
+  _columnId: string,
+  filterValue: string,
+) => {
+  if (row.original.nodeType !== "transform") {
+    return false;
+  }
+  const query = String(filterValue).toLowerCase();
+  return (
+    row.original.name.toLowerCase().includes(query) ||
+    (row.original.target?.name.toLowerCase().includes(query) ?? false)
+  );
+};
+
+export const TransformListPage = ({ location }: WithRouterProps) => {
   const dispatch = useDispatch();
-  const targetCollectionId = useTargetCollectionId();
+  const targetCollectionId =
+    Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -96,7 +107,7 @@ export const TransformListPage = () => {
         cell: ({ row }) => (
           <EntityNameCell
             data-testid="tree-node-name"
-            icon={row.original.nodeType === "folder" ? "folder" : "transform"}
+            icon={row.original.icon}
             iconColor={
               row.original.nodeType === "folder" ? "text-medium" : "brand"
             }
@@ -140,31 +151,27 @@ export const TransformListPage = () => {
     [dispatch],
   );
 
-  const treeTableInstance = useTreeTableInstance({
-    data: treeData,
-    columns: columnDefs,
-    getNodeId: (node) => node.id,
-    getSubRows: (node) => node.children,
-    defaultExpanded,
-    expanded: searchQuery ? true : undefined,
-    globalFilter: searchQuery,
-    onGlobalFilterChange: setSearchQuery,
-    globalFilterFn: (row, _columnId, filterValue) => {
-      if (row.original.nodeType !== "transform") {
-        return false;
-      }
-      const query = String(filterValue).toLowerCase();
-      return (
-        row.original.name.toLowerCase().includes(query) ||
-        (row.original.target?.name.toLowerCase().includes(query) ?? false)
-      );
-    },
-    isFilterable: (node) => node.nodeType === "transform",
-    onRowActivate: (row) => {
+  const handleRowActivate = useCallback(
+    (row: Row<TreeNode>) => {
       if (row.original.nodeType === "transform" && row.original.transformId) {
         navigateToTransform(row.original.transformId);
       }
     },
+    [navigateToTransform],
+  );
+
+  const treeTableInstance = useTreeTableInstance({
+    data: treeData,
+    columns: columnDefs,
+    getNodeId,
+    getSubRows,
+    defaultExpanded,
+    expanded: searchQuery ? true : undefined,
+    globalFilter: searchQuery,
+    onGlobalFilterChange: setSearchQuery,
+    globalFilterFn,
+    isFilterable,
+    onRowActivate: handleRowActivate,
   });
 
   const handleRowClick = useCallback(

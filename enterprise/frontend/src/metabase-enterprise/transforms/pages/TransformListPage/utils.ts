@@ -1,3 +1,4 @@
+import { getCollectionIcon } from "metabase/entities/collections/utils";
 import type { Collection, Transform } from "metabase-types/api";
 
 import {
@@ -33,6 +34,7 @@ export function buildTreeData(
       id: getCollectionNodeId(collection.id as number),
       name: collection.name,
       nodeType: "folder",
+      icon: getCollectionIcon(collection).name,
       children: [...childFolders, ...childTransforms],
     };
   }
@@ -42,6 +44,7 @@ export function buildTreeData(
       id: getTransformNodeId(transform.id),
       name: transform.name,
       nodeType: "transform",
+      icon: "transform",
       updated_at: transform.updated_at,
       target: transform.target,
       transformId: transform.id,

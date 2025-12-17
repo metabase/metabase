@@ -1,14 +1,25 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { c } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
+  type CollectionPickerOptions,
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import { TRANSFORM_COLLECTION_PICKER_OPTIONS } from "metabase-enterprise/transforms/components/TransformCollectionPicker";
 import type { Transform } from "metabase-types/api";
+
+const TRANSFORM_COLLECTION_PICKER_OPTIONS: CollectionPickerOptions = {
+  namespace: "transforms",
+  showPersonalCollections: false,
+  showRootCollection: true,
+  showSearch: false,
+  hasConfirmButtons: true,
+  allowCreateNew: true,
+  hasRecents: false,
+  showLibrary: false,
+};
 
 type MoveTransformModalProps = {
   transform: Transform;
@@ -45,7 +56,8 @@ export function MoveTransformModal({
 
   return (
     <CollectionPickerModal
-      title={t`Move "${transform.name}"`}
+      title={c("dialog title for moving a transform to another collection")
+        .t`Move "${transform.name}"`}
       value={pickerValue}
       onChange={handleChange}
       onClose={onClose}

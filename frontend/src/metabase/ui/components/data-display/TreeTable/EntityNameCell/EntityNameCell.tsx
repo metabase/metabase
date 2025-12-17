@@ -29,7 +29,7 @@ export function EntityNameCell({
           {name}
         </Text>
       ) : (
-        <Ellipsified flex={1} miw={0} tooltipOpenDelay={tooltipOpenDelay}>
+        <Ellipsified flex={1} miw={0} tooltipProps={{ openDelay: tooltipOpenDelay }}>
           {name}
         </Ellipsified>
       )}

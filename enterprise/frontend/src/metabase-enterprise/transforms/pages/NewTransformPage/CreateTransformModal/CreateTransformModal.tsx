@@ -9,6 +9,7 @@ import {
   useListDatabaseSchemasQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -23,7 +24,6 @@ import { slugify } from "metabase/lib/formatting/url";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
-import { TransformCollectionPicker } from "metabase-enterprise/transforms/components/TransformCollectionPicker";
 import type {
   CreateTransformRequest,
   Transform,
@@ -167,7 +167,10 @@ function CreateTransformForm({
             />
           )}
           <TargetNameInput />
-          <TransformCollectionPicker name="collection_id" />
+          <FormCollectionPicker
+            name="collection_id"
+            type="transform-collections"
+          />
           <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>

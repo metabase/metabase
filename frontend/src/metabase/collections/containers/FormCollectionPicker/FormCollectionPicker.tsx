@@ -19,6 +19,7 @@ import {
   type CollectionPickerOptions,
 } from "metabase/common/components/Pickers/CollectionPicker";
 import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
+import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Collections } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
@@ -26,11 +27,16 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Icon } from "metabase/ui";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
+const NAMESPACE_BY_TYPE: Record<string, "snippets" | "transforms"> = {
+  "snippet-collections": "snippets",
+  "transform-collections": "transforms",
+};
+
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
   placeholder?: string;
-  type?: "collections" | "snippet-collections";
+  type?: "collections" | "snippet-collections" | "transform-collections";
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
@@ -50,11 +56,15 @@ function ItemName({
   namespace = null,
 }: {
   id: CollectionId;
-  type?: "collections" | "snippet-collections";
+  type?: "collections" | "snippet-collections" | "transform-collections";
   namespace?: string | null;
 }) {
   if (type === "snippet-collections") {
     return <SnippetCollectionName id={id} />;
+  }
+
+  if (type === "transform-collections") {
+    return <TransformCollectionName id={id} />;
   }
 
   // Check for tenant namespace display name via plugin
@@ -121,21 +131,24 @@ function FormCollectionPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
+  const namespace = NAMESPACE_BY_TYPE[type];
+
   const options = useMemo<CollectionPickerOptions>(
     () => ({
-      showPersonalCollections: filterPersonalCollections !== "exclude",
-      showRootCollection: filterPersonalCollections !== "only",
-      // Search API doesn't support collection namespaces yet
-      showSearch: type === "collections",
+      showPersonalCollections:
+        !namespace && filterPersonalCollections !== "exclude",
+      showRootCollection: !!namespace || filterPersonalCollections !== "only",
+      showSearch: !namespace,
       hasConfirmButtons: true,
-      namespace: type === "snippet-collections" ? "snippets" : undefined,
+      namespace,
       allowCreateNew: showCreateNewCollectionOption,
-      hasRecents: type !== "snippet-collections",
+      hasRecents: !namespace,
+      showLibrary: !namespace,
       savingModel,
     }),
     [
       filterPersonalCollections,
-      type,
+      namespace,
       showCreateNewCollectionOption,
       savingModel,
     ],
