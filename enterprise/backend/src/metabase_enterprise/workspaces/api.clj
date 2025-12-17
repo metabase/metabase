@@ -470,9 +470,7 @@
    Problem types:
    - 'dependent-transform-output-not-yet-created': Output table hasn't been created, but external transforms depend on it
    - 'unused-output-not-yet-created': Output table hasn't been created (informational)
-   - 'dependent-transform-removed-field': A field was removed that external transforms need
-
-   ASSUMPTION: All transforms have been run and outputs are not stale."
+   - 'dependent-transform-removed-field': A field was removed that external transforms need"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-404 (t2/select-one :model/Workspace :id id))
