@@ -89,13 +89,7 @@ export const TransformListPage = () => {
 
   return (
     <>
-      <PageContainer
-        data-testid="transforms-list"
-        pb="2rem"
-        px="3.5rem"
-        gap={0}
-        style={{ overflow: "hidden" }}
-      >
+      <PageContainer data-testid="transforms-list" gap={0}>
         <PaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
@@ -103,7 +97,7 @@ export const TransformListPage = () => {
           showMetabotButton
           py={0}
         />
-        <Stack>
+        <Stack style={{ overflow: "hidden" }}>
           <Flex gap="md">
             <TextInput
               placeholder={t`Search...`}

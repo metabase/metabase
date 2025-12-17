@@ -81,7 +81,7 @@ export const JobListPage = () => {
         py={0}
         showMetabotButton
       />
-      <Stack>
+      <Stack style={{ overflow: "hidden" }}>
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}
