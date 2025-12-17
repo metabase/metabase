@@ -95,6 +95,7 @@ type PaneHeaderInputProps = {
   "data-testid"?: string;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
+  disabled?: boolean;
 };
 
 export function PaneHeaderInput({
@@ -105,6 +106,7 @@ export function PaneHeaderInput({
   isOptional,
   onChange,
   onContentChange,
+  disabled,
 }: PaneHeaderInputProps) {
   return (
     <EditableText
@@ -118,6 +120,7 @@ export function PaneHeaderInput({
       px={isOptional ? "xs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
       isOptional={isOptional}
+      isDisabled={disabled}
       data-testid={dataTestId}
       onChange={onChange}
       onContentChange={onContentChange}

@@ -12,6 +12,7 @@ interface Props {
   editedTransform: WorkspaceTransform;
   transform: WorkspaceTransform;
   workspaceId: number;
+  isArchived: boolean;
 }
 
 export const SaveTransformButton = ({
@@ -19,6 +20,7 @@ export const SaveTransformButton = ({
   editedTransform,
   transform,
   workspaceId,
+  isArchived,
 }: Props) => {
   const [updateTransform] = useUpdateWorkspaceTransformMutation();
   const { updateTransformState } = useWorkspace();
@@ -50,7 +52,7 @@ export const SaveTransformButton = ({
 
   return (
     <Button
-      disabled={!hasChanges}
+      disabled={!hasChanges || isArchived}
       size="sm"
       variant="filled"
       onClick={handleClick}

@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -56,6 +56,7 @@ interface Props {
   transform: Transform | WorkspaceTransform;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
+  isArchived: boolean;
   onChange: (patch: Partial<EditedTransform>) => void;
   onOpenTransform: (transformId: number | string) => void;
 }
@@ -66,6 +67,7 @@ export const TransformTab = ({
   transform,
   workspaceId,
   workspaceTransforms,
+  isArchived,
   onChange,
   onOpenTransform,
 }: Props) => {
@@ -142,9 +144,7 @@ export const TransformTab = ({
   const isSaved = workspaceTransforms.some(
     (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
   );
-  // Enable inline editing in the editor by default; execution actions are still
-  // gated by saved state and the presence of unsaved changes.
-  const isEditable = true;
+  const isEditable = !isArchived;
 
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [_validateTableName] = useValidateTableNameMutation();
@@ -313,7 +313,7 @@ export const TransformTab = ({
               <Button
                 leftSection={<Icon name="pencil_lines" />}
                 size="sm"
-                disabled={isRunning || hasChanges}
+                disabled={isRunning || hasChanges || isArchived}
                 onClick={openChangeTargetModal}
               >{t`Change target`}</Button>
             )}
@@ -325,7 +325,7 @@ export const TransformTab = ({
                 <WorkspaceRunButton
                   id={transform.id}
                   run={buttonRun}
-                  isDisabled={hasChanges}
+                  isDisabled={hasChanges || isArchived}
                   onRun={handleRun}
                 />
               )}
@@ -347,6 +347,7 @@ export const TransformTab = ({
                 workspaceId={workspaceId}
                 editedTransform={editedTransform}
                 transform={transform}
+                isArchived={isArchived}
               />
             )}
 
@@ -354,6 +355,7 @@ export const TransformTab = ({
               <Button
                 leftSection={<Icon name="check" />}
                 size="sm"
+                disabled={isArchived}
                 onClick={() => setSaveModalOpen(true)}
               >{t`Save`}</Button>
             )}
@@ -363,6 +365,7 @@ export const TransformTab = ({
                 leftSection={<Icon name="check" />}
                 size="sm"
                 variant="filled"
+                disabled={isArchived}
                 onClick={handleSaveExternalTransform}
               >{t`Save`}</Button>
             )}

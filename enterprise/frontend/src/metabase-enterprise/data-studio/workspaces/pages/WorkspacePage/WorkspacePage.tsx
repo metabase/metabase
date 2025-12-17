@@ -268,6 +268,8 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     }
   }, [id, activeTab, setTab]);
 
+  const isArchived = workspace?.archived_at != null;
+
   useEffect(() => {
     // Scroll to active tab on change.
     if (tabsListRef.current && tab) {
@@ -499,19 +501,28 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
             placeholder={t`Workspace name`}
             maxLength={NAME_MAX_LENGTH}
             onChange={handleWorkspaceNameChange}
+            disabled={isArchived}
           />
         </Flex>
         <Flex gap="sm">
           <RunWorkspaceMenu
             workspaceId={id}
-            disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
+            disabled={
+              isArchived ||
+              hasUnsavedChanges() ||
+              workspaceTransforms.length === 0
+            }
             onExecute={() => setIsWorkspaceExecuting(true)}
           />
           <Button
             variant="filled"
             onClick={handleMergeWorkspace}
             loading={isMerging}
-            disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
+            disabled={
+              isArchived ||
+              hasUnsavedChanges() ||
+              workspaceTransforms.length === 0
+            }
             size="xs"
           >
             {t`Merge`}
@@ -695,6 +706,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                     editedTransform={activeEditedTransform}
                     workspaceId={id}
                     workspaceTransforms={workspaceTransforms}
+                    isArchived={isArchived}
                     onChange={handleTransformChange}
                     onOpenTransform={(transformId) =>
                       setTab(String(transformId))
@@ -721,7 +733,11 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                 <Tabs.Tab value="data">{t`Data`}</Tabs.Tab>
               </Tabs.List>
               {sourceDb && (
-                <AddTransformMenu databaseId={sourceDb.id} workspaceId={id} />
+                <AddTransformMenu
+                  databaseId={sourceDb.id}
+                  workspaceId={id}
+                  disabled={isArchived}
+                />
               )}
             </Flex>
             <Tabs.Panel value="code" p="md">
