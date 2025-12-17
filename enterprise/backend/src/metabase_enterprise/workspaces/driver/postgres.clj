@@ -44,17 +44,6 @@
     {:schema           schema-name
      :database_details read-user}))
 
-(defmethod isolation/drop-isolated-tables! :postgres
-  [database s+t-tuples]
-  (when (seq s+t-tuples)
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [[schema-name table-name] s+t-tuples]
-          (.addBatch ^Statement stmt
-                     ^String (format "DROP TABLE IF EXISTS \"%s\".\"%s\""
-                                     schema-name table-name)))
-        (.executeBatch ^Statement stmt)))))
-
 (defmethod isolation/destroy-workspace-isolation! :postgres
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)

@@ -38,17 +38,6 @@
           (.addBatch ^java.sql.Statement stmt ^String sql))
         (.executeBatch ^java.sql.Statement stmt)))))
 
-(defmethod isolation/drop-isolated-tables! :clickhouse
-  [database s+t-tuples]
-  (when (seq s+t-tuples)
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
-        (doseq [[db-name table-name] s+t-tuples]
-          (.addBatch ^java.sql.Statement stmt
-                     ^String (format "DROP TABLE IF EXISTS `%s`.`%s`"
-                                     db-name table-name)))
-        (.executeBatch ^java.sql.Statement stmt)))))
-
 (defmethod isolation/destroy-workspace-isolation! :clickhouse
   [database workspace]
   (let [db-name  (ws.u/isolation-namespace-name workspace)

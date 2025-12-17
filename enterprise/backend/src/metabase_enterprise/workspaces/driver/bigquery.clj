@@ -343,17 +343,3 @@
     (doseq [{:keys [schema name]} tables]
       (let [table-id (TableId/of project-id schema name)]
         (grant-table-read-access! client table-id ws-sa-email)))))
-
-(defmethod isolation/drop-isolated-tables! :bigquery-cloud-sdk
-  [database s+t-tuples]
-  (when (seq s+t-tuples)
-    (let [details    (:details database)
-          client     (database-details->client details)
-          project-id (get-project-id details)]
-      (doseq [[dataset-name table-name] s+t-tuples]
-        (let [table-id (TableId/of project-id dataset-name table-name)]
-          (log/debugf "Dropping isolated table: %s.%s" dataset-name table-name)
-          (try
-            (.delete client table-id)
-            (catch Exception e
-              (log/warnf e "Failed to delete table %s.%s (may not exist)" dataset-name table-name))))))))
