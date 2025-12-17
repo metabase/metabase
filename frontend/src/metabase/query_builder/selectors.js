@@ -309,6 +309,9 @@ export const getQuestion = createSelector(
   },
 );
 
+// TODO: at a glance this looks like this + getCurrentQuestion could/should
+// be folded into getQuestion / getQuestionWithoutComposing but not sure.
+// TODO: make this a plugin / ee only
 export const getProposedQuestion = createSelector(
   [
     getQuestion,
@@ -326,9 +329,9 @@ export const getProposedQuestion = createSelector(
   },
 );
 
-export const getHasProposedQuestion = createSelector(
-  [getProposedQuestion],
-  (proposedQuestion) => !!proposedQuestion,
+export const getCurrentQuestion = createSelector(
+  [getQuestion, getProposedQuestion],
+  (question, proposedQuestion) => proposedQuestion ?? question,
 );
 
 export const getTableId = createSelector([getQuestion], (question) => {
@@ -494,8 +497,7 @@ export function areQueriesEquivalent({
 
 export const getIsResultDirty = createSelector(
   [
-    getQuestion,
-    getProposedQuestion,
+    getCurrentQuestion,
     getOriginalQuestion,
     getLastRunQuestion,
     getLastRunParameterValues,
@@ -503,8 +505,7 @@ export const getIsResultDirty = createSelector(
     getTableMetadata,
   ],
   (
-    question,
-    proposedQuestion,
+    currentQuestion,
     originalQuestion,
     lastRunQuestion,
     lastParameters,
@@ -513,15 +514,15 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
-    const currentQuestion = proposedQuestion ?? question;
+      !!currentQuestion &&
+      Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
     return (
       haveParametersChanged ||
       (isEditable &&
         !areQueriesEquivalent({
           originalQuestion,
           lastRunQuestion,
-          currentQuestion: currentQuestion,
+          currentQuestion,
           tableMetadata,
         }))
     );
@@ -605,7 +606,7 @@ export const getIsSavedQuestionChanged = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-  [getQuestion, getIsDirty, getHasProposedQuestion],
+  [getCurrentQuestion, getIsDirty],
   isQuestionRunnable,
 );
 
