@@ -148,6 +148,9 @@ export const IncrementalTransformSettings = ({
           setShowComplexityWarning(complexity?.is_simple === false);
         }
       }}
+      wrapperProps={{
+        "data-testid": "incremental-switch",
+      }}
     />
   );
 

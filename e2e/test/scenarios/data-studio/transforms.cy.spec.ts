@@ -1,5 +1,3 @@
-const { H } = cy;
-
 import dedent from "ts-dedent";
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
@@ -10,6 +8,8 @@ import type {
   PythonTransformTableAliases,
   TransformTagId,
 } from "metabase-types/api";
+
+const { H } = cy;
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -812,6 +812,260 @@ LIMIT
         // Select the tag pill
         .get("[data-with-remove=true]")
         .should("not.exist");
+    });
+  });
+
+  describe("incremental settings inline editing", () => {
+    it("should update incremental settings inline when toggling the switch", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("Toggle incremental on");
+      isIncrementalSwitchDisabled();
+      getIncrementalSwitch().click();
+      cy.wait("@updateTransform");
+      isIncrementalSwitchEnabled();
+      H.undoToast().should(
+        "contain.text",
+        "Incremental transformation settings updated",
+      );
+
+      cy.log("Toggle incremental off");
+      getIncrementalSwitch().click();
+      cy.wait("@updateTransform");
+      isIncrementalSwitchDisabled();
+      H.undoToast().should(
+        "contain.text",
+        "Incremental transformation settings updated",
+      );
+    });
+
+    it("should debounce inline updates and not make a request when toggling the same field twice", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("Toggle incremental on and immediately off");
+      isIncrementalSwitchDisabled();
+
+      // Stub the updateTransform call to track how many times it's called
+      let updateCallCount = 0;
+      cy.intercept("PUT", "/api/ee/transform/*", (req) => {
+        updateCallCount++;
+        req.continue();
+      }).as("updateTransformCounted");
+
+      // Toggle on then immediately off (within debounce window)
+      getIncrementalSwitch().click();
+      getIncrementalSwitch().click();
+
+      // Wait for debounce period (300ms) plus some buffer
+      cy.wait(500);
+
+      cy.log(
+        "Verify no request was made since we toggled back to original value",
+      );
+      // The switch should be back to unchecked
+      isIncrementalSwitchDisabled();
+      // No request should have been made
+      cy.wrap(null).then(() => {
+        expect(updateCallCount).to.equal(0);
+      });
+    });
+
+    it("should handle sequential changes correctly when first update is in progress", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("Verify initial state");
+      isIncrementalSwitchDisabled();
+
+      let requestCount = 0;
+
+      // Intercept and delay the first request using a Promise
+      cy.intercept("PUT", "/api/ee/transform/*", (req) => {
+        requestCount++;
+        if (requestCount === 1) {
+          // Delay the first request by 1 second
+          req.reply({
+            body: req.body,
+            delay: 1000,
+          });
+        } else {
+          // Let subsequent requests through normally
+          req.continue();
+        }
+      }).as("updateTransformDelayed");
+
+      cy.log("Toggle incremental on (first change)");
+      getIncrementalSwitch().click();
+
+      cy.log(
+        "Wait for debounce plus a bit, then select checkpoint field (second change)",
+      );
+      // Wait for first request to start (debounce 300ms + buffer)
+      cy.wait(400);
+
+      // Make a second change while first is still in progress
+      // Select any available checkpoint field
+      getFieldPicker().should("be.visible");
+      getFieldPicker().click();
+
+      // Click the first available option in the popover
+      H.popover().findAllByRole("option").first().click();
+
+      cy.log("Wait for both requests to complete");
+      cy.wait("@updateTransformDelayed");
+      cy.wait("@updateTransformDelayed");
+
+      cy.log(
+        "Verify final state - incremental on with checkpoint field selected",
+      );
+      isIncrementalSwitchEnabled();
+      // Verify a field was selected (should not show placeholder text)
+      getFieldPicker().should("not.contain.text", "Pick a field");
+
+      cy.log("Verify both requests were made");
+      cy.wrap(null).then(() => {
+        expect(requestCount).to.equal(2);
+      });
+    });
+
+    it("should update source strategy and checkpoint field inline", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("Enable incremental transformation");
+      getIncrementalSwitch().click();
+      cy.wait("@updateTransform");
+
+      cy.log("Source strategy and checkpoint field should be visible");
+      // The source strategy select should be visible
+      // (Currently only one option "checkpoint" is available, so select might not be shown)
+      // The checkpoint field select should be visible
+      getFieldPicker().should("be.visible");
+
+      cy.log("Select a checkpoint field");
+      getFieldPicker().click();
+      // Click the first available option in the popover
+      H.popover().findAllByRole("option").first().click();
+      cy.wait("@updateTransform");
+      H.undoToast().should(
+        "contain.text",
+        "Incremental transformation settings updated",
+      );
+
+      cy.log("Verify the field was selected");
+      // Verify a field was selected (should not show placeholder text)
+      getFieldPicker().should("not.contain.text", "Pick a field");
+    });
+
+    it("should rollback values when API returns an error", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("Verify initial state");
+      isIncrementalSwitchDisabled();
+
+      cy.log("Intercept and force the update to fail");
+      cy.intercept("PUT", "/api/ee/transform/*", {
+        statusCode: 500,
+        body: { message: "Internal server error" },
+      }).as("updateTransformError");
+
+      cy.log("Toggle incremental on");
+      getIncrementalSwitch().click();
+
+      cy.log("Wait for the failed request");
+      cy.wait("@updateTransformError");
+
+      cy.log("Verify error toast is shown");
+      H.undoToast().should(
+        "contain.text",
+        "Failed to update incremental transformation settings",
+      );
+
+      cy.log("Verify the switch rolled back to unchecked state");
+      isIncrementalSwitchDisabled();
+    });
+
+    it("should rollback values when network fails", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("Verify initial state");
+      isIncrementalSwitchDisabled();
+
+      cy.log("Intercept and simulate network failure");
+      cy.intercept("PUT", "/api/ee/transform/*", {
+        forceNetworkError: true,
+      }).as("updateTransformNetworkError");
+
+      cy.log("Toggle incremental on");
+      getIncrementalSwitch().click();
+
+      cy.log("Wait for debounce period");
+      cy.wait(500);
+
+      cy.log("Verify error toast is shown");
+      H.undoToast().should(
+        "contain.text",
+        "Failed to update incremental transformation settings",
+      );
+
+      cy.log("Verify the switch rolled back to unchecked state");
+      isIncrementalSwitchDisabled();
+    });
+
+    it("should not process pending updates after an error occurs", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("Verify initial state");
+      isIncrementalSwitchDisabled();
+
+      let requestCount = 0;
+      cy.log("Intercept and fail the first request after a delay");
+      cy.intercept("PUT", "/api/ee/transform/*", (req) => {
+        requestCount++;
+        if (requestCount === 1) {
+          // First request fails after a delay to ensure second change happens while it's in progress
+          req.reply({
+            statusCode: 500,
+            body: { message: "Internal server error" },
+            delay: 500,
+          });
+        } else {
+          // Subsequent requests should not happen
+          req.continue();
+        }
+      }).as("updateTransformConditional");
+
+      cy.log("Toggle incremental on (first change)");
+      getIncrementalSwitch().click();
+
+      cy.log("Wait for debounce, then toggle again (second change)");
+      cy.wait(400);
+      getIncrementalSwitch().click();
+
+      cy.log("Wait for the error");
+      cy.wait("@updateTransformConditional");
+
+      cy.log("Wait a bit to ensure no second request is made");
+      cy.wait(500);
+
+      cy.log("Verify only one request was made");
+      cy.wrap(null).then(() => {
+        expect(requestCount).to.equal(1);
+      });
+
+      cy.log("Verify error toast is shown");
+      H.undoToast().should(
+        "contain.text",
+        "Failed to update incremental transformation settings",
+      );
+
+      cy.log("Verify the switch is back to unchecked");
+      isIncrementalSwitchDisabled();
     });
   });
 
@@ -2397,6 +2651,21 @@ function getTagsInput() {
 
 function getTagsInputContainer() {
   return getTagsInput().parent();
+}
+
+function getFieldPicker() {
+  return cy.findByLabelText("Field to check for new values");
+}
+
+function getIncrementalSwitch() {
+  return cy.findByTestId("incremental-switch");
+}
+
+function isIncrementalSwitchEnabled() {
+  return getIncrementalSwitch().findByRole("switch").should("be.checked");
+}
+function isIncrementalSwitchDisabled() {
+  return getIncrementalSwitch().findByRole("switch").should("not.be.checked");
 }
 
 function getContentTable() {
