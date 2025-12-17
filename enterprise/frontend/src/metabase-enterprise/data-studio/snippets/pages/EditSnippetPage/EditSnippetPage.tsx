@@ -16,7 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
 import { Card, Center, Flex, Stack } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
@@ -141,7 +141,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
               }}
             />
           </Card>
-          <Stack p="md" gap="lg" flex="0 0 320px">
+          <Stack p="md" gap="lg" flex="0 0 20rem">
             <SnippetDescriptionSection snippet={snippet} />
             <EntityCreationInfo
               createdAt={snippet.created_at}

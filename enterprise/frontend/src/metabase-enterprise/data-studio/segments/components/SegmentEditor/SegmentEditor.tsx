@@ -20,8 +20,8 @@ export function SegmentEditor({
   onDescriptionChange,
 }: SegmentEditorProps) {
   return (
-    <Card withBorder p="sm">
-      <Stack flex={1} gap="xl" p="lg" className={S.scrollable}>
+    <Card withBorder p="xl">
+      <Stack flex={1} gap="xl" p={0} className={S.scrollable}>
         {query && (
           <SegmentFilterEditor query={query} onChange={onQueryChange} />
         )}

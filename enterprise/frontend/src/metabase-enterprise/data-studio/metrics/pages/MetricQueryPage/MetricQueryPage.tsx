@@ -13,7 +13,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Center } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";

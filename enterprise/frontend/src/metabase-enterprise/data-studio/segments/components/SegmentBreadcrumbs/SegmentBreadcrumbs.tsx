@@ -58,24 +58,20 @@ export function DataModelSegmentBreadcrumbs({
   return (
     <DataStudioBreadcrumbs loading={isLoading}>
       {table.db && (
-        <>
-          <Link to={Urls.dataStudioData({ databaseId: table.db_id })}>
-            <Ellipsified>{table.db.name}</Ellipsified>
-          </Link>
-        </>
+        <Link to={Urls.dataStudioData({ databaseId: table.db_id })}>
+          <Ellipsified>{table.db.name}</Ellipsified>
+        </Link>
       )}
 
       {showSchema && (
-        <>
-          <Link
-            to={Urls.dataStudioData({
-              databaseId: table.db_id,
-              schemaName: table.schema,
-            })}
-          >
-            <Ellipsified>{table.schema}</Ellipsified>
-          </Link>
-        </>
+        <Link
+          to={Urls.dataStudioData({
+            databaseId: table.db_id,
+            schemaName: table.schema,
+          })}
+        >
+          <Ellipsified>{table.schema}</Ellipsified>
+        </Link>
       )}
       <Link
         to={Urls.dataStudioData({

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderInput,

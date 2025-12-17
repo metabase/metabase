@@ -29,7 +29,6 @@ export function TransformHeader({
   return (
     <PaneHeader
       px={0}
-      pt={0}
       title={<TransformNameInput transform={transform} />}
       icon="transform"
       menu={hasMenu && <TransformMoreMenu transform={transform} />}

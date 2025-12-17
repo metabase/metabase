@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentHeader } from "../../components/SegmentHeader";

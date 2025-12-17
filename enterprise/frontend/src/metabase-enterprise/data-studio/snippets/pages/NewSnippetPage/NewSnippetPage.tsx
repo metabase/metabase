@@ -16,7 +16,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Card, Flex, Stack } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type { RegularCollectionId } from "metabase-types/api";
 
 import {
@@ -110,7 +110,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
             }
             breadcrumbs={
               <DataStudioBreadcrumbs>
-                <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
+                <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
                 {t`New Snippet`}
               </DataStudioBreadcrumbs>
             }
@@ -142,7 +142,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               }}
             />
           </Card>
-          <Stack p="md" flex="0 0 320px">
+          <Stack p="md" flex="0 0 20rem">
             <EditableText
               initialValue={description}
               placeholder={t`No description`}

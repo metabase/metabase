@@ -13,7 +13,7 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
 import type { Card as CardType } from "metabase-types/api";

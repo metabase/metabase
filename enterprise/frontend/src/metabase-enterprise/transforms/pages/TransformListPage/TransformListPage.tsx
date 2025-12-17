@@ -11,6 +11,7 @@ import * as Urls from "metabase/lib/urls";
 import { Card, Flex, Group, Icon, Stack, TextInput } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
@@ -88,57 +89,60 @@ export const TransformListPage = () => {
 
   return (
     <>
-      <PaneHeader
-        breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-        }
-        px="3.5rem"
-        showMetabotButton
-        py={0}
-      />
-      <Stack
-        bg="background-light"
+      <PageContainer
         data-testid="transforms-list"
         pb="2rem"
         px="3.5rem"
+        gap={0}
         style={{ overflow: "hidden" }}
-      >
-        <Flex gap="md">
-          <TextInput
-            placeholder={t`Search...`}
-            leftSection={<Icon name="search" />}
-            bdrs="md"
-            flex="1"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        header={
+          <PaneHeader
+            breadcrumbs={
+              <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
+            }
+            showMetabotButton
+            py={0}
           />
-          <CreateTransformMenu />
-        </Flex>
+        }
+      >
+        <Stack>
+          <Flex gap="md">
+            <TextInput
+              placeholder={t`Search...`}
+              leftSection={<Icon name="search" />}
+              bdrs="md"
+              flex="1"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <CreateTransformMenu />
+          </Flex>
 
-        <Card withBorder p={0}>
-          {isLoading ? (
-            <ListLoadingState />
-          ) : filteredTransforms.length === 0 ? (
-            <ListEmptyState
-              label={
-                debouncedSearchQuery
-                  ? t`No transforms found`
-                  : t`No transforms yet`
-              }
-            />
-          ) : (
-            <Table
-              data={filteredTransforms.map((t) => ({
-                ...t,
-                out_table: t.target.name,
-                last_modified: new Date(t.updated_at).toDateString(),
-              }))}
-              columns={transformColumnDef}
-              onSelect={handleSelect}
-            />
-          )}
-        </Card>
-      </Stack>
+          <Card withBorder p={0}>
+            {isLoading ? (
+              <ListLoadingState />
+            ) : filteredTransforms.length === 0 ? (
+              <ListEmptyState
+                label={
+                  debouncedSearchQuery
+                    ? t`No transforms found`
+                    : t`No transforms yet`
+                }
+              />
+            ) : (
+              <Table
+                data={filteredTransforms.map((t) => ({
+                  ...t,
+                  out_table: t.target.name,
+                  last_modified: new Date(t.updated_at).toDateString(),
+                }))}
+                columns={transformColumnDef}
+                onSelect={handleSelect}
+              />
+            )}
+          </Card>
+        </Stack>
+      </PageContainer>
     </>
   );
 };

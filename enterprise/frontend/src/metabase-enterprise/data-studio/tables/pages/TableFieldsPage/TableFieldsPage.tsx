@@ -13,7 +13,7 @@ import {
   TableSection,
 } from "metabase/metadata/components";
 import { Box, Center, Flex, Stack } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 
 import { trackMetadataChange } from "../../analytics";

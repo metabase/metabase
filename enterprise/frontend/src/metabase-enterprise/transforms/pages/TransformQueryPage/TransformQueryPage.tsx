@@ -20,7 +20,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type { Database, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";

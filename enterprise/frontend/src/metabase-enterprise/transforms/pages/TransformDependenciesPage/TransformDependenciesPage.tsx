@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card, Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 
 import { TransformHeader } from "../../components/TransformHeader";
 

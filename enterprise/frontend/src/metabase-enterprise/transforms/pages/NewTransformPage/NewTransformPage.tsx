@@ -18,7 +18,7 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Center } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderActions,
@@ -144,12 +144,10 @@ function NewTransformPageBody({
             }
             breadcrumbs={
               <DataStudioBreadcrumbs>
-                {[
-                  <Link key="transform-list" to={Urls.transformList()}>
-                    {t`Transforms`}
-                  </Link>,
-                  t`New transform`,
-                ]}
+                <Link key="transform-list" to={Urls.transformList()}>
+                  {t`Transforms`}
+                </Link>
+                {t`New transform`}
               </DataStudioBreadcrumbs>
             }
           />

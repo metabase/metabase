@@ -14,7 +14,7 @@ import {
   trackDataStudioGlossaryTermUpdated,
 } from "metabase-enterprise/data-studio/analytics";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
 import S from "./GlossaryPage.module.css";

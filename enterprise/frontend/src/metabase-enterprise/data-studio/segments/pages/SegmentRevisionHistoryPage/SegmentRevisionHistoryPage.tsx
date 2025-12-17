@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Stack } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
