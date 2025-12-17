@@ -465,7 +465,6 @@
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
-               :workspace_id   (serdes/fk :model/Workspace)
                :db_id          (serdes/fk :model/Database :name)
                :collection_id  (serdes/fk :model/Collection)}})
 

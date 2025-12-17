@@ -1227,7 +1227,6 @@
     :document_id            (serdes/fk :model/Document)
     :creator_id             (serdes/fk :model/User)
     :made_public_by_id      (serdes/fk :model/User)
-    :workspace_id           (serdes/fk :model/Workspace)
     :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
