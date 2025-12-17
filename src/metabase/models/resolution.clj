@@ -112,7 +112,11 @@
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
     :model/Workspace                         metabase-enterprise.workspaces.models.workspace
-    :model/WorkspaceTransform                metabase-enterprise.workspaces.models.workspace})
+    :model/WorkspaceDependency               metabase-enterprise.workspaces.models.workspace-dependency
+    :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
+    :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
+    :model/WorkspaceOutput                   metabase-enterprise.workspaces.models.workspace-output
+    :model/WorkspaceTransform                metabase-enterprise.workspaces.models.workspace-transform})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
