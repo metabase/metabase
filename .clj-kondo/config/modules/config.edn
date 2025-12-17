@@ -2334,8 +2334,6 @@
            api-keys
            app-db
            driver
-           enterprise/dependencies
-           enterprise/transforms
            events
            lib
            lib-be
@@ -2344,7 +2342,9 @@
            request
            sync
            system
-           util}}}
+           util
+           enterprise/dependencies
+           enterprise/transforms}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
