@@ -42,11 +42,11 @@ Currently, you can't embed [documents](../documents/introduction.md).
 
 With SSO, Metabase can know who's viewing what, which unlocks a lot of power. You can automatically apply [data permissions](../permissions/embedding.md), which means you can give people access to all the cool tools Metabase provides, and everyone will only ever see the data they're allowed to.
 
-**When to use SSO**: You want to offer multi-tenant, self-service analytics, or if you want to including the query builder, ai chat, drill-through, or a collection browser.
+**When to use SSO**: You want to offer multi-tenant, self-service analytics, or you want to include the query builder, AI chat, drill-through, or a collection browser.
 
 ### Guest embedding
 
-[Guest embeds](./guest-embedding.md) are a secure way to embed charts and dashboards. .
+[Guest embeds](./guest-embedding.md) are a secure way to embed charts and dashboards.
 
 **When to use guest embeds**: simple embedding use cases where you don't want to offer ad-hoc querying or chart drill-through. To filter data relevant to the viewer, you can use guest embeds with [locked parameters](./static-embedding-parameters.md#locked-parameters-limit-the-values-available-to-other-editable-parameters).
 
@@ -90,4 +90,4 @@ If you'd like to share your data with the good people of the internet, admins ca
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
 - [Multi-tenant self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
-- [Securing embedded Metabase](./securing-embeds.md)
+- [Securing embedded Metabase](./securing-embeds.md).

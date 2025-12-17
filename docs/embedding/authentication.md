@@ -31,7 +31,7 @@ Here's a high-level overview:
 
 ### 2. Add a new endpoint to your backend to handle authentication
 
-You'll need add a library to your backend to sign your JSON Web Tokens.
+You'll need to add a library to your backend to sign your JSON Web Tokens.
 
 For Node.js, we recommend jsonwebtoken:
 

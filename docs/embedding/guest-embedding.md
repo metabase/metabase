@@ -1,7 +1,6 @@
 ---
 title: Guest embeds
 summary: Embed questions, dashboards, and documents without requiring SSO.
-redirect_from:
 ---
 
 # Guest embeds
