@@ -34,6 +34,7 @@ import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
   DraftTransformSource,
+  ExternalTransform,
   Transform,
   TransformTarget,
   WorkspaceId,
@@ -144,6 +145,10 @@ export const TransformTab = ({
     (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
   );
   const isEditable = !isArchived;
+
+  const isCheckoutDisabled =
+    isExternalTransform(transform) &&
+    typeof transform.checkout_disabled === "string";
 
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [_validateTableName] = useValidateTableNameMutation();
@@ -354,7 +359,7 @@ export const TransformTab = ({
                 leftSection={<Icon name="check" />}
                 size="sm"
                 variant="filled"
-                disabled={isArchived}
+                disabled={isArchived || isCheckoutDisabled}
                 onClick={handleSaveExternalTransform}
               >{t`Save`}</Button>
             )}
@@ -477,3 +482,9 @@ export const useTransformValidation = ({
 
   return yupSchema;
 };
+
+function isExternalTransform(
+  transform: Transform | ExternalTransform | WorkspaceTransform,
+): transform is ExternalTransform {
+  return "checkout_disabled" in transform;
+}

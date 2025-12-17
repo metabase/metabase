@@ -58,7 +58,7 @@ export type ExternalTransform = {
   id: TransformId;
   name: string;
   source_type: Transform["source_type"];
-  checkout_disabled: string;
+  checkout_disabled: string | null;
 };
 
 export type ExternalTransformsResponse = {
