@@ -11,7 +11,11 @@ redirect_from:
 
 {% include shared/in-page-promo-embedding-workshop.html %}
 
+![Modular embedding wizard](./images/modular-embedding-wizard.png)
+
 Modular embedding lets you embed and customize Metabase [components](./components.md) (like dashboards, the query builder, AI chat, and more) into your own application. You don't need to write embedding code on your own - just use the wizard to create a code snippet and paste it into your app.
+
+If you're using React, check out the [Modular embedding SDK](./sdk/introduction.md).
 
 ## To set up modular embedding, you first need to enable it
 
@@ -81,7 +85,7 @@ For more look-and-feel twiddling, see [appearance](./appearance.md).
 
 Once you're done customizing your embed, click **Next**.
 
-## Add the embedding script into your app
+## Add the embedding script to your app
 
 Metabase will generate a code snippet that you can copy and paste into your app. See the example below. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
