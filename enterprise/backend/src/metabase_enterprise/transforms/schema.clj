@@ -6,7 +6,8 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::source-table-ref
-  "A reference to a source table by name, for cases where table_id may not exist yet."
+  "A reference to a source table by name, for cases where table_id may not exist yet.
+  Also saves querying metadata in situations where we'll need the name."
   [:map
    [:database_id :int]
    [:schema {:optional true} [:maybe :string]]

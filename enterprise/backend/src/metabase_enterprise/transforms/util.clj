@@ -436,25 +436,32 @@
 ;;; ------------------------------------------------- Source Table Resolution -----------------------------------------
 
 (defn batch-lookup-table-ids
-  "Batch lookup table IDs from ref maps. Returns {[db_id schema name] -> table_id}."
+  "Batch lookup table IDs from ref maps. Returns {[db_id schema name] -> table_id}.
+  Queries the exact conjunction of each [database_id, schema, table] triple rather than
+  a Cartesian product of all values."
   [refs]
   (when (seq refs)
-    (let [db-ids  (set (map :database_id refs))
-          schemas (set (map :schema refs))
-          names   (set (map :table refs))]
+    (let [unique-refs (distinct (map (juxt :database_id :schema :table) refs))
+          ref->clause (fn [[db-id schema table-name]]
+                        [:and
+                         [:= :db_id db-id]
+                         (if (some? schema)
+                           [:= :schema schema]
+                           [:is :schema nil])
+                         [:= :name table-name]])]
       (t2/select-fn->fn (juxt :db_id :schema :name) :id [:model/Table :id :db_id :schema :name]
-                        {:where [:and
-                                 [:in :db_id db-ids]
-                                 (if (contains? schemas nil)
-                                   [:or [:in :schema (disj schemas nil)] [:is :schema nil]]
-                                   [:in :schema schemas])
-                                 [:in :name names]]}))))
+                        {:where (if (= 1 (count unique-refs))
+                                  (ref->clause (first unique-refs))
+                                  (into [:or] (map ref->clause unique-refs)))}))))
 
 (defn- source-table-ref->key
   "Convert a source table ref map to a lookup key [db_id schema name]."
   [{:keys [database_id schema table]}]
   [database_id schema table])
 
+;; TODO: Consider always normalizing to map format (even for integer IDs),
+;; which would allow deprecating storing just the id. The map with optional
+;; id is the best of both - see PR #66934 discussion.
 (defn normalize-source-tables
   "Add table_id to map entries where possible. For write time.
   Integer entries pass through unchanged. Map entries get table_id populated
@@ -475,18 +482,23 @@
   (let [needs-lookup (for [[_ v] source-tables
                            :when (and (map? v) (nil? (:table_id v)))]
                        v)
-        lookup       (or (batch-lookup-table-ids needs-lookup) {})]
-    (into {}
-          (for [[alias v] source-tables
-                :let [table-id (if (int? v)
-                                 v
-                                 (or (:table_id v) (lookup (source-table-ref->key v))))]]
-            (do
-              (when-not table-id
-                (let [{:keys [schema table]} v]
-                  (throw (ex-info (str "Table not found: " (if schema (str schema "." table) table))
-                                  {:alias alias :ref v}))))
-              [alias table-id])))))
+        lookup       (or (batch-lookup-table-ids needs-lookup) {})
+        resolved     (u/for-map [[alias v] source-tables]
+                       [alias (if (int? v)
+                                v
+                                (or (:table_id v) (lookup (source-table-ref->key v))))])
+        unresolved   (for [[alias table-id] resolved
+                           :when (nil? table-id)
+                           :let [v (get source-tables alias)]]
+                       {:alias alias
+                        :table (if-let [schema (:schema v)]
+                                 (str schema "." (:table v))
+                                 (:table v))
+                        :ref   v})]
+    (when (seq unresolved)
+      (throw (ex-info (str "Tables not found: " (str/join ", " (map :table unresolved)))
+                      {:unresolved unresolved})))
+    resolved))
 
 (defn- matching-timestamp?
   [job field-path {:keys [start end]}]
