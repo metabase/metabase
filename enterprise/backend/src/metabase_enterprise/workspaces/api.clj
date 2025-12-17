@@ -21,7 +21,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :as i18n :refer [tru deferred-tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -247,6 +247,21 @@
     (check-transforms-enabled! database_id))
 
   (ws->response (ws.common/create-workspace! api/*current-user-id* body)))
+
+(api.macros/defendpoint :get "/enabled" :- [:map [:supported :boolean] [:reason {:optional true} :string]]
+  "Test whether the current user can use Workspaces. Optionally takes a specific database.
+   Factors include: driver support, database user privileges, metabase permissions."
+  [_url-params
+   {:keys [database-id]} :- [:map [:database-id {:optional true} ms/PositiveInt]]]
+  (let [maybe-db          (when database-id (api/check-404 (t2/select-one :model/Database database-id)))]
+    (cond
+      ;; This case is moot (for now) as we've put super-user-only middleware on this whole namespace.
+      (not api/*is-superuser?*)
+      {:supported false, :reason (tru "Not allowed.")}
+      (and maybe-db (not (driver.u/supports? (:engine maybe-db) :workspace maybe-db)))
+      {:supported false, :reason (tru "Database type not supported.")}
+      :else
+      {:supported true})))
 
 (api.macros/defendpoint :put "/:id" :- Workspace
   "Update simple workspace properties, like name."

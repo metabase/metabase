@@ -1402,3 +1402,17 @@
                                 :to_entity_id     (:ref_id tx-3)}}}
                    (-> (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph"))
                        (update-vals set))))))))))
+
+(deftest enabled-test
+  (let [url "ee/workspace/enabled"]
+    (testing "Requires admin"
+      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 200 url)))
+      (is (= {:supported true} (mt/user-http-request :crowberto :get 200 url))))
+    (mt/with-temp [:model/Database {db-1 :id} {:engine "postgres"}
+                   :model/Database {db-2 :id} {:engine "something-wild"}]
+      (testing "Unsupported driver"
+        (is (= {:supported false, :reason "Database type not supported."}
+               (mt/user-http-request :crowberto :get 200 (str url "?database-id=" db-2)))))
+      (testing "Supported driver"
+        (is (= {:supported true}
+               (mt/user-http-request :crowberto :get 200 (str url "?database-id=" db-1))))))))
