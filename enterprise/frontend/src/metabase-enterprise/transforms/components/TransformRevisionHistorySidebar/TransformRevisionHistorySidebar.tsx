@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -25,6 +26,8 @@ export function TransformRevisionHistorySidebar({
 }: TransformRevisionHistorySidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const currentUser = useSelector(getUser);
+
+  useHotkeys([["]", onClose]]);
 
   useMount(() => {
     setIsOpen(true);

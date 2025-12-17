@@ -4,15 +4,17 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { skipToken, useListRevisionsQuery } from "metabase/api";
+import {
+  skipToken,
+  useListRevisionsQuery,
+  useRevertRevisionMutation,
+} from "metabase/api";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import type { Document } from "metabase-types/api";
-
-import { revertToRevision } from "../actions";
 
 interface DocumentRevisionHistorySidebarProps {
   document: Document;
@@ -24,21 +26,18 @@ export function DocumentRevisionHistorySidebar({
   onClose,
 }: DocumentRevisionHistorySidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const dispatch = useDispatch();
   const currentUser = useSelector(getUser);
 
   useHotkeys([["]", onClose]]);
 
   useMount(() => {
-    // this component is not rendered until it is "open"
-    // but we want to set isOpen after it mounts to get
-    // pretty animations
     setIsOpen(true);
   });
 
   const { data: revisions } = useListRevisionsQuery(
     document ? { id: document.id, entity: "document" } : skipToken,
   );
+  const [revertToRevision] = useRevertRevisionMutation();
 
   const canWrite = document.can_write && !document.archived;
 
@@ -58,7 +57,11 @@ export function DocumentRevisionHistorySidebar({
             events={events}
             data-testid="document-history-list"
             revert={(revision) =>
-              dispatch(revertToRevision(document.id, revision))
+              revertToRevision({
+                entity: "document",
+                id: document.id,
+                revision_id: revision.id,
+              })
             }
             canWrite={canWrite}
             entity="document"
