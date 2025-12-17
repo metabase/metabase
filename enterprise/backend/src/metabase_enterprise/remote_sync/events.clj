@@ -67,7 +67,7 @@
                      :model_id model-id
                      :model_name (:name model-details)
                      :model_collection_id (:collection_id model-details)
-                     :model_display (-> model-details :display name)
+                     :model_display (some-> model-details :display name)
                      :status status
                      :status_changed_at (t/offset-date-time)}))
 
