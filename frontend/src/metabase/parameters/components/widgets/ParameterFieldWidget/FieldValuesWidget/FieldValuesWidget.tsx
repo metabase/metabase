@@ -24,7 +24,7 @@ import TokenField, {
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
-import Fields from "metabase/entities/fields";
+import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { parseNumber } from "metabase/lib/number";
