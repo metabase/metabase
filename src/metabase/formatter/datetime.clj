@@ -117,13 +117,15 @@
 
 (def ^:private col-type
   "The dispatch function logic for format format-timestring.
-  Find the first of the unit or highest type of the object."
-  (some-fn :unit :semantic_type :effective_type :base_type))
+  Find the first of the unit or actual data type (effective/base) before semantic type.
+  This ensures we format based on the actual data structure, not just metadata hints."
+  (some-fn :unit :effective_type :base_type :semantic_type))
 
 (defmulti format-timestring
   "Reformat a temporal literal string to the desired format based on column `:unit`, if provided, then on the column type.
 
-  The type is the highest present of semantic, effective, or base type. This is currently expected to be one of:
+  The type is determined by checking effective_type, base_type, then semantic_type (in that order).
+  This prioritizes the actual data structure over metadata hints. The type is expected to be one of:
 
   - `:type/Time` - The hour, minute, second, etc. portion of a day, not anchored to a date
 
