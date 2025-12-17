@@ -99,30 +99,28 @@
   [ws-id actor-id commit-message]
   ;; Perhaps we want to solve the N+1?
   ;; This will require reworking the lifecycle for validating and recalculating dependencies for the transforms.
-
   (t2/with-transaction [tx]
-    (let [workspace       (t2/select-one [:model/Workspace :id :name] :id ws-id)
-          savepoint       (.setSavepoint ^Connection tx)
-          ;; Create the workspace_merge record first
-          workspace-merge (t2/insert-returning-instance!
-                           :model/WorkspaceMerge
-                           {:workspace_id   ws-id
-                            :workspace_name (:name workspace)
-                            :commit_message commit-message
-                            :creator_id     actor-id})
-          result (reduce
-                  (fn [acc ws-transform]
-                    (let [{:keys [error] :as result} (merge-transform! ws-transform (:id workspace-merge) actor-id commit-message)]
-                      (if error
-                        (reduced (-> acc
-                                     (update :errors conj result)
-                                     (assoc-in [:merged :transforms] [])
-                                     #_(assoc :short_circuit true)))
-                        (update-in acc [:merged :transforms] conj result))))
-                  {:merged {:transforms []}
-                   :errors []
-                   #_#_:short_circuit false}
-                  (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
+    (let [workspace   (t2/select-one [:model/Workspace :id :name] :id ws-id)
+          savepoint   (.setSavepoint ^Connection tx)
+          ws-merge-id (t2/insert-returning-pk!
+                       :model/WorkspaceMerge
+                       {:workspace_id   ws-id
+                        :workspace_name (:name workspace)
+                        :commit_message commit-message
+                        :creator_id     actor-id})
+          result     (reduce
+                      (fn [acc ws-transform]
+                        (let [{:keys [error] :as result} (merge-transform! ws-transform ws-merge-id actor-id commit-message)]
+                          (if error
+                            (reduced (-> acc
+                                         (update :errors conj result)
+                                         (assoc-in [:merged :transforms] [])
+                                         #_(assoc :short_circuit true)))
+                            (update-in acc [:merged :transforms] conj result))))
+                      {:merged {:transforms []}
+                       :errors []
+                       #_#_:short_circuit false}
+                      (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
       (when (seq (:errors result))
         (.rollback ^Connection tx savepoint))
       result)))

@@ -2991,22 +2991,6 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-10T10:00:04
       author: qnkhuat
-      comment: Add index on workspace_input.table_id
-      changes:
-        - createIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_table_id
-            columns:
-              - column:
-                  name: table_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_table_id
-
-  - changeSet:
-      id: v58.2025-12-10T10:00:04
-      author: qnkhuat
       comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
       preConditions:
         - onFail: MARK_RAN
@@ -3368,6 +3352,22 @@ databaseChangeLog:
         - dropIndex:
             tableName: workspace_dependency
             indexName: idx_workspace_dependency_to
+
+  - changeSet:
+      id: v58.2025-12-10T10:00:17
+      author: qnkhuat
+      comment: Add index on workspace_input.table_id
+      changes:
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_table_id
+            columns:
+              - column:
+                  name: table_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_table_id
 
   - changeSet:
       id: v58.2025-12-10T16:00:00
@@ -3818,9 +3818,6 @@ databaseChangeLog:
                   remarks: Foreign key to workspace, SET NULL on delete
                   constraints:
                     nullable: true
-                    references: workspace(id)
-                    foreignKeyName: fk_workspace_merge_workspace_id
-                    deleteCascade: false
               - column:
                   name: workspace_name
                   type: ${text.type}
@@ -3852,6 +3849,23 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-17T11:00:01
       author: qnkhuat
+      comment: Add FK workspace_merge.workspace_id with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_merge_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_merge
+            constraintName: fk_workspace_merge_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:02
+      author: qnkhuat
       comment: Add index on workspace_merge.workspace_id
       changes:
         - createIndex:
@@ -3866,7 +3880,7 @@ databaseChangeLog:
             indexName: idx_workspace_merge_workspace_id
 
   - changeSet:
-      id: v58.2025-12-17T11:00:02
+      id: v58.2025-12-17T11:00:03
       author: qnkhuat
       comment: Add index on workspace_merge.creator_id
       changes:
@@ -3882,7 +3896,7 @@ databaseChangeLog:
             indexName: idx_workspace_merge_creator_id
 
   - changeSet:
-      id: v58.2025-12-17T11:00:03
+      id: v58.2025-12-17T11:00:04
       author: qnkhuat
       comment: Create workspace_merge_transform table to track individual transform merges
       changes:
@@ -3912,9 +3926,6 @@ databaseChangeLog:
                   remarks: Foreign key to workspace, SET NULL on delete
                   constraints:
                     nullable: true
-                    references: workspace(id)
-                    foreignKeyName: fk_workspace_merge_transform_workspace_id
-                    deleteCascade: false
               - column:
                   name: workspace_name
                   type: ${text.type}
@@ -3924,18 +3935,18 @@ databaseChangeLog:
               - column:
                   name: transform_id
                   type: int
-                  remarks: Foreign key to transform, SET NULL on delete
+                  remarks: Foreign key to transform
                   constraints:
                     nullable: true
                     references: transform(id)
                     foreignKeyName: fk_workspace_merge_transform_transform_id
-                    deleteCascade: false
+                    deleteCascade: true
               - column:
                   name: workspace_transform_ref_id
                   type: varchar(255)
-                  remarks: The ref_id string from workspace_transform
+                  remarks: Foreign key to workspace_transform.ref_id, SET NULL on delete
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: commit_message
                   type: ${text.type}
@@ -3959,7 +3970,40 @@ databaseChangeLog:
             tableName: workspace_merge_transform
 
   - changeSet:
-      id: v58.2025-12-17T11:00:04
+      id: v58.2025-12-17T11:00:05
+      author: qnkhuat
+      comment: Add FK workspace_merge_transform.workspace_id with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge_transform
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_merge_transform_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_merge_transform
+            constraintName: fk_workspace_merge_transform_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:06
+      author: qnkhuat
+      comment: Add index on workspace_merge_transform.workspace_transform_ref_id
+      changes:
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_ref_id
+            columns:
+              - column:
+                  name: workspace_transform_ref_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_ref_id
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:07
       author: qnkhuat
       comment: Add index on workspace_merge_transform.workspace_merge_id
       changes:
@@ -3975,7 +4019,7 @@ databaseChangeLog:
             indexName: idx_workspace_merge_transform_workspace_merge_id
 
   - changeSet:
-      id: v58.2025-12-17T11:00:05
+      id: v58.2025-12-17T11:00:08
       author: qnkhuat
       comment: Add index on workspace_merge_transform.workspace_id
       changes:
@@ -3991,7 +4035,7 @@ databaseChangeLog:
             indexName: idx_workspace_merge_transform_workspace_id
 
   - changeSet:
-      id: v58.2025-12-17T11:00:06
+      id: v58.2025-12-17T11:00:09
       author: qnkhuat
       comment: Add index on workspace_merge_transform.transform_id
       changes:
@@ -4007,7 +4051,7 @@ databaseChangeLog:
             indexName: idx_workspace_merge_transform_transform_id
 
   - changeSet:
-      id: v58.2025-12-17T11:00:07
+      id: v58.2025-12-17T11:00:10
       author: qnkhuat
       comment: Add index on workspace_merge_transform.creator_id
       changes:

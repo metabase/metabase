@@ -211,7 +211,7 @@
                                                                          :schema   "public"
                                                                          :name     "merge_test_table"}}]
       (let [{ws-id :id ws-name :name} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                            {:name        "Merge test"
+                                                                            {:name        (mt/random-name)
                                                                              :database_id (mt/id)}))
             {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                             (merge {:global_id (:id x1)}
@@ -224,7 +224,7 @@
         (testing "returns merged transforms"
           (is (=? {:merged    {:transforms [{:global_id (:id x1)}]}
                    :errors    []
-                   :workspace {:id ws-id :name "Merge test"}}
+                   :workspace {:id ws-id :name ws-name}}
                   (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
                                         {:commit-message commit-msg}))))
         (testing "workspace was deleted after successful merge"
@@ -493,7 +493,7 @@
                                                           :schema   "public"
                                                           :name     "merge_history_test_table"}}]
       (let [{ws-id :id ws-name :name} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                            {:name        "Merge history test"
+                                                                            {:name        (mt/random-name)
                                                                              :database_id (mt/id)}))
             {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                             (merge {:global_id (:id x1)}
@@ -505,10 +505,8 @@
                               {:commit-message commit-msg})
 
         (testing "returns merge history for a transform"
-          (is (=? [{:workspace_merge_id         pos-int?
-                    :commit_message             commit-msg
+          (is (=? [{:commit_message             commit-msg
                     :workspace_name             ws-name
-                    :workspace_transform_ref_id ws-tx-ref-id
                     :creator_id                 (mt/user->id :crowberto)
                     :created_at                 some?}]
                   (mt/user-http-request :crowberto :get 200

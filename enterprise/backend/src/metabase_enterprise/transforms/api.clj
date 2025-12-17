@@ -194,12 +194,9 @@
 
 (def ^:private MergeHistoryEntry
   [:map
-   [:id ms/PositiveInt]
-   [:workspace_merge_id [:maybe ms/PositiveInt]]
    [:commit_message :string]
    [:workspace_id [:maybe ms/PositiveInt]]
    [:workspace_name :string]
-   [:workspace_transform_ref_id :string]
    [:creator_id ms/PositiveInt]
    [:created_at :any]])
 
@@ -211,12 +208,9 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Transform id))
   (t2/select [:model/WorkspaceMergeTransform
-              :id
-              :workspace_merge_id
               :commit_message
               :workspace_id
               :workspace_name
-              :workspace_transform_ref_id
               :creator_id
               :created_at]
              {:where    [:= :transform_id id]

@@ -716,6 +716,7 @@
    Request body may include:
    - commit-message: A description of what changes are being merged (optional, will be required in future)"
   [{:keys [ws-id] :as _query-params} :- [:map [:ws-id ::ws.t/appdb-id]]
+   _query-params
    {:keys [commit-message]
     :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
@@ -754,6 +755,7 @@
   [{:keys [ws-id tx-id] :as _query-params} :- [:map
                                                [:ws-id ::ws.t/appdb-id]
                                                [:tx-id ::ws.t/ref-id]]
+   _query-params
    {:keys [commit-message]
     :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
