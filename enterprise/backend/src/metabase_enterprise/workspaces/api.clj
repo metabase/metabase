@@ -13,6 +13,7 @@
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
+   [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -456,6 +457,26 @@
                :from_entity_id   (node-id parent)
                :to_entity_type   (name (node-type child))
                :to_entity_id     (node-id child)})}))
+
+;;; ---------------------------------------- Problems/Validation ----------------------------------------
+
+(api.macros/defendpoint :get "/:id/problems" :- [:sequential ::ws.t/problem]
+  "Detect problems in the workspace that would affect downstream transforms after merge.
+
+   Returns a list of problems, each with:
+   - type: the problem type (e.g. 'dependent-transform-removed-field')
+   - data: polymorphic data depending on the problem type
+
+   Problem types:
+   - 'dependent-transform-output-not-yet-created': Output table hasn't been created, but external transforms depend on it
+   - 'unused-output-not-yet-created': Output table hasn't been created (informational)
+   - 'dependent-transform-removed-field': A field was removed that external transforms need
+
+   ASSUMPTION: All transforms have been run and outputs are not stale."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (ws.validation/find-downstream-problems id))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
 
