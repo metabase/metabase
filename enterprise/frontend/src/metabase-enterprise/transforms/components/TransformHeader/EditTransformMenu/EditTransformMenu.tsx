@@ -19,7 +19,6 @@ import {
 } from "metabase/ui";
 import {
   useCreateWorkspaceMutation,
-  useCreateWorkspaceTransformMutation,
   useGetWorkspaceCheckoutQuery,
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
@@ -38,8 +37,6 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
   const { data: workspacesData, isLoading: isLoadingWorkspaces } =
     useGetWorkspacesQuery();
-  const [createWorkspaceTransform, { isLoading: isAddingToWorkspace }] =
-    useCreateWorkspaceTransformMutation();
   const [createWorkspace, { isLoading: isCreatingWorkspace }] =
     useCreateWorkspaceMutation();
   const { data: checkoutData, isLoading: isWorkspaceCheckoutLoading } =
@@ -76,7 +73,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     [workspaces, existingWorkspaceIds],
   );
 
-  const isBusy = isAddingToWorkspace || isCreatingWorkspace;
+  const isBusy = isCreatingWorkspace;
   const emptyMessage =
     workspaces.length === 0 || sourceDatabaseId == null
       ? t`No workspaces yet`
@@ -99,20 +96,11 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
   };
 
   const handleWorkspaceSelect = async (workspace: Workspace) => {
-    try {
-      await createWorkspaceTransform({
-        id: workspace.id,
-        global_id: transform.id,
-        name: transform.name,
-        description: transform.description,
-        source: transform.source,
-        target: transform.target,
-        tag_ids: transform.tag_ids,
-      }).unwrap();
-      setAddedWorkspaceIds((prev) => new Set(prev).add(workspace.id));
-    } catch (error) {
-      sendErrorToast(t`Failed to add transform to the workspace`);
-    }
+    dispatch(
+      push(
+        `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
+      ),
+    );
   };
 
   const handleCreateWorkspace = async ({
