@@ -50,7 +50,7 @@
 
 (defmethod remote-sync-model-details "Collection"
   [_model-type model-id]
-  (t2/select-one [:model/Collection :name [:id :collection_id] :display] :id model-id))
+  (t2/select-one [:model/Collection :name [:id :collection_id]] :id model-id))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change. Takes a model-type (type of model: 'Card',
