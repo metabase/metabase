@@ -4,6 +4,11 @@
       <tr>
         <td>
           <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 30px;">
+            {{#if payload.disable_links}}
+              the link is disabled
+            {{else}}
+              the link isn't disabled
+            {{/if}}
             {{#if context.include_branding}}
               <a href="https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=dashboard_subscription">
                 <div style="text-align: right; height: 28px; margin-bottom: 16px; color: {{payload.style.color_text_dark}};">

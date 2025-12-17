@@ -439,6 +439,7 @@
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
                                          [:channels            [:+ :map]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
+                                         [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                          [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]]
