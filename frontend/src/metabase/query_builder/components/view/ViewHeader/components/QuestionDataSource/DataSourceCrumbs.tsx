@@ -1,6 +1,10 @@
 import type { ReactElement } from "react";
+import _ from "underscore";
 
+import Schema from "metabase/entities/schemas";
+import { getDatabaseId } from "metabase/query_builder/selectors";
 import type Question from "metabase-lib/v1/Question";
+import type { State } from "metabase-types/store";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
@@ -14,12 +18,14 @@ interface Props {
   isObjectDetail?: boolean;
 }
 
-export function DataSourceCrumbs({
-  question,
-  variant,
-  isObjectDetail,
-  ...props
-}: Props) {
+export const DataSourceCrumbs = _.compose(
+  Schema.loadList({
+    query: (state: State) => ({
+      dbId: getDatabaseId(state),
+    }),
+    loadingAndErrorWrapper: false,
+  }),
+)(({ question, variant, isObjectDetail, ...props }: Props) => {
   const parts = getDataSourceParts({
     question,
     subHead: variant === "subhead",
@@ -27,4 +33,4 @@ export function DataSourceCrumbs({
   });
 
   return <HeadBreadcrumbs parts={parts} variant={variant} {...props} />;
-}
+});
