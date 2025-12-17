@@ -75,17 +75,12 @@ export const JobListPage = () => {
   }
 
   return (
-    <PageContainer
-      header={
-        <PaneHeader
-          breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
-          py={0}
-          showMetabotButton
-        />
-      }
-      data-testid="transforms-job-list"
-      gap={0}
-    >
+    <PageContainer data-testid="transforms-job-list" gap={0}>
+      <PaneHeader
+        breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
+        py={0}
+        showMetabotButton
+      />
       <Stack>
         <Flex gap="0.5rem">
           <TextInput
