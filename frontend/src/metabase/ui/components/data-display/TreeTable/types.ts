@@ -1,11 +1,10 @@
 import type {
-  Column,
+  ColumnDef,
   ExpandedState,
   FilterFn,
   OnChangeFn,
   Row,
   RowSelectionState,
-  SortingFn,
   SortingState,
   Table,
 } from "@tanstack/react-table";
@@ -27,57 +26,29 @@ export interface TreeNodeData {
 }
 
 /**
- * Cell render props - provides access to TanStack Row and value accessor.
+ * Column sizing extensions for TreeTable.
  */
-export interface TreeTableCellProps<TData extends TreeNodeData> {
-  row: Row<TData>;
-  getValue: () => unknown;
-}
-
-/**
- * Header render props - provides access to column sorting state.
- */
-export interface TreeTableColumnHeaderProps<TData extends TreeNodeData> {
-  column: Column<TData>;
-  table: Table<TData>;
-  isSorted: false | "asc" | "desc";
-}
-
-/**
- * Column definition for TreeTable.
- * Closely maps to TanStack Table ColumnDef with tree-specific additions.
- */
-export interface TreeTableColumnDef<TData extends TreeNodeData> {
+export interface TreeTableColumnSizingDef {
+  /** Column ID is required for TreeTable columns. */
   id: string;
-  header?:
-    | ReactNode
-    | ((props: TreeTableColumnHeaderProps<TData>) => ReactNode);
-  cell?: (props: TreeTableCellProps<TData>) => ReactNode;
-  accessorKey?: keyof TData & string;
-  accessorFn?: (row: TData) => unknown;
-
   /** Fixed width in pixels. Column does NOT stretch. */
   width?: number;
   /** Minimum width: pixels or 'auto' (measures content via DOM). */
   minWidth?: number | "auto";
   /** Maximum width in pixels. Only applies to stretching columns. */
   maxWidth?: number;
-
-  enableSorting?: boolean;
-  sortingFn?:
-    | "alphanumeric"
-    | "alphanumericCaseSensitive"
-    | "text"
-    | "textCaseSensitive"
-    | "datetime"
-    | "basic"
-    | SortingFn<TData>;
-  sortDescFirst?: boolean;
-  sortUndefined?: "first" | "last" | false | -1 | 1;
-
-  enableFiltering?: boolean;
-  filterFn?: "includesString" | "includesStringSensitive" | FilterFn<TData>;
 }
+
+/**
+ * Column definition for TreeTable.
+ * Extends TanStack Table's ColumnDef with tree-specific sizing options.
+ * Requires `id` to be specified on all columns.
+ */
+export type TreeTableColumnDef<TData extends TreeNodeData> = ColumnDef<
+  TData,
+  unknown
+> &
+  TreeTableColumnSizingDef;
 
 /**
  * Options for useTreeTableInstance hook.

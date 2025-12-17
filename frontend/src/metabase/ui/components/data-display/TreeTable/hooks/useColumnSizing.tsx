@@ -224,12 +224,19 @@ function MeasureContent<TData extends TreeNodeData>({
     <div ref={handleRef} style={{ display: "flex" }}>
       {columnsToMeasure.map((column) => {
         const colIndex = columns.findIndex((c) => c.id === column.id);
-        const accessorFn =
-          column.accessorFn ??
-          ((data: TData) =>
-            column.accessorKey
-              ? (data as Record<string, unknown>)[column.accessorKey]
-              : undefined);
+        const colAccessorFn =
+          "accessorFn" in column ? column.accessorFn : undefined;
+        const colAccessorKey =
+          "accessorKey" in column ? column.accessorKey : undefined;
+        const accessorFn = (data: TData): unknown => {
+          if (colAccessorFn) {
+            return colAccessorFn(data, 0);
+          }
+          if (colAccessorKey) {
+            return (data as Record<string, unknown>)[String(colAccessorKey)];
+          }
+          return undefined;
+        };
 
         const rowsToMeasure = pickTreeRowsToMeasure(rows, accessorFn);
 

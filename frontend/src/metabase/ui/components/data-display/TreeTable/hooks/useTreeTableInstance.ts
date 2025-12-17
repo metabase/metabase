@@ -1,4 +1,4 @@
-import type { Column, ColumnDef, ExpandedState } from "@tanstack/react-table";
+import type { ExpandedState } from "@tanstack/react-table";
 import {
   getCoreRowModel,
   getExpandedRowModel,
@@ -12,78 +12,12 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { DEFAULT_OVERSCAN, DEFAULT_ROW_HEIGHT } from "../constants";
 import type {
   TreeNodeData,
-  TreeTableColumnDef,
-  TreeTableColumnHeaderProps,
   TreeTableInstance,
   UseTreeTableInstanceOptions,
 } from "../types";
 
 import { useColumnSizing } from "./useColumnSizing";
 import { useTreeTableKeyboard } from "./useTreeTableKeyboard";
-
-function convertColumnDefs<TData extends TreeNodeData>(
-  columns: TreeTableColumnDef<TData>[],
-): ColumnDef<TData>[] {
-  return columns.map((col) => {
-    const columnDef: ColumnDef<TData> = {
-      id: col.id,
-      enableSorting: col.enableSorting ?? false,
-      enableColumnFilter: col.enableFiltering ?? false,
-    };
-
-    if (col.sortingFn !== undefined) {
-      columnDef.sortingFn = col.sortingFn as ColumnDef<TData>["sortingFn"];
-    }
-    if (col.sortDescFirst !== undefined) {
-      columnDef.sortDescFirst = col.sortDescFirst;
-    }
-    if (col.sortUndefined !== undefined) {
-      columnDef.sortUndefined = col.sortUndefined;
-    }
-    if (col.filterFn !== undefined) {
-      columnDef.filterFn = col.filterFn as ColumnDef<TData>["filterFn"];
-    }
-
-    if (col.accessorKey) {
-      (columnDef as ColumnDef<TData> & { accessorKey: string }).accessorKey =
-        col.accessorKey;
-    } else if (col.accessorFn) {
-      (
-        columnDef as ColumnDef<TData> & { accessorFn: (row: TData) => unknown }
-      ).accessorFn = col.accessorFn;
-    }
-
-    if (col.header != null) {
-      const headerDef = col.header;
-      if (typeof headerDef === "function") {
-        columnDef.header = (context) => {
-          const headerProps: TreeTableColumnHeaderProps<TData> = {
-            column: context.column as Column<TData>,
-            table: context.table,
-            isSorted: context.column.getIsSorted(),
-          };
-          return headerDef(headerProps);
-        };
-      } else {
-        // Pass string directly - don't wrap in function or flexRender creates React element
-        columnDef.header = headerDef;
-      }
-    } else {
-      // Explicitly set to empty string to prevent TanStack from auto-generating header
-      columnDef.header = "";
-    }
-
-    if (col.cell) {
-      columnDef.cell = (context) =>
-        col.cell!({
-          row: context.row,
-          getValue: context.getValue,
-        });
-    }
-
-    return columnDef;
-  });
-}
 
 export function useTreeTableInstance<TData extends TreeNodeData>(
   options: UseTreeTableInstanceOptions<TData>,
@@ -211,8 +145,6 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     [globalFilter, onGlobalFilterChange],
   );
 
-  const tanstackColumns = useMemo(() => convertColumnDefs(columns), [columns]);
-
   const effectiveFilterFn = useMemo(() => {
     if (globalFilterFn) {
       return globalFilterFn;
@@ -239,7 +171,7 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
 
   const table = useReactTable({
     data,
-    columns: tanstackColumns,
+    columns,
     state: {
       expanded,
       rowSelection,
