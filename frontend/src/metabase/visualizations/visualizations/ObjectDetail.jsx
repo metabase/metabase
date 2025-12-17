@@ -55,4 +55,4 @@ const ObjectDetailWithProperties = Object.assign(
   ObjectDetailProperties,
 );
 
-export { ObjectDetailWithProperties as ObjectDetails };
+export { ObjectDetailWithProperties as ObjectDetail };
