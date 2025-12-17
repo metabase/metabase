@@ -126,10 +126,12 @@ jobs:
           test_suite="${{ matrix.test_suite }}"
           echo "sample_app_name=${test_suite%-e2e}" >> "$GITHUB_OUTPUT"
 
-      - name: Download uberjar for ee
-        run: |
-          mkdir -p target/uberjar
-          curl -L -o target/uberjar/metabase.jar https://downloads.metabase.com/enterprise/v1.58.x/metabase.jar
+      - name: Retrieve uberjar artifact for ee
+        uses: ./.github/actions/fetch-artifact
+        with:
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
