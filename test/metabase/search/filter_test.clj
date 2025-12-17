@@ -66,7 +66,7 @@
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
 
   (testing "We only search for certain models in the trash"
-    (is (= #{"dashboard" "dataset" "document" "segment" "collection" "action" "metric" "card"}
+    (is (= #{"dashboard" "dataset" "document" "segment" "measure" "collection" "action" "metric" "card"}
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
 
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
@@ -123,7 +123,7 @@
             :from   :somewhere
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
-                      [:in :search_index.model (cond-> #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card" "document"}
+                      [:in :search_index.model (cond-> #{"dashboard" "table" "segment" "measure" "collection" "database" "action" "indexed-entity" "metric" "card" "document"}
                                                  config/ee-available? (conj "transform"))]
                       [:in :search_index.model_id ["1" "2" "3" "4"]]
                       [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
