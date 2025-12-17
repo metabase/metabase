@@ -73,13 +73,7 @@ export const EditUserStrategyModal = ({
       return;
     }
 
-    addToast({
-      message:
-        selectedStrategy === "multi-tenant"
-          ? // eslint-disable-next-line no-literal-metabase-strings -- used in admin
-            t`You can create tenant collections from the main Metabase navigation`
-          : t`Changes saved`,
-    });
+    addToast({ message: t`Changes saved` });
 
     dispatch(
       permissionApi.util.invalidateTags([
