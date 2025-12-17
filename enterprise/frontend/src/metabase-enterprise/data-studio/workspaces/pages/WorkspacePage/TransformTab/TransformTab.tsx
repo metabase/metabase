@@ -6,12 +6,11 @@ import * as Yup from "yup";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import Link from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
   useValidateTableNameMutation,
@@ -320,7 +319,7 @@ export const TransformTab = ({
           </Group>
 
           <Group>
-            <Group gap="sm">
+            <Group>
               {isSaved && (
                 <WorkspaceRunButton
                   id={transform.id}
@@ -329,27 +328,17 @@ export const TransformTab = ({
                   onRun={handleRun}
                 />
               )}
-              {output && (
-                <Link
-                  target="_blank"
-                  rel="noreferrer"
-                  tooltip={t`View transform output`}
-                  to={Urls.queryBuilderTable(output.table_id, output.db_id)}
-                >
-                  <Text c="brand">{t`[results]`}</Text>
-                </Link>
+
+              {isSaved && (
+                <SaveTransformButton
+                  databaseId={databaseId}
+                  workspaceId={workspaceId}
+                  editedTransform={editedTransform}
+                  transform={transform}
+                  isArchived={isArchived}
+                />
               )}
             </Group>
-
-            {isSaved && (
-              <SaveTransformButton
-                databaseId={databaseId}
-                workspaceId={workspaceId}
-                editedTransform={editedTransform}
-                transform={transform}
-                isArchived={isArchived}
-              />
-            )}
 
             {!isSaved && transform.id < 0 && (
               <Button
@@ -372,18 +361,38 @@ export const TransformTab = ({
           </Group>
         </Group>
 
-        {isSaved &&
-          (isRunStatusLoading ? (
-            <Group gap="sm">
-              <Icon c="text-secondary" name="sync" />
-              <Box>{t`Loading run status...`}</Box>
-            </Group>
-          ) : (
-            <RunStatus
-              run={statusRun}
-              neverRunMessage={t`This transform hasn't been run before.`}
-            />
-          ))}
+        <Group>
+          {isSaved &&
+            (isRunStatusLoading ? (
+              <Group gap="sm">
+                <Icon c="text-secondary" name="sync" />
+                <Box>{t`Loading run status...`}</Box>
+              </Group>
+            ) : (
+              <RunStatus
+                run={statusRun}
+                neverRunMessage={t`This transform hasn't been run before.`}
+              />
+            ))}
+          {output && (
+            <Tooltip label={t`View transform output`}>
+              <a
+                style={{
+                  marginLeft: "auto",
+                  alignSelf: "flex-end",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                target="_blank"
+                rel="noreferrer"
+                href={Urls.queryBuilderTable(output.table_id, output.db_id)}
+              >
+                <Icon name="table2" mr="xs" c="brand" />
+                <Text c="brand">{t`Results`}</Text>
+              </a>
+            </Tooltip>
+          )}
+        </Group>
       </Stack>
 
       {editedTransform && (
