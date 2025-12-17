@@ -145,20 +145,19 @@
   (testing "POST /api/ee/workspace/:id/unarchive calls ensure-database-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
-      ;; First archive the workspace
       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
-      (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
-                                  (fn [_workspace _database]
-                                    (reset! called? true)
-                                    {:schema "test_schema" :database_details {}})]
-        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
-        (is @called? "ensure-database-isolation! should be called when unarchiving")))))
+      (testing "ensure-database-isolation! should be called when unarchiving"
+        (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
+                                    (fn [_workspace _database]
+                                      (reset! called? true)
+                                      {:schema "test_schema" :database_details {}})]
+          (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
+          (is @called?))))))
 
 (deftest unarchive-workspace-calls-sync-grant-accesses-test
   (testing "POST /api/ee/workspace/:id/unarchive calls sync-grant-accesses!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Unarchive Grant Test")]
-      ;; First archive the workspace
       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (mt/with-dynamic-fn-redefs [ws.impl/sync-grant-accesses!
                                   (fn [_workspace]
@@ -167,20 +166,28 @@
         (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
         (is @called? "sync-grant-accesses! should be called when unarchiving")))))
 
-(deftest archive-workspace-resets-access-granted-test
-  (testing "POST /api/ee/workspace/:id/archive resets access_granted flags"
-    (let [workspace (ws.tu/create-ready-ws! "Archive Reset Test")]
-      ;; Create a workspace input with access_granted = true
+(deftest archive-unarchive-access-granted-test
+  (testing "Archive/unarchive properly manages access_granted flags and grants"
+    (let [workspace     (ws.tu/create-ready-ws! "Archive Grant Test")
+          granted-tables (atom [])]
       (mt/with-temp [:model/WorkspaceInput input {:workspace_id   (:id workspace)
                                                   :db_id          (mt/id)
+                                                  :schema         nil
                                                   :table          "test_table"
                                                   :access_granted true}]
-        ;; Verify access_granted starts as true
-        (is (true? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input))))
-        ;; Archive the workspace (this drops the user, revoking permissions)
-        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
-        ;; Verify access_granted was reset to false during archive
-        (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input))))))))
+        (testing "Archive resets access_granted to false"
+          (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+          (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))))
+
+        (testing "Unarchive re-grants access and sets access_granted to true"
+          (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                      (fn [_database _workspace tables]
+                                        (reset! granted-tables tables))]
+            (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
+            (is (= [{:schema nil :name "test_table"}] @granted-tables)
+                "grant-read-access-to-tables! should be called with the input tables")
+            (is (true? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))
+                "access_granted should be true after unarchive")))))))
 
 (deftest merge-workspace-test
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
