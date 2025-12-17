@@ -3,6 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import ActionButton from "metabase/common/components/ActionButton";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { cleanPulse } from "metabase/lib/pulse";
 
 export default class SendTestPulse extends Component {
@@ -20,6 +21,9 @@ export default class SendTestPulse extends Component {
   onTestPulseChannel = () => {
     const { pulse, channel, channelSpecs, testPulse } = this.props;
     const channelPulse = { ...pulse, channels: [channel] };
+    if (isEmbeddingSdk()) {
+      channelPulse.disable_links = true;
+    }
     const cleanedPulse = cleanPulse(channelPulse, channelSpecs);
 
     return testPulse(cleanedPulse);
