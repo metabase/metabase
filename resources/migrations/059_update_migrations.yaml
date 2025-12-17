@@ -148,5 +148,3 @@ databaseChangeLog:
         - dropIndex:
             tableName: measure
             indexName: idx_measure_creator_id
-
-
