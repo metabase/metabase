@@ -675,7 +675,7 @@
   [_driver [_ nfc-path]]
   nfc-path)
 
-(defn with-base-temporal-type
+(defn- with-base-temporal-type
   [[_ _id-or-name {:keys [base-type _effective-type _temporal-unit]} :as clause]]
   (if (not (instance? clojure.lang.IObj clause))
     clause
