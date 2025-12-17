@@ -1293,3 +1293,30 @@
                                 [[[:= $name "Won"] [:datetime-add $created_at 0 :month]]]
                                 {:default [:datetime-add $birth_date 0 :month]}]}
                  :filter [:time-interval [:expression "asdfdsa"] -12 :month]}))))))
+
+(mt/defdataset timestamp-dataset
+  [["ts_table" [{:field-name "user_id"
+                 :base-type :type/Integer}
+                {:field-name "created_at"
+                 :base-type :type/DateTimeWithLocalTZ}]
+    [[1 #t "2024-01-15T10:30:00Z"]
+     [2 #t "2024-02-20T14:45:00Z"]
+     [3 #t "2024-03-25T09:15:00Z"]]]])
+
+(deftest timestamp-aggregation-with-timezone-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "week of year aggregation with custom year expression works correctly"
+      (mt/dataset timestamp-dataset
+        (mt/with-report-timezone-id! "Europe/Paris"
+          (let [mp (mt/metadata-provider)
+                ts-table (lib.metadata/table mp (mt/id :ts_table))
+                user-id-col (lib.metadata/field mp (mt/id :ts_table :user_id))
+                created-at-col (lib.metadata/field mp (mt/id :ts_table :created_at))
+                base-query (-> (lib/query mp ts-table)
+                               ;; Add custom column: year(created_at)
+                               (lib/expression "created_at_year" (lib/get-year created-at-col)))
+                query (-> base-query
+                          (lib/aggregate (lib/distinct user-id-col))
+                          (lib/breakout (lib/with-temporal-bucket created-at-col :week-of-year))
+                          (lib/breakout (lib.expression/expression-ref base-query 0 "created_at_year")))]
+            (is (some? (mt/rows (qp/process-query query))))))))))

@@ -821,6 +821,7 @@
   "Apply temporal bucketing for the `:temporal-unit` in the options of a `:field` clause; return a new HoneySQL form that
   buckets `honeysql-form` appropriately."
   [driver {:keys [temporal-unit]} honeysql-form]
+  ;; (tap> {:temporal-bucketing honeysql-form})
   (date driver temporal-unit honeysql-form))
 
 (defn apply-binning
@@ -895,10 +896,16 @@
                                         (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
-          identifier           (-> (apply h2x/identifier :field
-                                          (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
+          ;; _ (tap> {:sql-field-clause field-clause})
+          ;; _ (tap> {:sql-field-clause-meta (meta field-clause)})
+          field-identifier (apply h2x/identifier :field (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
+          identifier           (-> field-identifier
                                    (with-meta (meta field-clause)))
+          ;; TODO: on the identifier, vary-meta the :bigquery-cloud-sdk/temporal-type to be the type that it is based on the effective/base type
+          ;; todo: maybe copy part of this impl and do it in the bigquery impl
+          ;; _ (tap> {:sql-field-identifier identifier})
           identifier           (->honeysql driver identifier)
+          ;; _ (tap> {:sql-identifier identifier})
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata))
@@ -914,7 +921,12 @@
           (:binning options)       (apply-binning options))
         (log/trace (binding [*print-meta* true]
                      (format "Compiled field clause\n%s\n=>\n%s"
-                             (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
+                             (u/pprint-to-str field-clause) (u/pprint-to-str <>))))
+        #_#_(tap> {:allow-casting allow-casting?
+                   :database-type database-type
+                   :temporal-unit (:temporal-unit options)
+                   :binning       (:binning options)})
+          (tap> "compiled field clause")))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling :field clause: {0}" (ex-message e))
                       {:clause field-clause}
