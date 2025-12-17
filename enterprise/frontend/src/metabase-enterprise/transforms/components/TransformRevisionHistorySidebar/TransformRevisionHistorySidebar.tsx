@@ -3,12 +3,12 @@ import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   skipToken,
   useListRevisionsQuery,
   useRevertRevisionMutation,
 } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
@@ -34,7 +34,11 @@ export function TransformRevisionHistorySidebar({
     setIsOpen(true);
   });
 
-  const { data: revisions } = useListRevisionsQuery(
+  const {
+    data: revisions,
+    isLoading,
+    error,
+  } = useListRevisionsQuery(
     transform ? { id: transform.id, entity: "transform" } : skipToken,
   );
   const [revertToRevision] = useRevertRevisionMutation();
@@ -47,10 +51,16 @@ export function TransformRevisionHistorySidebar({
     );
   }, [revisions, currentUser]);
 
+  if (isLoading || error) {
+    return;
+  }
+
   return (
-    <ErrorBoundary>
-      <Sidesheet isOpen={isOpen} title={t`History`} onClose={onClose}>
-        <SidesheetCard>
+    <Sidesheet isOpen={isOpen} title={t`History`} onClose={onClose}>
+      <SidesheetCard>
+        {isLoading || error ? (
+          <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        ) : (
           <Timeline
             events={events}
             data-testid="transform-history-list"
@@ -64,8 +74,8 @@ export function TransformRevisionHistorySidebar({
             entity="transform"
             canWrite
           />
-        </SidesheetCard>
-      </Sidesheet>
-    </ErrorBoundary>
+        )}
+      </SidesheetCard>
+    </Sidesheet>
   );
 }
