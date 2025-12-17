@@ -96,10 +96,7 @@ export default function QueryVisualization(props) {
             onUpdateWarnings={setWarnings}
           />
         ) : !isRunning && !isDirtyStateShown ? (
-          <VisualizationEmptyState
-            className={CS.spread}
-            isCompact={isNativeEditorOpen}
-          >
+          <VisualizationEmptyState className={CS.spread}>
             {t`Here's where your results will appear`}
           </VisualizationEmptyState>
         ) : null}
@@ -108,17 +105,11 @@ export default function QueryVisualization(props) {
   );
 }
 
-const VisualizationEmptyState = ({ isCompact, children }) => {
+const VisualizationEmptyState = ({ children }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
-    <Flex
-      w="100%"
-      h="100%"
-      align={isCompact ? "flex-start" : "center"}
-      justify="center"
-      mt={isCompact ? "3rem" : "auto"}
-    >
+    <Flex w="100%" h="100%" align="center" justify="center">
       <Stack maw="25rem" gap={0} ta="center" align="center">
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
