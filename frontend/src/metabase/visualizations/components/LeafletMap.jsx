@@ -109,7 +109,10 @@ export default class LeafletMap extends Component {
           [settings["map.center_latitude"], settings["map.center_longitude"]],
           settings["map.zoom"],
         );
-      } else {
+        return;
+      }
+
+      if (shouldRecalculateZoom(prevProps?.points, this.props.points)) {
         // compute ideal lat and lon zoom separately and use the lesser zoom to ensure the bounds are visible
         const latZoom = this.map.getBoundsZoom(
           L.latLngBounds([
@@ -274,4 +277,20 @@ export default class LeafletMap extends Component {
     } = this.props;
     return _.findWhere(cols, { name: settings["map.metric_column"] });
   }
+}
+
+/**
+ * Lightweight function to check if points have changed (e.g. due to filters)
+ * so that we should recalculate the zoom.
+ */
+function shouldRecalculateZoom(prevPoints, nextPoints) {
+  if (!prevPoints && !nextPoints) {
+    return false;
+  }
+
+  return (
+    !prevPoints ||
+    prevPoints?.length !== nextPoints?.length ||
+    !_.isEqual(_.last(nextPoints), _.last(prevPoints))
+  );
 }
