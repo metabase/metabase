@@ -12,7 +12,7 @@ redirect_from:
 
 {% include shared/in-page-promo-embedding-workshop.html %}
 
-**Full app embedding** (previously called "interactive embedding") lets you embed the entire Metabase app in an iframe. Full app embedding integrates your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](../questions/query-builder/editor.md) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
+**Full app embedding** let embed entire Metabase app in an iframe. Full app embedding integrates your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](../questions/query-builder/editor.md) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
 
 > If you are just starting out with Metabase embedding, consider using [Modular embedding](./modular-embedding.md) instead of full app embedding - it's an improved, more customizable option for embedding individual Metabase components.
 

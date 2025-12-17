@@ -7,9 +7,9 @@ redirect_from:
 
 # Customizing the appearance of modular embeds
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
-You can style your embedded Metabase components with a `theme`.
+You can style your embedded [Metabase components](./components.md) with a `theme`.
 
 In your Metabase:
 
@@ -23,7 +23,7 @@ Change the colors, and the code snippet will include a `theme` object in the obj
 
 ## Theme options
 
-Here's an example that includes the various styling options available via the [embedded analytics React SDK](./sdk/introduction.md):
+Here's an example that includes the various styling options available via the [modular embedding React SDK](./sdk/introduction.md):
 
 ```ts
 {% include_file "{{ dirname }}/sdk/snippets/appearance/theme.ts" %}
@@ -121,16 +121,6 @@ function defineMetabaseConfig(config) {
 ## Example app with theming
 
 Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a question or dashboard, and play around with changing colors.
-
-## Customizing loader and error components
-
-With the SDK, you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
-
-```tsx
-{% include_file "{{ dirname }}/sdk/snippets/appearance/customizing-loader-and-components.tsx" snippet="imports" %}
-
-{% include_file "{{ dirname }}/sdk/snippets/appearance/customizing-loader-and-components.tsx" snippet="example" %}
-```
 
 ## Limitations
 

@@ -1,10 +1,13 @@
 ---
-title: Embedded analytics SDK - authentication
+title: Modular embedding - authentication
+summary: Adding SSO with JWT or SAML for authenticating modular embeds.
+redirect_from:
+- /docs/latest/embedding/sdk/authentication
 ---
 
-# Embedded analytics SDK - authentication
+# Modular embedding - authentication
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
 For using the SDK in production, you'll need to set up authentication with SSO.
 
@@ -12,7 +15,7 @@ If you're developing locally, you can also set up authentication with [API keys]
 
 ## Setting up JWT SSO
 
-To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md))
+To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./sdk/quickstart.md))
 
 Here's a high-level overview:
 
@@ -101,7 +104,7 @@ The response should be in the form of `{ jwt: "{JWT_TOKEN}" }`
 
 {% include plans-blockquote.html feature="SAML authentication" sdk=true %}
 
-To use SAML single sign-on with the Embedded analytics SDK, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../../people-and-groups/authenticating-with-saml.md).
+To use SAML single sign-on with the modular embedding SDK, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../people-and-groups/authenticating-with-saml.md).
 
 Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `preferredAuthMethod` in your `MetabaseAuthConfig` to `"saml"`:
 
@@ -109,7 +112,7 @@ Once SAML is configured in Metabase and your IdP, you can configure the SDK to u
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
 ```
 
-Using SAML authentication with the Embedded analytics SDK will typically involve redirecting people to a popup with your Identity Provider's login page for authentication. After successful authentication, the person will be redirected back to the embedded content.
+Using SAML authentication with the modular embedding SDK will typically involve redirecting people to a popup with your Identity Provider's login page for authentication. After successful authentication, the person will be redirected back to the embedded content.
 
 Due to the nature of redirects and popups involved in the SAML flow, SAML authentication with the SDK may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing auth flows in your target environments.
 
@@ -139,11 +142,11 @@ This hook can only be used within components wrapped by `MetabaseProvider`.
 
 ## Authenticating locally with API keys
 
-> The Embedded analytics SDK only supports JWT authentication in production. Authentication with API keys is only supported for local development and evaluation purposes.
+> The modular embedding SDK only supports JWT authentication in production. Authentication with API keys is only supported for local development and evaluation purposes.
 
 For developing locally to try out the SDK, you can authenticate using an API key.
 
-First, create an [API key](../../people-and-groups/api-keys.md).
+First, create an [API key](../people-and-groups/api-keys.md).
 
 Then you can then use the API key to authenticate with Metabase in your application. All you need to do is include your API key in the config object using the key: `apiKey`.
 
