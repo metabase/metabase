@@ -69,20 +69,23 @@
 (defn- build-remapping [workspace]
   ;; Build table remapping from stored WorkspaceOutput data.
   ;; Maps [db_id global_schema global_table] -> {:db-id :schema :table :id} for isolated tables.
-  ;; This is used to remap transform targets (and later SQL/python sources) to isolated tables.
+  ;; Also maps global_table_id -> same. This is more convenient and reliable for MBQL queries and Python transforms.
+  ;; This is used to remap queries, sources and targets to reflect the "isolated" tables used to seal the Workspace.
   (let [outputs    (t2/select [:model/WorkspaceOutput
-                               :db_id :global_schema :global_table
+                               :db_id :global_schema :global_table :global_table_id
                                :isolated_schema :isolated_table :isolated_table_id]
                               :workspace_id (:id workspace))
-        table-map  (into {}
-                         (map (fn [{:keys [db_id global_schema global_table
-                                           isolated_schema isolated_table isolated_table_id]}]
-                                [[db_id global_schema global_table]
-                                 {:db-id  db_id
-                                  :schema isolated_schema
-                                  :table  isolated_table
-                                  :id     isolated_table_id}]))
-                         outputs)]
+        table-map  (reduce
+                    (fn [m {:keys [db_id global_schema global_table global_table_id
+                                   isolated_schema isolated_table isolated_table_id]}]
+                      (let [replacement {:db-id  db_id
+                                         :schema isolated_schema
+                                         :table  isolated_table
+                                         :id     isolated_table_id}]
+                        (cond-> (assoc m [db_id global_schema global_table] replacement)
+                          global_table_id (assoc global_table_id replacement))))
+                    {}
+                    outputs)]
     {:tables          table-map
      ;; We never want to write to any global tables, so remap on-the-fly if we hit an un-mapped target.
      :target-fallback (fn [[d s t]]
