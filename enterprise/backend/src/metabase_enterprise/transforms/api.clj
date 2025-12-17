@@ -12,6 +12,7 @@
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.workspaces.models.workspace-merge-transform]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -190,6 +191,36 @@
         dep-ids (get global-ordering id)
         dependencies (map id->transform dep-ids)]
     (t2/hydrate dependencies :creator)))
+
+(def ^:private MergeHistoryEntry
+  [:map
+   [:id ms/PositiveInt]
+   [:workspace_merge_id [:maybe ms/PositiveInt]]
+   [:commit_message :string]
+   [:workspace_id [:maybe ms/PositiveInt]]
+   [:workspace_name :string]
+   [:workspace_transform_ref_id :string]
+   [:creator_id ms/PositiveInt]
+   [:created_at :any]])
+
+(api.macros/defendpoint :get "/:id/merge-history"
+  :- [:sequential MergeHistoryEntry]
+  "Get merge history for a transform. Returns all merge events that affected this transform,
+   ordered by created_at descending (newest first)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/Transform id))
+  (t2/select [:model/WorkspaceMergeTransform
+              :id
+              :workspace_merge_id
+              :commit_message
+              :workspace_id
+              :workspace_name
+              :workspace_transform_ref_id
+              :creator_id
+              :created_at]
+             {:where    [:= :transform_id id]
+              :order-by [[:created_at :desc]]}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
