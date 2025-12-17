@@ -14,12 +14,6 @@ export interface EmbeddingHubStep {
   id: EmbeddingHubStepId;
   title: string;
 
-  image?: EmbeddingHubImage;
-  video?: EmbeddingHubVideo;
-
-  /** Show an info alert box below the step */
-  infoAlert?: string;
-
   actions: EmbeddingHubAction[];
 }
 
@@ -56,16 +50,4 @@ export interface EmbeddingHubAction {
   modal?: EmbeddingHubModalToTrigger;
 
   optional?: boolean;
-}
-
-interface EmbeddingHubImage {
-  src: string;
-  srcSet?: string;
-  alt: string;
-}
-
-export interface EmbeddingHubVideo {
-  id: string;
-  trackingId: string;
-  title: string;
 }

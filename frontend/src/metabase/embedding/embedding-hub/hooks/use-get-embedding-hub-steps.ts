@@ -46,22 +46,11 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           variant: "outline",
         },
       ],
-      image: {
-        src: "app/assets/img/embedding_hub_create_embed.png",
-        srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
-        alt: t`Screenshot of creating an embed`,
-      },
-      infoAlert: t`If all you want is a simple embedded dashboard, the steps above are all you need! \n If you have a more sophisticated setup in mind, with many users and tenants, then keep going.`,
     };
 
     const ADD_DATA: EmbeddingHubStep = {
       id: "add-data",
       title: t`Add your data`,
-      image: {
-        src: "app/assets/img/onboarding_data_diagram.png",
-        srcSet: "app/assets/img/onboarding_data_diagram@2x.png 2x",
-        alt: t`Data sources and ETL diagram`,
-      },
       actions: [
         {
           title: t`Connect a database`,
@@ -75,11 +64,6 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     const CREATE_DASHBOARD: EmbeddingHubStep = {
       id: "create-dashboard",
       title: t`Prepare data`,
-      video: {
-        id: "FOAXF4p1AL0",
-        trackingId: "COmu2w0SqGagUoVp",
-        title: t`How to find and use X-rays?`,
-      },
       actions: [
         {
           title: t`Create a dashboard`,
@@ -138,11 +122,6 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         // Otherwise, it is already shown on the tenants setup step.
         ...(isTenantsFeatureAvailable ? [] : [DATA_PERMISSION_CARD]),
       ],
-      image: {
-        src: "app/assets/img/embedding_hub_secure_embeds_diagram.png",
-        srcSet: "app/assets/img/embedding_hub_secure_embeds_diagram@2x.png 2x",
-        alt: t`Diagram of the SSO authentication workflow`,
-      },
     };
 
     const EMBED_PRODUCTION: EmbeddingHubStep = {
@@ -163,11 +142,6 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           variant: "outline",
         },
       ],
-      image: {
-        src: "app/assets/img/embedding_hub_create_embed.png",
-        srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
-        alt: t`Screenshot of creating an embed`,
-      },
     };
 
     return [

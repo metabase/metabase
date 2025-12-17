@@ -26,8 +26,8 @@ export interface StepperStep {
   title: string;
   cards: StepperCard[];
 
-  /** Show an info alert box below the step */
-  infoAlert?: string;
+  /** Show an alert below the step */
+  alert?: { type: "info" | "success"; message: string };
 }
 
 export interface StepperCard {
@@ -198,11 +198,30 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                   })}
                 </Grid>
 
-                {step.infoAlert && (
+                {step.alert && (
                   <Alert
-                    icon={<Icon name="info" c="text-secondary" size={14} />}
+                    icon={
+                      <Icon
+                        size={14}
+                        name={step.alert.type === "success" ? "check" : "info"}
+                        c={
+                          step.alert.type === "success"
+                            ? "success"
+                            : "text-secondary"
+                        }
+                      />
+                    }
                     mt="xl"
-                    bg="brand-light"
+                    bg={
+                      step.alert.type === "success"
+                        ? "background-success"
+                        : "brand-light"
+                    }
+                    bd={
+                      step.alert.type === "success"
+                        ? "1px solid var(--mb-color-success)"
+                        : undefined
+                    }
                     lh="lg"
                     classNames={{
                       wrapper: S.infoAlertWrapper,
@@ -210,7 +229,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                       message: S.infoAlertMessage,
                     }}
                   >
-                    {step.infoAlert}
+                    {step.alert.message}
                   </Alert>
                 )}
               </div>
