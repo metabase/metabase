@@ -134,9 +134,12 @@
          ;; Paths are vectors sorted from child to parent
          [path & paths] (for [ref members] [ref])]
     (if-not path
+      ;; Finished walking all paths, render the result.
       (render-graph members cache deps fns)
       ;; Look-up from cache first
-      (let [head     (peek path)
+      (let [_        (when (some #(not= 1 (val %)) (frequencies path))
+                       (throw (ex-info "Cycle detected" {:path path})))
+            head     (peek path)
             parents  (cache head (node-parents head))
             cache    (assoc cache head parents)
             continue (when parents (remove members parents))]
