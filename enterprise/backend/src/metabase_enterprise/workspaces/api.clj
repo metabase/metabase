@@ -248,20 +248,40 @@
 
   (ws->response (ws.common/create-workspace! api/*current-user-id* body)))
 
+(defn- db-unsupported-reason [db]
+  (when (not #p (driver.u/supports? (:engine #p db) :workspace db))
+    "Database type not supported."))
+
 (api.macros/defendpoint :get "/enabled" :- [:map [:supported :boolean] [:reason {:optional true} :string]]
   "Test whether the current user can use Workspaces. Optionally takes a specific database.
    Factors include: driver support, database user privileges, metabase permissions."
   [_url-params
    {:keys [database-id]} :- [:map [:database-id {:optional true} ms/PositiveInt]]]
-  (let [maybe-db          (when database-id (api/check-404 (t2/select-one :model/Database database-id)))]
-    (cond
-      ;; This case is moot (for now) as we've put super-user-only middleware on this whole namespace.
-      (not api/*is-superuser?*)
-      {:supported false, :reason (tru "Not allowed.")}
-      (and maybe-db (not (driver.u/supports? (:engine maybe-db) :workspace maybe-db)))
-      {:supported false, :reason (tru "Database type not supported.")}
-      :else
-      {:supported true})))
+  (if-let [reason (or (when (not api/*is-superuser?*)
+                        (tru "Not allowed."))
+                      (when database-id
+                        (db-unsupported-reason (api/check-404 (t2/select-one :model/Database database-id)))))]
+    {:supported false, :reason reason}
+    {:supported true}))
+
+(api.macros/defendpoint :get "/database" :- [:map
+                                             [:databases
+                                              [:sequential [:map
+                                                            [:id ms/PositiveInt]
+                                                            [:name :string]
+                                                            [:supported :boolean]
+                                                            [:reason {:optional true} :string]]]]]
+  "Get a list of database which should"
+  [_url-params
+   _query-params]
+  {:databases (->> (t2/select :model/Database {:order-by [:name]})
+                   ;; Omit those we don't even support
+                   (filter #(driver.u/supports? (:engine %) :workspace %))
+                   (mapv (fn [db]
+                           (merge (select-keys db [:id :name])
+                                  (if-let [reason (db-unsupported-reason db)]
+                                    {:supported false, :reason reason}
+                                    {:supported true})))))})
 
 (api.macros/defendpoint :put "/:id" :- Workspace
   "Update simple workspace properties, like name."

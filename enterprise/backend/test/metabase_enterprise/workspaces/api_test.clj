@@ -1408,11 +1408,16 @@
     (testing "Requires admin"
       (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 200 url)))
       (is (= {:supported true} (mt/user-http-request :crowberto :get 200 url))))
-    (mt/with-temp [:model/Database {db-1 :id} {:engine "postgres"}
-                   :model/Database {db-2 :id} {:engine "something-wild"}]
+    (mt/with-temp [:model/Database {db-1 :id} {:name "Y", :engine "postgres"}
+                   ;; For some reason, using a real but unsupported value like "databricks" is returning support :-C
+                   :model/Database {db-2 :id} {:name "N", :engine "crazy"}]
       (testing "Unsupported driver"
         (is (= {:supported false, :reason "Database type not supported."}
                (mt/user-http-request :crowberto :get 200 (str url "?database-id=" db-2)))))
       (testing "Supported driver"
         (is (= {:supported true}
-               (mt/user-http-request :crowberto :get 200 (str url "?database-id=" db-1))))))))
+               (mt/user-http-request :crowberto :get 200 (str url "?database-id=" db-1)))))
+      (testing "Listing"
+        (is (= {:databases [{:id db-1, :name "Y", :supported true}]}
+               (-> (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+                   (update :databases #(filter (comp #{db-1 db-2} :id) %)))))))))
