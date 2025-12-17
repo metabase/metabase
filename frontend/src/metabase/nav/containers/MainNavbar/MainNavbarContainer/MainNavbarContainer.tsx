@@ -13,6 +13,7 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import Modal from "metabase/common/components/Modal";
+import { useSetting } from "metabase/common/hooks";
 import { Bookmarks, getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
@@ -25,6 +26,7 @@ import { Databases } from "metabase/entities/databases";
 import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
+  getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
   getUserIsAdmin,
@@ -93,6 +95,8 @@ function MainNavbarContainer({
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const isTenantUser = useSelector(getIsTenantUser);
+  const useTenants = useSetting("use-tenants");
 
   const {
     data: trashCollection,
@@ -110,6 +114,11 @@ function MainNavbarContainer({
     "exclude-archived": true,
     "include-library": true,
   });
+
+  const { data: tenantCollections } = useListCollectionsTreeQuery(
+    { namespace: "shared-tenant-collection" },
+    { skip: !useTenants || !isTenantUser },
+  );
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -205,6 +214,7 @@ function MainNavbarContainer({
         handleCreateNewCollection={onCreateNewCollection}
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
+        tenantCollections={tenantCollections}
       />
 
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}

@@ -8,6 +8,11 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
+import {
+  type CollectionTreeItem,
+  buildCollectionTree,
+  getCollectionIcon,
+} from "metabase/entities/collections";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getGroupNameLocalized } from "metabase/lib/groups";
 import { useSelector } from "metabase/lib/redux";
@@ -20,7 +25,12 @@ import type { TenantCollectionPathItem } from "metabase/plugins/oss/tenants";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { CollectionId, CollectionNamespace } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionNamespace,
+  User,
+} from "metabase-types/api";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
@@ -262,6 +272,53 @@ export function initializePlugin() {
       location: "/",
       path: ["root"],
       can_write: false,
+    };
+
+    PLUGIN_TENANTS.getFlattenedCollectionsForNavbar = ({
+      currentUser,
+      tenantCollections,
+      regularCollections = [],
+    }: {
+      currentUser: User | null;
+      tenantCollections: Collection[] | undefined;
+      regularCollections: CollectionTreeItem[];
+    }) => {
+      if (currentUser?.tenant_collection_id) {
+        const tenantCollectionTree = buildCollectionTree(tenantCollections, {
+          isTenantUser: true,
+        });
+        const userTenantCollectionId = currentUser?.tenant_collection_id;
+
+        // Create "Our data" collection item for user's tenant collection
+        const ourDataCollection: CollectionTreeItem = {
+          id: userTenantCollectionId,
+          name: t`Our data`,
+          description: null,
+          can_write: true,
+          can_restore: false,
+          can_delete: false,
+          archived: false,
+          namespace: null,
+          location: "/",
+          icon: getCollectionIcon(
+            { id: userTenantCollectionId },
+            {
+              isTenantUser: true,
+            },
+          ),
+          children: [],
+        };
+
+        // Flatten: shared tenant collections + "Our data" + regular collections (personal)
+        return [
+          ...tenantCollectionTree,
+          ourDataCollection,
+          ...regularCollections,
+        ];
+      }
+
+      // fallback, but should never happen
+      return regularCollections;
     };
   }
 }

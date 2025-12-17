@@ -1,6 +1,7 @@
 import type React from "react";
 
 import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker/types";
+import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type {
   Collection,
   CollectionId,
@@ -62,6 +63,7 @@ const getDefaultPluginTenants = () => ({
     path: CollectionId[];
     can_write: boolean;
   } | null,
+  getFlattenedCollectionsForNavbar: () => [],
 });
 
 export const PLUGIN_TENANTS: {
@@ -107,6 +109,11 @@ export const PLUGIN_TENANTS: {
     path: CollectionId[];
     can_write: boolean;
   } | null;
+  getFlattenedCollectionsForNavbar: (args: {
+    currentUser: User | null;
+    tenantCollections: Collection[] | undefined;
+    regularCollections: CollectionTreeItem[];
+  }) => CollectionTreeItem[];
 } = getDefaultPluginTenants();
 
 /**

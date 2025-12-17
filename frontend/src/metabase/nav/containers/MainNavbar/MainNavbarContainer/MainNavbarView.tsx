@@ -28,9 +28,13 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { getUserCanWriteToCollections } from "metabase/selectors/user";
+import {
+  getIsTenantUser,
+  getUser,
+  getUserCanWriteToCollections,
+} from "metabase/selectors/user";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
-import type { Bookmark } from "metabase-types/api";
+import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
   PaddedSidebarLink,
@@ -58,6 +62,7 @@ type Props = {
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
   selectedItems: SelectedItem[];
+  tenantCollections?: Collection[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
   handleCreateNewCollection: () => void;
@@ -80,6 +85,7 @@ export function MainNavbarView({
   reorderBookmarks,
   handleCreateNewCollection,
   handleCloseNavbar,
+  tenantCollections,
 }: Props) {
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
@@ -90,6 +96,9 @@ export function MainNavbarView({
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const currentUser = useSelector(getUser);
+  const useTenants = useSetting("use-tenants");
+  const isTenantUser = useSelector(getIsTenantUser);
 
   const [
     addDataModalOpened,
@@ -139,9 +148,16 @@ export function MainNavbarView({
 
       return {
         ...collectionsByCategory,
-        regularCollections,
+        regularCollections:
+          useTenants && isTenantUser
+            ? PLUGIN_TENANTS.getFlattenedCollectionsForNavbar({
+                currentUser,
+                tenantCollections,
+                regularCollections,
+              })
+            : regularCollections,
       };
-    }, [collections]);
+    }, [collections, isTenantUser, useTenants, tenantCollections, currentUser]);
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -151,10 +167,9 @@ export function MainNavbarView({
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
-  const useTenants = useSetting("use-tenants");
-  const collectionsHeading = useTenants
-    ? t`Internal Collections`
-    : t`Collections`;
+  // TODO: also make this return "Collections" if we don't see the "External collections" section
+  const collectionsHeading =
+    useTenants && !isTenantUser ? t`Internal Collections` : t`Collections`;
 
   return (
     <ErrorBoundary>
@@ -211,7 +226,8 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
-          <PLUGIN_TENANTS.MainNavSharedCollections />
+          {/* Tenant users don't see the section about "External collections" */}
+          {!isTenantUser && <PLUGIN_TENANTS.MainNavSharedCollections />}
 
           {PLUGIN_DATA_STUDIO.isEnabled && (
             <PLUGIN_DATA_STUDIO.NavbarLibrarySection
@@ -230,7 +246,7 @@ export function MainNavbarView({
                 iconSize={8}
                 onToggle={setExpandCollections}
                 rightAction={
-                  canWriteToCollections ? (
+                  canWriteToCollections && !isTenantUser ? (
                     <Tooltip label={t`Create a new collection`}>
                       <ActionIcon
                         aria-label={t`Create a new collection`}

@@ -20,16 +20,20 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 
 export const MainNavSharedCollections = () => {
+  const isTenantUser = useSelector(getIsTenantUser);
+  if (isTenantUser) {
+    throw "MainNavSharedCollections should not be rendered for tenant users";
+  }
+
   const [modalOpen, setModalOpen] = useState(false);
   const isTenantsEnabled = useSetting("use-tenants");
   const isAdmin = useSelector(getUserIsAdmin);
-  const currentUser = useSelector(getUser);
 
   const { data: tenantCollections } = useListCollectionsTreeQuery(
     { namespace: "shared-tenant-collection" },
@@ -106,7 +110,6 @@ export const MainNavSharedCollections = () => {
     return null;
   }
 
-  const userTenantCollectionId = currentUser?.tenant_collection_id;
   const hasVisibleTenantCollections = tenantCollectionTree.length > 0;
 
   const shouldShowSharedCollectionsSection =
@@ -114,18 +117,6 @@ export const MainNavSharedCollections = () => {
 
   return (
     <>
-      {userTenantCollectionId && (
-        <SidebarSection>
-          <SidebarHeading>{t`My tenant collection`}</SidebarHeading>
-          <PaddedSidebarLink
-            icon="folder"
-            url={`/collection/${userTenantCollectionId}`}
-          >
-            {t`My Tenant Collection`}
-          </PaddedSidebarLink>
-        </SidebarSection>
-      )}
-
       {shouldShowSharedCollectionsSection && (
         <SidebarSection>
           <Flex
