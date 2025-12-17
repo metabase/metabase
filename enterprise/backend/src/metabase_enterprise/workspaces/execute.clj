@@ -55,6 +55,8 @@
      :name     (:table replacement)}
     target))
 
+(def ^:private no-mapping (constantly nil))
+
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.
 
@@ -76,13 +78,15 @@
   [{:keys [source target] :as transform} remapping]
   (try
     (t2/with-transaction [_conn]
-      (let [s-type  (transforms/transform-source-type source)
-            new-xf  (-> (select-keys transform [:name :description])
-                        (assoc :creator_id api/*current-user-id*
-                               :source (remap-source (:tables remapping) (:fields remapping) s-type source)
-                               :target (remap-target (:tables remapping) target)))
-            _       (assert (:target new-xf) "Target mapping must not be nil")
-            temp-xf (t2/insert-returning-instance! :model/Transform new-xf)]
+      (let [s-type        (transforms/transform-source-type source)
+            table-mapping (:tables remapping no-mapping)
+            field-mapping (:fields remapping no-mapping)
+            new-xf        (-> (select-keys transform [:name :description])
+                              (assoc :creator_id api/*current-user-id*
+                                     :source (remap-source table-mapping field-mapping s-type source)
+                                     :target (remap-target table-mapping target)))
+            _             (assert (:target new-xf) "Target mapping must not be nil")
+            temp-xf       (t2/insert-returning-instance! :model/Transform new-xf)]
         (transforms.execute/execute! temp-xf {:run-method :manual})
         (u/prog1 (execution-results temp-xf)
           (t2/delete! :model/Transform (:id temp-xf)))

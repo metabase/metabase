@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
@@ -344,12 +345,12 @@
     (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
     (ws.impl/execute-workspace! workspace {:stale-only stale_only})))
 
-(mr/def ::graph-node-type [:enum :table :output-table :transform :workspace-transform])
+(mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
 
 (mr/def ::graph-node
   [:map
    [:id ::appdb-or-ref-id]
-   [:type [:enum :input-table :output-table :workspace-transform]]
+   [:type [:enum :input-table :external-transform :workspace-transform]]
    [:dependents_count [:map-of ::graph-node-type ms/PositiveInt]]
    [:data :map]])
 
@@ -365,24 +366,61 @@
    [:nodes [:sequential ::graph-node]]
    [:edges [:sequential ::graph-edge]]])
 
-(api.macros/defendpoint :get "/:id/graph" :- GraphResult
+(defn- node-type [node]
+  (let [nt (:node-type node)]
+    (case nt
+      :table :input-table
+      nt)))
+
+(defn- node-id [{:keys [node-type id]}]
+  (case node-type
+    :workspace-transform id
+    :external-transform id
+    :table (str (:db id) "-" (:schema id) "-" (:table id))))
+
+;; TODO we'll want to bulk query this of course...
+(defn- node-data [{:keys [node-type id]}]
+  (case node-type
+    :table id
+    :external-transform (t2/select-one [:model/Transform :id :name] id)
+    ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
+    :workspace-transform (t2/select-one [:model/WorkspaceTransform :ref_id :name] :ref_id id)))
+
+(api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  ;; TODO decide on whether to show output tables, or to rather show dependencies directly between transforms.
-  {:nodes [{:id 1, :type :input-table, :data {:name "Bob"}, :dependents_count {:workspace-transform 1}}
-           {:id "2", :type :workspace-transform, :data {:name "MyTrans"}, :dependents_count {:output-table 1}}
-           {:id 3, :type :output-table, :data {:external {:table_id 2, :name "Clarence"}, :internal {:name "_-sdre4rcc@"}}, :dependents_count {}}]
-   ;; I can't remember which way this is supposed to point - it might be meant to point *backwards* rather.
-   :edges [{:from_entity_type "input-table"
-            :from_entity_id   1
-            :to_entity_type   "workspace-transform"
-            :to_entity_id     "3"}
-           {:from_entity_type "workspace-transform"
-            :from_entity_id   "3"
-            :to_entity_type   "output-table"
-            :to_entity_id     3}]})
+  (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+
+  (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
+                                    [:model/WorkspaceTransform :ref_id] :workspace_id ws-id)
+        {:keys [inputs entities dependencies]} (ws.dag/path-induced-subgraph ws-id changeset)
+        ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
+        ;;      It could be cheaper to build it as we go.
+        inverted (reduce
+                  (fn [inv [c parents]]
+                    (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
+                  {}
+                  dependencies)
+        dep-count #(frequencies (map node-type (get inverted %)))]
+
+    {:nodes (concat (for [i inputs]
+                      {:type             :input-table
+                       ;; Use an id that's independent of whether the table exists yet.
+                       :id               (node-id {:id i, :node-type :table})
+                       :data             i
+                       :dependents_count (dep-count {:node-type :table, :id i})})
+                    (for [e entities]
+                      {:type             (node-type e)
+                       :id               (:id e)
+                       :data             (node-data e)
+                       :dependents_count (dep-count e)}))
+     :edges (for [[child parents] dependencies, parent parents]
+              ;; Yeah, this graph points to dependents, not dependencies
+              {:from_entity_type (name (node-type parent))
+               :from_entity_id   (node-id parent)
+               :to_entity_type   (name (node-type child))
+               :to_entity_id     (node-id child)})}))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
 
@@ -524,7 +562,7 @@
   "Get all transforms in a workspace."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source] :workspace_id id))})
+  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source] :workspace_id id {:order-by [:created_at]}))})
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)

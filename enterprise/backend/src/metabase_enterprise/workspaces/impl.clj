@@ -46,7 +46,11 @@
       (when (seq external-inputs)
         (let [database (t2/select-one :model/Database :id (:database_id workspace))
               tables   (mapv external-input->table external-inputs)]
-          (ws.isolation/grant-read-access-to-tables! database workspace tables))))
+          ;; TODO better error handling
+          (try
+            (ws.isolation/grant-read-access-to-tables! database workspace tables)
+            (catch Exception e
+              (log/warn e "Error granting RO table permissions"))))))
     external-inputs))
 
 (defn- build-remapping [workspace]
