@@ -4,10 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
-   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
