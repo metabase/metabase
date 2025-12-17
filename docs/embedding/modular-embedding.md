@@ -32,7 +32,7 @@ Or visit the item you want to embed and click the share button.
 
 ## Pick how to authenticate the embed
 
-How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which let's you do everything. This setup requires you to have [set up SSO for you Metabase](../people-and-groups/authenticating-with-jwt.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md).
+How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which lets you do everything. This setup requires you to have [set up SSO for your Metabase](../people-and-groups/authenticating-with-jwt.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md).
 
 ##  Pick what you want to embed
 

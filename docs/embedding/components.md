@@ -3,13 +3,13 @@ title: Modular embedding components
 summary: Embed dashboards, questions, query builder, AI chat, and a collection browser.
 ---
 
-## Modular embedding components
+# Modular embedding components
 
 There are different components you can embed, each with various options.
 
 > While you can use component parameters to show or hide parts of the embedded component, these parameters are _not_ a substitute for [permissions](../permissions/start.md). Even if you hide stuff, people could still grab their token from the frontend and use it to query the Metabase API.
 
-This page covers what you can embed. For theming your embeds, see [Appearence](./appearance.md).
+This page covers what you can embed. For theming your embeds, see [Appearance](./appearance.md).
 
 ## Dashboard
 
