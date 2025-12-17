@@ -93,10 +93,10 @@
     ;; This is a workaround for the dependency between transforms and their output only being inserted on run.
     (doseq [[tx-kw tx-id] tx-ids]
       (app-db/update-or-insert! :model/Dependency
-                                {:from_entity_type "transform"
-                                 :from_entity_id   tx-id
-                                 :to_entity_type   "table"
-                                 :to_entity_id     (table-ids (keyword (str "t" (kw->id tx-kw))))}))
+                                {:to_entity_type   "transform"
+                                 :to_entity_id     tx-id
+                                 :from_entity_type "table"
+                                 :from_entity_id   (table-ids (keyword (str "t" (kw->id tx-kw))))}))
 
     (merge tx-ids table-ids)))
 
@@ -122,7 +122,8 @@
   (testing "graph built from shorthand matches abstract solver"
     (let [shorthand   {:x2 [:t1]}
           id-map      (create-test-graph! (dag-abstract/expand-shorthand shorthand))
-          gtx          (t2/select-one :model/Transform (id-map :x2))]
+          gtx         (t2/select-one :model/Transform (id-map :x2))]
+      ;; TODO make this nice and declarative too
       (mt/with-temp [:model/Workspace          ws  {:name "Test Workspace", :database_id (mt/id)}
                      :model/WorkspaceTransform wtx (merge
                                                     (select-keys gtx [:name :source :target])
@@ -147,17 +148,30 @@
                        :x4 [:x3]
                        :x5 [:x2, :x4, :t9]}
           id-map     (create-test-graph! (dag-abstract/expand-shorthand shorthand))
-          result     nil #_(ws.dag/path-induced-subgraph {:transforms (mapv id-map (:check-outs shorthand))})
-          _translated (translate-result result id-map)]
-      #_(is (=? {:check-outs   #{:x2, :x4}
-                 :transforms   #{:x2, :x3, :x4}
-                 :inputs       #{:t0, :t1, :t8, :t10}
-                 :outputs      #{:t2, :t3, :t4}
-                 ;; Dependencies outside the subgraph are not listed
-                 :dependencies {:x2 #{}
-                                :x3 #{:x2}
-                                :x4 #{:x3}}}
-                translated)))))
+          gtx-2       (t2/select-one :model/Transform (id-map :x2))
+          gtx-4       (t2/select-one :model/Transform (id-map :x4))
+          fork        (fn [ws gtx]
+                        (merge
+                         (select-keys gtx [:name :source :target])
+                         {:workspace_id (:id ws)
+                          :global_id    (:id gtx)}))]
+      ;; TODO make a convenience method / method for doing these checkouts too
+      (mt/with-temp [:model/Workspace          ws    {:name "Test Workspace", :database_id (mt/id)}
+                     :model/WorkspaceTransform wtx-2 (fork ws gtx-2)
+                     :model/WorkspaceTransform wtx-4 (fork ws gtx-4)]
+        (ws.impl/sync-transform-dependencies! ws wtx-2)
+        (ws.impl/sync-transform-dependencies! ws wtx-4)
+        (let [entities   (for [wtx [wtx-2 wtx-4]]
+                           {:entity-type :transform, :id (:ref_id wtx)})
+              result     (ws.dag/path-induced-subgraph (:id ws) entities)
+              translated (translate-result result id-map)]
+          (is (=? {:inputs       #{:t1 :t8 :t10}
+                   :outputs      #{:t2 :t3 :t4}
+                   :entities     #{:x2 :x3 :x4}
+                   :dependencies {:x2 #{:t1 :t10}
+                                  :x3 #{:x2 :t8}
+                                  :x4 #{:x3}}}
+                  translated)))))))
 
 (deftest expand-solver-test
   (testing "expand-shorthand inserts interstitial nodes for transform output tables"
