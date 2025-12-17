@@ -137,7 +137,13 @@ export const EditUserStrategyModal = ({
                   >
                     <Group wrap="nowrap">
                       <div>
-                        <Text fw={700} fz="lg" lh="xl" mb="xs">
+                        <Text
+                          fw={700}
+                          fz="lg"
+                          lh="xl"
+                          mb="xs"
+                          className={S.radioCardTitle}
+                        >
                           {option.title}
                         </Text>
 
