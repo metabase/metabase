@@ -174,8 +174,10 @@
                   :model "measure")
      (table-search-results))]))
 
-(defn- default-segment-results []
-  (filter #(contains? #{"segment"} (:model %)) (default-search-results)))
+(defn- default-table-scoped-results
+  "Return search results for models that are scoped to tables (not collections) - segments and measures."
+  []
+  (filter (comp #{"segment" "measure"} :model) (default-search-results)))
 
 (defn- default-archived-results []
   (for [result (default-search-results)
@@ -520,12 +522,12 @@
                                                               :archived true :q search-name))))))))))))
 
 (deftest permissions-test
-  (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Segments "
-                "don't have collections, so they'll be returned")
+  (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Segments and "
+                "Measures don't have collections, so they'll be returned")
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
         (mt/with-full-data-perms-for-all-users!
-          (is (= (default-segment-results)
+          (is (= (default-table-scoped-results)
                  (search-request-data :rasta :q "test"))))))))
 
 (deftest permissions-test-2
@@ -558,7 +560,8 @@
                                    (assoc :can_write false)))
                            (concat (map #(merge default-search-row % (table-search-results))
                                         [{:name "segment test2 segment", :description "Lookin' for a blueberry",
-                                          :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))
+                                          :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}
+                                         {:name "measure test2 measure", :model "measure"}]))
                            ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
                            reverse
                            cleaned-results)
@@ -615,7 +618,8 @@
               (is (= (->> (default-results-with-collection)
                           (concat (map #(merge default-search-row % (table-search-results))
                                        [{:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
-                                         :creator_id true :creator_common_name "Rasta Toucan"}]))
+                                         :creator_id true :creator_common_name "Rasta Toucan"}
+                                        {:name "measure test2 measure" :model "measure"}]))
                           (map #(cond-> %
                                   (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                   (assoc :can_write false)))
