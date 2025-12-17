@@ -58,6 +58,16 @@
                [[(:database target) (:schema target) (:name target)] id]))
         transforms))
 
+(defn- resolve-dependency
+  "Resolve a single dependency to a transform id, or nil if not resolvable.
+  Used to map table/transform/table-ref dependencies to actual transform ids."
+  [{:keys [table transform table-ref]} output-tables transform-ids target-refs]
+  (or (output-tables table)
+      (transform-ids transform)
+      (when table-ref
+        (let [{:keys [database_id schema table]} table-ref]
+          (target-refs [database_id schema table])))))
+
 (defn transform-ordering
   "Computes an 'ordering' of a given list of transforms.
 
@@ -83,12 +93,7 @@
                                               :dependencies  (dependency-map db-transforms)})))
                                     (apply merge-with merge))]
     (update-vals dependencies #(into #{}
-                                     (keep (fn [{:keys [table transform table-ref]}]
-                                             (or (output-tables table)
-                                                 (transform-ids transform)
-                                                 (when table-ref
-                                                   (let [{:keys [database_id schema table]} table-ref]
-                                                     (target-refs [database_id schema table]))))))
+                                     (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs)))
                                      %))))
 
 (defn find-cycle
@@ -140,12 +145,7 @@
         transform-ids    (into #{} (map :id) db-transforms)
         target-refs      (target-ref-map transforms)
         node->children   #(->> % transforms-by-id transforms.i/table-dependencies
-                               (keep (fn [{:keys [table transform table-ref]}]
-                                       (or (output-tables table)
-                                           (transform-ids transform)
-                                           (when table-ref
-                                             (let [{:keys [database_id schema table]} table-ref]
-                                               (target-refs [database_id schema table])))))))
+                               (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]
     (when cycle

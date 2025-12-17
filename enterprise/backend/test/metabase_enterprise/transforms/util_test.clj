@@ -155,7 +155,7 @@
           (is (= (:id t1) (get-in result ["t" :table_id])))))
 
       (testing "throws for non-existent integer table ID"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Table not found for id"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
                               (transforms.util/normalize-source-tables {"t" 999999}))))
 
       (testing "populates table_id for existing table"

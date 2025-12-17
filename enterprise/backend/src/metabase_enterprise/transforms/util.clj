@@ -474,15 +474,19 @@
                                                {:database_id db_id :schema schema :table name})
                                              [:model/Table :id :db_id :schema :name]
                                              :id [:in int-table-ids]))
+        missing-ids      (when (seq int-table-ids)
+                           (remove int-id->metadata int-table-ids))
         refs-needing-id  (filter #(and (map? %) (nil? (:table_id %))) (vals source-tables))
         ref-lookup       (or (batch-lookup-table-ids refs-needing-id) {})]
+    (when (seq missing-ids)
+      (throw (ex-info (str "Tables not found for ids: " (str/join ", " (sort missing-ids)))
+                      {:table_ids (vec missing-ids)})))
     (update-vals source-tables
                  (fn [v]
-                   (if (int? v)
-                     (if-let [metadata (int-id->metadata v)]
-                       (assoc metadata :table_id v)
-                       (throw (ex-info (str "Table not found for id: " v) {:table_id v})))
-                     (assoc v :table_id (or (:table_id v) (ref-lookup (source-table-ref->key v)))))))))
+                   (cond
+                     (int? v)     (assoc (int-id->metadata v) :table_id v)
+                     (:table_id v) v
+                     :else        (assoc v :table_id (ref-lookup (source-table-ref->key v))))))))
 
 (defn resolve-source-tables
   "Resolve source-tables to {alias -> table_id}. Throws if any table not found.
