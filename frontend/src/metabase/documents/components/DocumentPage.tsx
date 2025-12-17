@@ -489,18 +489,6 @@ export const DocumentPage = ({
             </Box>
           )}
 
-        {isHistorySidebarOpen && documentData && (
-          <Box
-            className={styles.sidebar}
-            data-testid="document-history-sidebar"
-          >
-            <DocumentRevisionHistorySidebar
-              document={documentData}
-              onClose={() => dispatch(setIsHistorySidebarOpen(false))}
-            />
-          </Box>
-        )}
-
         {collectionPickerMode && (
           <CollectionPickerModal
             title={t`Where should we save this document?`}
@@ -545,6 +533,14 @@ export const DocumentPage = ({
           onClose={() => forceUpdate()}
         />
       </Box>
+      {isHistorySidebarOpen && documentData && (
+        <Box className={styles.sidebar} data-testid="document-history-sidebar">
+          <DocumentRevisionHistorySidebar
+            document={documentData}
+            onClose={() => dispatch(setIsHistorySidebarOpen(false))}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

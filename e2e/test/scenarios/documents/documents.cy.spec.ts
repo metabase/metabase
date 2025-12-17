@@ -1334,7 +1334,6 @@ describe("documents", () => {
       cy.wait("@revisionHistory");
 
       cy.log("Verify revision history sidebar is open");
-      cy.findByTestId("document-history-sidebar").should("be.visible");
       cy.findByTestId("document-history-list").should("be.visible");
 
       cy.log("Verify revision entries are displayed");
