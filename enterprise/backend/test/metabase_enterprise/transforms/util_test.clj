@@ -144,11 +144,19 @@
           (is (= {} result)))))))
 
 (deftest normalize-source-tables-test
-  (testing "normalize-source-tables populates table_id on map entries"
+  (testing "normalize-source-tables converts all entries to map format"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "existing_table" :schema nil}]
-      (testing "passes through integer entries unchanged"
-        (is (= {"t" 123} (transforms.util/normalize-source-tables {"t" 123}))))
+      (testing "converts integer table ID to map format"
+        (let [result (transforms.util/normalize-source-tables {"t" (:id t1)})]
+          (is (map? (get result "t")))
+          (is (= (:id db) (get-in result ["t" :database_id])))
+          (is (= "existing_table" (get-in result ["t" :table])))
+          (is (= (:id t1) (get-in result ["t" :table_id])))))
+
+      (testing "throws for non-existent integer table ID"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Table not found for id"
+                              (transforms.util/normalize-source-tables {"t" 999999}))))
 
       (testing "populates table_id for existing table"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table"}}
@@ -160,25 +168,24 @@
               result (transforms.util/normalize-source-tables source-tables)]
           (is (= 999 (get-in result ["t" :table_id])))))
 
-      (testing "leaves table_id nil for non-existent table"
+      (testing "leaves table_id nil for non-existent table ref"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}
               result (transforms.util/normalize-source-tables source-tables)]
           (is (nil? (get-in result ["t" :table_id])))))
 
       (testing "handles mixed int and map entries"
-        (let [source-tables {"t1" 123
+        (let [source-tables {"t1" (:id t1)
                              "t2" {:database_id (:id db) :schema nil :table "existing_table"}}
               result (transforms.util/normalize-source-tables source-tables)]
-          (is (= 123 (get result "t1")))
+          (is (map? (get result "t1")))
+          (is (= (:id t1) (get-in result ["t1" :table_id])))
           (is (= (:id t1) (get-in result ["t2" :table_id]))))))))
 
 (deftest resolve-source-tables-test
-  (testing "resolve-source-tables returns {alias -> table_id} map"
+  (testing "resolve-source-tables returns {alias -> table_id} map (expects normalized input)"
     (mt/with-temp [:model/Database db {}
-                   :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}]
-      (testing "passes through integer entries"
-        (is (= {"t" 123} (transforms.util/resolve-source-tables {"t" 123}))))
-
+                   :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
+                   :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
       (testing "resolves map with table_id"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}}]
           (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
@@ -189,16 +196,16 @@
 
       (testing "throws for non-existent table"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Table not found: nonexistent"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
                                 (transforms.util/resolve-source-tables source-tables)))))
 
       (testing "throws with schema in error message"
         (let [source-tables {"t" {:database_id (:id db) :schema "my_schema" :table "nonexistent"}}]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Table not found: my_schema\.nonexistent"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
                                 (transforms.util/resolve-source-tables source-tables)))))
 
-      (testing "handles mixed entries"
-        (let [source-tables {"t1" 999
-                             "t2" {:database_id (:id db) :schema nil :table "table_one"}}]
-          (is (= {"t1" 999 "t2" (:id t1)}
+      (testing "handles multiple map entries"
+        (let [source-tables {"t1" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}
+                             "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
+          (is (= {"t1" (:id t1) "t2" (:id t2)}
                  (transforms.util/resolve-source-tables source-tables))))))))
