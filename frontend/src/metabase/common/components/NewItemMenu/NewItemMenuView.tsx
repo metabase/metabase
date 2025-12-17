@@ -44,6 +44,7 @@ const NewItemMenuView = ({
     const items = [];
 
     if (hasDataAccess) {
+      // TODO: move to enterprise / conditional add if metabot is enabled
       items.push(
         <Menu.Item
           key="question"
@@ -53,9 +54,9 @@ const NewItemMenuView = ({
             collectionId, // TODO: make this do something...
             cardType: "question",
           })}
-          leftSection={<Icon name="insight" />}
+          leftSection={<Icon name="metabot" />}
         >
-          {t`Question`}
+          {t`Natural language query`}
         </Menu.Item>,
       );
 
@@ -69,9 +70,9 @@ const NewItemMenuView = ({
             collectionId,
             cardType: "question",
           })}
-          leftSection={<Icon name="notebook" />}
+          leftSection={<Icon name="insight" />}
         >
-          {t`Notebook`}
+          {t`Question`}
         </Menu.Item>,
       );
     }
