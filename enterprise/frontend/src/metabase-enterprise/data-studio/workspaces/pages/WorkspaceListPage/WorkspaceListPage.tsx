@@ -17,11 +17,10 @@ export function WorkspaceListPage() {
     isFetching,
   } = useGetWorkspacesQuery();
 
-  // const workspaces = useMemo(
-  //   () => workspacesData?.items ?? [],
-  //   [workspacesData],
-  // );
-  const workspaces = [];
+  const workspaces = useMemo(
+    () => workspacesData?.items ?? [],
+    [workspacesData],
+  );
 
   const firstWorkspaceId = workspaces[0]?.id;
 
