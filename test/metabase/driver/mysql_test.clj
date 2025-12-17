@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -163,6 +164,36 @@
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                  (db->fields db))))))))
+
+(deftest tinyint-1-model-filter-test
+  (mt/test-driver :mysql
+    (mt/dataset tiny-int-ones
+      ;; trigger a full sync on this database so fields are categorized correctly
+      (sync/sync-database! (mt/db))
+      (testing "Can filter on TINYINT(1) boolean columns in models (metabase#65826)"
+        (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id (mt/db)) :name "number-of-cans")
+              ;; Create a model from the table
+              model    (mt/with-temp [:model/Card card {:name          "Test Model"
+                                                         :database_id   (u/the-id (mt/db))
+                                                         :dataset       true
+                                                         :table_id      table-id
+                                                         :dataset_query {:database (u/the-id (mt/db))
+                                                                         :type     :query
+                                                                         :query    {:source-table table-id}}}]
+                         card)
+              model-metadata (lib.metadata/card (mt/id) (:id model))
+              boolean-col    (m/find-first #(= (:name %) "number-of-cans")
+                                           (:fields model-metadata))]
+          (testing "Model has boolean metadata"
+            (is (= :type/Boolean (:base_type boolean-col))))
+
+          (testing "Can query model with boolean filter"
+            (let [query (lib/query model-metadata model-metadata)
+                  ;; Filter where number-of-cans = true (1)
+                  query (lib/filter query (lib/= boolean-col true))]
+              (is (= [[1 "Six Pack" true]
+                      [2 "Toucan" true]]
+                     (mt/rows (qp/process-query query)))))))))))
 
 (tx/defdataset year-db
   [["years"
