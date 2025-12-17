@@ -118,7 +118,7 @@ jobs:
       documentation-validation: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
       component-tests: ${{ needs.files-changed.outputs.embedding_sdk_components == 'true' }}
       host-sample-apps-tests: ${{ needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true' }}
-      skip: ${{ needs.embedding-sdk-package.result != 'success' || needs.uberjar.result != 'success' }}
+      skip: ${{ needs.embedding-sdk-package.result != 'success' }}
 
   pr-env:
     needs: [uberjar]
