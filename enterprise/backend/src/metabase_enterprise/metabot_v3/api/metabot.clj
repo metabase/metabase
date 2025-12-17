@@ -48,8 +48,7 @@
                        [:collection_id {:optional true} [:maybe pos-int?]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
-  (let [old-metabot (t2/select-one :model/Metabot :id id)
-        metabot-field-updates (dissoc metabot-updates :use_cases)]
+  (let [old-metabot (t2/select-one :model/Metabot :id id)]
     ;; Prevent enabling verified content without the premium feature
     (when (:use_verified_content metabot-updates)
       (premium-features/assert-has-feature :content-verification (tru "Content verification")))
