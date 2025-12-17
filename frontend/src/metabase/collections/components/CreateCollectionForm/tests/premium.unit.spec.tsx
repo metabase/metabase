@@ -27,4 +27,11 @@ describe("CreateCollectionForm", () => {
     setupPremium({ user: createMockUser({ is_superuser: false }) });
     expect(screen.queryByText("Collection type")).not.toBeInTheDocument();
   });
+
+  it("does not show authority level controls when showAuthorityLevelPicker is false", () => {
+    setupPremium({ showAuthorityLevelPicker: false });
+    expect(screen.queryByText("Collection type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Regular")).not.toBeInTheDocument();
+    expect(screen.queryByText("Official")).not.toBeInTheDocument();
+  });
 });

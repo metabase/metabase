@@ -231,7 +231,7 @@
   - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
     Uses collection/visible-collection-filter-clause for collection filtering and adds archived entity filtering.
     Native query snippets have additional restrictions for sandboxed users.
-  - Table: Uses mi/visible-filter-clause with appropriate permissions and filters by active/visibility_type.
+  - Table: Uses perms/visible-table-filter-select with appropriate permissions and filters by active/visibility_type.
     Follows search API conventions: active=true AND visibility_type=nil for non-archived tables.
     Note: archived_at is not checked separately as archived tables always have active=false."
   ([entity-type-field entity-id-field]
@@ -282,13 +282,13 @@
                         [:in entity-id-field {:select [:id]
                                               :from [table-name]
                                               :where [:and
-                                                      (mi/visible-filter-clause
-                                                       model
-                                                       id-column
-                                                       {:user-id       api/*current-user-id*
-                                                        :is-superuser? api/*is-superuser?*}
-                                                       {:perms/view-data      :unrestricted
-                                                        :perms/create-queries :query-builder})
+                                                      [:in id-column
+                                                       (perms/visible-table-filter-select
+                                                        :id
+                                                        {:user-id api/*current-user-id*
+                                                         :is-superuser? api/*is-superuser?*}
+                                                        {:perms/view-data :unrestricted
+                                                         :perms/create-queries :query-builder})]
                                                       (case include-archived-items
                                                         :exclude     [:and
                                                                       [:= active-column true]
@@ -308,13 +308,16 @@
                                                       [:in table-id-column
                                                        {:select [:metabase_table.id]
                                                         :from [:metabase_table]
-                                                        :where (mi/visible-filter-clause
-                                                                :model/Table
-                                                                :metabase_table.id
-                                                                {:user-id api/*current-user-id*
-                                                                 :is-superuser? api/*is-superuser?*}
-                                                                {:perms/view-data :unrestricted
-                                                                 :perms/create-queries :query-builder})}]
+                                                        ;; using this clause because we had to change the mi/visible-filter-clause
+                                                        ;; to allow returning CTE based filters
+                                                        ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
+                                                        :where [:in :metabase_table.id
+                                                                (perms/visible-table-filter-select
+                                                                 :id
+                                                                 {:user-id api/*current-user-id*
+                                                                  :is-superuser? api/*is-superuser?*}
+                                                                 {:perms/view-data :unrestricted
+                                                                  :perms/create-queries :query-builder})]}]
                                                       ;; Filter by archived status
                                                       (case include-archived-items
                                                         :exclude [:= archived-column false]
