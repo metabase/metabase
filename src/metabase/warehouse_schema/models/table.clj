@@ -153,8 +153,7 @@
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping]
-  [:in column-or-exp
-   (perms/visible-table-filter-select :id user-info permission-mapping)])
+  (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
