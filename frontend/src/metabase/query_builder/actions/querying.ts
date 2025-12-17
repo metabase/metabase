@@ -16,7 +16,6 @@ import type { Dispatch, GetState } from "metabase-types/store";
 import {
   getAllNativeEditorSelectedText,
   getCard,
-  getCurrentQuestion,
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
@@ -128,7 +127,7 @@ export const runQuestionQuery = ({
 
     const question = overrideWithQuestion
       ? overrideWithQuestion
-      : getCurrentQuestion(getState());
+      : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
     if (!question) {
@@ -278,9 +277,9 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
 export const runOrCancelQuestionOrSelectedQuery =
   () => (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
-    const currentQuestion = getCurrentQuestion(state);
+    const question = getQuestion(state);
 
-    if (!currentQuestion) {
+    if (!question) {
       return;
     }
 
@@ -290,14 +289,14 @@ export const runOrCancelQuestionOrSelectedQuery =
       return;
     }
 
-    const query = currentQuestion.query();
+    const query = question.query();
     const queryInfo = Lib.queryDisplayInfo(query);
     const selectedText = getAllNativeEditorSelectedText(getState());
     if (queryInfo.isNative && selectedText) {
       const selectedQuery = Lib.withNativeQuery(query, selectedText);
       dispatch(
         runQuestionQuery({
-          overrideWithQuestion: currentQuestion.setQuery(selectedQuery),
+          overrideWithQuestion: question.setQuery(selectedQuery),
           shouldUpdateUrl: false,
         }),
       );

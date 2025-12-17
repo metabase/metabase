@@ -309,32 +309,6 @@ export const getQuestion = createSelector(
   },
 );
 
-// TODO: make this a plugin / ee only
-export const getProposedQuestion = createSelector(
-  [
-    getQuestion,
-    (state) =>
-      state.plugins.metabotPlugin.reactions.suggestedCodeEdits?.qb?.value ?? "",
-  ],
-  (question, suggestedSQL) => {
-    if (!question || !suggestedSQL) {
-      return;
-    }
-
-    // TODO: do validation:
-    // - both question and suggestedCodeEdit are for SQL
-    // - that the database is the same
-    return question.setQuery(
-      Lib.withNativeQuery(question.query(), suggestedSQL),
-    );
-  },
-);
-
-export const getCurrentQuestion = createSelector(
-  [getQuestion, getProposedQuestion],
-  (question, proposedQuestion) => proposedQuestion ?? question,
-);
-
 export const getTableId = createSelector([getQuestion], (question) => {
   if (!question) {
     return;
@@ -498,7 +472,7 @@ export function areQueriesEquivalent({
 
 export const getIsResultDirty = createSelector(
   [
-    getCurrentQuestion,
+    getQuestion,
     getOriginalQuestion,
     getLastRunQuestion,
     getLastRunParameterValues,
@@ -607,7 +581,7 @@ export const getIsSavedQuestionChanged = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-  [getCurrentQuestion, getIsDirty],
+  [getQuestion, getIsDirty],
   isQuestionRunnable,
 );
 
