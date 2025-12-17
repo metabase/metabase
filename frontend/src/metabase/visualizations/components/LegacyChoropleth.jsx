@@ -6,7 +6,7 @@ import { Component } from "react";
 import CS from "metabase/css/core/index.css";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-const LegacyChoropleth = ({
+export const LegacyChoropleth = ({
   series,
   geoJson,
   projection,
