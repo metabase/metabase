@@ -23,6 +23,7 @@ import { slugify } from "metabase/lib/formatting/url";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
+import { TransformCollectionPicker } from "metabase-enterprise/transforms/components/TransformCollectionPicker";
 import type {
   CreateTransformRequest,
   Transform,
@@ -39,6 +40,7 @@ function getValidationSchema() {
     name: Yup.string().required(Errors.required),
     targetName: Yup.string().required(Errors.required),
     targetSchema: Yup.string().nullable().defined(),
+    collection_id: Yup.number().nullable().defined(),
     incremental: Yup.boolean().required(),
     // For native queries, use checkpointFilter (plain string)
     checkpointFilter: Yup.string().nullable(),
@@ -165,6 +167,7 @@ function CreateTransformForm({
             />
           )}
           <TargetNameInput />
+          <TransformCollectionPicker name="collection_id" />
           <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>
@@ -186,6 +189,7 @@ function getInitialValues(
   return {
     name: "",
     targetSchema: schemas?.[0] || null,
+    collection_id: null,
     ...defaultValues,
     targetName: defaultValues.targetName
       ? defaultValues.targetName
@@ -206,6 +210,7 @@ function getCreateRequest(
     name,
     targetName,
     targetSchema,
+    collection_id,
     incremental,
     checkpointFilter,
     checkpointFilterUniqueKey,
@@ -258,5 +263,6 @@ function getCreateRequest(
     name,
     source: transformSource,
     target: transformTarget,
+    collection_id: collection_id ?? null,
   };
 }
