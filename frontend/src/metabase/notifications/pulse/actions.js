@@ -2,7 +2,7 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import Pulses from "metabase/entities/pulses";
+import { Pulses } from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
   createChannel,
