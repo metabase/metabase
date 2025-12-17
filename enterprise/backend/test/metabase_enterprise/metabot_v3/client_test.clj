@@ -111,7 +111,11 @@
                       "Exception data should not contain :headers in response"))))))))))
 
 (deftest example-generation-payload-unknown-field-types-test
-  (let [mp (mt/metadata-provider)]
+  (let [mp (mt/metadata-provider)
+        metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id
+                                                              :entity-id])]
+    ;; Ensure internal metabot is set to the root collection for generating prompts
+    (t2/update! :model/Metabot {:collection_id nil} :entity_id metabot-eid)
     (mt/with-temp [:model/Card c {:type :metric
                                   :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                      (lib/aggregate
@@ -133,9 +137,7 @@
                  (with-redefs [metabot-v3.client/post! (constantly {:status 200
                                                                     :body {:table_questions []
                                                                            :metric_questions []}})]
-                   (let [metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id
-                                                                               :entity-id])
-                         metabot-id (t2/select-one-fn :id :model/Metabot :entity_id metabot-eid)]
+                   (let [metabot-id (t2/select-one-fn :id :model/Metabot :entity_id metabot-eid)]
                      (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
                      :not-thrown))
                  (catch Exception e
