@@ -134,7 +134,8 @@
                                                                      api/*current-user-id*)
                                                                 :no :none
                                                                 :ten-thousand-rows :limited
-                                                                :one-million-rows :full))) cards))))
+                                                                :one-million-rows :full
+                                                                :full :full))) cards))))
      (t2/hydrate pulses :can_write))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
