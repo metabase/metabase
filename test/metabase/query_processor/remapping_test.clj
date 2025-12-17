@@ -592,7 +592,7 @@
                                                     :name            "ORDERS"
                                                     :database-id     (mt/id)
                                                     :dataset-query   query
-                                                    :type :model}]})]
-        (let [q2 (-> (lib/query mp (lib.metadata/card mp 1))
-                     (lib/limit 1))]
-          (is (seq (mt/rows (qp/process-query q2)))))))))
+                                                    :type :model}]})
+            q2 (-> (lib/query mp (lib.metadata/card mp 1))
+                   (lib/limit 1))]
+        (is (seq (mt/rows (qp/process-query q2))))))))
