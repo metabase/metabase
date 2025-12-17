@@ -6,9 +6,9 @@ import {
   type CollectionPickerItem,
   CollectionPickerModal,
 } from "metabase/common/components/Pickers/CollectionPicker";
-import type { Transform } from "metabase-types/api";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import { TRANSFORM_COLLECTION_PICKER_OPTIONS } from "metabase-enterprise/transforms/components/TransformCollectionPicker";
+import type { Transform } from "metabase-types/api";
 
 type MoveTransformModalProps = {
   transform: Transform;
