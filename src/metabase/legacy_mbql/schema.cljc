@@ -61,7 +61,7 @@
   [:fn
    {:error/message "Valid MBQL clause"
     :decode/normalize normalize-mbql-clause}
-   helpers/mbql-clause?])
+   helpers/normalized-mbql-clause?])
 
 (mr/def ::options-style
   "For convenience of converting back and forth between MBQL 5, from now on we can record info about the options style
@@ -315,7 +315,7 @@
    [:fn
     {:error/message    ":expression should not have empty opts"
      :decode/normalize (fn [x]
-                         (when (helpers/mbql-clause? x)
+                         (when (helpers/possibly-unnormalized-mbql-clause? x)
                            (if (and (= (count x) 3)
                                     (empty? (last x)))
                              (pop (vec x)) ; remove nil/empty options maps.
@@ -357,8 +357,8 @@
 
 (defn- normalize-field [x]
   (case (cond
-          (pos-int? x)             ::raw-int
-          (helpers/mbql-clause? x) (helpers/actual-clause-tag x))
+          (pos-int? x)                                   ::raw-int
+          (helpers/possibly-unnormalized-mbql-clause? x) (helpers/actual-clause-tag x))
     ::raw-int         [:field x nil]
     :field-id         (let [[_tag id] x]
                         ;; sometimes the old FE code was dumb and passed in `:field-literal` wrapped inside` `:field-id`
@@ -442,7 +442,7 @@
    [:fn
     {:error/message    ":aggregation should not have empty opts"
      :decode/normalize (fn [x]
-                         (when (helpers/mbql-clause? x)
+                         (when (helpers/possibly-unnormalized-mbql-clause? x)
                            (if (and (= (count x) 3)
                                     (empty? (last x)))
                              (pop (vec x)) ; remove nil/empty options maps.
@@ -629,7 +629,7 @@
   replacement :string)
 
 (defclause text
-  x :any)
+  x [:ref ::ExpressionArg])
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
 ;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
@@ -1300,9 +1300,9 @@
   "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
   a single aggregation clause.
 
-  (This is mostly copied from [[metabase.lib.schema.aggregation/aggregation-expression?]]"
+  (This is mostly copied from [[metabase.lib.schema.aggregation/aggregation-expression?]])"
   [x]
-  (when (vector? x)
+  (when (helpers/normalized-mbql-clause? x)
     (when-let [[tag & args] x]
       (or (lib.hierarchy/isa? tag ::lib.schema.aggregation/aggregation-clause-tag)
           ;; Case has the following shape [:case [[cond expr]...] default-expr?]
@@ -1330,6 +1330,7 @@
 
 (defclause* aggregation-options
   [:and
+   ;; this schema normalizes the MBQL 3 (?) `:named` clause to `:aggregation-options`
    [:schema
     {:decode/normalize (fn [x]
                          ;; [:named <subclase> <name>] was the MBQL 3 (?) version of `:aggregation-options`
@@ -1341,6 +1342,7 @@
                              [:aggregation-options subclause {(if use-as-display-name? :display-name :name) display-name}])
                            x))}
     :any]
+   ;; this schema is the schema for `:aggregation-options` itself
    (helpers/clause
     :aggregation-options
     "aggregation" [:ref ::UnnamedAggregation]
@@ -1590,7 +1592,7 @@
 
   Field filters and raw values usually have their value specified by `:parameters`."
   [:multi
-   {:dispatch (comp keyword :type)}
+   {:dispatch (comp keyword (some-fn :type #(get % "type")))}
    [:dimension     [:ref ::TemplateTag.FieldFilter]]
    [:snippet       [:ref ::TemplateTag.Snippet]]
    [:card          [:ref ::TemplateTag.SourceQuery]]
@@ -2012,7 +2014,7 @@
      :type     "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
 
 (mr/def ::WidgetType
-  "Schema for valid values of `:widget-type` for a [[::TemplateTag.FieldFilter]]."
+  "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`."
   [:ref :metabase.lib.schema.parameter/widget-type])
 
 ;; this is the reference like [:template-tag <whatever>], not the [[TemplateTag]] schema for when it's declared in

@@ -4,8 +4,8 @@ import { t } from "ttag";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import CS from "metabase/css/core/index.css";
-import Database from "metabase/entities/databases";
-import Schemas from "metabase/entities/schemas";
+import { Databases } from "metabase/entities/databases";
+import { Schemas } from "metabase/entities/schemas";
 import * as Urls from "metabase/lib/urls";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -49,7 +49,7 @@ const BrowseSchemasContainer = ({
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
-                    { title: <Database.Name id={dbId} /> },
+                    { title: <Databases.Name id={dbId} /> },
                   ]}
                 />
               </BrowseHeaderContent>

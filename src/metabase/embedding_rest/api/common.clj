@@ -27,6 +27,17 @@
 
 (set! *warn-on-reflection* true)
 
+(def EncodedToken
+  "Malli schema for a JWT token"
+  [:string {:api/regex #"[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+=]*"}])
+
+(def SearchParams
+  "Malli schema for route params of search paths"
+  [:map
+   [:token EncodedToken]
+   [:param-key ms/NonBlankString]
+   [:prefix ms/NonBlankString]])
+
 (comment
   ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
   ;; the benefit of tests

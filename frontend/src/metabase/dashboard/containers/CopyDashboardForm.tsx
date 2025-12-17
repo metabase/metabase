@@ -8,7 +8,7 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import Button from "metabase/common/components/Button";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import {
   Form,
   FormCheckbox,

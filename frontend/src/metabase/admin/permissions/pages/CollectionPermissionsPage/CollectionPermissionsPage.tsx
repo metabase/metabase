@@ -5,8 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
-import Collections from "metabase/entities/collections";
-import Groups from "metabase/entities/groups";
+import { Collections } from "metabase/entities/collections";
+import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/lib/redux";
 import type {
   Collection,
