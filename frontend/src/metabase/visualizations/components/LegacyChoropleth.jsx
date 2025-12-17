@@ -94,5 +94,3 @@ class ShouldUpdate extends Component {
     }
   }
 }
-
-export default LegacyChoropleth;

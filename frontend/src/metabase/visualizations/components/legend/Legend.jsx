@@ -31,7 +31,7 @@ const propTypes = {
   isReversed: PropTypes.bool,
 };
 
-const Legend = ({
+export const Legend = ({
   className,
   items: originalItems,
   hovered,
@@ -110,5 +110,3 @@ const Legend = ({
 };
 
 Legend.propTypes = propTypes;
-
-export default Legend;

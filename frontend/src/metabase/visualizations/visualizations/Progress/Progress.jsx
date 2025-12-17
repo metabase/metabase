@@ -31,7 +31,7 @@ const MAX_BAR_HEIGHT = 65;
 const MIN_BAR_HEIGHT = 30;
 const COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT = 99;
 
-export default class Progress extends Component {
+export class Progress extends Component {
   constructor(props) {
     super(props);
 

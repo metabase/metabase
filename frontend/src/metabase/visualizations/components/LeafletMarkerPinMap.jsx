@@ -6,7 +6,7 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 
 import LeafletMap from "./LeafletMap";
 
-export default class LeafletMarkerPinMap extends LeafletMap {
+export class LeafletMarkerPinMap extends LeafletMap {
   componentDidMount() {
     super.componentDidMount();
 

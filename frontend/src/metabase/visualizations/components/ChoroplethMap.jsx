@@ -439,4 +439,4 @@ class ChoroplethMapInner extends Component {
   }
 }
 
-export default connector(ChoroplethMapInner);
+export const ChoroplethMap = connector(ChoroplethMapInner);

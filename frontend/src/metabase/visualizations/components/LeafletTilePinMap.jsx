@@ -9,7 +9,7 @@ import { getTileUrl } from "../lib/map";
 
 import LeafletMap from "./LeafletMap";
 
-export default class LeafletTilePinMap extends LeafletMap {
+export class LeafletTilePinMap extends LeafletMap {
   static contextType = EmbeddingEntityContext;
 
   componentDidMount() {
