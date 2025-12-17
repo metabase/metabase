@@ -126,7 +126,8 @@
     :archived_at false
     :deactivated_at false
     :updated_at  true
-    :owner_user_id false}))
+    :owner_user_id false
+    :workspace_id false}))
 
 (defn- field-defaults []
   (merge
@@ -142,7 +143,8 @@
     :position            0
     :json_unfolding      false
     :table_id            true
-    :updated_at          true}))
+    :updated_at          true
+    :workspace_id        false}))
 
 (defn- field-defaults-with-fingerprint []
   (assoc (field-defaults)
