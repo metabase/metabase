@@ -281,7 +281,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("the internal prefix should show up on the page");
       H.main()
-        .findAllByText("Internal Users")
+        .findAllByText("Internal users")
         .should("have.length", 2)
         .should("be.visible");
 
