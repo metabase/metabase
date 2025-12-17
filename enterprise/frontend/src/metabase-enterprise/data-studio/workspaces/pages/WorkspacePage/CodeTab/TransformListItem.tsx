@@ -1,6 +1,14 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Box, type BoxProps, Icon, type IconName, Text } from "metabase/ui";
+import {
+  Box,
+  type BoxProps,
+  Icon,
+  type IconName,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 
 import { StatusDot } from "../components/StatusDot/StatusDot";
 
@@ -11,6 +19,7 @@ type TransformListItemProps = {
   icon?: IconName;
   isActive?: boolean;
   isEdited?: boolean;
+  tooltipLabel?: string;
   menu?: ReactNode;
   onClick?: () => void;
 } & BoxProps;
@@ -20,17 +29,30 @@ export const TransformListItem = ({
   icon = "database",
   isActive,
   isEdited,
+  tooltipLabel,
   menu,
   onClick,
   ...props
 }: TransformListItemProps) => {
-  return (
-    <Box className={S.root} onClick={onClick} {...props}>
+  const label = (
+    <Box className={cx(S.label, { [S.cursorPointer]: !tooltipLabel })}>
       <Icon name={icon} size={14} c="brand" />
-      <Text className={S.name} c={isActive ? "brand" : "text-dark"} truncate>
+      <Text c={isActive ? "brand" : "text-dark"} truncate>
         {name}
       </Text>
       {isEdited && <StatusDot status="changed" />}
+    </Box>
+  );
+
+  return (
+    <Box className={S.root} onClick={onClick} pl="sm" {...props}>
+      {tooltipLabel ? (
+        <Tooltip label={tooltipLabel} position="top">
+          {label}
+        </Tooltip>
+      ) : (
+        label
+      )}
 
       <Box className={S.menu} flex="0 0 auto">
         {menu}

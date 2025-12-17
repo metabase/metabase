@@ -1875,6 +1875,9 @@ databaseChangeLog:
             dbms: mysql,mariadb
             failOnError: false
             sql: ALTER TABLE collection DROP FOREIGN KEY fk_collection_workspace_id
+        - sql:
+            dbms: h2
+            sql: ALTER TABLE COLLECTION DROP CONSTRAINT FK_COLLECTION_WORKSPACE_ID
         - dropIndex:
             tableName: collection
             indexName: idx_collection_workspace_id

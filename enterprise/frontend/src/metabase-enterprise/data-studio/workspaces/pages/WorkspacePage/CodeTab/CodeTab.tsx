@@ -59,10 +59,15 @@ export const CodeTab = ({
 
   const handleExternalTransformClick = useCallback(
     async (externalTransform: ExternalTransform) => {
+      if (externalTransform.checkout_disabled) {
+        return;
+      }
+
       const { data: transform } = await fetchTransform(
         externalTransform.id,
         true,
       );
+
       if (transform) {
         handleTransformClick(transform);
       }
@@ -134,17 +139,30 @@ export const CodeTab = ({
 
       <Stack data-testid="mainland-transforms" py="sm" gap="xs">
         <Text fw={600} mt="sm">{t`Available transforms`}</Text>
-        {availableTransforms.map((transform) => (
-          <TransformListItem
-            key={transform.id}
-            name={transform.name}
-            isActive={activeTransformId === transform.id}
-            isEdited={editedTransforms.has(transform.id)}
-            onClick={() => {
-              handleExternalTransformClick(transform);
-            }}
-          />
-        ))}
+        {availableTransforms.map((transform) => {
+          const tooltipLabel =
+            transform.checkout_disabled === "mbql"
+              ? t`This transform cannot be edited in a workspace because it uses MBQL.`
+              : transform.checkout_disabled === "card-reference"
+                ? t`This transform cannot be edited in a workspace because it references other questions.`
+                : transform.checkout_disabled
+                  ? t`This transform cannot be edited in a workspace.`
+                  : undefined;
+
+          return (
+            <TransformListItem
+              key={transform.id}
+              name={transform.name}
+              isActive={activeTransformId === transform.id}
+              isEdited={editedTransforms.has(transform.id)}
+              onClick={() => {
+                handleExternalTransformClick(transform);
+              }}
+              opacity={transform.checkout_disabled ? 0.5 : 1}
+              tooltipLabel={tooltipLabel}
+            />
+          );
+        })}
         {availableTransforms.length === 0 && (
           <EmptyState message={t`No available transforms`} />
         )}

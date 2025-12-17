@@ -42,7 +42,8 @@
   "Create a BigQuery client from database details."
   ^BigQuery [details]
   (let [creds (.createScoped (service-account-credentials details)
-                             ["https://www.googleapis.com/auth/bigquery"])]
+                             (doto (java.util.ArrayList.)
+                               (.add "https://www.googleapis.com/auth/bigquery")))]
     (-> (BigQueryOptions/newBuilder)
         ^BigQueryOptions$Builder (.setCredentials creds)
         ^BigQueryOptions (.build)
@@ -52,7 +53,8 @@
   "Create an IAM Admin client from database details."
   ^IAMClient [details]
   (let [creds (.createScoped (service-account-credentials details)
-                             ["https://www.googleapis.com/auth/cloud-platform"])]
+                             (doto (java.util.ArrayList.)
+                               (.add "https://www.googleapis.com/auth/cloud-platform")))]
     (IAMClient/create
      (-> (IAMSettings/newBuilder)
          (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
@@ -144,7 +146,8 @@
   [details ^String project-id ^String service-account-email ^String role]
   (log/infof "Granting project role %s to %s" role service-account-email)
   (let [creds          (.createScoped (service-account-credentials details)
-                                      ["https://www.googleapis.com/auth/cloud-platform"])
+                                      (doto (java.util.ArrayList.)
+                                        (.add "https://www.googleapis.com/auth/cloud-platform")))
         settings       (-> (ProjectsSettings/newBuilder)
                            (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
                                                       (getCredentials [_] creds)))
@@ -184,7 +187,8 @@
                                              interval-ms  1000}}]
   (log/info "Waiting for IAM impersonation to be ready...")
   (let [base-creds  (.createScoped (service-account-credentials details)
-                                   ["https://www.googleapis.com/auth/bigquery"])
+                                   (doto (java.util.ArrayList.)
+                                     (.add "https://www.googleapis.com/auth/bigquery")))
         project-id  (get-project-id details)]
     (loop [attempt 1]
       (log/debugf "Checking impersonation readiness (attempt %d/%d)" attempt max-attempts)
@@ -194,7 +198,8 @@
                                          base-creds
                                          target-sa-email
                                          nil  ;; delegates
-                                         (java.util.ArrayList. ["https://www.googleapis.com/auth/bigquery"])
+                                         (doto (java.util.ArrayList.)
+                                           (.add "https://www.googleapis.com/auth/bigquery"))
                                          3600)
                            client       (-> (BigQueryOptions/newBuilder)
                                             ^BigQueryOptions$Builder (.setCredentials impersonated)
