@@ -65,9 +65,11 @@
   (testing "GET /api/ee/transform-job/:id/transforms"
     (mt/with-premium-features #{:transforms}
       (let [crowberto-id (mt/user->id :crowberto)]
-        (mt/with-temp [:model/Transform {transform1-id :id} {:name "tr1" :creator_id crowberto-id}
-                       :model/Transform {transform2-id :id} {:name "tr2" :creator_id crowberto-id}
-                       :model/Transform _transform3 {}
+        (mt/with-temp [:model/Transform {transform1-id :id} {:name "tr1" :creator_id crowberto-id
+                                                             :target {:database (mt/id)}}
+                       :model/Transform {transform2-id :id} {:name "tr2" :creator_id crowberto-id
+                                                             :target {:database (mt/id)}}
+                       :model/Transform _transform3 {:target {:database (mt/id)}}
                        :model/TransformTag {tag-id :id} {}
                        :model/TransformTransformTag _ {:transform_id transform1-id :tag_id tag-id :position 0}
                        :model/TransformTransformTag _ {:transform_id transform2-id :tag_id tag-id :position 0}
