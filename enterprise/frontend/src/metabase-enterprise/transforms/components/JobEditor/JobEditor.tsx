@@ -52,12 +52,10 @@ export function JobEditor({
         py={0}
         breadcrumbs={
           <DataStudioBreadcrumbs>
-            {[
-              <Link key="transform-job-list" to={Urls.transformJobList()}>
-                {t`Jobs`}
-              </Link>,
-              job.name,
-            ]}
+            <Link key="transform-job-list" to={Urls.transformJobList()}>
+              {t`Jobs`}
+            </Link>
+            {job.name}
           </DataStudioBreadcrumbs>
         }
         menu={menu}
