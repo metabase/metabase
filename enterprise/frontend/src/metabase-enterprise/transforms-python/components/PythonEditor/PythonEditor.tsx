@@ -1,6 +1,7 @@
 import cx from "classnames";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { Card } from "metabase/ui";
 
 import S from "./PythonEditor.module.css";
 import { completion } from "./utils";
@@ -23,15 +24,17 @@ export function PythonEditor({
   readOnly?: boolean;
 }) {
   return (
-    <CodeEditor
-      className={cx(S.editor, className)}
-      value={value}
-      proposedValue={proposedValue}
-      onChange={onChange}
-      language="python"
-      extensions={withPandasCompletions ? completion : undefined}
-      readOnly={readOnly}
-      {...rest}
-    />
+    <Card withBorder p={0}>
+      <CodeEditor
+        className={cx(S.editor, className)}
+        value={value}
+        proposedValue={proposedValue}
+        onChange={onChange}
+        language="python"
+        extensions={withPandasCompletions ? completion : undefined}
+        readOnly={readOnly}
+        {...rest}
+      />
+    </Card>
   );
 }

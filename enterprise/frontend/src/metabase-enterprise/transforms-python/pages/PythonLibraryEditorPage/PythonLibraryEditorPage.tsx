@@ -7,11 +7,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 
 import { PythonEditor } from "../../components/PythonEditor";
 
@@ -89,7 +90,7 @@ export function PythonLibraryEditorPage({
 
   return (
     <>
-      <Flex h="100%" w="100%" gap={0} direction="column">
+      <PageContainer>
         <PythonLibraryEditorHeader
           onSave={handleSave}
           onRevert={handleRevert}
@@ -103,7 +104,7 @@ export function PythonLibraryEditorPage({
           className={S.editor}
           data-testid="python-editor"
         />
-      </Flex>
+      </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
     </>
   );
