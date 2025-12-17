@@ -287,9 +287,7 @@ describe("Tenants - management", () => {
     });
 
     cy.findByRole("navigation", { name: "people-nav" })
-      .findAllByRole("link", { name: /Groups/ })
-      .should("have.length", 2)
-      .first()
+      .findByRole("link", { name: /Internal groups/ })
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
