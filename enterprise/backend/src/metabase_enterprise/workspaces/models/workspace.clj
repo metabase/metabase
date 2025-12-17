@@ -80,8 +80,6 @@
   "Delete a workspace. Destroys database isolation resources and deletes the workspace."
   [workspace]
   (let [database (t2/select-one :model/Database (:database_id workspace))]
-    ;; (Ngoc - 2025-12-17) not sure if this is necessary here because you have to archive in order to delete, thus isolation has been
-    ;; dropped already
     (ws.isolation/destroy-workspace-isolation! database workspace)
     (t2/update! :model/WorkspaceInput {:workspace_id (:id workspace)}
                 {:access_granted false})

@@ -58,6 +58,9 @@
        (map first)
        (apply str)))
 
+;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
+;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
+;; will have namespaces created with the current prefix.
 (def ^:private isolated-prefix "mb__isolation")
 
 (defn isolation-namespace-name
