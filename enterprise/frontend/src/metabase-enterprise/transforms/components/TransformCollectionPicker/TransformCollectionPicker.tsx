@@ -41,9 +41,7 @@ export function TransformCollectionPicker({
     collectionId ? { id: collectionId, namespace: "transforms" } : skipToken,
   );
 
-  const displayName = collectionId
-    ? (collection?.name ?? "")
-    : t`Transforms`;
+  const displayName = collectionId ? (collection?.name ?? "") : t`Transforms`;
 
   const handleChange = useCallback(
     ({ id }: CollectionPickerItem) => {
