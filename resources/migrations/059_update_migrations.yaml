@@ -86,6 +86,22 @@ databaseChangeLog:
   - changeSet:
       id: v59.2025-12-04T12:00:01
       author: metabase
+      comment: Add index on measure.table_id
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_table_id
+            columns:
+              - column:
+                  name: table_id
+      rollback:
+        - dropIndex:
+            tableName: measure
+            indexName: idx_measure_table_id
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:02
+      author: metabase
       comment: Add foreign key from measure to metabase_table
       changes:
         - addForeignKeyConstraint:
@@ -101,7 +117,23 @@ databaseChangeLog:
             constraintName: fk_measure_ref_table_id
 
   - changeSet:
-      id: v59.2025-12-04T12:00:02
+      id: v59.2025-12-04T12:00:03
+      author: metabase
+      comment: Add index on measure.creator_id
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback:
+        - dropIndex:
+            tableName: measure
+            indexName: idx_measure_creator_id
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:04
       author: metabase
       comment: Add foreign key from measure to core_user
       changes:
@@ -116,35 +148,3 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: measure
             constraintName: fk_measure_ref_creator_id
-
-  - changeSet:
-      id: v59.2025-12-04T12:00:03
-      author: metabase
-      comment: Add index on measure.table_id
-      changes:
-        - createIndex:
-            tableName: measure
-            indexName: idx_measure_table_id
-            columns:
-              - column:
-                  name: table_id
-      rollback:
-        - dropIndex:
-            tableName: measure
-            indexName: idx_measure_table_id
-
-  - changeSet:
-      id: v59.2025-12-04T12:00:04
-      author: metabase
-      comment: Add index on measure.creator_id
-      changes:
-        - createIndex:
-            tableName: measure
-            indexName: idx_measure_creator_id
-            columns:
-              - column:
-                  name: creator_id
-      rollback:
-        - dropIndex:
-            tableName: measure
-            indexName: idx_measure_creator_id
