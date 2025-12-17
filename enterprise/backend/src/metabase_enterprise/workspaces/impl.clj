@@ -124,6 +124,9 @@
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
   [{ws-id :id :as workspace} & {:keys [stale-only?]}]
+  ;; 1. Depending on what we end up storing in this field, we might not be considering stale ancestors.
+  ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
+  ;; Why is there all this weird code then? To avoid unused references.
   (let [stale-clause (if stale-only? {:where [:= :stale true]} {})
         entities     (:entities (get-or-calculate-graph workspace))
         type->ids    (u/group-by :node-type :id entities)
