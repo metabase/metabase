@@ -12,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
@@ -361,9 +362,16 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (t2/select-one :model/Table :id id))
-        database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
+  (let [table    (t2/select-one :model/Table :id id)
+        database (warehouses/get-database (:db_id table))]
     (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})
+    (api/check-403
+     (perms/user-has-permission-for-table?
+      api/*current-user-id*
+      :perms/manage-table-metadata
+      :yes
+      (:id database)
+      id))
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try
