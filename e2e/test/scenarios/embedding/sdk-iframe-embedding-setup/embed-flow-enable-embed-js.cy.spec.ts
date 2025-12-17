@@ -12,14 +12,14 @@ const DATA_BY_MB_EDITION = {
   oss: {
     cardTestId: "guest-embeds-setting-card",
     cardText:
-      "To continue, enable Guest embeds and agree to the usage conditions.",
+      "To continue, enable guest embeds and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-static",
     showTermsSettingName: "show-static-embed-terms",
   },
   ee: {
     cardTestId: "sdk-setting-card",
     cardText:
-      "To continue, enable Embedded Analytics JS and agree to the usage conditions.",
+      "To continue, enable modular embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-simple",
     showTermsSettingName: "show-simple-embed-terms",
   },
@@ -60,7 +60,9 @@ describe(
       });
 
       cy.log("shows tooltip with fair usage info");
-      getEmbedSidebar().findByLabelText("info icon").trigger("mouseover");
+      embedModalEnableEmbeddingCard()
+        .findByLabelText("info icon")
+        .trigger("mouseover");
 
       H.hovercard()
         .contains(
@@ -68,7 +70,9 @@ describe(
         )
         .should("be.visible");
 
-      getEmbedSidebar().findByLabelText("info icon").trigger("mouseout");
+      embedModalEnableEmbeddingCard()
+        .findByLabelText("info icon")
+        .trigger("mouseout");
 
       cy.findByRole("button", { name: "Agree and enable" }).should(
         "be.visible",

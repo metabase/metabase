@@ -7,7 +7,6 @@ import {
   type TablePickerFolderItem,
   type TablePickerItem,
   isTablePickerFolder,
-  isTablePickerItem,
 } from "../TablePicker";
 
 import type {
@@ -34,10 +33,7 @@ export const isTablePickerFolderOrQuestionPickerFolder = (
   item: QuestionPickerItem | TablePickerItem,
   models: QuestionPickerModel[],
 ): item is TablePickerFolderItem | QuestionPickerItem => {
-  if (isTablePickerItem(item)) {
-    return isTablePickerFolder(item);
-  }
-  return isFolder(item, models);
+  return isTablePickerFolder(item) || isFolder(item, models);
 };
 
 export const getQuestionPickerValue = ({

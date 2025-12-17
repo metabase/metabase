@@ -9,36 +9,41 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Flex, Icon, Popover } from "metabase/ui";
-import type { Group, Member } from "metabase-types/api";
+import type { GroupInfo, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";
 
 import S from "./MembershipSelect.module.css";
 
-const getGroupSections = (groups: Omit<Group, "members">[]) => {
-  const defaultGroup = groups.find(isDefaultGroup);
+const getGroupSections = (groups: GroupInfo[], groupsTitle = t`Groups`) => {
+  const defaultGroup = groups.find(
+    (g) => isDefaultGroup(g) || PLUGIN_TENANTS.isExternalUsersGroup(g),
+  );
   const adminGroup = groups.find(isAdminGroup);
   const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
   const regularGroups = groups.filter(
-    (group) => !isAdminGroup(group) && !isDefaultGroup(group),
+    (group) =>
+      !isAdminGroup(group) &&
+      !isDefaultGroup(group) &&
+      !PLUGIN_TENANTS.isExternalUsersGroup(group),
   );
 
   if (pinnedGroups.length > 0) {
     return [
       { groups: pinnedGroups },
-      { groups: regularGroups, header: t`Groups` },
+      { groups: regularGroups, header: groupsTitle },
     ];
   }
 
   return [{ groups: regularGroups }];
 };
 
-type Memberships = Map<Group["id"], Partial<Member>>;
+type Memberships = Map<GroupInfo["id"], Partial<Member>>;
 
 interface MembershipSelectProps {
-  groups: Omit<Group, "members">[];
+  groups: GroupInfo[];
   memberships: Memberships;
   isCurrentUser?: boolean;
   isUserAdmin: boolean;
@@ -47,6 +52,7 @@ interface MembershipSelectProps {
   onRemove: (groupId: number) => void;
   onChange: (groupId: number, membershipData: Partial<Member>) => void;
   isConfirmModalOpen?: boolean;
+  groupsTitle?: string;
 }
 
 export const MembershipSelect = ({
@@ -58,12 +64,13 @@ export const MembershipSelect = ({
   isCurrentUser = false,
   isUserAdmin = false,
   emptyListMessage = t`No groups`,
+  groupsTitle = t`Groups`,
   isConfirmModalOpen,
 }: MembershipSelectProps) => {
   const [popoverOpened, { open: openPopover, toggle: togglePopover }] =
     useDisclosure();
   const selectedGroupIds = Array.from(memberships.keys());
-  const groupSections = getGroupSections(groups);
+  const groupSections = getGroupSections(groups, groupsTitle);
 
   const handleToggleMembership = (groupId: number) => {
     if (memberships.has(groupId)) {
@@ -119,12 +126,14 @@ export const MembershipSelect = ({
                 {section.groups.map((group) => {
                   const isDisabled =
                     (isAdminGroup(group) && isCurrentUser) ||
-                    isDefaultGroup(group);
+                    isDefaultGroup(group) ||
+                    PLUGIN_TENANTS.isExternalUsersGroup(group);
                   const isMember = memberships.has(group.id);
                   const canEditMembershipType =
                     isMember &&
                     !isUserAdmin &&
                     !isDisabled &&
+                    !PLUGIN_TENANTS.isTenantGroup(group) &&
                     !isAdminGroup(group);
 
                   return (

@@ -317,3 +317,110 @@
   (testing "Remove deprecated keys like :model/inner_ident automatically (GIT-8399)"
     (is (= {:base_type :type/*, :name "X", :display_name "X"}
            (lib/normalize ::mbql.s/legacy-column-metadata {:name "X", :model/inner_ident "wow"})))))
+
+(deftest ^:parallel normalize-aggregation-inside-non-aggregation-function-test
+  (is (= [:concat "$" [:round [:sum [:field "cost_per_customer" {:base-type :type/Decimal}]]]]
+         (lib/normalize
+          ::mbql.s/Aggregation
+          ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]])))
+  (is (= [:aggregation-options
+          [:concat "$" [:round [:sum [:field "cost_per_customer" {:base-type :type/Decimal}]]]]
+          {:name "Sum", :display-name "Sum"}]
+         (lib/normalize
+          ::mbql.s/Aggregation
+          ["aggregation-options"
+           ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]]
+           {"name" "Sum", "display-name" "Sum"}]))))
+
+(deftest ^:parallel normalize-widget-type-test
+  (is (= :category
+         (lib/normalize ::mbql.s/WidgetType "category/=")))
+  (is (= {:widget-type  :category
+          :id           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
+          :name         "device_category"
+          :display-name "Device category"
+          :type         :dimension
+          :dimension    [:field 298221 nil]
+          :default      nil}
+         (lib/normalize
+          ::mbql.s/TemplateTag
+          {"id"           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
+           "name"         "device_category"
+           "display-name" "Device category"
+           "type"         "dimension"
+           "dimension"    ["field" 298221 nil]
+           "widget-type"  "category/="
+           "default"      nil}))))
+
+(deftest ^:parallel normalize-text-clause-test
+  (is (= [:text
+          [:floor
+           [:/ [:avg [:field 11476 {:base-type :type/Integer}]] 60]]]
+         (lib/normalize ::mbql.s/ExpressionArg ["text" ["floor" ["/" ["avg" ["field" 11476 {"base-type" "type/Integer"}]] 60]]]))))
+
+(deftest ^:parallel normalize-hairball-aggregation-expression-test
+  (let [expr ["aggregation-options"
+              ["concat"
+               ["text" ["floor" ["/" ["avg" ["field" 11476 {"base-type" "type/Integer"}]] 60]]]
+               ":"
+               ["substring"
+                ["concat"
+                 "0"
+                 ["text"
+                  ["floor"
+                   ["-"
+                    ["avg" ["field" 11476 {"base-type" "type/Integer"}]]
+                    ["*" ["floor" ["/" ["avg" ["field" 11476 {"base-type" "type/Integer"}]] 60]] 60]]]]]
+                ["-"
+                 ["+"
+                  1
+                  ["length"
+                   ["concat"
+                    "0"
+                    ["text"
+                     ["floor"
+                      ["-"
+                       ["avg" ["field" 11476 {"base-type" "type/Integer"}]]
+                       ["*" ["floor" ["/" ["avg" ["field" 11476 {"base-type" "type/Integer"}]] 60]] 60]]]]]]]
+                 2]
+                2]]
+              {"name" "Min+sec", "display-name" "Min+sec"}]
+        normalized (lib/normalize ::mbql.s/Aggregation expr)]
+    (is (= [:aggregation-options
+            [:concat
+             [:text
+              [:floor
+               [:/ [:avg [:field 11476 {:base-type :type/Integer}]] 60]]]
+             ":"
+             [:substring
+              [:concat
+               "0"
+               [:text
+                [:floor
+                 [:-
+                  [:avg [:field 11476 {:base-type :type/Integer}]]
+                  [:*
+                   [:floor
+                    [:/ [:avg [:field 11476 {:base-type :type/Integer}]] 60]]
+                   60]]]]]
+              [:-
+               [:+
+                1
+                [:length
+                 [:concat
+                  "0"
+                  [:text
+                   [:floor
+                    [:-
+                     [:avg [:field 11476 {:base-type :type/Integer}]]
+                     [:*
+                      [:floor
+                       [:/
+                        [:avg [:field 11476 {:base-type :type/Integer}]]
+                        60]]
+                      60]]]]]]]
+               2]
+              2]]
+            {:name "Min+sec", :display-name "Min+sec"}]
+           normalized))
+    (is (mr/validate ::mbql.s/Aggregation normalized))))

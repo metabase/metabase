@@ -274,8 +274,7 @@
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping]
-  [:in column-or-exp
-   (perms/visible-table-filter-select :id user-info permission-mapping)])
+  (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -424,36 +423,6 @@
   [tables]
   (with-fields tables))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :published_as_model]
-  [_model k tables]
-  (mi/instances-with-hydrated-data
-   tables k
-   (fn []
-     (let [table-ids          (map :id tables)
-           published-as-model (t2/select-fn-set :published_table_id [:model/Card :published_table_id]
-                                                :published_table_id [:in table-ids]
-                                                :type               :model
-                                                :archived           false
-                                                :archived_directly  false)]
-       (u/index-by identity #(contains? published-as-model %) table-ids)))
-   :id
-   {:default nil}))
-
-(methodical/defmethod t2/batched-hydrate [:model/Table :published_models]
-  [_model k tables]
-  (mi/instances-with-hydrated-data
-   tables k
-   (fn []
-     (let [table-ids (map :id tables)
-           models    (t2/select :model/Card
-                                :published_table_id [:in table-ids]
-                                :type               :model
-                                :archived           false
-                                :archived_directly  false)]
-       (group-by :published_table_id models)))
-   :id
-   {:default nil}))
-
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
 (defn database
@@ -462,8 +431,9 @@
   (t2/select-one :model/Database :id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/dependencies "Table" [table]
-  [[{:model "Database" :id (:db_id table)}]])
+(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id]}]
+  (cond-> [[{:model "Database" :id db_id}]]
+    collection_id (conj [{:model "Collection" :id collection_id}])))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
@@ -488,13 +458,14 @@
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :owner_user_id]
+               :data_source :owner_email :owner_user_id :is_published]
    :skip      [:estimated_row_count :view_count]
-   :transform {:created_at (serdes/date)
-               :archived_at (serdes/date)
+   :transform {:created_at     (serdes/date)
+               :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
-               :data_layer  (serdes/optional-kw)
-               :db_id      (serdes/fk :model/Database :name)}})
+               :data_layer     (serdes/optional-kw)
+               :db_id          (serdes/fk :model/Database :name)
+               :collection_id  (serdes/fk :model/Collection)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))
@@ -507,24 +478,36 @@
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived      false
-                  :collection-id false
+                  ;; For published tables with no collection, we want to show "root" as the collection id
+                  :collection-id true
                   :creator-id    false
                   :database-id   :db_id
                   :view-count    true
                   :created-at    true
-                  :updated-at    true}
+                  :updated-at    true
+                  :is-published  :is_published}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
-   :render-terms {:initial-sync-status true
-                  :table-id            :id
-                  :table-description   :description
-                  :table-name          :name
-                  :table-schema        :schema
-                  :database-name       :db.name}
+   :render-terms {:initial-sync-status        true
+                  :table-id                   :id
+                  :table-description          :description
+                  :table-name                 :name
+                  :table-schema               :schema
+                  :database-name              :db.name
+                  :collection-authority_level :collection.authority_level
+                  :collection-location        :collection.location
+                  ;; For published tables with no collection, show "Our analytics" as the collection name
+                  :collection-name            [:coalesce :collection.name
+                                               [:case
+                                                [:and :this.is_published
+                                                 [:= :this.collection_id nil]] [:inline "Our analytics"]
+                                                :else nil]]
+                  :collection-type            :collection.type}
    :where        [:and
                   :active
                   [:= :visibility_type nil]
                   [:= :db.router_database_id nil]
                   [:not= :db_id [:inline audit/audit-db-id]]]
-   :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})
+   :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
+                  :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -11,6 +11,8 @@ import { useUpdateSettingsMutation } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { SdkIframeStepHeader } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepHeader";
+import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { useDispatch } from "metabase/lib/redux";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal } from "metabase/redux/ui";
@@ -28,7 +30,6 @@ import {
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-import { useSdkIframeEmbedNavigation } from "../hooks";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
@@ -44,11 +45,20 @@ export const SdkIframeEmbedSetupContent = () => {
     isGuestEmbedsEnabled,
     isGuestEmbedsTermsAccepted,
     currentStep,
+    handleNext,
+    handleBack,
+    canGoBack,
+    isLoading,
+    experience,
+    resource,
     settings,
   } = useSdkIframeEmbedSetupContext();
 
-  const { handleNext, handleBack, canGoBack, StepContent } =
-    useSdkIframeEmbedNavigation();
+  const StepContent = useMemo(
+    () =>
+      EMBED_STEPS.find((step) => step.id === currentStep)?.component ?? noop,
+    [currentStep],
+  );
 
   function handleEmbedDone() {
     // Embedding Hub: track step completion
@@ -65,10 +75,19 @@ export const SdkIframeEmbedSetupContent = () => {
     ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
     : isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted;
 
+  const isQuestionOrDashboard = isQuestionOrDashboardSettings(
+    experience,
+    settings,
+  );
+
+  const isMissingResource =
+    isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
+
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
       <Button
         variant="filled"
+        disabled={resource?.enable_embedding === false}
         onClick={handleEmbedDone}
         leftSection={<Icon name="check_filled" />}
       >
@@ -102,11 +121,12 @@ export const SdkIframeEmbedSetupContent = () => {
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
           <Stack className={S.SidebarContent} gap="md">
-            <Stack gap="md">
+            <Stack gap="md" flex={1}>
               <SdkIframeStepHeader />
 
               <Stack
                 gap="md"
+                flex={1}
                 opacity={allowPreviewAndNavigation ? 1 : 0.5}
                 className={cx(
                   !allowPreviewAndNavigation && CS.pointerEventsNone,
@@ -118,15 +138,17 @@ export const SdkIframeEmbedSetupContent = () => {
           </Stack>
 
           <Group className={S.Navigation} justify="space-between">
-            <Button
-              variant="default"
-              onClick={handleBack}
-              disabled={!canGoBack || !allowPreviewAndNavigation}
-            >
-              {t`Back`}
-            </Button>
+            {canGoBack && (
+              <Button
+                variant="default"
+                onClick={handleBack}
+                disabled={!allowPreviewAndNavigation}
+              >
+                {t`Back`}
+              </Button>
+            )}
 
-            {nextStepButton}
+            <Box ml="auto">{nextStepButton}</Box>
           </Group>
         </Box>
       </SidebarResizer>
@@ -137,7 +159,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
           <SdkIframeGuestEmbedStatusBar />
 
-          {allowPreviewAndNavigation ? (
+          {allowPreviewAndNavigation && !isMissingResource ? (
             <SdkIframeEmbedPreview />
           ) : (
             <Card h="100%">
@@ -192,3 +214,5 @@ export const SdkIframeEmbedSetupModal = ({
     </Modal.Content>
   </Modal>
 );
+
+const noop = () => null;

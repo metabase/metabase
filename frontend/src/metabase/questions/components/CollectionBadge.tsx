@@ -1,8 +1,9 @@
 import type { ComponentType, PropsWithChildren } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { getIcon } from "metabase/lib/icon";
+import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   CollectionId,
@@ -43,7 +44,9 @@ const CollectionBadgeInner = ({
     ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
 
-  const clickActionProps = onClick ? { onClick } : { to: collection.getUrl() };
+  const clickActionProps = onClick
+    ? { onClick }
+    : { to: modelToUrl({ model: "collection", ...collection }) };
   return (
     <Badge
       className={className}

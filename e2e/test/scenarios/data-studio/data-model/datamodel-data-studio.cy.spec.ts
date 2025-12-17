@@ -545,7 +545,8 @@ describe("scenarios > data studio > datamodel", () => {
       it("should indicate published tables", () => {
         getTableId({ databaseId: WRITABLE_DB_ID, name: domesticAnimalsTable })
           .then((tableId) => {
-            return publishTables([tableId]);
+            H.createLibrary();
+            publishTables([tableId]);
           })
           .as("publishedTableId");
 
@@ -579,6 +580,12 @@ describe("scenarios > data studio > datamodel", () => {
         }).as("silverTableId");
 
         H.DataModel.visitDataStudio();
+
+        openFilterPopover();
+
+        cy.log("Filter popover should close on click outside");
+        H.DataModel.TablePicker.getSearchInput().click();
+        H.DataModel.TablePicker.getFilterForm().should("not.exist");
 
         openFilterPopover();
         selectFilterOption("Visibility type", "Gold");
@@ -925,6 +932,10 @@ describe("scenarios > data studio > datamodel", () => {
       TablePicker.getTables().should("have.length", 8);
 
       TableSection.clickField("ID");
+
+      // Sometimes in CI this doesn't happen
+      FieldSection.get().scrollIntoView();
+
       FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "BIGINT");
@@ -1959,6 +1970,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.wait(["@metadata", "@metadata"]);
 
           FieldSection.getSemanticTypeFkTarget()
+            .scrollIntoView() //This should not be necessary, but CI consistently fails to scroll into view on mount
             .should("be.visible")
             .and("have.value", "Products → ID");
         });
@@ -4012,9 +4024,8 @@ function updateTableAttributes({
 }
 
 function publishTables(tableIds: TableId[]) {
-  return cy.request("POST", "/api/ee/data-studio/table/publish-model", {
+  return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
     table_ids: tableIds,
-    target_collection_id: null,
   });
 }
 

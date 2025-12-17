@@ -18,7 +18,6 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls/collections";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
@@ -62,7 +61,7 @@ type ListParams = {
 /**
  * @deprecated use "metabase/api" instead
  */
-const Collections = createEntity({
+export const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
   schema: CollectionSchema,
@@ -141,7 +140,6 @@ const Collections = createEntity({
 
   objectSelectors: {
     getName: (collection?: Collection) => collection?.name,
-    getUrl: (collection?: Collection) => Urls.collection(collection),
   },
 
   selectors: {
@@ -191,6 +189,3 @@ function useListQuery(
 }
 
 export { getExpandedCollectionsById, useListQuery };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Collections;

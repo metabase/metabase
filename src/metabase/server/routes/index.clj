@@ -102,8 +102,9 @@
      :embedCode              (when embeddable? (embed/head uri))
      :enableGoogleAuth       (boolean google-auth-client-id)
      :enableAnonTracking     (boolean anon-tracking-enabled)
-     ;; (metabase#65533) color-scheme meta tag breaks EAJS because it has a transparent background.
-     :hasColorSchemeMetaTag  (not= entrypoint-name "embed-sdk")}))
+     ;; (metabase#65533) color-scheme meta tag breaks Modular embedding because it has a transparent background.
+     ;; (metabase#66585) Also omit for static/public embedding to preserve legacy behavior for transparent iframes.
+     :hasColorSchemeMetaTag  (not (contains? #{"embed-sdk" "embed" "public"} entrypoint-name))}))
 
 (defn- load-entrypoint-template [entrypoint-name embeddable? opts]
   (load-template

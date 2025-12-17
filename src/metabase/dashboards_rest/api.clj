@@ -1129,11 +1129,16 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
-  {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
-             (u/prog1 (str (random-uuid))
-               (t2/update! :model/Dashboard dashboard-id
-                           {:public_uuid       <>
-                            :made_public_by_id api/*current-user-id*})))})
+  (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
+        uuid (or existing-public-uuid
+                 (u/prog1 (str (random-uuid))
+                   (events/publish-event! :event/dashboard-public-link-created
+                                          {:object-id dashboard-id
+                                           :user-id api/*current-user-id*})
+                   (t2/update! :model/Dashboard dashboard-id
+                               {:public_uuid       <>
+                                :made_public_by_id api/*current-user-id*})))]
+    {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -1152,6 +1157,9 @@
   (t2/update! :model/Dashboard dashboard-id
               {:public_uuid       nil
                :made_public_by_id nil})
+  (events/publish-event! :event/dashboard-public-link-deleted
+                         {:object-id dashboard-id
+                          :user-id api/*current-user-id*})
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1212,7 +1220,8 @@
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [{:keys [id param-key]}      :- [:map
-                                   [:id ms/PositiveInt]]
+                                   [:id ms/PositiveInt]
+                                   [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
   (lib-be/with-metadata-provider-cache
     (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
@@ -1235,6 +1244,7 @@
   Currently limited to first 1000 results."
   [{:keys [id param-key query]} :- [:map
                                     [:id    ms/PositiveInt]
+                                    [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
    constraint-param-key->value  :- [:map-of string? any?]]
   (lib-be/with-metadata-provider-cache
@@ -1255,7 +1265,7 @@
     GET /api/dashboard/1/params/abc/remapping?value=100"
   [{:keys [id param-key]} :- [:map
                               [:id ms/PositiveInt]
-                              [:param-key :string]]
+                              [:param-key ms/NonBlankString]]
    {:keys [value]}        :- [:map [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]

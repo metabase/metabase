@@ -26,7 +26,10 @@
              :archived                false}
             (into {} (-> (revision/serialize-instance :model/Segment (:id segment) segment)
                          (update :id boolean)
-                         (update :table_id boolean)))))))
+                         (update :table_id boolean)))))
+    (testing "excluded columns are not present"
+      (is (not-any? #{:created_at :updated_at :dependency_analysis_version}
+                    (keys (revision/serialize-instance :model/Segment (:id segment) segment)))))))
 
 (deftest ^:parallel diff-segments-test
   (mt/with-temp [:model/Database {database-id :id} {}

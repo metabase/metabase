@@ -19,4 +19,5 @@ prompts:
     model: Metabot
   - id: SNoFh7dZXzjvgeNp5aJJY
     model: MetabotPrompt
+use_cases: []
 use_verified_content: false

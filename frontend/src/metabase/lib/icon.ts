@@ -16,8 +16,10 @@ import type { ColorName } from "./colors/types";
 export type IconModel =
   | SearchModel
   | CollectionItemModel
+  | "model"
   | "schema"
   | "timeline"
+  | "question"
   | "transform"
   | "user";
 
@@ -41,11 +43,13 @@ export const modelIconMap: Record<IconModel, IconName> = {
   database: "database",
   table: "table",
   dataset: "model",
-  schema: "folder",
+  schema: "folder_database",
   action: "bolt",
   "indexed-entity": "index",
   dashboard: "dashboard",
-  card: "table",
+  question: "table2",
+  model: "model",
+  card: "table2",
   segment: "segment",
   metric: "metric",
   snippet: "unknown",
@@ -84,8 +88,8 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     ) {
       case "root":
         return { name: "repository" };
-      case "models":
-        return { name: "model" };
+      case "data":
+        return { name: "table" };
       case "metrics":
         return { name: "metric" };
     }

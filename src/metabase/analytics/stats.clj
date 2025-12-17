@@ -13,7 +13,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
-   [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
@@ -130,7 +129,7 @@
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
    :email_configured                     (setting/get :email-configured?)
-   :slack_configured                     (slack/slack-configured?)
+   :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
@@ -173,6 +172,13 @@
                                :admin     (:is_superuser user)
                                :logged_in (:last_login   user)
                                :sso       (= :google (:sso_source user))}))})
+
+(defn- document-metrics
+  "Get metrics based on documents."
+  []
+  {:documents (merge-count-maps (for [document (t2/select [:model/Document :archived])]
+                                  {:total 1
+                                   :archived (true? (:archived document))}))})
 
 (defn- group-metrics
   "Get metrics based on groups:
@@ -490,7 +496,8 @@
                       :segment    (segment-metrics)
                       :system     (system-metrics)
                       :table      (table-metrics)
-                      :user       (user-metrics)}}))
+                      :user       (user-metrics)
+                      :document   (document-metrics)}}))
 
 (defn- ^:deprecated send-stats-deprecated!
   "Send stats to Metabase tracking server."
@@ -767,7 +774,7 @@
     :enabled   (setting/get :email-configured?)}
    {:name      :slack
     :available true
-    :enabled   (slack/slack-configured?)}
+    :enabled   (setting/get :slack-configured?)}
    {:name      :sso-google
     :available true
     :enabled   (setting/get :google-auth-configured)}
@@ -829,9 +836,6 @@
     :enabled   (if (premium-features/enable-database-routing?)
                  (t2/exists? :model/DatabaseRouter)
                  false)}
-   {:name      :documents
-    :available (premium-features/enable-documents?)
-    :enabled   (premium-features/enable-documents?)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
@@ -877,6 +881,9 @@
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
+   {:name      :tenants
+    :enabled   (setting/get :use-tenants)
+    :available (premium-features/enable-tenants?)}
    {:name      :starburst-legacy-impersonation
     :available true
     :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")

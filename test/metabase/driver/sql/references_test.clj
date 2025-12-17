@@ -784,6 +784,22 @@ SELECT * FROM active_users"))))
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM products"))))
 
+(deftest ^:parallel dependent-cte-test
+  (is (= {:used-fields
+          #{{:column "id",
+             :alias nil,
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}},
+          :returned-fields
+          [{:column "id",
+            :alias nil,
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}]}
+         (->references "
+WITH orders_a AS (select * from orders),
+orders_b AS (select * from orders_a)
+SELECT id from orders_b"))))
+
 (deftest ^:parallel shadowed-cte-test
   (is (= {:used-fields
           #{{:column "y",
@@ -1433,11 +1449,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:alias "is_active_accounts_starter",
              :type :custom-field,
              :used-fields
@@ -1513,11 +1527,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:alias "is_trialing_accounts_cloud",
              :type :custom-field,
              :used-fields
@@ -1539,11 +1551,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:column "deployment",
              :alias nil,
              :type :single-column,
@@ -1646,11 +1656,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:column "customer_name",
              :alias nil,
              :type :single-column,
@@ -1672,11 +1680,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:column "is_active",
              :alias nil,
              :type :single-column,
@@ -1704,11 +1710,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:alias "is_paid_accounts_cloud",
              :type :custom-field,
              :used-fields
@@ -1730,11 +1734,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:alias "is_paid_accounts_starter",
              :type :custom-field,
              :used-fields
@@ -1762,15 +1764,12 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
-            {:column "month",
-             :alias nil,
-             :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
+            {:alias "month",
+             :type :custom-field,
+             :used-fields #{}}
             {:column "valid_to",
              :alias nil,
              :type :single-column,
@@ -1858,10 +1857,9 @@ ORDER BY
             :source-columns
             [[{:type :all-columns,
                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-           {:column "month",
-            :alias nil,
-            :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}
+           {:alias "month",
+            :type :custom-field,
+            :used-fields #{}}
            {:alias "is_trialing",
             :type :custom-field,
             :used-fields
@@ -1877,10 +1875,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_trialing_accounts_cloud",
             :type :custom-field,
             :used-fields
@@ -1902,10 +1899,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_cloud",
             :type :custom-field,
             :used-fields
@@ -1942,10 +1938,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_trialing_accounts_self_hosted",
             :type :custom-field,
             :used-fields
@@ -1967,10 +1962,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_self_hosted",
             :type :custom-field,
             :used-fields
@@ -2007,10 +2001,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_enterprise",
             :type :custom-field,
             :used-fields
@@ -2059,10 +2052,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_starter",
             :type :custom-field,
             :used-fields
@@ -2111,10 +2103,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_pro",
             :type :custom-field,
             :used-fields
@@ -2163,11 +2154,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}]}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}]}
          (->references "with months as (
   select
     generate_series(date_trunc('month', '2024-01-01'::date),

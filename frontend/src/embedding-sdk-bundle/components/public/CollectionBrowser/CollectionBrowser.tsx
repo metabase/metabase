@@ -36,6 +36,7 @@ type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 export type CollectionBrowserListColumns =
   | "type"
   | "name"
+  | "description"
   | "lastEditedBy"
   | "lastEditedAt"
   | "archive";
@@ -64,7 +65,7 @@ const ENTITY_NAME_MAP: Partial<
  */
 export type CollectionBrowserProps = {
   /**
-   * The numerical ID of the collection, "personal" for the user's personal collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Defaults to "personal"
+   * The numerical ID of the collection, "personal" for the user's personal collection, "tenant" for the user's tenant collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Defaults to "personal"
    */
   collectionId?: SdkCollectionId;
 

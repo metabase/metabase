@@ -68,7 +68,7 @@ export type SdkIframeEmbedReportAnalytics = {
 // --- Embed Option Interfaces ---
 
 export type DashboardEmbedOptions = StrictUnion<
-  { dashboardId: number | string } | { token: string }
+  { dashboardId: number | string | null } | { token: string }
 > & {
   componentName: "metabase-dashboard";
 
@@ -87,7 +87,7 @@ export type DashboardEmbedOptions = StrictUnion<
 };
 
 export type QuestionEmbedOptions = StrictUnion<
-  { questionId: number | string } | { token: string }
+  { questionId: number | string | null } | { token: string }
 > & {
   componentName: "metabase-question";
 
@@ -189,7 +189,8 @@ export type SdkIframeEmbedBaseSettings = {
   _isLocalhost?: boolean;
 };
 
-export type SdkIframeEmbedGuestEmbedSettings = {
+export type SdkIframeEmbedAuthTypeSettings = {
+  isSso: boolean;
   isGuest: boolean;
 };
 

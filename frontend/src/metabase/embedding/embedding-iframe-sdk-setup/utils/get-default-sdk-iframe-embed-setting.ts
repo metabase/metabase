@@ -9,7 +9,6 @@ import type {
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import type {
   SdkIframeEmbedSetupExperience,
@@ -19,17 +18,21 @@ import type {
 import { getCommonEmbedSettings } from "./get-common-embed-settings";
 
 export const getDefaultSdkIframeEmbedSettings = ({
-  initialState,
   experience,
   resourceId,
   isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
+  isGuest,
+  useExistingUserSession,
 }: {
-  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   experience: SdkIframeEmbedSetupExperience;
-  resourceId: SdkDashboardId | SdkQuestionId;
+  resourceId: SdkDashboardId | SdkQuestionId | null;
   isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
+  isGuest: boolean;
+  useExistingUserSession: boolean;
 }): SdkIframeEmbedSetupSettings => {
   const baseSettingsDefaults: Partial<SdkIframeEmbedBaseSettings> = {
     useExistingUserSession: true,
@@ -90,9 +93,11 @@ export const getDefaultSdkIframeEmbedSettings = ({
     ...baseSettingsDefaults,
     ...experienceSettingsDefaults,
     ...getCommonEmbedSettings({
-      state: initialState,
       experience,
       isGuestEmbedsEnabled,
+      isSsoEnabledAndConfigured,
+      isGuest,
+      useExistingUserSession,
     }),
   };
 };

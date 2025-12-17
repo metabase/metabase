@@ -51,7 +51,8 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "default",
+        event_detail:
+          "authType=guest-embed,experience=dashboard,isDefaultExperience=true",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -81,7 +82,8 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=chart",
+        event_detail:
+          "authType=guest-embed,experience=chart,isDefaultExperience=false",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -94,13 +96,16 @@ describe(suiteTitle, () => {
       visitNewEmbedPage();
 
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
         cy.findByText("Exploration").click();
         cy.findByText("Next").click();
       });
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=exploration",
+        event_detail:
+          "authType=sso,experience=exploration,isDefaultExperience=false",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -115,13 +120,16 @@ describe(suiteTitle, () => {
       visitNewEmbedPage();
 
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
       });
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=browser",
+        event_detail:
+          "authType=sso,experience=browser,isDefaultExperience=false",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -174,7 +182,8 @@ describe(suiteTitle, () => {
 
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_experience_completed",
-          event_detail: "custom=chart",
+          event_detail:
+            "authType=guest-embed,experience=chart,isDefaultExperience=false",
         });
 
         H.waitForSimpleEmbedIframesToLoad();
@@ -205,17 +214,63 @@ describe(suiteTitle, () => {
     cy.findByTestId("preview-loading-indicator").should("not.exist");
   });
 
+  it("should respect slow loading of recent dashboars and wait till loading complete", () => {
+    cy.intercept("GET", "/api/activity/recents*", (req) => {
+      req.on("response", (res) => {
+        res.setThrottle(0.3); // Slow down the response
+      });
+    }).as("getRecents");
+
+    visitNewEmbedPage();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Person overview").should("not.exist");
+      cy.findByText("Orders in a dashboard").should("be.visible");
+    });
+  });
+
+  it("shows no-data block when example-dashboard-id points to an archived dashboard", () => {
+    H.createDashboard({
+      name: "Archived Dashboard",
+    }).then(({ body: { id: dashboardId } }) => {
+      H.archiveDashboard(dashboardId);
+
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["example-dashboard-id"] = dashboardId;
+          res.send();
+        });
+      });
+    });
+
+    cy.intercept("GET", "/api/activity/recents*", {
+      body: [],
+    }).as("emptyRecentItems");
+
+    visitNewEmbedPage({ waitForResource: false });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+    });
+
+    cy.wait("@emptyRecentItems");
+
+    cy.findByAltText("No results").should("be.visible");
+  });
+
   it("shows Metabot experience when selected", () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();
     });
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_experience_completed",
-      event_detail: "custom=metabot",
+      event_detail: "authType=sso,experience=metabot,isDefaultExperience=false",
     });
 
     H.getSimpleEmbedIframeContent().within(() => {

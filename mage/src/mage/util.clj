@@ -1,6 +1,7 @@
 (ns mage.util
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [babashka.tasks :refer [shell]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -194,7 +195,7 @@
     (println "  mage <task-name> -h")
     task+descriptions))
 
-(def ^:dynamic *skip-warning* false)
+(def ^:dynamic *skip-warning* "Skips warnings for can-run?" false)
 
 (defn can-run? [cmd]
   (try (boolean (sh (str "command -v " cmd)))
@@ -261,3 +262,24 @@
   ([message exit-code]
    (println message)
    (throw (ex-info "" {:mage/quiet true :babashka/exit exit-code}))))
+
+(defn git-ignored-files
+  "Returns a set of files that are ignored by git."
+  [files]
+  (println (c/yellow "Checking git ignore status for " (c/white (count files)) " files..."))
+  (let [{:keys [exit]
+         :as proc} (p/sh {:out :string
+                          :err :string
+                          :continue true
+                          :dir project-root-directory
+                          :in (str/join "\n" files)}
+                         "git" "check-ignore" "--stdin")
+        output (:out proc)]
+    (when (= 128 exit)
+      (throw (ex-info "git check-ignore has failed with an exceptional status code: maybe git is not initialized in this directory or no gitignore file found."
+                      {:babashka/exit exit :git-error (:err proc)})))
+    (->> output
+         str/split-lines
+         (remove str/blank?)
+         (map str/trim)
+         set)))
