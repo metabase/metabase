@@ -226,7 +226,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/${id}/external/transform`,
       }),
-      providesTags: (_, __, id) => [idTag("external-transforms", id)],
+      providesTags: (_, __, id) => [
+        listTag("external-transforms"),
+        idTag("external-transforms", id),
+      ],
       transformResponse: (response: ExternalTransformsResponse) =>
         response.transforms,
     }),
