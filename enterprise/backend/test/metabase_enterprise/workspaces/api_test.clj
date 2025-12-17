@@ -459,11 +459,17 @@
             (is (= (:name ws-x-1)
                    (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))
           (testing "merge history was created for single transform merge"
-            (is (=? {:workspace_merge_id nil
-                     :transform_id       (:id x1)
-                     :commit_message     commit-msg}
-                    (t2/select-one :model/WorkspaceMergeTransform
-                                   :workspace_transform_ref_id ws-x-1-id))))))
+            (let [merge-transform (t2/select-one :model/WorkspaceMergeTransform
+                                                 :workspace_transform_ref_id ws-x-1-id)]
+              (is (=? {:workspace_merge_id pos-int?
+                       :transform_id       (:id x1)
+                       :commit_message     commit-msg}
+                      merge-transform))
+              (testing "workspace_merge record was also created"
+                (is (=? {:commit_message commit-msg
+                         :creator_id     (mt/user->id :crowberto)}
+                        (t2/select-one :model/WorkspaceMerge
+                                       :id (:workspace_merge_id merge-transform)))))))))
       (testing "Merging last workspace transfrom"
         (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id (str "/transform/" ws-x-2-id "/merge")))
               remaining (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
@@ -505,8 +511,13 @@
                               {:commit-message commit-msg})
 
         (testing "returns merge history for a transform"
-          (is (=? [{:commit_message             commit-msg
+          ;; workspace_id is nil because workspace is deleted after merge (SET NULL FK)
+          (is (=? [{:id                         pos-int?
+                    :workspace_merge_id         pos-int?
+                    :commit_message             commit-msg
+                    :workspace_id               nil
                     :workspace_name             ws-name
+                    :workspace_transform_ref_id ws-tx-ref-id
                     :creator_id                 (mt/user->id :crowberto)
                     :created_at                 some?}]
                   (mt/user-http-request :crowberto :get 200

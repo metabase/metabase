@@ -3914,9 +3914,9 @@ databaseChangeLog:
               - column:
                   name: workspace_merge_id
                   type: int
-                  remarks: Foreign key to workspace_merge, CASCADE on delete. NULL for single-transform merges
+                  remarks: Foreign key to workspace_merge, CASCADE on delete
                   constraints:
-                    nullable: true
+                    nullable: false
                     references: workspace_merge(id)
                     foreignKeyName: fk_workspace_merge_transform_workspace_merge_id
                     deleteCascade: true

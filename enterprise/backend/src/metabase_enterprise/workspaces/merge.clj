@@ -28,8 +28,8 @@
   "Make the given transform in the Changeset public, i.e. create or update the relevant model/Transform entities.
    This should also clear it out from the Changset, as it no longer has any changes.
 
-   Creates a WorkspaceMergeTransform history record.
-   - workspace-merge-id: ID of parent WorkspaceMerge (nil for single-transform merges)
+   Creates a WorkspaceMerge and WorkspaceMergeTransform history record.
+   - workspace-merge-id: ID of parent WorkspaceMerge (nil to create a new one for single-transform merges)
    - actor-id: user performing the merge
    - commit-message: description of the merge"
   [{:keys [global_id ref_id archived_at workspace_id] :as ws-transform} workspace-merge-id actor-id commit-message]
@@ -39,9 +39,14 @@
   ;; chain) this will not be possible - we would need to defer all validation and calculation, which is a bit scary.
   ;; Let's just focus on the happy path for now though, as this is a fundamental problem and unrelated to the design.
 
-  ;; Assume validation has alr
-  ;; Ensure the hook
   (let [workspace      (t2/select-one [:model/Workspace :id :name] :id workspace_id)
+        ws-merge-id    (or workspace-merge-id
+                           (t2/insert-returning-pk!
+                            :model/WorkspaceMerge
+                            {:workspace_id   workspace_id
+                             :workspace_name (:name workspace)
+                             :commit_message commit-message
+                             :creator_id     actor-id}))
         {:keys [error] :as result}
         (cond (and global_id archived_at)
               (merge
@@ -78,7 +83,7 @@
       (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
       (create-merge-transform-history!
        (:op result)
-       {:workspace_merge_id         workspace-merge-id
+       {:workspace_merge_id         ws-merge-id
         :workspace_id               (:id workspace)
         :workspace_name             (:name workspace)
         :transform_id               (:global_id result)
@@ -100,8 +105,8 @@
   ;; Perhaps we want to solve the N+1?
   ;; This will require reworking the lifecycle for validating and recalculating dependencies for the transforms.
   (t2/with-transaction [tx]
-    (let [workspace   (t2/select-one [:model/Workspace :id :name] :id ws-id)
-          savepoint   (.setSavepoint ^Connection tx)
+    (let [savepoint   (.setSavepoint ^Connection tx)
+          workspace   (t2/select-one [:model/Workspace :id :name] :id ws-id)
           ws-merge-id (t2/insert-returning-pk!
                        :model/WorkspaceMerge
                        {:workspace_id   ws-id

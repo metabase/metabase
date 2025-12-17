@@ -12,7 +12,6 @@
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase-enterprise.workspaces.models.workspace-merge-transform]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -194,9 +193,12 @@
 
 (def ^:private MergeHistoryEntry
   [:map
+   [:id ms/PositiveInt]
+   [:workspace_merge_id ms/PositiveInt]
    [:commit_message :string]
    [:workspace_id [:maybe ms/PositiveInt]]
    [:workspace_name :string]
+   [:workspace_transform_ref_id :string]
    [:creator_id ms/PositiveInt]
    [:created_at :any]])
 
@@ -208,9 +210,12 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Transform id))
   (t2/select [:model/WorkspaceMergeTransform
+              :id
+              :workspace_merge_id
               :commit_message
               :workspace_id
               :workspace_name
+              :workspace_transform_ref_id
               :creator_id
               :created_at]
              {:where    [:= :transform_id id]
