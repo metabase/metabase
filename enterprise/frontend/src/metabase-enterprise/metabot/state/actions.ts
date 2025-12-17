@@ -253,10 +253,12 @@ export const submitInput = createAsyncThunk<
 
       if (isRejected(result)) {
         if (result.payload?.type === "error") {
-          stopProcessingAndNotify({
-            agentId,
-            message: result.payload?.errorMessage,
-          });
+          dispatch(
+            stopProcessingAndNotify({
+              agentId,
+              message: result.payload?.errorMessage,
+            }),
+          );
         }
         const shouldRetry =
           (result.payload &&
