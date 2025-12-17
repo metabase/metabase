@@ -24,7 +24,7 @@ interface TimelineProps {
   canWrite: boolean;
   revert: (revision: Revision) => void;
   className?: string;
-  entity: "card" | "dashboard" | "document";
+  entity: "card" | "dashboard" | "document" | "transform";
 }
 
 export function Timeline({

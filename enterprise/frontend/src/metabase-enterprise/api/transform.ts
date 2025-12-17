@@ -160,7 +160,11 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+        invalidateTags(error, [
+          listTag("transform"),
+          idTag("transform", id),
+          listTag("revision"),
+        ]),
       onQueryStarted: async (
         { id, ...patch },
         { dispatch, queryFulfilled },

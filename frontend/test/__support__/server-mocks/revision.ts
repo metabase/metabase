@@ -22,3 +22,13 @@ export function setupDocumentRevisionsEndpoint(
     revisions,
   );
 }
+
+export function setupTransformRevisionsEndpoint(
+  transformId: number,
+  revisions: Revision[],
+) {
+  fetchMock.get(
+    `path:/api/revision?entity=transform&id=${transformId}`,
+    revisions,
+  );
+}

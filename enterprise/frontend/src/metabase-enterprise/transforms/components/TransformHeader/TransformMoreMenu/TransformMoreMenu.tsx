@@ -8,6 +8,8 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
+import { TransformRevisionHistorySidebar } from "../../TransformRevisionHistorySidebar";
+
 import { DeleteTransformModal } from "./DeleteTransformModal";
 import type { TransformMoreMenuModalType } from "./types";
 
@@ -17,15 +19,25 @@ type TransformMoreMenuProps = {
 
 export function TransformMoreMenu({ transform }: TransformMoreMenuProps) {
   const [modalType, setModalType] = useState<TransformMoreMenuModalType>();
+  const [isHistorySidebarOpen, setIsHistorySidebarOpen] = useState(false);
 
   return (
     <>
-      <TransformMenu onOpenModal={setModalType} />
+      <TransformMenu
+        onOpenModal={setModalType}
+        onShowHistory={() => setIsHistorySidebarOpen(true)}
+      />
       {modalType != null && (
         <TransformModal
           transform={transform}
           modalType={modalType}
           onClose={() => setModalType(undefined)}
+        />
+      )}
+      {isHistorySidebarOpen && (
+        <TransformRevisionHistorySidebar
+          transform={transform}
+          onClose={() => setIsHistorySidebarOpen(false)}
         />
       )}
     </>
@@ -34,9 +46,10 @@ export function TransformMoreMenu({ transform }: TransformMoreMenuProps) {
 
 type TransformMenuProps = {
   onOpenModal: (modalType: TransformMoreMenuModalType) => void;
+  onShowHistory: () => void;
 };
 
-function TransformMenu({ onOpenModal }: TransformMenuProps) {
+function TransformMenu({ onOpenModal, onShowHistory }: TransformMenuProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -50,6 +63,12 @@ function TransformMenu({ onOpenModal }: TransformMenuProps) {
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<Icon name="history" />}
+          onClick={() => onShowHistory()}
+        >
+          {t`History`}
+        </Menu.Item>
         <Menu.Item
           leftSection={<Icon name="trash" />}
           onClick={() => onOpenModal("delete")}

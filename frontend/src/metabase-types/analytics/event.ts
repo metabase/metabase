@@ -400,7 +400,7 @@ export type MetabotEvent =
 
 export type RevertVersionEvent = ValidateEvent<{
   event: "revert_version_clicked";
-  event_detail: "card" | "dashboard" | "document";
+  event_detail: "card" | "dashboard" | "document" | "transform";
 }>;
 
 export type LearnAboutDataClickedEvent = ValidateEvent<{

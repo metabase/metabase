@@ -39,6 +39,8 @@ export const revisionApi = Api.injectEndpoints({
           tags.push(idTag("document", id));
         } else if (entity === "segment") {
           tags.push(idTag("segment", id));
+        } else if (entity === "transform") {
+          tags.push(idTag("transform", id));
         }
         return invalidateTags(error, tags);
       },
