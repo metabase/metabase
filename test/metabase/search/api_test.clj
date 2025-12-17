@@ -168,6 +168,10 @@
                   :description "Lookin' for a blueberry"
                   :creator_id true
                   :creator_common_name "Rasta Toucan")
+     (table-search-results))
+    (merge
+     (make-result "measure test measure"
+                  :model "measure")
      (table-search-results))]))
 
 (defn- default-segment-results []
@@ -854,7 +858,8 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard"})
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment"})]
+                     :model/Segment     _ (archived {:name "segment test segment"})
+                     :model/Measure     _ (archived {:name "measure test measure"})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true")))))))
 
@@ -871,7 +876,8 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard"})
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment"})]
+                     :model/Segment     _ (archived {:name "segment test segment"})
+                     :model/Measure     _ (archived {:name "measure test measure"})]
         (is (mt/ordered-subset? (default-archived-results)
                                 (search-request-data :crowberto :archived "true")))))))
 
