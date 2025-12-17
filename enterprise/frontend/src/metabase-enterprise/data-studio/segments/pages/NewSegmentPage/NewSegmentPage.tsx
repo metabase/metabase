@@ -9,7 +9,8 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Flex } from "metabase/ui";
+import { Button } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
 
@@ -95,14 +96,7 @@ export function NewSegmentPage({
   ]);
 
   return (
-    <Flex
-      direction="column"
-      pos="relative"
-      w="100%"
-      h="100%"
-      bg="bg-white"
-      data-testid="new-segment-page"
-    >
+    <PageContainer data-testid="new-segment-page" gap="xl">
       <NewSegmentHeader
         previewUrl={previewUrl}
         onNameChange={setName}
@@ -127,6 +121,6 @@ export function NewSegmentPage({
         onDescriptionChange={setDescription}
       />
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
-    </Flex>
+    </PageContainer>
   );
 }

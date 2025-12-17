@@ -7,11 +7,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Flex } from "metabase/ui";
+import { Box, Card } from "metabase/ui";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 
 import { PythonEditor } from "../../components/PythonEditor";
 
@@ -89,21 +90,24 @@ export function PythonLibraryEditorPage({
 
   return (
     <>
-      <Flex h="100%" w="100%" gap={0} direction="column">
+      <PageContainer>
         <PythonLibraryEditorHeader
           onSave={handleSave}
           onRevert={handleRevert}
           isDirty={isDirty}
           isSaving={isSaving}
         />
-        <PythonEditor
-          value={source}
-          onChange={setSource}
-          withPandasCompletions
-          className={S.editor}
-          data-testid="python-editor"
-        />
-      </Flex>
+
+        <Card withBorder p={0}>
+          <PythonEditor
+            value={source}
+            onChange={setSource}
+            withPandasCompletions
+            className={S.editor}
+            data-testid="python-editor"
+          />
+        </Card>
+      </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
     </>
   );

@@ -93,7 +93,7 @@ export function PeopleListingApp({
       return t`People`;
     }
 
-    return external ? t`Tenant users` : t`Internal Users`;
+    return external ? t`Tenant users` : t`Internal users`;
   }, [external, isUsingTenants]);
 
   return (

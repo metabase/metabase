@@ -16,6 +16,7 @@ import {
   Icon,
   Loader,
   Stack,
+  type StackProps,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -36,7 +37,7 @@ type TableSectionBaseProps = {
   withName?: boolean;
   getFieldHref: (fieldId: FieldId) => string;
   onSyncOptionsClick: () => void;
-};
+} & StackProps;
 
 const TableSectionBase = ({
   table,
@@ -44,6 +45,7 @@ const TableSectionBase = ({
   withName,
   getFieldHref,
   onSyncOptionsClick,
+  ...props
 }: TableSectionBaseProps) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
@@ -148,16 +150,15 @@ const TableSectionBase = ({
   };
 
   return (
-    <Stack data-testid="table-section" gap={0} pb="lg">
+    <Stack data-testid="table-section" gap={0} pb="lg" px="lg" {...props}>
       <Stack
-        bg="accent-gray-light"
         className={S.header}
         gap="lg"
         pb={12}
         pos="sticky"
         pt="lg"
-        px="lg"
         top={0}
+        bg="bg-light"
       >
         {withName && (
           <NameDescriptionInput
@@ -250,7 +251,7 @@ const TableSectionBase = ({
         </Group>
       </Stack>
 
-      <Stack gap="lg" px="lg">
+      <Stack gap="lg">
         <Stack gap={12}>
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 

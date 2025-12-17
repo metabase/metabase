@@ -7,7 +7,7 @@ import {
   CANCEL_EDITING_DASHBOARD,
   INITIALIZE,
 } from "metabase/dashboard/actions/core";
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { checkNotNull } from "metabase/lib/types";
 import { addUndo } from "metabase/redux/undo";

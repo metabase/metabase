@@ -145,6 +145,7 @@
           (core/bulk-set-remote-sync {coll-id true})
           (is (= 1 (count @published-events)))
           (is (= :event/collection-update (ffirst @published-events)))
+          (is (true? (get-in (first @published-events) [1 :object :is_remote_synced])))
           (is (= coll-id (get-in (first @published-events) [1 :object :id]))))))))
 
 (deftest bulk-set-remote-sync-publishes-event-when-disabling-test
@@ -157,6 +158,7 @@
           (core/bulk-set-remote-sync {coll-id false})
           (is (= 1 (count @published-events)))
           (is (= :event/collection-update (ffirst @published-events)))
+          (is (false? (get-in (first @published-events) [1 :object :is_remote_synced])))
           (is (= coll-id (get-in (first @published-events) [1 :object :id]))))))))
 
 (deftest bulk-set-remote-sync-no-event-when-already-enabled-test
