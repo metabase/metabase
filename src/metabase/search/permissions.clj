@@ -49,8 +49,9 @@
     [:= :collection.namespace "shared-tenant-collection"]]])
 
 (mu/defn permitted-tables-clause
-  "Build the WHERE clause corresponding to which tables the given user has access to."
-  [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
+  "Build the WHERE clause and optional CTEs for table permission filtering.
+   Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
+  [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
   (mi/visible-filter-clause
    :model/Table
    table-id-col
