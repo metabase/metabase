@@ -78,24 +78,21 @@
     (semantic.tu/with-test-db-defaults!
       (testing "Database lock prevents concurrent migration execution"
         (let [original-write-fn @#'semantic.db.migration/write-successful-migration!
-              original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
               original-maybe-migrate @#'semantic.db.migration/maybe-migrate!
               results (atom {:executed-migrations 0
                              :log []})]
           (with-redefs-fn {#'semantic.pgvector-api/index-documents! (constantly nil)
-                           #'semantic.db.connection/do-with-migrate-tx
+                           ;; Wrap maybe-migrate! to log timestamps AFTER lock is acquired
+                           ;; (maybe-migrate! is called inside with-migrate-tx, after the lock)
+                           #'semantic.db.migration/maybe-migrate!
                            (fn [& args]
                              (let [tid (.getId (Thread/currentThread))]
                                (swap! results update :log conj [tid :started (t/local-date-time)])
-                               (apply original-migrate-fn args)
-                               (swap! results update :log conj [tid :ended (t/local-date-time)]))
-                             nil)
-                           ;; add delay into migration function to ensure lock is held long enough
-                           ;; for both threads to attempt acquisition
-                           #'semantic.db.migration/maybe-migrate!
-                           (fn [& args]
-                             (Thread/sleep 200)
-                             (apply original-maybe-migrate args))
+                               (try
+                                 (Thread/sleep 200)
+                                 (apply original-maybe-migrate args)
+                                 (finally
+                                   (swap! results update :log conj [tid :ended (t/local-date-time)])))))
                            #'semantic.db.migration/write-successful-migration!
                            (fn [& args]
                              (Thread/sleep 2000)
