@@ -132,7 +132,7 @@
          ;; Association list sets from nodes to their direct dependencies
          deps    (u/for-map [node init-nodes] [node #{}])
          ;; Paths are vectors sorted from child to parent
-         [path & paths] (for [ref members] [ref])]
+         [path & paths] (for [node members] [node])]
     (if-not path
       ;; Finished walking all paths, render the result.
       (render-graph members cache deps fns)
