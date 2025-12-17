@@ -135,11 +135,11 @@
   (testing "->database-id-filter-xf filters transforms by database ID"
     (let [db1-query-x  {:id     1
                         :name   "Query on DB1"
-                        :source {:type "query" :query {:database 10}}
+                        :source {:type "query" :query {:database 1}}
                         :target {:type "table" :name "t1" :database 1}}
           db2-target-x {:id     2
                         :name   "Python targeting DB4"
-                        :source {:type "python" :body "" :source-tables {}}
+                        :source {:type "python" :body "" :source-database 2 :source-tables {}}
                         :target {:type "table" :name "t4" :database 2}}
           transforms   [db1-query-x db2-target-x]]
 
