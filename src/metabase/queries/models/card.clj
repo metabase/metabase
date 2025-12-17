@@ -2,9 +2,7 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
-   [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
@@ -981,27 +979,41 @@
   (-> card :moderation_reviews first :status #{"verified"} boolean))
 
 (defn- changed?
-  "Return whether there were any changes in the objects at the keys for `consider`.
+  "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
+  `before` an exception will be thrown.
 
-  returns false because changes to collection_id are ignored:
-  (changed? #{:description}
-            {:collection_id 1 :description \"foo\"}
-            {:collection_id 2 :description \"foo\"})
+  returns false, `description` has not changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"foo\"})
 
-  returns true:
-  (changed? #{:description}
-            {:collection_id 1 :description \"foo\"}
-            {:collection_id 2 :description \"diff\"})"
-  [consider card-before updates]
-  ;; have to ignore keyword vs strings over api. `{:type :query}` vs `{:type "query"}`
-  (let [prepare              (fn prepare [card] (walk/prewalk (fn [x] (if (keyword? x)
-                                                                        (name x)
-                                                                        x))
-                                                              card))
-        before               (prepare (select-keys card-before consider))
-        after                (prepare (select-keys updates consider))
-        [_ changes-in-after] (data/diff before after)]
-    (boolean (seq changes-in-after))))
+  returns true, `description` has changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"diff\"})
+
+  throws an exception, `before` is missing keys from `after`:
+  (changed? {:collection_id 1}
+            {:collection_id 1 :description \"foobar\"})
+
+  For keys that will be transformed before we insert them in the database, automatically runs
+  `(out-transform (in-transform ...))` before comparing to make sure we are comparing the canonical form."
+  [card-before updates]
+  ;; normalize the query before comparison
+  (let [transforms (t2/transforms :model/Card)
+        after (->> updates
+                   (map (fn [[k v]]
+                          (let [tvi (get-in transforms [k :in] identity)
+                                tvo (get-in transforms [k :out] identity)
+                                tv (tvo (tvi v))]
+                            [k tv])))
+                   (into {}))
+        before  (select-keys card-before (keys after))]
+    (when-not (set/subset? (set (keys after))
+                           (set (keys before)))
+      (throw (ex-info "`before-card` card is missing keys from `updates`"
+                      {:missing-keys (apply disj
+                                            (set (keys after))
+                                            (set (keys before)))})))
+    (boolean (some #(do (api/column-will-change? % before after)) (keys after)))))
 
 (def ^:private card-compare-keys
   "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
@@ -1117,29 +1129,30 @@
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
     (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
-    (assert-is-valid-dashboard-internal-update card-updates card-before-update)
+    (let [updated-fields (u/select-keys-when card-updates
+                                             ;; `collection_id` and `description` can be `nil` (in order to unset them).
+                                             ;; Other values should only be modified if they're passed in as non-nil
+                                             :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
+                                             :non-nil #{:dataset_query :display :name :visualization_settings :archived
+                                                        :enable_embedding :type :parameters :parameter_mappings :embedding_params
+                                                        :result_metadata :collection_preview :verified-result-metadata?})]
 
-    (when (and (card-is-verified? card-before-update)
-               (changed? card-compare-keys card-before-update card-updates))
-      ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
-      ;; to remove it regardless if enterprise edition is present at the moment.
-      (moderation/create-review! {:moderated_item_id   (:id card-before-update)
-                                  :moderated_item_type "card"
-                                  :moderator_id        (:id actor)
-                                  :status              nil
-                                  :text                (tru "Unverified due to edit")}))
-    ;; Invalidate the cache for card
-    (cache/invalidate-config! {:questions [(:id card-before-update)]
-                               :with-overrides? true})
-    ;; ok, now save the Card
-    (t2/update! :model/Card (:id card-before-update)
-                ;; `collection_id` and `description` can be `nil` (in order to unset them).
-                ;; Other values should only be modified if they're passed in as non-nil
-                (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
-                                    :non-nil #{:dataset_query :display :name :visualization_settings :archived
-                                               :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                               :result_metadata :collection_preview :verified-result-metadata?}))
+      (assert-is-valid-dashboard-internal-update card-updates card-before-update)
+
+      (when (and (card-is-verified? card-before-update)
+                 (changed? card-before-update (select-keys updated-fields card-compare-keys)))
+        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+        ;; to remove it regardless if enterprise edition is present at the moment.
+        (moderation/create-review! {:moderated_item_id   (:id card-before-update)
+                                    :moderated_item_type "card"
+                                    :moderator_id        (:id actor)
+                                    :status              nil
+                                    :text                (tru "Unverified due to edit")}))
+      ;; Invalidate the cache for card
+      (cache/invalidate-config! {:questions [(:id card-before-update)]
+                                 :with-overrides? true})
+      ;; ok, now save the Card
+      (t2/update! :model/Card (:id card-before-update) updated-fields))
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)
@@ -1276,12 +1289,12 @@
 (defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (t2/select-one :model/Card :id id)
         query              (not-empty (:dataset_query card))
-        source-card        (some-> query lib/source-card-id)
+        source-cards       (some-> query lib/all-source-card-ids)
         template-tags      (some-> query lib/all-template-tags)
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> template-tags (keep :snippet-id))]
     (into {} (concat
-              (when source-card
+              (for [source-card source-cards]
                 {["Card" source-card] {"Card" id}})
               (for [{:keys [card-id]} template-tags
                     :when             card-id]

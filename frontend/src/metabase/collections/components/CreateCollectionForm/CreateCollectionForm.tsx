@@ -12,7 +12,7 @@ import { FormFooter } from "metabase/common/components/FormFooter";
 import FormInput from "metabase/common/components/FormInput";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import FormTextArea from "metabase/common/components/FormTextArea";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { connect } from "metabase/lib/redux";

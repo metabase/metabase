@@ -43,7 +43,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   database: "database",
   table: "table",
   dataset: "model",
-  schema: "folder",
+  schema: "folder_database",
   action: "bolt",
   "indexed-entity": "index",
   dashboard: "dashboard",

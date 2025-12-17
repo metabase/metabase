@@ -9,7 +9,7 @@ import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/c
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";

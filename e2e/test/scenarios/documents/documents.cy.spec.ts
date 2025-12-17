@@ -1240,15 +1240,19 @@ describe("documents", () => {
     it("should display an error toast when creating a new document fails", () => {
       // setup
       cy.intercept("POST", "/api/document", { statusCode: 500 });
+      cy.intercept("GET", "/api/collection/*").as("getCollection");
       cy.visit("/document/new");
 
       // make changes and attempt to save
       cy.findByRole("textbox", { name: "Document Title" }).type("Title");
       H.documentSaveButton().click();
       H.entityPickerModalTab("Collections").click();
-      H.entityPickerModalItem(0, "Our analytics")
-        .should("have.attr", "data-active", "true")
-        .click();
+      cy.wait("@getCollection");
+      H.entityPickerModalItem(0, "Our analytics").should(
+        "have.attr",
+        "data-active",
+        "true",
+      );
       H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
       // assert error toast is visible and user can reattempt save
