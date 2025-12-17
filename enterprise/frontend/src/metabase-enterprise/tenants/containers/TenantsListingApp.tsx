@@ -9,11 +9,12 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Group, Tabs, Title } from "metabase/ui";
+import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
 import { TenantsListing } from "../components/TenantsListing";
+import { TenantsListingEmptyState } from "../components/TenantsListingEmptyState";
 
 import S from "./TenantsListingApp.module.css";
 
@@ -42,6 +43,8 @@ export const TenantsListingApp = ({
     [data?.data],
   );
 
+  const hasNoTenants = data?.data?.length === 0;
+
   const handleTabChange = (tab: string | null) => {
     if (tab) {
       setStatus(tab as ActiveStatus);
@@ -55,7 +58,7 @@ export const TenantsListingApp = ({
   }, [hasDeactivatedTenants]);
 
   return (
-    <div>
+    <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
       <Group justify="space-between" w="100%" mb="lg">
         <Title order={1}>{t`Tenants`}</Title>
 
@@ -78,17 +81,21 @@ export const TenantsListingApp = ({
 
       <SettingsSection>
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
-          <TenantsListing
-            isAdmin={isAdmin}
-            tenants={tenants}
-            searchInputValue={searchInputValue}
-            setSearchInputValue={setSearchInputValue}
-            status={status}
-          />
+          {hasNoTenants ? (
+            <TenantsListingEmptyState onCreateTenant={() => {}} />
+          ) : (
+            <TenantsListing
+              isAdmin={isAdmin}
+              tenants={tenants}
+              searchInputValue={searchInputValue}
+              setSearchInputValue={setSearchInputValue}
+              status={status}
+            />
+          )}
         </LoadingAndErrorWrapper>
 
         {children}
       </SettingsSection>
-    </div>
+    </Box>
   );
 };
