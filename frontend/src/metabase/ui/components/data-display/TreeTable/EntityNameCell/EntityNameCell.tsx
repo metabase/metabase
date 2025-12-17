@@ -1,8 +1,7 @@
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Text } from "metabase/ui";
-
-import S from "./EntityNameCell.module.css";
 
 interface EntityNameCellProps {
   icon?: IconName;
@@ -23,13 +22,17 @@ export function EntityNameCell({
 }: EntityNameCellProps) {
   return (
     <Group data-testid={testId} gap="sm" wrap="nowrap" miw={0}>
-      {icon && <Icon name={icon} c={iconColor} className={S.icon} />}
+      {icon && <Icon name={icon} c={iconColor} className={CS.flexNoShrink} />}
       {wrap ? (
         <Text flex={1} miw={0}>
           {name}
         </Text>
       ) : (
-        <Ellipsified flex={1} miw={0} tooltipProps={{ openDelay: tooltipOpenDelay }}>
+        <Ellipsified
+          flex={1}
+          miw={0}
+          tooltipProps={{ openDelay: tooltipOpenDelay }}
+        >
           {name}
         </Ellipsified>
       )}

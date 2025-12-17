@@ -12,6 +12,7 @@ import {
 import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { TreeTableColumnDef } from "metabase/ui";
@@ -218,7 +219,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         showMetabotButton
         py={0}
       />
-      <Stack style={{ overflow: "hidden" }}>
+      <Stack className={CS.overflowHidden}>
         <Flex gap="md">
           <TextInput
             placeholder={t`Search...`}
