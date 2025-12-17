@@ -222,7 +222,8 @@
                      :model/Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
                      :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
                                                               :type :metric)
-                     :model/Segment     segment        (data-map "segment %s segment")]
+                     :model/Segment     segment        (data-map "segment %s segment")
+                     :model/Measure     measure        (data-map "measure %s measure")]
         (f {:action     action
             :collection coll
             :card       card
@@ -231,7 +232,8 @@
             :dashboard  dashboard
             :metric     metric
             :table      table
-            :segment    segment})))))
+            :segment    segment
+            :measure    measure})))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
   `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
@@ -403,9 +405,9 @@
   (let [search-term "query-model-set"]
     (with-search-items-in-root-collection search-term
       (testing "should returns a list of models that search result will return"
-        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+        (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
                (get-available-models)))
-        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+        (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
                (get-available-models :q search-term))))
       (testing "return a subset of model for created-by filter"
         (is (= #{"dashboard" "dataset" "card" "metric" "action"}
@@ -1393,13 +1395,13 @@
     (let [search-term "Available models"]
       (with-search-items-in-root-collection search-term
         (testing "GET /api/search"
-          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
+          (is (= #{"dashboard" "dataset" "segment" "measure" "collection" "action" "metric" "card" "table" "database"}
                  (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card"
                                            :calculate_available_models true)
                      :available_models
                      set)))
 
-          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
+          (is (= #{"dashboard" "dataset" "segment" "measure" "collection" "action" "metric" "card" "table" "database"}
                  (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard"
                                            :calculate_available_models true)
                      :available_models
@@ -1487,7 +1489,7 @@
                                                              :type     :query
                                                              :model_id model-id})]
         (testing "`archived-string` is 'false'"
-          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+          (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
                  (get-available-models :archived "false"))))
         (testing "`archived-string` is 'true'"
           (is (= #{"action"}
