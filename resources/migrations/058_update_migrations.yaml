@@ -1368,9 +1368,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
       rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: collection
-            constraintName: fk_collection_workspace_id
 
   - changeSet:
       id: v58.2025-11-26T12:00:13

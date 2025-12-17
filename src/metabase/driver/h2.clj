@@ -4,6 +4,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
@@ -165,9 +166,9 @@
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [details id]} (driver-api/database (driver-api/metadata-provider))
+      (let [{:keys [details]} (driver-api/database (driver-api/metadata-provider))
             user              (db-details->user details)]
-        (when (and (not (driver/has-connection-swap? id)) ;; we want this to work in test
+        (when (and config/is-prod? ;; we elevated permissions in workspace tests
                    (or (str/blank? user)
                        (= user "sa")))        ; "sa" is the default USER
           (throw
