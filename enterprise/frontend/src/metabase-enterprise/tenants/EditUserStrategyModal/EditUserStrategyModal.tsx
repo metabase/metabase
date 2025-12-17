@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
@@ -84,6 +85,10 @@ export const EditUserStrategyModal = ({
 
     setIsApplyingAfterConfirm(false);
     onClose();
+
+    if (selectedStrategy === "multi-tenant") {
+      setTimeout(() => dispatch(push("/admin/tenants")), 1000);
+    }
   };
 
   const handleCancel = () => {
