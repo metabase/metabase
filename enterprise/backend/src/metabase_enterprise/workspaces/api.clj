@@ -271,7 +271,7 @@
                                                             [:name :string]
                                                             [:supported :boolean]
                                                             [:reason {:optional true} :string]]]]]
-  "Get a list of database which should"
+  "Get a list of databases to show in the workspace picker, along with whether they're supported."
   [_url-params
    _query-params]
   {:databases (->> (t2/select :model/Database {:order-by [:name]})
