@@ -674,8 +674,9 @@
       [:max      _]    [[(or output-name-kwd :max)]
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
-(def ^:private ^:dynamic *query-unique-name-fn*
-  nil)
+(defn ^:private ^:dynamic *query-unique-name-fn*
+  [& _]
+  (throw (ex-info "Must bind metabase.driver.druid.query-processor/*query-unique-name-fn*. See handle-aggregation for an example." {})))
 
 (mu/defn- handle-aggregation
   [query-type
