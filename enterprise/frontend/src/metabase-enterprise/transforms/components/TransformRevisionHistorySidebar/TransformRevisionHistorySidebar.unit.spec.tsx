@@ -83,8 +83,10 @@ describe("TransformRevisionHistorySidebar", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText("History")).toBeInTheDocument();
-    expect(screen.getByTestId("transform-history-list")).toBeInTheDocument();
+    expect(await screen.findByText("History")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("transform-history-list"),
+    ).toBeInTheDocument();
   });
 
   it("should display revision history entries", async () => {
@@ -115,13 +117,16 @@ describe("TransformRevisionHistorySidebar", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByTestId("transform-history-list")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("transform-history-list"),
+    ).toBeInTheDocument();
   });
 
   it("should call onClose when close button is clicked", async () => {
     const { onClose } = setup();
 
     await waitForLoaderToBeRemoved();
+    await screen.findByText("History");
 
     const closeButton = screen.getByRole("button", { name: /close/i });
     await userEvent.click(closeButton);
