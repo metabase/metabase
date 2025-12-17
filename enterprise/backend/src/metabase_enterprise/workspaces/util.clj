@@ -58,7 +58,7 @@
        (map first)
        (apply str)))
 
-(def ^:private isolated-prefix "mb__isolation123")
+(def ^:private isolated-prefix "mb__isolation")
 
 (defn isolation-namespace-name
   "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
