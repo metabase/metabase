@@ -267,10 +267,8 @@
 
 (defmethod temporal-type ::h2x/identifier
   [identifier]
-  (:bigquery-cloud-sdk/temporal-type (meta identifier)))
-
-(defn base-temporal-type [identifier]
-  (:bigquery-cloud-sdk/base-temporal-type (meta identifier)))
+  (or (:bigquery-cloud-sdk/temporal-type (meta identifier))
+      (:bigquery-cloud-sdk/base-temporal-type (meta identifier))))
 
 (defmethod temporal-type :absolute-datetime
   [[_ t _]]
@@ -381,11 +379,8 @@
                       (binding [*print-meta* true] (pr-str x))
                       (pr-str (temporal-type x))
                       target-type)
-          (let [base-type (base-temporal-type x)
-                ;; bigquery doesn't support casting TIMESTAMP to TIMESTAMP with a timezone (#66880)
-                expr (if-let [report-zone (when (or (= current-type :timestamp)
-                                                    (and (= target-type :timestamp)
-                                                         (not= base-type :timestamp)))
+          (let [expr (if-let [report-zone (when (or (= current-type :timestamp)
+                                                    (= target-type :timestamp))
                                             (driver-api/requested-timezone-id))]
                        [target-type x (h2x/literal report-zone)]
                        [target-type x])]

@@ -1300,24 +1300,57 @@
                  :base-type :type/Integer}
                 {:field-name "created_at"
                  :base-type :type/DateTimeWithLocalTZ}]
-    [[1 #t "2024-01-15T10:30:00Z"]
-     [2 #t "2024-02-20T14:45:00Z"]
-     [3 #t "2024-03-25T09:15:00Z"]]]])
+    [[1 #t "2025-03-01 23:30:00Z"]
+     [2 #t "2025-03-01 23:30:00Z"]
+     [3 #t "2025-03-01 23:30:00Z"]
+     [1 #t "2025-03-08 23:30:00Z"]
+     [2 #t "2025-03-08 23:30:00Z"]
+     [1 #t "2025-03-15 23:30:00Z"]
+     [3 #t "2025-03-15 23:30:00Z"]
+     [2 #t "2025-03-22 23:30:00Z"]
+     [3 #t "2025-03-22 23:30:00Z"]
+     [1 #t "2025-03-29 23:30:00Z"]
+     [2 #t "2025-03-29 23:30:00Z"]
+     [3 #t "2025-03-29 23:30:00Z"]]]
+   ["dt_table" [{:field-name "user_id"
+                 :base-type :type/Integer}
+                {:field-name "created_at"
+                 :base-type :type/DateTime}]
+    [[1 #t "2025-03-01 23:30:00"]
+     [2 #t "2025-03-01 23:30:00"]
+     [3 #t "2025-03-01 23:30:00"]
+     [1 #t "2025-03-08 23:30:00"]
+     [2 #t "2025-03-08 23:30:00"]
+     [1 #t "2025-03-15 23:30:00"]
+     [3 #t "2025-03-15 23:30:00"]
+     [2 #t "2025-03-22 23:30:00"]
+     [3 #t "2025-03-22 23:30:00"]
+     [1 #t "2025-03-29 23:30:00"]
+     [2 #t "2025-03-29 23:30:00"]
+     [3 #t "2025-03-29 23:30:00"]]]])
 
 (deftest timestamp-aggregation-with-timezone-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "week of year aggregation with custom year expression works correctly"
-      (mt/dataset timestamp-dataset
-        (mt/with-report-timezone-id! "Europe/Paris"
-          (let [mp (mt/metadata-provider)
-                ts-table (lib.metadata/table mp (mt/id :ts_table))
-                user-id-col (lib.metadata/field mp (mt/id :ts_table :user_id))
-                created-at-col (lib.metadata/field mp (mt/id :ts_table :created_at))
-                base-query (-> (lib/query mp ts-table)
-                               ;; Add custom column: year(created_at)
-                               (lib/expression "created_at_year" (lib/get-year created-at-col)))
-                query (-> base-query
-                          (lib/aggregate (lib/distinct user-id-col))
-                          (lib/breakout (lib/with-temporal-bucket created-at-col :week-of-year))
-                          (lib/breakout (lib.expression/expression-ref base-query 0 "created_at_year")))]
-            (is (some? (mt/rows (qp/process-query query))))))))))
+    (mt/dataset timestamp-dataset
+      (doseq [table [:ts_table :dt_table]
+              timezone ["Europe/Paris" "Database default"]]
+        (let [mp (mt/metadata-provider)
+              the-table (lib.metadata/table mp (mt/id table))
+              user-id-col (lib.metadata/field mp (mt/id table :user_id))
+              created-at-col (lib.metadata/field mp (mt/id table :created_at))
+              base-query (-> (lib/query mp the-table)
+                             (lib/expression "created_at_year" (lib/get-year created-at-col)))
+              query (-> base-query
+                        (lib/aggregate (lib/distinct user-id-col))
+                        (lib/breakout (lib/with-temporal-bucket created-at-col :week-of-year))
+                        (lib/breakout (lib.expression/expression-ref base-query 0 "created_at_year")))]
+          (mt/with-report-timezone-id! timezone
+            (let [exp-rows (cond->> [[8 2025 3]
+                                     [9 2025 2]
+                                     [10 2025 2]
+                                     [11 2025 2]
+                                     [12 2025 3]]
+                             (and (= table :ts_table) (= timezone "Europe/Paris"))
+                             (mapv #(update % 0 inc)))]
+              (is (= exp-rows
+                     (mt/formatted-rows [int int int] (qp/process-query query)))))))))))
