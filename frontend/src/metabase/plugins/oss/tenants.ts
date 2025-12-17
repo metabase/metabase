@@ -69,7 +69,9 @@ export const PLUGIN_TENANTS: {
   isEnabled: boolean;
   userStrategyRoute: React.ReactElement | null;
   tenantsRoutes: React.ReactElement | null;
-  EditUserStrategySettingsButton: React.ComponentType;
+  EditUserStrategySettingsButton: (props: {
+    page: "people" | "tenants";
+  }) => React.ReactElement | null;
   FormTenantWidget: (props: any) => React.ReactElement | null;
   TenantDisplayName: (props: any) => React.ReactElement | null;
   isExternalUsersGroup: (group: Pick<Group, "magic_group_type">) => boolean;

@@ -12,7 +12,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
-import { CreateTenantCollectionButton } from "../components/CreateTenantCollectionButton";
+import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
 import { TenantsListing } from "../components/TenantsListing";
 
 import S from "./TenantsListingApp.module.css";
@@ -59,7 +59,9 @@ export const TenantsListingApp = ({
       <Group justify="space-between" w="100%" mb="lg">
         <Title order={1}>{t`Tenants`}</Title>
 
-        <CreateTenantCollectionButton />
+        <Group gap="sm">
+          <EditUserStrategySettingsButton page="tenants" />
+        </Group>
       </Group>
 
       {isAdmin && hasDeactivatedTenants && (
