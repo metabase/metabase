@@ -562,7 +562,7 @@
   "Get all transforms in a workspace."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source] :workspace_id id))})
+  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source] :workspace_id id {:order-by [:created_at]}))})
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)

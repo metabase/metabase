@@ -844,7 +844,7 @@
 
 (deftest validate-target-test
   (let [table (t2/select-one :model/Table :active true {:where [:not [:like :schema "mb__%"]]})]
-    (ws.tu/with-workspaces! [ws {:name "test"}]
+    (ws.tu/with-workspaces! [ws {:name "test" :database_id (:db_id table)}]
       (mt/with-temp [:model/WorkspaceTransform _x1 {:workspace_id (:id ws)
                                                     :target       {:database (:db_id table)
                                                                    :type     "table"
@@ -854,7 +854,7 @@
           (is (= "OK"
                  (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform/validate/target")
-                                         {:db_id  (mt/id)
+                                         {:db_id  (:db_id table)
                                           :target {:type   "table"
                                                    :schema "public"
                                                    :name   (str/replace (str (random-uuid)) "-" "_")}})))))
