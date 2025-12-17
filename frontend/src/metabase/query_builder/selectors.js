@@ -309,8 +309,6 @@ export const getQuestion = createSelector(
   },
 );
 
-// TODO: at a glance this looks like this + getCurrentQuestion could/should
-// be folded into getQuestion / getQuestionWithoutComposing but not sure.
 // TODO: make this a plugin / ee only
 export const getProposedQuestion = createSelector(
   [
