@@ -290,8 +290,8 @@ export const RemoteSyncAdminSettings = () => {
                 </Text>
               )}
 
-              {/* Section 1: Git Settings */}
-              <SettingsSection title={t`Git Settings`}>
+              {/* Section 1: Git settings */}
+              <SettingsSection title={t`Git settings`}>
                 <FormTextInput
                   name={URL_KEY}
                   label={t`Repository URL`}
@@ -307,8 +307,8 @@ export const RemoteSyncAdminSettings = () => {
                 />
               </SettingsSection>
 
-              {/* Section 2: Sync Mode for this Instance */}
-              <SettingsSection title={t`Sync Mode for this Instance`}>
+              {/* Section 2: Sync mode for this instance */}
+              <SettingsSection title={t`Sync mode for this instance`}>
                 <FormRadioGroup name={TYPE_KEY}>
                   <Stack mt="sm">
                     <Tooltip
@@ -334,7 +334,7 @@ export const RemoteSyncAdminSettings = () => {
                 </FormRadioGroup>
               </SettingsSection>
 
-              {/* Section 3: Branch to sync with (Read-only only) */}
+              {/* Section 3: Branch to sync with (read-only only) */}
               {values?.[TYPE_KEY] === "read-only" && (
                 <SettingsSection title={t`Branch to sync with`}>
                   <Flex align="center" gap="md">

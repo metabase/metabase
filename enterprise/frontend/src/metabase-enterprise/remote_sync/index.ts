@@ -1,12 +1,16 @@
+import { useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_REDUCERS,
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
 import { CollectionsNavTree } from "./components/CollectionsNavTree";
+import { GitSettingsModal } from "./components/GitSettingsModal";
 import { GitSyncControls } from "./components/GitSyncControls";
 import { RemoteSyncAdminSettings } from "./components/RemoteSyncAdminSettings/RemoteSyncAdminSettings";
 import {
@@ -20,6 +24,13 @@ import { useSyncStatus } from "./hooks/use-sync-status";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";
 import { remoteSyncReducer } from "./sync-task-slice";
 
+const useGitSettingsVisible = (): boolean => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isRemoteSyncEnabled = useSetting("remote-sync-enabled");
+  // Only show the "Set up Git Sync" button when user is admin and remote sync is not yet enabled
+  return !!isAdmin && !isRemoteSyncEnabled;
+};
+
 /**
  * Initialize remote sync plugin features that depend on hasPremiumFeature.
  */
@@ -30,12 +41,14 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
       SyncedCollectionsSidebarSection;
     PLUGIN_REMOTE_SYNC.GitSyncAppBarControls = GitSyncControls;
+    PLUGIN_REMOTE_SYNC.GitSettingsModal = GitSettingsModal;
     PLUGIN_REMOTE_SYNC.CollectionsNavTree = CollectionsNavTree;
     PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge = CollectionSyncStatusBadge;
     PLUGIN_REMOTE_SYNC.REMOTE_SYNC_INVALIDATION_TAGS =
       REMOTE_SYNC_INVALIDATION_TAGS;
     PLUGIN_REMOTE_SYNC.useSyncStatus = useSyncStatus;
     PLUGIN_REMOTE_SYNC.useGitSyncVisible = useGitSyncVisible;
+    PLUGIN_REMOTE_SYNC.useGitSettingsVisible = useGitSettingsVisible;
     PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges = useHasLibraryDirtyChanges;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
