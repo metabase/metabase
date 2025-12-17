@@ -1940,8 +1940,13 @@
         timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and
                                                                                            [:= :collection_id id]
                                                                                            (when skip-archived [:not :archived])]})]
-                               {["Timeline" timeline-id] {"Collection" id}}))]
-    (merge child-colls dashboards cards documents timelines)))
+                               {["Timeline" timeline-id] {"Collection" id}}))
+        tables      (into {} (for [table-id (t2/select-pks-set :model/Table {:where [:and
+                                                                                     [:= :collection_id id]
+                                                                                     [:= :is_published true]
+                                                                                     (when skip-archived [:= :archived_at nil])]})]
+                               {["Table" table-id] {"Collection" id}}))]
+    (merge child-colls dashboards cards documents timelines tables)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
