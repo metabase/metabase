@@ -17,6 +17,7 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
@@ -51,6 +52,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -718,11 +720,36 @@
   Always returns `card`."
   [card]
   (when (= (:dataset_query card) {})
-    (log/infof "Card %d has a blank :dataset_query - this indicates a Metabase issue" (:id card))
+    (log/infof "Card %d has a blank :dataset_query - this indicates a Metabase issue. Legacy MBQL: %s"
+               (:id card) (:legacy_query card))
     (let [uniques (swap! unique-cards-with-blank-dataset-query conj (:id card))]
       (analytics/set! :metabase-card/unique-cards-failed-conversion (count uniques))))
   ;; Always returns the original card.
   card)
+
+(defn- mbql5-conversion-clean-callback [untransformed-card pre-cleaning-query post-cleaning-query]
+  (analytics/inc! :metabase-card/conversions-requiring-cleaning)
+  (log/infof "MBQL 4->5 conversion for Card %d had real 'clean' changes from %s into %s; :legacy_query is %s"
+             (:id untransformed-card)
+             (pr-str (dissoc pre-cleaning-query :lib/metadata))
+             (pr-str (dissoc post-cleaning-query :lib/metadata))
+             (:legacy_query untransformed-card)))
+
+;; Dynamically binds [[lib.convert/*card-clean-hook*]] to a function that logs the impact of cleaning,
+;; during `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
+;; changes, which likely indicates a bug.
+(methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Card]
+  [query-type model]
+  (let [xform (next-method query-type model)]
+    (fn xform' [rf]
+      (let [rf' (xform rf)]
+        (fn rf''
+          ([] (rf'))
+          ([acc]
+           (rf' acc))
+          ([acc card]
+           (binding [lib.convert/*card-clean-hook* (partial mbql5-conversion-clean-callback card)]
+             (rf' acc card))))))))
 
 (t2/define-after-select :model/Card
   [card]
