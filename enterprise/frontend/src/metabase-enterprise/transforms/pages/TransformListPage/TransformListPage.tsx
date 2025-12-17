@@ -146,6 +146,7 @@ export const TransformListPage = () => {
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
     defaultExpanded,
+    expanded: searchQuery ? true : undefined,
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
     globalFilterFn: (row, _columnId, filterValue) => {
