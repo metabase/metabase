@@ -36,10 +36,9 @@
 
 (defn sync-grant-accesses!
   "Grant read access to external input tables for a workspace that haven't been granted yet.
-  External inputs are tables that are read by transforms but not produced by any transform in the workspace.
+   External inputs are tables that are read by transforms but not produced by any transform in the workspace.
    This should be called after adding transforms to a workspace or when re-initializing workspace isolation
-   (e.g., after unarchiving).
-   Returns the external inputs that were granted access."
+   (e.g., after unarchiving)."
   [{workspace-id :id :as workspace}]
   (let [ungranted-inputs (query-ungranted-external-inputs workspace-id)]
     (if-not (:database_details workspace)
@@ -55,15 +54,14 @@
             (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted-inputs)]}
                         {:access_granted true})
             (catch Exception e
-              (log/warn e "Error granting RO table permissions"))))))
-    ungranted-inputs))
+              (log/warn e "Error granting RO table permissions"))))))))
 
 (defn sync-transform-dependencies!
   "Analyze and persist dependencies for a workspace transform, then grant
    read access to external input tables."
   [{workspace-id :id, isolated-schema :schema :as workspace} transform]
-  (let [analysis (ws.deps/analyze-entity :transform transform)
-        _        (ws.deps/write-dependencies! workspace-id isolated-schema :transform (:ref_id transform) analysis)]
+  (let [analysis (ws.deps/analyze-entity :transform transform)]
+    (ws.deps/write-dependencies! workspace-id isolated-schema :transform (:ref_id transform) analysis)
     (sync-grant-accesses! workspace)))
 
 (defn- build-remapping [workspace]
