@@ -787,7 +787,7 @@ LIMIT
 
       cy.log("Navigate to transform B");
       H.DataStudio.nav().findByRole("link", { name: "Transforms" }).click();
-      cy.findByRole("table").findByText("Transform B").click();
+      cy.findByRole("treegrid").findByText("Transform B").click();
 
       cy.log("Remove the new tag from transform B");
       H.DataStudio.Transforms.runTab().click();
@@ -804,7 +804,7 @@ LIMIT
 
       cy.log("Navigate to transform A");
       getTransformsNavLink().click();
-      cy.findByRole("table").findByText("Transform A").click();
+      cy.findByRole("treegrid").findByText("Transform A").click();
 
       cy.log("The tag should be gone");
       H.DataStudio.Transforms.runTab().click();
