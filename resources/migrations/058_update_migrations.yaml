@@ -1096,6 +1096,43 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v58.2025-12-03T17:08:36
+      author: nvoxland
+      comment: Add collection_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection the transform is in
+
+  - changeSet:
+      id: v58.2025-12-03T17:08:37
+      author: nvoxland
+      comment: Add index on transform.collection_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v58.2025-12-03T17:08:38
+      author: nvoxland
+      comment: Add fk_transform_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_transform_collection_id
+
+  - changeSet:
       id: v58.2025-12-05T17:41:51
       author: ranquild
       comment: Drop fk_report_card_published_table
@@ -1404,43 +1441,6 @@ databaseChangeLog:
             tableName: metabot_message
             columnName: profile_id
             columnDataType: ${text.type}
-
-  - changeSet:
-      id: v58.2025-12-03T17:08:36
-      author: nvoxland
-      comment: Add collection_id column to transform table
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: collection_id
-                  type: int
-                  remarks: The collection the transform is in
-
-  - changeSet:
-      id: v58.2025-12-03T17:08:37
-      author: nvoxland
-      comment: Add index on transform.collection_id
-      changes:
-        - createIndex:
-            tableName: transform
-            indexName: idx_transform_collection_id
-            columns:
-              - column:
-                  name: collection_id
-
-  - changeSet:
-      id: v58.2025-12-03T17:08:38
-      author: nvoxland
-      comment: Add fk_transform_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: transform
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_transform_collection_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
