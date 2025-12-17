@@ -184,7 +184,7 @@
                                                 :target {:type "table"
                                                          :schema "public"
                                                          :name "test_table_with_schema"
-                                                         :db_id db-id}}
+                                                         :database db-id}}
                    :model/Transform transform2 {:name "Transform with NULL schema"
                                                 :source {:type "query"
                                                          :query {:database db-id
@@ -194,7 +194,7 @@
                                                 :target {:type "table"
                                                          :schema nil
                                                          :name "test_table_null_schema"
-                                                         :db_id db-id}}]
+                                                         :database db-id}}]
 
       (testing "Hydrates table with non-NULL schema"
         (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
