@@ -1,15 +1,12 @@
 (ns metabase-enterprise.dependencies.analysis
   (:require
-   [medley.core :as m]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.validate :as lib.schema.validate]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn get-returned-columns
   "Get the returned columns of a `query`"
@@ -55,8 +52,7 @@
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    transform-id      :- pos-int?]
-  (let [{{target-schema :schema target-name :name} :target
-         {query :query} :source
+  (let [{{query :query} :source
          :as _transform}  (lib.metadata/transform metadata-provider transform-id)
         driver            (:engine (lib.metadata/database metadata-provider))
         query             (lib/query metadata-provider query)

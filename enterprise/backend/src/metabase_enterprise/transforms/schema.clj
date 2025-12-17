@@ -60,3 +60,10 @@
   [:multi {:dispatch :type}
    ["table" ::table-target]
    ["table-incremental" ::table-incremental-target]])
+
+(mr/def ::transform
+  [:map
+   [:description {:optional true} [:maybe :string]]
+   [:name :string]
+   [:source [:ref ::transform-source]]
+   [:target [:ref ::transform-target]]])

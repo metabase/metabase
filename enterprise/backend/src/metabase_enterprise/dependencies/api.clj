@@ -14,12 +14,14 @@
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -32,7 +34,13 @@
    [:map
     [:result_metadata {:optional true} [:maybe analyze/ResultsMetadata]]]])
 
-(defn- broken-cards-response
+(mr/def ::broken-cards-response
+  [:map
+   [:success :boolean]
+   [:bad_cards {:optional true} [:sequential :metabase.queries.schema/card]]
+   [:bad_transforms {:optional true} [:sequential :metabase-enterprise.transforms.schema/transform]]])
+
+(mu/defn- broken-cards-response :- ::broken-cards-response
   [{:keys [card transform]}]
   (let [broken-card-ids (keys card)
         broken-cards (when (seq broken-card-ids)
@@ -54,12 +62,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/check_card"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/check_card" :- ::broken-cards-response
   "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
   [_route-params
    _query-params
@@ -94,12 +98,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/check_transform"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/check_transform" :- ::broken-cards-response
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
   [_route-params
    _query-params
@@ -120,12 +120,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/check_snippet"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/check_snippet" :- ::broken-cards-response
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
   [_route-params
    _query-params
@@ -174,7 +170,88 @@
     :model/Document (select-keys entity [:id :name])
     entity))
 
-(defn- entity-value [entity-type {:keys [id] :as entity} usages errors]
+(mr/def ::usages
+  [:map-of
+   [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric]
+   :int])
+
+(mr/def ::base-entity
+  [:map
+   [:id :int]
+   [:type :keyword]
+   [:data [:map]]
+   [:dependents_count [:maybe [:ref ::usages]]]
+   [:errors {:optional true} [:set [:ref :metabase.lib.schema.validate/error]]]])
+
+(mr/def ::table-entity
+  [:merge ::base-entity
+   [:map
+    [:id ::lib.schema.id/table]
+    [:type [:= :table]]
+    [:data [:select-keys :metabase.warehouse-schema.schema/table (entity-keys :table)]]]])
+
+(mr/def ::card-entity
+  [:merge ::base-entity
+   [:map
+    [:id ::lib.schema.id/card]
+    [:type [:= :card]]
+    [:data [:select-keys :metabase.queries.schema/card (entity-keys :card)]]]])
+
+(mr/def ::snippet-entity
+  [:merge ::base-entity
+   [:map
+    [:id ::lib.schema.id/snippet]
+    [:type [:= :snippet]]
+    [:data [:select-keys :metabase.native-query-snippets.schema/native-query-snippet (entity-keys :snippet)]]]])
+
+(mr/def ::transform-entity
+  [:merge ::base-entity
+   [:map
+    [:id ::lib.schema.id/transform]
+    [:type [:= :transform]]
+    [:data [:select-keys :metabase-enterprise.transforms.schema/transform (entity-keys :transform)]]]])
+
+(mr/def ::dashboard-entity
+  [:merge ::base-entity
+   [:map
+    [:id ::lib.schema.id/dashboard]
+    [:type [:= :dashboard]]
+    [:data [:select-keys :metabase.dashboards.schema/dashboard (entity-keys :dashboard)]]]])
+
+(mr/def ::document-entity
+  [:merge ::base-entity
+   [:map
+    [:id ::lib.schema.id/document]
+    [:type [:= :document]]
+    [:data [:select-keys :metabase.documents.schema/document (entity-keys :document)]]]])
+
+(mr/def ::sandbox-entity
+  [:merge ::base-entity
+   [:map
+    [:id ::lib.schema.id/sandbox]
+    [:type [:= :sandbox]]
+    [:data [:select-keys :metabase-enterprise.sandbox.schema/sandbox (entity-keys :sandbox)]]]])
+
+(mr/def ::segment-entity
+  [:merge ::base-entity
+   [:map
+    [:id ::lib.schema.id/segment]
+    [:type [:= :segment]]
+    [:data [:select-keys :metabase.segments.schema/segment (entity-keys :segment)]]]])
+
+(mr/def ::entity
+  [:multi {:dispatch :type}
+   [:table [:ref ::table-entity]]
+   [:card [:ref ::card-entity]]
+   [:snippet [:ref ::snippet-entity]]
+   [:transform [:ref ::transform-entity]]
+   [:dashboard [:ref ::dashboard-entity]]
+   [:document [:ref ::document-entity]]
+   [:sandbox [:ref ::sandbox-entity]]
+   [:segment [:ref ::segment-entity]]])
+
+(mu/defn- entity-value :- ::entity
+  [entity-type {:keys [id] :as entity} usages errors]
   (cond-> {:id id
            :type entity-type
            :data (->> (select-keys entity (entity-keys entity-type))
@@ -190,7 +267,7 @@
    :dashboard :model/Dashboard
    :document :model/Document
    :sandbox :model/Sandbox
-   :segment   :model/Segment})
+   :segment :model/Segment})
 
 (def ^:private card-types
   [:question :model :metric])
@@ -405,11 +482,16 @@
               nodes-by-type)]
     (keep nodes-by-type-and-id nodes)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/graph"
+(mr/def ::graph-response
+  [:map
+   [:nodes [:sequential ::entity]]
+   [:edges [:sequential [:map
+                         [:from_entity_type (into [:enum] (keys entity-model))]
+                         [:from_entity_id pos-int?]
+                         [:to_entity_type (into [:enum] (keys entity-model))]
+                         [:to_entity_id pos-int?]]]]])
+
+(api.macros/defendpoint :get "/graph" :- ::graph-response
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
   The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which
   depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.
@@ -444,11 +526,7 @@
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword card-types)]
    [:archived {:optional true} :boolean]])
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/graph/dependents"
+(api.macros/defendpoint :get "/graph/dependents" :- [:sequential ::entity]
   "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of
    all that entity's dependents with :dependent_type. If the :dependent_type is :card, the dependents are further
    filtered by :dependent_card_type.
@@ -505,7 +583,7 @@
                                   [:sequential (ms/enum-decode-keyword card-types)]]]
    [:query {:optional true} :string]])
 
-(api.macros/defendpoint :get "/graph/unreferenced"
+(api.macros/defendpoint :get "/graph/unreferenced" :- [:sequential ::entity]
   "Returns a list of all unreferenced items in the instance.
    An unreferenced item is one that is not a dependency of any other item.
 
@@ -567,7 +645,7 @@
                    (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
               (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
 
-(api.macros/defendpoint :get "/graph/broken"
+(api.macros/defendpoint :get "/graph/broken" :- [:sequential ::entity]
   "Returns a list of all items with broken queries.
 
    Accepts optional parameters for filtering:
@@ -602,7 +680,7 @@
    [:model/Sandbox :sandboxes]
    [:model/Segment :segment]])
 
-(api.macros/defendpoint :get "/graph/status"
+(api.macros/defendpoint :get "/graph/status" :- [:map [:dependencies_analyzed :boolean]]
   "Returns the status of dependency analysis across all entities.
 
    Returns an object with:

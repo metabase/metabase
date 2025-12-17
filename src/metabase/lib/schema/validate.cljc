@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.validate
   (:require
+   [metabase.lib.schema.common :as common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -28,9 +29,11 @@
    [:message :string]])
 
 (mr/def ::error
-  [:multi {:dispatch :type}
-   [:validate/missing-column [:ref ::missing-column]]
-   [:validate/missing-table-alias [:ref ::missing-table-alias]]
-   [:validate/duplicate-column [:ref ::duplicate-column]]
-   [:validate/syntax-error [:ref ::syntax-error]]
-   [:validate/validation-error [:ref ::validation-error]]])
+  [:and
+   [:map [:type {:decode/normalize common/normalize-keyword} :keyword]]
+   [:multi {:dispatch #(-> % :type keyword)}
+    [:validate/missing-column [:ref ::missing-column]]
+    [:validate/missing-table-alias [:ref ::missing-table-alias]]
+    [:validate/duplicate-column [:ref ::duplicate-column]]
+    [:validate/syntax-error [:ref ::syntax-error]]
+    [:validate/validation-error [:ref ::validation-error]]]])

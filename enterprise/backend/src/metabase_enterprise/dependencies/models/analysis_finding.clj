@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -9,9 +10,14 @@
 
 (derive :model/AnalysisFinding :metabase/model)
 
+(defn- normalize-analysis-finding [finding]
+  (some->> (mi/json-out-with-keywordization finding)
+           (into #{} (map #(lib.normalize/normalize :metabase.lib.schema.validate/error %)))))
+
 (t2/deftransforms :model/AnalysisFinding
   {:analyzed_entity_type mi/transform-keyword
-   :finding_details mi/transform-json})
+   :finding_details {:in  mi/json-in
+                     :out normalize-analysis-finding}})
 
 (def ^:dynamic current-analysis-version
   "Current version of the analysis logic.
