@@ -249,7 +249,7 @@
   (ws->response (ws.common/create-workspace! api/*current-user-id* body)))
 
 (defn- db-unsupported-reason [db]
-  (when (not #p (driver.u/supports? (:engine #p db) :workspace db))
+  (when (not (driver.u/supports? (:engine db) :workspace db))
     "Database type not supported."))
 
 (api.macros/defendpoint :get "/enabled" :- [:map [:supported :boolean] [:reason {:optional true} :string]]
