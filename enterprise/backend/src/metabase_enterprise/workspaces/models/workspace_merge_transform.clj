@@ -6,8 +6,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(set! *warn-on-reflection* true)
-
 ;;; -------------------------------------------------- Model Setup --------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/WorkspaceMergeTransform [_model] :workspace_merge_transform)
