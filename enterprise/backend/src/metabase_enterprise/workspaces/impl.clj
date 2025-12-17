@@ -1,10 +1,12 @@
 (ns metabase-enterprise.workspaces.impl
   "Glue code connecting workspace subsystems (dependencies, isolation)."
   (:require
+   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -81,12 +83,11 @@
                                   :table  isolated_table
                                   :id     isolated_table_id}]))
                          outputs)]
-    {:tables (fn [[d s t]]
-               ;; Look up from stored data, fall back to computing if not found (for new transforms)
-               (or (get table-map [d s t])
-                   {:db-id d, :schema (:schema workspace), :table (ws.u/isolated-table-name s t), :id nil}))
+    {:tables          table-map
+     :target-fallback (fn [[d s t]]
+                        {:db-id d, :schema (:schema workspace), :table (ws.u/isolated-table-name s t), :id nil})
      ;; We won't need the field-map until we support MBQL.
-     :fields nil}))
+     :fields          nil}))
 
 (defn- backfill-isolated-table-id!
   "Backfill workspace_output.isolated_table_id FK in the case where we just created the table for the first time."
@@ -114,31 +115,60 @@
        (backfill-isolated-table-id! ref-id))
      result)))
 
+;; TODO save graph with invalidation hooks
+(defn- get-or-calculate-graph [{ws-id :id :as _workspace}]
+  (ws.dag/path-induced-subgraph ws-id (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform :id ref_id})
+                                                        [:model/WorkspaceTransform :ref_id]
+                                                        :workspace_id ws-id)))
+
+(defn- transforms-to-execute
+  "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
+  [{ws-id :id :as workspace} & {:keys [stale-only?]}]
+  ;; 1. Depending on what we end up storing in this field, we might not be considering stale ancestors.
+  ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
+  ;; Why is there all this weird code then? To avoid unused references.
+  (let [stale-clause (if stale-only? {:where [:= :stale true]} {})
+        entities     (:entities (get-or-calculate-graph workspace))
+        type->ids    (u/group-by :node-type :id entities)
+        id->tx       (merge
+                      {}
+                      (when-let [ids (seq (type->ids :external-transform))]
+                        (t2/select-fn->fn :id identity
+                                          [:model/Transform :id :name :source :target]
+                                          :id [:in ids]
+                                          stale-clause))
+                      (when-let [ref-ids (seq (type->ids :workspace-transform))]
+                        (t2/select-fn->fn :ref_id identity
+                                          [:model/WorkspaceTransform :ref_id :name :source :target]
+                                          :workspace_id ws-id
+                                          :ref_id [:in ref-ids]
+                                          stale-clause)))]
+    (keep (comp id->tx :id) entities)))
+
+(defn- id->str [ref-id-or-id]
+  (if (string? ref-id-or-id)
+    ref-id-or-id
+    (str "global-id:" ref-id-or-id)))
+
 (defn execute-workspace!
   "Execute all the transforms within a given workspace."
   [workspace & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
         remapping (build-remapping workspace)]
     (reduce
-     (fn [acc {ref-id :ref_id :as transform}]
-       (try
-         ;; Perhaps we want to return some of the metadata from this as well?
-         (if (= :succeeded (:status (run-transform! workspace transform remapping)))
-           (update acc :succeeded conj ref-id)
-           ;; Perhaps the status might indicate it never ran?
-           (update acc :failed conj ref-id))
-         (catch Exception e
-           (log/error e "Failed to execute transform" {:workspace-id ws-id :transform-ref-id ref-id})
-           (update acc :failed conj ref-id))))
+     (fn [acc {external-id :id ref-id :ref_id :as transform}]
+       (let [node-type (if external-id :external-transform :workspace-transform)
+             id-str    (id->str (or external-id ref-id))]
+         (try
+           ;; Perhaps we want to return some of the metadata from this as well?
+           (if (= :succeeded (:status (run-transform! workspace transform remapping)))
+             (update acc :succeeded conj id-str)
+             ;; Perhaps the status might indicate it never ran?
+             (update acc :failed conj id-str))
+           (catch Exception e
+             (log/error e "Failed to execute transform" {:workspace-id ws-id :node-type node-type :id id-str})
+             (update acc :failed conj id-str)))))
      {:succeeded []
       :failed    []
       :not_run   []}
-     ;; Right now we're running things in random order, and skipping all the enclosed transforms (because
-     ;; we don't about them yet). Once we've got the graph analysis, we can order things appropriately, and
-     ;; skip execution of anything with a failed ancestor.
-     ;; Or, for simplicity and frugality, we might want to just shortcircuit on the first failure.
-     (t2/select [:model/WorkspaceTransform :ref_id :name :description :source :target] :workspace_id ws-id
-                ;; 1. Depending on what we end up storing in this field, we might not be considering stale ancestors.
-                ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
-                ;; Why is there all this weird code then? To avoid unused references.
-                (if stale-only? {:where [:= :stale true]} {})))))
+     (transforms-to-execute workspace {:stale-only stale-only?}))))
