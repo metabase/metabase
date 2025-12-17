@@ -225,7 +225,6 @@
    :skip [:dependency_analysis_version :source_type]
    :transform {:created_at    (serdes/date)
                :creator_id    (serdes/fk :model/User)
-               :workspace_id  (serdes/fk :model/Workspace)
                :collection_id (serdes/fk :model/Collection)
                :source        {:export #(update % :query serdes/export-mbql)
                                :import #(update % :query serdes/import-mbql)}

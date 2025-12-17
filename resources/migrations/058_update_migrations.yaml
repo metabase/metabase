@@ -3748,6 +3748,50 @@ databaseChangeLog:
             tableName: workspace_input
             columnName: access_granted
 
+  - changeSet:
+      id: v58.2025-12-17T17:54:00
+      author: christruter
+      comment: Drop foreign key constraint from transform.workspace_id to workspace
+      preConditions:
+        - onFail: MARK_RAN
+        - foreignKeyConstraintExists:
+            foreignKeyName: fk_transform_workspace_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_transform_workspace_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: workspace_id
+            constraintName: fk_transform_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v58.2025-12-17T17:54:01
+      author: christruter
+      comment: Drop workspace_id column from transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: transform
+            columnName: workspace_id
+      changes:
+        - dropColumn:
+            tableName: transform
+            columnName: workspace_id
+      rollback:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace containing this transform
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
