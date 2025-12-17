@@ -390,6 +390,7 @@ export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
   "admin-email": string | null;
+  "aggregated-query-row-limit": number | null;
   "email-from-address-override": string | null;
   "email-smtp-host-override": string | null;
   "email-smtp-port-override": 465 | 587 | 2525 | null;
@@ -424,6 +425,7 @@ interface InstanceSettings {
   "site-uuid": string;
   "smtp-override-enabled": boolean;
   "subscription-allowed-domains": string | null;
+  "unaggregated-query-row-limit": number | null;
   "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
   "query-analysis-enabled": boolean;

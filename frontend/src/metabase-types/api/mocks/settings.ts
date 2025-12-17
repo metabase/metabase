@@ -394,6 +394,8 @@ export const createMockSettings = (
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
+  "unaggregated-query-row-limit": null,
+  "aggregated-query-row-limit": null,
   "check-for-updates": true,
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
