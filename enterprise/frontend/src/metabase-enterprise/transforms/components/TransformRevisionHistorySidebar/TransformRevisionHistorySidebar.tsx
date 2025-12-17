@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   skipToken,
   useListRevisionsQuery,
@@ -47,22 +48,24 @@ export function TransformRevisionHistorySidebar({
   }, [revisions, currentUser]);
 
   return (
-    <Sidesheet isOpen={isOpen} title={t`History`} onClose={onClose}>
-      <SidesheetCard>
-        <Timeline
-          events={events}
-          data-testid="transform-history-list"
-          revert={(revision) =>
-            revertToRevision({
-              entity: "transform",
-              id: transform.id,
-              revision_id: revision.id,
-            })
-          }
-          entity="transform"
-          canWrite
-        />
-      </SidesheetCard>
-    </Sidesheet>
+    <ErrorBoundary>
+      <Sidesheet isOpen={isOpen} title={t`History`} onClose={onClose}>
+        <SidesheetCard>
+          <Timeline
+            events={events}
+            data-testid="transform-history-list"
+            revert={(revision) =>
+              revertToRevision({
+                entity: "transform",
+                id: transform.id,
+                revision_id: revision.id,
+              })
+            }
+            entity="transform"
+            canWrite
+          />
+        </SidesheetCard>
+      </Sidesheet>
+    </ErrorBoundary>
   );
 }
