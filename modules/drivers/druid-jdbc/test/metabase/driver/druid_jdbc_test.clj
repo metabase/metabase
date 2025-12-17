@@ -561,7 +561,7 @@
             query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                     (lib/breakout $q (m/find-first (comp #{"count"} :name) (lib/breakoutable-columns $q)))
                     (lib/aggregate $q (lib/count)))]
-        (is (some? (mt/rows (qp/process-query query))))))))
+        (is (seq (mt/rows (qp/process-query query))))))))
 
 (deftest ^:synchronized table-rows-sample-test
   (mt/test-driver
