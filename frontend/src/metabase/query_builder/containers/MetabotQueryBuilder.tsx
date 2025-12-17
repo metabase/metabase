@@ -2,6 +2,7 @@ import cx from "classnames";
 import _ from "underscore";
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Icon, Paper, Stack, Text } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotPromptInput } from "metabase-enterprise/metabot/components/MetabotPromptInput";
@@ -10,6 +11,9 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import S from "./MetabotQueryBuilder.module.css";
 import { useEffect, useState } from "react";
 import { useRouter } from "metabase/router";
+import { isFulfilled } from "@reduxjs/toolkit";
+import { Urls } from "metabase-enterprise/urls";
+import { push } from "react-router-redux";
 
 const defaultSuggestionModels = [
   "dataset",
@@ -31,9 +35,29 @@ const getTitleText = () => {
   ]);
 };
 
+// TODO: clean this up, share some code with responseHasCodeEdit or something...
+type SubmitInputResult = Awaited<
+  ReturnType<ReturnType<typeof useMetabotAgent>["submitInput"]>
+>;
+const responseHasNavigateTo = (action: SubmitInputResult) => {
+  return (
+    isFulfilled(action) &&
+    action.payload.data?.processedResponse.data.some(
+      (dp) =>
+        typeof dp === "object" &&
+        dp !== null &&
+        "type" in dp &&
+        (dp as { type: string }).type === "code_edt",
+    )
+  );
+};
+
 export const MetabotQueryBuilder = () => {
+  const dispatch = useDispatch();
   const {
     setVisible,
+    setProfileOverride,
+    resetConversation,
     metabotId,
     isDoingScience,
     prompt,
@@ -52,22 +76,33 @@ export const MetabotQueryBuilder = () => {
   });
 
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
+
+  const handleSubmitPrompt = async (prompt: string) => {
+    resetConversation();
+    setProfileOverride("nlq");
+    const action = await submitInput(prompt, { preventOpenSidebar: true });
+    if (!responseHasNavigateTo(action)) {
+      dispatch(
+        push(
+          Urls.newQuestion({
+            mode: "notebook",
+            creationType: "custom_question",
+            // collectionId, TODO: wire in collectionId
+            cardType: "question",
+          }),
+        ),
+      );
+    }
+  };
+
+  const handleEditorSubmit = () => handleSubmitPrompt(prompt);
+
   const handleSuggestionClick = (prompt: string) => {
     setPrompt(prompt);
-    submitInput(prompt, {
-      profile: "unset", // TODO: set to a new nlq profile
-      preventOpenSidebar: true,
-    });
+    handleSubmitPrompt(prompt);
   };
 
-  const canSubmit = prompt.trim().length > 0 && !isDoingScience;
-
-  const handleEditorSubmit = () => {
-    submitInput(
-      `DEVELOPER MESSAGE: You MUST produce a new notebook question and navigate the user to it based on the following prompt. ABSOLUTELY NO EXCEPTIONS.\n\n${prompt}`,
-      { preventOpenSidebar: true },
-    );
-  };
+  const inputDisabled = prompt.trim().length === 0 || isDoingScience;
 
   useEffect(
     function autoCloseMetabotOnMount() {
@@ -125,7 +160,7 @@ export const MetabotQueryBuilder = () => {
               <Button
                 className={S.sendButton}
                 variant="filled"
-                disabled={!canSubmit}
+                disabled={inputDisabled}
                 loading={isDoingScience}
                 onClick={handleEditorSubmit}
                 data-testid="metabot-send-message"

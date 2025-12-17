@@ -24,6 +24,7 @@ import {
   retryPrompt,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
+  setProfileOverride as setProfileOverrideAction,
 } from "../state";
 
 import { useMetabotDispatch, useMetabotSelector } from "./use-metabot-store";
@@ -53,6 +54,13 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       }
     },
     [promptInputRef, setPrompt],
+  );
+
+  const setProfileOverride = useCallback(
+    (profile: string) => {
+      dispatch(setProfileOverrideAction({ agentId, profile }));
+    },
+    [dispatch, agentId],
   );
 
   const submitInput = useCallback(
@@ -144,6 +152,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     promptInputRef,
     visible,
     setVisible,
+    setProfileOverride,
     resetConversation,
     submitInput,
     retryMessage,
