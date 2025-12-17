@@ -50,10 +50,8 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
   }
 
   return (
-    <PageContainer
-      header={<TransformHeader transform={transform} />}
-      data-testid="transforms-run-content"
-    >
+    <PageContainer data-testid="transforms-run-content">
+      <TransformHeader transform={transform} />
       <RunSection transform={transform} />
     </PageContainer>
   );

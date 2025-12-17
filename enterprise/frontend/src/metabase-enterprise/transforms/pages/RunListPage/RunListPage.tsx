@@ -29,17 +29,12 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <PageContainer
-      data-testid="transforms-run-list"
-      header={
-        <PaneHeader
-          breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-          py={0}
-          showMetabotButton
-        />
-      }
-      gap={0}
-    >
+    <PageContainer data-testid="transforms-run-list" gap={0}>
+      <PaneHeader
+        breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+        py={0}
+        showMetabotButton
+      />
       <RunListPageBody params={params} />
     </PageContainer>
   );

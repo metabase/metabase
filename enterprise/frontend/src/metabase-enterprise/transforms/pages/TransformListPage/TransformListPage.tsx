@@ -95,16 +95,14 @@ export const TransformListPage = () => {
         px="3.5rem"
         gap={0}
         style={{ overflow: "hidden" }}
-        header={
-          <PaneHeader
-            breadcrumbs={
-              <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-            }
-            showMetabotButton
-            py={0}
-          />
-        }
       >
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
+          }
+          showMetabotButton
+          py={0}
+        />
         <Stack>
           <Flex gap="md">
             <TextInput

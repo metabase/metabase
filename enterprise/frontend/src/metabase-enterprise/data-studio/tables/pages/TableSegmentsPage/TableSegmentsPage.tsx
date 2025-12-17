@@ -29,10 +29,8 @@ export function TableSegmentsPage({ params }: TableSegmentsPageProps) {
   }
 
   return (
-    <PageContainer
-      header={<TableHeader table={table} />}
-      data-testid="table-segments-page"
-    >
+    <PageContainer data-testid="table-segments-page">
+      <TableHeader table={table} />
       <TableSegments table={table} />
     </PageContainer>
   );

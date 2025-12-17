@@ -25,18 +25,14 @@ export function SegmentRevisionHistoryPage({
   onRemove,
 }: SegmentRevisionHistoryPageProps) {
   return (
-    <PageContainer
-      data-testid="segment-revision-history-page"
-      header={
-        <SegmentHeader
-          segment={segment}
-          tabUrls={tabUrls}
-          previewUrl={getSegmentPreviewUrl(segment)}
-          onRemove={onRemove}
-          breadcrumbs={breadcrumbs}
-        />
-      }
-    >
+    <PageContainer data-testid="segment-revision-history-page">
+      <SegmentHeader
+        segment={segment}
+        tabUrls={tabUrls}
+        previewUrl={getSegmentPreviewUrl(segment)}
+        onRemove={onRemove}
+        breadcrumbs={breadcrumbs}
+      />
       <Stack flex={1} className={S.scrollable}>
         <SegmentRevisionHistory segment={segment} />
       </Stack>

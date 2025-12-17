@@ -26,16 +26,12 @@ export function GlossaryPage() {
   const [deleteGlossary] = useDeleteGlossaryMutation();
 
   return (
-    <PageContainer
-      gap={0}
-      header={
-        <PaneHeader
-          breadcrumbs={
-            <DataStudioBreadcrumbs role="heading">{t`Glossary`}</DataStudioBreadcrumbs>
-          }
-        />
-      }
-    >
+    <PageContainer gap={0}>
+      <PaneHeader
+        breadcrumbs={
+          <DataStudioBreadcrumbs role="heading">{t`Glossary`}</DataStudioBreadcrumbs>
+        }
+      />
       <Box w="100%" className={S.contentWrapper}>
         <Card px="lg" pb="sm" withBorder shadow="none">
           <GlossaryTable

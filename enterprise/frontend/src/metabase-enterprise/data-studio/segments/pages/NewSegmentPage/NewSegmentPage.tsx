@@ -96,29 +96,24 @@ export function NewSegmentPage({
   ]);
 
   return (
-    <PageContainer
-      data-testid="new-segment-page"
-      gap="xl"
-      header={
-        <NewSegmentHeader
-          previewUrl={previewUrl}
-          onNameChange={setName}
-          breadcrumbs={breadcrumbs}
-          actions={
-            isDirty && (
-              <Button
-                variant="filled"
-                disabled={!isValid}
-                loading={isSaving}
-                onClick={handleSave}
-              >
-                {t`Save`}
-              </Button>
-            )
-          }
-        />
-      }
-    >
+    <PageContainer data-testid="new-segment-page" gap="xl">
+      <NewSegmentHeader
+        previewUrl={previewUrl}
+        onNameChange={setName}
+        breadcrumbs={breadcrumbs}
+        actions={
+          isDirty && (
+            <Button
+              variant="filled"
+              disabled={!isValid}
+              loading={isSaving}
+              onClick={handleSave}
+            >
+              {t`Save`}
+            </Button>
+          )
+        }
+      />
       <SegmentEditor
         query={query}
         description={description}

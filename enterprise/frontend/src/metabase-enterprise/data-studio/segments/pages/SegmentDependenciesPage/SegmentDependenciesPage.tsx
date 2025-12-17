@@ -25,18 +25,14 @@ export function SegmentDependenciesPage({
   children,
 }: SegmentDependenciesPageProps) {
   return (
-    <PageContainer
-      data-testid="segment-dependencies-page"
-      header={
-        <SegmentHeader
-          segment={segment}
-          tabUrls={tabUrls}
-          previewUrl={getSegmentPreviewUrl(segment)}
-          onRemove={onRemove}
-          breadcrumbs={breadcrumbs}
-        />
-      }
-    >
+    <PageContainer data-testid="segment-dependencies-page">
+      <SegmentHeader
+        segment={segment}
+        tabUrls={tabUrls}
+        previewUrl={getSegmentPreviewUrl(segment)}
+        onRemove={onRemove}
+        breadcrumbs={breadcrumbs}
+      />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: tabUrls.dependencies,

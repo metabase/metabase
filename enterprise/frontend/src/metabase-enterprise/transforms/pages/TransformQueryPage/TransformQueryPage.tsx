@@ -159,27 +159,23 @@ function TransformQueryPageBody({
 
   return (
     <>
-      <PageContainer
-        data-testid="transform-query-editor"
-        header={
-          <TransformHeader
-            transform={transform}
-            actions={
-              <TransformPaneHeaderActions
-                source={source}
-                isSaving={isSaving}
-                isDirty={isDirty}
-                handleSave={handleSave}
-                handleCancel={handleCancel}
-                transformId={transform.id}
-                isEditMode={isEditMode}
-              />
-            }
-            hasMenu={!isEditMode && !isDirty}
-            isEditMode={isEditMode}
-          />
-        }
-      >
+      <PageContainer data-testid="transform-query-editor">
+        <TransformHeader
+          transform={transform}
+          actions={
+            <TransformPaneHeaderActions
+              source={source}
+              isSaving={isSaving}
+              isDirty={isDirty}
+              handleSave={handleSave}
+              handleCancel={handleCancel}
+              transformId={transform.id}
+              isEditMode={isEditMode}
+            />
+          }
+          hasMenu={!isEditMode && !isDirty}
+          isEditMode={isEditMode}
+        />
         <Box
           w="100%"
           bg="bg-white"

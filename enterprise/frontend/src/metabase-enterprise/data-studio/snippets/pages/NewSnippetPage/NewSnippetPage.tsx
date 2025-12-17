@@ -85,38 +85,33 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
 
   return (
     <>
-      <PageContainer
-        pos="relative"
-        data-testid="new-snippet-page"
-        header={
-          <PaneHeader
-            title={
-              <PaneHeaderInput
-                initialValue={name}
-                placeholder={t`New SQL snippet`}
-                maxLength={SNIPPET_NAME_MAX_LENGTH}
-                isOptional
-                onContentChange={setName}
-              />
-            }
-            actions={
-              <PaneHeaderActions
-                isValid={isValid}
-                isDirty={true}
-                isSaving={isSaving}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              />
-            }
-            breadcrumbs={
-              <DataStudioBreadcrumbs>
-                <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
-                {t`New Snippet`}
-              </DataStudioBreadcrumbs>
-            }
-          />
-        }
-      >
+      <PageContainer pos="relative" data-testid="new-snippet-page">
+        <PaneHeader
+          title={
+            <PaneHeaderInput
+              initialValue={name}
+              placeholder={t`New SQL snippet`}
+              maxLength={SNIPPET_NAME_MAX_LENGTH}
+              isOptional
+              onContentChange={setName}
+            />
+          }
+          actions={
+            <PaneHeaderActions
+              isValid={isValid}
+              isDirty={true}
+              isSaving={isSaving}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          }
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
+              {t`New Snippet`}
+            </DataStudioBreadcrumbs>
+          }
+        />
         <Flex flex={1} w="100%" gap="sm">
           <Card
             withBorder

@@ -29,10 +29,8 @@ export function TableOverviewPage({ params }: TableOverviewPageProps) {
   }
 
   return (
-    <PageContainer
-      data-testid="table-overview-page"
-      header={<TableHeader table={table} />}
-    >
+    <PageContainer data-testid="table-overview-page">
+      <TableHeader table={table} />
       <TableOverview table={table} />
     </PageContainer>
   );

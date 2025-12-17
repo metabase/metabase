@@ -50,10 +50,8 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
   }
 
   return (
-    <PageContainer
-      header={<TransformHeader transform={transform} />}
-      data-testid="transforms-target-content"
-    >
+    <PageContainer data-testid="transforms-target-content">
+      <TransformHeader transform={transform} />
       <TargetSection transform={transform} />
     </PageContainer>
   );

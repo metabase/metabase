@@ -96,33 +96,29 @@ export function SegmentDetailPage({
   }, [savedSegment]);
 
   return (
-    <PageContainer
-      data-testid="segment-detail-page"
-      header={
-        <SegmentHeader
-          segment={segment}
-          tabUrls={tabUrls}
-          previewUrl={previewUrl}
-          onRemove={onRemove}
-          breadcrumbs={breadcrumbs}
-          actions={
-            isDirty && (
-              <Group gap="sm">
-                <Button onClick={handleReset}>{t`Cancel`}</Button>
-                <Button
-                  variant="filled"
-                  disabled={!isValid}
-                  loading={isSaving}
-                  onClick={handleSave}
-                >
-                  {t`Save`}
-                </Button>
-              </Group>
-            )
-          }
-        />
-      }
-    >
+    <PageContainer data-testid="segment-detail-page">
+      <SegmentHeader
+        segment={segment}
+        tabUrls={tabUrls}
+        previewUrl={previewUrl}
+        onRemove={onRemove}
+        breadcrumbs={breadcrumbs}
+        actions={
+          isDirty && (
+            <Group gap="sm">
+              <Button onClick={handleReset}>{t`Cancel`}</Button>
+              <Button
+                variant="filled"
+                disabled={!isValid}
+                loading={isSaving}
+                onClick={handleSave}
+              >
+                {t`Save`}
+              </Button>
+            </Group>
+          )
+        }
+      />
       <SegmentEditor
         query={query}
         description={description}

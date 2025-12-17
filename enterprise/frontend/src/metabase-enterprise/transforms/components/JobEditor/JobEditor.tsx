@@ -40,35 +40,30 @@ export function JobEditor({
   onTagListChange,
 }: JobEditorProps) {
   return (
-    <PageContainer
-      data-testid="transforms-job-editor"
-      gap="2.5rem"
-      header={
-        <PaneHeader
-          title={
-            <PaneHeaderInput
-              initialValue={job.name}
-              maxLength={NAME_MAX_LENGTH}
-              onChange={onNameChange}
-            />
-          }
-          py={0}
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              {[
-                <Link key="transform-job-list" to={Urls.transformJobList()}>
-                  {t`Jobs`}
-                </Link>,
-                job.name,
-              ]}
-            </DataStudioBreadcrumbs>
-          }
-          menu={menu}
-          actions={actions}
-          data-testid="jobs-header"
-        />
-      }
-    >
+    <PageContainer data-testid="transforms-job-editor" gap="2.5rem">
+      <PaneHeader
+        title={
+          <PaneHeaderInput
+            initialValue={job.name}
+            maxLength={NAME_MAX_LENGTH}
+            onChange={onNameChange}
+          />
+        }
+        py={0}
+        breadcrumbs={
+          <DataStudioBreadcrumbs>
+            {[
+              <Link key="transform-job-list" to={Urls.transformJobList()}>
+                {t`Jobs`}
+              </Link>,
+              job.name,
+            ]}
+          </DataStudioBreadcrumbs>
+        }
+        menu={menu}
+        actions={actions}
+        data-testid="jobs-header"
+      />
       <Stack gap="3.5rem">
         <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
         <TagSection job={job} onTagsChange={onTagListChange} />

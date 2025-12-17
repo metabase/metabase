@@ -34,10 +34,8 @@ export function TableDependenciesPage({
   }
 
   return (
-    <PageContainer
-      header={<TableHeader table={table} />}
-      data-testid="table-dependencies-page"
-    >
+    <PageContainer data-testid="table-dependencies-page">
+      <TableHeader table={table} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.dataStudioTableDependencies(table.id),

@@ -92,39 +92,34 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
 
   return (
     <>
-      <PageContainer
-        pos="relative"
-        data-testid="metric-query-editor"
-        header={
-          <PaneHeader
-            title={
-              <PaneHeaderInput
-                initialValue={name}
-                placeholder={t`New metric`}
-                maxLength={NAME_MAX_LENGTH}
-                isOptional
-                onChange={setName}
-              />
-            }
-            icon="metric"
-            actions={
-              <PaneHeaderActions
-                errorMessage={validationResult.errorMessage}
-                isValid={validationResult.isValid}
-                isDirty
-                onSave={openModal}
-                onCancel={handleCancel}
-              />
-            }
-            breadcrumbs={
-              <DataStudioBreadcrumbs>
-                <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
-                {t`New Metric`}
-              </DataStudioBreadcrumbs>
-            }
-          />
-        }
-      >
+      <PageContainer pos="relative" data-testid="metric-query-editor">
+        <PaneHeader
+          title={
+            <PaneHeaderInput
+              initialValue={name}
+              placeholder={t`New metric`}
+              maxLength={NAME_MAX_LENGTH}
+              isOptional
+              onChange={setName}
+            />
+          }
+          icon="metric"
+          actions={
+            <PaneHeaderActions
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
+              isDirty
+              onSave={openModal}
+              onCancel={handleCancel}
+            />
+          }
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
+              {t`New Metric`}
+            </DataStudioBreadcrumbs>
+          }
+        />
         <Card withBorder p={0} flex={1}>
           <MetricQueryEditor
             query={query}

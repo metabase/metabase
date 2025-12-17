@@ -39,7 +39,8 @@ export function SnippetDependenciesPage({
   }
 
   return (
-    <PageContainer header={<SnippetHeader snippet={snippet} />}>
+    <PageContainer>
+      <SnippetHeader snippet={snippet} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.dataStudioSnippetDependencies(snippet.id),

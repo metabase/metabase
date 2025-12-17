@@ -130,26 +130,20 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
 
   return (
     <>
-      <PageContainer
-        pos="relative"
-        data-testid="metric-query-editor"
-        gap="xl"
-        header={
-          <MetricHeader
-            card={card}
-            actions={
-              <PaneHeaderActions
-                errorMessage={validationResult.errorMessage}
-                isValid={validationResult.isValid}
-                isDirty={isDirty}
-                isSaving={isSaving || isCheckingDependencies}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              />
-            }
-          />
-        }
-      >
+      <PageContainer pos="relative" data-testid="metric-query-editor" gap="xl">
+        <MetricHeader
+          card={card}
+          actions={
+            <PaneHeaderActions
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
+              isDirty={isDirty}
+              isSaving={isSaving || isCheckingDependencies}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          }
+        />
         <Card withBorder flex={1} p={0}>
           <MetricQueryEditor
             query={question.query()}

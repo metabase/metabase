@@ -119,40 +119,35 @@ function NewTransformPageBody({
 
   return (
     <>
-      <PageContainer
-        pos="relative"
-        data-testid="transform-query-editor"
-        header={
-          <PaneHeader
-            title={
-              <PaneHeaderInput
-                initialValue={name}
-                placeholder={t`New transform`}
-                maxLength={NAME_MAX_LENGTH}
-                isOptional
-                onChange={setName}
-              />
-            }
-            actions={
-              <PaneHeaderActions
-                errorMessage={validationResult.errorMessage}
-                isValid={validationResult.isValid}
-                isDirty
-                onSave={openModal}
-                onCancel={handleCancel}
-              />
-            }
-            breadcrumbs={
-              <DataStudioBreadcrumbs>
-                <Link key="transform-list" to={Urls.transformList()}>
-                  {t`Transforms`}
-                </Link>
-                {t`New transform`}
-              </DataStudioBreadcrumbs>
-            }
-          />
-        }
-      >
+      <PageContainer pos="relative" data-testid="transform-query-editor">
+        <PaneHeader
+          title={
+            <PaneHeaderInput
+              initialValue={name}
+              placeholder={t`New transform`}
+              maxLength={NAME_MAX_LENGTH}
+              isOptional
+              onChange={setName}
+            />
+          }
+          actions={
+            <PaneHeaderActions
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
+              isDirty
+              onSave={openModal}
+              onCancel={handleCancel}
+            />
+          }
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link key="transform-list" to={Urls.transformList()}>
+                {t`Transforms`}
+              </Link>
+              {t`New transform`}
+            </DataStudioBreadcrumbs>
+          }
+        />
         <Box
           w="100%"
           bg="bg-white"

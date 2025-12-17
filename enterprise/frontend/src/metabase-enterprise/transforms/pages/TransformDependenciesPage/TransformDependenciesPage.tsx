@@ -39,10 +39,8 @@ export function TransformDependenciesPage({
   }
 
   return (
-    <PageContainer
-      header={<TransformHeader transform={transform} />}
-      data-testid="transforms-dependencies-content"
-    >
+    <PageContainer data-testid="transforms-dependencies-content">
+      <TransformHeader transform={transform} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.transformDependencies(transform.id),

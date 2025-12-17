@@ -98,24 +98,19 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
 
   return (
     <>
-      <PageContainer
-        pos="relative"
-        data-testid="edit-snippet-page"
-        header={
-          <SnippetHeader
-            snippet={snippet}
-            actions={
-              <PaneHeaderActions
-                isValid={true}
-                isDirty={isDirty}
-                isSaving={isSaving}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              />
-            }
-          />
-        }
-      >
+      <PageContainer pos="relative" data-testid="edit-snippet-page">
+        <SnippetHeader
+          snippet={snippet}
+          actions={
+            <PaneHeaderActions
+              isValid={true}
+              isDirty={isDirty}
+              isSaving={isSaving}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          }
+        />
         <Flex flex={1} w="100%" gap="sm">
           <Card
             withBorder

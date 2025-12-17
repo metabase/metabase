@@ -3,10 +3,9 @@ import type React from "react";
 import { Stack, type StackProps } from "metabase/ui";
 
 export const PageContainer = ({
-  header,
   children,
   ...rest
-}: React.PropsWithChildren<{ header?: React.ReactNode } & StackProps>) => {
+}: React.PropsWithChildren<StackProps>) => {
   return (
     <Stack
       bg="background-light"
@@ -17,7 +16,6 @@ export const PageContainer = ({
       style={{ overflow: "auto" }}
       {...rest}
     >
-      {header}
       {children}
     </Stack>
   );
