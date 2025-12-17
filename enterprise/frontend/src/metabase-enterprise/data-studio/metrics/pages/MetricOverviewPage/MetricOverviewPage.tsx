@@ -1,10 +1,12 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Center, Flex } from "metabase/ui";
+import { Center } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 
-import { CardOverview } from "../../../common/components/CardOverview";
 import { MetricHeader } from "../../components/MetricHeader";
+
+import { MetricOverview } from "./MetricOverview";
 
 type MetricOverviewPageParams = {
   cardId: string;
@@ -27,9 +29,9 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%" data-testid="metric-overview-page">
+    <PageContainer data-testid="metric-overview-page" gap="xl">
       <MetricHeader card={card} />
-      <CardOverview card={card} />
-    </Flex>
+      <MetricOverview card={card} />
+    </PageContainer>
   );
 }

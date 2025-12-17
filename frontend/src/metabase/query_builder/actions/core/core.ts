@@ -2,9 +2,9 @@ import { createAction } from "redux-actions";
 import _ from "underscore";
 
 import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
-import Databases from "metabase/entities/databases";
+import { Databases } from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
@@ -116,7 +116,10 @@ export const setCardAndRun = (
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
-        await loadCard(card.original_card_id, { dispatch, getState })
+        await loadCard(
+          { cardId: card.original_card_id },
+          { dispatch, getState },
+        )
       : // Otherwise, use a current card as the original card if the card has been saved
         // This is needed for checking whether the card is in dirty state or not
         card.id
@@ -153,7 +156,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
           setCardAndRun(
-            await loadCard(nextCard.id, { dispatch, getState }),
+            await loadCard({ cardId: nextCard.id }, { dispatch, getState }),
             {},
           ),
         );

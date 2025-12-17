@@ -1,0 +1,1 @@
+export { CreateTenantCollectionButton } from "./CreateTenantCollectionButton";

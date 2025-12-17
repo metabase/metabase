@@ -17,7 +17,7 @@ describe("getIcon", () => {
   });
 
   it("should return the correct icon for a schema", () => {
-    expect(getIcon({ model: "schema" })).toEqual({ name: "folder" });
+    expect(getIcon({ model: "schema" })).toEqual({ name: "folder_database" });
   });
 
   it("should return the correct icon for a table", () => {
@@ -41,7 +41,7 @@ describe("getIcon", () => {
   });
 
   it("should return the correct icon for a card without a display type", () => {
-    expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+    expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
   });
 
   it("should return the default icon for an invalid model", () => {
@@ -58,10 +58,10 @@ describe("getIcon", () => {
     });
 
     it("should return the default icon for no display type", () => {
-      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+      expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
     });
 
-    it("should return the correct icon for a card with a table chare", () => {
+    it("should return the correct icon for a card with a table chart", () => {
       expect(getIcon({ model: "card", display: "table" })).toEqual({
         name: "table2",
       });

@@ -15,6 +15,7 @@ import {
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardType } from "metabase/dashboard/utils";
+import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
@@ -45,21 +46,19 @@ import {
   Body,
   ContentContainer,
   DashboardTabsContainer,
-  Footer,
   Header,
   Root,
   Separator,
   TitleAndButtonsContainer,
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
-import { LogoBadge } from "./LogoBadge";
 import { useGlobalTheme } from "./useGlobalTheme";
 
 export type EmbedFrameBaseProps = Partial<{
   className: string;
   name: string | null;
   description: string | null;
-  question: Question;
+  question: Question | null;
   dashboard: Dashboard | null;
   headerButtons: ReactNode;
   actionButtons: ReactNode;
@@ -75,6 +74,7 @@ export type EmbedFrameBaseProps = Partial<{
   dashboardTabs: ReactNode;
   pdfDownloadsEnabled: boolean;
   withFooter: boolean;
+  contentClassName?: string;
 }>;
 
 type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -106,6 +106,7 @@ export const EmbedFrame = ({
   hide_parameters,
   pdfDownloadsEnabled = true,
   withFooter = true,
+  contentClassName,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
   const hasEmbedBranding = useSelector(
@@ -189,7 +190,7 @@ export const EmbedFrame = ({
     >
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-        className={cx({
+        className={cx(contentClassName, {
           [EmbedFrameS.ContentContainer]: true,
           [EmbedFrameS.WithThemeBackground]: true,
 
@@ -290,16 +291,15 @@ export const EmbedFrame = ({
 
       {dashboard && <FilterApplyToast position="fixed" />}
       {isFooterEnabled && (
-        <Footer
-          data-testid="embed-frame-footer"
-          className={EmbedFrameS.EmbedFrameFooter}
+        <EmbeddingFooter
           variant={footerVariant}
+          isDarkMode={theme === "night"}
+          hasEmbedBranding={hasEmbedBranding}
         >
-          {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
           )}
-        </Footer>
+        </EmbeddingFooter>
       )}
     </Root>
   );

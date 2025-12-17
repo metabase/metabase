@@ -1,12 +1,13 @@
 (ns ^:mb/driver-tests metabase.warehouse-schema-rest.api.table-test
   "Tests for /api/table endpoints."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
-   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -162,7 +163,7 @@
             (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                         :view_count]
                                        :id (mt/id :venues))
-                        :pk_field)
+                        :pk_field :collection)
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
@@ -183,7 +184,7 @@
                 (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                             :view_count]
                                            :id table-id)
-                            :pk_field)
+                            :pk_field :collection)
                 {:schema       ""
                  :name         "schemaless_table"
                  :display_name "Schemaless"
@@ -244,8 +245,9 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                             :id (mt/id :users))
+              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                                         :id (mt/id :users))
+                          :collection)
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -325,8 +327,9 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                             :id (mt/id :users))
+              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                                         :id (mt/id :users))
+                          :collection)
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -419,7 +422,8 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details])))
-              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
+              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+                          :pk_field :collection)
               {:description     "What a nice table!"
                :entity_type     nil
                :schema          ""
@@ -644,7 +648,8 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+            (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+                        :collection)
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
@@ -709,6 +714,14 @@
                                        :table_id (mt/id :categories)}]
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
+
+(deftest ^:parallel table-segment-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata"
+    (testing "segments include :definition_description"
+      (mt/with-temp [:model/Segment _ {:table_id (mt/id :venues)
+                                       :definition (:query (mt/mbql-query venues {:filter [:= $price 4]}))}]
+        (is (=? {:segments [{:definition_description "Filtered by Price is equal to 4"}]}
+                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
 
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
@@ -1184,44 +1197,59 @@
         (is (true?
              (deref sync-called? timeout :sync-never-called)))))))
 
-;; DEMOWARE bulk-editing APIS
 (deftest ^:parallel list-table-filtering-test
-  (testing "term filtering"
+  (let [list-tables (fn [& params]
+                      (->> (apply mt/user-http-request :crowberto :get 200 "table" params)
+                           (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
+                           (map #(select-keys % [:display_name]))))]
+    (testing "term filtering"
+      (is (=? [{:display_name "Users"}] (list-tables :term "Use")))
+      (testing "wildcard"
+        (is (=? [{:display_name "Users"}] (list-tables :term "*S*rs"))))
+      (testing "escaping"
+        (mt/with-temp [:model/Table _ {:name         "what-a_cool%table\\name"
+                                       :display_name "coolest table ever"
+                                       :db_id        (mt/id)
+                                       :active       true}
+                       :model/Table _ {:name         "what_a_cool_table_name"
+                                       :display_name "not a cool table"
+                                       :db_id        (mt/id)
+                                       :active       true}]
+          (let [match [{:display_name "coolest table ever"}]
+                q     #(list-tables :term %)]
+            (is (= match (q "what-a_cool%table\\name")))
+            (is (= [] (q "what%a%cool%table%name"))))))
+      (testing "display name"
+        (mt/with-temp [:model/Table _ {:name         "order_item_discount"
+                                       :display_name "Order Item Discount"
+                                       :db_id        (mt/id)
+                                       :active       true}]
+          (let [match [{:display_name "Order Item Discount"}]
+                q     #(list-tables :term %)]
+            (is (= match (q "Order Item")))
+            (is (= match (q "Ite")))
+            (is (= match (q "Item Di")))
+            (is (= match (q "Ite* Discount")))
+            (is (= []    (q "order_item discount")))
+            (is (= []    (q "Discount Item")))))))
+    (testing "filter composition"
+      (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
+                                                      :display_name "Products2"
+                                                      :db_id        (mt/id)
+                                                      :active       true}]
+        (is (=? [{:display_name "People"}
+                 {:display_name "Products"}
+                 {:display_name "Products2"}]
+                (list-tables :term "P")))
 
-    (is (=? [{:display_name "Users"}]
-            (->> (mt/user-http-request :crowberto :get 200 "table" :term (if (contains? #{:mysql :mariadb} (mdb/db-type)) "USE" "Use"))
-                 (filter #(= (:db_id %) (mt/id)))           ; prevent stray tables from affecting unit test results
-                 (map #(select-keys % [:display_name])))))
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
 
-    (testing "wildcard"
-      (is (=? [{:display_name "Users"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term (if (contains? #{:mysql :mariadb} (mdb/db-type)) "*S*RS" "*S*rs"))
-                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results1
-                   (map #(select-keys % [:display_name])))))))
-  (testing "filter composition"
-    (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
-                                                    :display_name "Products2"
-                                                    :db_id        (mt/id)
-                                                    :active       true}]
-      (is (=? [{:display_name "People"}
-               {:display_name "Products"}
-               {:display_name "Products2"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P")
-                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
-                   (map #(select-keys % [:display_name])))))
+        (is (=? [{:display_name "Products2"}]
+                (list-tables :term "P" :data-layer "gold")))
 
-      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
-      (is (=? [{:display_name "Products2"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "gold")
-                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
-                   (map #(select-keys % [:display_name])))))
-
-      (testing "empty filter"
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "bronze")
-                     (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
-                     (map #(select-keys % [:display_name])))))))))
+                (list-tables :term "P" :data-layer "bronze")))))))
 
 (deftest ^:parallel update-table-visibility-sync-test
   (testing "PUT /api/table/:id visibility field synchronization"
@@ -1313,3 +1341,27 @@
                       (filter #(= (:db_id %) db-id))
                       (map :id)
                       set))))))))
+
+(deftest no-fks-for-missing-tables-test
+  (testing "Check that we don't return foreign keys for missing/inactive tables"
+    (mt/with-temp-test-data
+      [["continent" []
+        []]
+       ["country" [{:field-name "continent_id", :base-type :type/Integer}]
+        []]]
+      (let [db (mt/db)
+            db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+        ;; 1. add FK relationship in the database targeting continent_1
+        (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
+        (sync/sync-database! db {:scan :schema})
+        (testing "initially country's continent_id is targeting continent_1"
+          (is (= (mt/id :continent :id)
+                 (get-fk-target))))
+        (is (= 1 (count (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent))))))
+
+        ;; 2. drop the country table
+        (jdbc/execute! db-spec "DROP TABLE country;")
+        (sync/sync-database! db {:scan :schema})
+
+        (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))

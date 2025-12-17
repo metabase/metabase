@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { ResponsiveParametersList } from "metabase/query_builder/components/ResponsiveParametersList";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ParameterId } from "metabase-types/api";
 
@@ -17,6 +18,7 @@ export const SqlParametersList = () => {
   const {
     question,
     originalQuestion,
+    token,
     parameterValues,
     updateParameterValues,
     hiddenParameters,
@@ -49,7 +51,7 @@ export const SqlParametersList = () => {
       );
   }, [question, originalQuestion, hiddenParameters]);
 
-  if (!question || !isNativeQuestion) {
+  if (!question || !isNativeQuestion || !parameters.length) {
     return null;
   }
 
@@ -63,18 +65,21 @@ export const SqlParametersList = () => {
   };
 
   return (
-    <ResponsiveParametersList
-      classNames={{
-        container: SqlParametersListS.SqlParametersListContainer,
-        parametersList: SqlParametersListS.SqlParametersList,
-      }}
-      cardId={question.id()}
-      dashboardId={question.dashboardId() ?? undefined}
-      parameters={parameters}
-      setParameterValue={setParameterValue}
-      enableParameterRequiredBehavior
-      commitImmediately={false}
-      isSortable={false}
-    />
+    <Box w="100%">
+      <ResponsiveParametersList
+        classNames={{
+          container: SqlParametersListS.SqlParametersListContainer,
+          parametersList: SqlParametersListS.SqlParametersList,
+        }}
+        cardId={question.id()}
+        dashboardId={question.dashboardId() ?? undefined}
+        token={token}
+        parameters={parameters}
+        setParameterValue={setParameterValue}
+        enableParameterRequiredBehavior
+        commitImmediately={false}
+        isSortable={false}
+      />
+    </Box>
   );
 };

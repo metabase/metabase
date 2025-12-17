@@ -1,40 +1,42 @@
 const cypress = require("cypress");
 
-const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
-
 /**
- * This simply runs Cypress through the Cypress Module API rather than the CLI.
+ * Runs Cypress through the Module API and throws on any failure.
  * See: https://docs.cypress.io/app/references/module-api
  *
- * @param {Partial<CypressCommandLine.CypressRunOptions> | Partial<CypressCommandLine.CypressOpenOptions>} options - Cypress configuration options for running or opening tests
- * @param {function(number): Promise<void>} exitFunction - Async function to call on exit with the exit code
- * @returns {Promise<CypressCommandLine.CypressRunResult | CypressCommandLine.CypressFailedRunResult | void>}
- * @throws {Error} When Cypress fails to run tests
+ * Errors are propagated to the parent process rather than handled here.
+ * The caller is responsible for catching errors and performing cleanup.
+ *
+ * This wrapper exists because cypress.run() resolves successfully even when
+ * tests fail - it only throws when Cypress itself fails to start (e.g., invalid
+ * config). We convert test failures into thrown errors for consistent handling.
+ *
+ * @param {Partial<CypressCommandLine.CypressRunOptions> | Partial<CypressCommandLine.CypressOpenOptions>} options - Cypress configuration options
+ * @returns {Promise<CypressCommandLine.CypressRunResult>} - Resolves with results if all tests pass
+ * @throws {Error} When Cypress fails to run (e.g., config error) or any tests fail
  */
-const runCypress = async (options, exitFunction) => {
-  const openMode = process.env.OPEN_UI === "true";
+const runCypress = async (options) => {
+  const openMode = process.env.CYPRESS_GUI === "true";
 
-  try {
-    const { status, message, totalFailed, failures } = openMode
-      ? await cypress.open(options)
-      : await cypress.run(options);
-
-    // At least one test failed
-    if (totalFailed > 0) {
-      await exitFunction(FAILURE_EXIT_CODE);
-    }
-
-    // Something went wrong and Cypress failed to even run tests
-    if (status === "failed" && failures) {
-      console.error(message);
-
-      await exitFunction(failures);
-    }
-  } catch (e) {
-    console.error("Failed to run Cypress!\n", e);
-
-    await exitFunction(FAILURE_EXIT_CODE);
+  // Open mode is interactive - no results to validate
+  if (openMode) {
+    await cypress.open(options);
+    return;
   }
+
+  const result = await cypress.run(options);
+
+  // Cypress failed to even run tests (e.g., config error, browser crash)
+  if (result.status === "failed") {
+    throw new Error(`Cypress failed to run: ${result.message}`);
+  }
+
+  // Tests ran but at least one failed
+  if (result.totalFailed > 0) {
+    throw new Error(`${result.totalFailed} test(s) failed`);
+  }
+
+  return result;
 };
 
 module.exports = runCypress;

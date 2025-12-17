@@ -253,7 +253,7 @@ describe("user > settings", () => {
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
 
-      cy.findByDisplayValue("Light").click();
+      cy.findByDisplayValue("Use system default").click();
       H.popover().findByText("Dark").click();
       assertDarkMode();
 
@@ -265,6 +265,133 @@ describe("user > settings", () => {
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
       cy.realPress([metaKey, "Shift", "L"]);
       assertDarkMode();
+    });
+
+    it("should persist theme selection on browser change", () => {
+      cy.intercept("PUT", "/api/setting/color-scheme").as("saveSetting");
+
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Dark").click();
+      assertDarkMode();
+
+      cy.wait("@saveSetting");
+
+      // emulate browser change by deleting localStorage values
+      cy.window().then((win) => {
+        win.sessionStorage.clear();
+        win.localStorage.clear();
+      });
+
+      cy.visit("/account/profile");
+      assertDarkMode();
+    });
+
+    it("should apply user's selected theme instead of browser's OS theme preference", () => {
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Light").click();
+
+      assertLightMode();
+
+      H.navigationSidebar().findByText("Our analytics").click();
+      H.collectionTable().findByText("Orders").should("exist").click();
+
+      cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
+
+      cy.window().then((win) => {
+        H.appBar()
+          .findByLabelText("Settings")
+          .should("exist")
+          .then(($button) => {
+            cy.wrap(win.getComputedStyle($button[0]).color).should(
+              "eq",
+              "rgba(7, 23, 34, 0.84)", // text-dark
+            );
+          });
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-left")
+          .findByText("Other charts")
+          .then(($text) => {
+            cy.wrap(win.getComputedStyle($text[0]).color).should(
+              "eq",
+              "rgba(7, 23, 34, 0.62)", // text-medium
+            );
+          });
+      });
+
+      H.appBar().findByLabelText("Settings").click();
+      H.popover().findByText("Account settings").click();
+      cy.findByDisplayValue("Light").click();
+      H.popover().findByText("Dark").click();
+
+      H.openNavigationSidebar();
+      H.navigationSidebar().findByText("Our analytics").click();
+      H.collectionTable().findByText("Orders").should("exist").click();
+
+      cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
+
+      cy.window().then((win) => {
+        H.appBar()
+          .findByLabelText("Settings")
+          .should("exist")
+          .then(($button) => {
+            cy.wrap(win.getComputedStyle($button[0]).color).should(
+              "eq",
+              "rgba(255, 255, 255, 0.95)", // text-dark
+            );
+          });
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-left")
+          .findByText("Other charts")
+          .then(($text) => {
+            cy.wrap(win.getComputedStyle($text[0]).color).should(
+              "eq",
+              "rgba(255, 255, 255, 0.69)", // text-medium
+            );
+          });
+      });
+    });
+
+    it("should apply user's color scheme preference immediately after login (metabase#66874)", () => {
+      // First, set the color scheme preference while logged in
+      cy.intercept("PUT", "/api/setting/color-scheme").as("saveColorScheme");
+
+      cy.visit("/account/profile", stubSystemColorScheme("dark"));
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Light").click();
+
+      cy.wait("@saveColorScheme");
+
+      assertLightMode();
+
+      cy.signOut();
+      cy.visit("/", stubSystemColorScheme("dark"));
+
+      // Verify that the theme is restored to "auto" after sign out
+      assertDarkMode();
+
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+      // Sign-in is done manually in order to test theme replacement throughout
+      // react navigation, where no new metadata is passed or injected into the
+      // window object, and the theme is purely updated from session properties
+      cy.findByLabelText("Email address").type(email);
+      cy.findByLabelText("Password").type(password);
+      cy.button("Sign in").click();
+
+      cy.wait("@sessionProperties");
+
+      // Verify light mode is applied immediately after login
+      assertLightMode();
+
+      // Verify the theme selector shows the correct value
+      cy.visit("/account/profile", stubSystemColorScheme("dark"));
+      cy.findByDisplayValue("Light").should("exist");
     });
   });
 });
@@ -290,4 +417,28 @@ function stubCurrentUser(authenticationMethod) {
       Object.assign({}, user, authenticationMethod),
     ).as("getUser");
   });
+}
+
+/**
+ * Stub the system color scheme preference
+ *
+ * @param {boolean} prefersDark - Whether the system prefers dark mode
+ * @returns {Object} - The stub object
+ */
+function stubSystemColorScheme(preferredColorScheme = "light") {
+  return {
+    onBeforeLoad: (win) => {
+      cy.stub(win, "matchMedia").callsFake((query) => {
+        return {
+          matches: query === `(prefers-color-scheme: ${preferredColorScheme})`,
+          media: query,
+          addEventListener: cy.stub(),
+          removeEventListener: cy.stub(),
+          addListener: cy.stub(), // deprecated but sometimes needed
+          removeListener: cy.stub(),
+          dispatchEvent: cy.stub(),
+        };
+      });
+    },
+  };
 }

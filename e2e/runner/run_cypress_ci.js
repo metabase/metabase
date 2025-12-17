@@ -32,12 +32,12 @@ if (!permittedCommands.includes(command)) {
 
 const startServer = async () => {
   printBold("Starting backend");
-  await CypressBackend.start();
+  await CypressBackend.runFromJar();
 };
 
 const runTests = async (config, cliArguments = []) => {
   const userOverrides = await parseArguments(cliArguments);
-  await runCypress({ ...config, ...userOverrides }, process.exit);
+  await runCypress({ ...config, ...userOverrides });
 };
 
 // Custom "modes"
@@ -46,7 +46,10 @@ if (command === "start") {
 }
 
 if (command === "snapshot") {
-  runTests({ configFile: "e2e/support/cypress-snapshots.config.js" });
+  runTests(
+    { configFile: "e2e/support/cypress-snapshots.config.js" },
+    cliArguments,
+  );
 }
 
 // Metabase component or e2e tests

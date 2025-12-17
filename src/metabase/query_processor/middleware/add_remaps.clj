@@ -25,7 +25,7 @@
   `name` is `:remapped_from` `:category_id`.
 
   See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
-  (:refer-clojure :exclude [mapv select-keys some empty? not-empty])
+  (:refer-clojure :exclude [mapv select-keys some empty? not-empty get-in])
   (:require
    [clojure.data :as data]
    [medley.core :as m]
@@ -47,7 +47,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some empty? not-empty]]))
+   [metabase.util.performance :refer [mapv select-keys some empty? not-empty get-in]]))
 
 (mr/def ::simplified-ref
   [:tuple
@@ -301,7 +301,7 @@
                                                           (contains? original-join-field-ids (get-in remap-info path)))
                                                         [[:dimension :field-id]
                                                          ;; (not sure this is really something we want to support,
-                                                         ;; but [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+                                                         ;; but [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]]
                                                          ;; alleges that you can include just the remapped column in
                                                          ;; join `:fields` and it's supposed to work)
                                                          [:dimension :human-readable-field-id]]))

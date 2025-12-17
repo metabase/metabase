@@ -9,6 +9,11 @@ on:
         required: false
         type: boolean
         default: false
+      analytics_dev_mode:
+        description: 'Enable analytics development mode'
+        required: false
+        type: boolean
+        default: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -132,6 +137,7 @@ jobs:
           PR_NUMBER: ${{ github.event.number }}
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
       - name: Deploy PR Review ENV
         if: ${{ !inputs.self_hosting }}
         run: |
@@ -157,6 +163,7 @@ jobs:
           DB_USERNAME: ${{ secrets.PR_ENV_DB_USER }}
           DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
           CONFIG: ${{ secrets.PR_ENV_CONFIG }}
+          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
 
       - name: Setup Helm
         if: ${{ inputs.self_hosting }}
@@ -191,4 +198,4 @@ jobs:
             ✅ Preview:
                 https://pr${{ github.event.number }}.coredev.metabase.com
             🗒️ [login instructions](https://www.notion.so/metabase/Ephemeral-PR-Environments-c74a3710c87a460dbf4fc0007a001458)
-            📦 Deployment type: ${{ inputs.self_hosting && 'PR-Env-self-hosting' || 'PR-Env' }}
+            📦 Deployment type: ${{ inputs.self_hosting && 'PR-Env-self-hosting' || (inputs.analytics_dev_mode && 'PR-Env-analytics-dev' || 'PR-Env') }}

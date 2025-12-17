@@ -24,7 +24,7 @@ import TokenField, {
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
-import Fields from "metabase/entities/fields";
+import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { parseNumber } from "metabase/lib/number";
@@ -113,6 +113,7 @@ export interface IFieldValuesWidgetProps {
   fields: Field[];
   dashboardId?: DashboardId;
   cardId?: CardId;
+  token?: string | null;
 
   value: RowValue[];
   onChange: (value: RowValue[]) => void;
@@ -151,6 +152,7 @@ export const FieldValuesWidgetInner = forwardRef<
     fields,
     dashboardId,
     cardId,
+    token,
     value,
     onChange,
     multi,
@@ -248,6 +250,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchCardParameterValues({
         cardId,
+        token,
         parameter,
         query,
       }),
@@ -262,6 +265,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchDashboardParameterValues({
         dashboardId,
+        token,
         parameter,
         parameters,
         query,

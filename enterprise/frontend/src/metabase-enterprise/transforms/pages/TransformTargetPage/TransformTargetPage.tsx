@@ -5,9 +5,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type { Transform } from "metabase-types/api";
 
-import { ColumnLayout, ColumnLayoutBody } from "../../components/ColumnLayout";
 import { TransformHeader } from "../../components/TransformHeader";
 import { POLLING_INTERVAL } from "../../constants";
 import {
@@ -50,12 +50,10 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
   }
 
   return (
-    <ColumnLayout>
+    <PageContainer data-testid="transforms-target-content">
       <TransformHeader transform={transform} />
-      <ColumnLayoutBody>
-        <TargetSection transform={transform} />
-      </ColumnLayoutBody>
-    </ColumnLayout>
+      <TargetSection transform={transform} />
+    </PageContainer>
   );
 }
 

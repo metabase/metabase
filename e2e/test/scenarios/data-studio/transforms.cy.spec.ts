@@ -4,6 +4,7 @@ import dedent from "ts-dedent";
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createLibraryWithItems } from "e2e/support/test-library-data";
 import type {
   CardType,
   PythonTransformTableAliases,
@@ -49,7 +50,7 @@ describe("scenarios > admin > transforms", () => {
     it("should be able to create and run an mbql transform", () => {
       cy.log("create a new transform");
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.expectUnstructuredSnowplowEvent({
@@ -64,8 +65,16 @@ describe("scenarios > admin > transforms", () => {
       });
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.findByLabelText("Name").clear().type("MBQL");
+
+        cy.log("should auto-populate table name based on transform name...");
+        cy.findByLabelText("Table name").should("have.value", "mbql");
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
+
+        cy.log("...unless user has manually modified the table name");
+        cy.findByLabelText("Name").type(" transform");
+        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
@@ -86,10 +95,35 @@ describe("scenarios > admin > transforms", () => {
       });
     });
 
+    it("should not show you the library in the mini picker when building transforms (uxw-2403)", () => {
+      createLibraryWithItems();
+
+      visitTransformListPage();
+      cy.button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+      H.miniPicker().within(() => {
+        cy.findByText(DB_NAME).should("exist");
+        cy.findByText("Our analytics").should("exist");
+        cy.findByText("Browse all").should("exist");
+        cy.findByText("Data").should("not.exist");
+      });
+
+      cy.findByRole("link", { name: "Exit" }).click();
+      H.modal().button("Discard changes").click();
+      H.newButton("Question").click();
+
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").should("not.exist");
+        cy.findByText("Browse all").should("exist");
+        cy.findByText("Data").click();
+        cy.findByText("Orders").should("exist");
+      });
+    });
+
     it("should be able to create and run a SQL transform", () => {
       cy.log("create a new transform");
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("SQL query").click();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_create",
@@ -129,7 +163,7 @@ describe("scenarios > admin > transforms", () => {
       });
 
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("SQL query").click();
       H.popover().findByText(DB_NAME).click();
 
@@ -192,7 +226,7 @@ describe("scenarios > admin > transforms", () => {
         setPythonRunnerSettings();
         cy.log("create a new transform");
         visitTransformListPage();
-        getTransformsSidebar().button("Create a transform").click();
+        cy.button("Create a transform").click();
         H.popover().findByText("Python script").click();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
@@ -291,7 +325,7 @@ describe("scenarios > admin > transforms", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
-        H.DataStudio.Transforms.content().should(
+        H.DataStudio.Runs.content().should(
           "contain",
           "Executing Python transform",
         );
@@ -328,7 +362,7 @@ describe("scenarios > admin > transforms", () => {
 
         cy.log("create a new transform");
         visitTransformListPage();
-        getTransformsSidebar().button("Create a transform").click();
+        cy.button("Create a transform").click();
         H.popover().findByText("Copy of a saved question").click();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
@@ -378,6 +412,9 @@ LIMIT
   5`;
 
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
+
       getQueryEditor().findByLabelText("View SQL").click();
       H.sidebar().should("be.visible");
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
@@ -387,7 +424,6 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save").click();
-      getTransformsContent().should("be.visible");
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
@@ -405,7 +441,7 @@ LIMIT
     it("should not allow to overwrite an existing table when creating a transform", () => {
       cy.log("open the new transform page");
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       cy.log("set the query");
@@ -417,18 +453,18 @@ LIMIT
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").type(SOURCE_TABLE);
+        cy.findByLabelText("Table name").clear().type(SOURCE_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
-        cy.findByText("A table with that name already exists.").should(
-          "be.visible",
-        );
       });
+      H.undoToast()
+        .findByText("A table with that name already exists.")
+        .should("be.visible");
     });
 
     it("should be able to create a new schema when saving a transform", () => {
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.miniPicker().within(() => {
@@ -439,7 +475,7 @@ LIMIT
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
         cy.findByLabelText("Schema").clear().type(CUSTOM_SCHEMA);
       });
       H.popover().findByText("Create new schema").click();
@@ -477,9 +513,9 @@ LIMIT
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should be able to create a new table in an existing when saving a transform", () => {
+    it("should be able to create a new table in an existing transform when saving a transform", () => {
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
       H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
@@ -489,7 +525,7 @@ LIMIT
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
@@ -514,7 +550,7 @@ LIMIT
 
     it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.miniPicker().within(() => {
@@ -549,7 +585,7 @@ LIMIT
       );
 
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.miniPicker().within(() => {
@@ -568,7 +604,7 @@ LIMIT
 
     it("should not be possible to create a sql transform from a table from an unsupported database", () => {
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("SQL query").click();
       H.popover()
         .findByRole("option", { name: "Sample Database" })
@@ -599,7 +635,7 @@ LIMIT
 
         cy.log("create a new transform");
         visitTransformListPage();
-        getTransformsSidebar().button("Create a transform").click();
+        cy.button("Create a transform").click();
         H.popover().findByText("Copy of a saved question").click();
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab(label);
@@ -616,7 +652,7 @@ LIMIT
     it("should not auto-pivot query results for MBQL transforms", () => {
       cy.log("create a new transform");
       visitTransformListPage();
-      getTransformsSidebar().button("Create a transform").click();
+      cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       cy.log("build a query with 1 aggregation and 2 breakouts");
@@ -652,13 +688,13 @@ LIMIT
   describe("name", () => {
     it("should be able to edit the name after creation", () => {
       createMbqlTransform({ visitTransform: true });
-      getTransformsContent()
+      H.DataStudio.Transforms.header()
         .findByPlaceholderText("Name")
         .clear()
         .type("New name")
         .blur();
       H.undoToast().findByText("Transform name updated").should("be.visible");
-      getTransformsContent()
+      H.DataStudio.Transforms.header()
         .findByPlaceholderText("Name")
         .should("have.value", "New name");
     });
@@ -749,7 +785,8 @@ LIMIT
       cy.wait("@createTag");
 
       cy.log("Navigate to transform B");
-      getTransformsSidebar().findByText("Transform B").click();
+      H.DataStudio.nav().findByRole("link", { name: "Transforms" }).click();
+      cy.findByRole("table").findByText("Transform B").click();
 
       cy.log("Remove the new tag from transform B");
       H.DataStudio.Transforms.runTab().click();
@@ -765,7 +802,8 @@ LIMIT
       });
 
       cy.log("Navigate to transform A");
-      getTransformsSidebar().findByText("Transform A").click();
+      getTransformsNavLink().click();
+      cy.findByRole("table").findByText("Transform A").click();
 
       cy.log("The tag should be gone");
       H.DataStudio.Transforms.runTab().click();
@@ -784,7 +822,7 @@ LIMIT
 
       cy.log("modify the transform before running");
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().button("Change target").click();
+      getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
@@ -825,7 +863,7 @@ LIMIT
 
       cy.log("modify the transform before running");
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().button("Change target").click();
+      getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
@@ -868,7 +906,7 @@ LIMIT
 
       cy.log("modify the transform after running");
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().button("Change target").click();
+      getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
@@ -914,7 +952,7 @@ LIMIT
 
       cy.log("modify the transform after running");
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().button("Change target").click();
+      getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
@@ -961,7 +999,7 @@ LIMIT
 
       cy.log("delete the old target without creating the new one");
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().button("Change target").click();
+      getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Delete transform_table").click();
@@ -971,7 +1009,7 @@ LIMIT
       });
 
       cy.log("change the target back to the original one");
-      getTransformsContent().button("Change target").click();
+      getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE);
         cy.button("Change target").click();
@@ -994,7 +1032,7 @@ LIMIT
 
       cy.log("change the target to an existing table");
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().button("Change target").click();
+      getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
         cy.button("Change target").click();
@@ -1011,15 +1049,17 @@ LIMIT
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent()
-        .findByText("Edit this table’s metadata")
+      getTransformsTargetContent()
+        .findByText("Edit this table's metadata")
         .should("not.exist");
 
       cy.log("after table creation");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().findByText("Edit this table’s metadata").click();
+      getTransformsTargetContent()
+        .findByText("Edit this table's metadata")
+        .click();
       H.DataModel.TableSection.clickField("Name");
       H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
       cy.wait("@updateField");
@@ -1079,9 +1119,44 @@ LIMIT
   });
 
   describe("queries", () => {
+    it("should show SQL query transforms in view-only mode", () => {
+      cy.log("create a new transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+      H.NativeEditor.get().should("have.attr", "contenteditable", "false");
+      H.NativeEditor.get().should("have.attr", "aria-readonly", "true");
+      H.DataStudio.Transforms.editDefinition().should("be.visible");
+      H.DataStudio.Transforms.editDefinition().should(
+        "have.attr",
+        "href",
+        "/data-studio/transforms/1/edit",
+      );
+    });
+
+    it("should show MBQL transforms in view-only mode", () => {
+      cy.log("create a new transform");
+      createMbqlTransform({ visitTransform: true });
+      H.getNotebookStep("data")
+        .findByText("Animals")
+        .closest("button")
+        .should("be.disabled");
+      H.DataStudio.Transforms.editDefinition().should("be.visible");
+      H.DataStudio.Transforms.editDefinition().should(
+        "have.attr",
+        "href",
+        "/data-studio/transforms/1/edit",
+      );
+    });
+
     it("should be able to update a MBQL query", () => {
       cy.log("create a new transform");
       createMbqlTransform({ visitTransform: true });
+
+      cy.log("visit edit mode");
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
 
       cy.log("update the query");
       H.getNotebookStep("data").button("Filter").click();
@@ -1110,6 +1185,10 @@ LIMIT
         sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
         visitTransform: true,
       });
+
+      cy.log("visit edit mode");
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
 
       cy.log("update the query");
       H.NativeEditor.type(" WHERE name = 'Duck'");
@@ -1215,8 +1294,9 @@ LIMIT
         cy.button("Delete transform").click();
         cy.wait("@deleteTransform");
       });
-      getTransformsSidebar().should("be.visible");
-      getTransformsSidebar().findByText("MBQL transform").should("not.exist");
+      getTransformsNavLink().click();
+      getTransformsList().should("be.visible");
+      getTransformsList().findByText("MBQL transform").should("not.exist");
     });
 
     it("should be able to delete a transform and keep the table", () => {
@@ -1235,7 +1315,7 @@ LIMIT
         cy.button("Delete transform only").click();
         cy.wait("@deleteTransform");
       });
-      getTransformsSidebar().should("be.visible");
+      getTransformsList().should("be.visible");
 
       cy.log("make sure the table still exists");
       visitTableQuestion();
@@ -1259,7 +1339,7 @@ LIMIT
         cy.wait("@deleteTransformTable");
         cy.wait("@deleteTransform");
       });
-      getTransformsSidebar().should("be.visible");
+      getTransformsList().should("be.visible");
 
       cy.log("make sure the table is deleted");
       visitTableQuestion();
@@ -1320,7 +1400,7 @@ LIMIT
       getRunButton().should("have.text", "Running now…");
       getRunStatus().should("have.text", "Run in progress…");
 
-      H.DataStudio.runsButton().click();
+      getRunsNavLink().click();
       getContentTable().within(() => {
         cy.findByText("In progress").should("be.visible");
         cy.findByLabelText("Cancel run").click();
@@ -1354,7 +1434,7 @@ LIMIT
         "contain",
         "Last ran a few seconds ago successfully.",
       );
-      H.DataStudio.Transforms.content().should(
+      H.DataStudio.Runs.content().should(
         "contain",
         "This run succeeded before it had a chance to cancel.",
       );
@@ -1362,6 +1442,9 @@ LIMIT
 
     it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
       createSlowTransform(500);
+
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
 
       getQueryEditor().within(() => {
         cy.findAllByTestId("run-button").eq(0).click();
@@ -1402,7 +1485,7 @@ LIMIT
       });
 
       H.DataStudio.Transforms.dependenciesTab().click();
-      H.DataStudio.Transforms.content()
+      H.DataStudio.Dependencies.content()
         .should("contain", "Transform B")
         .and("contain", "Transform A");
     });
@@ -1410,7 +1493,10 @@ LIMIT
     it("should show if the transform has no dependencies", () => {
       createMbqlTransform({ name: "Transform A", visitTransform: true });
       H.DataStudio.Transforms.dependenciesTab().click();
-      H.DataStudio.Transforms.content().should("contain", "Nothing uses this");
+      H.DataStudio.Dependencies.content().should(
+        "contain",
+        "Nothing uses this",
+      );
     });
   });
 
@@ -1467,7 +1553,7 @@ LIMIT
         );
 
         visitTransformListPage();
-        getTransformsSidebar().button("Create a transform").click();
+        cy.button("Create a transform").click();
         H.popover().findByText("Python script").click();
 
         H.PythonEditor.clear().type(
@@ -1578,7 +1664,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     });
 
     H.DataStudio.Transforms.targetTab().click();
-    getTransformsContent().button("Change target").click();
+    getTransformsTargetContent().button("Change target").click();
 
     H.modal().findByLabelText("Schema").should("not.exist");
   });
@@ -1586,7 +1672,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
   it("should be not be possible to create a new schema when the database does not support schemas", () => {
     cy.log("create a new transform");
     visitTransformListPage();
-    getTransformsSidebar().button("Create a transform").click();
+    getTransformsList().button("Create a transform").click();
     H.popover().findByText("Query builder").click();
 
     H.miniPicker().within(() => {
@@ -1614,13 +1700,13 @@ describe("scenarios > admin > transforms > jobs", () => {
   describe("creation", () => {
     it("should be able to create a job with default properties", () => {
       visitJobListPage();
-      getJobsSidebar().button("Create a job").click();
+      H.DataStudio.Jobs.list().findByRole("link", { name: /New/ }).click();
 
-      getJobPage().button("Save").click();
+      H.DataStudio.Jobs.editor().button("Save").click();
       cy.wait("@createJob");
       H.undoToast().findByText("New job created").should("be.visible");
 
-      getJobPage().within(() => {
+      H.DataStudio.Jobs.editor().within(() => {
         cy.findByPlaceholderText("Name").should("have.value", "New job");
         getScheduleFrequencyInput().should("have.value", "daily");
         getScheduleTimeInput().should("have.value", "12:00");
@@ -1629,23 +1715,23 @@ describe("scenarios > admin > transforms > jobs", () => {
 
     it("should be able to create a job with custom property values", () => {
       visitJobListPage();
-      getJobsSidebar().button("Create a job").click();
+      H.DataStudio.Jobs.list().findByRole("link", { name: /New/ }).click();
 
-      getJobPage().within(() => {
+      H.DataStudio.Jobs.editor().within(() => {
         cy.findByPlaceholderText("Name").clear().type("Job");
         getScheduleFrequencyInput().click();
       });
       H.popover().findByText("custom").click();
-      getJobPage().within(() => {
+      H.DataStudio.Jobs.editor().within(() => {
         getCronInput().clear().type("0 * * * ?");
         getTagsInput().click();
       });
       H.popover().findByText("daily").click();
-      getJobPage().button("Save").click();
+      H.DataStudio.Jobs.editor().button("Save").click();
       cy.wait("@createJob");
       H.undoToast().findByText("New job created").should("be.visible");
 
-      getJobPage().within(() => {
+      H.DataStudio.Jobs.editor().within(() => {
         cy.findByPlaceholderText("Name").should("have.value", "Job");
         getCronInput().should("have.value", "0 * * * ?");
         cy.findByText(/This job will run every hour/).should("be.visible");
@@ -1658,13 +1744,13 @@ describe("scenarios > admin > transforms > jobs", () => {
     it("should be able to edit the name after creation", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
 
-      getJobPage()
+      H.DataStudio.Jobs.editor()
         .findByPlaceholderText("Name")
         .clear()
         .type("New name")
         .blur();
       H.undoToast().findByText("Job name updated").should("be.visible");
-      getJobPage()
+      H.DataStudio.Jobs.editor()
         .findByPlaceholderText("Name")
         .should("have.value", "New name");
     });
@@ -1693,12 +1779,12 @@ describe("scenarios > admin > transforms > jobs", () => {
 
     it("should be able to change the schedule after creation", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
-      getJobPage().within(() => {
+      H.DataStudio.Jobs.editor().within(() => {
         getScheduleFrequencyInput().click();
       });
       H.popover().findByText("weekly").click();
       H.undoToast().findByText("Job schedule updated").should("be.visible");
-      getJobPage().within(() => {
+      H.DataStudio.Jobs.editor().within(() => {
         getScheduleFrequencyInput().should("have.value", "weekly");
       });
     });
@@ -1713,8 +1799,8 @@ describe("scenarios > admin > transforms > jobs", () => {
         "Monthly job": "monthly",
       };
       Object.entries(jobNameToFrequency).forEach(([jobName, frequency]) => {
-        getJobsSidebar().findByText(jobName).click();
-        getJobPage().within(() => {
+        H.DataStudio.Jobs.list().findByText(jobName).click();
+        H.DataStudio.Jobs.editor().within(() => {
           getScheduleFrequencyInput().should("have.value", frequency);
         });
         cy.go("back");
@@ -1763,11 +1849,11 @@ describe("scenarios > admin > transforms > jobs", () => {
         event: "transform_job_trigger_manual_run",
       });
 
-      getJobPage()
+      H.DataStudio.Jobs.editor()
         .findByText("Last ran a few seconds ago successfully.")
         .should("be.visible");
 
-      H.DataStudio.runsButton().click();
+      getRunsNavLink().click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
@@ -1787,7 +1873,9 @@ describe("scenarios > admin > transforms > jobs", () => {
         );
       });
       runJobAndWaitForFailure();
-      getJobPage().findByText("Last run failed a few seconds ago.");
+      H.DataStudio.Jobs.editor().findByText(
+        "Last run failed a few seconds ago.",
+      );
       getRunErrorInfoButton().click();
       H.modal().should("contain.text", 'relation "abc" does not exist');
     });
@@ -1810,8 +1898,8 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.button("Delete job").click();
         cy.wait("@deleteJob");
       });
-      getJobsSidebar().should("be.visible");
-      getJobsSidebar().findByText("New job").should("not.exist");
+      H.DataStudio.Jobs.list().should("be.visible");
+      H.DataStudio.Jobs.list().findByText("New job").should("not.exist");
     });
   });
 
@@ -1822,14 +1910,14 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       cy.log("make sure that default jobs are created");
       visitJobListPage();
-      H.DataStudio.Jobs.sidebar().within(() => {
+      H.DataStudio.Jobs.list().within(() => {
         jobNames.forEach((jobName) =>
           cy.findByText(jobName).should("be.visible"),
         );
       });
 
       cy.log("make sure that default tags are available for selection");
-      getJobsSidebar().button("Create a job").click();
+      H.DataStudio.Jobs.list().findByRole("link", { name: /New/ }).click();
       getTagsInput().click();
       H.popover().within(() => {
         tagNames.forEach((tagName) =>
@@ -1854,7 +1942,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         );
       });
 
-      H.DataStudio.Jobs.content()
+      H.DataStudio.Jobs.editor()
         .findByText("Transforms")
         .scrollIntoView()
         .should("be.visible");
@@ -1869,7 +1957,11 @@ describe("scenarios > admin > transforms > jobs", () => {
 
     it("should not render the transforms table if the job has no transforms", () => {
       H.createTransformJob({}, { visitTransformJob: true });
-      H.DataStudio.Jobs.content().findByText("Transforms").should("not.exist");
+      H.DataStudio.Jobs.editor()
+        .findByText(/There are no transforms for this job/)
+        .scrollIntoView()
+        .should("be.visible");
+      getContentTable().should("not.exist");
     });
   });
 });
@@ -2215,7 +2307,7 @@ describe("scenarios > admin > transforms > runs", () => {
     }
 
     createInitialData();
-    H.DataStudio.runsButton().click();
+    getRunsNavLink().click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
@@ -2225,20 +2317,20 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
-function getTransformsSidebar() {
-  return cy.findByTestId("transforms-sidebar");
+function getTransformsNavLink() {
+  return H.DataStudio.nav().findByRole("link", { name: "Transforms" });
 }
 
-function getTransformsContent() {
-  return cy.findByTestId("transforms-content");
+function getRunsNavLink() {
+  return H.DataStudio.nav().findByRole("link", { name: "Runs" });
 }
 
-function getJobsSidebar() {
-  return cy.findByTestId("jobs-sidebar");
+function getTransformsList() {
+  return cy.findByTestId("transforms-list");
 }
 
-function getJobPage() {
-  return cy.findByTestId("jobs-editor");
+function getTransformsTargetContent() {
+  return cy.findByTestId("transforms-target-content");
 }
 
 function getQueryEditor() {

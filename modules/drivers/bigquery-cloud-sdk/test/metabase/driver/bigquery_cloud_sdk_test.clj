@@ -117,7 +117,7 @@
             ;; TODO Temporarily disabling due to flakiness (#33140)
             #_(is (= 4 @pages-retrieved))))))))
 
-;; These look like the macros from metabase.query-processor-test.expressions-test
+;; These look like the macros from metabase.query-processor.expressions-test
 ;; but conform to bigquery naming rules
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows
@@ -1346,3 +1346,14 @@
       :type/JSON               [[:raw "JSON"]]
       :type/SerializedJSON     [[:raw "JSON"]]
       :type/Decimal            [[:raw "BIGDECIMAL"]])))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "compile-transform creates CREATE OR REPLACE TABLE"
+      (is (= ["CREATE OR REPLACE TABLE `PRODUCTS_COPY` AS SELECT * FROM products" nil]
+             (driver/compile-transform :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
+                                                            :output-table :PRODUCTS_COPY}))))
+    (testing "compile-insert generates INSERT INTO"
+      (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
+             (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
+                                                         :output-table :PRODUCTS_COPY}))))))

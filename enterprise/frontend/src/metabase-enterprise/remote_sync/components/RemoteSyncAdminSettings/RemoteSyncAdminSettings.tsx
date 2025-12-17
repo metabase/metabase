@@ -8,6 +8,7 @@ import {
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
+  useListCollectionItemsQuery,
 } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
@@ -21,15 +22,16 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
-  Badge,
   Box,
   Button,
   Flex,
+  Icon,
   Radio,
   Stack,
   Text,
-  Title,
   Tooltip,
 } from "metabase/ui";
 import {
@@ -49,12 +51,14 @@ import {
 import {
   AUTO_IMPORT_KEY,
   BRANCH_KEY,
+  COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
   TOKEN_KEY,
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
+import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
 
 import { PullChangesButton } from "./PullChangesButton";
 
@@ -68,6 +72,19 @@ export const RemoteSyncAdminSettings = () => {
   });
   const pendingConfirmationSettingsRef =
     useRef<RemoteSyncConfigurationSettings | null>(null);
+
+  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
+  const useTenants = useSetting("use-tenants");
+  const applicationName = useSelector(getApplicationName);
+
+  // Fetch tenant collections to build initial sync state
+  const { data: tenantCollectionsData } = useListCollectionItemsQuery(
+    {
+      id: "root",
+      namespace: "shared-tenant-collection",
+    },
+    { skip: !isRemoteSyncEnabled || !useTenants },
+  );
 
   const {
     show: showChangeBranchConfirmation,
@@ -173,11 +190,19 @@ export const RemoteSyncAdminSettings = () => {
     });
     const tokenValue =
       settingDetails?.[TOKEN_KEY]?.value ?? settingValues?.[TOKEN_KEY];
+
+    // Build initial collection sync map from server data
+    const collectionSyncMap: Record<number, boolean> = {};
+    tenantCollectionsData?.data?.forEach((collection) => {
+      collectionSyncMap[collection.id] = collection.is_remote_synced ?? false;
+    });
+
     return {
       ...values,
       [TOKEN_KEY]: tokenValue,
+      [COLLECTIONS_KEY]: collectionSyncMap,
     };
-  }, [settingValues, settingDetails]);
+  }, [settingValues, settingDetails, tenantCollectionsData]);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
@@ -187,141 +212,153 @@ export const RemoteSyncAdminSettings = () => {
     },
   );
 
-  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
   const hasUnsyncedChanges = !!dirtyData?.dirty?.length;
 
   return (
-    <SettingsPageWrapper>
-      <SettingsSection>
-        <Box flex={1} maw="52rem">
-          <Flex align="flex-end" gap="sm" mb="xs">
-            <Title order={2}>{t`Remote Sync`}</Title>
-            {isRemoteSyncEnabled && (
-              <Badge
-                style={{ textTransform: "none" }}
-                py={10}
-                px="sm"
-              >{t`Enabled`}</Badge>
-            )}
-          </Flex>
-          <Text c="text-dark" size="sm" mb="md" maw="40rem" lh="1.5rem">
-            {t`Keep your dashboards, questions, and collections safely backed up in Git.`}
-          </Text>
+    <SettingsPageWrapper
+      title={t`Remote Sync`}
+      description={t`Keep your dashboards, questions, and collections safely backed up in Git.`}
+    >
+      <FormProvider
+        initialValues={initialValues as RemoteSyncConfigurationSettings}
+        enableReinitialize
+        validationSchema={REMOTE_SYNC_SCHEMA}
+        validationContext={settingValues}
+        onSubmit={handleSubmit}
+      >
+        {({ dirty, values }) => (
+          <Form disabled={!dirty}>
+            <Stack gap="xl" maw="52rem">
+              {!isRemoteSyncEnabled && (
+                <Text c="text-medium" size="sm">
+                  {jt`Need help setting this up? Check out our ${(
+                    <ExternalLink key="link" href={docsUrl}>
+                      {t`setup guide`}
+                    </ExternalLink>
+                  )}.`}
+                </Text>
+              )}
 
-          <FormProvider
-            initialValues={initialValues as RemoteSyncConfigurationSettings}
-            enableReinitialize
-            validationSchema={REMOTE_SYNC_SCHEMA}
-            validationContext={settingValues}
-            onSubmit={handleSubmit}
-          >
-            {({ dirty, values }) => (
-              <Form disabled={!dirty}>
-                <Stack gap="md">
-                  {!isRemoteSyncEnabled && (
-                    <Text c="text-medium" size="sm">
-                      {jt`Need help setting this up? Check out our ${(
-                        <ExternalLink key="link" href={docsUrl}>
-                          {t`setup guide`}
-                        </ExternalLink>
-                      )}.`}
-                    </Text>
-                  )}
+              {/* Section 1: Git Settings */}
+              <SettingsSection title={t`Git Settings`}>
+                <FormTextInput
+                  name={URL_KEY}
+                  label={t`Repository URL`}
+                  placeholder="https://github.com/yourcompany/metabase-library.git"
+                  {...getEnvSettingProps(settingDetails?.[URL_KEY])}
+                />
+                <FormTextInput
+                  name={TOKEN_KEY}
+                  label={t`Access Token`}
+                  description={t`Personal access token with write permissions`}
+                  type="password"
+                  {...getEnvSettingProps(settingDetails?.[TOKEN_KEY])}
+                />
+              </SettingsSection>
 
-                  <FormTextInput
-                    name={URL_KEY}
-                    label={t`Repository URL`}
-                    placeholder="https://github.com/yourcompany/metabase-library.git"
-                    {...getEnvSettingProps(settingDetails?.[URL_KEY])}
-                  />
+              {/* Section 2: Sync Mode for this Instance */}
+              <SettingsSection title={t`Sync Mode for this Instance`}>
+                <FormRadioGroup name={TYPE_KEY}>
+                  <Stack mt="sm">
+                    <Tooltip
+                      disabled={!hasUnsyncedChanges}
+                      label={t`You can't switch to Read-only as you have unpublished changes.`}
+                      position="bottom-start"
+                    >
+                      <Box>
+                        <Radio
+                          description={t`Usually you should use this for your production ${applicationName} instance. All synced collections are read-only, and will automatically sync with the specified branch (we'd recommend syncing with main).`}
+                          disabled={hasUnsyncedChanges}
+                          label={t`Read-only`}
+                          value="read-only"
+                        />
+                      </Box>
+                    </Tooltip>
+                    <Radio
+                      value="read-write"
+                      label={t`Read-write`}
+                      description={t`This mode is generally for development or local instances of ${applicationName}. Changes you make to content in synced collections can be pushed and pulled from any git branch.`}
+                    />
+                  </Stack>
+                </FormRadioGroup>
+              </SettingsSection>
 
-                  <FormTextInput
-                    name={TOKEN_KEY}
-                    label={t`Access Token`}
-                    description={t`Personal access token with write permissions`}
-                    type="password"
-                    {...getEnvSettingProps(settingDetails?.[TOKEN_KEY])}
-                  />
-
-                  <FormRadioGroup name={TYPE_KEY} label={t`Remote Sync Mode`}>
-                    <Stack mt="sm">
-                      <Radio
-                        value="read-write"
-                        label={t`Read-write`}
-                        description={t`In read-write mode, you can make changes to synced collections and pull and push from any git branch`}
+              {/* Section 3: Branch to sync with (Read-only only) */}
+              {values?.[TYPE_KEY] === "read-only" && (
+                <SettingsSection title={t`Branch to sync with`}>
+                  <Flex align="center" gap="md">
+                    <Box style={{ flex: 1 }}>
+                      <FormTextInput
+                        name={BRANCH_KEY}
+                        placeholder="main"
+                        label={`Sync branch`}
+                        {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
                       />
-                      <Tooltip
-                        disabled={!hasUnsyncedChanges}
-                        label={t`You can't switch to Read-only as you have unpublished changes.`}
-                        position="bottom-start"
-                      >
-                        <Box>
-                          <Radio
-                            description={t`In Read-only mode, synced collections are read-only, and automatically sync with the specified branch`}
-                            disabled={hasUnsyncedChanges}
-                            label={t`Read-only`}
-                            value="read-only"
-                          />
-                        </Box>
-                      </Tooltip>
-                    </Stack>
-                  </FormRadioGroup>
-
-                  {values?.[TYPE_KEY] === "read-only" && (
-                    <Stack ml="1.875rem">
-                      <Flex align="end" gap="md">
-                        <Box style={{ flex: 1 }}>
-                          <FormTextInput
-                            name={BRANCH_KEY}
-                            label={t`Sync branch`}
-                            mr={0}
-                            placeholder="main"
-                            {...getEnvSettingProps(
-                              settingDetails?.[BRANCH_KEY],
-                            )}
-                          />
-                        </Box>
-                        {isRemoteSyncEnabled && (
-                          <PullChangesButton
-                            branch={values?.[BRANCH_KEY] || "main"}
-                            dirty={dirty}
-                            forcePull
-                          />
-                        )}
-                      </Flex>
-                      <FormSwitch
-                        size="sm"
-                        name={AUTO_IMPORT_KEY}
-                        label={t`Auto-sync with git`}
-                      />
-                    </Stack>
-                  )}
-
-                  <Flex justify="end" align="center" gap="md">
-                    <FormErrorMessage />
-                    {isRemoteSyncEnabled && (
-                      <Button onClick={handleDisable}>
-                        {t`Disable Remote Sync`}
-                      </Button>
-                    )}
-                    <FormSubmitButton
-                      data-testid="remote-sync-submit-button"
-                      label={
-                        isRemoteSyncEnabled
-                          ? t`Save changes`
-                          : t`Set up Remote Sync`
-                      }
-                      variant="filled"
-                      disabled={!dirty}
-                      flex="auto 0 0"
+                    </Box>
+                    <FormSwitch
+                      size="sm"
+                      name={AUTO_IMPORT_KEY}
+                      label={t`Auto-sync with git`}
                     />
                   </Flex>
-                </Stack>
-              </Form>
-            )}
-          </FormProvider>
-        </Box>
-      </SettingsSection>
+                  {isRemoteSyncEnabled && (
+                    <Box>
+                      <PullChangesButton
+                        branch={values?.[BRANCH_KEY] || "main"}
+                        dirty={dirty}
+                        forcePull
+                      />
+                    </Box>
+                  )}
+                </SettingsSection>
+              )}
+
+              {/* Section 4: Shared tenant collections to sync */}
+              {isRemoteSyncEnabled && useTenants && (
+                <SettingsSection
+                  title={t`Shared tenant collections to sync`}
+                  description={t`Choose which shared tenant collections to sync with git.`}
+                >
+                  <SharedTenantCollectionsList />
+                </SettingsSection>
+              )}
+
+              {/* Footer Actions - Outside Sections */}
+              <Flex justify="space-between" align="center">
+                <Box>
+                  {isRemoteSyncEnabled && (
+                    <Button
+                      c="error"
+                      variant="subtle"
+                      size="md"
+                      w="12rem"
+                      leftSection={<Icon name="close" />}
+                      onClick={handleDisable}
+                    >
+                      {t`Disable remote sync`}
+                    </Button>
+                  )}
+                </Box>
+                <Flex align="center" gap="md">
+                  <FormErrorMessage />
+                  <FormSubmitButton
+                    data-testid="remote-sync-submit-button"
+                    size="md"
+                    w="12rem"
+                    label={
+                      isRemoteSyncEnabled
+                        ? t`Save changes`
+                        : t`Set up Remote Sync`
+                    }
+                    variant="filled"
+                    disabled={isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]}
+                  />
+                </Flex>
+              </Flex>
+            </Stack>
+          </Form>
+        )}
+      </FormProvider>
 
       {changeBranchConfirmationModal}
       {disableConfirmationModal}

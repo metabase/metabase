@@ -10,6 +10,7 @@
 
   TODO (Cam 8/8/25) -- move this into `lib` since there's nothing particularly QP about it except
   for [[qp.error-type]], which maybe belongs in Lib too!"
+  (:refer-clojure :exclude [get-in])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -17,7 +18,8 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]]))
 
 (mu/defn- operator-arity :- [:maybe [:enum :unary :binary :variadic]]
   [param-type]

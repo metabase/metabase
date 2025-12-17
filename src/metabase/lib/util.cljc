@@ -1,5 +1,5 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format every? mapv select-keys update-keys some #?(:clj for)])
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([potemkin :as p])
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? mapv select-keys update-keys some #?(:clj for)]]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in #?(:clj for)]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -41,7 +41,7 @@
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?
-  "Returns true if this is a clause."
+  "Returns true if this is a **normalized** MBQL 5 clause."
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
