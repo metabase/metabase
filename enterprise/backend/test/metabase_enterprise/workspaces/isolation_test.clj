@@ -2,13 +2,19 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))
 
+(ws.tu/ws-fixtures!)
+
 (set! *warn-on-reflection* true)
+
+(def isolated-prefix @#'ws.u/isolated-prefix)
 
 ;;; Test helper multimethod to verify cleanup
 
@@ -64,7 +70,7 @@
 (defmethod workspace-isolation-resources-exist? :sqlserver
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)
-        login-name  (format "mb_isolation_%s_login" (:id workspace))
+        login-name  (format "%s_%s_login" isolated-prefix (:id workspace))
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
@@ -93,19 +99,23 @@
 
 (deftest destroy-workspace-isolation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-    (let [workspace {:id 1337}
-          database  (mt/db)]
-      (testing "init creates isolation resources"
-        (isolation/init-workspace-database-isolation! database workspace)
-        (let [resources (workspace-isolation-resources-exist? database workspace)]
-          (is (every? true? (vals resources))
-              (str "All resources should exist after init: " resources))))
+    (ws.tu/with-workspaces! [workspace {:name "Test destroy isolation"}]
+      (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
+                                   :transform nil
+                                   {:name   "Transform A"
+                                    :source {:type "query" :query (mt/mbql-query orders {:limit 1})}
+                                    :target {:database (mt/id)
+                                             :schema   "analytics"
+                                             :name     "table_a"}})
+      (let [database (mt/db)]
+        (testing "resources are creeated during workspace initialization"
+          (let [resources (workspace-isolation-resources-exist? database workspace)]
+            (is (every? true? (vals resources)))))
 
-      (testing "destroy removes all isolation resources"
-        (isolation/destroy-workspace-isolation! database workspace)
-        (let [resources (workspace-isolation-resources-exist? database workspace)]
-          (is (every? false? (vals resources))
-              (str "All resources should be gone after destroy: " resources))))
+        (testing "destroy removes all isolation resources"
+          (isolation/destroy-workspace-isolation! database workspace)
+          (let [resources (workspace-isolation-resources-exist? database workspace)]
+            (is (every? false? (vals resources)))))
 
-      (testing "destroy is idempotent"
-        (isolation/destroy-workspace-isolation! database workspace)))))
+        (testing "destroy is idempotent"
+          (isolation/destroy-workspace-isolation! database workspace))))))
