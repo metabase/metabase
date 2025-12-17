@@ -211,7 +211,7 @@
    Throws if adding another user would overflow the limit. Called in user pre-insert."
   []
   (when-let [max-users (max-users-allowed)]
-   (when (>= (active-user-count) max-users)
+    (when (>= (active-user-count) max-users)
       (throw (Exception.
               (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
                    max-users))))))
