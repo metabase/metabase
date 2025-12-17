@@ -7,7 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box } from "metabase/ui";
+import { Box, Card } from "metabase/ui";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
@@ -97,13 +97,16 @@ export function PythonLibraryEditorPage({
           isDirty={isDirty}
           isSaving={isSaving}
         />
-        <PythonEditor
-          value={source}
-          onChange={setSource}
-          withPandasCompletions
-          className={S.editor}
-          data-testid="python-editor"
-        />
+
+        <Card withBorder p={0}>
+          <PythonEditor
+            value={source}
+            onChange={setSource}
+            withPandasCompletions
+            className={S.editor}
+            data-testid="python-editor"
+          />
+        </Card>
       </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
     </>
