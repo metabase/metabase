@@ -4,7 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -85,3 +85,28 @@
                                                     :location
                                                     [:like (str "/" tenant-collection-id "/%")])]
               (conj descendant-ids tenant-collection-id))))))
+
+(defn- collection-id->tenant-name
+  "Given collection IDs, returns map of collection-id -> tenant-name."
+  [collection-ids]
+  (when (seq collection-ids)
+    (into {}
+          (t2/select-fn->fn :tenant_collection_id :name
+                            :model/Tenant
+                            :tenant_collection_id [:in collection-ids]))))
+
+(defenterprise maybe-localize-tenant-collection-names
+  "EE implementation: localizes tenant root collection names."
+  :feature :tenants
+  [collections]
+  (let [tenant-ids (keep (fn [c]
+                           (when (= (:type c) "tenant-specific-root-collection")
+                             (:id c)))
+                         collections)
+        tenant-names (collection-id->tenant-name tenant-ids)]
+    (map (fn [{:keys [id type] :as collection}]
+           (if-let [tenant-name (and (= type "tenant-specific-root-collection")
+                                     (get tenant-names id))]
+             (assoc collection :name (tru "Tenant Collection: {0}" tenant-name))
+             collection))
+         collections)))
