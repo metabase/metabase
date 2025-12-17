@@ -3,6 +3,8 @@
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
+   [metabase-enterprise.sandbox.schema :as sandbox.schema]
+   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -11,19 +13,25 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
+   [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.revisions.core :as revisions]
+   [metabase.segments.schema :as segments.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]
    [toucan2.util :as u]))
 
@@ -37,8 +45,8 @@
 (mr/def ::broken-cards-response
   [:map
    [:success :boolean]
-   [:bad_cards {:optional true} [:sequential :metabase.queries.schema/card]]
-   [:bad_transforms {:optional true} [:sequential :metabase-enterprise.transforms.schema/transform]]])
+   [:bad_cards {:optional true} [:sequential ::queries.schema/card]]
+   [:bad_transforms {:optional true} [:sequential ::transforms.schema/transform]]])
 
 (mu/defn- broken-cards-response :- ::broken-cards-response
   [{:keys [card transform]}]
@@ -181,63 +189,63 @@
    [:type :keyword]
    [:data [:map]]
    [:dependents_count [:maybe [:ref ::usages]]]
-   [:errors {:optional true} [:set [:ref :metabase.lib.schema.validate/error]]]])
+   [:errors {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
 
 (mr/def ::table-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/table]
     [:type [:= :table]]
-    [:data [:select-keys :metabase.warehouse-schema.schema/table (entity-keys :table)]]]])
+    [:data [:select-keys ::warehouse-schema.schema/table (entity-keys :table)]]]])
 
 (mr/def ::card-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/card]
     [:type [:= :card]]
-    [:data [:select-keys :metabase.queries.schema/card (entity-keys :card)]]]])
+    [:data [:select-keys ::queries.schema/card (entity-keys :card)]]]])
 
 (mr/def ::snippet-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/snippet]
     [:type [:= :snippet]]
-    [:data [:select-keys :metabase.native-query-snippets.schema/native-query-snippet (entity-keys :snippet)]]]])
+    [:data [:select-keys ::native-query-snippets.schema/native-query-snippet (entity-keys :snippet)]]]])
 
 (mr/def ::transform-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/transform]
     [:type [:= :transform]]
-    [:data [:select-keys :metabase-enterprise.transforms.schema/transform (entity-keys :transform)]]]])
+    [:data [:select-keys ::transforms.schema/transform (entity-keys :transform)]]]])
 
 (mr/def ::dashboard-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/dashboard]
     [:type [:= :dashboard]]
-    [:data [:select-keys :metabase.dashboards.schema/dashboard (entity-keys :dashboard)]]]])
+    [:data [:select-keys ::dashboards.schema/dashboard (entity-keys :dashboard)]]]])
 
 (mr/def ::document-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/document]
     [:type [:= :document]]
-    [:data [:select-keys :metabase.documents.schema/document (entity-keys :document)]]]])
+    [:data [:select-keys ::documents.schema/document (entity-keys :document)]]]])
 
 (mr/def ::sandbox-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/sandbox]
     [:type [:= :sandbox]]
-    [:data [:select-keys :metabase-enterprise.sandbox.schema/sandbox (entity-keys :sandbox)]]]])
+    [:data [:select-keys ::sandbox.schema/sandbox (entity-keys :sandbox)]]]])
 
 (mr/def ::segment-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/segment]
     [:type [:= :segment]]
-    [:data [:select-keys :metabase.segments.schema/segment (entity-keys :segment)]]]])
+    [:data [:select-keys ::segments.schema/segment (entity-keys :segment)]]]])
 
 (mr/def ::entity
   [:multi {:dispatch :type}
