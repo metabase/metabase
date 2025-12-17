@@ -1318,6 +1318,13 @@
                  (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph")))))))))
 
 ;; TODO having trouble with test setup, but manually verified this stuff is working in dev environment :-(
+;; This should be tested using a non-trivial graph:
+;; - Non-included ancestor transforms.
+;; - Non-included descendant transforms.
+;; - Enclosed transforms outside of the working set.
+;; - Direct input table dependencies for enclosed transforms.
+;; - A disconnected component.
+;; Whatever else you can think of.
 (deftest fancier-graph-test
   (testing "GET /api/ee/workspace/:id/graph"
     (ws.tu/with-workspaces! [ws {:name "Workspace 1"}]
