@@ -58,6 +58,11 @@
        (map first)
        (apply str)))
 
+;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
+;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
+;; will have namespaces created with the current prefix.
+(def ^:private isolated-prefix "mb__isolation")
+
 (defn isolation-namespace-name
   "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
   Uses 'namespace' as the generic term that maps to 'schema' in Postgres, 'database' in ClickHouse, etc."
@@ -65,7 +70,7 @@
   (assert (some? (:id workspace)) "Workspace must have an :id")
   (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
         clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
-    (format "mb__isolation_%s_%s" instance-slug clean-workspace-id)))
+    (format "%s_%s_%s" isolated-prefix instance-slug clean-workspace-id)))
 
 (defn isolated-table-name
   "Generate name for a table mirroring transform target table in the isolated database namespace.
@@ -82,7 +87,7 @@
   "Generate username for workspace isolation."
   [workspace]
   (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
-    (format "mb_isolation_%s_%s" instance-slug (:id workspace))))
+    (format "%s_%s_%s" isolated-prefix instance-slug (:id workspace))))
 
 (def ^:private password-char-sets
   "Character sets for password generation. Cycles through these to ensure representation from each."

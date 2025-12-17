@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase.models.interface :as mi]
    [metabase.util.json :as json]
@@ -50,24 +51,36 @@
     (mi/instances-with-hydrated-data wses k (ws-contents ids) :id {:default {}})))
 
 (defn archive!
-  "Archive a workspace. Destroys database isolation resources and sets archived_at."
+  "Archive a workspace. Destroys database isolation resources, revokes access grants, and sets archived_at."
   [workspace]
-  (let [database (t2/select-one :model/Database (:database_id workspace))]
+  (let [database     (t2/select-one :model/Database (:database_id workspace))
+        workspace-id (:id workspace)]
     (ws.isolation/destroy-workspace-isolation! database workspace)
-    (t2/update! :model/Workspace (:id workspace) {:archived_at [:now]})))
+    ;; Mark all inputs as ungranted since the user was dropped
+    (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
+                {:access_granted false})
+    (t2/update! :model/Workspace workspace-id {:archived_at [:now]})))
 
 (defn unarchive!
-  "Unarchive a workspace. Re-initializes database isolation resources and clears archived_at."
+  "Unarchive a workspace. Re-initializes database isolation resources, re-grants read access
+   to source tables, and clears archived_at."
   [workspace]
   (let [database         (t2/select-one :model/Database (:database_id workspace))
-        isolation-result (ws.isolation/ensure-database-isolation! workspace database)]
-    (t2/update! :model/Workspace (:id workspace)
-                (merge {:archived_at nil}
-                       (select-keys isolation-result [:schema :database_details])))))
+        isolation-result (ws.isolation/ensure-database-isolation! workspace database)
+        workspace-id     (:id workspace)
+        _                (t2/update! :model/Workspace workspace-id
+                                     (merge {:archived_at nil}
+                                            (select-keys isolation-result [:schema :database_details])))
+        ;; Re-fetch workspace to get updated database_details and schema for granting permissions
+        updated-ws       (t2/select-one :model/Workspace workspace-id)]
+    ;; Re-grant read access to source tables (inputs were marked ungranted during archive)
+    (ws.impl/sync-grant-accesses! updated-ws)))
 
 (defn delete!
   "Delete a workspace. Destroys database isolation resources and deletes the workspace."
   [workspace]
   (let [database (t2/select-one :model/Database (:database_id workspace))]
     (ws.isolation/destroy-workspace-isolation! database workspace)
+    (t2/update! :model/WorkspaceInput {:workspace_id (:id workspace)}
+                {:access_granted false})
     (t2/delete! :model/Workspace (:id workspace))))

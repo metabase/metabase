@@ -23,11 +23,6 @@
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
 
-(defmulti drop-isolated-tables!
-  "Drop isolated tables"
-  {:added "0.59.0" :arglists '([database s+t-tuples])}
-  #'dispatch-on-engine)
-
 (defmulti destroy-workspace-isolation!
   "Destroy all database resources created for workspace isolation.
   This includes dropping tables, schemas/databases, users, roles, and logins.

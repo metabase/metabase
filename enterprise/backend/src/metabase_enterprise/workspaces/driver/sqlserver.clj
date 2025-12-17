@@ -49,14 +49,6 @@
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
                                         (:schema table) (:name table) username)]))))
 
-(defmethod isolation/drop-isolated-tables! :sqlserver
-  [database s+t-tuples]
-  (when (seq s+t-tuples)
-    (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (doseq [[schema-name table-name] s+t-tuples]
-        (jdbc/execute! conn-spec [(format "IF OBJECT_ID('[%s].[%s]', 'U') IS NOT NULL DROP TABLE [%s].[%s]"
-                                          schema-name table-name schema-name table-name)])))))
-
 (defmethod isolation/destroy-workspace-isolation! :sqlserver
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)

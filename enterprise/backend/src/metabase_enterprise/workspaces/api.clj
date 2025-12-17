@@ -570,8 +570,6 @@
           global-id (:global_id body (:id body))
           body      (-> body (dissoc :global_id) (update :target assoc :database (:database_id workspace)))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
-      ;; We want to be careful about which fields we couple our analysis to.
-      (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
       (select-malli-keys WorkspaceTransform workspace-transform-alias transform))))
 
 ;; TODO Confirm precisely which fields are needed by the FE

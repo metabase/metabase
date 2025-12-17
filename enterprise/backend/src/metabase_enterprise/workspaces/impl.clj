@@ -8,50 +8,61 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(defn- query-external-inputs
-  "Query for external inputs in a workspace - inputs that are not shadowed by any output.
-   Returns seq of WorkspaceInput records."
+(defn- query-ungranted-external-inputs
+  "Query for external inputs in a workspace that haven't been granted access yet.
+   External inputs are tables that are not shadowed by any output.
+   Returns seq of WorkspaceInput records where access_granted is false."
   [workspace-id]
-  ;; TODO (ngoc 12/11/25) -- maybe we should have a flag on workspace_input.access_granted ?
   ;; NOTE: Could optimize with table_id join if workspace_output gets that column,
   ;; but not worth it given the small number of rows per workspace.
   (t2/select :model/WorkspaceInput
              :workspace_id workspace-id
-             {:where [:not [:exists {:select [1]
-                                     :from   [[:workspace_output :wo]]
-                                     :where  [:and
-                                              [:= :wo.workspace_id :workspace_input.workspace_id]
-                                              [:= :wo.db_id :workspace_input.db_id]
-                                              [:or
-                                               [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
-                                               [:= :wo.global_schema :workspace_input.schema]]
-                                              [:= :wo.global_table :workspace_input.table]]}]]}))
+             {:where [:and
+                      [:= :workspace_input.access_granted false]
+                      [:not [:exists {:select [1]
+                                      :from   [[:workspace_output :wo]]
+                                      :where  [:and
+                                               [:= :wo.workspace_id :workspace_input.workspace_id]
+                                               [:= :wo.db_id :workspace_input.db_id]
+                                               [:or
+                                                [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
+                                                [:= :wo.global_schema :workspace_input.schema]]
+                                               [:= :wo.global_table :workspace_input.table]]}]]]}))
 
 (defn- external-input->table
   [{:keys [schema table]}]
   {:schema schema
    :name   table})
 
-(defn sync-transform-dependencies!
-  "Analyze and persist dependencies for a workspace transform, then grant
-   read access to external input tables."
-  [{workspace-id :id, isolated-schema :schema :as workspace} transform]
-  (let [analysis        (ws.deps/analyze-entity :transform transform)
-        _               (ws.deps/write-dependencies! workspace-id isolated-schema :transform (:ref_id transform) analysis)
-        external-inputs (query-external-inputs workspace-id)]
+(defn sync-grant-accesses!
+  "Grant read access to external input tables for a workspace that haven't been granted yet.
+   External inputs are tables that are read by transforms but not produced by any transform in the workspace.
+   This should be called after adding transforms to a workspace or when re-initializing workspace isolation
+   (e.g., after unarchiving)."
+  [{workspace-id :id :as workspace}]
+  (let [ungranted-inputs (query-ungranted-external-inputs workspace-id)]
     (if-not (:database_details workspace)
       ;; TODO (chris 2025/12/15) we will want to make this strict before merging to master
       #_(throw (ex-info "No database details, unable to grant read only access to the service account." {}))
       (log/warn "No database details, unable to grant read only access to the service account.")
-      (when (seq external-inputs)
+      (when (seq ungranted-inputs)
         (let [database (t2/select-one :model/Database :id (:database_id workspace))
-              tables   (mapv external-input->table external-inputs)]
-          ;; TODO better error handling
+              tables   (mapv external-input->table ungranted-inputs)]
           (try
             (ws.isolation/grant-read-access-to-tables! database workspace tables)
+            ;; Mark inputs as granted after successful grant
+            (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted-inputs)]}
+                        {:access_granted true})
             (catch Exception e
-              (log/warn e "Error granting RO table permissions"))))))
-    external-inputs))
+              (log/warn e "Error granting RO table permissions"))))))))
+
+(defn sync-transform-dependencies!
+  "Analyze and persist dependencies for a workspace transform, then grant
+   read access to external input tables."
+  [{workspace-id :id, isolated-schema :schema :as workspace} transform]
+  (let [analysis (ws.deps/analyze-entity :transform transform)]
+    (ws.deps/write-dependencies! workspace-id isolated-schema :transform (:ref_id transform) analysis)
+    (sync-grant-accesses! workspace)))
 
 (defn- build-remapping [workspace]
   ;; Build table remapping from stored WorkspaceOutput data.

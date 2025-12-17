@@ -65,17 +65,6 @@
     {:schema           schema-name
      :database_details {:db new-db}}))
 
-(defmethod isolation/drop-isolated-tables! :h2
-  [database s+t-tuples]
-  (when (seq s+t-tuples)
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
-        (doseq [[schema-name table-name] s+t-tuples]
-          (.addBatch ^java.sql.Statement stmt
-                     ^String (format "DROP TABLE IF EXISTS \"%s\".\"%s\""
-                                     schema-name table-name)))
-        (.executeBatch ^java.sql.Statement stmt)))))
-
 (defmethod isolation/destroy-workspace-isolation! :h2
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)

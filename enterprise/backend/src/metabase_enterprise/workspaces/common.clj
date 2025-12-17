@@ -149,5 +149,5 @@
                                   ;:creator_id creator-id
                                   :global_id global-id
                                   :workspace_id workspace-id))]
-      (ws.impl/sync-transform-dependencies! workspace transform)
+      (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
       transform)))
