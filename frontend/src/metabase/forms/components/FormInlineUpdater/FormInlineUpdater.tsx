@@ -41,7 +41,6 @@ export const FormInlineUpdater = <T, TSuccess>({
   debounceMs = DEFAULT_INLINE_UPDATE_DEBOUNCE_MS,
 }: Props<T, TSuccess>) => {
   const { initialValues } = useFormikContext<T>();
-  const lastSuccessfulValues = useRef<T>(initialValues);
   const updateInProgress = useRef(false);
   const pendingUpdate = useRef<T | null>(null);
 
@@ -57,7 +56,6 @@ export const FormInlineUpdater = <T, TSuccess>({
 
       try {
         const result = await update(values);
-        lastSuccessfulValues.current = values;
         onSuccess?.(result);
       } catch (err) {
         // On error, discard any pending updates
@@ -80,8 +78,10 @@ export const FormInlineUpdater = <T, TSuccess>({
   );
 
   const handleChange = useDebouncedCallback(async (values: T) => {
-    // Skip update if values haven't changed from last successful state
-    if (_.isEqual(values, lastSuccessfulValues.current)) {
+    // Skip update if values haven't changed from initialValues (i.e., user hasn't made changes)
+    // This ensures we only trigger updates for user actions, not for programmatic updates
+    // from API responses or Redux state changes that update initialValues
+    if (_.isEqual(values, initialValues)) {
       return;
     }
 
