@@ -99,15 +99,15 @@ export const EditUserStrategyModal = ({
 
   const strategyOptions = [
     {
+      value: "multi-tenant",
+      title: t`Multi tenant`,
+      description: t`Each tenant operates in an isolated environment with dedicated resources and permissions. Best for SaaS platforms, scalable embedding, or strict data isolation needs.`,
+    },
+    {
       value: "single-tenant",
       title: t`Single tenant`,
       // eslint-disable-next-line no-literal-metabase-strings -- in admin settings
       description: t`All users exist in the same world and are managed via Metabase groups. Ideal for internal company analytics, proof of concept, or simple embedding setups.`,
-    },
-    {
-      value: "multi-tenant",
-      title: t`Multi tenant`,
-      description: t`Each tenant operates in an isolated environment with dedicated resources and permissions. Best for SaaS platforms, scalable embedding, or strict data isolation needs.`,
     },
   ];
 
@@ -115,7 +115,7 @@ export const EditUserStrategyModal = ({
     <>
       <Modal
         opened={!confirmationModal && !isApplyingAfterConfirm}
-        title={t`User strategy`}
+        title={t`Pick a user strategy`}
         padding="xl"
         size="md"
         onClose={onClose}
@@ -136,8 +136,6 @@ export const EditUserStrategyModal = ({
                     className={S.radioCard}
                   >
                     <Group wrap="nowrap">
-                      <Radio.Indicator />
-
                       <div>
                         <Text fw={700} fz="lg" lh="xl" mb="xs">
                           {option.title}
