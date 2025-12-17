@@ -127,17 +127,6 @@ export function useTreeTableKeyboard<TData extends TreeNodeData>({
           }
           break;
         }
-
-        case "a":
-        case "A": {
-          if (event.metaKey || event.ctrlKey) {
-            event.preventDefault();
-            if (enableRowSelection) {
-              table.toggleAllRowsSelected(true);
-            }
-          }
-          break;
-        }
       }
     },
     [table, virtualizer, activeRowId, enableRowSelection, onRowActivate],

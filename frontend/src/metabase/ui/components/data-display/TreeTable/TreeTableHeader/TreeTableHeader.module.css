@@ -5,7 +5,7 @@
 .header {
   z-index: 1;
   flex-shrink: 0;
-  overflow: hidden;
+  background-color: var(--mb-color-background);
 }
 
 .row {

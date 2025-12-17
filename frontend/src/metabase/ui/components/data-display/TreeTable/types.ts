@@ -260,7 +260,6 @@ export interface TreeTableHeaderProps<TData extends TreeNodeData>
   table: Table<TData>;
   columnWidths: Record<string, number>;
   showCheckboxes: boolean;
-  scrollRef?: RefObject<HTMLDivElement>;
   isMeasured?: boolean;
   totalContentWidth?: number;
   headerVariant?: TreeTableHeaderVariant;

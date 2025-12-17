@@ -46,7 +46,6 @@ export function TreeTable<TData extends TreeNodeData>({
   } = instance;
 
   const rootRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDownWithFocus = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
@@ -85,21 +84,6 @@ export function TreeTable<TData extends TreeNodeData>({
     return () => observer.disconnect();
   }, [containerRef, setContainerWidth, showCheckboxes]);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    const header = headerRef.current;
-    if (!container || !header) {
-      return;
-    }
-
-    const handleScroll = () => {
-      header.scrollLeft = container.scrollLeft;
-    };
-
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [containerRef]);
-
   const hasExpandableNodes = useMemo(
     () => rows.some((row) => row.getCanExpand()),
     [rows],
@@ -136,20 +120,6 @@ export function TreeTable<TData extends TreeNodeData>({
       aria-labelledby={ariaLabelledBy}
       onKeyDown={handleKeyDownWithFocus}
     >
-      {!showEmptyState && (
-        <TreeTableHeader
-          scrollRef={headerRef}
-          table={table}
-          columnWidths={columnWidths}
-          showCheckboxes={showCheckboxes}
-          headerVariant={headerVariant}
-          classNames={classNames}
-          styles={styles}
-          isMeasured={isMeasured}
-          totalContentWidth={totalContentWidth}
-        />
-      )}
-
       <Box
         ref={containerRef}
         className={cx(S.body, classNames?.body, { [S.measuring]: !isMeasured })}
@@ -161,37 +131,52 @@ export function TreeTable<TData extends TreeNodeData>({
             {emptyState}
           </Center>
         ) : (
-          <Box pos="relative" style={{ height: totalSize, minWidth: totalContentWidth }}>
-            {virtualRows.map((virtualItem) => {
-              const row = rows[virtualItem.index];
-              if (!row) {
-                return null;
-              }
+          <>
+            <TreeTableHeader
+              table={table}
+              columnWidths={columnWidths}
+              showCheckboxes={showCheckboxes}
+              headerVariant={headerVariant}
+              classNames={classNames}
+              styles={styles}
+              isMeasured={isMeasured}
+              totalContentWidth={totalContentWidth}
+            />
+            <Box
+              pos="relative"
+              style={{ height: totalSize, minWidth: totalContentWidth }}
+            >
+              {virtualRows.map((virtualItem) => {
+                const row = rows[virtualItem.index];
+                if (!row) {
+                  return null;
+                }
 
-              return (
-                <TreeTableRow
-                  key={row.id}
-                  row={row}
-                  rowIndex={virtualItem.index}
-                  virtualItem={virtualItem}
-                  table={table}
-                  columnWidths={columnWidths}
-                  showCheckboxes={showCheckboxes}
-                  showExpandButtons={hasExpandableNodes}
-                  indentWidth={indentWidth}
-                  activeRowId={activeRowId}
-                  measureElement={measureElement}
-                  onRowClick={onRowClick}
-                  onRowDoubleClick={onRowDoubleClick}
-                  isChildrenLoading={isChildrenLoading?.(row)}
-                  getSelectionState={getSelectionState}
-                  onCheckboxClick={onCheckboxClick}
-                  classNames={classNames}
-                  styles={styles}
-                />
-              );
-            })}
-          </Box>
+                return (
+                  <TreeTableRow
+                    key={row.id}
+                    row={row}
+                    rowIndex={virtualItem.index}
+                    virtualItem={virtualItem}
+                    table={table}
+                    columnWidths={columnWidths}
+                    showCheckboxes={showCheckboxes}
+                    showExpandButtons={hasExpandableNodes}
+                    indentWidth={indentWidth}
+                    activeRowId={activeRowId}
+                    measureElement={measureElement}
+                    onRowClick={onRowClick}
+                    onRowDoubleClick={onRowDoubleClick}
+                    isChildrenLoading={isChildrenLoading?.(row)}
+                    getSelectionState={getSelectionState}
+                    onCheckboxClick={onCheckboxClick}
+                    classNames={classNames}
+                    styles={styles}
+                  />
+                );
+              })}
+            </Box>
+          </>
         )}
       </Box>
     </Flex>

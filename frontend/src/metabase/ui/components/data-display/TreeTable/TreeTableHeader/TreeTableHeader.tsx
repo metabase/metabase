@@ -14,7 +14,6 @@ export function TreeTableHeader<TData extends TreeNodeData>({
   table,
   columnWidths,
   showCheckboxes,
-  scrollRef,
   classNames,
   styles,
   isMeasured = true,
@@ -25,8 +24,9 @@ export function TreeTableHeader<TData extends TreeNodeData>({
 
   return (
     <Flex
-      ref={scrollRef}
-      className={cx(S.header, classNames?.header, { [S.measuring]: !isMeasured })}
+      className={cx(S.header, classNames?.header, {
+        [S.measuring]: !isMeasured,
+      })}
       pos="sticky"
       top={0}
       style={styles?.header}
