@@ -1131,5 +1131,5 @@
   (testing "All available aggregations are tested for filter expansion in metric"
     (is (empty? (set/difference
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
-                       :aggregation :metric :offset)
+                       :aggregation :metric :measure :offset)
                  (set (map :operator tested-aggregations)))))))
