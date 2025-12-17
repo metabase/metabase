@@ -75,20 +75,22 @@
       (update :last_edited_at parse-datetime)))
 
 (defn add-table-where-clauses
-  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  "Add a `WHERE` clause to the query to only return tables the current user has access to.
+   Also adds any CTEs required for permission filtering."
   [search-ctx qry]
-  (sql.helpers/where qry
-                     [:or
-                      [:= :search_index.model nil]
-                      [:!= :search_index.model [:inline "table"]]
-                      [:and
-                       [:= :search_index.model [:inline "table"]]
-                       [:exists {:select [1]
-                                 :from   [[:metabase_table :mt_toplevel]]
-                                 :where  [:and [:= :mt_toplevel.id [:cast :search_index.model_id (case (mdb/db-type)
-                                                                                                   :mysql :signed
-                                                                                                   :integer)]]
-                                          (search.permissions/permitted-tables-clause search-ctx :mt_toplevel.id)]}]]]))
+  (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
+                                                     :mysql :signed
+                                                     :integer)]
+        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
+    (cond-> qry
+      (seq with) (update :with (fnil into []) with)
+      true       (sql.helpers/where
+                  [:or
+                   [:= :search_index.model nil]
+                   [:!= :search_index.model [:inline "table"]]
+                   [:and
+                    [:= :search_index.model [:inline "table"]]
+                    clause]]))))
 
 (def null-collection-id-should-be-ignored-for-unpublished-tables-clause
   "For every model except tables, a null collection ID means the thing is in Our Analytics.
