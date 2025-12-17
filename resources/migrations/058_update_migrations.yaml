@@ -3722,6 +3722,32 @@ databaseChangeLog:
             tableName: workspace_output
             columnName: isolated_table_id
 
+  - changeSet:
+      id: v58.2025-12-17T10:00:00
+      author: ngoc
+      comment: Add access_granted column to workspace_input to track permission state
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_input
+                columnName: access_granted
+      changes:
+        - addColumn:
+            tableName: workspace_input
+            columns:
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether read access has been granted to the workspace user for this table
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_input
+            columnName: access_granted
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

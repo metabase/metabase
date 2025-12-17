@@ -9,6 +9,7 @@
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.execute :as ws.execute]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -152,6 +153,34 @@
                                     {:schema "test_schema" :database_details {}})]
         (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
         (is @called? "ensure-database-isolation! should be called when unarchiving")))))
+
+(deftest unarchive-workspace-calls-sync-grant-accesses-test
+  (testing "POST /api/ee/workspace/:id/unarchive calls sync-grant-accesses!"
+    (let [called?   (atom false)
+          workspace (ws.tu/create-ready-ws! "Unarchive Grant Test")]
+      ;; First archive the workspace
+      (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+      (mt/with-dynamic-fn-redefs [ws.impl/sync-grant-accesses!
+                                  (fn [_workspace]
+                                    (reset! called? true)
+                                    nil)]
+        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
+        (is @called? "sync-grant-accesses! should be called when unarchiving")))))
+
+(deftest archive-workspace-resets-access-granted-test
+  (testing "POST /api/ee/workspace/:id/archive resets access_granted flags"
+    (let [workspace (ws.tu/create-ready-ws! "Archive Reset Test")]
+      ;; Create a workspace input with access_granted = true
+      (mt/with-temp [:model/WorkspaceInput input {:workspace_id   (:id workspace)
+                                                  :db_id          (mt/id)
+                                                  :table          "test_table"
+                                                  :access_granted true}]
+        ;; Verify access_granted starts as true
+        (is (true? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input))))
+        ;; Archive the workspace (this drops the user, revoking permissions)
+        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+        ;; Verify access_granted was reset to false during archive
+        (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input))))))))
 
 (deftest merge-workspace-test
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
