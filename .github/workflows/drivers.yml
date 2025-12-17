@@ -983,7 +983,7 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
-              :partition/total 2
+              :partition/total 3
               :partition/index 0
           - name: Redshift (Excluding Upload Tests) Part 2
             skip: false
@@ -991,8 +991,16 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
-              :partition/total 2
+              :partition/total 3
               :partition/index 1
+          - name: Redshift (Excluding Upload Tests) Part 3
+            skip: false
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 3
+              :partition/index 2
           - name: Redshift Transforms Python Tests
             skip: false
             test-args: >-
