@@ -21,13 +21,24 @@ const setup = ({
   isAdmin = false,
   tenantCollections = MOCK_TENANT_COLLECTIONS,
   currentUser = createMockUser({ is_superuser: isAdmin }),
+  canWriteToSharedCollectionRoot = false,
 }: {
   isAdmin?: boolean;
   tenantCollections?: Collection[];
   currentUser?: ReturnType<typeof createMockUser>;
+  canWriteToSharedCollectionRoot?: boolean;
 } = {}) => {
   const settings = mockSettings({ "use-tenants": true });
-  setupCollectionsEndpoints({ collections: tenantCollections });
+
+  setupCollectionsEndpoints({
+    collections: tenantCollections,
+    rootCollection: createMockCollection({
+      id: "root",
+      name: "Root shared collection",
+      namespace: "shared-tenant-collection",
+      can_write: canWriteToSharedCollectionRoot,
+    }),
+  });
 
   renderWithProviders(<MainNavSharedCollections />, {
     storeInitialState: createMockState({ settings, currentUser }),
@@ -35,8 +46,8 @@ const setup = ({
 };
 
 describe("MainNavSharedCollections > create shared tenant collection button", () => {
-  it("shows the create button for admin users", async () => {
-    setup({ isAdmin: true });
+  it("shows the create button if the user can write to root collection", async () => {
+    setup({ canWriteToSharedCollectionRoot: true });
     await screen.findByText("External collections");
 
     expect(screen.getByRole("button", { name: /add/i })).toBeInTheDocument();
@@ -53,8 +64,8 @@ describe("MainNavSharedCollections > create shared tenant collection button", ()
 });
 
 describe("MainNavSharedCollections > section visibility", () => {
-  it("shows the section for admins when there are no collections", async () => {
-    setup({ isAdmin: true, tenantCollections: [] });
+  it("shows the section if they can write to root collection", async () => {
+    setup({ canWriteToSharedCollectionRoot: true, tenantCollections: [] });
 
     expect(await screen.findByText("External collections")).toBeInTheDocument();
   });
@@ -66,7 +77,11 @@ describe("MainNavSharedCollections > section visibility", () => {
   });
 
   it("hides the section for non-admins when there are no collections", () => {
-    setup({ isAdmin: false, tenantCollections: [] });
+    setup({
+      isAdmin: false,
+      tenantCollections: [],
+      canWriteToSharedCollectionRoot: false,
+    });
 
     expect(screen.queryByText("External collections")).not.toBeInTheDocument();
   });
@@ -80,6 +95,22 @@ describe("MainNavSharedCollections > section visibility", () => {
 
     // Tree endpoint returns an empty array as it is filtered by permissions
     fetchMock.get("path:/api/collection/tree", () => []);
+
+    // Root collection endpoint - user cannot write
+    fetchMock.get("path:/api/collection/root", (call) => {
+      const url = new URL(call.url);
+
+      if (url.searchParams.get("namespace") === "shared-tenant-collection") {
+        return createMockCollection({
+          id: "root",
+          name: "Root shared collection",
+          namespace: "shared-tenant-collection",
+          can_write: false,
+        });
+      }
+
+      return 404;
+    });
 
     renderWithProviders(<MainNavSharedCollections />, {
       storeInitialState: createMockState({ settings, currentUser }),
