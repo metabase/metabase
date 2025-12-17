@@ -1,4 +1,5 @@
 import { createAction } from "redux-actions";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
@@ -13,6 +14,7 @@ import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
+import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
@@ -381,18 +383,33 @@ export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   (cardId, revision) => {
     return async (dispatch) => {
-      await entityCompatibleQuery(
-        {
-          id: cardId,
-          entity: "card",
-          revision_id: revision.id,
-        },
-        dispatch,
-        revisionApi.endpoints.revertRevision,
-      );
-      await dispatch(reloadCard());
-      await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
-      return { id: cardId };
+      try {
+        await entityCompatibleQuery(
+          {
+            id: cardId,
+            entity: "card",
+            revision_id: revision.id,
+          },
+          dispatch,
+          revisionApi.endpoints.revertRevision,
+        );
+        await dispatch(reloadCard());
+        await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+        return { id: cardId };
+      } catch (error) {
+        console.error("Error reverting question to revision:", error);
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message:
+              error?.data?.message ||
+              error?.message ||
+              t`Failed to revert to this version`,
+          }),
+        );
+        throw error;
+      }
     };
   },
 );
