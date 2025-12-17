@@ -53,6 +53,12 @@
 
 ;; Search engine method implementations
 
+;; The default version, which incorporates full-text search results.
+(derive :search.engine/semantic-hybrid :search.engine/semantic)
+
+;; A version that only returns embedding-based semantic search results.
+(derive :search.engine/semantic-only :search.engine/semantic)
+
 (defmethod search.engine/supported-engine? :search.engine/semantic [_]
   (try
     (supported?)
