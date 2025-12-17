@@ -182,10 +182,13 @@
           (is (= (:id t1) (get-in result ["t2" :table_id]))))))))
 
 (deftest resolve-source-tables-test
-  (testing "resolve-source-tables returns {alias -> table_id} map (expects normalized input)"
+  (testing "resolve-source-tables returns {alias -> table_id} map"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
+      (testing "passes through integer entries (old format)"
+        (is (= {"t" 123} (transforms.util/resolve-source-tables {"t" 123}))))
+
       (testing "resolves map with table_id"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}}]
           (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
@@ -204,8 +207,8 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
                                 (transforms.util/resolve-source-tables source-tables)))))
 
-      (testing "handles multiple map entries"
-        (let [source-tables {"t1" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}
+      (testing "handles mixed entries (old and new format)"
+        (let [source-tables {"t1" (:id t1)
                              "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
           (is (= {"t1" (:id t1) "t2" (:id t2)}
                  (transforms.util/resolve-source-tables source-tables))))))))

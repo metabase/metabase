@@ -487,14 +487,14 @@
 (defn resolve-source-tables
   "Resolve source-tables to {alias -> table_id}. Throws if any table not found.
   For execute time - all entries must resolve to valid table IDs.
-  Expects normalized input (all entries are maps, see normalize-source-tables)."
+  Handles both integer IDs (old format) and map refs (new format)."
   [source-tables]
-  (let [needs-lookup (for [[_ v] source-tables
-                           :when (nil? (:table_id v))]
-                       v)
+  (let [needs-lookup (filter #(and (map? %) (nil? (:table_id %))) (vals source-tables))
         lookup       (or (batch-lookup-table-ids needs-lookup) {})
         resolved     (u/for-map [[alias v] source-tables]
-                       [alias (or (:table_id v) (lookup (source-table-ref->key v)))])
+                       [alias (if (int? v)
+                                v
+                                (or (:table_id v) (lookup (source-table-ref->key v))))])
         unresolved   (for [[alias table-id] resolved
                            :when (nil? table-id)
                            :let [v (get source-tables alias)]]

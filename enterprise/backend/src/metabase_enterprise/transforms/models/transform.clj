@@ -38,8 +38,7 @@
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
-      ;; Keywordize then normalize integer IDs to map format for backwards compatibility
-      (m/update-existing :source-tables (comp transforms.util/normalize-source-tables keywordize-source-table-refs))
+      (m/update-existing :source-tables keywordize-source-table-refs)
       (m/update-existing :query lib-be/normalize-query)
       (m/update-existing :type keyword)
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
