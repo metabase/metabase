@@ -9,9 +9,9 @@ import type { Transform, TransformSource } from "metabase-types/api";
 
 import {
   type NewTransformValues,
+  VALIDATION_SCHEMA,
   convertTransformFormToCreateRequest,
   getInitialValues,
-  getValidationSchema,
 } from "./form";
 
 export const useCreateTransform = (
@@ -24,8 +24,6 @@ export const useCreateTransform = (
     () => getInitialValues(schemas, defaultValues),
     [schemas, defaultValues],
   );
-
-  const validationSchema = useMemo(() => getValidationSchema(), []);
 
   const create = async (
     databaseId: number,
@@ -52,7 +50,7 @@ export const useCreateTransform = (
 
   return {
     initialValues,
-    validationSchema,
+    validationSchema: VALIDATION_SCHEMA,
     create,
   };
 };

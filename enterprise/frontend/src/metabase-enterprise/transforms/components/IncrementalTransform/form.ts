@@ -15,16 +15,15 @@ export type IncrementalSettingsFormValues = {
   targetStrategy: "append";
 };
 
-export const getValidationSchema = () =>
-  Yup.object({
-    incremental: Yup.boolean().required(),
-    sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
-    // For native queries, use checkpointFilter (plain string)
-    checkpointFilter: Yup.string().nullable().defined(),
-    // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
-    checkpointFilterUniqueKey: Yup.string().nullable().defined(),
-    targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
-  });
+export const VALIDATION_SCHEMA = Yup.object({
+  incremental: Yup.boolean().required(),
+  sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
+  // For native queries, use checkpointFilter (plain string)
+  checkpointFilter: Yup.string().nullable().defined(),
+  // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
+  checkpointFilterUniqueKey: Yup.string().nullable().defined(),
+  targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
+});
 
 export const getInitialValues = (
   defaults?: Partial<IncrementalSettingsFormValues>,

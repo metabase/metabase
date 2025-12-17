@@ -5,9 +5,9 @@ import type { Transform } from "metabase-types/api";
 
 import {
   type IncrementalSettingsFormValues,
+  VALIDATION_SCHEMA,
   convertTransformFormToUpdateRequest,
   getIncrementalSettingsFromTransform,
-  getValidationSchema,
 } from "./form";
 
 export const useUpdateIncrementalSettings = (transform: Transform) => {
@@ -16,7 +16,6 @@ export const useUpdateIncrementalSettings = (transform: Transform) => {
     () => getIncrementalSettingsFromTransform(transform),
     [transform],
   );
-  const validationSchema = useMemo(() => getValidationSchema(), []);
 
   const update = useCallback(
     async (values: IncrementalSettingsFormValues) => {
@@ -31,7 +30,7 @@ export const useUpdateIncrementalSettings = (transform: Transform) => {
 
   return {
     initialValues,
-    validationSchema,
+    validationSchema: VALIDATION_SCHEMA,
     update,
   };
 };
