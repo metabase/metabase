@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase.app-db.core :as app-db]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -51,12 +52,14 @@
         all-ids    (set (concat (keys dependencies)
                                 (mapcat val dependencies)))
         transforms (filter transform? all-ids)
+        driver     (t2/select-one-fn :engine [:model/Database :engine] (mt/id))
+        normalize  #(sql.normalize/normalize-name driver %)
         tables     (filter table? all-ids)
         table-ids  (u/for-map [t tables]
                      [t (t2/insert-returning-pk! :model/Table
                                                  {:db_id  (mt/id)
-                                                  :schema schema
-                                                  :name   (str "test_table_" (kw->id t))
+                                                  :schema (some-> schema normalize)
+                                                  :name   (normalize (str "test_table_" (kw->id t)))
                                                   :active true})])
         ;; Create transforms that reference their input tables
         tx-ids     (u/for-map [tx transforms]
@@ -73,7 +76,11 @@
                                                                                                                     :condition    [:= 1 1]})}}
                                                                                      {:database (mt/id)
                                                                                       :type     :native
-                                                                                      :native   {:query (str "SELECT * FROM " (str/join ", " (t2/select-fn-vec :name :model/Table :id [:in parent-tables])))}}
+                                                                                      :native   {:query (->> (t2/select-fn-vec #(str (:schema %) "." (:name %))
+                                                                                                                               [:model/Table :schema :name]
+                                                                                                                               :id [:in parent-tables])
+                                                                                                             (str/join ", ")
+                                                                                                             (str "SELECT * FROM "))}}
                                                                                      {:database (mt/id)
                                                                                       :type     :native
                                                                                       :native   {:query "SELECT 1"}})}
@@ -83,54 +90,52 @@
                                                                             :name     (str "test_table_" (kw->id tx))}})]
                        [tx id]))]
 
-    ;; TODO This is a workaround for the dependency between transforms and their output only being inserted on run.
-    ;;      We will need to do something about this when we mirror as well - ideally the deps module would "just work"
+    ;; This is a workaround for the dependency between transforms and their output only being inserted on run.
     (doseq [[tx-kw tx-id] tx-ids]
       (app-db/update-or-insert! :model/Dependency
-                                {:to_entity_type   "table"
-                                 :to_entity_id     (table-ids (keyword (str "t" (kw->id tx-kw))))
-                                 :from_entity_type "transform"
-                                 :from_entity_id   tx-id}))
+                                {:from_entity_type "transform"
+                                 :from_entity_id   tx-id
+                                 :to_entity_type   "table"
+                                 :to_entity_id     (table-ids (keyword (str "t" (kw->id tx-kw))))}))
 
     (merge tx-ids table-ids)))
 
 (defn- translate-result
   "Translate result from real IDs back to shorthand notation for easier comparison."
-  [result id-map]
+  [{:keys [inputs outputs entities dependencies] :as _result} id-map]
   (let [reverse-map (u/for-map [[k v] id-map] [v k])
-        translate   (fn [{:keys [id]}] (get reverse-map id))]
-    (-> (reduce (fn [m k] (update m k #(set (map translate %))))
-                result
-                [:check-outs :inputs :outputs :transforms])
-        (update :dependencies
-                (fn [deps]
-                  (into {}
-                        (map (fn [[k v]]
-                               [(translate k) (set (map translate v))]))
-                        deps))))))
+        table->kw   (comp reverse-map :id)
+        node->kw    (fn [{:keys [node-type id]}]
+                      (reverse-map (case node-type
+                                     :table (:id id)
+                                     :external-transform id
+                                     :workspace-transform (t2/select-one-fn :global_id [:model/WorkspaceTransform :global_id] :ref_id id))))]
+    {:inputs       (into #{} (map table->kw) inputs)
+     :outputs      (into #{} (map table->kw) outputs)
+     :entities     (into #{} (map node->kw) entities)
+     :dependencies (u/for-map [[child parents] dependencies]
+                     [(node->kw child) (into #{} (map node->kw parents))])}))
 
 ;;;; Tests
 
 (deftest path-induced-subgraph-shorthand-test
   (testing "graph built from shorthand matches abstract solver"
-    (let [shorthand   {:x1 [:t1]}
-          id-map      (create-test-graph! shorthand)
-          gtx          (t2/select-one :model/Transform (id-map :x1))]
+    (let [shorthand   {:x2 [:t1]}
+          id-map      (create-test-graph! (dag-abstract/expand-shorthand shorthand))
+          gtx          (t2/select-one :model/Transform (id-map :x2))]
       (mt/with-temp [:model/Workspace          ws  {:name "Test Workspace", :database_id (mt/id)}
                      :model/WorkspaceTransform wtx (merge
-                                                    (select-keys gtx [:source :target])
-                                                    {:name         "Test Transform"
-                                                     :workspace_id (:id ws)
+                                                    (select-keys gtx [:name :source :target])
+                                                    {:workspace_id (:id ws)
                                                      :global_id    (:id gtx)})]
         (ws.impl/sync-transform-dependencies! ws wtx)
-        (let [result     (ws.dag/path-induced-subgraph nil [{:entity-type :transform, :id (:ref_id wtx)}])
+        (let [entity     {:entity-type :transform, :id (:ref_id wtx)}
+              result     (ws.dag/path-induced-subgraph (:id ws) [entity])
               translated (translate-result result id-map)]
-          ;; TODO fix translation function
-          ;; TODO fix input detection o_O
-          (is (=? {#_#_:inputs [:t1]
-                   #_#_:outputs [:t2]
-                   #_#_:entities [:x1]
-                   #_#_:dependencies {:x1 [:t1]}}
+          (is (=? {:inputs       #{:t1}
+                   :outputs      #{:t2}
+                   :entities     #{:x2}
+                   :dependencies {:x2 #{:t1}}}
                   translated)))))))
 
 (deftest path-induced-subgraph-larger-test

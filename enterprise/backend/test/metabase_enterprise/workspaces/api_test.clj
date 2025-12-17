@@ -13,6 +13,7 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -1332,63 +1333,73 @@
       (mt/with-temp [:model/WorkspaceTransform tx-1 {:name "A Tx in WS1", :workspace_id (:id ws)}
                      :model/Transform          tx-2 {:name "An external Tx"}
                      :model/WorkspaceTransform tx-3 {:name "Another Tx in WS1", :workspace_id (:id ws)}]
+        (let [driver      (t2/select-one-fn :engine [:model/Database :engine] (:database_id ws))
+              tx-1-output (:name (:target tx-1))
+              tx-2-output (sql.normalize/normalize-name driver (:name (:target tx-2)))
+              tx-1-input  (str (mt/id) "--venues")
+              ;; Reference for an input table we shouldn't actually have (it should be shadowed by t2)
+              tx-3-input  (str (mt/id) "--" tx-2-output)
+              t1-ref      (:ref_id tx-1)
+              t3-ref      (:ref_id tx-3)]
 
-        ;; Resubmit transform to trigger analysis
-        (mt/user-http-request :crowberto :put 200 (ws-url (:id ws) "transform" (:ref_id tx-1))
-                              ;; with-temp doesn't populate a database id, and doesn't query a table
-                              (-> tx-1
-                                  (select-keys [:source :target])
-                                  (assoc-in [:target :database] (mt/id))
-                                  (assoc-in [:source :query :stages 0 :native] "SELECT * FROM venues")))
+          ;; Resubmit transform to trigger analysis
+          (mt/user-http-request :crowberto :put 200 (ws-url (:id ws) "transform" t1-ref)
+                                ;; with-temp doesn't populate a database id, and doesn't query a table
+                                (-> tx-1
+                                    (select-keys [:source :target])
+                                    (assoc-in [:target :database] (mt/id))
+                                    (assoc-in [:source :query :stages 0 :native] "SELECT * FROM venues")))
 
-        ;; Global dependency analysis requires tables to actually exist
-        ;; Note - we need the transform to run **without** remapping, to generate the global table
-        (mt/with-test-user :crowberto
-          (ws.execute/run-transform-with-remapping (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id tx-1)) {}))
+          ;; Global dependency analysis requires tables to actually exist
+          ;; Note - we need the transform to run **without** remapping, to generate the global table
+          (mt/with-test-user :crowberto
+            (ws.execute/run-transform-with-remapping (t2/select-one :model/WorkspaceTransform :ref_id t1-ref) {}))
 
-        ;; Toucan hook will analyze this for us.
-        (t2/update! :model/Transform (:id tx-2)
-                    {:source (assoc-in (:source tx-2) [:query :stages 0 :native] (str "SELECT * FROM " (:name (:target tx-1))))
-                     :target (assoc (:target tx-2) :database (mt/id))})
+          ;; Toucan hook will analyze this for us.
+          (t2/update! :model/Transform (:id tx-2)
+                      {:source (assoc-in (:source tx-2) [:query :stages 0 :native] (str "SELECT * FROM " tx-1-output))
+                       :target (assoc (:target tx-2) :database (mt/id))})
 
-        ;; Run it to complete the analysis
-        ;; TODO for some reason we have the active table metadata, but the query transform fails due to missing table
-        #_#_p (t2/select [:model/Table :id :name :active] :db_id (mt/id) :name (:name (:target tx-1)))
-        #_(transforms.execute/execute! #p (t2/select-one :model/Transform (:id tx-2)) {:run-method :manual})
-        #_#p (t2/select [:model/Dependency] :from_entity_type :transform :from_entity_id (:id tx-2))
-        #_#p (t2/select [:model/Dependency] :to_entity_type :transform :to_entity_id (:id tx-2))
+          ;; Run it to complete the analysis
+          ;; TODO for some reason we have the active table metadata, but the query transform fails due to missing table
+          #_#_p (t2/select [:model/Table :id :name :active] :db_id (mt/id) :name (:name (:target tx-1)))
+          #_(transforms.execute/execute! #p (t2/select-one :model/Transform (:id tx-2)) {:run-method :manual})
+          #_#p (t2/select [:model/Dependency] :from_entity_type :transform :from_entity_id (:id tx-2))
+          #_#p (t2/select [:model/Dependency] :to_entity_type :transform :to_entity_id (:id tx-2))
 
-        ;; Naive code currently tries to grant permissions to the output of the external dependency, not realizing it is already shadowed.
-        ;; TODO fix eager analysis to be aware of shadowing
-        (mt/user-http-request :crowberto :put 200 (ws-url (:id ws) "transform" (:ref_id tx-3))
-                              ;; with-temp doesn't populate a database id, and doesn't query a table
-                              (-> tx-3
-                                  (select-keys [:source :target])
-                                  (assoc-in [:target :database] (mt/id))
-                                  (assoc-in [:source :query :stages 0 :native] (str "SELECT * FROM " (:name (:target tx-2))))))
+          ;; Naive code currently tries to grant permissions to the output of the external dependency, not realizing it is already shadowed.
+          ;; TODO fix eager analysis to be aware of shadowing
+          (mt/user-http-request :crowberto :put 200 (ws-url (:id ws) "transform" t3-ref)
+                                ;; with-temp doesn't populate a database id, and doesn't query a table
+                                (-> tx-3
+                                    (select-keys [:source :target])
+                                    (assoc-in [:target :database] (mt/id))
+                                    (assoc-in [:source :query :stages 0 :native] (str "SELECT * FROM " tx-2-output))))
 
-        ;; TODO investigate why the enclosed transform is not being included, could be bad setup
-        (testing "returns enclosed external transform too"
-          (is (= {:nodes #{{:type "input-table", :id (str (mt/id) "--venues"), :data {:db 2, :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
-                           {:type "workspace-transform", :id (:ref_id tx-1), :data {:ref_id (:ref_id tx-1), :name "A Tx in WS1"}, :dependents_count {:workspace-transform 1} #_{:global-transform 1}}
-                           #_{:type "global-transform", :id (:id tx-2), :data {:id (:id tx-1), :name "An external Tx"}, :dependents_count {:workspace-transform 1}}
-                           {:type "workspace-transform", :id (:ref_id tx-3), :data {:ref_id (:ref_id tx-3), :name "Another Tx in WS1"}, :dependents_count {}}},
-                  :edges #{{:from_entity_type "input-table"
-                            :from_entity_id   (str (mt/id) "--venues")
-                            :to_entity_type   "workspace-transform"
-                            :to_entity_id     (:ref_id tx-1)}
-                           ;; Somehow we're ending up with a direct dependency instead
-                           {:from_entity_type "workspace-transform"
-                            :from_entity_id   (:ref_id tx-1)
-                            :to_entity_type   "workspace-transform"
-                            :to_entity_id     (:ref_id tx-3)}
-                           #_{:from_entity_type "workspace-transform"
-                              :from_entity_id   (:ref_id tx-1)
-                              :to_entity_type   "global-transform"
-                              :to_entity_id     (:id tx-2)}
-                           #_{:from_entity_type "global-transform"
-                              :from_entity_id   (:id tx-2)
+          ;; TODO investigate why the enclosed transform is not being included, could be bad setup
+          (testing "returns enclosed external transform too"
+            (is (= {:nodes #{{:type "input-table", :id tx-1-input, :data {:db 2, :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
+                             {:type "workspace-transform", :id t1-ref, :data {:ref_id t1-ref, :name "A Tx in WS1"}, :dependents_count {} #_{:global-transform 1}}
+                             #_{:type "global-transform", :id (:id tx-2), :data {:id (:id tx-1), :name "An external Tx"}, :dependents_count {:workspace-transform 1}}
+                             ;; We won't have this input table when we fix finding the enclosed global transform.
+                             {:type "input-table", :id tx-3-input, :data {:db 2, :schema nil, :table tx-2-output, :id nil}, :dependents_count {:workspace-transform 1}}
+                             {:type "workspace-transform", :id t3-ref, :data {:ref_id t3-ref, :name "Another Tx in WS1"}, :dependents_count {}}},
+                    :edges #{{:from_entity_type "input-table"
+                              :from_entity_id   tx-1-input
                               :to_entity_type   "workspace-transform"
-                              :to_entity_id     (:ref_id tx-3)}}}
-                 (-> (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph"))
-                     (update-vals set)))))))))
+                              :to_entity_id     t1-ref}
+                             ;; This input table will be replaced by a transform chain.
+                             {:from_entity_type "input-table"
+                              :from_entity_id   tx-3-input
+                              :to_entity_type   "workspace-transform"
+                              :to_entity_id     t3-ref}
+                             #_{:from_entity_type "workspace-transform"
+                                :from_entity_id   (:ref_id tx-1)
+                                :to_entity_type   "global-transform"
+                                :to_entity_id     (:id tx-2)}
+                             #_{:from_entity_type "global-transform"
+                                :from_entity_id   (:id tx-2)
+                                :to_entity_type   "workspace-transform"
+                                :to_entity_id     (:ref_id tx-3)}}}
+                   (-> (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph"))
+                       (update-vals set))))))))))

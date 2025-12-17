@@ -67,7 +67,8 @@
                                     {:where [:and
                                              [:= :workspace_id ws-id]
                                              [:or
-                                              [:= :global_table_id id]
+                                              (when id
+                                                [:= :global_table_id id])
                                               [:and
                                                [:= :db_id db]
                                                [:= :global_schema schema]

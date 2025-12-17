@@ -52,6 +52,8 @@
    | transform        | happy-dolphin-a1b2 | input          | 201          | A depends on external ORDERS |
    | transform        | brave-lion-g7h8    | output         | 101          | B depends on A's output      |"
   (:require
+   ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
+   #_{:clj-kondo/ignore [:metabase/modules]}
    [clojure.set :as set]
    [metabase-enterprise.workspaces.models.workspace-dependency]
    [metabase-enterprise.workspaces.models.workspace-input]
@@ -60,6 +62,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.util :as u]
@@ -117,19 +120,21 @@
   [driver db-id table-refs]
   (when (seq table-refs)
     (let [default-schema  (driver.sql/default-schema driver)
-          ;; Include default-schema in filter so nil refs can match
-          schemas-to-query (into #{} (comp (map :schema)
-                                           (mapcat #(if (nil? %) [nil default-schema] [%])))
-                                 table-refs)
+          ;; Include default-schema in filter so nil refs can match that too
+          nil-schema? (some (comp nil? :schema) table-refs)
+          schemas-to-query (into #{} (map #(or (:schema %) default-schema)) table-refs)
           db-table-lookup (t2/select-fn->fn (juxt :schema :name) :id
                                             [:model/Table :id :schema :name]
                                             :db_id db-id
-                                            :schema [:in schemas-to-query]
-                                            :name [:in (map :table table-refs)])]
+                                            :name [:in (map :table table-refs)]
+                                            {:where (if nil-schema?
+                                                      [:or [:= :schema nil] [:in :schema schemas-to-query]]
+                                                      [:in :schema schemas-to-query])})]
       (into {}
             (keep (fn [{:keys [schema table]}]
-                    (let [search-schema (or schema default-schema)
-                          table-id      (get db-table-lookup [search-schema table])]
+                    (let [table-id (or (get db-table-lookup [schema table])
+                                       (when (nil? schema)
+                                         (get db-table-lookup [default-schema table])))]
                       (when table-id
                         [[db-id schema table] table-id]))))
             table-refs))))
@@ -218,7 +223,7 @@
   "Upsert a workspace_output record for the transform's target table.
    Stores both global (original) and isolated (workspace-specific) table identifiers.
    Returns the workspace_output id."
-  [workspace-id ref-id isolated-schema {:keys [db_id schema table]}]
+  [workspace-id ref-id isolated-schema {:keys [db_id schema table]} normalize-sql]
   (app-db/update-or-insert! :model/WorkspaceOutput
                             {:workspace_id workspace-id
                              :ref_id       ref-id}
@@ -227,25 +232,25 @@
                                     qry-table-id   (fn [schema table]
                                                      (t2/select-one-fn :id [:model/Table :id]
                                                                        :db_id db_id
-                                                                       :schema schema
-                                                                       :name table))
+                                                                       :schema (normalize-sql schema)
+                                                                       :name (normalize-sql table)))
                                     id-if-match    (fn [schema-key schema table-key table id-key]
                                                      (when (and (= schema (get existing schema-key))
                                                                 (= table (get existing table-key)))
                                                        (get existing id-key)))
-                                    id-fallback    (fn [schema-key schema table-key table id-key]
+                                    id-or-fallback (fn [schema-key schema table-key table id-key]
                                                      (or (id-if-match schema-key schema table-key table id-key)
                                                          (qry-table-id schema table)))]
                                 {:db_id             db_id
                                  :global_schema     schema
                                  :global_table      table
-                                 :global_table_id   (id-fallback
+                                 :global_table_id   (id-or-fallback
                                                      :global_schema schema
                                                      :global_table table
                                                      :global_table_id)
                                  :isolated_schema   isolated-schema
                                  :isolated_table    isolated-table
-                                 :isolated_table_id (id-fallback
+                                 :isolated_table_id (id-or-fallback
                                                      :isolated_schema isolated-schema
                                                      :isolated_table isolated-table
                                                      :isolated_table_id)}))))
@@ -359,8 +364,13 @@
   (t2/with-transaction [_conn]
     (let [output-lookup         (build-output-lookup workspace-id)
           existing-input-lookup (build-input-lookup workspace-id)
-          current-edges         (current-edge-specs workspace-id ref-id)]
-      (upsert-workspace-output! workspace-id ref-id isolated-schema output)
+          current-edges         (current-edge-specs workspace-id ref-id)
+          driver                (t2/select-one-fn :engine [:model/Database :engine]
+                                                  :id [:in {:select [:database_id]
+                                                            :from   [:workspace]
+                                                            :where  [:= :id workspace-id]}])
+          normalize             (partial sql.normalize/normalize-name driver)]
+      (upsert-workspace-output! workspace-id ref-id isolated-schema output normalize)
       (let [{internal-inputs true external-inputs false} (group-by (fn [{:keys [db_id schema table]}]
                                                                      (contains? output-lookup [db_id schema table]))
                                                                    inputs)
