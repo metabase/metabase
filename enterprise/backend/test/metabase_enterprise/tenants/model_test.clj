@@ -152,23 +152,19 @@
 ;;; |                                      Tenant Collection Name Localization                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest maybe-localize-tenant-collection-names-batch-test
+(deftest maybe-localize-tenant-collection-names-turns-all-dtcs-into-our-data
   (testing "maybe-localize-tenant-collection-names handles multiple collections efficiently"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant1-coll-id :tenant_collection_id
-                                      tenant1-id :id} {:name "Tenant One" :slug "tenant1"}
-                       :model/Tenant {tenant2-coll-id :tenant_collection_id
-                                      tenant2-id :id} {:name "Tenant Two" :slug "tenant2"}
+        (mt/with-temp [:model/Tenant {tenant1-coll-id :tenant_collection_id} {:name "Tenant One" :slug "tenant1"}
+                       :model/Tenant {tenant2-coll-id :tenant_collection_id} {:name "Tenant Two" :slug "tenant2"}
                        :model/Collection regular-coll {:name "Regular Collection" :location "/"}]
-          (t2/update! :model/Tenant tenant1-id {:name "heehee"})
-          (t2/update! :model/Tenant tenant2-id {:name "hoho"})
           (let [colls [(t2/select-one :model/Collection :id tenant1-coll-id)
                        (t2/select-one :model/Collection :id tenant2-coll-id)
                        regular-coll]
                 localized-colls (collection/maybe-localize-tenant-collection-names colls)]
-            (is (= ["Tenant Collection: heehee"
-                    "Tenant Collection: hoho"
+            (is (= ["Our Data"
+                    "Our Data"
                     "Regular Collection"]
                    (map :name localized-colls)))))))))
 
@@ -176,8 +172,7 @@
   (testing "maybe-localize-tenant-collection-name works for single collection"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant-id :id tenant-collection-id :tenant_collection_id} {:name "My Tenant" :slug "mytenant"}]
-          (t2/update! :model/Tenant tenant-id {:name "New Name"})
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "My Tenant" :slug "mytenant"}]
           (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
                 localized-coll (collection/maybe-localize-tenant-collection-name coll)]
-            (is (= "Tenant Collection: New Name" (:name localized-coll)))))))))
+            (is (= "Our Data" (:name localized-coll)))))))))
