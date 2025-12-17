@@ -16,12 +16,12 @@ import type { Dispatch, GetState } from "metabase-types/store";
 import {
   getAllNativeEditorSelectedText,
   getCard,
+  getCurrentQuestion,
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
-  getProposedQuestion,
   getQueryResults,
   getQuestion,
   getTimeoutId,
@@ -128,7 +128,7 @@ export const runQuestionQuery = ({
 
     const question = overrideWithQuestion
       ? overrideWithQuestion
-      : getQuestion(getState());
+      : getCurrentQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
     if (!question) {
@@ -278,9 +278,9 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
 export const runOrCancelQuestionOrSelectedQuery =
   () => (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
-    const question = getQuestion(state);
+    const currentQuestion = getCurrentQuestion(state);
 
-    if (!question) {
+    if (!currentQuestion) {
       return;
     }
 
@@ -289,9 +289,6 @@ export const runOrCancelQuestionOrSelectedQuery =
       dispatch(cancelQuery());
       return;
     }
-
-    const proposedQuestion = getProposedQuestion(state);
-    const currentQuestion = proposedQuestion ?? question;
 
     const query = currentQuestion.query();
     const queryInfo = Lib.queryDisplayInfo(query);
@@ -304,8 +301,6 @@ export const runOrCancelQuestionOrSelectedQuery =
           shouldUpdateUrl: false,
         }),
       );
-    } else if (proposedQuestion) {
-      dispatch(runQuestionQuery({ overrideWithQuestion: proposedQuestion }));
     } else {
       dispatch(runQuestionQuery());
     }

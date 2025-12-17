@@ -323,6 +323,9 @@ export const getProposedQuestion = createSelector(
       return;
     }
 
+    // TODO: do validation:
+    // - both question and suggestedCodeEdit are for SQL
+    // - that the database is the same
     return question.setQuery(
       Lib.withNativeQuery(question.query(), suggestedSQL),
     );
