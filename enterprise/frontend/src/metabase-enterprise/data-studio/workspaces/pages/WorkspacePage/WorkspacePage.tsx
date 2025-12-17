@@ -754,7 +754,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                 activeTransformId={activeTransform?.id}
                 availableTransforms={availableTransforms}
                 workspaceId={workspace.id}
-                workspaceTransforms={workspaceTransforms}
+                workspaceTransforms={allTransforms}
                 onTransformClick={(transform) => {
                   addOpenedTransform(transform);
                   if (activeTable) {

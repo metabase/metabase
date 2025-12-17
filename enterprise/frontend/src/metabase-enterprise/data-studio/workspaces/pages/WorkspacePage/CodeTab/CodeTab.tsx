@@ -77,6 +77,13 @@ export const CodeTab = ({
 
   const handleWorkspaceTransformClick = useCallback(
     async (workspaceTransform: WorkspaceTransform) => {
+      if (
+        typeof workspaceTransform.id === "number" &&
+        workspaceTransform.id < 0
+      ) {
+        return handleTransformClick(workspaceTransform);
+      }
+
       const { data: transform } = await fetchWorkspaceTransform(
         {
           workspaceId,
