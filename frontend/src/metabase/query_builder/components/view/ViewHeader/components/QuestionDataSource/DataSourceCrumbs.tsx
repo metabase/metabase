@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import _ from "underscore";
 
-import Schema from "metabase/entities/schemas";
+import { Schemas } from "metabase/entities/schemas";
 import { getDatabaseId } from "metabase/query_builder/selectors";
 import type Question from "metabase-lib/v1/Question";
 import type { State } from "metabase-types/store";
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export const DataSourceCrumbs = _.compose(
-  Schema.loadList({
+  Schemas.loadList({
     query: (state: State) => ({
       dbId: getDatabaseId(state),
     }),
