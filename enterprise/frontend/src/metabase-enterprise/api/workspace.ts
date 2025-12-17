@@ -120,10 +120,14 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         providesTags: (_, __, transformId) => [idTag("transform", transformId)],
       },
     ),
-    mergeWorkspace: builder.mutation<WorkspaceMergeResponse, WorkspaceId>({
-      query: (id) => ({
+    mergeWorkspace: builder.mutation<
+      WorkspaceMergeResponse,
+      { id: WorkspaceId; commit_message: string }
+    >({
+      query: ({ id, commit_message }) => ({
         method: "POST",
         url: `/api/ee/workspace/${id}/merge`,
+        body: { commit_message },
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
