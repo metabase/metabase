@@ -11,7 +11,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Measures = createEntity({
+export const Measures = createEntity({
   name: "measures",
   nameOne: "measure",
   path: "/api/measure",
@@ -76,5 +76,3 @@ const Measures = createEntity({
 const useGetQuery = ({ id }, options) => {
   return useGetMeasureQuery(id, options);
 };
-
-export default Measures;
