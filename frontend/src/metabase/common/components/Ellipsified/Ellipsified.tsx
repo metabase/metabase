@@ -10,6 +10,7 @@ interface EllipsifiedProps extends TextProps {
   tooltip?: ReactNode;
   children?: ReactNode;
   tooltipMaxWidth?: number | "auto";
+  tooltipOpenDelay?: number;
   lines?: number;
   multiline?: boolean;
   placement?: FloatingPosition;
@@ -22,6 +23,7 @@ export const Ellipsified = ({
   tooltip,
   children,
   tooltipMaxWidth,
+  tooltipOpenDelay,
   lines = 1,
   multiline = false,
   placement = "top",
@@ -47,6 +49,7 @@ export const Ellipsified = ({
       position={placement}
       w={tooltipMaxWidth}
       multiline={multiline}
+      openDelay={tooltipOpenDelay}
     >
       <Text
         c="inherit"

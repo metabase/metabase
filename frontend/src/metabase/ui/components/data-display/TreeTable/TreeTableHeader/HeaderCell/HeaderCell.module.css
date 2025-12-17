@@ -1,0 +1,19 @@
+.pill {
+  border-radius: 6px;
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 92%);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 200ms ease-in-out;
+
+  &:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 82%
+    );
+  }
+}
+
+.sortIcon {
+  flex-shrink: 0;
+}

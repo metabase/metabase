@@ -1,0 +1,17 @@
+.measuring {
+  visibility: hidden;
+}
+
+.header {
+  z-index: 1;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.row {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.cell:first-child {
+  padding-left: 1rem;
+}

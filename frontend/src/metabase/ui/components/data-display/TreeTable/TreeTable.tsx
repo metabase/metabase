@@ -1,0 +1,199 @@
+import cx from "classnames";
+import {
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
+
+import { Box, Center, Flex } from "metabase/ui";
+
+import S from "./TreeTable.module.css";
+import { TreeTableHeader } from "./TreeTableHeader";
+import { TreeTableRow } from "./TreeTableRow";
+import { CHECKBOX_COLUMN_WIDTH, DEFAULT_INDENT_WIDTH } from "./constants";
+import type { TreeNodeData, TreeTableProps } from "./types";
+
+export function TreeTable<TData extends TreeNodeData>({
+  instance,
+  showCheckboxes = false,
+  indentWidth = DEFAULT_INDENT_WIDTH,
+  headerVariant = "pill",
+  emptyState,
+  onRowClick,
+  onRowDoubleClick,
+  getSelectionState,
+  onCheckboxClick,
+  isChildrenLoading,
+  classNames,
+  styles,
+  ariaLabel,
+  ariaLabelledBy,
+}: TreeTableProps<TData>) {
+  const {
+    table,
+    rows,
+    virtualRows,
+    totalSize,
+    virtualizer,
+    containerRef,
+    columnWidths,
+    isMeasured,
+    setContainerWidth,
+    handleKeyDown,
+    activeRowId,
+  } = instance;
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  const handleKeyDownWithFocus = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      handleKeyDown(event);
+      // Ensure focus stays on root after keyboard navigation
+      if (
+        event.key === "ArrowDown" ||
+        event.key === "ArrowUp" ||
+        event.key === "Home" ||
+        event.key === "End"
+      ) {
+        rootRef.current?.focus();
+      }
+    },
+    [handleKeyDown],
+  );
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        const width = entry.contentRect.width;
+        const adjustedWidth = showCheckboxes
+          ? width - CHECKBOX_COLUMN_WIDTH
+          : width;
+        setContainerWidth(adjustedWidth);
+      }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [containerRef, setContainerWidth, showCheckboxes]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const header = headerRef.current;
+    if (!container || !header) {
+      return;
+    }
+
+    const handleScroll = () => {
+      header.scrollLeft = container.scrollLeft;
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [containerRef]);
+
+  const hasExpandableNodes = useMemo(
+    () => rows.some((row) => row.getCanExpand()),
+    [rows],
+  );
+
+  const totalContentWidth = useMemo(() => {
+    const columnsWidth = Object.values(columnWidths).reduce(
+      (sum, w) => sum + w,
+      0,
+    );
+    return showCheckboxes ? columnsWidth + CHECKBOX_COLUMN_WIDTH : columnsWidth;
+  }, [columnWidths, showCheckboxes]);
+
+  const measureElement = useCallback(
+    (element: HTMLElement | null) => {
+      virtualizer.measureElement(element);
+    },
+    [virtualizer],
+  );
+
+  const showEmptyState = rows.length === 0 && emptyState;
+
+  return (
+    <Flex
+      ref={rootRef}
+      className={cx(S.root, classNames?.root)}
+      style={styles?.root}
+      direction="column"
+      h="100%"
+      w="100%"
+      role="treegrid"
+      tabIndex={0}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      onKeyDown={handleKeyDownWithFocus}
+    >
+      {!showEmptyState && (
+        <TreeTableHeader
+          scrollRef={headerRef}
+          table={table}
+          columnWidths={columnWidths}
+          showCheckboxes={showCheckboxes}
+          headerVariant={headerVariant}
+          classNames={classNames}
+          styles={styles}
+          isMeasured={isMeasured}
+          totalContentWidth={totalContentWidth}
+        />
+      )}
+
+      <Box
+        ref={containerRef}
+        className={cx(S.body, classNames?.body, { [S.measuring]: !isMeasured })}
+        flex={1}
+        style={styles?.body}
+      >
+        {showEmptyState ? (
+          <Center h="100%" p="xl" c="text-light">
+            {emptyState}
+          </Center>
+        ) : (
+          <Box pos="relative" style={{ height: totalSize, minWidth: totalContentWidth }}>
+            {virtualRows.map((virtualItem) => {
+              const row = rows[virtualItem.index];
+              if (!row) {
+                return null;
+              }
+
+              return (
+                <TreeTableRow
+                  key={row.id}
+                  row={row}
+                  rowIndex={virtualItem.index}
+                  virtualItem={virtualItem}
+                  table={table}
+                  columnWidths={columnWidths}
+                  showCheckboxes={showCheckboxes}
+                  showExpandButtons={hasExpandableNodes}
+                  indentWidth={indentWidth}
+                  activeRowId={activeRowId}
+                  measureElement={measureElement}
+                  onRowClick={onRowClick}
+                  onRowDoubleClick={onRowDoubleClick}
+                  isChildrenLoading={isChildrenLoading?.(row)}
+                  getSelectionState={getSelectionState}
+                  onCheckboxClick={onCheckboxClick}
+                  classNames={classNames}
+                  styles={styles}
+                />
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+    </Flex>
+  );
+}
