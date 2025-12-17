@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import {
   PLUGIN_TENANTS,
@@ -9,11 +8,10 @@ import {
 } from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 
-import type { EmbeddingHubStep } from "../types";
+import type { EmbeddingHubAction, EmbeddingHubStep } from "../types";
 
 export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const dispatch = useDispatch();
-  const isUsingTenants = useSetting("use-tenants");
 
   const openEmbedModal = useCallback(
     (props: Pick<SdkIframeEmbedSetupModalProps, "initialState">) => {
@@ -33,7 +31,6 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     const TEST_EMBED: EmbeddingHubStep = {
       id: "create-test-embed",
       title: t`Create embed`,
-      icon: "test_tube",
       actions: [
         {
           title: t`Get embed snippet`,
@@ -48,31 +45,18 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           },
           variant: "outline",
         },
-        ...(isTenantsFeatureAvailable
-          ? [
-              {
-                title: t`Set up tenants`,
-                description: t`Define a multi tenant user strategy to manage access for tenant users.`,
-                to: isUsingTenants
-                  ? "/admin/tenants"
-                  : "/admin/people/user-strategy",
-                optional: true,
-                stepId: "setup-tenants" as const,
-              },
-            ]
-          : []),
       ],
       image: {
         src: "app/assets/img/embedding_hub_create_embed.png",
         srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
         alt: t`Screenshot of creating an embed`,
       },
+      infoAlert: t`If all you want is a simple embedded dashboard, the steps above are all you need! \n If you have a more sophisticated setup in mind, with many users and tenants, then keep going.`,
     };
 
     const ADD_DATA: EmbeddingHubStep = {
       id: "add-data",
       title: t`Add your data`,
-      icon: "add_data",
       image: {
         src: "app/assets/img/onboarding_data_diagram.png",
         srcSet: "app/assets/img/onboarding_data_diagram@2x.png 2x",
@@ -91,7 +75,6 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     const CREATE_DASHBOARD: EmbeddingHubStep = {
       id: "create-dashboard",
       title: t`Prepare data`,
-      icon: "dashboard",
       video: {
         id: "FOAXF4p1AL0",
         trackingId: "COmu2w0SqGagUoVp",
@@ -114,10 +97,33 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
+    const DATA_PERMISSION_CARD: EmbeddingHubAction = {
+      title: t`Configure data permissions`,
+      docsPath: "permissions/embedding",
+      anchor: "one-database-for-all-customers-commingled-setups",
+      description: t`Manage permissions to limit what data your users can access.`,
+      variant: "outline",
+      stepId: "configure-row-column-security",
+      optional: true,
+    };
+
+    const SETUP_TENANTS: EmbeddingHubStep = {
+      id: "setup-tenants",
+      title: t`Pick a strategy for users and permissions`,
+      actions: [
+        {
+          title: t`Pick a user strategy`,
+          description: t`Decide between a multi-tenant or single-tenant user strategy.`,
+          variant: "outline",
+          modal: { type: "user-strategy" },
+        },
+        DATA_PERMISSION_CARD,
+      ],
+    };
+
     const SECURE_EMBEDS: EmbeddingHubStep = {
       id: "secure-embeds",
-      title: t`Security and permissions`,
-      icon: "lock",
+      title: t`Set up authentication`,
       actions: [
         {
           title: t`Configure SSO`,
@@ -127,15 +133,10 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           variant: "outline",
           stepId: "secure-embeds",
         },
-        {
-          title: t`Configure data permissions`,
-          docsPath: "permissions/embedding",
-          anchor: "one-database-for-all-customers-commingled-setups",
-          description: t`Manage permissions to limit what data your users can access.`,
-          variant: "outline",
-          stepId: "configure-row-column-security",
-          optional: true,
-        },
+
+        // If tenants are not available, show data permission card on the authentication step.
+        // Otherwise, it is already shown on the tenants setup step.
+        ...(isTenantsFeatureAvailable ? [] : [DATA_PERMISSION_CARD]),
       ],
       image: {
         src: "app/assets/img/embedding_hub_secure_embeds_diagram.png",
@@ -147,10 +148,9 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     const EMBED_PRODUCTION: EmbeddingHubStep = {
       id: "embed-production",
       title: t`Deployment`,
-      icon: "code_block",
       actions: [
         {
-          title: t`Embed in production`,
+          title: t`Embed in production with SSO`,
           description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
           onClick: () => {
             openEmbedModal({
@@ -168,18 +168,15 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
         alt: t`Screenshot of creating an embed`,
       },
-      infoAlert: {
-        type: "locked",
-        message: t`Configure SSO authentication to unlock this step.`,
-      },
     };
 
     return [
       ADD_DATA,
       CREATE_DASHBOARD,
       TEST_EMBED,
+      ...(isTenantsFeatureAvailable ? [SETUP_TENANTS] : []),
       SECURE_EMBEDS,
       EMBED_PRODUCTION,
     ];
-  }, [isUsingTenants, openEmbedModal]);
+  }, [openEmbedModal]);
 };
