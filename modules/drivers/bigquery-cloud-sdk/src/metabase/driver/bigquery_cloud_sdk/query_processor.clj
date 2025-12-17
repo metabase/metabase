@@ -267,7 +267,6 @@
 
 (defmethod temporal-type ::h2x/identifier
   [identifier]
-  ;; (tap> :temporal-type-identifier)
   (:bigquery-cloud-sdk/temporal-type (meta identifier)))
 
 (defn base-temporal-type [identifier]
@@ -283,36 +282,25 @@
 
 (defmethod temporal-type :field
   [[_ id-or-name {:keys [base-type effective-type temporal-unit]} :as clause]]
-  ;; (tap> :temporal-type-field)
   (cond
     (contains? (meta clause) :bigquery-cloud-sdk/temporal-type)
-    (do
-      ;; (tap> "1111")
-      (:bigquery-cloud-sdk/temporal-type (meta clause)))
+    (:bigquery-cloud-sdk/temporal-type (meta clause))
 
     ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
     ;;
     ;; `:year` is both an extract unit and a truncate unit in terms of `u.date` capabilities, but in MBQL it should be a
     ;; truncation operation
     ((disj u.date/extract-units :year) temporal-unit)
-    (do
-      ;; (tap> "2222")
-      nil)
+    nil
 
     (integer? id-or-name)
-    (do
-      ;; (tap> "3333")
-      (temporal-type (driver-api/field (driver-api/metadata-provider) id-or-name)))
+    (temporal-type (driver-api/field (driver-api/metadata-provider) id-or-name))
 
     effective-type
-    (do
-      ;; (tap> "4444")
-      (base-type->temporal-type effective-type))
+    (base-type->temporal-type effective-type)
 
     base-type
-    (do
-      ;; (tap> "5555")
-      (base-type->temporal-type base-type))))
+    (base-type->temporal-type base-type)))
 
 (defmethod temporal-type :case
   [[_case & rezt]]
@@ -327,14 +315,11 @@
 
 (defmethod temporal-type :default
   [x]
-  ;; (tap> :temporal-type-default)
   (:bigquery-cloud-sdk/temporal-type (meta x)))
 
 (defn- with-temporal-type
   {:style/indent [:form]}
   [x new-type]
-  ;; (tap> {:x x})
-  ;; (tap> {:new-type new-type})
   (if (not (instance? clojure.lang.IObj x))
     x
     (vary-meta x assoc :bigquery-cloud-sdk/temporal-type (keyword new-type))))
@@ -384,20 +369,11 @@
 
 (defmethod ->temporal-type :default
   [target-type x]
-  ;; (tap> {:target-type target-type})
-  ;; (tap> {:x x})
   (when (some? x)
     (let [current-type (temporal-type x)]
-      ;; (tap> {:current-type current-type})
       (cond
         (= current-type target-type)
         x
-
-        ;; If base-temporal-type matches target but temporal-type doesn't,
-        ;; we still need to set the temporal-type metadata properly
-        ;; (otherwise callers like `extract` that check temporal-type will loop)
-        ;; (and (nil? current-type) (= base-type target-type))
-        ;; (with-temporal-type x target-type)
 
         (contains? #{:date :time :datetime :timestamp} target-type)
         (do
@@ -413,7 +389,6 @@
                                             (driver-api/requested-timezone-id))]
                        [target-type x (h2x/literal report-zone)]
                        [target-type x])]
-            ;; (tap> "PROBLEM")
             (with-temporal-type expr target-type)))
 
         :else
@@ -433,8 +408,8 @@
   [target-type [_ _ unit :as clause]]
   {:post [(= target-type (temporal-type %))]}
   (with-temporal-type
-    ;; check and see whether we need to do a conversion. If so, use the parent method which will just wrap this in a
-    ;; cast statement.
+   ;; check and see whether we need to do a conversion. If so, use the parent method which will just wrap this in a
+   ;; cast statement.
    (if ((temporal-type->supported-units target-type) unit)
      clause
      ((get-method ->temporal-type :default) target-type clause))
@@ -459,14 +434,8 @@
 
 (defmethod temporal-type ::trunc
   [[_trunc-form expr _unit _report-timezone :as form]]
-  ;; (tap> :temporal-type-trunc)
-  ;; (tap> {:trunc-expr expr})
-  (let [trunc-meta (:bigquery-cloud-sdk/temporal-type (meta form))
-        ;; _ (tap> {:trunc-meta trunc-meta})
-        temp-type-trunc-expr (temporal-type expr)]
-    ;; (tap> {:temp-type-trunc-expr temp-type-trunc-expr})
-    (or trunc-meta
-        temp-type-trunc-expr)))
+  (or (:bigquery-cloud-sdk/temporal-type (meta form))
+      (temporal-type expr)))
 
 (defmethod ->temporal-type [:temporal-type ::trunc]
   [target-type [_trunc-form expr unit report-timezone]]
@@ -509,39 +478,30 @@
    [::extract unit expr timezone]))
 
 (defn- extract [unit expr]
-  ;; (tap> {:extract-unit unit})
-  ;; (tap> {:extract-expr expr})
-  (let [temp-type-expr (temporal-type expr)]
-    ;; (tap> {:temp-type-expr temp-type-expr})
-    (condp = temp-type-expr
-      :time
-      (do
-        (assert (valid-time-extract-units unit)
-                (tru "Cannot extract {0} from a TIME field" unit))
-        (recur unit (with-temporal-type [:timestamp [:datetime [:inline "1970-01-01"] expr]]
-                                        :timestamp)))
+  (condp = (temporal-type expr)
+    :time
+    (do
+      (assert (valid-time-extract-units unit)
+              (tru "Cannot extract {0} from a TIME field" unit))
+      (recur unit (with-temporal-type [:timestamp [:datetime [:inline "1970-01-01"] expr]]
+                                      :timestamp)))
 
-      ;; timestamp and date both support extract()
-      :date
-      (do
-        (assert (valid-date-extract-units unit)
-                (tru "Cannot extract {0} from a DATE field" unit))
-        (with-temporal-type (extract* unit expr) nil))
+    ;; timestamp and date both support extract()
+    :date
+    (do
+      (assert (valid-date-extract-units unit)
+              (tru "Cannot extract {0} from a DATE field" unit))
+      (with-temporal-type (extract* unit expr) nil))
 
-      :timestamp
-      (do
-        (assert (or (valid-date-extract-units unit)
-                    (valid-time-extract-units unit))
-                (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-        (let [extracted (extract* unit expr (driver-api/requested-timezone-id))]
-          ;; (tap> {:extracted extracted})
-          (with-temporal-type extracted :timestamp)))
+    :timestamp
+    (do
+      (assert (or (valid-date-extract-units unit)
+                  (valid-time-extract-units unit))
+              (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
+      (with-temporal-type (extract* unit expr (driver-api/requested-timezone-id)) nil))
 
-      ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
-      (do
-        (let [to-temporal-type (->temporal-type :timestamp expr)]
-          ;; (tap> {:to-temporal-type to-temporal-type})
-          (recur unit to-temporal-type))))))
+    ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
+    (recur unit (->temporal-type :timestamp expr))))
 
 (defmethod sql.qp/date [:bigquery-cloud-sdk :second-of-minute] [_ _ expr] (extract :second    expr))
 (defmethod sql.qp/date [:bigquery-cloud-sdk :minute]           [_ _ expr] (trunc   :minute    expr))
@@ -728,7 +688,6 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_field id-or-name opts :as field-clause]]
-  ;; (tap> {:field-clause field-clause})
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
         parent-method (get-method sql.qp/->honeysql [:sql :field])]
@@ -738,24 +697,14 @@
       ;; attach temporal type info to the field clause, this will get attached to the resulting [[h2x/identifier]] by
       ;; SQL QP parent method, and we can access that inside other things like [[sql.qp/date]] implementations which it
       ;; may call in turn.
-      (let [temp-type (temporal-type field-clause)
-            ;; _ (tap> {:temporal-type temp-type})
-            field-clause (with-temporal-type field-clause temp-type)
-            field-clause (with-base-temporal-type field-clause)
-            ;; _ (tap> {:field-clause-with-temporal-type field-clause})
+      (let [field-clause (-> (with-temporal-type field-clause (temporal-type field-clause))
+                             (with-base-temporal-type))
             stored-field  (when (integer? id-or-name)
                             (driver-api/field (driver-api/metadata-provider) id-or-name))
-            ;; source-table-aliases (sql.qp/field-source-table-aliases field-clause)
-            ;; field-identifier (apply h2x/identifier :field (concat source-table-aliases (sql.qp/->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
             result       (parent-method driver field-clause)
-            ;; _ (tap> {:result result})
-            temp-type-result (temporal-type result)
-            ;; _ (tap> {:temporal-type-result temp-type-result})
             result       (cond-> result
-                           (not temp-type-result)
-                           (with-temporal-type temp-type))
-            ;; _ (tap> {:final-result result})
-            ]
+                           (not (temporal-type result))
+                           (with-temporal-type (temporal-type field-clause)))]
         (if (and (driver-api/json-field? stored-field)
                  (or (::sql.qp/forced-alias opts)
                      (= source-table driver-api/qp.add.source)))
