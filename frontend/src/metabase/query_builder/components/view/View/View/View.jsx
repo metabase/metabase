@@ -12,8 +12,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import Toaster from "metabase/common/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import Bookmarks from "metabase/entities/bookmarks";
-import Questions from "metabase/entities/questions";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
 import {
   rememberLastUsedDatabase,

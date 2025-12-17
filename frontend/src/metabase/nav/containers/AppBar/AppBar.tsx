@@ -5,7 +5,7 @@ import {
   getCommentSidebarOpen,
   getSidebarOpen,
 } from "metabase/documents/selectors";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";

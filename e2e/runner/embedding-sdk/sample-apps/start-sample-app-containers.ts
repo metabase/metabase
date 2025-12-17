@@ -71,6 +71,7 @@ export async function startSampleAppContainers(
     await startContainers({
       cwd: rootPath,
       env,
+      appName,
       dockerUpCommand,
       dockerDownCommand,
       healthcheckPorts,

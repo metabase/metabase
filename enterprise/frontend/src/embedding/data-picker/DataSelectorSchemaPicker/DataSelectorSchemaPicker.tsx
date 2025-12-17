@@ -48,7 +48,7 @@ const DataSelectorSchemaPicker = ({
         itemIsSelected={(item: { schema: Schema }) =>
           item?.schema.id === selectedSchemaId
         }
-        renderItemIcon={() => <Icon name="folder" size={16} />}
+        renderItemIcon={() => <Icon name="folder_database" size={16} />}
         showItemArrows={hasNextStep}
         maxHeight={Infinity}
       />

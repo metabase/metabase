@@ -7,21 +7,19 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { UserPermissions } from "metabase-types/api/user";
+import type { User } from "metabase-types/api/user";
 import { createMockState } from "metabase-types/store/mocks/state";
 
 import { CreateMenu } from "./CreateMenu";
 
-const setup = ({ permissions }: { permissions?: UserPermissions } = {}) => {
+const setup = ({ user }: { user?: Partial<User> } = {}) => {
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
         snippet_collections: true,
       }),
     }),
-    currentUser: createMockUser({
-      permissions,
-    }),
+    currentUser: createMockUser(user),
   });
   setupEnterprisePlugins();
   return renderWithProviders(<CreateMenu metricCollectionId={1} />, {
@@ -38,7 +36,7 @@ describe("CreateMenu", () => {
   });
 
   it("does not render snippet menu items if user only has query builder access", async () => {
-    setup({ permissions: { can_create_queries: true } });
+    setup({ user: { permissions: { can_create_queries: true } } });
 
     await userEvent.click(screen.getByRole("button", { name: /New/ }));
 
@@ -49,9 +47,12 @@ describe("CreateMenu", () => {
 
   it("renders all options when user has full permissions", async () => {
     setup({
-      permissions: {
-        can_create_queries: true,
-        can_create_native_queries: true,
+      user: {
+        is_superuser: true,
+        permissions: {
+          can_create_queries: true,
+          can_create_native_queries: true,
+        },
       },
     });
 
@@ -59,6 +60,11 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Metric", "New snippet", "New snippet folder"]);
+    ).toEqual([
+      "Publish a table",
+      "Metric",
+      "New snippet",
+      "New snippet folder",
+    ]);
   });
 });
