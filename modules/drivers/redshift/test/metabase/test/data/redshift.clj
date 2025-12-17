@@ -170,14 +170,17 @@
   to redshift clusters hitting the max number of tables allowed."
   [^java.sql.Connection conn]
   (let [{old-convention   :old
-         caches-with-info :cache}    (reduce (fn [acc s]
-                                               (cond (sql.tu.unique-prefix/old-dataset-name? s)
-                                                     (update acc :old conj s)
-                                                     (str/starts-with? s "metabase_cache_")
-                                                     (update acc :cache conj s)
-                                                     :else acc))
-                                             {:old [] :cache []}
-                                             (fetch-schemas conn))
+         caches-with-info :cache
+         isolation :isolation} (reduce (fn [acc s]
+                                         (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                               (update acc :old conj s)
+                                               (str/starts-with? s "metabase_cache_")
+                                               (update acc :cache conj s)
+                                               (str/starts-with? s "mb__isolation")
+                                               (update acc :isolation conj s)
+                                               :else acc))
+                                       {:old [] :cache [] :isolation []}
+                                       (fetch-schemas conn))
         {:keys [expired
                 old-style-cache
                 lacking-created-at]} (classify-cache-schemas conn caches-with-info)
@@ -188,7 +191,8 @@
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]
-                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]]
+                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]
+                                    [isolation "Dropping orphaned isolation schema: %s"]]
               schema               collection]
         (log/infof fmt-str schema)
         (.execute stmt (drop-sql schema))))))
