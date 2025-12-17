@@ -561,6 +561,16 @@
                                    int int 2.0 2.0 2.0 2.0 str int str str]
                                   (qp/process-query query))))))))
 
+(deftest ^:parallel fk-remapped-should-remap-test
+  (testing (format "Check that we return the title when it's remapped")
+    (let [mp (-> (mt/metadata-provider)
+                 (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                 (mt/id :products :title)))
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/limit 1))]
+      ;; make sure the title is returned
+      (is (string? (last (first (mt/rows (qp/process-query query)))))))))
+
 (deftest ^:parallel fk-excluded-should-not-break-test
   (doseq [field [:id :title]
           vis   [:sensitive :retired]]

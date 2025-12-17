@@ -90,7 +90,7 @@
    field-id              :- ::lib.schema.id/field]
   (let [col (lib.metadata/field metadata-providerable field-id)]
     (when-let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
-      (when-let [{:keys [fk-target-field-id]} col]
+      (when-let [fk-target-field-id (:fk-target-field-id col)]
         (when-let [fk-field (lib.metadata/field metadata-providerable fk-target-field-id)]
           (when (not (contains? #{:sensitive :retired} (:visibility-type fk-field)))
             (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
