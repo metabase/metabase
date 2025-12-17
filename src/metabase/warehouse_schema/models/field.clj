@@ -431,7 +431,6 @@
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :workspace_id       (serdes/fk :model/Workspace)
                :dimensions         (serdes/nested :model/Dimension :field_id opts)}})
 
 (defmethod serdes/storage-path "Field" [field _]
