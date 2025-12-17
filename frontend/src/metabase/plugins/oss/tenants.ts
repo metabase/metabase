@@ -44,6 +44,7 @@ const getDefaultPluginTenants = () => ({
   TenantCollectionList: PluginPlaceholder,
   GroupDescription: (_props: { group: Group }) =>
     null as React.ReactElement | null,
+  EditUserStrategyModal: PluginPlaceholder,
   getNewUserModalTitle: (_isExternal: boolean) => null as string | null,
   getFormGroupsTitle: (_isExternal: boolean) => null as string | null,
   SHARED_TENANT_NAMESPACE: null as CollectionNamespace,
@@ -89,6 +90,9 @@ export const PLUGIN_TENANTS: {
   ) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
   GroupDescription: (props: { group: Group }) => React.ReactElement | null;
+  EditUserStrategyModal: (props: {
+    onClose: () => void;
+  }) => React.ReactElement | null;
   getNewUserModalTitle: (isExternal: boolean) => string | null;
   getFormGroupsTitle: (isExternal: boolean) => string | null;
   SHARED_TENANT_NAMESPACE: CollectionNamespace;

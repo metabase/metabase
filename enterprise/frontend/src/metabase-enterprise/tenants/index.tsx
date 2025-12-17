@@ -128,6 +128,8 @@ export function initializePlugin() {
       </Route>
     );
 
+    PLUGIN_TENANTS.EditUserStrategyModal = EditUserStrategyModal;
+
     PLUGIN_TENANTS.userStrategyRoute = (
       <ModalRoute path="user-strategy" modal={EditUserStrategyModal} noWrap />
     );

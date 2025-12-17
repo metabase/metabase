@@ -3,6 +3,7 @@ import { P, match } from "ts-pattern";
 
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 
 import {
   useCompletedEmbeddingHubSteps,
@@ -96,6 +97,9 @@ export const EmbeddingHub = () => {
         opened={openedModal?.type === "xray-dashboard"}
         onClose={closeModal}
       />
+      {openedModal?.type === "user-strategy" && (
+        <PLUGIN_TENANTS.EditUserStrategyModal onClose={closeModal} />
+      )}
     </>
   );
 };
