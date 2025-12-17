@@ -658,7 +658,7 @@
             :let   [fk-id (:fk-target-field-id column)]
             :when  fk-id
             :let   [fk-field (lib.metadata/field query fk-id)]
-            :when  (not= :sensitive (:visibility-type fk-field))
+            :when  (not (contains? #{:sensitive :retired} (:visibility-type fk-field)))
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
                         (not (false? (:active remapped)))
