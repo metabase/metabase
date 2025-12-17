@@ -879,7 +879,7 @@
         #_(is (re-find #"Cannot add transforms that depend on saved questions" response))))))
 
 (deftest validate-target-test
-  (let [table (t2/select-one :model/Table :active true {:where [:not [:like :schema "mb__%"]]})]
+  (let [table (t2/select-one :model/Table :db_id (mt/id) :active true {:where [:not [:like :schema "mb__%"]]})]
     (ws.tu/with-workspaces! [ws {:name "test" :database_id (:db_id table)}]
       (mt/with-temp [:model/WorkspaceTransform _x1 {:workspace_id (:id ws)
                                                     :target       {:database (:db_id table)
@@ -904,24 +904,22 @@
                                                    :schema (:schema table)
                                                    :name   (:name table)}}))))
         (testing "Must not target the isolated schema"
-          (let [table (t2/select-one :model/Table :active true)]
-            (is (= "Must not target an isolated workspace schema"
-                   (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
-                     (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
-                                           {:db_id  (:db_id table)
-                                            :target {:type   "table"
-                                                     :schema (:schema ws)
-                                                     :name   (str "q_" (:name table))}}))))))
+          (is (= "Must not target an isolated workspace schema"
+                 (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
+                   (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
+                                         {:db_id  (:db_id table)
+                                          :target {:type   "table"
+                                                   :schema (:schema ws)
+                                                   :name   (str "q_" (:name table))}})))))
 
         (testing "Conflict inside of workspace"
-          (let [table (t2/select-one :model/Table :active true)]
-            (is (= "Another transform in this workspace already targets that table"
-                   (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
-                     (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
-                                           {:db_id  (:db_id table)
-                                            :target {:type   "table"
-                                                     :schema (:schema table)
-                                                     :name   (str "q_" (:name table))}}))))))))))
+          (is (= "Another transform in this workspace already targets that table"
+                 (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
+                   (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
+                                         {:db_id  (:db_id table)
+                                          :target {:type   "table"
+                                                   :schema (:schema table)
+                                                   :name   (str "q_" (:name table))}})))))))))
 
 ;;;; Async workspace creation tests
 
@@ -1110,23 +1108,21 @@
               (is (=? {:last_run_at some?}
                       (mt/user-http-request :crowberto :get 200 (ws-url (:id ws1) "transform" ref-id)))))))))))
 
-(deftest run-workspace-test
+(deftest execute-workspace-test
   (testing "POST /api/ee/workspace/:id/execute"
-    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
-                             workspace2 {:name "Workspace 2"}]
-      (mt/with-temp [:model/WorkspaceTransform transform {:name         "Transform in WS1"
-                                                          :workspace_id (:id workspace1)}]
+    (ws.tu/with-workspaces! [ws-1 {:name "Workspace 1"}
+                             ws-2 {:name "Workspace 2"}]
+      (mt/with-temp [:model/WorkspaceTransform transform {:name "Transform in WS1", :workspace_id (:id ws-1)}]
         (testing "returns empty when no transforms"
           (is (= {:succeeded []
                   :failed    []
                   :not_run   []}
-                 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace2) "/run")))))
+                 (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-2) "/run")))))
         (testing "executes transforms in workspace"
-          ;; Chris wasn't sure why it fails, but it works now, so ¯\_(ツ)_/¯
           (is (= {:succeeded [(:ref_id transform)]
                   :failed    []
                   :not_run   []}
-                 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace1) "/run")))))))))
+                 (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run")))))))))
 
 (defn- random-target [db-id]
   {:type     "table"
@@ -1345,7 +1341,7 @@
           ;; TODO not sure what we want to pass for "data", maybe leave it out for now?
           ;;      i guess stuff like "name" is useful for transforms...
           ;; TODO fix dependents count for inputs
-          (is (= {:nodes [{:type "input-table", :id (str (mt/id) "--venues"), :data {:db 2, :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
+          (is (= {:nodes [{:type "input-table", :id (str (mt/id) "--venues"), :data {:db (mt/id), :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
                           {:type "workspace-transform", :id (:ref_id tx), :data {:ref_id (:ref_id tx), :name "Transform in WS1"}, :dependents_count {}}],
                   :edges [{:from_entity_type "input-table"
                            :from_entity_id   (str (mt/id) "--venues")
@@ -1413,11 +1409,11 @@
 
           ;; TODO investigate why the enclosed transform is not being included, could be bad setup
           (testing "returns enclosed external transform too"
-            (is (= {:nodes #{{:type "input-table", :id tx-1-input, :data {:db 2, :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
+            (is (= {:nodes #{{:type "input-table", :id tx-1-input, :data {:db (mt/id), :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
                              {:type "workspace-transform", :id t1-ref, :data {:ref_id t1-ref, :name "A Tx in WS1"}, :dependents_count {} #_{:global-transform 1}}
                              #_{:type "global-transform", :id (:id tx-2), :data {:id (:id tx-1), :name "An external Tx"}, :dependents_count {:workspace-transform 1}}
                              ;; We won't have this input table when we fix finding the enclosed global transform.
-                             {:type "input-table", :id tx-3-input, :data {:db 2, :schema nil, :table tx-2-output, :id nil}, :dependents_count {:workspace-transform 1}}
+                             {:type "input-table", :id tx-3-input, :data {:db (mt/id), :schema nil, :table tx-2-output, :id nil}, :dependents_count {:workspace-transform 1}}
                              {:type "workspace-transform", :id t3-ref, :data {:ref_id t3-ref, :name "Another Tx in WS1"}, :dependents_count {}}},
                     :edges #{{:from_entity_type "input-table"
                               :from_entity_id   tx-1-input
