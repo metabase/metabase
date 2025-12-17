@@ -70,7 +70,6 @@
   visible-table-filter-with-cte
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
-  audit-namespace-clause
   can-read-audit-helper
   current-user-has-application-permissions?
   grant-application-permissions!

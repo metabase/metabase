@@ -406,13 +406,6 @@
 
 ;;;; Audit Permissions helper fns
 
-(defn audit-namespace-clause
-  "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
-  [namespace-keyword namespace-val]
-  (if (and (nil? namespace-val) (premium-features/enable-audit-app?))
-    [:or [:= namespace-keyword nil] [:= namespace-keyword "analytics"]]
-    [:= namespace-keyword namespace-val]))
-
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
   "Audit instances should only be readable if audit app is enabled."

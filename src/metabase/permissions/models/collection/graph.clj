@@ -9,6 +9,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
+   [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -110,7 +111,11 @@
                      :from [:collection]
                      :where [:and
                              [:or [:= :type nil] [:not= :type [:inline "trash"]]]
-                             (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
+                             (if-let [namespace (u/qualified-name collection-namespace)]
+                               [:= :namespace namespace]
+                               [:or
+                                [:= :namespace nil]
+                                (when (premium-features/enable-audit-app?) [:= :namespace "analytics"])])
                              [:not :archived]
                              [:= :personal_owner_id nil]
                              (let [ids-without-root (disj collection-ids :root)]
@@ -260,7 +265,6 @@
                        ;; This query selects collection IDs that don't match the target namespace:
                        ;; - If target namespace is non-nil: collections with different non-nil namespaces OR nil namespaces
                        ;; - If target namespace is nil: collections with any non-nil namespace (except the 'analytics' namespace)
-                       ;;   this replicates the behavior of [[perms/audit-namespace-clause]]
                        (t2/select-pks-set :model/Collection {:where [:and [:in :id (disj collection-ids :root)]
                                                                      (cond->> [[:not= :namespace (some-> namespace name)]]
                                                                        (nil? namespace) (into [:and [:not= :namespace "analytics"]])

@@ -707,7 +707,17 @@
             [:= :archived true]
             [:= :id (collection/trash-collection-id)]]
            [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
-        (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
+        (if-let [namespace (u/qualified-name collection-namespace)]
+          [:= :namespace namespace]
+          (into [:or]
+                (remove nil?
+                        [[:= :namespace nil]
+                         (when (premium-features/enable-audit-app?)
+                           [:= :namespace "analytics"])
+                         (when (collection/is-trash? collection)
+                           [:= :namespace "shared-tenant-collection"])
+                         (when (collection/is-trash? collection)
+                           [:= :namespace "tenant-specific"])])))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
