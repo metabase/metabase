@@ -24,12 +24,14 @@ export interface SetupOpts {
   user?: User;
   tokenFeatures?: TokenFeatures;
   hasEnterprisePlugins?: boolean;
+  showAuthorityLevelPicker?: boolean;
 }
 
 export const setup = ({
   user = createMockUser({ is_superuser: true }),
   tokenFeatures = createMockTokenFeatures(),
   hasEnterprisePlugins = false,
+  showAuthorityLevelPicker,
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
@@ -41,15 +43,21 @@ export const setup = ({
     collections: [],
     rootCollection: ROOT_COLLECTION,
   });
-  renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
-    storeInitialState: createMockState({
-      currentUser: user,
-      settings,
-      entities: createMockEntitiesState({
-        collections: [ROOT_COLLECTION],
+  renderWithProviders(
+    <CreateCollectionForm
+      onCancel={onCancel}
+      showAuthorityLevelPicker={showAuthorityLevelPicker}
+    />,
+    {
+      storeInitialState: createMockState({
+        currentUser: user,
+        settings,
+        entities: createMockEntitiesState({
+          collections: [ROOT_COLLECTION],
+        }),
       }),
-    }),
-  });
+    },
+  );
 
   return { onCancel };
 };

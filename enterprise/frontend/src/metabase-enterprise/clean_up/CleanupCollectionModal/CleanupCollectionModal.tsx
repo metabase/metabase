@@ -7,7 +7,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUserSetting } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";

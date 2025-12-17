@@ -41,7 +41,7 @@
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?
-  "Returns true if this is a clause."
+  "Returns true if this is a **normalized** MBQL 5 clause."
   [clause]
   (and (vector? clause)
        (keyword? (first clause))

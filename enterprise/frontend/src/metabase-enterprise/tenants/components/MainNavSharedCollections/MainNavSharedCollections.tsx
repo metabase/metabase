@@ -154,6 +154,7 @@ export const MainNavSharedCollections = () => {
       >
         <CreateCollectionForm
           showCollectionPicker={false}
+          showAuthorityLevelPicker={false}
           onSubmit={handleCreateTenantCollection}
         />
       </Modal>

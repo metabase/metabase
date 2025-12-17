@@ -54,3 +54,31 @@
     (mu/disable-enforcement
       (is (= {}
              ((:out lib-be/transform-query) "WOW THIS IS A MESSED UP DATASET_QUERY!"))))))
+
+(deftest ^:parallel normalize-invalid-widget-type-test
+  (is (=? {:lib/type :mbql/query
+           :stages   [{:lib/type :mbql.stage/native
+                       :template-tags
+                       {"device_category"
+                        {:widget-type  :category
+                         :id           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
+                         :name         "device_category"
+                         :display-name "Device category"
+                         :type         :dimension
+                         :dimension    [:field {} 298221]
+                         :default      nil}}
+                       :native   "<<NATIVE QUERY>>"}]
+           :database 26}
+          (mu/disable-enforcement
+            (lib-be/normalize-query
+             {"database" 26
+              "type"     "native"
+              "native"   {"template-tags"
+                          {"device_category" {"id"           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
+                                              "name"         "device_category"
+                                              "display-name" "Device category"
+                                              "type"         "dimension"
+                                              "dimension"    ["field" 298221 nil]
+                                              "widget-type"  "category/="
+                                              "default"      nil}}
+                          "query" "<<NATIVE QUERY>>"}})))))

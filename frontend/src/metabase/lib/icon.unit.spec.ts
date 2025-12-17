@@ -17,7 +17,7 @@ describe("getIcon", () => {
   });
 
   it("should return the correct icon for a schema", () => {
-    expect(getIcon({ model: "schema" })).toEqual({ name: "folder" });
+    expect(getIcon({ model: "schema" })).toEqual({ name: "folder_database" });
   });
 
   it("should return the correct icon for a table", () => {
