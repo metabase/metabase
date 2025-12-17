@@ -2684,6 +2684,8 @@ databaseChangeLog:
               update remote_sync_object set model_collection_id = (select collection_id from timeline where id = remote_sync_object.model_id) where model_type = 'Timeline';
 
               update remote_sync_object set model_name='DELETED' where model_name is null;
+      rollback: ## Changes will get rolled back when columns are rolled back
+
 
   - changeSet:
       id: v57.2025-12-08T19:05:27
