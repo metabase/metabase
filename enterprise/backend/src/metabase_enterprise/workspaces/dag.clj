@@ -2,7 +2,7 @@
 (ns metabase-enterprise.workspaces.dag
   "Used to do graph computations with respect to dataflow within a workspace.
 
-   This workspace should encapsulate all coupling to the [[metabase-enterprise.dependencies]] module, including through
+   This namespace should encapsulate all coupling to the [[metabase-enterprise.dependencies]] module, including through
    database artifacts.
 
    It is purely concerned with calculation, any side effects wanted as a result of the analysis should happen outside."
