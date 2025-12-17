@@ -84,7 +84,9 @@
                                   :id     isolated_table_id}]))
                          outputs)]
     {:tables          table-map
+     ;; We never want to write to any global tables, so remap on-the-fly if we hit an un-mapped target.
      :target-fallback (fn [[d s t]]
+                        (log/warn "Missing remapping for" {:db d :schema s, :table s})
                         {:db-id d, :schema (:schema workspace), :table (ws.u/isolated-table-name s t), :id nil})
      ;; We won't need the field-map until we support MBQL.
      :fields          nil}))

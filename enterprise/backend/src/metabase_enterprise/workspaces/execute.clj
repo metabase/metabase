@@ -42,7 +42,7 @@
                     :tables  {}}
                    table-mapping)]
     ;; We may need to set other options, like the case insensitivity (driver dependent)
-    (update-in source [:query :stages 0 :native] (fn [%] (macaw/replace-names % remapping {:allow-unused? true})))))
+    (update-in source [:query :stages 0 :native] #(macaw/replace-names % remapping {:allow-unused? true}))))
 
 (defn- remap-mbql-source [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))
