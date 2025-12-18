@@ -1906,6 +1906,46 @@ LIMIT
         "Alpha Transform",
       ]);
     });
+
+    it("should archive a collection with transforms", () => {
+      H.createTransformCollection({ name: "Archive Me" }).then((collection) => {
+        createMbqlTransform({
+          name: "Transform In Collection",
+          targetTable: "archived_transform_table",
+          collectionId: collection.body.id,
+        });
+      });
+
+      visitTransformListPage();
+
+      getTransformsList().within(() => {
+        cy.findByText("Archive Me").should("be.visible");
+        cy.findByText("Archive Me").click();
+        cy.findByText("Transform In Collection").should("be.visible");
+      });
+
+      cy.log("archive the collection via menu");
+      getTransformsList()
+        .findByText("Archive Me")
+        .closest('[role="row"]')
+        .findByRole("button", { name: "Collection menu" })
+        .click();
+
+      H.popover().findByText("Archive").click();
+
+      H.modal().within(() => {
+        cy.findByText('Archive "Archive Me"?').should("be.visible");
+        cy.button("Archive").click();
+      });
+
+      H.undoToast().findByText("Collection archived").should("be.visible");
+
+      cy.log("verify collection is no longer visible");
+      getTransformsList().within(() => {
+        cy.findByText("Archive Me").should("not.exist");
+        cy.findByText("No transforms yet").should("be.visible");
+      });
+    });
   });
 });
 

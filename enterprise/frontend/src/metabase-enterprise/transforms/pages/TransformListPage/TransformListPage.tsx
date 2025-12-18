@@ -34,7 +34,8 @@ import { CreateTransformMenu } from "metabase-enterprise/transforms/components/C
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 
-import { type TreeNode, getCollectionNodeId } from "./types";
+import { CollectionRowMenu } from "./CollectionRowMenu";
+import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
@@ -139,6 +140,19 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         cell: ({ row }) =>
           row.original.target?.name ? (
             <Ellipsified>{row.original.target.name}</Ellipsified>
+          ) : null,
+      },
+      {
+        id: "actions",
+        header: "",
+        width: 48,
+        enableSorting: false,
+        cell: ({ row }) =>
+          isCollectionNode(row.original) ? (
+            <CollectionRowMenu
+              collectionId={row.original.collectionId}
+              collectionName={row.original.name}
+            />
           ) : null,
       },
     ],
