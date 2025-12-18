@@ -62,7 +62,9 @@ type Props = {
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
   selectedItems: SelectedItem[];
-  tenantCollections?: Collection[];
+  sharedTenantCollections?: Collection[];
+  canCreateSharedCollection: boolean;
+  showExternalCollectionsSection: boolean;
   handleCloseNavbar: () => void;
   handleLogout: () => void;
   handleCreateNewCollection: () => void;
@@ -85,7 +87,9 @@ export function MainNavbarView({
   reorderBookmarks,
   handleCreateNewCollection,
   handleCloseNavbar,
-  tenantCollections,
+  sharedTenantCollections,
+  canCreateSharedCollection,
+  showExternalCollectionsSection,
 }: Props) {
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
@@ -152,12 +156,18 @@ export function MainNavbarView({
           useTenants && isTenantUser
             ? PLUGIN_TENANTS.getFlattenedCollectionsForNavbar({
                 currentUser,
-                tenantCollections,
+                sharedTenantCollections,
                 regularCollections,
               })
             : regularCollections,
       };
-    }, [collections, isTenantUser, useTenants, tenantCollections, currentUser]);
+    }, [
+      collections,
+      isTenantUser,
+      useTenants,
+      sharedTenantCollections,
+      currentUser,
+    ]);
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -167,9 +177,9 @@ export function MainNavbarView({
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
-  // TODO: also make this return "Collections" if we don't see the "External collections" section
-  const collectionsHeading =
-    useTenants && !isTenantUser ? t`Internal Collections` : t`Collections`;
+  const collectionsHeading = showExternalCollectionsSection
+    ? t`Internal Collections`
+    : t`Collections`;
 
   return (
     <ErrorBoundary>
@@ -227,7 +237,12 @@ export function MainNavbarView({
           )}
 
           {/* Tenant users don't see the section about "External collections" */}
-          {!isTenantUser && <PLUGIN_TENANTS.MainNavSharedCollections />}
+          {showExternalCollectionsSection && (
+            <PLUGIN_TENANTS.MainNavSharedCollections
+              canCreateSharedCollection={canCreateSharedCollection}
+              sharedTenantCollections={sharedTenantCollections}
+            />
+          )}
 
           {PLUGIN_DATA_STUDIO.isEnabled && (
             <PLUGIN_DATA_STUDIO.NavbarLibrarySection

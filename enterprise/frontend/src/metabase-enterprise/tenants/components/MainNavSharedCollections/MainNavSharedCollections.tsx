@@ -3,9 +3,7 @@ import { t } from "ttag";
 
 import {
   useCreateCollectionMutation,
-  useGetCollectionQuery,
   useListCollectionsQuery,
-  useListCollectionsTreeQuery,
 } from "metabase/api";
 import { CreateCollectionForm } from "metabase/collections/components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "metabase/collections/components/CreateCollectionForm/CreateCollectionForm";
@@ -24,8 +22,15 @@ import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
+import type { Collection } from "metabase-types/api";
 
-export const MainNavSharedCollections = () => {
+export const MainNavSharedCollections = ({
+  canCreateSharedCollection,
+  sharedTenantCollections,
+}: {
+  canCreateSharedCollection: boolean;
+  sharedTenantCollections: Collection[] | undefined;
+}) => {
   const isTenantUser = useSelector(getIsTenantUser);
   if (isTenantUser) {
     throw "MainNavSharedCollections should not be rendered for tenant users";
@@ -34,21 +39,6 @@ export const MainNavSharedCollections = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const isTenantsEnabled = useSetting("use-tenants");
   const isAdmin = useSelector(getUserIsAdmin);
-
-  const { data: tenantCollections } = useListCollectionsTreeQuery(
-    { namespace: "shared-tenant-collection" },
-    {
-      skip: !isTenantsEnabled,
-    },
-  );
-
-  const { data: sharedCollectionRoot } = useGetCollectionQuery(
-    { id: "root", namespace: "shared-tenant-collection" },
-    { skip: !isTenantsEnabled },
-  );
-
-  // Non-admins can create shared collections if they have curate permissions on the root shared collection
-  const canCreateSharedCollection = sharedCollectionRoot?.can_write ?? false;
 
   // Fetch flat list of tenant collections to check if any are remote-synced
   const { data: tenantCollectionsList = [] } = useListCollectionsQuery(
@@ -70,8 +60,8 @@ export const MainNavSharedCollections = () => {
   const [createCollection] = useCreateCollectionMutation();
 
   const tenantCollectionTree = useMemo(
-    () => buildCollectionTree(tenantCollections),
-    [tenantCollections],
+    () => buildCollectionTree(sharedTenantCollections),
+    [sharedTenantCollections],
   );
 
   const changedCollections = useMemo(

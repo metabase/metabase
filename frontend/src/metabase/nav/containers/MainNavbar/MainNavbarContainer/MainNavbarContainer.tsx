@@ -13,7 +13,6 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import Modal from "metabase/common/components/Modal";
-import { useSetting } from "metabase/common/hooks";
 import { Bookmarks, getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
@@ -25,8 +24,8 @@ import {
 import { Databases } from "metabase/entities/databases";
 import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
-  getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
   getUserIsAdmin,
@@ -95,8 +94,6 @@ function MainNavbarContainer({
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
-  const isTenantUser = useSelector(getIsTenantUser);
-  const useTenants = useSetting("use-tenants");
 
   const {
     data: trashCollection,
@@ -115,10 +112,15 @@ function MainNavbarContainer({
     "include-library": true,
   });
 
-  const { data: tenantCollections } = useListCollectionsTreeQuery(
-    { namespace: "shared-tenant-collection" },
-    { skip: !useTenants || !isTenantUser },
-  );
+  const {
+    canCreateSharedCollection,
+    showExternalCollectionsSection,
+    sharedTenantCollections,
+  } = PLUGIN_TENANTS.useTenantMainNavbarData();
+
+  // START MOVE THIS TO PLUGIN
+
+  // END MOVE THIS TO PLUGIN
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -214,7 +216,9 @@ function MainNavbarContainer({
         handleCreateNewCollection={onCreateNewCollection}
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
-        tenantCollections={tenantCollections}
+        sharedTenantCollections={sharedTenantCollections}
+        canCreateSharedCollection={canCreateSharedCollection}
+        showExternalCollectionsSection={showExternalCollectionsSection}
       />
 
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}

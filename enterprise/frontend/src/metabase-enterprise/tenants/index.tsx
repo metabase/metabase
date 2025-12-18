@@ -9,6 +9,11 @@ import { UserActivationModal } from "metabase/admin/people/containers/UserActiva
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import {
+  useGetCollectionQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
+import { useSetting } from "metabase/common/hooks/use-setting";
+import {
   type CollectionTreeItem,
   buildCollectionTree,
   getCollectionIcon,
@@ -22,15 +27,11 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import type { TenantCollectionPathItem } from "metabase/plugins/oss/tenants";
+import { getIsTenantUser } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type {
-  Collection,
-  CollectionId,
-  CollectionNamespace,
-  User,
-} from "metabase-types/api";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
@@ -276,20 +277,15 @@ export function initializePlugin() {
 
     PLUGIN_TENANTS.getFlattenedCollectionsForNavbar = ({
       currentUser,
-      tenantCollections,
+      sharedTenantCollections,
       regularCollections = [],
-    }: {
-      currentUser: User | null;
-      tenantCollections: Collection[] | undefined;
-      regularCollections: CollectionTreeItem[];
     }) => {
       if (currentUser?.tenant_collection_id) {
-        const tenantCollectionTree = buildCollectionTree(tenantCollections, {
-          isTenantUser: true,
-        });
+        const sharedTenantCollectionTree = buildCollectionTree(
+          sharedTenantCollections,
+        );
         const userTenantCollectionId = currentUser?.tenant_collection_id;
 
-        // Create "Our data" collection item for user's tenant collection
         const ourDataCollection: CollectionTreeItem = {
           id: userTenantCollectionId,
           name: t`Our data`,
@@ -300,18 +296,12 @@ export function initializePlugin() {
           archived: false,
           namespace: null,
           location: "/",
-          icon: getCollectionIcon(
-            { id: userTenantCollectionId },
-            {
-              isTenantUser: true,
-            },
-          ),
+          icon: getCollectionIcon({ id: userTenantCollectionId }),
           children: [],
         };
 
-        // Flatten: shared tenant collections + "Our data" + regular collections (personal)
         return [
-          ...tenantCollectionTree,
+          ...sharedTenantCollectionTree,
           ourDataCollection,
           ...regularCollections,
         ];
@@ -319,6 +309,37 @@ export function initializePlugin() {
 
       // fallback, but should never happen
       return regularCollections;
+    };
+    PLUGIN_TENANTS.useTenantMainNavbarData = () => {
+      const isTenantUser = useSelector(getIsTenantUser);
+      const useTenants = useSetting("use-tenants");
+
+      const { data: sharedTenantCollections } = useListCollectionsTreeQuery(
+        { namespace: "shared-tenant-collection" },
+        { skip: !useTenants },
+      );
+
+      // Fetch shared collection root for non-tenant users to check write permissions
+      const { data: sharedCollectionRoot } = useGetCollectionQuery(
+        { id: "root", namespace: "shared-tenant-collection" },
+        { skip: !useTenants || isTenantUser },
+      );
+
+      // Non-admins can create shared collections if they have curate permissions on the root shared collection
+      const canCreateSharedCollection =
+        sharedCollectionRoot?.can_write ?? false;
+      const hasVisibleSharedCollections =
+        (sharedTenantCollections?.length ?? 0) > 0;
+      const showExternalCollectionsSection =
+        useTenants &&
+        !isTenantUser &&
+        (hasVisibleSharedCollections || canCreateSharedCollection);
+
+      return {
+        canCreateSharedCollection,
+        showExternalCollectionsSection,
+        sharedTenantCollections,
+      };
     };
   }
 }
