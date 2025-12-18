@@ -503,7 +503,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match `::DatetimeExpression`."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime :today})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime :today :coalesce :case :if})
 
 (mr/def ::NumericExpressionArg
   [:multi
@@ -811,7 +811,7 @@
 
 (mr/def ::DatetimeExpression
   "Schema for the definition of a date function expression."
-  (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime today coalesce case if))
 
 (defn- compound-filter-schema [tag]
   [:multi

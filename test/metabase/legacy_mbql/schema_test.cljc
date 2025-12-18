@@ -530,3 +530,63 @@
                    [:= [:expression "Paid" {:base-type :type/Boolean}] true]]]}]
                normalized))
         (is (mr/validate ::mbql.s/Aggregation normalized))))))
+
+(deftest ^:parallel allow-coalesce-as-datetime-expression-test
+  (let [normalized (lib/normalize
+                    ::mbql.s/datetime-diff
+                    ["datetime-diff"
+                     ["coalesce"
+                      ["field" 191303 {"base-type" "type/DateTimeWithLocalTZ"}]
+                      ["field" 191302 {"base-type" "type/DateTimeWithLocalTZ"}]]
+                     ["coalesce"
+                      ["field" 191332 {"base-type" "type/DateTimeWithLocalTZ"}]
+                      ["field" 191333 {"base-type" "type/DateTimeWithLocalTZ"}]]
+                     "minute"])]
+    (is (= [:datetime-diff
+            [:coalesce
+             [:field 191303 {:base-type :type/DateTimeWithLocalTZ}]
+             [:field 191302 {:base-type :type/DateTimeWithLocalTZ}]]
+            [:coalesce
+             [:field 191332 {:base-type :type/DateTimeWithLocalTZ}]
+             [:field 191333 {:base-type :type/DateTimeWithLocalTZ}]]
+            :minute]
+           normalized))
+    (is (mr/validate ::mbql.s/datetime-diff normalized))))
+
+(deftest ^:parallel allow-if-and-case-as-datetime-expression-test
+  (doseq [clause [:if :case]]
+    (testing (str clause " should be allowed as an aggregation expression if it contains an aggregation")
+      (let [normalized (lib/normalize
+                        ::mbql.s/DateTimeExpressionArg
+                        [(name clause)
+                         [[["="
+                            ["sum-where"
+                             ["field" 781 {"base-type" "type/Float"}]
+                             ["=" ["expression" "Paid" {"base-type" "type/Boolean"}] true]]
+                            0]
+                           0]]
+                         {"default"
+                          ["/"
+                           ["sum-where"
+                            ["field" 755 {"base-type" "type/Float"}]
+                            ["=" ["expression" "Refund" {"base-type" "type/Boolean"}] true]]
+                           ["sum-where"
+                            ["field" 781 {"base-type" "type/Float"}]
+                            ["=" ["expression" "Paid" {"base-type" "type/Boolean"}] true]]]}])]
+        (is (= [clause
+                [[[:=
+                   [:sum-where
+                    [:field 781 {:base-type :type/Float}]
+                    [:= [:expression "Paid" {:base-type :type/Boolean}] true]]
+                   0]
+                  0]]
+                {:default
+                 [:/
+                  [:sum-where
+                   [:field 755 {:base-type :type/Float}]
+                   [:= [:expression "Refund" {:base-type :type/Boolean}] true]]
+                  [:sum-where
+                   [:field 781 {:base-type :type/Float}]
+                   [:= [:expression "Paid" {:base-type :type/Boolean}] true]]]}]
+               normalized))
+        (is (mr/validate ::mbql.s/DateTimeExpressionArg normalized))))))
