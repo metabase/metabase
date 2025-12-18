@@ -71,7 +71,7 @@ describe("MainNavSharedCollections > create shared tenant collection button", ()
 
 describe("MainNavSharedCollections > new shared collection modal", () => {
   it("hides the authority level picker when creating a shared tenant collection", async () => {
-    setup({ isAdmin: true });
+    setup({ isAdmin: true, canWriteToSharedCollectionRoot: true });
     await screen.findByText("External collections");
 
     const addButton = screen.getByRole("button", { name: /add/i });
