@@ -5,6 +5,7 @@
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
 // frontend/src/metabase/styled-components/theme/css-variables.ts
 // NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
+// NOTE: The colorConfig object is used to generate TypeScript types for Mantine color props via frontend/src/types/mantine.d.ts
 
 import type { ColorSettings } from "metabase-types/api/settings";
 

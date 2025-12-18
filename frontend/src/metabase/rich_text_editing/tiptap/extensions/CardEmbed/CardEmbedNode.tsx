@@ -564,7 +564,6 @@ export const CardEmbedComponent = memo(
                           size={14}
                           color="var(--mb-color-text-medium)"
                           className={styles.titleEditIcon}
-                          c="pointer"
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             setEditedTitle(displayName);
