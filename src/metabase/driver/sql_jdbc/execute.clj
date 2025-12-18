@@ -410,6 +410,8 @@
             (catch Throwable e
               (log/debug e "Error setting connection autoCommit to false"))))
     (try
+      ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
+      ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads
       (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
       (catch Throwable e
         (log/debug e "Error setting network timeout for connection")))

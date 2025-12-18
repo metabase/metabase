@@ -106,7 +106,7 @@
   :visibility :internal
   :export?    false
   :type       :integer
-  :default    (if config/is-prod? 1800000 600000)
+  :default    (max (if config/is-prod? 1800000 600000) (* 1000 60 (+ (db-query-timeout-minutes) 5)))
   :doc "Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
         are stuck waiting for a database response in a socket read. See the documentation for more details:
         https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-")
