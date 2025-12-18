@@ -10,15 +10,15 @@
   1. Every instance of Metabase gets their own prefix like `<current-date-utc>_<hour>_<site-uuid>_` e.g. `test-data`
      becomes something like
 
-         2023_02_17_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data
+         2025_12_18_20_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data
 
      This will prevent jobs from running at the same time from stomping on each other's work.
 
   2. To avoid filling our Snowflake/Redshift/etc. accounts up with ephemeral data that never gets deleted, we will
-     delete datasets following this pattern when they are 3+ hours old. This allows aggressive cleanup while still
-     being safe for long-running test suites. Old-format datasets (without hour) are deleted after 2+ days for
-     backwards compatibility. Cleanup is done once the first time we create a test dataset in this process, i.e.
-     done in [[metabase.test.data.interface/before-run]].
+     delete datasets following this pattern when they are more than 3 hours old. This allows aggressive cleanup while
+     still being safe for long-running test suites. Old-format datasets (without hour) are deleted after more than 1
+     day for backwards compatibility. Cleanup is done once the first time we create a test dataset in this process,
+     i.e. done in [[metabase.test.data.interface/before-run]].
      See [[metabase.test.data.snowflake/delete-old-datasets-if-needed!]] for example.
 
   See this Slack thread for more info
@@ -60,19 +60,20 @@
   "Unique prefix for test datasets for this instance. Format is `<current-date-utc>_<hour-utc>_<site-uuid>_`. See comments above.
   Example:
 
-    2023_02_17_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_"
+    2025_12_18_20_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_"
   (memoize unique-prefix*))
 
 (def ^:private old-dataset-hours-threshold
-  "Number of hours after which a dataset is considered old and can be deleted.
-  This should be long enough that any running test won't have its schema deleted mid-run."
+  "Number of hours after which a dataset is considered old and can be deleted. Because schema names only include the
+  hour (not minutes/seconds), actual deletion can occur anywhere from N to N+1 hours after creation. Set this high
+  enough that any running test won't have its schema deleted mid-run."
   3)
 
 (defn old-dataset-name?
   "Is this dataset name old enough to be deleted?
 
-  For new-format names (with hour): checks if older than [[old-dataset-hours-threshold]] hours.
-  For old-format names (date only): checks if 2+ days old for backwards compatibility.
+  For new-format names (with hour): checks if more than [[old-dataset-hours-threshold]] hours old.
+  For old-format names (date only): checks if more than 1 day old for backwards compatibility.
   If the date/time is invalid, we count it as old so it will get deleted anyway."
   [dataset-name]
   ;; Try new format first: YYYY_MM_DD_HH_<uuid>_...
@@ -95,25 +96,36 @@
           (t/before? dataset-date (u.date/add (utc-date) :day -1)))))))
 
 (deftest ^:parallel old-dataset-name?-test
-  (testing "old-format names (date only) - 2+ days old"
-    (are [s] (old-dataset-name? s)
-      "2023_02_01_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-      "2023_01_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-      "2022_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-      ;; if the date is invalid we should just treat it as old and delete it.
-      "2022_00_00_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-      "2022_13_01_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-      "2022_02_31_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
-    (are [s] (not (old-dataset-name? s))
-      "2050_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-      "v4_test-data"))
-  (testing "new-format names (with hour) - 3+ hours old"
+  (testing "old-format names (date only) - more than 1 day old"
+    (let [two-days-ago (str/replace (str (u.date/add (utc-date) :day -2)) "-" "_")
+          yesterday (str/replace (str (u.date/add (utc-date) :day -1)) "-" "_")
+          today (str/replace (str (utc-date)) "-" "_")]
+      (are [s] (old-dataset-name? s)
+        "2023_02_01_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+        "2023_01_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+        "2022_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+        ;; 2 days ago is old
+        (str two-days-ago "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
+        ;; if the date is invalid we should just treat it as old and delete it.
+        "2022_00_00_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+        "2022_13_01_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+        "2022_02_31_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
+      (are [s] (not (old-dataset-name? s))
+        "2050_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+        "v4_test-data"
+        ;; yesterday is not old (must be MORE than 1 day)
+        (str yesterday "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
+        ;; today is not old
+        (str today "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"))))
+  (testing "new-format names (with hour) - more than 3 hours old"
     (are [s] (old-dataset-name? s)
       ;; Ancient dates are old
       "2023_02_01_00_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
       "2023_02_01_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
       ;; 4 hours ago is old
       (str (unique-prefix* (u.date/add (utc-date-time) :hour -4)) "test-data")
+      ;; 3 hours ago by hour is old (due to hour truncation, could be up to 3:59 hours old)
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -3)) "test-data")
       ;; invalid hour should be treated as old
       "2023_02_01_25_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
     (are [s] (not (old-dataset-name? s))
@@ -121,7 +133,7 @@
       (str (unique-prefix*) "test-data")
       ;; 1 hour ago is not old
       (str (unique-prefix* (u.date/add (utc-date-time) :hour -1)) "test-data")
-      ;; 2 hours ago is not old (threshold is 3)
+      ;; 2 hours ago is not old
       (str (unique-prefix* (u.date/add (utc-date-time) :hour -2)) "test-data")
       ;; Future dates are not old
       "2050_02_17_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")))
