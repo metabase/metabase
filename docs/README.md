@@ -204,8 +204,10 @@ Metabase's reference documentation.
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
-- [Modular embedding](./embedding/modular-embedding.md)
-- [Modular embedding SDK](./embedding/sdk/introduction.md)
+- Modular embedding
+  - [SSO](./embedding/modular-embedding.md)
+  - [Guest](./embedding/guest-embedding.md)
+  - [SDK](./embedding/sdk/introduction.md)
 - [Full app embedding](./embedding/full-app-embedding.md)
 - [Securing embeds](./embedding/securing-embeds.md)
 

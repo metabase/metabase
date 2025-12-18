@@ -128,7 +128,6 @@ From any Metabase page, click on the **gear** icon in the upper right and select
 Turn on:
 
 - Modular embedding SDK
-- Guest embedding
 
 Otherwise, this whole thing is hopeless.
 

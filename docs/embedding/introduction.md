@@ -9,7 +9,7 @@ redirect_from:
 
 {% include shared/in-page-promo-embedding-workshop.html %}
 
-You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application. There are the different ways you can embed Metabase:
+You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application. Here are the different ways you can embed Metabase:
 
 - [Modular embedding](#modular-embedding)
 - [Full app embedding](#full-app-embedding)

@@ -118,7 +118,7 @@ https://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b?st
 | 2          | Basic   | Active |
 | 5          | Premium | Active |
 
-With guest embeds, we can "lock" the filter by encoding the query parameter in a signed JWT. For example, say we set up the "Status = Active" filter as a [locked parameter](./static-embedding-parameters.md). The `?status=active` query parameter will be encoded in the signed JWT, so it won't be visible or editable from the guest embedding URL:
+With guest embeds, we can "lock" the filter by encoding the query parameter in a signed JWT. For example, say we set up the "Status = Active" filter as a [locked parameter](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters). The `?status=active` query parameter will be encoded in the signed JWT, so it won't be visible or editable from the guest embedding URL:
 
 ```plaintext
 https://my-metabase.com/dashboard/your_signed_jwt
@@ -157,8 +157,6 @@ The flow might look something like this:
 3. Our app backend uses Metabase's [secret key](./guest-embedding.md#regenerating-the-guest-embedding-secret-key) to [generate the embedding URL](./guest-embedding.md#how-guest-embedding-works) with a signed JWT. The signed JWT encodes the query parameters to filter the Accounts dashboard on `Account ID = account_id`.
 4. Metabase returns the filtered dashboard at the guest embedding URL.
 5. Our app frontend displays the filtered dashboard in an iframe.
-
-For code samples, see the [guest embedding reference app](https://github.com/metabase/embedding-reference-apps).
 
 ## Modular and full app embedding auth with JWT or SAML
 

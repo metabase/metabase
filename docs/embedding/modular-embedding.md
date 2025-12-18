@@ -17,7 +17,7 @@ Modular embedding lets you embed and customize Metabase [components](./component
 
 If you're using React, check out the [Modular embedding SDK](./sdk/introduction.md).
 
-## To set up modular embedding, you first need to enable it
+## Enable modular embedding
 
 1. In Metabase, go to **Admin settings > Embedding**.
 2. Toggle on **Enable modular embedding**.
@@ -56,7 +56,7 @@ You'll also be able to pick colors for:
 - Text
 - Background
 
-But you customize a lot more. To configure other colors (like secondary colors, query builder colors, and more), as well as font, you can specify a `theme` in your embed code snippet.
+But you can customize a lot more later. To configure other colors (like secondary colors, query builder colors, and more), as well as font, you can specify a `theme` in your embed code snippet.
 
 All the customization options you select in this interactive flow will be reflected in code snippet, which you can edit as you see fit.
 
@@ -94,7 +94,7 @@ You'll add this code snippet to your app and refresh the page.
 The code snippets:
 
 - Loading the modular embedding library from your Metabase instance.
-- Set global configuration settings, like the URL of your Metabase and the `theme`. See [Page embedding settings](#page-embedding-settings).
+- Set global configuration settings, like the URL of your Metabase and the `theme`. See [Page-level config](#page-level-config).
 - The component(s) to embed, with their parameters. See [Components](./components.md).
 
 Here's an example snippet:
@@ -161,7 +161,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 - **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results.
 
-## Page embedding settings
+## Page-level config
 
 To define the configuration that applies to every embed on the page, use the `defineMetabaseConfig()` function. Its parameters include:
 
@@ -214,6 +214,10 @@ You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../conf
 If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing embedded items in private/incognito tabs.
 
 Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+
+## Setting up SSO
+
+For production use, you'll need to set up SSO authentication. See [Modular embedding - authentication](./authentication.md) for details on setting up JWT or SAML authentication.
 
 ## Example app with theming
 

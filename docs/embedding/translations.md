@@ -23,7 +23,7 @@ The dictionary must be a CSV with these columns:
 
 To add a translation dictionary:
 
-1. Go to **Admin > Embedding > Guest embeds**.
+1. Go to **Admin settings > Embedding**.
 2. Under **Translate embedded dashboards and question**, click **Upload translation dictionary**.
 
 Uploading a new dictionary will replace the existing dictionary.
