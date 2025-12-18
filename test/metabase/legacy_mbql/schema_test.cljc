@@ -1,5 +1,7 @@
 (ns metabase.legacy-mbql.schema-test
   (:require
+   #?@(:clj
+       ([java-time.api :as t]))
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
@@ -89,10 +91,10 @@
 
 (deftest ^:parallel coalesce-aggregation-test
   (testing "should be able to nest aggregation functions within a coalesce"
-    (let [query {:database 1,
-                 :type :query,
+    (let [query {:database 1
+                 :type :query
                  :query
-                 {:source-table 5,
+                 {:source-table 5
                   :aggregation
                   [[:aggregation-options
                     [:/
@@ -104,11 +106,11 @@
 
 (deftest ^:parallel year-of-era-test
   (testing "year-of-era aggregations should be recognized"
-    (let [query {:database 1,
-                 :type :query,
+    (let [query {:database 1
+                 :type :query
                  :query
-                 {:source-table 5,
-                  :aggregation [[:count]],
+                 {:source-table 5
+                  :aggregation [[:count]]
                   :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]]}
                  :parameters []}]
       (is (not (me/humanize (mr/explain ::mbql.s/Query query)))))))
@@ -172,10 +174,9 @@
     true
     false))
 
+;; Allowed in #67203 and above
 (deftest ^:parallel expression-unwrapped-literals-test
-  (are [value] (= {:expressions {"expr" ["valid instance of one of these MBQL clauses: expression, field"]}}
-                  (me/humanize (mr/explain ::mbql.s/MBQLQuery
-                                           {:source-table 1, :expressions {"expr" value}})))
+  (are [value] (mr/validate ::mbql.s/MBQLQuery {:source-table 1, :expressions {"expr" value}})
     ""
     "192.168.1.1"
     "2025-03-11"
@@ -275,14 +276,14 @@
   (testing "Fix really messed up fingerprints with lower-cased type names (only in prod) (#63397)"
     (mu/disable-enforcement
       (is (= {:base_type   :type/*
-              :fingerprint {:global {:distinct-count 418, :nil% 0.0},
+              :fingerprint {:global {:distinct-count 418, :nil% 0.0}
                             :type
                             {:type/Text
                              {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}
              (lib/normalize
               ::mbql.s/legacy-column-metadata
               {:fingerprint
-               {:global {:distinct-count 418, :nil% 0.0},
+               {:global {:distinct-count 418, :nil% 0.0}
                 :type
                 {:type/text
                  {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}))))))
@@ -458,4 +459,36 @@
               :widget-type  :string/contains}
              normalized))
       (is (mr/validate ::mbql.s/TemplateTag normalized)))))
+
+(deftest ^:parallel automatically-remove-expression-idents-during-normalization-test
+  (is (= {:type     :query
+          :database 3
+          :query    {:expressions  {"Organizer fees should be" 0.5}
+                     :source-table 310}}
+         (lib/normalize
+          ::mbql.s/Query
+          {"database" 3
+           "type"     "query"
+           "query"    {"source-table"      310
+                       "expressions"       {"Organizer fees should be" 0.5}
+                       "expression-idents" {"Organizer fees should be"
+                                            "expression_9CRGGaQ6ASwsIRouX0ID0@0__Organizer fees should be"}}}))))
+
+(deftest ^:parallel allow-raw-literals-as-expressions-tst
+  (doseq [[message xs] {"Raw numeric literals"            [10 10.5]
+                        "Raw string literals"             ["X"]
+                        "Raw boolean literals"            [true false]
+                        #?(:clj "Raw JVM temporal types") #?(:clj [(t/local-date "2025-12-18")
+                                                                   (t/local-date-time "2025-12-18T12:57:00")
+                                                                   (t/offset-date-time "2025-12-18T12:57:00-08:00")
+                                                                   (t/zoned-date-time "2025-12-18T12:57:00-08:00[US/Pacific]")
+                                                                   (t/local-time "12:57:00")
+                                                                   (t/offset-time "12:57:00-08:00")
+                                                                   (t/instant (t/zoned-date-time "2025-12-18T12:57:00-08:00[US/Pacific]"))])}
+          x            xs]
+    (testing (str message " should be allowed as expressions (x =" (pr-str x) ")")
+      (let [query {:type     :query
+                   :database 3
+                   :query    {:expressions  {"Organizer fees should be" x}
+                              :source-table 310}}]
         (is (mr/validate ::mbql.s/Query query))))))

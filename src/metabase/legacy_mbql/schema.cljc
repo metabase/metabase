@@ -1216,24 +1216,33 @@
    {:error/message ":field or :expression reference or expression"
     :dispatch      (fn [x]
                      (cond
-                       (is-clause? numeric-functions x)  :numeric
-                       (is-clause? string-functions x)   :string
-                       (is-clause? boolean-functions x)  :boolean
-                       (is-clause? datetime-functions x) :datetime
-                       (is-clause? :case x)              :case
-                       (is-clause? :if   x)              :if
-                       (is-clause? :offset x)            :offset
-                       (is-clause? :value x)             :value
-                       :else                             :else))}
-   [:numeric  [:ref ::NumericExpression]]
-   [:string   [:ref ::StringExpression]]
-   [:boolean  [:ref ::BooleanExpression]]
-   [:datetime [:ref ::DatetimeExpression]]
-   [:case     [:ref ::case]]
-   [:if       [:ref ::if]]
-   [:offset   [:ref ::offset]]
-   [:value    [:ref ::value]]
-   [:else     [:ref ::FieldOrExpressionRef]]])
+                       (is-clause? numeric-functions x)                   :numeric
+                       (number? x)                                        :number-literal
+                       (is-clause? string-functions x)                    :string
+                       (string? x)                                        :string-literal
+                       (is-clause? boolean-functions x)                   :boolean
+                       (boolean? x)                                       :boolean-literal
+                       (is-clause? datetime-functions x)                  :datetime
+                       #?(:clj (instance? java.time.temporal.Temporal x)) #?(:clj :temporal-literal)
+                       (is-clause? :case x)                               :case
+                       (is-clause? :if   x)                               :if
+                       (is-clause? :offset x)                             :offset
+                       (is-clause? :value x)                              :value
+                       :else                                              :else))}
+   [:numeric         [:ref ::NumericExpression]]
+   [:number-literal  number?]
+   [:string          [:ref ::StringExpression]]
+   [:string-literal  string?]
+   [:boolean         [:ref ::BooleanExpression]]
+   [:boolean-literal boolean?]
+   [:datetime        [:ref ::DatetimeExpression]]
+   #?(:clj
+      [:temporal-literal (lib.schema.common/instance-of-class java.time.temporal.Temporal)])
+   [:case            [:ref ::case]]
+   [:if              [:ref ::if]]
+   [:offset          [:ref ::offset]]
+   [:value           [:ref ::value]]
+   [:else            [:ref ::FieldOrExpressionRef]]])
 
 (mr/def ::AggregationArg
   "Schema for the argument to an aggregation clause like `:sum`.
@@ -2030,9 +2039,13 @@
     (fn [query]
       (= 1 (count (select-keys query [:source-query :source-table]))))]
    [:ref ::RemoveFieldRefsFromFieldsAlreadyInBreakout]
+   ;; `disallowed-keys` will remove these keys if we see them automatically during normalization.
    (lib.schema.common/disallowed-keys
-    {:lib/type "Legacy MBQL inner queries must not have :lib/type"
-     :type     "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
+    {:lib/type           "Legacy MBQL inner queries must not have :lib/type"
+     :type               "An inner query must not include :type, this will cause us to mix it up with an outer query"
+     :aggregation-idents ":aggregation-idents is deprecated and should not be used"
+     :breakout-idents    ":breakout-idents is deprecated and should not be used"
+     :expression-idents  ":expression-idents is deprecated and should not be used"})])
 
 (mr/def ::WidgetType
   "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`."
