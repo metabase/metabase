@@ -9,10 +9,11 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import PasswordReveal from "metabase/common/components/PasswordReveal";
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
+import { isSsoEnabled } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
@@ -33,9 +34,7 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
     getUserTemporaryPassword(state, { userId }),
   );
   const hasSsoEnabled = useSelector(isSsoEnabled);
-  const hasPasswordLoginEnabled = useSelector((state) =>
-    getSetting(state, "enable-password-login"),
-  );
+  const hasPasswordLoginEnabled = useSetting("enable-password-login");
   const dispatch = useDispatch();
 
   const handleClose = () => {

@@ -17,11 +17,11 @@ import {
   getVirtualCardType,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { useSetting } from "metabase/common/hooks";
 import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -494,9 +494,7 @@ export function DashCardVisualization({
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 
-  const fontFamily = useSelector((state) =>
-    getSetting(state, "application-font"),
-  );
+  const fontFamily = useSetting("application-font");
 
   const { shouldCollapseList, containerRef, parameterListRef } =
     useResponsiveParameterList({

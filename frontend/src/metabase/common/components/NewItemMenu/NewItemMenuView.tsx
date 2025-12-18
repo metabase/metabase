@@ -3,10 +3,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setOpenModal } from "metabase/redux/ui";
-import { getSetting } from "metabase/selectors/settings";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
@@ -34,9 +34,7 @@ const NewItemMenuView = ({
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
 
-  const lastUsedDatabaseId = useSelector((state) =>
-    getSetting(state, "last-used-native-database-id"),
-  );
+  const lastUsedDatabaseId = useSetting("last-used-native-database-id");
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 

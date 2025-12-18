@@ -4,11 +4,11 @@ import { useAsync } from "react-use";
 import _ from "underscore";
 
 import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
-import { Databases } from "metabase/entities/databases";
-import { Groups } from "metabase/entities/groups";
+import Databases from "metabase/entities/databases";
+import Groups from "metabase/entities/groups";
+import { useSetting } from "metabase/common/hooks";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -42,9 +42,7 @@ function DataPermissionsPage({
 }: DataPermissionsPageProps) {
   const isDirty = useSelector(getIsDirty);
   const diff = useSelector((state) => getDiff(state, { databases, groups }));
-  const showSplitPermsModal = useSelector((state) =>
-    getSetting(state, "show-updated-permission-modal"),
-  );
+  const showSplitPermsModal = useSetting("show-updated-permission-modal");
   const dispatch = useDispatch();
 
   const resetPermissions = () => dispatch(restoreLoadedPermissions());
