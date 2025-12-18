@@ -24,10 +24,7 @@ export function HeaderCell({ name, sort, variant }: HeaderCellProps) {
     >
       {name}
       {sort && (
-        <Icon
-          name={sort === "asc" ? "chevronup" : "chevrondown"}
-          size={10}
-        />
+        <Icon name={sort === "asc" ? "chevronup" : "chevrondown"} size={10} />
       )}
     </Flex>
   );

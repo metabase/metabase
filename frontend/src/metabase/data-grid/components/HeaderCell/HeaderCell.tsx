@@ -28,7 +28,10 @@ export const HeaderCell = memo(function HeaderCell({
 });
 
 export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
-  function HeaderCellPillInner({ name, sort, align }: HeaderCellBaseProps, ref) {
+  function HeaderCellPillInner(
+    { name, sort, align }: HeaderCellBaseProps,
+    ref,
+  ) {
     const pillAlign = align === "right" ? "right" : "left";
 
     return (
@@ -60,7 +63,6 @@ export const HeaderCellWrapper = ({
   return (
     <BaseCell
       className={cx(S.root, className, {
-        [S.light]: variant === "light",
         [S.outline]: variant === "outline",
       })}
       hasHover={false}
