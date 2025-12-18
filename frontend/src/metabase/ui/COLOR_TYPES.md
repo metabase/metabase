@@ -104,16 +104,15 @@ If you have existing code using invalid color names:
    <Text c="text-primary">Text</Text>
    ```
 
-3. **CSS Keywords**: Currently, CSS keywords like "inherit" will cause type errors
+3. **CSS Keywords**: The special keyword "inherit" is allowed for inheriting parent colors
    ```tsx
-   // This will cause a type error:
-   <Text c="inherit">Text inheriting parent color</Text>
-   
-   // Workaround: use explicit color or refactor component structure
-   <Text c="text-primary">Text</Text>
+   // This is valid:
+   <Group c="text-secondary">
+     <Text c="inherit">This text inherits the parent's color</Text>
+   </Group>
    ```
    
-   > **Note**: If there are many legitimate use cases for "inherit", we may need to extend the type system to allow specific CSS keywords while still restricting arbitrary color values.
+   > **Note**: Only "inherit" is allowed. Other CSS keywords like "currentColor", "transparent", or arbitrary hex/rgb values will cause type errors.
 
 4. **Custom Colors**: If you need a color not in the palette, add it to `colorConfig` first
 

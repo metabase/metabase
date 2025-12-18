@@ -24,9 +24,10 @@ declare module "@mantine/core" {
 
   /**
    * Override Mantine's color system to only allow colors defined in metabase/lib/colors.ts
-   * This ensures type safety for all color props (c, bg, color, etc.) in Mantine components
+   * plus the "inherit" CSS keyword for inheriting parent colors.
+   * This ensures type safety for all color props (c, bg, color, etc.) in Mantine components.
    */
   export interface MantineThemeColorsOverride {
-    colors: Record<ColorName, MantineColorsTuple>;
+    colors: Record<ColorName | "inherit", MantineColorsTuple>;
   }
 }
