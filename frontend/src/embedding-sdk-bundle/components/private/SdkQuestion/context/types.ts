@@ -41,7 +41,7 @@ type SdkQuestionConfig = {
   hiddenParameters?: string[];
 
   /**
-   * Enables the ability to download results in the interactive question.
+   * Enables the ability to download results in the question.
    */
   withDownloads?: boolean;
 

@@ -53,7 +53,7 @@ import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
 
 export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   /**
-   * Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only applicable to interactive questions when using the default layout.
+   * Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default.
    */
   title?: SdkQuestionTitleProps;
 
