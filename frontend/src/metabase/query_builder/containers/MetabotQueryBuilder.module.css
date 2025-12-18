@@ -21,7 +21,12 @@
 .greeting {
   display: flex;
   align-items: center;
+  flex-direction: column;
   gap: 0.75rem;
+
+  @media screen and (--breakpoint-min-sm) {
+    flex-direction: row;
+  }
 }
 
 .greetingIcon {

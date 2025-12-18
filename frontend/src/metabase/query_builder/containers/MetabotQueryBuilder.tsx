@@ -87,7 +87,6 @@ export const MetabotQueryBuilder = () => {
           Urls.newQuestion({
             mode: "notebook",
             creationType: "custom_question",
-            // collectionId, TODO: wire in collectionId
             cardType: "question",
           }),
         ),
@@ -129,7 +128,7 @@ export const MetabotQueryBuilder = () => {
       <Box className={S.centeredContainer}>
         <Box className={S.greeting}>
           <Icon name="metabot" className={S.greetingIcon} c="brand" />
-          <Text fz={32} fw={600} c="text-dark">
+          <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-dark">
             {title}
           </Text>
         </Box>

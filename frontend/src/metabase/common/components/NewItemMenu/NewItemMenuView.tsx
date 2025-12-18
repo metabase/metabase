@@ -47,19 +47,21 @@ const NewItemMenuView = ({
       // TODO: move to enterprise / conditional add if metabot is enabled
       items.push(
         <Menu.Item
-          key="question"
+          key="nlq"
           component={ForwardRefLink}
           to={Urls.newQuestion({
             mode: "ask",
-            collectionId, // TODO: make this do something...
+            collectionId,
             cardType: "question",
           })}
-          leftSection={<Icon name="metabot" />}
+          leftSection={<Icon name="comment" />}
         >
-          {t`Natural language query`}
+          {t`AI exploration`}
         </Menu.Item>,
       );
+    }
 
+    if (hasDataAccess) {
       items.push(
         <Menu.Item
           key="question"
