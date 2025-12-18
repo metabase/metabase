@@ -770,6 +770,8 @@ export function formatDateTimeForParameter(
     return m.format("[Q]Q-YYYY");
   } else if (unit === "day") {
     return m.format("YYYY-MM-DD");
+  } else if (unit === "hour" || unit === "minute") {
+    return m.format("YYYY-MM-DDTHH:mm");
   } else if (unit) {
     return formatDateToRangeForParameter(value, unit);
   }
