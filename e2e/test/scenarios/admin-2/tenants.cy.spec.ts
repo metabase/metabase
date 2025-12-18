@@ -138,10 +138,16 @@ describe("Tenants - management", () => {
     cy.findByRole("link", { name: /Tenant users/ }).should("exist");
     cy.findByRole("link", { name: /Tenants/ }).should("exist");
 
-    cy.log(
-      "after enabling multi-tenancy, it should take you to the tenants page after a second",
-    );
-    H.main().findByText("Tenants", { timeout: 10_000 }).should("be.visible");
+    H.main().within(() => {
+      cy.log(
+        "after enabling multi-tenancy, it should take you to the tenants page after a second",
+      );
+      cy.findByText("Tenants", { timeout: 10_000 }).should("be.visible");
+
+      cy.findByText(/Create your first tenant to start adding/).should(
+        "be.visible",
+      );
+    });
 
     // Onboarding: create the first tenant
     cy.findByRole("button", { name: "Create your first tenant" })
