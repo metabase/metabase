@@ -1193,6 +1193,7 @@
 
 (defmethod options-style-method :case [_tag] ::options-style.last-unless-empty)
 
+;; `:if` is just an alias for `:case`
 (defclause if
   clauses [:ref ::CaseSubclauses], options (optional [:ref ::CaseOptions]))
 
@@ -1314,8 +1315,10 @@
   (when (helpers/normalized-mbql-clause? x)
     (when-let [[tag & args] x]
       (or (lib.hierarchy/isa? tag ::lib.schema.aggregation/aggregation-clause-tag)
-          ;; Case has the following shape [:case [[cond expr]...] default-expr?]
-          (if (= :case tag)
+          ;; `:case` has the following shape [:case [[cond expr]...] default-expr?]
+          ;;
+          ;; `:if` is an alias for `:case`
+          (if (#{:if :case} tag)
             (or (some aggregation-expression? (ffirst args))
                 (some aggregation-expression? (fnext args)))
             (some aggregation-expression? args))))))

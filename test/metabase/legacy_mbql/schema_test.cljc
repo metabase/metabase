@@ -492,3 +492,41 @@
                    :query    {:expressions  {"Organizer fees should be" x}
                               :source-table 310}}]
         (is (mr/validate ::mbql.s/Query query))))))
+
+(deftest ^:parallel case-if-aggregation-expression-test
+  (doseq [clause [:if :case]]
+    (testing (str clause " should be allowed as an aggregation expression if it contains an aggregation")
+      (let [normalized (lib/normalize
+                        ::mbql.s/Aggregation
+                        [(name clause)
+                         [[["="
+                            ["sum-where"
+                             ["field" 781 {"base-type" "type/Float"}]
+                             ["=" ["expression" "Paid" {"base-type" "type/Boolean"}] true]]
+                            0]
+                           0]]
+                         {"default"
+                          ["/"
+                           ["sum-where"
+                            ["field" 755 {"base-type" "type/Float"}]
+                            ["=" ["expression" "Refund" {"base-type" "type/Boolean"}] true]]
+                           ["sum-where"
+                            ["field" 781 {"base-type" "type/Float"}]
+                            ["=" ["expression" "Paid" {"base-type" "type/Boolean"}] true]]]}])]
+        (is (= [clause
+                [[[:=
+                   [:sum-where
+                    [:field 781 {:base-type :type/Float}]
+                    [:= [:expression "Paid" {:base-type :type/Boolean}] true]]
+                   0]
+                  0]]
+                {:default
+                 [:/
+                  [:sum-where
+                   [:field 755 {:base-type :type/Float}]
+                   [:= [:expression "Refund" {:base-type :type/Boolean}] true]]
+                  [:sum-where
+                   [:field 781 {:base-type :type/Float}]
+                   [:= [:expression "Paid" {:base-type :type/Boolean}] true]]]}]
+               normalized))
+        (is (mr/validate ::mbql.s/Aggregation normalized))))))
