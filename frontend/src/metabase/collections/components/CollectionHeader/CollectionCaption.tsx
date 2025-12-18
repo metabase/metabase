@@ -1,13 +1,11 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -31,8 +29,7 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const currentUser = useSelector(getCurrentUser);
-  const isEditable = isEditableCollection(collection, { currentUser });
+  const isEditable = isEditableCollection(collection);
   const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(
