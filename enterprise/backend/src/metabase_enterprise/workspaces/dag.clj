@@ -175,22 +175,27 @@
    - :dependencies - association list for the subgraph, with keys and values both in topological order"
   [ws-id changeset]
   (ws.u/assert-transforms! changeset)
-  (let [tx-nodes   (for [{:keys [entity-type id]} changeset]
-                     (case entity-type
-                       :transform {:node-type :workspace-transform, :id id}))
-        outputs    (when (seq tx-nodes)
-                     (t2/select-fn-vec (fn [row]
-                                         {:node-type :table, :id (t2.realize/realize row)})
-                                       [:model/WorkspaceOutput
-                                        [:db_id :db]
-                                        [:global_schema :schema]
-                                        [:global_table :table]
-                                        [:global_table_id :id]]
-                                       :ref_id [:in (map :id tx-nodes)]))
-        init-nodes (concat tx-nodes outputs)
-        fns        {:node-parents (partial node-parents ws-id)
-                    :table?       table?}]
-    (path-induced-subgraph* init-nodes fns)))
+  (if (empty? changeset)
+    {:inputs       []
+     :outputs      []
+     :entities     []
+     :dependencies {}}
+    (let [tx-nodes   (for [{:keys [entity-type id]} changeset]
+                       (case entity-type
+                         :transform {:node-type :workspace-transform, :id id}))
+          outputs    (when (seq tx-nodes)
+                       (t2/select-fn-vec (fn [row]
+                                           {:node-type :table, :id (t2.realize/realize row)})
+                                         [:model/WorkspaceOutput
+                                          [:db_id :db]
+                                          [:global_schema :schema]
+                                          [:global_table :table]
+                                          [:global_table_id :id]]
+                                         :ref_id [:in (map :id tx-nodes)]))
+          init-nodes (concat tx-nodes outputs)
+          fns        {:node-parents (partial node-parents ws-id)
+                      :table?       table?}]
+      (path-induced-subgraph* init-nodes fns))))
 
 ;; source-table ---------> checked-out-transform
 ;;          \____external-transform__/

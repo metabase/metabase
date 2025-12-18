@@ -476,8 +476,7 @@
   (api/check-404 (t2/select-one :model/Workspace :id id))
   (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
                                     [:model/WorkspaceTransform :ref_id] :workspace_id id)
-        graph (when (seq changeset)
-                (ws.dag/path-induced-subgraph id changeset))]
+        graph     (ws.dag/path-induced-subgraph id changeset)]
     (ws.validation/find-downstream-problems id graph)))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
