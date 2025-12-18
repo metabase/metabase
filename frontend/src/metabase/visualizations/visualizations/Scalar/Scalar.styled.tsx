@@ -2,16 +2,16 @@
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import type { ReactNode } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { useIsTruncated } from "metabase/common/hooks/use-is-truncated";
+import { Tooltip } from "metabase/ui";
 
 interface ScalarContainerProps {
   isClickable: boolean;
 }
 
-export const ScalarContainer = styled(Ellipsified, {
-  shouldForwardProp: (prop) => prop !== "isClickable",
-})<ScalarContainerProps>`
+const ScalarContainerInner = styled.div<ScalarContainerProps>`
   padding: 0 var(--mantine-spacing-sm);
   max-width: 100%;
   box-sizing: border-box;
@@ -26,3 +26,44 @@ export const ScalarContainer = styled(Ellipsified, {
       }
     `}
 `;
+
+interface ScalarContainerWrapperProps extends ScalarContainerProps {
+  tooltip?: ReactNode;
+  alwaysShowTooltip?: boolean;
+  children?: ReactNode;
+  className?: string;
+  "data-testid"?: string;
+}
+
+export const ScalarContainer = ({
+  tooltip,
+  alwaysShowTooltip,
+  children,
+  isClickable,
+  className,
+  "data-testid": dataTestId,
+  ...props
+}: ScalarContainerWrapperProps) => {
+  const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
+    disabled: !alwaysShowTooltip,
+  });
+  const isEnabled = alwaysShowTooltip || isTruncated;
+
+  return (
+    <Tooltip
+      disabled={!isEnabled}
+      label={tooltip || children || " "}
+      position="top"
+    >
+      <ScalarContainerInner
+        ref={ref}
+        isClickable={isClickable}
+        className={className}
+        data-testid={dataTestId}
+        {...props}
+      >
+        {children}
+      </ScalarContainerInner>
+    </Tooltip>
+  );
+};
