@@ -34,12 +34,19 @@ const USER = createMockUser({
   ],
 });
 
+interface SetupOpts {
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  initialValues?: typeof USER;
+  external?: boolean;
+  tenants?: Tenant[];
+}
+
 const setup = ({
   enterprisePlugins,
   initialValues = USER,
   external = false,
   tenants = [] as Tenant[],
-} = {}) => {
+}: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
 
