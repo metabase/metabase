@@ -745,6 +745,6 @@
                     (execute-transform-with-ordering! transform transform-type new-field {:run-method :manual})
                     (let [table              (t2/select-one :model/Table :name target-table)
                           indexes            (driver/describe-table-indexes driver/*driver* (mt/id) {:schema (:schema table) :name target-table})]
-                      (testing "Old index removed, new checkpoint column is now indexed")
-                      (is (= 1 (count indexes)))
-                      (is (=? {:value new-field :index-name #"^mb_transform_idx_.*$"} (first indexes))))))))))))))
+                      (testing "Old index removed, new checkpoint column is now indexed"
+                        (is (= 1 (count indexes)))
+                        (is (=? {:value new-field :index-name #"^mb_transform_idx_.*$"} (first indexes)))))))))))))))
