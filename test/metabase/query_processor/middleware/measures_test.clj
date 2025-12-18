@@ -325,3 +325,39 @@
                            (lib/aggregate (lib/count-where (lib/< (lib.metadata/field mp (mt/id :venues :price)) 4))))]
       (is (= (mt/rows (qp/process-query direct-query))
              (mt/rows (qp/process-query measure-query)))))))
+
+(deftest ^:parallel e2e-measure-multi-stage-query-test
+  (testing "Measure works correctly when referenced in a subsequent stage (field ref should use operator name, not display name)"
+    (let [mp (mt/metadata-provider)
+          ;; Create a measure "Total Price" that sums products.price
+          ;; The measure's name is "Total Price" but the operator name should be "sum"
+          measure-definition (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price)))))
+          mp (lib.tu/mock-metadata-provider
+              mp
+              {:measures [{:id         1
+                           :name       "Total Price"
+                           :table-id   (mt/id :products)
+                           :definition measure-definition}]})
+          ;; Create a multi-stage query:
+          ;; Stage 0: Group by category, aggregate with measure
+          ;; Stage 1: Filter on the aggregation result
+          measure-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                            (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                            (lib/aggregate (lib.metadata/measure mp 1))
+                            (lib/append-stage))
+          ;; Find the sum column (from the aggregation) in the second stage
+          ;; The column should have :name "sum" not "Total Price"
+          measure-cols (lib/filterable-columns measure-query)
+          measure-col (first (filter #(= (:name %) "sum") measure-cols))
+          measure-query (lib/filter measure-query (lib/> measure-col 100))
+          ;; Equivalent direct query
+          direct-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price))))
+                           (lib/append-stage))
+          direct-cols (lib/filterable-columns direct-query)
+          direct-col (first (filter #(= (:name %) "sum") direct-cols))
+          direct-query (lib/filter direct-query (lib/> direct-col 100))]
+      (is (= (mt/rows (qp/process-query direct-query))
+             (mt/rows (qp/process-query measure-query)))))))

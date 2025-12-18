@@ -7,7 +7,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -83,10 +85,16 @@
 (defmethod lib.metadata.calculation/metadata-method :measure
   [query _stage-number [_ opts measure-id]]
   (if-let [measure-meta (lib.metadata/measure query measure-id)]
-    {:lib/type     :metadata/column
-     :base-type    :type/Number
-     :name         (or (:name opts) (:name measure-meta) "measure")
-     :display-name (or (:display-name opts) (:name measure-meta) (fallback-display-name))}
+    ;; Get the inner aggregation from the measure definition to extract the operator name (e.g., "sum", "count")
+    ;; This is similar to how metrics work - the :name should be the operator name, not the measure's display name
+    (let [measure-query     (lib.query/query query (lib.normalize/normalize ::lib.schema/query (:definition measure-meta)))
+          inner-aggregation (first (lib.aggregation/aggregations measure-query))
+          inner-meta        (when inner-aggregation
+                              (lib.metadata.calculation/metadata measure-query -1 inner-aggregation))]
+      {:lib/type     :metadata/column
+       :base-type    :type/Number
+       :name         (or (:name opts) (:name inner-meta) "measure")
+       :display-name (or (:display-name opts) (:name measure-meta) (fallback-display-name))})
     {:lib/type     :metadata/column
      :base-type    :type/Number
      :name         "measure"

@@ -128,3 +128,28 @@
            #?(:clj Exception :cljs js/Error)
            #"does not exist"
            (lib/check-measure-overwrite 1 measure-1-def))))))
+
+(deftest ^:parallel measure-field-ref-uses-operator-name-test
+  (testing "When a measure is used in a query and referenced in a subsequent stage, the :field ref should use the operator name (e.g., 'sum') not the measure's display name"
+    (let [definition (measure-definition-with-aggregation
+                      meta/metadata-provider
+                      (lib/sum (meta/field-metadata :venues :price)))
+          mp         (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:measures [{:id         1
+                                   :name       "Total Revenue"
+                                   :table-id   (meta/id :venues)
+                                   :definition definition}]})
+          ;; Create a query with the measure as an aggregation
+          query      (-> (lib/query mp (meta/table-metadata :venues))
+                         (lib/aggregate [:measure {:lib/uuid (str (random-uuid))} 1])
+                         ;; Add a second stage to force the measure to be referenced as a field
+                         (lib/append-stage))
+          ;; Get the visible columns in the second stage - these come from the first stage's aggregations
+          visible-cols (lib/visible-columns query)
+          measure-col  (first visible-cols)
+          ;; Get the field ref that would be generated for this column
+          field-ref    (lib/ref measure-col)]
+      (testing "The field ref should use 'sum' as the field name, not 'Total Revenue'"
+        ;; field-ref is [:field {:...} "sum"] - the third element is the field name
+        (is (= "sum" (nth field-ref 2)))))))
