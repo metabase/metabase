@@ -110,7 +110,7 @@
     [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
     [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document"]]
+(doseq [model ["card" "dataset" "metric" "segment" "dashboard" "action" "document"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))

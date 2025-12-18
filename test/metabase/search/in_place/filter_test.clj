@@ -38,7 +38,7 @@
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
-      (is (= #{"dashboard" "dataset" "document" "action" "card" "metric"}
+      (is (= #{"dashboard" "dataset" "document" "action" "card" "metric" "segment"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
@@ -299,7 +299,13 @@
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
-                           {:created-by #{1 2}})))))))
+                           {:created-by #{1 2}})))))
+    (testing "for segment"
+      (is (= [:and [:= :segment.archived false] [:= :segment.creator_id 1]]
+             (:where (search.filter/build-filters
+                      base-search-query "segment"
+                      (merge default-search-ctx
+                             {:created-by #{1}})))))))))
 
 (deftest ^:parallel build-last-edited-by-filter-test
   (testing "last edited by filter"

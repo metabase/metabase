@@ -168,7 +168,7 @@
   {:model :model/Segment
    :attrs {:archived true
            :collection-id false
-           :creator-id false
+           :creator-id true
            :database-id :table.db_id
            ;; should probably change this, but will break legacy search tests
            :created-at false
