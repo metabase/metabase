@@ -116,8 +116,9 @@
   {:row
    (for [maybe-remapped-col cols
          :when              (show-in-table? maybe-remapped-col)
-         :let               [col (if (:remapped_to maybe-remapped-col)
-                                   (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+         :let               [col (if-let [remapped-idx (and (:remapped_to maybe-remapped-col)
+                                                            (get remapping-lookup (:name maybe-remapped-col)))]
+                                   (nth cols remapped-idx)
                                    maybe-remapped-col)
                              col-name (column-name card col)]
          ;; If this column is remapped from another, it's already
@@ -135,10 +136,10 @@
       {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
                   :when (and (not (:remapped_from maybe-remapped-col))
                              (show-in-table? maybe-remapped-col))
-                  :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
-                                                (let [remapped-index (get remapping-lookup (:name maybe-remapped-col))]
-                                                  [(nth formatters remapped-index)
-                                                   (nth row remapped-index)])
+                  :let [[_formatter row-cell] (if-let [remapped-index (and (:remapped_to maybe-remapped-col)
+                                                                           (get remapping-lookup (:name maybe-remapped-col)))]
+                                                [(nth formatters remapped-index)
+                                                 (nth row remapped-index)]
                                                 [fmt-fn maybe-remapped-row-cell])]]
               (fmt-fn row-cell))})))
 
