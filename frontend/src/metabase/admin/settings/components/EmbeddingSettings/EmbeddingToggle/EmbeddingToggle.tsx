@@ -39,7 +39,7 @@ export function EmbeddingToggle({
 
   if (settingDetails?.is_env_setting) {
     return (
-      <Text c="var(--mb-color-text-secondary)">{t`Set via environment variable`}</Text>
+      <Text c="text-secondary">{t`Set via environment variable`}</Text>
     );
   }
 

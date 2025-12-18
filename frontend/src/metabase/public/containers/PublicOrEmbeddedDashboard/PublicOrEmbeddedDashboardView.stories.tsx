@@ -374,7 +374,7 @@ export function ComponentCompatibility() {
     <Box pb="50px">
       <Tooltip
         label={
-          <Text size="sm" c="var(--mb-color-text-primary)">
+          <Text size="sm" c="text-primary">
             Label
           </Text>
         }
@@ -391,7 +391,7 @@ export function ComponentCompatibility() {
           </Card>
         </Popover.Target>
         <Popover.Dropdown>
-          <Text size="sm" c="var(--mb-color-text-primary)">
+          <Text size="sm" c="text-primary">
             Dropdown
           </Text>
         </Popover.Dropdown>
