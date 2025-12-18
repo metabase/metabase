@@ -20,6 +20,7 @@ import type {
   ParameterId,
   ParameterValueOrArray,
 } from "./parameters";
+import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
@@ -80,6 +81,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   creator?: CardCreatorInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
+
+  download_perms?: DownloadPermission;
 }
 
 export interface PublicCard {
