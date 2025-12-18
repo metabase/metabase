@@ -28,11 +28,13 @@ import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
-type Props = {
+type TransformSettingsSectionProps = {
   transform: Transform;
 };
 
-export const TransformSettingsSection = ({ transform }: Props) => (
+export const TransformSettingsSection = ({
+  transform,
+}: TransformSettingsSectionProps) => (
   <Stack gap="2.5rem">
     <TitleSection
       label={t`Transform target`}

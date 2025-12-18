@@ -10,11 +10,13 @@ import {
   useUpdateIncrementalSettings,
 } from "../../../components/IncrementalTransform";
 
-type Props = {
+type UpdateIncrementalSettingsProps = {
   transform: Transform;
 };
 
-export const UpdateIncrementalSettings = ({ transform }: Props) => {
+export const UpdateIncrementalSettings = ({
+  transform,
+}: UpdateIncrementalSettingsProps) => {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const { initialValues, validationSchema, updateIncrementalSettings } =
     useUpdateIncrementalSettings(transform);

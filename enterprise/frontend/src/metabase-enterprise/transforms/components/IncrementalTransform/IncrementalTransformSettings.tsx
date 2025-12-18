@@ -24,7 +24,7 @@ import {
 import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
 import type { IncrementalSettingsFormValues } from "./form";
 
-type Props = {
+type IncrementalTransformSettingsProps = {
   source: TransformSource;
   checkOnMount?: boolean;
   variant?: "embedded" | "standalone";
@@ -34,7 +34,7 @@ export const IncrementalTransformSettings = ({
   source,
   checkOnMount,
   variant = "embedded",
-}: Props) => {
+}: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
   // Convert DatasetQuery to Lib.Query via Question
