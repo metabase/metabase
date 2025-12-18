@@ -3827,11 +3827,13 @@ databaseChangeLog:
               - column:
                   name: commit_message
                   type: ${text.type}
+                  remarks: Description of the merge operation
                   constraints:
                     nullable: false
               - column:
                   name: creator_id
                   type: int
+                  remarks: User who performed the merge
                   constraints:
                     nullable: false
                     references: core_user(id)
@@ -3839,6 +3841,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp when the merge was performed
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -3944,6 +3947,7 @@ databaseChangeLog:
               - column:
                   name: commit_message
                   type: ${text.type}
+                  remarks: Description of the merge operation
                   constraints:
                     nullable: false
               - column:
@@ -3957,6 +3961,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp when the merge was performed
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
