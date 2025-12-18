@@ -66,8 +66,7 @@ export function MetabotRadios({
               selected={`${quantity}` === selectedQuantity}
               value={`${quantity}`}
               title={name}
-              /* time-based quota limits are always per month, not depending on the billing period: */
-              description={t`up to ${quantity} requests/month`}
+              description={t`up to ${quantity} requests/${billingPeriod}`}
               price={`$${price}/${billingPeriod}`}
             />
           </Fragment>
