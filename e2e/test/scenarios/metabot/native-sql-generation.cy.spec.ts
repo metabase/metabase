@@ -1,7 +1,11 @@
 const { H } = cy;
 
 // Helper functions
-const toggleInlineSQLPrompt = () => cy.get("body").type("{ctrl+;}{cmd+;}");
+const isMac = Cypress.platform === "darwin";
+const metaKey = isMac ? "Meta" : "Control";
+
+const toggleInlineSQLPrompt = () =>
+  H.NativeEditor.get().realPress([metaKey, ";"]);
 
 const inlinePrompt = () => cy.findByTestId("metabot-inline-sql-prompt");
 const inlinePromptInput = () =>
@@ -200,6 +204,13 @@ describe("Native SQL generation", () => {
           expect(request.body.history).to.have.length(0);
         });
         acceptButton().should("be.visible");
+
+        // manually editing the editor should dismiss suggestion buttons
+        H.NativeEditor.get().click();
+        H.NativeEditor.get().realPress([metaKey, "a"]);
+        H.NativeEditor.get().realPress("Backspace");
+        acceptButton().should("not.exist");
+        rejectButton().should("not.exist");
       });
 
       it("should show error if no code_edit is received", () => {

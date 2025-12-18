@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { keymap } from "@codemirror/view";
+import { EditorView as EV, keymap } from "@codemirror/view";
 import type { Extension } from "@uiw/react-codemirror";
 import {
   useCallback,
@@ -102,8 +102,19 @@ export function useInlineSQLPrompt(
     [generatedSql, hideInput],
   );
 
-  const databaseId = question.databaseId();
+  const generatedSqlRef = useRef(generatedSql);
+  generatedSqlRef.current = generatedSql;
 
+  const clearSuggestion = useCallback(() => {
+    dispatch(removeSuggestedCodeEdit(bufferId));
+  }, [dispatch, bufferId]);
+
+  const clearSuggestionRef = useRef(clearSuggestion);
+  useEffect(() => {
+    clearSuggestionRef.current = clearSuggestion;
+  }, [clearSuggestion]);
+
+  const databaseId = question.databaseId();
   useEffect(
     function resetOnDbChangeAndUnmount() {
       return () => {
@@ -162,6 +173,21 @@ export function useInlineSQLPrompt(
           },
         },
       ]),
+      EV.updateListener.of((update) => {
+        if (!update.docChanged || !generatedSqlRef.current) {
+          return;
+        }
+        // Only clear suggestion if change was from user input, not programmatic
+        const isUserEdit = update.transactions.some(
+          (tr) =>
+            tr.isUserEvent("input") ||
+            tr.isUserEvent("delete") ||
+            tr.isUserEvent("move"),
+        );
+        if (isUserEdit) {
+          clearSuggestionRef.current();
+        }
+      }),
     ],
     [],
   );
