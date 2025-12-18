@@ -30,9 +30,6 @@ export type WorkspaceItem = {
 export type CreateWorkspaceRequest = {
   name: string;
   database_id?: DatabaseId;
-  upstream: {
-    transforms?: TransformId[];
-  };
 };
 
 export type WorkspaceListResponse = {
