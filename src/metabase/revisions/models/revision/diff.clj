@@ -16,6 +16,9 @@
     [:description (_ :guard some?) _]
     (deferred-tru "changed the description")
 
+    [:document _ _]
+    (deferred-tru "edited the content")
+
     [:private true false]
     (deferred-tru "made {0} public" identifier)
 
@@ -106,6 +109,9 @@
     (if (and v1 v2)
       (deferred-tru "changed the width setting from {0} to {1}" (name v1) (name v2))
       (deferred-tru "changed the width setting"))
+
+    [:source _ _]
+    (deferred-tru "changed the source")
 
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
