@@ -1244,9 +1244,81 @@
         },
         "type" : "object"
       },
+      "metabase-enterprise.dependencies.api.base-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.broken-cards-response" : {
+        "properties" : {
+          "bad_cards" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.queries.schema.card"
+            },
+            "type" : "array"
+          },
+          "bad_transforms" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform"
+            },
+            "type" : "array"
+          },
+          "success" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "success" ],
+        "type" : "object"
+      },
       "metabase-enterprise.dependencies.api.card-body" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dashboard_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "dataset_query" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.queries.schema.query"
@@ -1254,9 +1326,30 @@
               "type" : "null"
             } ]
           },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "document_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.document"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -1290,6 +1383,353 @@
             } ]
           }
         },
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.card-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "dashboard" : { },
+              "dashboard_id" : { },
+              "database_id" : { },
+              "description" : { },
+              "display" : { },
+              "document" : { },
+              "document_id" : { },
+              "last-edit-info" : { },
+              "name" : { },
+              "result_metadata" : { },
+              "type" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "card"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.dashboard-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "description" : { },
+              "last-edit-info" : { },
+              "moderation_reviews" : { },
+              "name" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "dashboard"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.document-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "description" : { },
+              "name" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "document"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.entity" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.table-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.snippet-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.dashboard-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.document-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.sandbox-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.segment-entity"
+        } ]
+      },
+      "metabase-enterprise.dependencies.api.graph-response" : {
+        "properties" : {
+          "edges" : {
+            "items" : {
+              "properties" : {
+                "from_entity_id" : {
+                  "minimum" : 1,
+                  "type" : "integer"
+                },
+                "from_entity_type" : {
+                  "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
+                  "type" : "string"
+                },
+                "to_entity_id" : {
+                  "minimum" : 1,
+                  "type" : "integer"
+                },
+                "to_entity_type" : {
+                  "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
+                  "type" : "string"
+                }
+              },
+              "required" : [ "from_entity_type", "from_entity_id", "to_entity_type", "to_entity_id" ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "nodes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "nodes", "edges" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.sandbox-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "table" : { },
+              "table_id" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "sandbox"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.segment-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "dashboard" : { },
+              "dashboard_id" : { },
+              "database_id" : { },
+              "description" : { },
+              "display" : { },
+              "document" : { },
+              "document_id" : { },
+              "last-edit-info" : { },
+              "name" : { },
+              "result_metadata" : { },
+              "type" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "segment"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.snippet-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "description" : { },
+              "name" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "snippet"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.table-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "db" : { },
+              "db_id" : { },
+              "description" : { },
+              "display_name" : { },
+              "fields" : { },
+              "name" : { },
+              "schema" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "table"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
         "type" : "object"
       },
       "metabase-enterprise.dependencies.api.transform-body" : {
@@ -1328,6 +1768,49 @@
           }
         },
         "required" : [ "id" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.transform-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "creator" : { },
+              "description" : { },
+              "last_run" : { },
+              "name" : { },
+              "table" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "transform"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.usages" : {
+        "additionalProperties" : {
+          "type" : "integer"
+        },
         "type" : "object"
       },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
@@ -3986,6 +4469,28 @@
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.append-config"
         } ]
+      },
+      "metabase-enterprise.transforms.schema.transform" : {
+        "properties" : {
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-source"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-target"
+          }
+        },
+        "required" : [ "name", "source", "target" ],
+        "type" : "object"
       },
       "metabase-enterprise.transforms.schema.transform-source" : {
         "oneOf" : [ {
@@ -7613,6 +8118,11 @@
         "minimum" : 1,
         "type" : "integer"
       },
+      "metabase.lib.schema.id.collection" : {
+        "description" : "Valid Collection ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
       "metabase.lib.schema.id.dashboard" : {
         "description" : "Valid Dashboard ID",
         "minimum" : 1,
@@ -7633,6 +8143,11 @@
         "minimum" : 1,
         "type" : "integer"
       },
+      "metabase.lib.schema.id.document" : {
+        "description" : "Valid Document ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
       "metabase.lib.schema.id.field" : {
         "description" : "Valid Field ID",
         "minimum" : 1,
@@ -7640,6 +8155,11 @@
       },
       "metabase.lib.schema.id.pulse" : {
         "description" : "Valid Pulse ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase.lib.schema.id.sandbox" : {
+        "description" : "Valid Sandbox ID",
         "minimum" : 1,
         "type" : "integer"
       },
@@ -7659,6 +8179,11 @@
       },
       "metabase.lib.schema.id.table" : {
         "description" : "Valid Table ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase.lib.schema.id.transform" : {
+        "description" : "Valid Transform ID",
         "minimum" : 1,
         "type" : "integer"
       },
@@ -10009,6 +10534,86 @@
       },
       "metabase.lib.schema.util.distinct-mbql-clauses" : { },
       "metabase.lib.schema.util.unique-uuids" : { },
+      "metabase.lib.schema.validate.duplicate-column" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/duplicate-column"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.error" : {
+        "allOf" : [ {
+          "properties" : {
+            "type" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "type" ],
+          "type" : "object"
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.missing-column"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.missing-table-alias"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.duplicate-column"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.syntax-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.validation-error"
+          } ]
+        } ]
+      },
+      "metabase.lib.schema.validate.missing-column" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/missing-column"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.missing-table-alias" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/missing-table-alias"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.syntax-error" : {
+        "properties" : {
+          "type" : {
+            "const" : "validate/syntax-error"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.validation-error" : {
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/validation-error"
+          }
+        },
+        "required" : [ "type", "message" ],
+        "type" : "object"
+      },
       "metabase.logger.api.log-level" : {
         "enum" : [ "off", "fatal", "error", "warn", "info", "debug", "trace" ],
         "type" : "string"
@@ -10943,6 +11548,27 @@
       "metabase.queries.schema.card" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dashboard_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "dataset_query" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.queries.schema.query"
@@ -10950,9 +11576,30 @@
               "type" : "null"
             } ]
           },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "document_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.document"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -20656,7 +21303,14 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
+            "description" : "map where {:success -> <boolean>, :bad_cards (optional) -> <sequence of Schema for an instance of a `:model/Card` (everything is optional to support updates).>, :bad_transforms (optional) -> <sequence of map where {:description (optional) -> <nullable string>, :name -> <string>, :source -> <one of <:query = map where {:type -> <must equal query>, :query -> <Schema for Card.dataset_query. Cards are for some wacko reason allowed to be saved with empty queries (`{}`), but not\n  `NULL` ones, because the column is non-null. This sorta seems like an oversight but fixing all the tests that save\n  Cards with empty queries is too much to attempt at this point. So a Card either has an empty query or a valid MBQL 5\n  query.>, :source-incremental-strategy (optional) -> <one of <checkpoint = map where {:type -> <must equal checkpoint>, :checkpoint-filter (optional) -> <string>, :checkpoint-filter-unique-key (optional) -> <regex pattern matching #\"^column-unique-key-v\\d+\\$.+$\">}> dispatched by :type>} | :python = map where {:source-database (optional) -> <integer>, :source-tables -> <map from <string> to <integer>>, :type -> <must equal python>, :body -> <string>, :source-incremental-strategy (optional) -> <one of <checkpoint = map where {:type -> <must equal checkpoint>, :checkpoint-filter (optional) -> <string>, :checkpoint-filter-unique-key (optional) -> <regex pattern matching #\"^column-unique-key-v\\d+\\$.+$\">}> dispatched by :type>}> dispatched by clojure.core$comp$fn__5897@7b1091e2>, :target -> <one of <table = map where {:database (optional) -> <integer>, :type -> <must equal table>, :schema (optional) -> <value must be a non-blank string., or null>, :name -> <string>} | table-incremental = map where {:database (optional) -> <integer>, :type -> <must equal table-incremental>, :schema (optional) -> <value must be a non-blank string., or null>, :name -> <string>, :target-incremental-strategy -> <one of <append = map where {:type -> <must equal append>}> dispatched by :type>}> dispatched by :type>}>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20698,7 +21352,14 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
+            "description" : "map where {:success -> <boolean>, :bad_cards (optional) -> <sequence of Schema for an instance of a `:model/Card` (everything is optional to support updates).>, :bad_transforms (optional) -> <sequence of map where {:description (optional) -> <nullable string>, :name -> <string>, :source -> <one of <:query = map where {:type -> <must equal query>, :query -> <Schema for Card.dataset_query. Cards are for some wacko reason allowed to be saved with empty queries (`{}`), but not\n  `NULL` ones, because the column is non-null. This sorta seems like an oversight but fixing all the tests that save\n  Cards with empty queries is too much to attempt at this point. So a Card either has an empty query or a valid MBQL 5\n  query.>, :source-incremental-strategy (optional) -> <one of <checkpoint = map where {:type -> <must equal checkpoint>, :checkpoint-filter (optional) -> <string>, :checkpoint-filter-unique-key (optional) -> <regex pattern matching #\"^column-unique-key-v\\d+\\$.+$\">}> dispatched by :type>} | :python = map where {:source-database (optional) -> <integer>, :source-tables -> <map from <string> to <integer>>, :type -> <must equal python>, :body -> <string>, :source-incremental-strategy (optional) -> <one of <checkpoint = map where {:type -> <must equal checkpoint>, :checkpoint-filter (optional) -> <string>, :checkpoint-filter-unique-key (optional) -> <regex pattern matching #\"^column-unique-key-v\\d+\\$.+$\">}> dispatched by :type>}> dispatched by clojure.core$comp$fn__5897@7b1091e2>, :target -> <one of <table = map where {:database (optional) -> <integer>, :type -> <must equal table>, :schema (optional) -> <value must be a non-blank string., or null>, :name -> <string>} | table-incremental = map where {:database (optional) -> <integer>, :type -> <must equal table-incremental>, :schema (optional) -> <value must be a non-blank string., or null>, :name -> <string>, :target-incremental-strategy -> <one of <append = map where {:type -> <must equal append>}> dispatched by :type>}> dispatched by :type>}>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20726,7 +21387,14 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
+            "description" : "map where {:success -> <boolean>, :bad_cards (optional) -> <sequence of Schema for an instance of a `:model/Card` (everything is optional to support updates).>, :bad_transforms (optional) -> <sequence of map where {:description (optional) -> <nullable string>, :name -> <string>, :source -> <one of <:query = map where {:type -> <must equal query>, :query -> <Schema for Card.dataset_query. Cards are for some wacko reason allowed to be saved with empty queries (`{}`), but not\n  `NULL` ones, because the column is non-null. This sorta seems like an oversight but fixing all the tests that save\n  Cards with empty queries is too much to attempt at this point. So a Card either has an empty query or a valid MBQL 5\n  query.>, :source-incremental-strategy (optional) -> <one of <checkpoint = map where {:type -> <must equal checkpoint>, :checkpoint-filter (optional) -> <string>, :checkpoint-filter-unique-key (optional) -> <regex pattern matching #\"^column-unique-key-v\\d+\\$.+$\">}> dispatched by :type>} | :python = map where {:source-database (optional) -> <integer>, :source-tables -> <map from <string> to <integer>>, :type -> <must equal python>, :body -> <string>, :source-incremental-strategy (optional) -> <one of <checkpoint = map where {:type -> <must equal checkpoint>, :checkpoint-filter (optional) -> <string>, :checkpoint-filter-unique-key (optional) -> <regex pattern matching #\"^column-unique-key-v\\d+\\$.+$\">}> dispatched by :type>}> dispatched by clojure.core$comp$fn__5897@7b1091e2>, :target -> <one of <table = map where {:database (optional) -> <integer>, :type -> <must equal table>, :schema (optional) -> <value must be a non-blank string., or null>, :name -> <string>} | table-incremental = map where {:database (optional) -> <integer>, :type -> <must equal table-incremental>, :schema (optional) -> <value must be a non-blank string., or null>, :name -> <string>, :target-incremental-strategy -> <one of <append = map where {:type -> <must equal append>}> dispatched by :type>}> dispatched by :type>}>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20769,7 +21437,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.graph-response"
+                }
+              }
+            },
+            "description" : "map where {:nodes -> <sequence of one of <:table = map where {:id -> <integer greater than 0>, :type -> <must equal :table>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :display_name (optional) -> <anything>, :db_id (optional) -> <anything>, :db (optional) -> <anything>, :schema (optional) -> <anything>, :fields (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :card = map where {:id -> <integer greater than 0>, :type -> <must equal :card>, :data -> <map where {:name (optional) -> <anything>, :type (optional) -> <anything>, :display (optional) -> <anything>, :database_id (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :description (optional) -> <anything>, :result_metadata (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :dashboard (optional) -> <anything>, :dashboard_id (optional) -> <anything>, :document (optional) -> <anything>, :document_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :snippet = map where {:id -> <integer greater than 0>, :type -> <must equal :snippet>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :transform = map where {:id -> <integer greater than 0>, :type -> <must equal :transform>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :creator (optional) -> <anything>, :table (optional) -> <anything>, :last_run (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :dashboard = map where {:id -> <integer greater than 0>, :type -> <must equal :dashboard>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :moderation_reviews (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :document = map where {:id -> <integer greater than 0>, :type -> <must equal :document>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :sandbox = map where {:id -> <integer greater than 0>, :type -> <must equal :sandbox>, :data -> <map where {:table (optional) -> <anything>, :table_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :segment = map where {:id -> <integer greater than 0>, :type -> <must equal :segment>, :data -> <map where {:name (optional) -> <anything>, :type (optional) -> <anything>, :display (optional) -> <anything>, :database_id (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :description (optional) -> <anything>, :result_metadata (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :dashboard (optional) -> <anything>, :dashboard_id (optional) -> <anything>, :document (optional) -> <anything>, :document_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>}> dispatched by :type>, :edges -> <sequence of map where {:from_entity_type -> <enum of :table, :card, :snippet, :transform, :dashboard, :document, :sandbox, :segment>, :from_entity_id -> <integer greater than 0>, :to_entity_type -> <enum of :table, :card, :snippet, :transform, :dashboard, :document, :sandbox, :segment>, :to_entity_id -> <integer greater than 0>}>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20779,6 +21454,74 @@
           }
         },
         "summary" : "GET /api/ee/dependencies/graph",
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/broken" : {
+      "get" : {
+        "description" : "Returns a list of all items with broken queries.\n\n   Accepts optional parameters for filtering:\n   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - query: Search string to filter by name or location\n\n   Returns a list of broken items, each with :id, :type, :data, and :errors fields.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
+              "type" : "string"
+            }, {
+              "items" : {
+                "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "enum" : [ "question", "model", "metric" ],
+              "type" : "string"
+            }, {
+              "items" : {
+                "enum" : [ "question", "model", "metric" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "sequence of one of <:table = map where {:id -> <integer greater than 0>, :type -> <must equal :table>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :display_name (optional) -> <anything>, :db_id (optional) -> <anything>, :db (optional) -> <anything>, :schema (optional) -> <anything>, :fields (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :card = map where {:id -> <integer greater than 0>, :type -> <must equal :card>, :data -> <map where {:name (optional) -> <anything>, :type (optional) -> <anything>, :display (optional) -> <anything>, :database_id (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :description (optional) -> <anything>, :result_metadata (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :dashboard (optional) -> <anything>, :dashboard_id (optional) -> <anything>, :document (optional) -> <anything>, :document_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :snippet = map where {:id -> <integer greater than 0>, :type -> <must equal :snippet>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :transform = map where {:id -> <integer greater than 0>, :type -> <must equal :transform>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :creator (optional) -> <anything>, :table (optional) -> <anything>, :last_run (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :dashboard = map where {:id -> <integer greater than 0>, :type -> <must equal :dashboard>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :moderation_reviews (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :document = map where {:id -> <integer greater than 0>, :type -> <must equal :document>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :sandbox = map where {:id -> <integer greater than 0>, :type -> <must equal :sandbox>, :data -> <map where {:table (optional) -> <anything>, :table_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :segment = map where {:id -> <integer greater than 0>, :type -> <must equal :segment>, :data -> <map where {:name (optional) -> <anything>, :type (optional) -> <anything>, :display (optional) -> <anything>, :database_id (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :description (optional) -> <anything>, :result_metadata (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :dashboard (optional) -> <anything>, :dashboard_id (optional) -> <anything>, :document (optional) -> <anything>, :document_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>}> dispatched by :type"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/dependencies/graph/broken",
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
@@ -20828,7 +21571,17 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "sequence of one of <:table = map where {:id -> <integer greater than 0>, :type -> <must equal :table>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :display_name (optional) -> <anything>, :db_id (optional) -> <anything>, :db (optional) -> <anything>, :schema (optional) -> <anything>, :fields (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :card = map where {:id -> <integer greater than 0>, :type -> <must equal :card>, :data -> <map where {:name (optional) -> <anything>, :type (optional) -> <anything>, :display (optional) -> <anything>, :database_id (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :description (optional) -> <anything>, :result_metadata (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :dashboard (optional) -> <anything>, :dashboard_id (optional) -> <anything>, :document (optional) -> <anything>, :document_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :snippet = map where {:id -> <integer greater than 0>, :type -> <must equal :snippet>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :transform = map where {:id -> <integer greater than 0>, :type -> <must equal :transform>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :creator (optional) -> <anything>, :table (optional) -> <anything>, :last_run (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :dashboard = map where {:id -> <integer greater than 0>, :type -> <must equal :dashboard>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :moderation_reviews (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :document = map where {:id -> <integer greater than 0>, :type -> <must equal :document>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :sandbox = map where {:id -> <integer greater than 0>, :type -> <must equal :sandbox>, :data -> <map where {:table (optional) -> <anything>, :table_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :segment = map where {:id -> <integer greater than 0>, :type -> <must equal :segment>, :data -> <map where {:name (optional) -> <anything>, :type (optional) -> <anything>, :display (optional) -> <anything>, :database_id (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :description (optional) -> <anything>, :result_metadata (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :dashboard (optional) -> <anything>, :dashboard_id (optional) -> <anything>, :document (optional) -> <anything>, :document_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>}> dispatched by :type"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20838,6 +21591,106 @@
           }
         },
         "summary" : "GET /api/ee/dependencies/graph/dependents",
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/status" : {
+      "get" : {
+        "description" : "Returns the status of dependency analysis across all entities.\n\n   Returns an object with:\n   - dependencies_analyzed: true if all entities have been analyzed with the current version",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "dependencies_analyzed" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "dependencies_analyzed" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:dependencies_analyzed -> <boolean>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/dependencies/graph/status",
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/unreferenced" : {
+      "get" : {
+        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - query: Search string to filter by name or location\n\n   Returns a list of unreferenced items, each with :id, :type, and :data fields.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
+              "type" : "string"
+            }, {
+              "items" : {
+                "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "enum" : [ "question", "model", "metric" ],
+              "type" : "string"
+            }, {
+              "items" : {
+                "enum" : [ "question", "model", "metric" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "sequence of one of <:table = map where {:id -> <integer greater than 0>, :type -> <must equal :table>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :display_name (optional) -> <anything>, :db_id (optional) -> <anything>, :db (optional) -> <anything>, :schema (optional) -> <anything>, :fields (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :card = map where {:id -> <integer greater than 0>, :type -> <must equal :card>, :data -> <map where {:name (optional) -> <anything>, :type (optional) -> <anything>, :display (optional) -> <anything>, :database_id (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :description (optional) -> <anything>, :result_metadata (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :dashboard (optional) -> <anything>, :dashboard_id (optional) -> <anything>, :document (optional) -> <anything>, :document_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :snippet = map where {:id -> <integer greater than 0>, :type -> <must equal :snippet>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :transform = map where {:id -> <integer greater than 0>, :type -> <must equal :transform>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :creator (optional) -> <anything>, :table (optional) -> <anything>, :last_run (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :dashboard = map where {:id -> <integer greater than 0>, :type -> <must equal :dashboard>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :moderation_reviews (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :document = map where {:id -> <integer greater than 0>, :type -> <must equal :document>, :data -> <map where {:name (optional) -> <anything>, :description (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :sandbox = map where {:id -> <integer greater than 0>, :type -> <must equal :sandbox>, :data -> <map where {:table (optional) -> <anything>, :table_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>} | :segment = map where {:id -> <integer greater than 0>, :type -> <must equal :segment>, :data -> <map where {:name (optional) -> <anything>, :type (optional) -> <anything>, :display (optional) -> <anything>, :database_id (optional) -> <anything>, :view_count (optional) -> <anything>, :created_at (optional) -> <anything>, :creator (optional) -> <anything>, :creator_id (optional) -> <anything>, :description (optional) -> <anything>, :result_metadata (optional) -> <anything>, :last-edit-info (optional) -> <anything>, :collection (optional) -> <anything>, :collection_id (optional) -> <anything>, :dashboard (optional) -> <anything>, :dashboard_id (optional) -> <anything>, :document (optional) -> <anything>, :document_id (optional) -> <anything>}>, :dependents_count -> <nullable map from <enum of :table, :snippet, :transform, :dashboard, :document, :sandbox, :segment, :question, :model, :metric> to <integer>>, :errors (optional) -> <set of map where {:type -> <keyword>}, and one of <:validate/missing-column = map where {:type -> <must equal :validate/missing-column>, :name -> <string>} | :validate/missing-table-alias = map where {:type -> <must equal :validate/missing-table-alias>, :name -> <string>} | :validate/duplicate-column = map where {:type -> <must equal :validate/duplicate-column>, :name -> <string>} | :validate/syntax-error = map where {:type -> <must equal :validate/syntax-error>} | :validate/validation-error = map where {:type -> <must equal :validate/validation-error>, :message -> <string>}> dispatched by metabase.lib.schema.validate$eval55803$fn__55804@1419f5dd>}> dispatched by :type"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/dependencies/graph/unreferenced",
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
@@ -30094,6 +30947,66 @@
           }
         },
         "summary" : "GET /api/preview_embed/card/{token}/params/{param-key}/remapping",
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
+    "/api/preview_embed/card/{token}/params/{param-key}/values" : {
+      "get" : {
+        "description" : "Embedded version of api.card filter values endpoint.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "has_more_values" : {
+                      "type" : "boolean"
+                    },
+                    "values" : {
+                      "items" : {
+                        "anyOf" : [ {
+                          "prefixItems" : [ { }, {
+                            "type" : "string"
+                          } ],
+                          "type" : "array"
+                        }, {
+                          "prefixItems" : [ { } ],
+                          "type" : "array"
+                        } ]
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "has_more_values", "values" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:has_more_values -> <boolean>, :values -> <sequence of vector with exactly 2 items of type: anything, string, or vector with exactly 1 items of type: anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/preview_embed/card/{token}/params/{param-key}/values",
         "tags" : [ "/api/preview_embed" ]
       }
     },
