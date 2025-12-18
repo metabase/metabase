@@ -17,6 +17,7 @@
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -130,16 +131,17 @@
   "Job to backfill dependencies for all entities.
   Returns true if a full batch has been selected, nil or false otherwise."
   []
-  (-> (reduce (fn [batch-size model-kw]
-                (if (< batch-size 1)
-                  (reduced 0)
-                  (let [processed (backfill-entity-batch! model-kw batch-size)]
-                    (when (pos? processed)
-                      (log/info "Updated" processed "entities."))
-                    (- batch-size processed))))
-              (deps.settings/dependency-backfill-batch-size)
-              entities)
-      (< 1)))
+  (when (premium-features/has-feature? :dependencies)
+    (-> (reduce (fn [batch-size model-kw]
+                  (if (< batch-size 1)
+                    (reduced 0)
+                    (let [processed (backfill-entity-batch! model-kw batch-size)]
+                      (when (pos? processed)
+                        (log/info "Updated" processed "entities."))
+                      (- batch-size processed))))
+                (deps.settings/dependency-backfill-batch-size)
+                entities)
+        (< 1))))
 
 (defn- has-pending-retries? []
   (some (fn [^Map model-retry-state]
@@ -191,6 +193,8 @@
 
 (derive ::backfill :metabase/event)
 (derive :event/serdes-load ::backfill)
+(derive :event/set-premium-embedding-token ::backfill)
 (methodical/defmethod events/publish-event! ::backfill
   [_ _]
-  (backfill-dependencies!))
+  (when (premium-features/has-feature? :dependencies)
+    (backfill-dependencies!)))
