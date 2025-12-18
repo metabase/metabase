@@ -7,6 +7,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
 import type {
   CardType,
+  CollectionId,
   PythonTransformTableAliases,
   TransformTagId,
 } from "metabase-types/api";
@@ -786,7 +787,7 @@ LIMIT
 
       cy.log("Navigate to transform B");
       H.DataStudio.nav().findByRole("link", { name: "Transforms" }).click();
-      cy.findByRole("table").findByText("Transform B").click();
+      cy.findByRole("treegrid").findByText("Transform B").click();
 
       cy.log("Remove the new tag from transform B");
       H.DataStudio.Transforms.runTab().click();
@@ -803,7 +804,7 @@ LIMIT
 
       cy.log("Navigate to transform A");
       getTransformsNavLink().click();
-      cy.findByRole("table").findByText("Transform A").click();
+      cy.findByRole("treegrid").findByText("Transform A").click();
 
       cy.log("The tag should be gone");
       H.DataStudio.Transforms.runTab().click();
@@ -1569,12 +1570,6 @@ LIMIT
         H.PythonEditor.value().should("contain", "import common");
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a database")
-          .click();
-
-        H.popover().findByText(DB_NAME).click();
-
-        cy.findByTestId("python-data-picker")
           .findByText("Select a table…")
           .click();
 
@@ -1632,6 +1627,285 @@ LIMIT
     function getLibraryEditorHeader() {
       return cy.findByTestId("python-library-header");
     }
+  });
+
+  describe("collections", () => {
+    it("should create collections and save transforms to them", () => {
+      cy.log("create a collection from the transforms list");
+      visitTransformListPage();
+      cy.button("Create a transform").click();
+      H.popover().findByText("New collection").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("Marketing Transforms");
+        cy.button("Create").click();
+      });
+
+      getTransformsList().within(() => {
+        cy.findByText("Marketing Transforms").should("be.visible");
+      });
+
+      cy.log("create a nested collection");
+      cy.button("Create a transform").click();
+      H.popover().findByText("New collection").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("Q4 Reports");
+        cy.findByTestId("collection-picker-button").click();
+      });
+
+      cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
+        cy.findByText("Marketing Transforms").click();
+        cy.findByRole("button", { name: "Select" }).click();
+      });
+
+      H.modal().findByRole("button", { name: "Create" }).click();
+
+      getTransformsList().within(() => {
+        // Expand the collection to see the nested collection
+        cy.findByText("Marketing Transforms").click();
+        cy.findByText("Q4 Reports").should("be.visible");
+      });
+
+      cy.log("create a transform and save it to a collection");
+      cy.button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.miniPicker().within(() => {
+        cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
+        cy.findByText(SOURCE_TABLE).click();
+      });
+
+      getQueryEditor().button("Save").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Sales Summary");
+        cy.findByLabelText("Table name").clear().type("sales_summary");
+        cy.findByTestId("collection-picker-button").click();
+      });
+
+      cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
+        cy.findByText("Marketing Transforms").click();
+        cy.findByRole("button", { name: "Select" }).click();
+      });
+
+      H.modal().findByRole("button", { name: "Save" }).click();
+      cy.wait("@createTransform");
+
+      cy.log("verify breadcrumbs show the collection path");
+      cy.findByTestId("data-studio-breadcrumbs").within(() => {
+        cy.findByText("Marketing Transforms").should("be.visible");
+        cy.findByText("Sales Summary").should("be.visible");
+      });
+
+      cy.log("navigate back to list via breadcrumb");
+      cy.findByTestId("data-studio-breadcrumbs").within(() => {
+        cy.findByRole("link", { name: "Marketing Transforms" }).click();
+      });
+
+      cy.url().should("include", "collectionId=");
+      getTransformsList().within(() => {
+        cy.findByText("Sales Summary").should("be.visible");
+        cy.findByText("Q4 Reports").should("be.visible");
+      });
+    });
+
+    it("should move transforms between collections", () => {
+      H.createTransformCollection({ name: "Target Collection" });
+
+      createMbqlTransform({
+        name: "Movable Transform",
+        targetTable: "movable_transform",
+        visitTransform: true,
+      });
+
+      cy.log("move transform to collection");
+      H.DataStudio.Transforms.header().icon("ellipsis").click();
+      H.popover().findByText("Move").click();
+
+      H.modal().within(() => {
+        cy.findByText("Target Collection").click();
+        cy.findByRole("button", { name: "Select" }).click();
+      });
+
+      H.undoToast().findByText("Transform moved").should("be.visible");
+
+      cy.log("verify breadcrumbs show collection path");
+      cy.findByTestId("data-studio-breadcrumbs").within(() => {
+        cy.findByText("Target Collection").should("be.visible");
+        cy.findByText("Movable Transform").should("be.visible");
+      });
+
+      cy.log("move transform back to root");
+      H.DataStudio.Transforms.header().icon("ellipsis").click();
+      H.popover().findByText("Move").click();
+
+      H.modal().within(() => {
+        cy.findByText("Transforms").click();
+        cy.findByRole("button", { name: "Select" }).click();
+      });
+
+      H.undoToastList().findByText("Transform moved").should("be.visible");
+
+      cy.log("verify breadcrumbs no longer show collection");
+      cy.findByTestId("data-studio-breadcrumbs").within(() => {
+        cy.findByText("Target Collection").should("not.exist");
+        cy.findByText("Movable Transform").should("be.visible");
+      });
+    });
+
+    it("should support search in the transforms list", () => {
+      H.createTransformCollection({ name: "Analytics" }).then((collection) => {
+        createMbqlTransform({
+          name: "Alpha Transform",
+          targetTable: "alpha_output",
+        });
+
+        createMbqlTransform({
+          name: "Beta Transform",
+          targetTable: "beta_output",
+          collectionId: collection.body.id,
+        });
+      });
+
+      visitTransformListPage();
+
+      cy.log("search should find transforms by name");
+      cy.findByPlaceholderText("Search...").type("alpha");
+
+      getTransformsList().within(() => {
+        cy.findAllByRole("row").should("have.length", 1);
+        cy.findByText("Alpha Transform").should("be.visible");
+        cy.findByText("Beta Transform").should("not.exist");
+      });
+
+      cy.log("search should find transforms by output table name");
+      cy.findByPlaceholderText("Search...").clear().type("beta_output");
+
+      getTransformsList().within(() => {
+        cy.findByText("Beta Transform").should("be.visible");
+        cy.findByText("Alpha Transform").should("not.exist");
+        cy.findByText("Analytics").should("be.visible");
+      });
+
+      cy.findByPlaceholderText("Search...").clear();
+    });
+
+    it("should create a new collection from the collection picker while saving a transform", () => {
+      visitTransformListPage();
+      cy.button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.miniPicker().within(() => {
+        cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
+        cy.findByText(SOURCE_TABLE).click();
+      });
+
+      getQueryEditor().button("Save").click();
+
+      cy.log("open collection picker and create new collection inline");
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Analytics Transform");
+        cy.findByLabelText("Table name").clear().type("analytics_transform");
+        cy.findByTestId("collection-picker-button").click();
+      });
+
+      cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
+        cy.findByRole("button", { name: /New collection/ }).click();
+      });
+
+      cy.findByRole("dialog", { name: "Create a new collection" }).within(
+        () => {
+          cy.findByLabelText("Give it a name").type("Analytics");
+          cy.button("Create").click();
+        },
+      );
+
+      cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
+        cy.findByText("Analytics").should("be.visible");
+        cy.findByRole("button", { name: "Select" }).click();
+      });
+
+      H.modal().findByRole("button", { name: "Save" }).click();
+      cy.wait("@createTransform");
+
+      cy.log("verify transform is in the new collection");
+      cy.findByTestId("data-studio-breadcrumbs").within(() => {
+        cy.findByText("Analytics").should("be.visible");
+        cy.findByText("Analytics Transform").should("be.visible");
+      });
+
+      getTransformsNavLink().click();
+      getTransformsList().within(() => {
+        cy.findByText("Analytics").should("be.visible");
+        cy.findByText("Analytics").click();
+        cy.findByText("Analytics Transform").should("be.visible");
+      });
+    });
+
+    it("should sort transforms by all columns", () => {
+      H.createTransformCollection({ name: "Reports" }).then((collection) => {
+        createMbqlTransform({
+          name: "Zebra Transform",
+          targetTable: "zebra_output",
+        });
+
+        createMbqlTransform({
+          name: "Alpha Transform",
+          targetTable: "alpha_output",
+          collectionId: collection.body.id,
+        });
+
+        createMbqlTransform({
+          name: "Middle Transform",
+          targetTable: "middle_output",
+        });
+      });
+
+      visitTransformListPage();
+
+      cy.log("expand Reports collection to see all transforms");
+      getTransformsList().findByText("Reports").click();
+
+      cy.log("verify sorting by name column ascending");
+      getTransformsList().findByText("Name").click();
+
+      getRowNames().should("deep.equal", [
+        "Middle Transform",
+        "Reports",
+        "Alpha Transform",
+        "Zebra Transform",
+      ]);
+
+      cy.log("verify sorting by name column descending");
+      getTransformsList().findByText("Name").click();
+      getRowNames().should("deep.equal", [
+        "Zebra Transform",
+        "Reports",
+        "Alpha Transform",
+        "Middle Transform",
+      ]);
+
+      cy.log("verify sorting by output table column ascending");
+      getTransformsList().findByText("Output table").click();
+      getRowNames().should("deep.equal", [
+        "Reports",
+        "Alpha Transform",
+        "Middle Transform",
+        "Zebra Transform",
+      ]);
+
+      cy.log("verify sorting by output table column descending");
+      getTransformsList().findByText("Output table").click();
+      getRowNames().should("deep.equal", [
+        "Zebra Transform",
+        "Middle Transform",
+        "Reports",
+        "Alpha Transform",
+      ]);
+    });
   });
 });
 
@@ -2317,6 +2591,39 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
+describe("scenarios > admin > transforms", () => {
+  beforeEach(() => {
+    H.restore();
+    H.resetSnowplow();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should not pick the only database when it is disabled in SQL editor", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("SQL query").click();
+
+    cy.findByTestId("gui-builder-data")
+      .findByText("Select a database")
+      .should("be.visible");
+  });
+
+  it("should not pick the only database when it is disabled in Python editor", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("Python script").click();
+
+    getPythonDataPicker().findByText("Select a database").should("be.visible");
+  });
+});
+
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Transforms" });
 }
@@ -2468,6 +2775,7 @@ function createMbqlTransform(
     name?: string;
     databaseId?: number;
     visitTransform?: boolean;
+    collectionId?: CollectionId | null;
   } = {},
 ) {
   return H.createMbqlTransform({
@@ -2575,4 +2883,10 @@ function setPythonRunnerSettings() {
     "http://localstack:4566",
   );
   H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
+}
+
+function getRowNames(): Cypress.Chainable<string[]> {
+  return getTransformsList()
+    .findAllByTestId("tree-node-name")
+    .then(($rows) => $rows.get().map((row) => row.textContent.trim()));
 }

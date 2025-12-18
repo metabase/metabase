@@ -84,19 +84,16 @@ export function LibrarySectionLayout() {
   );
   const {
     tree: tablesTree,
-    hasChildren: hasTables,
     isLoading: loadingTables,
     error: tablesError,
   } = useBuildTreeForCollection(tableCollection);
   const {
     tree: metricsTree,
-    hasChildren: hasMetrics,
     isLoading: loadingMetrics,
     error: metricsError,
   } = useBuildTreeForCollection(metricCollection);
   const {
     tree: snippetTree,
-    hasChildren: hasSnippets,
     isLoading: loadingSnippets,
     error: snippetsError,
   } = useBuildSnippetTree();
@@ -107,13 +104,10 @@ export function LibrarySectionLayout() {
     searchProps: ["name"],
   });
 
-  const libraryHasContent = hasTables || hasMetrics || hasSnippets;
   const isLoading = loadingTables || loadingMetrics || loadingSnippets;
   useErrorHandling(tablesError || metricsError || snippetsError);
-  const filterReturnedEmpty =
-    !!searchQuery && filteredTree.length === 0 && libraryHasContent;
-  const showEmptyState =
-    !isLoading && (!libraryHasContent || filterReturnedEmpty);
+  const filterReturnedEmpty = !!searchQuery && filteredTree.length === 0;
+  const showEmptyState = !isLoading && filterReturnedEmpty;
 
   const libraryColumnDef = useMemo<ColumnDef<TreeItem>[]>(
     () => [

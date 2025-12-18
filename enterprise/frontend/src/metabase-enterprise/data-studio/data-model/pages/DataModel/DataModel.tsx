@@ -1,5 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -134,6 +134,10 @@ function DataModelContent({ params }: Props) {
     },
   );
 
+  const scrollToPanel = useCallback((el: HTMLDivElement | null) => {
+    el?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   if (databasesData?.data?.length === 0) {
     return <NoDatabasesEmptyState />;
   }
@@ -236,7 +240,6 @@ function DataModelContent({ params }: Props) {
 
         {showFieldDetails && (
           <Stack
-            bg="white"
             className={S.column}
             flex={COLUMN_CONFIG.field.flex}
             h="100%"
@@ -245,6 +248,7 @@ function DataModelContent({ params }: Props) {
             }
             maw={COLUMN_CONFIG.field.max}
             miw={COLUMN_CONFIG.field.min}
+            ref={scrollToPanel}
           >
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {field && table && databaseId != null && (
@@ -277,12 +281,12 @@ function DataModelContent({ params }: Props) {
 
         {showFieldPreview && databaseId != null && fieldId != null && (
           <Box
-            bg="accent-gray-light"
             flex={COLUMN_CONFIG.preview.flex}
             h="100%"
             p="lg"
             maw={COLUMN_CONFIG.preview.max}
             miw={COLUMN_CONFIG.preview.min}
+            ref={scrollToPanel}
           >
             <PreviewSection
               className={S.preview}

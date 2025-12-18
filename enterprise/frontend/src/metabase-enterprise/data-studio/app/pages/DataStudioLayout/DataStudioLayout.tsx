@@ -223,7 +223,7 @@ function DataStudioNavbarToggle({
   onNavbarToggle,
 }: DataStudioNavbarToggleProps) {
   return (
-    <Flex justify="space-between">
+    <Flex justify="space-between" mb={2}>
       <UnstyledButton
         className={cx(S.toggle, {
           [S.hoverButton]: !isNavbarOpened,

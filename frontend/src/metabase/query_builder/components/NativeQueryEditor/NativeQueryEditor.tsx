@@ -12,9 +12,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import Databases from "metabase/entities/databases";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import Snippets from "metabase/entities/snippets";
+import { Databases } from "metabase/entities/databases";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { Snippets } from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
 import {
   runOrCancelQuestionOrSelectedQuery,
