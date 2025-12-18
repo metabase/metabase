@@ -83,14 +83,6 @@ export const NotebookContainer = ({
   const screenSize = useNotebookScreenSize();
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
-  useEffect(() => {
-    // If someone resizes to a small window with the native preview previously open,
-    // we want to close it because it obscures the notebook view
-    if (screenSize === "small" && isShowingNotebookNativePreview === true) {
-      dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
-    }
-  }, [dispatch, isShowingNotebookNativePreview, screenSize]);
-
   const Handle = forwardRef<
     HTMLDivElement,
     Partial<ResizableBoxProps> & {

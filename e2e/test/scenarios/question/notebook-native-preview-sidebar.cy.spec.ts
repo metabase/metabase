@@ -119,15 +119,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     },
   );
 
-  it("resizing to the small window should close the native preview (metabase#48170)", () => {
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
-    cy.findByLabelText("View SQL").click();
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-
-    resizeScreen("small");
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-  });
-
   it("sidebar should be resizable", () => {
     const toleranceDelta = 0.5;
 
@@ -466,15 +457,4 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
       cb(initialSidebarWidth, sidebarWidth);
     });
   });
-}
-
-function resizeScreen(size: "small" | "large") {
-  const width = size === "small" ? 800 : 1280;
-  cy.viewport(width, 800);
-
-  // We need to wait for react to re-render but nothing really changes on the screen
-  // when changing viewport size, so it's hard to detect when it happens.
-  // Let's dummy-interact with the app to make sure it re-rendered.
-  cy.findByLabelText("Settings menu").click(); // open menu
-  cy.findByLabelText("Settings menu").click(); // close menu
 }
