@@ -167,4 +167,5 @@
 (deftest ^:parallel time-test
   (are [t] (not (me/humanize (mr/explain :mbql.clause/time [:time {:lib/uuid "00000000-0000-0000-0000-000000000000"} t :default])))
     "08:00"
-    #?@(:clj [#t "08:00"])))
+    #?@(:clj [#t "08:00"
+              #t "08:00+05:30"])))
