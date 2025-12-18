@@ -1264,7 +1264,6 @@
            metabase.segments.schema}
    :uses #{api
            events
-           legacy-mbql
            lib
            lib-be
            models
