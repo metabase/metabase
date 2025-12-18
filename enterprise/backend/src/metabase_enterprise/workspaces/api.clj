@@ -464,11 +464,11 @@
   "Detect problems in the workspace that would affect downstream transforms after merge.
 
    Returns a list of problems, each with:
-   - category: the problem category (e.g. 'unused', 'internal-downstream', 'external-downstream')
-   - problem: the specific problem (e.g. 'not-run', 'stale', 'removed-field')
-   - severity: :error, :warning, or :info
+   - category:    the problem category (e.g. 'unused', 'internal-downstream', 'external-downstream')
+   - problem:     the specific problem (e.g. 'not-run', 'stale', 'removed-field')
+   - severity:    :error, :warning, or :info
    - block-merge: whether this problem prevents merging
-   - data: polymorphic data depending on the problem type
+   - data:        extra information, shape depends on the problem type
 
    See `metabase-enterprise.workspaces.types/problem-types` for the full list."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
