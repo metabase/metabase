@@ -12,7 +12,6 @@ import {
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
   isItemCollection,
-  isItemInCollectionOrItsDescendants,
 } from "metabase/collections/utils";
 import {
   type CollectionPickerItem,
@@ -21,6 +20,7 @@ import {
   type CollectionPickerValueItem,
   getCollectionType,
 } from "metabase/common/components/Pickers/CollectionPicker";
+import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionId,

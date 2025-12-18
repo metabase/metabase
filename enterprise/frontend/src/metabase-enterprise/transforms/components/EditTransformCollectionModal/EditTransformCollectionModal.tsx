@@ -11,9 +11,9 @@ import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
 } from "metabase/collections/schemas";
-import { isItemInCollectionOrItsDescendants } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,
