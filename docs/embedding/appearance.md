@@ -7,15 +7,9 @@ redirect_from:
 
 # Customizing the appearance of modular embeds
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding" %}
 
-You can style your embedded [Metabase components](./components.md) with a `theme`.
-
-In your Metabase:
-
-- Visit the item you want to embed
-- Click on the sharing icon.
-- Select **Embed**.
+You can style your embedded [Metabase components](./components.md) with a **theme**.
 
 ![Embed share button](./images/embed-share-button.png)
 
