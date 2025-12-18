@@ -1367,7 +1367,7 @@
 
 (defmulti drop-index!
   "Drops an index named `index-name` created by [[metabase.driver/create-index!]]. Throws if the index does not exist."
-  {:added "0.58.0", :arglists '([driver database-id table-name index-name & args])}
+  {:added "0.58.0", :arglists '([driver database-id schema table-name index-name & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
