@@ -115,7 +115,7 @@
         metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id
                                                               :entity-id])]
     ;; Ensure internal metabot is set to the root collection for generating prompts
-    (t2/update! :model/Metabot {:collection_id nil} :entity_id metabot-eid)
+    (t2/update! :model/Metabot :entity_id metabot-eid {:collection_id nil})
     (mt/with-temp [:model/Card c {:type :metric
                                   :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                      (lib/aggregate
