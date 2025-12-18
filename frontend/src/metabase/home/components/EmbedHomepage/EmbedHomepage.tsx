@@ -7,7 +7,7 @@ import { getPlan } from "metabase/common/utils/plan";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import { addUndo } from "metabase/redux/undo";
-import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import { getDocsUrl } from "metabase/selectors/settings";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
@@ -41,9 +41,7 @@ export const EmbedHomepage = () => {
     getDocsUrl(state, { page: "embedding/embedded-analytics-js" }),
   );
 
-  const plan = useSelector((state) =>
-    getPlan(getSetting(state, "token-features")),
-  );
+  const plan = getPlan(useSetting("token-features"));
 
   const utmTags = `?utm_source=product&source_plan=${plan}&utm_content=embedding-homepage`;
 
