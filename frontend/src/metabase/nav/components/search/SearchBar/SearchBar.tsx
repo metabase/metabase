@@ -11,6 +11,7 @@ import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useToggle } from "metabase/common/hooks/use-toggle";
@@ -26,7 +27,6 @@ import {
   getSearchTextFromLocation,
   isSearchPageLocation,
 } from "metabase/search/utils";
-import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
@@ -53,9 +53,7 @@ type OwnProps = {
 type Props = RouterProps & OwnProps;
 
 function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
-  const isTypeaheadEnabled = useSelector((state) =>
-    getSetting(state, "search-typeahead-enabled"),
-  );
+  const isTypeaheadEnabled = useSetting("search-typeahead-enabled");
 
   const [searchText, setSearchText] = useState<string>(
     getSearchTextFromLocation(location),

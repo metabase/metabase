@@ -17,14 +17,13 @@ import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-param
 import { getDashboardType } from "metabase/dashboard/utils";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useSetting } from "metabase/common/hooks";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-parameters";
-import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
@@ -109,9 +108,7 @@ export const EmbedFrame = ({
   contentClassName,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
-  const hasEmbedBranding = useSelector(
-    (state) => !getSetting(state, "hide-embed-branding?"),
-  );
+  const hasEmbedBranding = !useSetting("hide-embed-branding?");
 
   const isPublicDashboard = Boolean(
     dashboard && getDashboardType(dashboard.id) === "public",

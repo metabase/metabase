@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
-import { useLearnUrl } from "metabase/common/hooks";
+import { useLearnUrl , useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
@@ -22,7 +22,6 @@ import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -495,9 +494,7 @@ export function DashCardVisualization({
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 
-  const fontFamily = useSelector((state) =>
-    getSetting(state, "application-font"),
-  );
+  const fontFamily = useSetting("application-font");
 
   const { shouldCollapseList, containerRef, parameterListRef } =
     useResponsiveParameterList({

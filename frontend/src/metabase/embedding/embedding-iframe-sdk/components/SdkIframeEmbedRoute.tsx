@@ -20,10 +20,9 @@ import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/qu
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { useSetting } from "metabase/common/hooks";
 import { createTracker } from "metabase/lib/analytics-untyped";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 import { Stack } from "metabase/ui";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
@@ -276,9 +275,7 @@ const SdkIframeEmbedView = ({
 };
 
 const EmbedBrandingFooter = () => {
-  const hasEmbedBranding = useSelector(
-    (state) => !getSetting(state, "hide-embed-branding?"),
-  );
+  const hasEmbedBranding = !useSetting("hide-embed-branding?");
 
   if (!hasEmbedBranding) {
     return null;
