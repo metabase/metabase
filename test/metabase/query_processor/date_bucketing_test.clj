@@ -1284,7 +1284,7 @@
       ;; metabase.test.data.sql-jdbc.load-data/do-insert! which sets timezone to UTC before inserting).
       ;; Without this, drivers like Redshift that use GETDATE() for relative datetime comparisons
       ;; will fail when the JVM's system timezone differs from UTC.
-      (qp.test-util/with-report-timezone-id! "UTC"
+      (mt/with-report-timezone-id! "UTC"
         (let [results (mt/run-mbql-query checkins
                         {:aggregation [[:count]]
                          :filter      [:=
