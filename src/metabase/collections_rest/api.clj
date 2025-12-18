@@ -26,7 +26,6 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
-   [metabase.settings.core :as settings]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]

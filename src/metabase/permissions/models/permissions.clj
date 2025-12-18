@@ -170,7 +170,7 @@
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.settings.core :as settings]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -415,9 +415,9 @@
    (when (and (nil? namespace-val)
               (premium-features/enable-audit-app?))
      [:= namespace-keyword "analytics"])
-   (when (and include-tenant-namespaces? (nil? namespace-val) (settings/get :use-tenants))
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
      [:= namespace-keyword "shared-tenant-collection"])
-   (when (and include-tenant-namespaces? (nil? namespace-val) (settings/get :use-tenants))
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
      [:= namespace-keyword "tenant-specific"])])
 
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam

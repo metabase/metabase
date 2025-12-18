@@ -3,9 +3,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.search.config :refer [SearchContext]]
-   [metabase.settings.core :as settings]
    [metabase.util.malli :as mu]))
 
 (defn- assert-current-user! [missing-param]
