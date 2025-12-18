@@ -131,7 +131,6 @@
   a single aggregation clause."
   [x]
   (when-let [[tag _opts & args] (when (vector? x) x)]
-    (println "(pr-str args):" (pr-str args)) ; NOCOMMIT
     (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
         ;; Case has the following shape [:case opts [[cond expr]...] default-expr?]
         ;;

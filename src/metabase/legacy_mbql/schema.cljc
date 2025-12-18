@@ -1248,9 +1248,19 @@
 (mr/def ::AggregationArg
   "Schema for the argument to an aggregation clause like `:sum`.
 
-  Strings are allowed as literals here, unlike at the top level as `::Expressions`, so `::FieldOrExpressionDef` is
-  not enough. However, nested aggregations are not allowed here, so we can't use `::ExpressionArg` either. (#66199)"
-  [:or ::FieldOrExpressionDef :string])
+  Nested aggregations are not allowed here, so we can't use `::ExpressionArg` directly. (#66199)
+
+  Unlike `::FieldOrExpressionDef`, raw integers are treated as unwrapped `:field` clauses for backwards compatibility
+  with MBQL 1 and 2, e.g.
+
+    [:sum 1] => [:sum [:field 1 nil]]"
+  [:and
+   [:ref ::FieldOrExpressionDef]
+   [:any
+    {:decode/normalize (fn [x]
+                         (if (pos-int? x)
+                           [:field x nil]
+                           x))}]])
 
 ;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
 

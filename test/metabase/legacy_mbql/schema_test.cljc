@@ -590,3 +590,7 @@
                    [:= [:expression "Paid" {:base-type :type/Boolean}] true]]]}]
                normalized))
         (is (mr/validate ::mbql.s/DateTimeExpressionArg normalized))))))
+
+(deftest ^:parallel normalize-unwrapped-field-id-test
+  (is (= [:sum [:field 10 nil]]
+         (lib/normalize ::mbql.s/sum [:sum 10]))))
