@@ -44,10 +44,10 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
   setNamespace?: (namespace: string | undefined) => void;
   /**
-   * The type of item being saved. When set to a non-collection model,
-   * namespace root collections (like tenant root) will be disabled.
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
    */
-  savingModel?: "collection" | "dashboard" | "question" | "model";
+  savingModel?: "collection" | null;
 }
 
 function ItemName({

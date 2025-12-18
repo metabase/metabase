@@ -54,6 +54,7 @@ import type {
   ParameterValueOrArray,
   RowValue,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { State } from "metabase-types/store";
 
 import { Value as ValueComponent } from "../Value";
@@ -113,7 +114,7 @@ export interface IFieldValuesWidgetProps {
   fields: Field[];
   dashboardId?: DashboardId;
   cardId?: CardId;
-  token?: string | null;
+  token?: EntityToken | null;
 
   value: RowValue[];
   onChange: (value: RowValue[]) => void;
@@ -328,6 +329,7 @@ export const FieldValuesWidgetInner = forwardRef<
         parameter,
         cardId,
         dashboardId,
+        token,
         autoLoad: true,
         compact: false,
         displayValue: option?.[1],
@@ -344,6 +346,7 @@ export const FieldValuesWidgetInner = forwardRef<
         parameter,
         cardId,
         dashboardId,
+        token,
         autoLoad: false,
         displayValue: option[1],
       });
@@ -486,6 +489,7 @@ export const FieldValuesWidgetInner = forwardRef<
                 fields={fields}
                 dashboardId={dashboardId}
                 cardId={cardId}
+                token={token}
                 value={isNumericParameter ? parseNumericValue(value) : value}
                 tc={tc}
               />
@@ -675,6 +679,7 @@ function renderValue({
   parameter,
   cardId,
   dashboardId,
+  token,
   fields,
   value,
   formatOptions,
@@ -688,6 +693,7 @@ function renderValue({
   parameter?: Parameter;
   cardId?: CardId;
   dashboardId?: DashboardId;
+  token?: EntityToken | null;
   autoLoad?: boolean;
   compact?: boolean;
   displayValue?: string;
@@ -699,6 +705,7 @@ function renderValue({
       parameter={parameter}
       cardId={cardId}
       dashboardId={dashboardId}
+      token={token}
       maximumFractionDigits={20}
       remap={displayValue || Field.remappedField(fields) != null}
       displayValue={displayValue}
@@ -715,6 +722,7 @@ type RemappedValueProps = {
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
+  token?: EntityToken | null;
   tc: ContentTranslationFunction;
 };
 
@@ -724,6 +732,7 @@ function RemappedValue({
   value,
   dashboardId,
   cardId,
+  token,
   tc,
 }: RemappedValueProps) {
   const isRemapped =
@@ -733,7 +742,7 @@ function RemappedValue({
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped
       ? {
-          dashboard_id: dashboardId,
+          dashboard_id: token ?? dashboardId,
           parameter_id: parameter.id,
           value,
         }
@@ -743,7 +752,7 @@ function RemappedValue({
   const { data: cardData } = useGetRemappedCardParameterValueQuery(
     cardId != null && value != null && isRemapped
       ? {
-          card_id: cardId,
+          card_id: token ?? cardId,
           parameter_id: parameter.id,
           value,
         }

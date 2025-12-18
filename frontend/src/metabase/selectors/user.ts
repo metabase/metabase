@@ -59,3 +59,8 @@ export const getUserCanWriteToCollections = createSelector(
   [getUser],
   (user) => user?.can_write_any_collection,
 );
+
+export const getIsTenantUser = createSelector(
+  [getUser],
+  (user) => user?.tenant_id != null,
+);
