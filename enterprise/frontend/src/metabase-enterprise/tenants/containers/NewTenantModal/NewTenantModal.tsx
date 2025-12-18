@@ -10,9 +10,13 @@ import { TenantForm } from "../../components/TenantForm";
 
 interface NewUserModalProps {
   onClose: () => void;
+  isFirstTenant?: boolean;
 }
 
-export const NewTenantModal = ({ onClose }: NewUserModalProps) => {
+export const NewTenantModal = ({
+  onClose,
+  isFirstTenant = false,
+}: NewUserModalProps) => {
   const dispatch = useDispatch();
 
   const [createTenant] = useCreateTenantMutation();
@@ -28,10 +32,15 @@ export const NewTenantModal = ({ onClose }: NewUserModalProps) => {
   };
 
   return (
-    <Modal opened title={t`New tenant`} padding="xl" onClose={onClose}>
+    <Modal
+      opened
+      title={isFirstTenant ? t`Set up your first tenant` : t`New tenant`}
+      padding="xl"
+      onClose={onClose}
+    >
       <TenantForm
         initialValues={{}}
-        submitText={t`Create`}
+        submitText={t`Create tenant`}
         onCancel={onClose}
         onSubmit={handleSubmit}
       />

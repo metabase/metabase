@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -16,6 +17,7 @@ import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButto
 import { TenantsListing } from "../components/TenantsListing";
 import { TenantsListingEmptyState } from "../components/TenantsListingEmptyState";
 
+import { NewTenantModal } from "./NewTenantModal/NewTenantModal";
 import S from "./TenantsListingApp.module.css";
 
 export const TenantsListingApp = ({
@@ -27,6 +29,10 @@ export const TenantsListingApp = ({
 
   const [searchInputValue, setSearchInputValue] = useState("");
   const [status, setStatus] = useState<ActiveStatus>(ACTIVE_STATUS.active);
+  const [
+    isCreatingFirstTenant,
+    { open: openFirstTenantModal, close: closeFirstTenantModal },
+  ] = useDisclosure(false);
 
   const { isLoading, error, data } = useListTenantsQuery({ status: "all" });
 
@@ -82,7 +88,7 @@ export const TenantsListingApp = ({
       <SettingsSection>
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
           {hasNoTenants ? (
-            <TenantsListingEmptyState onCreateTenant={() => {}} />
+            <TenantsListingEmptyState onCreateTenant={openFirstTenantModal} />
           ) : (
             <TenantsListing
               isAdmin={isAdmin}
@@ -96,6 +102,10 @@ export const TenantsListingApp = ({
 
         {children}
       </SettingsSection>
+
+      {isCreatingFirstTenant && (
+        <NewTenantModal onClose={closeFirstTenantModal} isFirstTenant />
+      )}
     </Box>
   );
 };
