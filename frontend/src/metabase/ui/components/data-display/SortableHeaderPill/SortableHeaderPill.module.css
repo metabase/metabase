@@ -7,13 +7,13 @@
   color: var(--mb-color-brand);
   white-space: nowrap;
   border-radius: 5px;
-  background-color: var(--mb-color-brand-lighter);
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 92%);
   cursor: pointer;
   transition: background-color 200ms ease-in-out;
 }
 
 .pill:hover {
-  background-color: var(--mb-color-brand-light);
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 82%);
 }
 
 .alignRight {
