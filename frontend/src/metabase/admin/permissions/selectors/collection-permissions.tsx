@@ -8,12 +8,13 @@ import {
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import Collections, {
+import {
+  Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import Group from "metabase/entities/groups";
-import SnippetCollections from "metabase/entities/snippet-collections";
+import { Groups } from "metabase/entities/groups";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -233,7 +234,7 @@ export type CollectionPermissionEditorType = null | {
 export const getCollectionsPermissionEditor = createSelector(
   getCollectionsPermissions,
   getCollectionEntity,
-  Group.selectors.getList,
+  Groups.selectors.getList,
   getNamespace,
   (
     permissions,

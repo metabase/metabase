@@ -7,7 +7,7 @@ import _ from "underscore";
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import Toggle from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import { Box, Checkbox, Group, Icon, Text } from "metabase/ui";
+import { Box, Checkbox, Group, Icon, Text, Tooltip } from "metabase/ui";
 
 function getCardIdPair(card) {
   return card.id + "|" + card.dashboard_card_id;
@@ -29,6 +29,7 @@ export default class EmailAttachmentPicker extends Component {
     pulse: PropTypes.object.isRequired,
     setPulse: PropTypes.func.isRequired,
     cards: PropTypes.array.isRequired,
+    allowDownload: PropTypes.bool.isRequired,
   };
 
   componentDidMount() {
@@ -73,6 +74,18 @@ export default class EmailAttachmentPicker extends Component {
 
   canConfigurePivoting() {
     return this.props.cards.some((card) => card.display === "pivot");
+  }
+
+  canAttachFiles() {
+    const { allowDownload } = this.props;
+    return allowDownload;
+  }
+
+  getAttachmentDisabledReason() {
+    if (!this.canAttachFiles()) {
+      return t`You don't have permission to download results and therefore cannot attach files to subscriptions.`;
+    }
+    return null;
   }
 
   shouldUpdateState(newState, currentState) {
@@ -267,6 +280,9 @@ export default class EmailAttachmentPicker extends Component {
       selectedCardIds,
     } = this.state;
 
+    const canAttachFiles = this.canAttachFiles();
+    const disabledReason = this.getAttachmentDisabledReason();
+
     return (
       <div>
         <Group
@@ -274,6 +290,7 @@ export default class EmailAttachmentPicker extends Component {
           justify="space-between"
           pt="1.5rem"
           pb="1.5rem"
+          opacity={canAttachFiles ? 1 : 0.6}
         >
           <Group position="left" gap="0">
             <Text fw="bold">{t`Attach results as files`}</Text>
@@ -282,16 +299,22 @@ export default class EmailAttachmentPicker extends Component {
               c="gray.6"
               ml="0.5rem"
               size={12}
-              tooltip={t`Attachments can contain up to 2,000 rows of data.`}
+              tooltip={
+                disabledReason ||
+                t`Attachments can contain up to 2,000 rows of data.`
+              }
             />
           </Group>
-          <Toggle
-            aria-label={t`Attach results`}
-            value={isEnabled}
-            onChange={this.toggleAttach}
-          />
+          <Tooltip label={disabledReason} disabled={!disabledReason}>
+            <Toggle
+              aria-label={t`Attach results`}
+              value={isEnabled && canAttachFiles}
+              onChange={this.toggleAttach}
+              disabled={!canAttachFiles}
+            />
+          </Tooltip>
         </Group>
-        {isEnabled && (
+        {isEnabled && canAttachFiles && (
           <div>
             <Box py="1rem">
               <ExportSettingsWidget

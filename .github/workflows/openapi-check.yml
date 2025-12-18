@@ -1,0 +1,25 @@
+name: OpenAPI Check
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+
+jobs:
+  check-openapi-specs:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Generate version.properties
+        run: ./bin/build.sh :steps [:version]
+      - name: Check OpenAPI specs are up to date
+        run: ./bin/openapi-check.sh
