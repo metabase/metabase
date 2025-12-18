@@ -14,9 +14,10 @@
 
 (defn- create-merge-transform-history!
   "Create a workspace_merge_transform record to track this merge operation.
-   Does nothing for :noop operations (archived transforms that don't exist globally)."
+   Does nothing for :noop operations (archived transforms that don't exist globally)
+   or :delete operations (history would be CASCADE deleted with the transform anyway)."
   [op merge-map]
-  (when (not= op :noop)
+  (when (#{:create :update} op)
     (t2/insert! :model/WorkspaceMergeTransform merge-map)))
 
 ;; TODO (crisptrutski 2025/12/10): When there are more entity types support, this should update those too.
