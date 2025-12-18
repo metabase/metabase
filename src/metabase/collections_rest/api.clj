@@ -26,6 +26,7 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.settings.core :as settings]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -714,9 +715,9 @@
                         [[:= :namespace nil]
                          (when (premium-features/enable-audit-app?)
                            [:= :namespace "analytics"])
-                         (when (collection/is-trash? collection)
+                         (when (and (settings/get :use-tenants) (collection/is-trash? collection))
                            [:= :namespace "shared-tenant-collection"])
-                         (when (collection/is-trash? collection)
+                         (when (and (settings/get :use-tenants) (collection/is-trash? collection))
                            [:= :namespace "tenant-specific"])])))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
