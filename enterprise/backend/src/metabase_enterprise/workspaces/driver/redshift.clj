@@ -13,6 +13,16 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- user-exists?
+  "Check if a Redshift user exists."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
+(defn- schema-exists?
+  "Check if a schema exists in Redshift."
+  [conn schema-name]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
+
 (defn- schemas-with-user-grants
   "Query Redshift to find schemas where the user has been granted privileges."
   [conn username]
@@ -27,18 +37,26 @@
   (let [schema-name (:schema workspace)
         username    (-> workspace :database_details :user)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (let [granted-schemas (schemas-with-user-grants t-conn username)]
+      (let [user-exists    (user-exists? t-conn username)
+            schema-exists  (schema-exists? t-conn schema-name)
+            granted-schemas (when user-exists
+                              (schemas-with-user-grants t-conn username))]
         (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [schema granted-schemas]
-            (.addBatch ^Statement stmt
-                       ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\""
-                                       schema username))
-            (.addBatch ^Statement stmt
-                       ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
-                                       schema username)))
-          (.addBatch ^Statement stmt
-                     ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
-                                     schema-name username))
+          ;; Only revoke if user exists
+          (when user-exists
+            (doseq [schema granted-schemas]
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\""
+                                         schema username))
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
+                                         schema username)))
+            ;; Only revoke default privileges if both user and schema exist
+            (when schema-exists
+              (.addBatch ^Statement stmt
+                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                         schema-name username))))
+          ;; These are safe with IF EXISTS
           (.addBatch ^Statement stmt
                      ^String (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name))
           (.addBatch ^Statement stmt

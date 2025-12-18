@@ -48,7 +48,8 @@
                 (map? ws-or-id) :id)]
     (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
                  :done?      #(not= :pending (:status %))
-                 :timeout-ms 50000})
+                 ;; some cloud drivers are really slow
+                 :timeout-ms 10000})
         (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
 
 (defn create-workspace-for-test!

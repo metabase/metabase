@@ -58,6 +58,6 @@
         (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)]
                       (user-exists? t-conn username)
                       (into [(format "DROP OWNED BY \"%s\"" username)
-                             (format "DROP USER \"%s\"" username)]))]
+                             (format "DROP USER IF EXISTS \"%s\"" username)]))]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
