@@ -20,8 +20,7 @@
                    ["SELECT DISTINCT namespace_name FROM svv_relation_privileges
            WHERE identity_name = ? AND identity_type = 'user'"
                     username])
-       (map :namespace_name)
-       (remove nil?)))
+       (keep :namespace_name)))
 
 (defmethod isolation/destroy-workspace-isolation! :redshift
   [database workspace]
