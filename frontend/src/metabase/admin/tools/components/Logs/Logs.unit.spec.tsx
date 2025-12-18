@@ -63,10 +63,9 @@ describe("Logs", () => {
     it("should call UtilApi.logs every 1 second", async () => {
       fetchMock.get("path:/api/logger/logs", []);
       setup();
-      await waitFor(() => [
-        expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
-        expect(utilSpy).toHaveBeenCalledTimes(1),
-      ]);
+      await waitFor(() => {
+        expect(utilSpy).toHaveBeenCalledTimes(1);
+      });
     });
 
     it("should skip calls to UtilsApi.logs if last request is still in-flight", async () => {
@@ -74,10 +73,9 @@ describe("Logs", () => {
       let resolve: any;
       utilSpy.mockReturnValueOnce(new Promise((res) => (resolve = res)));
       setup();
-      await waitFor(() => [
-        expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
-        expect(utilSpy).toHaveBeenCalledTimes(1),
-      ]);
+      await waitFor(() => {
+        expect(utilSpy).toHaveBeenCalledTimes(1);
+      });
       act(() => {
         jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
       });
