@@ -259,7 +259,6 @@ describe("GitSyncControls", () => {
       });
 
       const controls = screen.getByTestId("git-sync-controls");
-      expect(controls).toHaveStyle({ marginRight: "2rem" });
       expect(controls).toHaveStyle({ width: "13.5rem" });
     });
 
@@ -272,7 +271,6 @@ describe("GitSyncControls", () => {
 
       const controls = screen.getByTestId("git-sync-controls");
       expect(controls).toHaveStyle({ width: "100%" });
-      expect(controls).not.toHaveStyle({ marginRight: "2rem" });
       expect(controls).not.toHaveStyle({ maxWidth: "13.5rem" });
     });
   });

@@ -26,7 +26,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 
 import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
@@ -102,7 +101,11 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           to={Urls.dataStudioLibrary()}
           isSelected={currentTab === "library"}
           showLabel={isNavbarOpened}
-          rightSection={hasDirtyChanges ? <CollectionSyncStatusBadge /> : null}
+          rightSection={
+            hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+            ) : null
+          }
         />
 
         {canAccessDataModel && (

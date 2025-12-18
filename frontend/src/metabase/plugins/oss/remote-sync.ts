@@ -27,6 +27,7 @@ const getDefaultPluginRemoteSync = () => ({
   GitSyncAppBarControls:
     PluginPlaceholder as ComponentType<GitSyncAppBarControlsProps>,
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
+  CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -45,6 +46,7 @@ export const PLUGIN_REMOTE_SYNC: {
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   GitSyncAppBarControls: ComponentType<GitSyncAppBarControlsProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
+  CollectionSyncStatusBadge: ComponentType | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;

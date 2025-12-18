@@ -1,7 +1,6 @@
 import fetchMock from "fetch-mock";
 
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -22,6 +21,12 @@ jest.mock("./use-remote-sync-dirty-state", () => ({
     hasDirtyInCollectionTree: mockHasDirtyInCollectionTree,
     isDirty: mockIsDirty(),
   }),
+}));
+
+// Mock useGitSyncVisible
+const mockUseGitSyncVisible = jest.fn(() => true);
+jest.mock("./use-git-sync-visible", () => ({
+  useGitSyncVisible: () => mockUseGitSyncVisible(),
 }));
 
 import { useHasLibraryDirtyChanges } from "./use-has-library-dirty-changes";
@@ -55,20 +60,12 @@ const setup = () => {
 };
 
 describe("useHasLibraryDirtyChanges", () => {
-  let useGitSyncVisibleSpy: jest.SpyInstance;
-
   beforeEach(() => {
     fetchMock.removeRoutes();
     fetchMock.clearHistory();
-    useGitSyncVisibleSpy = jest
-      .spyOn(PLUGIN_REMOTE_SYNC, "useGitSyncVisible")
-      .mockReturnValue(true);
+    mockUseGitSyncVisible.mockReturnValue(true);
     mockIsDirty.mockReturnValue(false);
     mockHasDirtyInCollectionTree.mockReturnValue(false);
-  });
-
-  afterEach(() => {
-    useGitSyncVisibleSpy.mockRestore();
   });
 
   it("returns false when no dirty changes exist", async () => {
@@ -143,7 +140,7 @@ describe("useHasLibraryDirtyChanges", () => {
 
   it("returns false when git sync is not visible", async () => {
     setupCollectionsEndpoint([createLibraryCollection()]);
-    useGitSyncVisibleSpy.mockReturnValue(false);
+    mockUseGitSyncVisible.mockReturnValue(false);
     mockIsDirty.mockReturnValue(true);
     mockHasDirtyInCollectionTree.mockReturnValue(true);
 

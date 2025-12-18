@@ -4,12 +4,12 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import { buildCollectionTree } from "metabase/entities/collections";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 
+import { useGitSyncVisible } from "./use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
 
 export function useHasLibraryDirtyChanges(): boolean {
-  const isGitSyncVisible = PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+  const isGitSyncVisible = useGitSyncVisible();
   const { hasDirtyInCollectionTree, isDirty } = useRemoteSyncDirtyState();
 
   const { data: collections = [] } = useListCollectionsTreeQuery(
