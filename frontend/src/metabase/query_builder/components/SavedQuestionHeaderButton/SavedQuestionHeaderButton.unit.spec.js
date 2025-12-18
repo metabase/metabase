@@ -18,7 +18,7 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-function setup({ question, tokenFeatures = {}, hasEnterprisePlugins = false }) {
+function setup({ question, tokenFeatures = {}, enterprisePlugins }) {
   const onSave = jest.fn();
 
   const state = createMockState({
@@ -27,12 +27,8 @@ function setup({ question, tokenFeatures = {}, hasEnterprisePlugins = false }) {
     }),
   });
 
-  if (hasEnterprisePlugins && tokenFeatures.content_verification) {
-    setupEnterpriseOnlyPlugin("content_verification");
-    setupEnterpriseOnlyPlugin("moderation");
-  } else if (hasEnterprisePlugins && tokenFeatures.audit_app) {
-    setupEnterpriseOnlyPlugin("audit_app");
-    setupEnterpriseOnlyPlugin("collections");
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(
@@ -102,10 +98,10 @@ describe("SavedQuestionHeaderButton", () => {
     it("should have an additional icon to signify the question's moderation status", () => {
       setup({
         question,
-        hasEnterprisePlugins: true,
         tokenFeatures: {
           content_verification: true,
         },
+        enterprisePlugins: ["content-verification", "moderation"],
       });
       expect(getIcon("verified")).toBeInTheDocument();
     });
@@ -126,8 +122,8 @@ describe("SavedQuestionHeaderButton", () => {
     it("should have an additional icon to signify the question's collection type", () => {
       setup({
         question,
-        hasEnterprisePlugins: true,
         tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["collections", "audit-app"],
       });
       expect(getIcon("audit")).toBeInTheDocument();
     });

@@ -35,7 +35,7 @@ const USER = createMockUser({
 });
 
 const setup = ({
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   initialValues = USER,
   external = false,
   tenants = [] as Tenant[],
@@ -56,9 +56,10 @@ const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterpriseOnlyPlugin("sandboxes");
-    setupEnterpriseOnlyPlugin("tenants");
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(
@@ -186,7 +187,7 @@ describe("UserForm", () => {
 
     it("should show login attributes widget", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -201,7 +202,7 @@ describe("UserForm", () => {
 
     it("should allow you to add a login attribute", async () => {
       const { onSubmit } = setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -236,7 +237,7 @@ describe("UserForm", () => {
 
     it("should allow you to remove a login attribute", async () => {
       const { onSubmit } = setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -259,7 +260,7 @@ describe("UserForm", () => {
 
     it("should should not change the order of the inputs when working with numbers (#35316)", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -277,7 +278,7 @@ describe("UserForm", () => {
 
     it("should show errors messages and disable form submit when 2 login attributes have the same key (#30196)", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -313,7 +314,7 @@ describe("UserForm", () => {
 
     it("should require tenant_id for tenant users", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         external: true,
         tenants: TENANTS,
         initialValues: {
@@ -331,7 +332,7 @@ describe("UserForm", () => {
 
     it("should allow you to submit when tenant_id is selected", async () => {
       const { onSubmit } = setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         external: true,
         tenants: TENANTS,
         initialValues: {

@@ -13,19 +13,18 @@ import { createMockState } from "metabase-types/store/mocks";
 
 export interface SearchSidebarSetupOptions {
   tokenFeatures?: TokenFeatures;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   value?: URLSearchFilterQueryParams;
   onChange?: (filters: URLSearchFilterQueryParams) => void;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 const TEST_DATABASE = createMockDatabase();
 
 export const setup = ({
   tokenFeatures = createMockTokenFeatures(),
+  enterprisePlugins,
   value = {},
   onChange = jest.fn(),
-  enterprisePlugins = [],
 }: SearchSidebarSetupOptions = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
 
@@ -35,9 +34,11 @@ export const setup = ({
     settings,
   });
 
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
+  }
 
   renderWithProviders(<SearchSidebar value={value} onChange={onChange} />, {
     storeInitialState: state,

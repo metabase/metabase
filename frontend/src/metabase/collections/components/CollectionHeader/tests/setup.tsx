@@ -1,6 +1,9 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupDashboardQuestionCandidatesEndpoint,
   setupUserKeyValueEndpoints,
@@ -34,12 +37,12 @@ const getProps = (
 
 export const setup = ({
   collection,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   tokenFeatures,
   ...otherProps
 }: {
   collection?: Partial<Collection>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   tokenFeatures?: Partial<TokenFeatures>;
 } & Partial<Omit<CollectionHeaderProps, "collection">> = {}) => {
   setupDashboardQuestionCandidatesEndpoint([]);
@@ -69,16 +72,12 @@ export const setup = ({
   });
   const state = createMockState({ settings });
 
-  if (hasEnterprisePlugins) {
-    const plugins: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] = [];
-    if (tokenFeatures?.audit_app) {
-      plugins.push("audit_app", "collections");
+  if (enterprisePlugins) {
+    if (enterprisePlugins === "*") {
+      setupEnterprisePlugins();
+    } else {
+      enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
     }
-    if (tokenFeatures?.official_collections) {
-      plugins.push("advanced_permissions");
-    }
-
-    plugins.forEach((plugin) => setupEnterpriseOnlyPlugin(plugin));
   }
 
   renderWithProviders(

@@ -57,7 +57,7 @@ export const FONTS_MOCK_VALUES = [
 export interface SetupOpts {
   props: Partial<StaticEmbedSetupPaneProps>;
   activeTab?: "Overview" | "Parameters" | "Appearance";
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
@@ -69,33 +69,35 @@ export async function setup({
     onUpdateEnableEmbedding = jest.fn(),
   } = {},
   activeTab = "Overview",
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   tokenFeatures = createMockTokenFeatures(),
 }: {
   props: Partial<StaticEmbedSetupPaneProps>;
   activeTab?: "Overview" | "Parameters" | "Look and Feel";
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: TokenFeatures;
 }) {
   setupParameterValuesEndpoints({
     values: [],
     has_more_values: false,
   });
-  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
+  setupTokenStatusEndpoint({ valid: !!enterprisePlugins });
 
   const settings = mockSettings({
     "enable-embedding": true,
     "embedding-secret-key": "my_super_secret_key",
     "token-features": tokenFeatures,
-    "available-fonts": hasEnterprisePlugins ? FONTS_MOCK_VALUES : undefined,
+    "available-fonts": enterprisePlugins ? FONTS_MOCK_VALUES : undefined,
   });
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
     settings: settings,
   });
 
-  if (hasEnterprisePlugins && tokenFeatures?.whitelabel) {
-    setupEnterpriseOnlyPlugin("whitelabel");
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   const view = renderWithProviders(
