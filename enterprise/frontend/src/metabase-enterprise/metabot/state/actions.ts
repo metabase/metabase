@@ -61,6 +61,7 @@ export const {
   addAgentTextDelta,
   addAgentMessage,
   addAgentErrorMessage,
+  addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
   setNavigateToPath,
@@ -425,35 +426,6 @@ export const cancelInflightAgentRequests = createAsyncThunk(
     ).forEach((req) => req.abortController.abort());
   },
 );
-
-export const addDeveloperMessage = ({
-  agentId,
-  message,
-}: {
-  agentId: MetabotAgentId;
-  message: string;
-}) => {
-  return (dispatch: Dispatch, getState: any) => {
-    const state = getState() as any;
-    const isProcessing = getIsProcessing(state, agentId);
-    if (isProcessing) {
-      console.error("Metabot is actively serving a request");
-      // NOTE: silently failing - not great but is is better to not break the app for
-      // now we don't want to write to history at this point in time as we'd have a
-      // race condition w/ the in-flight request. in the future, it'd be preferable to
-      // have a queue that we write to which flushes its contents into the history once
-      // it has settled.
-      return;
-    } else {
-      dispatch(
-        metabot.actions.addDeveloperMessage({
-          agentId,
-          message,
-        }),
-      );
-    }
-  };
-};
 
 const rewindConversation = createAsyncThunk(
   "metabase-enterprise/metabot/rewindConversation",
