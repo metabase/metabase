@@ -5,7 +5,6 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 function setup(opts: SetupOpts = {}) {
   baseSetup({
     tokenFeatures: { whitelabel: true },
-    hasEnterprisePlugins: true,
     specificPlugins: ["whitelabel"],
     ...opts,
   });

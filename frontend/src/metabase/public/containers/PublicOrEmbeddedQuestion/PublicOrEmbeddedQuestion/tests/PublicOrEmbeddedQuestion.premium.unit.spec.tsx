@@ -13,7 +13,6 @@ const QUESTION_NAME = "Public question";
 
 function setupPremium(opts?: Partial<SetupOpts>) {
   return setup({
-    hasEnterprisePlugins: true,
     tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
     specificPlugins: ["whitelabel"],
     questionName: QUESTION_NAME,

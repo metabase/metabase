@@ -1,7 +1,4 @@
-import {
-  setupEnterpriseOnlyPlugin,
-  setupEnterprisePlugins,
-} from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
   setupPropertiesEndpoints,
@@ -28,7 +25,6 @@ export interface SetupOpts {
   isEmbeddingSdkEnabled?: Settings["enable-embedding-sdk"];
   isEmbeddingSimpleEnabled?: Settings["enable-embedding-simple"];
   isHosted?: Settings["is-hosted?"];
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
@@ -39,7 +35,6 @@ export async function setup({
   isEmbeddingSdkEnabled = false,
   isEmbeddingSimpleEnabled = false,
   isHosted = false,
-  hasEnterprisePlugins = false,
   tokenFeatures = {},
   specificPlugins,
 }: SetupOpts) {
@@ -55,17 +50,13 @@ export async function setup({
     settings: mockSettings(settings),
   });
 
-  if (hasEnterprisePlugins) {
-    // SETTINGS OVERRIDES:
+  if (specificPlugins) {
     PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
-    if (specificPlugins) {
-      specificPlugins.forEach((plugin) => {
-        setupEnterpriseOnlyPlugin(plugin);
-      });
-    } else {
-      setupEnterprisePlugins();
-    }
+    specificPlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
+
     setupTokenStatusEndpoint({ valid: true });
   }
 

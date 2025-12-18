@@ -1,7 +1,4 @@
-import {
-  setupEnterpriseOnlyPlugin,
-  setupEnterprisePlugins,
-} from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -26,7 +23,6 @@ const TEST_DATABASE = createMockDatabase();
 
 export const setup = ({
   tokenFeatures = createMockTokenFeatures(),
-  hasEnterprisePlugins = false,
   value = {},
   onChange = jest.fn(),
   specificPlugins = [],
@@ -39,15 +35,9 @@ export const setup = ({
     settings,
   });
 
-  if (hasEnterprisePlugins) {
-    if (specificPlugins.length > 0) {
-      specificPlugins.forEach((plugin) => {
-        setupEnterpriseOnlyPlugin(plugin);
-      });
-    } else {
-      setupEnterprisePlugins();
-    }
-  }
+  specificPlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(<SearchSidebar value={value} onChange={onChange} />, {
     storeInitialState: state,

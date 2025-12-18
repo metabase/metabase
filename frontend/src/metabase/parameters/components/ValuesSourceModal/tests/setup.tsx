@@ -1,7 +1,4 @@
-import {
-  setupEnterpriseOnlyPlugin,
-  setupEnterprisePlugins,
-} from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
@@ -41,7 +38,6 @@ export interface SetupOpts {
   hasCollectionAccess?: boolean;
   hasParameterValuesError?: boolean;
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
@@ -53,7 +49,6 @@ export const setup = async ({
   hasCollectionAccess = true,
   hasParameterValuesError = false,
   showMetabaseLinks = true,
-  hasEnterprisePlugins = false,
   tokenFeatures = {},
   specificPlugins = [],
 }: SetupOpts = {}) => {
@@ -111,15 +106,9 @@ export const setup = async ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    if (specificPlugins.length > 0) {
-      specificPlugins.forEach((plugin) => {
-        setupEnterpriseOnlyPlugin(plugin);
-      });
-    } else {
-      setupEnterprisePlugins();
-    }
-  }
+  specificPlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(
     <ValuesSourceModal

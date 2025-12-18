@@ -1,7 +1,4 @@
-import {
-  setupEnterpriseOnlyPlugin,
-  setupEnterprisePlugins,
-} from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
@@ -13,7 +10,6 @@ import { HomeHelpCard } from "../HomeHelpCard";
 export interface SetupOpts {
   applicationName?: string;
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
@@ -21,7 +17,6 @@ export interface SetupOpts {
 export const setup = ({
   applicationName = "Metabase",
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
   specificPlugins = [],
 }: SetupOpts = {}) => {
@@ -33,15 +28,9 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    if (specificPlugins.length > 0) {
-      specificPlugins.forEach((plugin) => {
-        setupEnterpriseOnlyPlugin(plugin);
-      });
-    } else {
-      setupEnterprisePlugins();
-    }
-  }
+  specificPlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(<HomeHelpCard />, { storeInitialState: state });
 };

@@ -1,7 +1,4 @@
-import {
-  setupEnterpriseOnlyPlugin,
-  setupEnterprisePlugins,
-} from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -16,14 +13,12 @@ import { TagEditorHelp } from "../TagEditorHelp";
 
 export interface SetupOpts {
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
   specificPlugins = [],
 }: SetupOpts = {}) => {
@@ -34,15 +29,9 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    if (specificPlugins.length > 0) {
-      specificPlugins.forEach((plugin) => {
-        setupEnterpriseOnlyPlugin(plugin);
-      });
-    } else {
-      setupEnterprisePlugins();
-    }
-  }
+  specificPlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(
     <TagEditorHelp

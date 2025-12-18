@@ -20,7 +20,6 @@ const setupEnterprise = (opts: SetupOpts) => {
         audit_app: true,
       }),
     }),
-    hasEnterprisePlugins: true,
     specificPlugins: ["collections"],
   });
 };

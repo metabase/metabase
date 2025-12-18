@@ -1,7 +1,4 @@
-import {
-  setupEnterpriseOnlyPlugin,
-  setupEnterprisePlugins,
-} from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
@@ -21,7 +18,6 @@ export interface SetupOpts {
   cardType?: CardType;
   isModel?: boolean;
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
@@ -30,7 +26,6 @@ export const setup = ({
   parameter = createMockParameter(),
   cardType = "question",
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
   specificPlugins = [],
 }: SetupOpts = {}) => {
@@ -45,15 +40,9 @@ export const setup = ({
     SAMPLE_METADATA,
   );
 
-  if (hasEnterprisePlugins) {
-    if (specificPlugins.length > 0) {
-      specificPlugins.forEach((plugin) => {
-        setupEnterpriseOnlyPlugin(plugin);
-      });
-    } else {
-      setupEnterprisePlugins();
-    }
-  }
+  specificPlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(
     <DisabledNativeCardHelpText question={question} parameter={parameter} />,

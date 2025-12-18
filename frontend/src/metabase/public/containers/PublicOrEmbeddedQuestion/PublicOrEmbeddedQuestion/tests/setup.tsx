@@ -2,10 +2,7 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
-import {
-  setupEnterpriseOnlyPlugin,
-  setupEnterprisePlugins,
-} from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
@@ -67,7 +64,6 @@ jest.mock(
 
 export type SetupOpts = {
   hash?: Record<string, string>;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: TokenFeatures;
   questionName: string;
   uuid: string;
@@ -77,26 +73,19 @@ export type SetupOpts = {
 export async function setup(
   {
     hash = {},
-    hasEnterprisePlugins,
     tokenFeatures = createMockTokenFeatures(),
     questionName,
     uuid,
-    specificPlugins,
+    specificPlugins = [],
   }: SetupOpts = { questionName: "", uuid: "" },
 ) {
   const settings = mockSettings({
     "token-features": tokenFeatures,
   });
 
-  if (hasEnterprisePlugins) {
-    if (specificPlugins) {
-      specificPlugins.forEach((plugin) => {
-        setupEnterpriseOnlyPlugin(plugin);
-      });
-    } else {
-      setupEnterprisePlugins();
-    }
-  }
+  specificPlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   setupPublicQuestionEndpoints(
     uuid,

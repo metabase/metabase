@@ -20,7 +20,6 @@ const setup = async ({
       }),
     showSdkEmbedTerms,
     isEmbeddingSdkEnabled,
-    hasEnterprisePlugins: isEmbeddingSdkEnabled,
     tokenFeatures: {
       embedding_sdk: isEmbeddingSdkEnabled,
     },
