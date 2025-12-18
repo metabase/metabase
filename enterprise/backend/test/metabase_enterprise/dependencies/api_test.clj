@@ -15,7 +15,7 @@
    [metabase.util :as u]))
 
 (comment
-  metabase.dependencies.events/keep-me)
+  metabase-enterprise.dependencies.events/keep-me)
 
 (defn card-with-query
   "Create a card map with the given name and dataset query."

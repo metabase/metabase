@@ -16,7 +16,7 @@
    [toucan2.core :as t2]))
 
 (comment
-  metabase.dependencies.events/keep-me)
+  metabase-enterprise.dependencies.events/keep-me)
 
 (deftest dashboard-update-sets-correct-dependencies
   (mt/with-test-user :rasta
