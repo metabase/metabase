@@ -419,6 +419,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
               ? getRawDataQuestionForTable(policyTable)
               : null
           }
+          includeSensitiveFields
         >
           {({ question }: { question: Question }) => {
             if (!question) {

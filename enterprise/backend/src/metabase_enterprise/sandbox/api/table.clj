@@ -71,10 +71,12 @@
       (thunk))))
 
 (defenterprise batch-fetch-table-query-metadatas
-  "Returns the query metadata used to power the Query Builder for the tables specified by`ids`."
+  "Returns the query metadata used to power the Query Builder for the tables specified by`ids`.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   :feature :sandboxes
-  [ids]
-  (for [table (schema.table/batch-fetch-query-metadatas* ids)]
+  [ids opts]
+  (for [table (schema.table/batch-fetch-query-metadatas* ids opts)]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
        table
