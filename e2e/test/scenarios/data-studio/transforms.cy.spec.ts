@@ -1569,12 +1569,6 @@ LIMIT
         H.PythonEditor.value().should("contain", "import common");
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a database")
-          .click();
-
-        H.popover().findByText(DB_NAME).click();
-
-        cy.findByTestId("python-data-picker")
           .findByText("Select a table…")
           .click();
 
@@ -2314,6 +2308,39 @@ describe("scenarios > admin > transforms > runs", () => {
     testRunMethodFilter();
     testStartAtFilter();
     testEndAtFilter();
+  });
+});
+
+describe("scenarios > admin > transforms", () => {
+  beforeEach(() => {
+    H.restore();
+    H.resetSnowplow();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should not pick the only database when it is disabled in SQL editor", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("SQL query").click();
+
+    cy.findByTestId("gui-builder-data")
+      .findByText("Select a database")
+      .should("be.visible");
+  });
+
+  it("should not pick the only database when it is disabled in Python editor", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("Python script").click();
+
+    getPythonDataPicker().findByText("Select a database").should("be.visible");
   });
 });
 
