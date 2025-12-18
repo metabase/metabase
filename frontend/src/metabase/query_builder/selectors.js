@@ -480,7 +480,7 @@ export const getIsResultDirty = createSelector(
     getTableMetadata,
   ],
   (
-    question,
+    currentQuestion,
     originalQuestion,
     lastRunQuestion,
     lastParameters,
@@ -489,15 +489,15 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
-
+      !!currentQuestion &&
+      Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
     return (
       haveParametersChanged ||
       (isEditable &&
         !areQueriesEquivalent({
           originalQuestion,
           lastRunQuestion,
-          currentQuestion: question,
+          currentQuestion,
           tableMetadata,
         }))
     );
