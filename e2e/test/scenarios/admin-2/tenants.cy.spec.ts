@@ -139,9 +139,7 @@ describe("Tenants - management", () => {
     cy.findByRole("link", { name: /Tenants/ }).should("exist");
 
     H.main().within(() => {
-      cy.log(
-        "after enabling multi-tenancy, it should take you to the tenants page after a second",
-      );
+      cy.log("after enabling multi-tenancy, it takes you to the tenants page");
       cy.findByText("Tenants", { timeout: 10_000 }).should("be.visible");
 
       cy.findByText(/Create your first tenant to start adding/).should(

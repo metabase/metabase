@@ -21,7 +21,7 @@ export const EditUserStrategyModal = ({
 }: EditUserStrategyModalProps) => {
   const dispatch = useDispatch();
 
-  const { isLoading, error, value, updateSetting } =
+  const { isLoading, error, value, updateSetting, refetch } =
     useAdminSetting("use-tenants");
 
   const [addToast] = useToast();
@@ -87,7 +87,11 @@ export const EditUserStrategyModal = ({
     onClose();
 
     if (selectedStrategy === "multi-tenant") {
-      setTimeout(() => dispatch(push("/admin/tenants")), 1000);
+      // Wait for settings to be refetched before navigating.
+      // This ensures `createTenantsRouteGuard` sees the updated setting.
+      await refetch();
+
+      dispatch(push("/admin/tenants"));
     }
   };
 
