@@ -13,6 +13,7 @@
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
+   [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -456,6 +457,27 @@
                :from_entity_id   (node-id parent)
                :to_entity_type   (name (node-type child))
                :to_entity_id     (node-id child)})}))
+
+;;; ---------------------------------------- Problems/Validation ----------------------------------------
+
+(api.macros/defendpoint :get "/:id/problem" :- [:sequential ::ws.t/problem]
+  "Detect problems in the workspace that would affect downstream transforms after merge.
+
+   Returns a list of problems, each with:
+   - category:    the problem category (e.g. 'unused', 'internal-downstream', 'external-downstream')
+   - problem:     the specific problem (e.g. 'not-run', 'stale', 'removed-field')
+   - severity:    :error, :warning, or :info
+   - block-merge: whether this problem prevents merging
+   - data:        extra information, shape depends on the problem type
+
+   See `metabase-enterprise.workspaces.types/problem-types` for the full list."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
+                                    [:model/WorkspaceTransform :ref_id] :workspace_id id)
+        graph     (ws.dag/path-induced-subgraph id changeset)]
+    (ws.validation/find-downstream-problems id graph)))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
 

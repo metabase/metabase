@@ -1410,8 +1410,8 @@
           ;; TODO investigate why the enclosed transform is not being included, could be bad setup
           (testing "returns enclosed external transform too"
             (is (= {:nodes #{{:type "input-table", :id tx-1-input, :data {:db (mt/id), :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
-                             {:type "workspace-transform", :id t1-ref, :data {:ref_id t1-ref, :name "A Tx in WS1"}, :dependents_count {} #_{:global-transform 1}}
-                             #_{:type "global-transform", :id (:id tx-2), :data {:id (:id tx-1), :name "An external Tx"}, :dependents_count {:workspace-transform 1}}
+                             {:type "workspace-transform", :id t1-ref, :data {:ref_id t1-ref, :name "A Tx in WS1"}, :dependents_count {} #_{:external-transform 1}}
+                             #_{:type "external-transform", :id (:id tx-2), :data {:id (:id tx-1), :name "An external Tx"}, :dependents_count {:workspace-transform 1}}
                              ;; We won't have this input table when we fix finding the enclosed global transform.
                              {:type "input-table", :id tx-3-input, :data {:db (mt/id), :schema nil, :table tx-2-output, :id nil}, :dependents_count {:workspace-transform 1}}
                              {:type "workspace-transform", :id t3-ref, :data {:ref_id t3-ref, :name "Another Tx in WS1"}, :dependents_count {}}},
@@ -1426,9 +1426,9 @@
                               :to_entity_id     t3-ref}
                              #_{:from_entity_type "workspace-transform"
                                 :from_entity_id   (:ref_id tx-1)
-                                :to_entity_type   "global-transform"
+                                :to_entity_type   "external-transform"
                                 :to_entity_id     (:id tx-2)}
-                             #_{:from_entity_type "global-transform"
+                             #_{:from_entity_type "external-transform"
                                 :from_entity_id   (:id tx-2)
                                 :to_entity_type   "workspace-transform"
                                 :to_entity_id     (:ref_id tx-3)}}}
