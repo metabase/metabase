@@ -27,12 +27,13 @@ class EntityMenu extends Component {
     this.rootRef = createRef();
   }
 
-  toggleMenu = () => {
+  toggleMenu = (newOpenState) => {
     if (this.state.freezeMenu) {
       return;
     }
 
-    const open = !this.state.open;
+    // If newOpenState is a boolean, use it; otherwise toggle
+    const open = typeof newOpenState === "boolean" ? newOpenState : !this.state.open;
     this.setState({ open, menuItemContent: null });
   };
 
@@ -67,7 +68,7 @@ class EntityMenu extends Component {
         opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
         transitionProps={{ duration: transitionDuration }}
-        onChange={() => this.toggleMenu()}
+        onChange={this.toggleMenu}
         position="bottom-end"
       >
         <Popover.Target>
