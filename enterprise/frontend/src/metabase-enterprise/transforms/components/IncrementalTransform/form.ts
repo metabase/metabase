@@ -73,6 +73,7 @@ export const convertTransformFormToUpdateRequest = (
     id: transform.id,
     source,
     target,
+    collection_id: transform.collection_id,
   };
 };
 

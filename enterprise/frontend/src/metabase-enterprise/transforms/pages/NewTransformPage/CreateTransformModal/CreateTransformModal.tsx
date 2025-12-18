@@ -6,6 +6,7 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -125,6 +126,10 @@ function CreateTransformForm({
             />
           )}
           <TargetNameInput />
+          <FormCollectionPicker
+            name="collection_id"
+            type="transform-collections"
+          />
           <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>

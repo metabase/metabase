@@ -17,6 +17,7 @@ export const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
+  collection_id: Yup.number().nullable().defined(),
 }).concat(INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA);
 
 export type NewTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
@@ -33,6 +34,7 @@ export const getInitialValues = (
     : defaultValues.name
       ? slugify(defaultValues.name)
       : "",
+  collection_id: null,
   ...incrementalTransformGetInitialValues(defaultValues),
 });
 
@@ -55,5 +57,6 @@ export const convertTransformFormToCreateRequest = (
     name: values.name,
     source: transformSource,
     target: transformTarget,
+    collection_id: values.collection_id,
   };
 };
