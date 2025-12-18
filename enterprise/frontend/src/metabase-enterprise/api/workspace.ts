@@ -10,6 +10,7 @@ import type {
   ValidateTableNameRequest,
   ValidateTableNameResponse,
   Workspace,
+  WorkspaceAllowedDatabasesResponse,
   WorkspaceCheckoutResponse,
   WorkspaceGraphResponse,
   WorkspaceId,
@@ -120,10 +121,14 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         providesTags: (_, __, transformId) => [idTag("transform", transformId)],
       },
     ),
-    mergeWorkspace: builder.mutation<WorkspaceMergeResponse, WorkspaceId>({
-      query: (id) => ({
+    mergeWorkspace: builder.mutation<
+      WorkspaceMergeResponse,
+      { id: WorkspaceId; commit_message: string }
+    >({
+      query: ({ id, commit_message }) => ({
         method: "POST",
         url: `/api/ee/workspace/${id}/merge`,
+        body: { commit_message },
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
@@ -226,7 +231,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/${id}/external/transform`,
       }),
-      providesTags: (_, __, id) => [idTag("external-transforms", id)],
+      providesTags: (_, __, id) => [
+        listTag("external-transforms"),
+        idTag("external-transforms", id),
+      ],
       transformResponse: (response: ExternalTransformsResponse) =>
         response.transforms,
     }),
@@ -345,6 +353,15 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           tag("transform"),
         ]),
     }),
+    getWorkspaceAllowedDatabases: builder.query<
+      WorkspaceAllowedDatabasesResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/workspace/database`,
+      }),
+    }),
   }),
 });
 
@@ -377,6 +394,7 @@ export const {
   useGetWorkspaceLogQuery,
   useRunWorkspaceMutation,
   useRunWorkspaceTransformMutation,
+  useGetWorkspaceAllowedDatabasesQuery,
 } = workspaceApi;
 
 export const DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE: WorkspaceTablesResponse =

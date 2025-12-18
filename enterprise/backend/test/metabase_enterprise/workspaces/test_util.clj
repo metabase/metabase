@@ -33,9 +33,10 @@
   [ws-or-id]
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
-    (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
-             :done?      #(not= :pending (:status %))
-             :timeout-ms 500})))
+    (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
+                 :done?      #(not= :pending (:status %))
+                 :timeout-ms 500})
+        (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
 
 (defn create-workspace-for-test!
   "Create a workspace for testing using proper initialization.

@@ -8,6 +8,7 @@
   For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
   decoupled from AppDb."
   (:require
+   [macaw.core :as macaw]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
@@ -26,13 +27,35 @@
      {:table {:name   (:name target)
               :schema (:schema target)}})))
 
-(defn- remap-python-source [_table-mapping source]
-  ;; TODO (sanya 2025/12/11) busy with this
-  source)
+(defn- remap-python-source
+  "Remap source-tables in a Python transform source to point to isolated tables.
+   Handles both legacy integer format and new map format (from PR #66934)."
+  [table-mapping source]
+  (letfn [(remap [{:keys [database_id schema table table_id] :as table-ref}]
+            (if-let [{:keys [id db-id schema table]} (or (table-mapping table-ref)
+                                                         (some-> table_id table-mapping)
+                                                         (when table
+                                                           (table-mapping [database_id schema table])))]
+              ;; Prefer table ID when available; map format won't work until PR #66934 is merged:
+              ;; https://github.com/metabase/metabase/pull/66934
+              (or id {:database_id db-id, :schema schema, :table table})
+              ;; Leave it un-mapped if we don't have an override.
+              table-ref))]
+    (update source :source-tables update-vals remap)))
 
-(defn- remap-sql-source [_table-mapping source]
-  ;; TODO (sanya 2025/12/11) busy with this
-  source)
+(defn- remap-sql-source [table-mapping source]
+  (let [remapping (reduce
+                   (fn [remapping [[_ source-schema source-table] {target-schema :schema, target-table :table}]]
+                     (-> remapping
+                         (assoc-in [:schemas source-schema] target-schema)
+                         (assoc-in [:tables {:schema source-schema
+                                             :table  source-table}] target-table)))
+                   {:schemas {}
+                    :tables  {}}
+                   ;; Strip out the numeric keys (table ids)
+                   (filter (comp map? key) table-mapping))]
+    ;; We may need to set other options, like the case insensitivity (driver dependent)
+    (update-in source [:query :stages 0 :native] #(macaw/replace-names % remapping {:allow-unused? true}))))
 
 (defn- remap-mbql-source [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))
@@ -46,8 +69,8 @@
 
 ;; You might prefer a multi-method? I certainly would.
 
-(defn- remap-target [table-map {d :database, s :schema, t :name :as target}]
-  (if-let [replacement (table-map [d s t])]
+(defn- remap-target [table-map target-fallback {d :database, s :schema, t :name :as target}]
+  (if-let [replacement (or (table-map [d s t]) (target-fallback [d s t]))]
     ;; Always fallback to tables for re-mapped outputs, regardless of the type used in the original target.
     {:type     (:type replacement "table")
      :database (:db-id replacement)
@@ -55,7 +78,7 @@
      :name     (:table replacement)}
     target))
 
-(def ^:private no-mapping (constantly nil))
+(def ^:private no-mapping {})
 
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.
@@ -78,15 +101,16 @@
   [{:keys [source target] :as transform} remapping]
   (try
     (t2/with-transaction [_conn]
-      (let [s-type        (transforms/transform-source-type source)
-            table-mapping (:tables remapping no-mapping)
-            field-mapping (:fields remapping no-mapping)
-            new-xf        (-> (select-keys transform [:name :description])
-                              (assoc :creator_id api/*current-user-id*
-                                     :source (remap-source table-mapping field-mapping s-type source)
-                                     :target (remap-target table-mapping target)))
-            _             (assert (:target new-xf) "Target mapping must not be nil")
-            temp-xf       (t2/insert-returning-instance! :model/Transform new-xf)]
+      (let [s-type          (transforms/transform-source-type source)
+            table-mapping   (:tables remapping no-mapping)
+            target-fallback (:target-fallback remapping no-mapping)
+            field-mapping   (:fields remapping no-mapping)
+            new-xf          (-> (select-keys transform [:name :description])
+                                (assoc :creator_id api/*current-user-id*
+                                       :source (remap-source table-mapping field-mapping s-type source)
+                                       :target (remap-target table-mapping target-fallback target)))
+            _               (assert (:target new-xf) "Target mapping must not be nil")
+            temp-xf         (t2/insert-returning-instance! :model/Transform new-xf)]
         (transforms.execute/execute! temp-xf {:run-method :manual})
         (u/prog1 (execution-results temp-xf)
           (t2/delete! :model/Transform (:id temp-xf)))

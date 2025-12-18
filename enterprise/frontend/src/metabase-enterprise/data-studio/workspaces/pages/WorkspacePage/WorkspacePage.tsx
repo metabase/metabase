@@ -47,6 +47,7 @@ import {
   useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";
 import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
@@ -261,6 +262,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
 
   const tabsListRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<string>("setup");
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
   useEffect(() => {
     // Sync UI tabs with active tab changes from workspace.
     if (activeTab) {
@@ -407,24 +409,31 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     ],
   );
 
-  const handleMergeWorkspace = useCallback(async () => {
-    try {
-      const response = await mergeWorkspace(id).unwrap();
+  const handleMergeWorkspace = useCallback(
+    async (commitMessage: string) => {
+      try {
+        const response = await mergeWorkspace({
+          id,
+          commit_message: commitMessage,
+        }).unwrap();
 
-      if (response.errors && response.errors.length > 0) {
-        sendErrorToast(
-          t`Failed to merge workspace: ${response.errors.map((e: any) => e.error).join(", ")}`,
+        if (response.errors && response.errors.length > 0) {
+          sendErrorToast(
+            t`Failed to merge workspace: ${response.errors.map((e: any) => e.error).join(", ")}`,
+          );
+          return;
+        }
+        dispatch(replace(Urls.transformList()));
+        sendSuccessToast(
+          t`Workspace '${response.workspace.name}' merged successfully`,
         );
-        return;
+      } catch (error) {
+        sendErrorToast(t`Failed to merge workspace`);
+        throw error;
       }
-      dispatch(replace(Urls.transformList()));
-      sendSuccessToast(
-        t`Workspace '${response.workspace.name}' merged successfully`,
-      );
-    } catch (error) {
-      sendErrorToast(t`Failed to merge workspace`);
-    }
-  }, [id, mergeWorkspace, sendErrorToast, dispatch, sendSuccessToast]);
+    },
+    [id, mergeWorkspace, sendErrorToast, dispatch, sendSuccessToast],
+  );
 
   const handleWorkspaceNameChange = useCallback(
     async (newName: string) => {
@@ -516,7 +525,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           />
           <Button
             variant="filled"
-            onClick={handleMergeWorkspace}
+            onClick={() => setIsMergeModalOpen(true)}
             loading={isMerging}
             disabled={
               isArchived ||
@@ -745,7 +754,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                 activeTransformId={activeTransform?.id}
                 availableTransforms={availableTransforms}
                 workspaceId={workspace.id}
-                workspaceTransforms={workspaceTransforms}
+                workspaceTransforms={allTransforms}
                 onTransformClick={(transform) => {
                   addOpenedTransform(transform);
                   if (activeTable) {
@@ -780,6 +789,14 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           </Tabs>
         </Box>
       </Group>
+
+      {isMergeModalOpen && (
+        <MergeWorkspaceModal
+          onClose={() => setIsMergeModalOpen(false)}
+          onSubmit={handleMergeWorkspace}
+          isLoading={isMerging}
+        />
+      )}
     </Stack>
   );
 }

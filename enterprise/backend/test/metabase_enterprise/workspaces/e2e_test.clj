@@ -4,7 +4,7 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.core :as workspaces]
+   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -17,7 +17,7 @@
 (defn- execute-workspace-transform!
   "Execute a transform within workspace isolation context. For testing purposes."
   [workspace ws-transform opts]
-  (workspaces/with-workspace-isolation workspace
+  (ws.isolation/with-workspace-isolation workspace
     (let [result (atom nil)]
       (t2/with-transaction [_tx]
         (let [transform (t2/insert-returning-instance!

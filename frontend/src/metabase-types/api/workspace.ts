@@ -297,3 +297,14 @@ export type WorkspaceTransformRunResponse = {
     schema?: string | null;
   };
 };
+
+export type WorkspaceAllowedDatabase = {
+  id: number;
+  name: string;
+  supported: boolean;
+  reason?: string;
+};
+
+export type WorkspaceAllowedDatabasesResponse = {
+  databases: WorkspaceAllowedDatabase[];
+};
