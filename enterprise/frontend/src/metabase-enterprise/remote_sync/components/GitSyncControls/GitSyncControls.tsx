@@ -1,15 +1,12 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Loader, Tooltip } from "metabase/ui";
 import { useImportChangesMutation } from "metabase-enterprise/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
-import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../../constants";
+import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
 import { type SyncError, parseSyncError } from "../../utils";
@@ -28,10 +25,7 @@ interface GitSyncControlsProps {
 export const GitSyncControls = ({
   fullWidth = false,
 }: GitSyncControlsProps) => {
-  const isAdmin = useSelector(getUserIsAdmin);
-  const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
-  const { value: currentBranch } = useAdminSetting(BRANCH_KEY);
-  const { value: syncType } = useAdminSetting(TYPE_KEY);
+  const { isVisible, currentBranch } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -143,13 +137,7 @@ export const GitSyncControls = ({
     setNextBranch(null);
   }, []);
 
-  // Don't render if remote sync is not enabled, user is not admin, or not in read-write mode
-  if (
-    !isRemoteSyncEnabled ||
-    !isAdmin ||
-    !currentBranch ||
-    syncType !== "read-write"
-  ) {
+  if (!isVisible || !currentBranch) {
     return null;
   }
 

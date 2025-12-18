@@ -23,7 +23,7 @@ export const SyncedCollectionsSidebarSection = ({
 }: SyncedCollectionsSidebarSectionProps) => {
   const hasSyncedCollections = syncedCollections.length > 0;
 
-  const isGitSyncVisible = useGitSyncVisible();
+  const { isVisible: isGitSyncVisible } = useGitSyncVisible();
   const { dirty, isCollectionDirty } = useRemoteSyncDirtyState();
 
   const hasEntityRemoved = useMemo(

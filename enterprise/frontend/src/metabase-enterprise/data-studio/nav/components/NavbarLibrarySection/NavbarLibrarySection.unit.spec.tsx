@@ -15,7 +15,10 @@ jest.mock("metabase/collections/utils", () => ({
 }));
 
 // Mock useGitSyncVisible
-const mockUseGitSyncVisible = jest.fn(() => true);
+const mockUseGitSyncVisible = jest.fn(() => ({
+  isVisible: true,
+  currentBranch: "main",
+}));
 jest.mock("metabase-enterprise/remote_sync/hooks/use-git-sync-visible", () => ({
   useGitSyncVisible: () => mockUseGitSyncVisible(),
 }));
@@ -70,7 +73,10 @@ const setup = ({
   dirtyCollectionIds?: number[];
   isGitSyncVisible?: boolean;
 } = {}) => {
-  mockUseGitSyncVisible.mockReturnValue(isGitSyncVisible);
+  mockUseGitSyncVisible.mockReturnValue({
+    isVisible: isGitSyncVisible,
+    currentBranch: "main",
+  });
   mockIsCollectionDirty.mockImplementation(
     (id: number | string | undefined) =>
       typeof id === "number" && dirtyCollectionIds.includes(id),

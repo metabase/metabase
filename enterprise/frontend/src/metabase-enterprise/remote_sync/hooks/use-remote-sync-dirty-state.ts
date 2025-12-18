@@ -28,7 +28,7 @@ export interface RemoteSyncDirtyState {
 }
 
 export function useRemoteSyncDirtyState(): RemoteSyncDirtyState {
-  const isGitSyncVisible = useGitSyncVisible();
+  const { isVisible: isGitSyncVisible } = useGitSyncVisible();
 
   const {
     data: dirtyData,

@@ -3,7 +3,10 @@ import fetchMock from "fetch-mock";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 
 // Mock the useGitSyncVisible hook before importing useRemoteSyncDirtyState
-const mockUseGitSyncVisible = jest.fn(() => true);
+const mockUseGitSyncVisible = jest.fn(() => ({
+  isVisible: true,
+  currentBranch: "main",
+}));
 jest.mock("./use-git-sync-visible", () => ({
   useGitSyncVisible: () => mockUseGitSyncVisible(),
 }));
@@ -44,7 +47,10 @@ const setup = ({
   dirty?: Array<ReturnType<typeof createMockDirtyEntity>>;
   changedCollections?: Record<number, boolean>;
 } = {}) => {
-  mockUseGitSyncVisible.mockReturnValue(isGitSyncVisible);
+  mockUseGitSyncVisible.mockReturnValue({
+    isVisible: isGitSyncVisible,
+    currentBranch: "main",
+  });
   setupEndpoints({ dirty, changedCollections });
 
   return renderHookWithProviders(() => useRemoteSyncDirtyState(), {});

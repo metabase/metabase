@@ -9,7 +9,7 @@ import { useGitSyncVisible } from "./use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
 
 export function useHasLibraryDirtyChanges(): boolean {
-  const isGitSyncVisible = useGitSyncVisible();
+  const { isVisible: isGitSyncVisible } = useGitSyncVisible();
   const { hasDirtyInCollectionTree, isDirty } = useRemoteSyncDirtyState();
 
   const { data: collections = [] } = useListCollectionsTreeQuery(

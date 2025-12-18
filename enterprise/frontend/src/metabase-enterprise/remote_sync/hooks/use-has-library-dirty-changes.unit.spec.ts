@@ -24,7 +24,13 @@ jest.mock("./use-remote-sync-dirty-state", () => ({
 }));
 
 // Mock useGitSyncVisible
-const mockUseGitSyncVisible = jest.fn(() => true);
+const mockUseGitSyncVisible = jest.fn<
+  { isVisible: boolean; currentBranch: string | null },
+  []
+>(() => ({
+  isVisible: true,
+  currentBranch: "main",
+}));
 jest.mock("./use-git-sync-visible", () => ({
   useGitSyncVisible: () => mockUseGitSyncVisible(),
 }));
@@ -63,7 +69,10 @@ describe("useHasLibraryDirtyChanges", () => {
   beforeEach(() => {
     fetchMock.removeRoutes();
     fetchMock.clearHistory();
-    mockUseGitSyncVisible.mockReturnValue(true);
+    mockUseGitSyncVisible.mockReturnValue({
+      isVisible: true,
+      currentBranch: "main",
+    });
     mockIsDirty.mockReturnValue(false);
     mockHasDirtyInCollectionTree.mockReturnValue(false);
   });
@@ -140,7 +149,10 @@ describe("useHasLibraryDirtyChanges", () => {
 
   it("returns false when git sync is not visible", async () => {
     setupCollectionsEndpoint([createLibraryCollection()]);
-    mockUseGitSyncVisible.mockReturnValue(false);
+    mockUseGitSyncVisible.mockReturnValue({
+      isVisible: false,
+      currentBranch: null,
+    });
     mockIsDirty.mockReturnValue(true);
     mockHasDirtyInCollectionTree.mockReturnValue(true);
 

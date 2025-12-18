@@ -32,7 +32,7 @@ export function NavbarLibrarySection({
     "expand-library-in-nav",
   );
 
-  const isGitSyncVisible = useGitSyncVisible();
+  const { isVisible: isGitSyncVisible } = useGitSyncVisible();
   const { isCollectionDirty } = useRemoteSyncDirtyState();
 
   const libraryTree = useMemo(() => {

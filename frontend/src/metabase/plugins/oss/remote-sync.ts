@@ -36,7 +36,7 @@ const getDefaultPluginRemoteSync = () => ({
     message: "",
     progressModal: null,
   }),
-  useGitSyncVisible: () => false,
+  useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
   useHasLibraryDirtyChanges: () => false,
 });
 
@@ -55,7 +55,10 @@ export const PLUGIN_REMOTE_SYNC: {
     message: string;
     progressModal: ReactNode;
   };
-  useGitSyncVisible: () => boolean;
+  useGitSyncVisible: () => {
+    isVisible: boolean;
+    currentBranch: string | null | undefined;
+  };
   useHasLibraryDirtyChanges: () => boolean;
 } = getDefaultPluginRemoteSync();
 

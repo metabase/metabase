@@ -44,7 +44,7 @@ const setup = ({
 };
 
 describe("useGitSyncVisible", () => {
-  it("should return true when all conditions are met", async () => {
+  it("should return isVisible: true when all conditions are met", async () => {
     const { result } = setup({
       isAdmin: true,
       remoteSyncEnabled: true,
@@ -53,58 +53,60 @@ describe("useGitSyncVisible", () => {
     });
 
     await waitFor(() => {
-      expect(result.current).toBe(true);
+      expect(result.current.isVisible).toBe(true);
     });
+    expect(result.current.currentBranch).toBe("main");
   });
 
-  it("should return false when remote sync is disabled", async () => {
+  it("should return isVisible: false when remote sync is disabled", async () => {
     const { result } = setup({
       remoteSyncEnabled: false,
     });
 
     await waitFor(() => {
-      expect(result.current).toBe(false);
+      expect(result.current.isVisible).toBe(false);
     });
   });
 
-  it("should return false when user is not admin", async () => {
+  it("should return isVisible: false when user is not admin", async () => {
     const { result } = setup({
       isAdmin: false,
     });
 
     await waitFor(() => {
-      expect(result.current).toBe(false);
+      expect(result.current.isVisible).toBe(false);
     });
   });
 
-  it("should return false when currentBranch is null", async () => {
+  it("should return isVisible: false when currentBranch is null", async () => {
     const { result } = setup({
       currentBranch: null,
     });
 
     await waitFor(() => {
-      expect(result.current).toBe(false);
+      expect(result.current.isVisible).toBe(false);
     });
+    expect(result.current.currentBranch).toBe(null);
   });
 
-  it("should return false when sync type is read-only", async () => {
+  it("should return isVisible: false when sync type is read-only", async () => {
     const { result } = setup({
       syncType: "read-only",
     });
 
     await waitFor(() => {
-      expect(result.current).toBe(false);
+      expect(result.current.isVisible).toBe(false);
     });
   });
 
-  it("should return false when multiple conditions fail", async () => {
+  it("should return isVisible: false when multiple conditions fail", async () => {
     const { result } = setup({
       isAdmin: false,
       remoteSyncEnabled: false,
     });
 
     await waitFor(() => {
-      expect(result.current).toBe(false);
+      expect(result.current.isVisible).toBe(false);
     });
   });
 });
