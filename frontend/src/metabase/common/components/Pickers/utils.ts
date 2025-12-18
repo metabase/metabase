@@ -206,10 +206,6 @@ export const shouldDisableItemForSavingModel = (
   item: CollectionPickerItem,
   savingModel?: CollectionPickerOptions["savingModel"],
 ): boolean => {
-  if (!savingModel) {
-    return false;
-  }
-
   if (savingModel === "collection") {
     return false;
   }
