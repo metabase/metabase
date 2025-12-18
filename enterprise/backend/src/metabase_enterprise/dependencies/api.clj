@@ -187,7 +187,7 @@
 
 (defn- fields-for [entity-key]
   ;; these specs should really use something like
-  #_[:data [:select-keys [:ref ::warehouse-schema.schema/table] (entity-keys :table)]]
+  #_[:data [:select-keys [:ref :blah/table] (entity-keys :table)]]
   ;; but :select-keys seems to mess up open-api spec generation
   (into [:map]
         (map (fn [key] [key {:optional true} :any]))
