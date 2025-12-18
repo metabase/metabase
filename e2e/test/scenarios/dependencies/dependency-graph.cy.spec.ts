@@ -629,10 +629,12 @@ describe("scenarios > dependencies > dependency graph", () => {
 });
 
 function visitGraph() {
+  H.waitForDependencyGraph();
   cy.visit(BASE_URL);
 }
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
+  H.waitForDependencyGraph();
   return cy.visit(BASE_URL, { qs: { id, type } });
 }
 

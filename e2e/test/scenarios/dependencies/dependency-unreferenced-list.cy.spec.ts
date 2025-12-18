@@ -237,6 +237,7 @@ function createEntities({
   createSegmentContent({ withReferences });
   createMetricContent({ withReferences });
   createSnippetContent({ withReferences });
+  H.waitForDependencyGraph();
 }
 
 function createModelContent({
