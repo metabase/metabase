@@ -28,6 +28,9 @@
 (defn- check-premium-token! []
   (premium-features/assert-has-feature :serialization (trs "Serialization")))
 
+(derive :event/serdes-load :metabase/event)
+(derive :event/serdes-dump :metabase/event)
+
 (mu/defn v2-load-internal!
   "SerDes v2 load entry point for internal users.
 
