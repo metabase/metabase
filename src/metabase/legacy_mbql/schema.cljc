@@ -1515,6 +1515,14 @@
 ;;     :type         :dimension,
 ;;     :dimension    [:field 4 nil]
 ;;     :widget-type  :date/all-options}
+(mr/def ::TemplateTag.FieldFilter.Options
+  [:map-of
+   {:decode/normalize (fn [m]
+                        (when (map? m)
+                          (update-keys m lib.schema.common/normalize-keyword)))}
+   :keyword
+   :any])
+
 (mr/def ::TemplateTag.FieldFilter
   "Schema for a field filter template tag."
   [:merge
@@ -1535,7 +1543,7 @@
     [:options
      {:optional    true
       :description "optional map to be appended to filter clause"}
-     [:maybe [:map-of :keyword :any]]]]])
+     [:maybe [:ref ::TemplateTag.FieldFilter.Options]]]]])
 
 ;; Example:
 ;;

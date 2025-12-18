@@ -435,3 +435,27 @@
     (is (= [:count]
            (lib/normalize ::mbql.s/Aggregation [:aggregation-options [:count] nil])
            (lib/normalize ::mbql.s/Aggregation [:aggregation-options [:count] {}])))))
+
+(deftest ^:parallel normalize-template-tag-options-test
+  (testing "template tag `:options` should get normalized correctly"
+    (let [normalized (lib/normalize
+                      ::mbql.s/TemplateTag
+                      {"type"         "dimension"
+                       "name"         "owner_name"
+                       "id"           "d14f7964-4de7-4d0a-905c-2d2799e87db7"
+                       "display-name" "Owner Name"
+                       "default"      nil
+                       "dimension"    ["field" 28486 nil]
+                       "widget-type"  "string/contains"
+                       "options"      {"case-sensitive" false}})]
+      (is (= {:default      nil
+              :dimension    [:field 28486 nil]
+              :display-name "Owner Name"
+              :id           "d14f7964-4de7-4d0a-905c-2d2799e87db7"
+              :name         "owner_name"
+              :options      {:case-sensitive false}
+              :type         :dimension
+              :widget-type  :string/contains}
+             normalized))
+      (is (mr/validate ::mbql.s/TemplateTag normalized)))))
+        (is (mr/validate ::mbql.s/Query query))))))
