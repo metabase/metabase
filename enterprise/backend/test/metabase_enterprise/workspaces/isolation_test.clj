@@ -97,6 +97,11 @@
 
 ;;; Tests
 
+#_(mt/set-test-drivers! #{:redshift})
+
+#_(mt/test-driver :redshift
+    (mt/db))
+
 (deftest destroy-workspace-isolation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
     (ws.tu/with-workspaces! [workspace {:name "Test destroy isolation"}]

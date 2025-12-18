@@ -15,11 +15,11 @@
   [database workspace tables]
   (let [username (-> workspace :database_details :user)
         sqls     (cons
-                  (format "GRANT USAGE ON SCHEMA %s TO %s" (:schema workspace) username)
+                  (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" (:schema workspace) username)
                   (for [{s :schema, t :name} tables]
                     (if (str/blank? s)
-                      (format "GRANT SELECT ON TABLE \"%s\" TO %s" t username)
-                      (format "GRANT SELECT ON TABLE %s.%s TO %s" s t username))))]
+                      (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
+                      (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username))))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
@@ -33,12 +33,12 @@
                      :password (ws.u/random-isolated-password)}]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE SCHEMA %s" schema-name)
-                     (format "CREATE USER %s WITH PASSWORD '%s'" (:user read-user) (:password read-user))
+        (doseq [sql [(format "CREATE SCHEMA \"%s\"" schema-name)
+                     (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
                      ;; grant schema access (CREATE to create tables, USAGE to access them)
-                     (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" schema-name (:user read-user))
+                     (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
                      ;; grant all privileges on future tables created in this schema (by admin)
-                     (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s" schema-name (:user read-user))]]
+                     (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))]]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))
     {:schema           schema-name
