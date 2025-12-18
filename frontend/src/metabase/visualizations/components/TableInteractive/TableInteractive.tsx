@@ -166,7 +166,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isDocument,
     isSettings,
     isRawTable,
-    isTransform,
     isEmbeddingSdk,
     scrollToLastColumn,
     getColumnTitle,
@@ -639,8 +638,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         hasAggregation ||
         isNotebookPreview ||
         isModelEditor ||
-        isDocument ||
-        isTransform
+        isDocument
       ) && !isEmbeddingSdk;
 
     const shouldShowRowIndex =
@@ -672,7 +670,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     isDashboard,
     isDocument,
-    isTransform,
     zoomedRowIndex,
   ]);
 

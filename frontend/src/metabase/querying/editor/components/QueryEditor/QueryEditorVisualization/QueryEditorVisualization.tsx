@@ -37,7 +37,7 @@ export function QueryEditorVisualization({
         isRunnable={isRunnable}
         isRunning={isRunning}
         isDirty
-        isTransform
+        queryBuilderMode="dataset"
         isResultDirty={isResultDirty}
         isNativeEditorOpen={isNative}
         isDirtyStateShownForError={!isNative}

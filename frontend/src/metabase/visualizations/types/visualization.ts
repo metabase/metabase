@@ -129,7 +129,6 @@ export interface VisualizationProps {
   showTitle: boolean;
   isDashboard: boolean;
   isDocument: boolean;
-  isTransform?: boolean;
   isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;
