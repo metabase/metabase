@@ -164,7 +164,10 @@
                                      [:= :tc.constraint_name :kc.constraint_name]
                                      [:= :tc.table_schema :kc.table_schema]
                                      [:= :tc.table_name :kc.table_name]]]
-                             :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
+                             ;; Filter PK subquery by schema to avoid scanning all schemas
+                             :where [:and
+                                     [:= :tc.constraint_type [:inline "PRIMARY KEY"]]
+                                     (when schema-names [:in :tc.table_schema (map u/lower-case-en schema-names)])]}
                             :pk]
                            [:and
                             [:= :c.table_schema :pk.table_schema]
