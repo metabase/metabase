@@ -17,6 +17,7 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, DashboardId } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 type SdkQuestionConfig = {
@@ -148,7 +149,7 @@ export type SdkQuestionContextType = Omit<
     plugins: SdkQuestionConfig["componentPlugins"] | null;
     mode: QueryClickActionsMode | Mode | null | undefined;
     originalId: SdkQuestionId | null;
-    token: string | null | undefined;
+    token: EntityToken | null | undefined;
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;
