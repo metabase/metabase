@@ -55,8 +55,8 @@
               <hr>
             {{/unless}}
             {{{computed.dashboard_content}}}
-            <hr>
             {{#unless payload.disable_links}}
+              <hr>
               <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
                 Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
                 {{#if computed.management_url}}
