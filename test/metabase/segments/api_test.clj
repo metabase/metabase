@@ -181,6 +181,27 @@
                                           :revision_message "WOW HOW COOL"
                                           :definition       {}})))))))
 
+(deftest update-with-full-legacy-query-test
+  (testing "PUT /api/segment/:id"
+    (testing "Can update a segment with a full legacy MBQL query structure (type, database, query keys)"
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :orders)
+                                                  :definition (mbql4-segment-definition (mt/id :orders) (mt/id :orders :total) 50)}]
+        (let [legacy-full-query {:type     "query"
+                                 :database (mt/id)
+                                 :query    {:source-table (mt/id :orders)
+                                            :filter       [">" ["field" (mt/id :orders :total) nil] 100]}}]
+          (is (=? {:name       "Updated Segment"
+                   :definition {:lib/type "mbql/query"
+                                :database (mt/id)
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table (mt/id :orders)
+                                            :filters      some?}]}}
+                  (mt/user-http-request :crowberto :put 200 (format "segment/%d" id)
+                                        {:name             "Updated Segment"
+                                         :revision_message "Updated with full legacy query"
+                                         :definition       legacy-full-query}))
+              "The definition should be converted to MBQL5"))))))
+
 (deftest archive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we archive a Segment with the PUT endpoint?"

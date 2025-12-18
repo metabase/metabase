@@ -103,12 +103,13 @@
   ;; throw an Exception if someone tries to update creator_id
   (when (contains? (t2/changes segment) :creator_id)
     (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
-  ;; check for cycles if definition is being updated
-  (when-let [def-change (:definition (t2/changes segment))]
+  ;; normalize and check for cycles if definition is being updated
+  (if-let [def-change (:definition (t2/changes segment))]
     (let [normalized-def (migrated-segment-definition (assoc segment :definition def-change))]
       (when (seq normalized-def)
-        (lib/check-segment-overwrite id normalized-def))))
-  segment)
+        (lib/check-segment-overwrite id normalized-def))
+      (assoc segment :definition normalized-def))
+    segment))
 
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
