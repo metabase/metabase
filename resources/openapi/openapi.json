@@ -25553,6 +25553,15 @@
             "application/json" : {
               "schema" : {
                 "properties" : {
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "description" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -25861,6 +25870,15 @@
             "application/json" : {
               "schema" : {
                 "properties" : {
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "description" : {
                     "oneOf" : [ {
                       "type" : "string"
