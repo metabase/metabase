@@ -133,7 +133,6 @@
 (deftest ^:parallel basic-mbql-card-test
   (testing "when changing an MBQL card with dependents"
     (let [{:keys [provider graph mbql-base]
-           {tax-rate "Tax Rate"}     :mbql-transform-cols
            {downstream-card-id  :id} :mbql-dependent
            {transformed-card-id :id} :mbql-transform-consumer} (testbed)]
       (testing "a column that no longer exists will cause errors when referenced"
@@ -166,7 +165,6 @@
         (let [snippet' (assoc snippet-inner
                               :content       "nonexistent_table"
                               :template-tags {})
-              rating   (get sql-transform-cols "RATING")
               errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.

@@ -1035,8 +1035,7 @@
 (deftest ^:sequential broken-card-types-test
   (testing "GET /api/ee/dependencies/broken - broken models and metrics are filtered by card_types and pagination"
     (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)
-            products (lib.metadata/table mp (mt/id :products))]
+      (let [mp (mt/metadata-provider)]
         (mt/with-temp [:model/Card {broken-model-id :id} {:name "A - Broken Model - cardtype"
                                                           :type :model
                                                           :dataset_query (lib/native-query mp "not a query")}
