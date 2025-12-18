@@ -111,11 +111,8 @@
                      :from [:collection]
                      :where [:and
                              [:or [:= :type nil] [:not= :type [:inline "trash"]]]
-                             (if-let [namespace (u/qualified-name collection-namespace)]
-                               [:= :namespace namespace]
-                               [:or
-                                [:= :namespace nil]
-                                (when (premium-features/enable-audit-app?) [:= :namespace "analytics"])])
+                             (perms/namespace-clause
+                              :namespace (u/qualified-name collection-namespace))
                              [:not :archived]
                              [:= :personal_owner_id nil]
                              (let [ids-without-root (disj collection-ids :root)]
