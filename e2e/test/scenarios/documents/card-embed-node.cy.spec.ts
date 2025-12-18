@@ -542,6 +542,97 @@ describe("documents card embed node custom logic", () => {
     });
   });
 
+  describe("navigating from cardEmbed", () => {
+    it("should open a question in a new tab when clicking title with ctrl/meta key", () => {
+      const macOSX = Cypress.platform === "darwin";
+
+      H.createDocument({
+        name: "Test Document",
+        document: DOCUMENT_WITH_TWO_CARDS,
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      // Wait for cards to load
+      H.getDocumentCard("Orders")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      // Verify window.open was called
+      cy.on("uncaught:exception", (error) => {
+        expect(error.message.includes("expected '<a>' to have attribute")).to.be
+          .false;
+      });
+
+      H.onNextAnchorClick((anchor) => {
+        expect(anchor)
+          .to.have.attr("href")
+          .match(/\/question\//);
+        expect(anchor).to.have.attr("rel", "noopener");
+        expect(anchor).to.have.attr("target", "_blank");
+      });
+
+      // Click on the card title with ctrl/meta key
+      H.getDocumentCard("Orders").findByTestId("card-embed-title").click({
+        metaKey: macOSX,
+        ctrlKey: !macOSX,
+      });
+    });
+
+    it("should open drill-through action in a new tab when clicking with ctrl/meta key", () => {
+      const macOSX = Cypress.platform === "darwin";
+
+      H.createDocument({
+        name: "Test Document",
+        document: DOCUMENT_WITH_TWO_CARDS,
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      // Wait for cards to load
+      H.getDocumentCard("Orders, Count")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      // Click on a table cell to trigger click actions menu
+      H.getDocumentCard("Orders, Count")
+        .findByTestId("table-body")
+        .findAllByTestId("cell-data")
+        .first()
+        .click();
+
+      // Verify window.open was called
+      cy.on("uncaught:exception", (error) => {
+        expect(error.message.includes("expected '<a>' to have attribute")).to.be
+          .false;
+      });
+
+      H.onNextAnchorClick((anchor) => {
+        expect(anchor)
+          .to.have.attr("href")
+          .match(/\/question/);
+        expect(anchor).to.have.attr("rel", "noopener");
+        expect(anchor).to.have.attr("target", "_blank");
+      });
+
+      // Wait for the popover to appear and click the first action with ctrl/meta key
+      H.popover().within(() => {
+        cy.findByText("See these Orders").should("be.visible").click({
+          metaKey: macOSX,
+          ctrlKey: !macOSX,
+        });
+      });
+    });
+  });
+
   describe("deleting a cardEmbed", () => {
     it("should allow you to remove a card if it is the first item in a docuemnt (UXW-2169)", () => {
       cy.visit("/document/new");

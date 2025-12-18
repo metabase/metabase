@@ -70,10 +70,19 @@
 (defn- cs-id [cs]
   (-> cs :changeSet :id))
 
-(defn- merge-changesets [base-data ours-data theirs-data]
+(defn- merge-changesets [base-data ours-data theirs-data working-tree-data]
   (let [base-cs (m/index-by cs-id (extract-changesets base-data))
-        ours-cs (m/index-by cs-id (extract-changesets ours-data))
+        git-ours-cs (m/index-by cs-id (extract-changesets ours-data))
         theirs-cs (m/index-by cs-id (extract-changesets theirs-data))
+        ;; During rebase, git passes the WRONG "ours" file on 2nd+ merge driver calls.
+        ;; The working tree contains the actual correct state from previous cherry-picks.
+        ;; Use working-tree as the authoritative "ours" when available.
+        working-tree-cs (if working-tree-data
+                          (m/index-by cs-id (extract-changesets working-tree-data))
+                          {})
+        ;; Effective ours: prefer working-tree over git-provided ours
+        ;; This fixes the rebase bug where git passes stale ours data
+        ours-cs (merge git-ours-cs working-tree-cs)
         all-ids (into #{}
                       (comp (map keys) cat)
                       [base-cs ours-cs theirs-cs])]
@@ -123,20 +132,32 @@
         ">>>>>>>\n")
    id ours theirs))
 
-(defn- merge-files [base ours theirs {:keys [_marker-size]}]
+(defn- merge-files [base ours theirs {:keys [_marker-size filepath]}]
   (let [ours-text (slurp ours)
         theirs-text (slurp theirs)
+        ;; Read from working tree to get the actual current state during rebase
+        ;; This contains migrations correctly merged in previous cherry-picks
+        working-tree-text (try (slurp filepath) (catch Exception _ nil))
         ;; Parse yaml
         base-data (parse-yaml base)
         ours-data (parse-yaml ours)
         theirs-data (parse-yaml theirs)
+        working-tree-data (when working-tree-text
+                            (try
+                              (yaml/parse-string working-tree-text)
+                              (catch Exception _ nil)))
         ;; Extract raw text for each changeset
-        ours-cs-texts (extract-changeset-texts ours-text ours-data)
+        git-ours-cs-texts (extract-changeset-texts ours-text ours-data)
         theirs-cs-texts (extract-changeset-texts theirs-text theirs-data)
-        ;; Extract footer from ours file
-        footer (extract-footer ours-text)
+        working-tree-cs-texts (when (and working-tree-text working-tree-data)
+                                (extract-changeset-texts working-tree-text working-tree-data))
+        ;; Merge text maps: prefer working-tree over git-provided ours
+        ;; This ensures we use the correct text for migrations from previous cherry-picks
+        ours-cs-texts (merge git-ours-cs-texts working-tree-cs-texts)
+        ;; Extract footer from ours file (or working tree if available)
+        footer (extract-footer (or working-tree-text ours-text))
         ;; Perform merge
-        merged (merge-changesets base-data ours-data theirs-data)
+        merged (merge-changesets base-data ours-data theirs-data working-tree-data)
         ;; Sort merged changesets by ID (chronological order)
         sorted-merged (sort-by :id merged)
         ;; Build result by concatenating raw text blocks
@@ -151,7 +172,7 @@
                                   (get ours-cs-texts (:id cs))
                                   (get theirs-cs-texts (:id cs))))]
             ;; Remove trailing blank lines from each changeset
-            (str/replace text #"\n+$" "")))]
+            (some-> text (str/replace #"\n+$" ""))))]
     {:result (str header
                   "\n"
                   (str/join "\n\n" (filter some? changeset-texts))
@@ -160,8 +181,6 @@
                   (when-not (str/ends-with? footer "\n") "\n"))
      :conflicts (vec (keep #(when (= (:source %) :conflict) (:id %)) sorted-merged))
      :cnt (count sorted-merged)}))
-
-;; 
 
 ;;
 ;; Usage (called by git):
@@ -184,13 +203,23 @@
       (println "Will modify <ours>!"))
     (u/exit 2))
 
-  (let [[base ours theirs marker-size target] arguments
+  (let [;; Resolve relative paths against project root (where git creates temp files)
+        resolve-path (fn [p]
+                       (if (str/starts-with? p "/")
+                         p
+                         (str u/project-root-directory "/" p)))
+        [base ours theirs marker-size filepath] arguments
+        base (resolve-path base)
+        ours (resolve-path ours)
+        theirs (resolve-path theirs)
+        filepath (when filepath (resolve-path filepath))
         {:keys [result conflicts cnt]} (merge-files
                                         base
                                         ours
                                         theirs
-                                        {:marker-size marker-size})]
-    (spit (or target *out*) result)
+                                        {:marker-size marker-size
+                                         :filepath filepath})]
+    (spit (or filepath ours) result)
 
     ;; Exit with appropriate code
     (when (seq conflicts)
