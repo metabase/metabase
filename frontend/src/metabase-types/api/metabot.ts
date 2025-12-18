@@ -170,20 +170,12 @@ export type MetabotCodeEdit = {
 
 /* Metabot v3 - API Request Types */
 
-export type MetabotUseCase =
-  | "omnibot"
-  | "transforms"
-  | "nlq"
-  | "sql"
-  | "embedding";
-
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
   history: MetabotHistory;
   state: MetabotStateContext;
   conversation_id: string; // uuid
-  use_case: MetabotUseCase;
   metabot_id?: string;
   profile_id?: string;
 };
@@ -251,13 +243,6 @@ export interface MetabotFeedback {
 export type MetabotId = number;
 export type MetabotName = string;
 
-export type MetabotUseCaseInfo = {
-  id: number;
-  name: MetabotUseCase;
-  profile: string;
-  enabled: boolean;
-};
-
 export type MetabotInfo = {
   id: MetabotId;
   entity_id: string;
@@ -265,7 +250,6 @@ export type MetabotInfo = {
   description: string;
   use_verified_content: boolean;
   collection_id: number | null;
-  use_cases: MetabotUseCaseInfo[];
   created_at: string;
   updated_at: string;
 };
