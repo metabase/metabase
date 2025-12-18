@@ -11,6 +11,7 @@ const setupEnterprise = (opts: any) => {
     ...opts,
     hasEnterprisePlugins: true,
     tokenFeatures: { audit_app: true },
+    specificPlugins: ["audit_app", "database_routing", "collections"],
   });
 };
 
@@ -39,7 +40,7 @@ describe("DashboardHeader - enterprise", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Make a copy")).toBeInTheDocument();
 
-    //Other buttons
+    // Other buttons
     expect(
       screen.getByRole("button", { name: /bookmark/i }),
     ).toBeInTheDocument();

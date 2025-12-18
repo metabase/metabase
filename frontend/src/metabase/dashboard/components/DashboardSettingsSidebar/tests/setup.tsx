@@ -11,7 +11,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
+import type { Dashboard, Settings } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockSettings,
@@ -79,27 +79,3 @@ export async function setup({
     onClose,
   };
 }
-
-export const setupEnterprise = (
-  opts: SetupOpts = {},
-  tokenFeatures: Partial<TokenFeatures> = {},
-) => {
-  const plugins: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] = [];
-  if (tokenFeatures.audit_app) {
-    plugins.push("audit_app");
-  }
-  if (tokenFeatures.cache_granular_controls) {
-    plugins.push("caching");
-  }
-
-  return setup({
-    ...opts,
-    settings: createMockSettings({
-      ...opts.settings,
-      "token-features": createMockTokenFeatures({
-        ...tokenFeatures,
-      }),
-    }),
-    specificPlugins: plugins,
-  });
-};
