@@ -354,7 +354,10 @@ describe("scenarios > data studio > data model > measures", () => {
         cy.findByText(/created this measure/i)
           .scrollIntoView()
           .should("be.visible");
-        cy.findByText(/made multiple changes/i)
+        cy.findByText(/renamed the measure/i)
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText(/changed the aggregation/i)
           .scrollIntoView()
           .should("be.visible");
         cy.findByText(/updated the description/i)
@@ -452,10 +455,12 @@ function verifyMeasureInQueryBuilder(
   H.openTable({ table: tableId, mode: "notebook" });
 
   H.getNotebookStep("data").button("Summarize").click();
-  H.popover().findByText(measureName).click();
-
+  H.popover().within(() => {
+    cy.findByText("Measures").click();
+    cy.findByText(measureName).click();
+  });
   H.visualize();
-  H.tableInteractive().should("be.visible");
+  cy.findByTestId("scalar-value").should("be.visible");
 }
 
 function verifyMeasureNotInQueryBuilder(
