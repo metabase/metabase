@@ -108,26 +108,6 @@
   }
 }
 
-.ToggleNativeQueryButton {
-  transition:
-    background 300ms linear,
-    border 300ms linear;
-
-  &:hover:not([data-active="true"]) {
-    color: var(--mb-color-brand);
-    border-color: color-mix(
-      in srgb,
-      var(--mb-color-brand) 40%,
-      var(--mb-color-white)
-    );
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-brand) 15%,
-      var(--mb-color-white)
-    );
-  }
-}
-
 .BackButton {
   color: var(--mb-color-brand);
   padding: 0.75rem;
