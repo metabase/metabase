@@ -33,7 +33,9 @@ export const MainNavSharedCollections = ({
 }) => {
   const isTenantUser = useSelector(getIsTenantUser);
   if (isTenantUser) {
-    throw "MainNavSharedCollections should not be rendered for tenant users";
+    throw new Error(
+      "MainNavSharedCollections should not be rendered for tenant users",
+    );
   }
 
   const [modalOpen, setModalOpen] = useState(false);
