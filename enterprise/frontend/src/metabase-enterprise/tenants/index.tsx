@@ -151,7 +151,11 @@ export function initializePlugin() {
           <IndexRoute component={TenantsListingApp} />
           <Route path="" component={TenantsListingApp}>
             <ModalRoute path="new" modal={NewTenantModal} noWrap />
-            {PLUGIN_TENANTS.userStrategyRoute}
+            <ModalRoute
+              path="user-strategy"
+              modal={EditUserStrategyModal}
+              noWrap
+            />
           </Route>
           <Route path="groups">
             <IndexRoute component={ExternalGroupsListingApp} />
