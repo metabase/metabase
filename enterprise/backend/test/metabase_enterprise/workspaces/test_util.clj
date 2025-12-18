@@ -2,10 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn ws-fixtures!
@@ -27,6 +29,17 @@
                                                 :model/WorkspaceOutput
                                                 :model/WorkspaceDependency]
                           (tests)))))
+
+(derive :model/Workspace :model/WorkspaceCleanUpInTest)
+
+(t2/define-before-delete :model/WorkspaceCleanUpInTest
+  [workspace]
+  (try
+    (when (:database_details workspace)
+      (ws.isolation/destroy-workspace-isolation! (t2/select-one :model/Database (:database_id workspace)) workspace))
+    (catch Exception e
+      (log/warn e "Failed to destroy isolation" {:workspace workspace})))
+  workspace)
 
 (defn ws-ready
   "Poll until workspace status becomes :ready or timeout."
