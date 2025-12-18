@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,13 +18,11 @@ export const UpdateIncrementalSettings = ({ transform }: Props) => {
   const { initialValues, validationSchema, update } =
     useUpdateIncrementalSettings(transform);
 
-  const showSuccessToast = useCallback(() => {
+  const showSuccessToast = () =>
     sendSuccessToast(t`Incremental transformation settings updated`);
-  }, [sendSuccessToast]);
 
-  const showErrorToast = useCallback(() => {
+  const showErrorToast = () =>
     sendErrorToast(t`Failed to update incremental transformation settings`);
-  }, [sendErrorToast]);
 
   return (
     <FormProvider
