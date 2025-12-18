@@ -30,6 +30,7 @@ To render a dashboard:
 - `with-downloads` (default is false) - show the button to download the dashboard as PDF and download question results
 - `drills` (default is true) - lets you drill through the dashboard
 - `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
+- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md).
 
 If you surround your attribute value with double quotes, make sure to use single quotes:
 
@@ -109,9 +110,9 @@ None.
   - `stacked`: the question visualization stacks on top of the chat interface.
   - `sidebar`: the question visualization appears to the left of the chat interface, which is in the right sidebar.
 
-## Customizing loader and error components (SDK only)
+## Customizing loader and error components
 
-With the SDK, you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
+If you're using the [modular embedding React SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
 ```tsx
 {% include_file "{{ dirname }}/sdk/snippets/appearance/customizing-loader-and-components.tsx" snippet="imports" %}
