@@ -40,6 +40,11 @@ export const getUserPersonalCollectionId = createSelector(
   (user) => user?.personal_collection_id,
 );
 
+export const getUserTenantCollectionId = createSelector(
+  [getUser],
+  (user) => user?.tenant_collection_id,
+);
+
 export const canUserCreateQueries = createSelector(
   [getUser],
   (user) => user?.permissions?.can_create_queries ?? false,

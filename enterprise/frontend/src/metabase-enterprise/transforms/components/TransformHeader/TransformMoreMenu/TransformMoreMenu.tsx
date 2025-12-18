@@ -9,6 +9,7 @@ import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
 import { DeleteTransformModal } from "./DeleteTransformModal";
+import { MoveTransformModal } from "./MoveTransformModal";
 import type { TransformMoreMenuModalType } from "./types";
 
 type TransformMoreMenuProps = {
@@ -51,6 +52,12 @@ function TransformMenu({ onOpenModal }: TransformMenuProps) {
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
+          leftSection={<Icon name="move" />}
+          onClick={() => onOpenModal("move")}
+        >
+          {t`Move`}
+        </Menu.Item>
+        <Menu.Item
           leftSection={<Icon name="trash" />}
           onClick={() => onOpenModal("delete")}
         >
@@ -81,12 +88,25 @@ function TransformModal({
     onClose();
   };
 
+  const handleMove = () => {
+    sendSuccessToast(t`Transform moved`);
+    onClose();
+  };
+
   switch (modalType) {
     case "delete":
       return (
         <DeleteTransformModal
           transform={transform}
           onDelete={handleDelete}
+          onClose={onClose}
+        />
+      );
+    case "move":
+      return (
+        <MoveTransformModal
+          transform={transform}
+          onMove={handleMove}
           onClose={onClose}
         />
       );
