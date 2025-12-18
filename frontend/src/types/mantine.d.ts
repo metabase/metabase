@@ -1,4 +1,7 @@
+import type { MantineColorsTuple } from "@mantine/core";
+
 import type { EmbeddingThemeOptions } from "metabase/embedding-sdk/theme/private";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { ColorSettings } from "metabase-types/api/settings";
 
 interface _EmotionCompatibilityTheme {
@@ -18,4 +21,12 @@ declare module "@mantine/core" {
     updateColorSettings: (settings: ColorSettings) => void;
   }
   export interface MantineTheme extends _EmotionCompatibilityTheme {}
+
+  /**
+   * Override Mantine's color system to only allow colors defined in metabase/lib/colors.ts
+   * This ensures type safety for all color props (c, bg, color, etc.) in Mantine components
+   */
+  export interface MantineThemeColorsOverride {
+    colors: Record<ColorName, MantineColorsTuple>;
+  }
 }
