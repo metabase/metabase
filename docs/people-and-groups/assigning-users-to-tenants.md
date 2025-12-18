@@ -18,7 +18,7 @@ If you're running a multi-tenant application, you can assign users to tenants ba
 
 When a user logs in with JWT:
 
-1. Metabase reads the tenant identifier from the JWT claim. By default, this is the `tenant` key.
+1. Metabase reads the tenant identifier from the JWT claim. By default, this is the `@tenant` key.
 2. If the tenant doesn't exist, Metabase automatically creates it
 3. New users are automatically assigned to the tenant from their JWT
 
@@ -29,7 +29,7 @@ When a user logs in with JWT:
   "email": "user@example.com",
   "first_name": "Jane",
   "last_name": "Doe",
-  "tenant": "acme-corp"
+  "@tenant": "acme-corp"
 }
 ```
 
@@ -46,7 +46,7 @@ If a user attempts to log in with mismatched tenant information, they will recei
 
 # Configuring the tenant claim
 
-By default, Metabase looks for a `tenant` key in your JWT. You can customize this:
+By default, Metabase looks for a `@tenant` key in your JWT. You can customize this:
 
 1. Go to **Admin** > **Settings** > **Authentication** > **JWT** > **User attribute configuration**
 2. Change the **Tenant assignment attribute** key to your preferred identifier.
