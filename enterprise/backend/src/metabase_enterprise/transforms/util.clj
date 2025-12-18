@@ -622,22 +622,21 @@
   "If target table index modifications are required, executes those CREATE/DROP commands.
   See [[metabase.transforms-util/decide-secondary-index-ddl]] for details."
   [transform run-id database target]
-  (let [driver     (:engine database)
-        indexes    (when (driver.u/supports? driver :describe-indexes database)
-                     (driver/describe-table-indexes driver database target))
-        checkpoint (next-checkpoint (:id transform))
-        {:keys [drop create]}
-        (when indexes
+  (when (driver.u/supports? (:engine database) :describe-indexes database)
+    (let [driver     (:engine database)
+          indexes    (driver/describe-table-indexes driver database target)
+          checkpoint (next-checkpoint (:id transform))
+          {:keys [drop create]}
           (decide-secondary-index-ddl
            {:filter-column (:filter-column checkpoint)
             :database      database
             :target        target
-            :indexes       indexes}))]
-    (doseq [{:keys [index-name value]} drop]
-      (transforms.instrumentation/with-stage-timing [run-id [:import :drop-incremental-filter-index]]
-        (log/infof "Dropping secondary index %s(%s) for target %s" index-name value (pr-str target))
-        (driver/drop-index! driver (:id database) (:schema target) (:name target) index-name)))
-    (doseq [{:keys [index-name value]} create]
-      (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
-        (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
-        (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value])))))
+            :indexes       indexes})]
+      (doseq [{:keys [index-name value]} drop]
+        (transforms.instrumentation/with-stage-timing [run-id [:import :drop-incremental-filter-index]]
+          (log/infof "Dropping secondary index %s(%s) for target %s" index-name value (pr-str target))
+          (driver/drop-index! driver (:id database) (:schema target) (:name target) index-name)))
+      (doseq [{:keys [index-name value]} create]
+        (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
+          (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
+          (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))
