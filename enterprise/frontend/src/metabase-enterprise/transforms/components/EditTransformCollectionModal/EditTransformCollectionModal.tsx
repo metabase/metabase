@@ -145,9 +145,7 @@ export function EditTransformCollectionModal({
               />
               <Group justify="flex-end">
                 <FormErrorMessage />
-                <Button variant="subtle" onClick={onClose}>
-                  {t`Cancel`}
-                </Button>
+                <Button onClick={onClose}>{t`Cancel`}</Button>
                 <FormSubmitButton
                   label={t`Save`}
                   variant="filled"

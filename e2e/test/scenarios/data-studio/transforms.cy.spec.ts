@@ -458,7 +458,7 @@ LIMIT
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
-      H.undoToast()
+      H.modal()
         .findByText("A table with that name already exists.")
         .should("be.visible");
     });

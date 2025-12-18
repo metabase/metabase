@@ -1,11 +1,11 @@
-import { type MouseEvent, useState } from "react";
+import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useUpdateCollectionMutation } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Box, Icon, Menu } from "metabase/ui";
 import { EditTransformCollectionModal } from "metabase-enterprise/transforms/components/EditTransformCollectionModal";
 
 type CollectionRowMenuProps = {
@@ -23,11 +23,6 @@ export function CollectionRowMenu({
   const [updateCollection] = useUpdateCollectionMutation();
   const { show, modalContent } = useConfirmation();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-  const handleClick = (event: MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
 
   const handleArchive = async () => {
     try {
@@ -69,33 +64,23 @@ export function CollectionRowMenu({
   };
 
   return (
-    <>
+    <Box onClick={(e) => e.stopPropagation()}>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon
-            size="sm"
-            onClick={handleClick}
-            aria-label={t`Collection menu`}
-          >
+          <ActionIcon size="sm" aria-label={t`Collection menu`}>
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
             leftSection={<Icon name="pencil" />}
-            onClick={(e: MouseEvent) => {
-              handleClick(e);
-              setIsEditModalOpen(true);
-            }}
+            onClick={() => setIsEditModalOpen(true)}
           >
             {t`Edit collection details`}
           </Menu.Item>
           <Menu.Item
             leftSection={<Icon name="archive" />}
-            onClick={(e: MouseEvent) => {
-              handleClick(e);
-              handleArchiveClick();
-            }}
+            onClick={handleArchiveClick}
           >
             {t`Archive`}
           </Menu.Item>
@@ -108,6 +93,6 @@ export function CollectionRowMenu({
           onClose={() => setIsEditModalOpen(false)}
         />
       )}
-    </>
+    </Box>
   );
 }
