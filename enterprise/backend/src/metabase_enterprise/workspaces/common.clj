@@ -71,13 +71,14 @@
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
                                                 :workspace_id (:id ws)})
-        schema  (ws.u/isolation-namespace-name ws)
+        ;; Only set schema for initialized workspaces (not uninitialized)
+        schema  (when (not= status :uninitialized) (ws.u/isolation-namespace-name ws))
         ws      (assoc ws
                        :collection_id (:id coll)
                        :schema schema)]
     ;; Set the backlink from the workspace to the collection inside it and set the schema.
-    (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)
-                                           :schema schema})
+    (t2/update! :model/Workspace (:id ws) (cond-> {:collection_id (:id coll)}
+                                            schema (assoc :schema schema)))
     ;; TODO (Sanya 2025-11-18) - not sure how to transfer this api key to agent
     #_(log/infof "Generated API key for workspace: %s" (u.secret/expose (:unmasked_key api-key)))
     ws))
@@ -96,52 +97,77 @@
   (ws.log/track! ws-id :workspace-setup
     (let [{:keys [_database_details]} (ws.log/track! ws-id :database-isolation
                                         (-> (ws.isolation/ensure-database-isolation! workspace database)
-                                           ;; it actually returns just those, this is more like a doc than behavior
+                                            ;; it actually returns just those, this is more like a doc than behavior
                                             (select-keys [:schema :database_details])
                                             (u/prog1 (t2/update! :model/Workspace ws-id <>))))]
       (t2/update! :model/Workspace ws-id {:status :ready}))))
 
-(defn- create-workspace-with-unique-name!
-  "Create a workspace with status=updating, then kick off async setup."
-  [creator-id database ws-name max-retries]
+(defn initialize-workspace!
+  "Initialize an uninitialized workspace with the given database_id.
+   Updates database_id (if different from provisional), sets schema, creates isolation resources async,
+   and transitions to :pending status. Returns the updated workspace with schema set."
+  [workspace database-id]
+  (let [database (t2/select-one :model/Database :id database-id)
+        schema   (ws.u/isolation-namespace-name workspace)]
+    (t2/update! :model/Workspace (:id workspace) {:database_id database-id
+                                                  :schema      schema
+                                                  :status      :pending})
+    (u/prog1 (t2/select-one :model/Workspace :id (:id workspace))
+      (quick-task/submit-task! #(run-workspace-setup! <> database)))))
+
+(defn- create-uninitialized-workspace!
+  "Create a workspace with a provisional database_id but no isolation resources.
+   Retries on unique constraint violations for workspace name."
+  [creator-id db-id ws-name max-retries]
   (loop [attempt 1]
     (let [unique-name         (generate-unique-workspace-name ws-name)
           {:keys [retry
                   workspace]} (try
-                                {:workspace (create-workspace-container! creator-id (:id database) unique-name :pending)}
+                                {:workspace (create-workspace-container! creator-id db-id unique-name :uninitialized)}
                                 (catch Exception e
                                   (if (and (< attempt max-retries) (unique-constraint-violation? e))
                                     {:retry true}
                                     (throw e))))]
       (if retry
         (recur (inc attempt))
-        (do
-          (quick-task/submit-task! #(run-workspace-setup! workspace database))
-          workspace)))))
+        workspace))))
 
 ;; TODO internal: test!
 (defn create-workspace!
-  "Create workspace"
+  "Create workspace. If :provisional is true, creates an uninitialized workspace with a
+   provisional database_id (no isolation resources yet). Otherwise creates a pending
+   workspace and kicks off async setup."
   [creator-id {ws-name-maybe :name
-               db-id         :database_id}]
-  (let [ws-name  (or ws-name-maybe (str (random-uuid)))
-        database (t2/select-one :model/Database :id db-id)]
-    (create-workspace-with-unique-name! creator-id database ws-name 5)))
+               db-id         :database_id
+               provisional   :provisional}]
+  (let [ws-name (or ws-name-maybe (str (random-uuid)))
+        ws      (create-uninitialized-workspace! creator-id db-id ws-name 5)]
+    (if provisional
+      ws
+      (initialize-workspace! ws db-id))))
 
 (defn add-to-changeset!
-  "Add the given transform to the workspace changeset."
+  "Add the given transform to the workspace changeset.
+   If workspace is uninitialized, initializes it with the transform's target database."
   [_creator-id workspace entity-type global-id body]
   (ws.u/assert-transform! entity-type)
-  (t2/with-transaction [_]
-    (let [workspace-id    (:id workspace)
-          workspace-db-id (:database_id workspace)
-          body            (assoc-in body [:target :database] workspace-db-id)
-          transform       (t2/insert-returning-instance!
-                           :model/WorkspaceTransform
-                           (assoc (select-keys body [:name :description :source :target])
-                                  ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
-                                  ;:creator_id creator-id
-                                  :global_id global-id
-                                  :workspace_id workspace-id))]
-      (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
-      transform)))
+  ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
+  (let [workspace (if (= :uninitialized (:status workspace))
+                    (let [target-db-id (get-in body [:target :database])]
+                      (api/check-400 target-db-id "Transform must have a target database")
+                      (u/prog1 (initialize-workspace! workspace target-db-id)
+                        (assert (= :pending (:status <>)))))
+                    workspace)]
+    (t2/with-transaction [_]
+      (let [workspace-id    (:id workspace)
+            workspace-db-id (:database_id workspace)
+            body            (assoc-in body [:target :database] workspace-db-id)
+            transform       (t2/insert-returning-instance!
+                             :model/WorkspaceTransform
+                             (assoc (select-keys body [:name :description :source :target])
+                                    ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
+                                    ;;:creator_id creator-id
+                                    :global_id global-id
+                                    :workspace_id workspace-id))]
+        (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
+        transform))))

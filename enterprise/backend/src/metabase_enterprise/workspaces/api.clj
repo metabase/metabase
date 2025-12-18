@@ -33,7 +33,7 @@
 
 (mr/def ::appdb-or-ref-id [:or ::ws.t/appdb-id ::ws.t/ref-id])
 
-(mr/def ::status [:enum :pending :ready] #_[:enum :uninitialized :database-not-read :graph-not-ready :ready])
+(mr/def ::status [:enum :uninitialized :pending :ready] #_[:enum :uninitialized :database-not-read :graph-not-ready :ready])
 
 (def ^:private Workspace
   [:map
@@ -203,7 +203,7 @@
 (api.macros/defendpoint :get "/:id/log"
   :- [:map
       [:workspace_id ms/PositiveInt]
-      [:status [:enum :pending :ready :archived]]
+      [:status ::status]
       [:updated_at :any]
       [:last_completed_at [:maybe :any]]
       [:logs [:sequential [:map
@@ -234,7 +234,15 @@
 (def ^:private CreateWorkspace
   [:map
    [:name [:string {:min 1}]]
-   [:database_id ::ws.t/appdb-id]])
+   [:database_id {:optional true} ::ws.t/appdb-id]])
+
+(defn- first-supported-database-id
+  "Return the ID of the first database that supports workspaces, or nil if none."
+  []
+  (some->> (t2/select :model/Database {:order-by [:name]})
+           (filter #(driver.u/supports? (:engine %) :workspace %))
+           first
+           :id))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace
@@ -248,7 +256,15 @@
   (when database_id
     (check-transforms-enabled! database_id))
 
-  (ws->response (ws.common/create-workspace! api/*current-user-id* body)))
+  ;; If no database_id provided, use first supported DB as provisional default (uninitialized workspace)
+  (let [provisional (not database_id)
+        database-id (or database_id
+                        (api/check-400 (first-supported-database-id)
+                                       (tru "No supported databases configured. Please add a database that supports workspaces.")))]
+    (ws->response (ws.common/create-workspace! api/*current-user-id*
+                                               (assoc body
+                                                      :database_id database-id
+                                                      :provisional provisional)))))
 
 (defn- db-unsupported-reason [db]
   (when (not (driver.u/supports? (:engine db) :workspace db))
@@ -286,15 +302,26 @@
                                     {:supported true})))))})
 
 (api.macros/defendpoint :put "/:id" :- Workspace
-  "Update simple workspace properties, like name."
+  "Update simple workspace properties.
+
+  Can set database_id only on uninitialized workspaces."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [name]} :- [:map {:closed true} [:name [:string {:min 1}]]]]
-  (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
-    (api/check-400 (nil? (:archived_at <>)) "Cannot update an archived workspace"))
-  (t2/update! :model/Workspace id {:name name})
-  (-> (t2/select-one :model/Workspace :id id)
-      ws->response))
+   {:keys [name database_id]} :- [:map {:closed true}
+                                  [:name {:optional true} [:string {:min 1}]]
+                                  [:database_id {:optional true} ::ws.t/appdb-id]]]
+  (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
+                    (api/check-400 (nil? (:archived_at <>)) "Cannot update an archived workspace"))
+        data      (cond-> {}
+                    database_id (-> (u/prog1
+                                      (api/check-400 (= :uninitialized (:status workspace))
+                                                     "Can only set database_id on uninitialized workspace")
+                                      (check-transforms-enabled! database_id))
+                                    (assoc :database_id database_id))
+                    name        (assoc :name name))]
+    (t2/update! :model/Workspace id data)
+    (-> (t2/select-one :model/Workspace :id id)
+        ws->response)))
 
 (api.macros/defendpoint :post "/:id/archive" :- Workspace
   "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities."
@@ -356,7 +383,7 @@
                  (map #(-> %
                            (dissoc :source :target)
                            (assoc :checkout_disabled (case (:source_type %)
-                                                       :mbql "mbql"
+                                                       :mbql   "mbql"
                                                        :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
                                                                  "card-reference")
                                                        :python nil
@@ -504,10 +531,11 @@
                                         [:type :string]
                                         [:schema :string]
                                         [:name :string]]]]]
-  (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id))
+  (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id :status] ws-id))
         target    (update target :database #(or % db_id))
         tx-id     (when transform-id (parse-long transform-id))
-        ws-db-id  (:database_id workspace)]
+        ;; For uninitialized workspaces we skip over checks for their db id
+        ws-db-id  (when (not= :uninitialized (:status workspace)) (:database_id workspace))]
     (cond
       (not= "table" (:type target))
       {:status 403 :body (deferred-tru "Unsupported target type")}
@@ -591,7 +619,12 @@
           _         (api/check-400 (not (internal-target-conflict? id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
           global-id (:global_id body (:id body))
-          body      (-> body (dissoc :global_id) (update :target assoc :database (:database_id workspace)))
+          ;; For uninitialized workspaces, preserve the target database from the request body
+          ;; (add-to-changeset! will reinitialize the workspace with it if different from provisional)
+          ;; For initialized workspaces, ensure the target database matches the workspace's database
+          body      (-> body (dissoc :global_id)
+                        (cond-> (not= :uninitialized (:status workspace))
+                          (update :target assoc :database (:database_id workspace))))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
       (select-malli-keys WorkspaceTransform workspace-transform-alias transform))))
 
