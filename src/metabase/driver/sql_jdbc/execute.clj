@@ -174,6 +174,12 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti db-type-name
+  "Return the type name of a column. The default implementation fetches this information from rsmeta."
+  {:added "0.59.0" :arglists '([driver ^java.sql.ResultSetMetaData rsmeta column-index])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti column-metadata
   "Return a sequence of maps containing information about the corresponding columns in query results. The default
   implementation fetches this information via the result set metadata. It is unlikely you will need to override this."
@@ -687,12 +693,16 @@
         metadatas))
     metadatas))
 
+(defmethod db-type-name :sql-jdbc
+  [_driver ^ResultSetMetaData rsmeta column-index]
+  (.getColumnTypeName rsmeta column-index))
+
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
   (->> (mapv
         (fn [^Long i]
           (let [col-name     (.getColumnLabel rsmeta i)
-                db-type-name (.getColumnTypeName rsmeta i)
+                db-type-name (db-type-name driver rsmeta i)
                 base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
             (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                         i col-name db-type-name base-type driver)

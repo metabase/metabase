@@ -1171,32 +1171,21 @@
   [_]
   nil)
 
-;; Override column-metadata to handle tinyint(1) as boolean
+;; Override db-type-name to handle tinyint(1) as boolean
 ;; During sync, tinyint(1) is mapped to BIT (boolean) unless tinyInt1isBit=false is set
 ;; We need to do the same during query execution to ensure type consistency
-(defmethod sql-jdbc.execute/column-metadata :mysql
-  [driver ^ResultSetMetaData rsmeta]
-  (let [col-count (.getColumnCount rsmeta)
-        ;; Get the database to check for tinyInt1isBit setting
-        db        (try
-                    (driver-api/database (driver-api/metadata-provider))
-                    (catch Throwable _ nil))
-        tiny-int-1-is-bit? (not (some-> db :details :additional-options (str/includes? "tinyInt1isBit=false")))]
-    (mapv (fn [^Long i]
-            (let [col-name     (.getColumnLabel rsmeta i)
-                  db-type-name (.getColumnTypeName rsmeta i)
-                  precision    (try (.getPrecision rsmeta i) (catch Throwable _ 0))
-                  ;; Map tinyint(1) to BIT (boolean) to match sync behavior
-                  ;; unless tinyInt1isBit=false is set in connection details
-                  db-type-name (if (and (= "TINYINT" db-type-name)
-                                        (= precision 1)
-                                        tiny-int-1-is-bit?)
-                                 "BIT"
-                                 db-type-name)
-                  base-type    (sql-jdbc.sync/database-type->base-type driver (keyword db-type-name))]
-              (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
-                          i col-name db-type-name base-type driver)
-              {:name          col-name
-               :base_type     (or base-type :type/*)
-               :database_type db-type-name}))
-          (range 1 (inc col-count)))))
+(defmethod sql-jdbc.execute/db-type-name :mysql
+  [_driver ^ResultSetMetaData rsmeta column-index]
+  (let [db (try
+             (driver-api/database (driver-api/metadata-provider))
+             (catch Throwable _ nil))
+        tiny-int-1-is-bit? (not (some-> db :details :additional-options (str/includes? "tinyInt1isBit=false")))
+        db-type-name (.getColumnTypeName rsmeta column-index)
+        precision    (try
+                       (.getPrecision rsmeta column-index)
+                       (catch Throwable _ nil))]
+    (if (and (= "TINYINT" db-type-name)
+             (= precision 1)
+             tiny-int-1-is-bit?)
+      "BIT"
+      db-type-name)))
