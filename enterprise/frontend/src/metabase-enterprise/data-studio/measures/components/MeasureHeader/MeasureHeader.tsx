@@ -1,4 +1,3 @@
-import type { MeasureTabUrls } from "metabase-enterprise/data-studio/measures/layouts/MeasureLayout";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -12,6 +11,7 @@ import {
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import type { Measure } from "metabase-types/api";
 
+import type { MeasureTabUrls } from "../../types";
 import { MeasureMoreMenu } from "../MeasureMoreMenu";
 
 const MEASURE_NAME_MAX_LENGTH = 254;

@@ -91,9 +91,10 @@ function compileRoot(
   ctx: Context,
 ):
   | Lib.ExpressionParts
-  | Lib.SegmentMetadata
+  | Lib.ColumnMetadata
+  | Lib.MeasureMetadata
   | Lib.MetricMetadata
-  | Lib.ColumnMetadata {
+  | Lib.SegmentMetadata {
   assert(node.type === ROOT, t`Must be root node`);
   assert(node.children.length === 1, t`Root must have one child`);
 
