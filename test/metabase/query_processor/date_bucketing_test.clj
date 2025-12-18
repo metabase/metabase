@@ -1280,13 +1280,18 @@
         (t2/delete! :model/Database :id (mt/id))
         (tx/destroy-db! driver/*driver* (tx/get-dataset-definition dataset))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
-      (let [results (mt/run-mbql-query checkins
-                      {:aggregation [[:count]]
-                       :filter      [:=
-                                     [:field %timestamp {:temporal-unit field-grouping}]
-                                     (cons :relative-datetime relative-datetime-args)]})]
-        (or (some-> results mt/first-row first int)
-            results)))))
+      ;; Use UTC timezone for queries to match the timezone used during data insertion (see
+      ;; metabase.test.data.sql-jdbc.load-data/do-insert! which sets timezone to UTC before inserting).
+      ;; Without this, drivers like Redshift that use GETDATE() for relative datetime comparisons
+      ;; will fail when the JVM's system timezone differs from UTC.
+      (qp.test-util/with-report-timezone-id! "UTC"
+        (let [results (mt/run-mbql-query checkins
+                        {:aggregation [[:count]]
+                         :filter      [:=
+                                       [:field %timestamp {:temporal-unit field-grouping}]
+                                       (cons :relative-datetime relative-datetime-args)]})]
+          (or (some-> results mt/first-row first int)
+              results))))))
 
 (deftest ^:parallel count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
