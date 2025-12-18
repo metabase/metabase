@@ -164,6 +164,38 @@
                               :unknown-error)))]
         (group-by classify schemas)))))
 
+(def ^Long ^:private hours-before-isolation-expired-threshold
+  "Number of hours before an isolation schema is considered expired and safe to delete."
+  3)
+
+(defn- classify-isolation-schemas
+  "Classifies isolation schemas by checking table creation time via pg_class_info.
+  Returns a map with:
+  {:empty   schemas with no tables (can't determine age, treat as deletable)
+   :expired schemas where newest table is older than [[hours-before-isolation-expired-threshold]]
+   :recent  schemas with recently created tables (keep these)
+   :unknown-error if an error was thrown}"
+  [^java.sql.Connection conn schemas]
+  (let [threshold (t/minus (t/instant) (t/hours hours-before-isolation-expired-threshold))]
+    (with-open [stmt (.createStatement conn)]
+      (letfn [(newest-table-time [schema-name]
+                (let [sql (str "SELECT MAX(ci.relcreationtime) as newest "
+                               "FROM pg_class_info ci "
+                               "JOIN pg_namespace ns ON ci.relnamespace = ns.oid "
+                               "WHERE ns.nspname = '" schema-name "'")]
+                  (with-open [rset (.executeQuery stmt sql)]
+                    (when (.next rset)
+                      (some-> (.getTimestamp rset "newest") .toInstant)))))
+              (classify [schema-name]
+                (try
+                  (if-let [created-at (newest-table-time schema-name)]
+                    (if (t/before? created-at threshold) :expired :recent)
+                    :empty)
+                  (catch Exception e
+                    (log/error e "Error classifying isolation schema")
+                    :unknown-error)))]
+        (group-by classify schemas)))))
+
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
   not have this luxury. Test runs can create schemas where models are persisted and nothing cleans these up, leading
@@ -184,6 +216,8 @@
         {:keys [expired
                 old-style-cache
                 lacking-created-at]} (classify-cache-schemas conn caches-with-info)
+        {isolation-empty :empty
+         isolation-expired :expired} (classify-isolation-schemas conn isolation)
         drop-sql                     (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;"
                                                                schema-name))]
     ;; don't delete unknown-error and recent.
@@ -192,7 +226,8 @@
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]
                                     [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]
-                                    [isolation "Dropping orphaned isolation schema: %s"]]
+                                    [isolation-empty "Dropping empty isolation schema: %s"]
+                                    [isolation-expired "Dropping expired isolation schema: %s"]]
               schema               collection]
         (log/infof fmt-str schema)
         (.execute stmt (drop-sql schema))))))
