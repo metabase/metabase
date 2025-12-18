@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -953,7 +954,7 @@
                       :data {:table {:name "PRODUCTS"}}}]
                     response))))))))
 
-(deftest ^:sequential unreferenced-card-types-and-pagination-test
+(deftest ^:sequential unreferenced-card-types-test
   (testing "GET /api/ee/dependencies/unreferenced - unreferenced models and metrics are filtered by card_types and pagination"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
@@ -988,5 +989,83 @@
                        {:id unreffed-metric-id
                         :type "card"
                         :data {:name "B - Unreferenced Metric - cardtype"
+                               :type "metric"}}]
+                      response)))))))))
+
+(deftest ^:sequential broken-questions-test
+  (testing "GET /api/ee/dependencies/broken - only broken questions are returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Card _ {:name "Good Card - brokentest"
+                                      :type :question
+                                      :dataset_query (lib/query mp products)}
+                       :model/Card {broken-card-id :id} {:name "Broken Card - brokentest"
+                                                         :type :question
+                                                         :dataset_query (lib/native-query mp "not a query")}]
+          (while (> 0 (dependencies.findings/analyze-batch! :card 50)))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
+            (is (=? [{:id broken-card-id
+                      :type "card"
+                      :data {:name "Broken Card - brokentest"}}]
+                    response))))))))
+
+(deftest ^:sequential broken-transforms-test
+  (testing "GET /api/ee/dependencies/broken - only broken transforms are returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Transform {broken-transform-id :id} {:name "Broken Transform - brokentest"
+                                                                   :source {:type :query
+                                                                            :query (lib/native-query mp "not a query")}
+                                                                   :target {:schema "PUBLIC"
+                                                                            :name "broken_transform_table"}}
+                       :model/Transform _ {:name "Good Transform - brokentest"
+                                           :source {:type :query
+                                                    :query (lib/query mp products)}
+                                           :target {:schema "PUBLIC"
+                                                    :name "referenced_transform_table"}}]
+          (while (> 0 (dependencies.findings/analyze-batch! :transform 50)))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=transform&query=brokentest")]
+            (is (=? [{:id broken-transform-id
+                      :type "transform"
+                      :data {:name "Broken Transform - brokentest"}}]
+                    response))))))))
+
+(deftest ^:sequential broken-card-types-test
+  (testing "GET /api/ee/dependencies/broken - broken models and metrics are filtered by card_types and pagination"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Card {broken-model-id :id} {:name "A - Broken Model - cardtype"
+                                                          :type :model
+                                                          :dataset_query (lib/native-query mp "not a query")}
+                       :model/Card {broken-metric-id :id} {:name "B - Broken Metric - cardtype"
+                                                           :type :metric
+                                                           :dataset_query (lib/native-query mp "not a query")}]
+          (while (> 0 (dependencies.findings/analyze-batch! :card 50)))
+          (testing "filtering by model only"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=model&query=cardtype")]
+              (is (=? [{:id broken-model-id
+                        :type "card"
+                        :data {:name "A - Broken Model - cardtype"
+                               :type "model"}}]
+                      response))))
+          (testing "filtering by metric only"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=metric&query=cardtype")]
+              (is (=? [{:id broken-metric-id
+                        :type "card"
+                        :data {:name "B - Broken Metric - cardtype"
+                               :type "metric"}}]
+                      response))))
+          (testing "filtering by model and metric as the default card types"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=cardtype")]
+              (is (=? [{:id broken-model-id
+                        :type "card"
+                        :data {:name "A - Broken Model - cardtype"
+                               :type "model"}}
+                       {:id broken-metric-id
+                        :type "card"
+                        :data {:name "B - Broken Metric - cardtype"
                                :type "metric"}}]
                       response)))))))))
