@@ -21,7 +21,6 @@ import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
 import {
   getDocsUrl,
   getIsPaidPlan,
-  getSetting,
 } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -94,9 +93,7 @@ export const Onboarding = () => {
     cardType: "question",
   });
 
-  const lastUsedDatabaseId = useSelector((state) =>
-    getSetting(state, "last-used-native-database-id"),
-  );
+  const lastUsedDatabaseId = useSetting("last-used-native-database-id");
 
   const newNativeQuestionUrl = Urls.newQuestion({
     DEPRECATED_RAW_MBQL_type: "native",

@@ -4,9 +4,8 @@ import { PermissionHelpDescription } from "metabase/admin/permissions/components
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
 import {
   Accordion,
   Box,
@@ -22,9 +21,8 @@ import {
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 
 export const DataPermissionsHelp = () => {
-  const isAdvancedPermissionsFeatureEnabled = useSelector(
-    (state) => getSetting(state, "token-features").advanced_permissions,
-  );
+  const isAdvancedPermissionsFeatureEnabled =
+    useSetting("token-features").advanced_permissions;
 
   const shouldShowLegacyNoSelfServiceInfo = useSelector((state) =>
     hasPermissionValueInGraph(

@@ -9,6 +9,7 @@ import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
+import { useSetting } from "metabase/common/hooks";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
@@ -37,7 +38,6 @@ import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLin
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import type { CardEmbedRef } from "metabase-types/store/documents";
@@ -101,7 +101,7 @@ export const Editor: React.FC<EditorProps> = ({
   onQuestionSelect,
   isLoading = false,
 }) => {
-  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const siteUrl = useSetting("site-url");
   const { getState } = useStore();
 
   const extensions = useMemo(
