@@ -61,13 +61,15 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
   const matchingWorkspaces = useMemo(
     () =>
-      workspaces
-        .filter((workspace) => !existingWorkspaceIds.has(workspace.id))
-        .filter((workspace) => !workspace.archived),
+      workspaces.filter(
+        (workspace) =>
+          !existingWorkspaceIds.has(workspace.id) && !workspace.archived,
+      ),
     [workspaces, existingWorkspaceIds],
   );
 
-  const isBusy = isCreatingWorkspace;
+  const isBusy =
+    isCreatingWorkspace || isLoadingWorkspaces || isWorkspaceCheckoutLoading;
   const emptyMessage =
     workspaces.length === 0 || sourceDatabaseId == null
       ? t`No workspaces yet`
