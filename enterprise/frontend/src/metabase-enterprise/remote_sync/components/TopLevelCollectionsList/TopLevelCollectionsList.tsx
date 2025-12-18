@@ -40,9 +40,8 @@ export const TopLevelCollectionsList = () => {
     <CollectionSyncList
       collections={collections}
       isLoading={isLoading || isLoadingLibrary}
-      error={error}
+      error={error ? t`Failed to load collections` : null}
       emptyMessage={t`No collections found`}
-      errorMessage={t`Failed to load collections`}
     />
   );
 };

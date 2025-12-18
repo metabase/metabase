@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { Box, Flex, Loader, Text } from "metabase/ui";
@@ -15,9 +15,8 @@ import { CollectionSyncRow } from "../CollectionSyncRow";
 interface CollectionSyncListProps {
   collections: CollectionItem[];
   isLoading: boolean;
-  error: unknown;
+  error: string | null;
   emptyMessage: string;
-  errorMessage: string;
 }
 
 export const CollectionSyncList = ({
@@ -25,7 +24,6 @@ export const CollectionSyncList = ({
   isLoading,
   error,
   emptyMessage,
-  errorMessage,
 }: CollectionSyncListProps) => {
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
@@ -59,7 +57,7 @@ export const CollectionSyncList = ({
   }
 
   if (error) {
-    return <Text c="error">{errorMessage}</Text>;
+    return <Text c="error">{error}</Text>;
   }
 
   if (collections.length === 0) {

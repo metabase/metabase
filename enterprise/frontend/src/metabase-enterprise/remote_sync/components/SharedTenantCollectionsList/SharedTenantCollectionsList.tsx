@@ -14,9 +14,8 @@ export const SharedTenantCollectionsList = () => {
     <CollectionSyncList
       collections={data?.data ?? []}
       isLoading={isLoading}
-      error={error}
+      error={error ? t`Failed to load shared tenant collections` : null}
       emptyMessage={t`No shared tenant collections found`}
-      errorMessage={t`Failed to load shared tenant collections`}
     />
   );
 };

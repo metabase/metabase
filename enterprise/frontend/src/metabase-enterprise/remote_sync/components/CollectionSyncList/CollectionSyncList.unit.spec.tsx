@@ -33,9 +33,8 @@ const createMockCollection = (
 interface SetupOpts {
   collections?: CollectionItem[];
   isLoading?: boolean;
-  error?: unknown;
+  error?: string | null;
   emptyMessage?: string;
-  errorMessage?: string;
   initialSyncMap?: CollectionSyncPreferences;
   syncType?: "read-only" | "read-write";
 }
@@ -45,7 +44,6 @@ const setup = ({
   isLoading = false,
   error = null,
   emptyMessage = "No collections found",
-  errorMessage = "Failed to load collections",
   initialSyncMap = {},
   syncType = "read-write",
 }: SetupOpts = {}) => {
@@ -65,7 +63,6 @@ const setup = ({
           isLoading={isLoading}
           error={error}
           emptyMessage={emptyMessage}
-          errorMessage={errorMessage}
         />
         <FormSubmitButton label="Save" />
       </Form>
@@ -80,7 +77,6 @@ const setupWithSyncTypeToggle = ({
   isLoading = false,
   error = null,
   emptyMessage = "No collections found",
-  errorMessage = "Failed to load collections",
   initialSyncMap = {},
   syncType = "read-write",
 }: SetupOpts = {}) => {
@@ -106,7 +102,6 @@ const setupWithSyncTypeToggle = ({
           isLoading={isLoading}
           error={error}
           emptyMessage={emptyMessage}
-          errorMessage={errorMessage}
         />
         <FormSubmitButton label="Save" />
       </Form>
@@ -131,7 +126,7 @@ describe("CollectionSyncList", () => {
     });
 
     it("should show error message when error is provided", () => {
-      setup({ error: new Error("Test error"), errorMessage: "Custom error" });
+      setup({ error: "Custom error" });
 
       expect(screen.getByText("Custom error")).toBeInTheDocument();
     });
@@ -412,7 +407,6 @@ describe("CollectionSyncList", () => {
                 isLoading={false}
                 error={null}
                 emptyMessage="No collections found"
-                errorMessage="Failed to load collections"
               />
               <FormSubmitButton
                 label="Save"
