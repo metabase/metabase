@@ -12,6 +12,7 @@ import * as Urls from "metabase/lib/urls";
 import { Button, Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
@@ -74,21 +75,13 @@ export const JobListPage = () => {
   }
 
   return (
-    <>
+    <PageContainer data-testid="transforms-job-list" gap={0}>
       <PaneHeader
         breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
-        px="3.5rem"
         py={0}
         showMetabotButton
       />
-      <Stack
-        bg="background-light"
-        data-testid="transforms-job-list"
-        h="100%"
-        pb="2rem"
-        px="3.5rem"
-        style={{ overflow: "hidden" }}
-      >
+      <Stack style={{ overflow: "hidden" }}>
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}
@@ -123,6 +116,6 @@ export const JobListPage = () => {
           )}
         </Flex>
       </Stack>
-    </>
+    </PageContainer>
   );
 };
