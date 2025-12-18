@@ -55,9 +55,9 @@
                                         ;(when-not (load/compatible? path)
                                         ;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
-  (serdes/with-cache
-    (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts))
-  (events/publish-event! :event/serdes-load {}))
+  (u/prog1 (serdes/with-cache
+             (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts))
+    (events/publish-event! :event/serdes-load {})))
 
 (mu/defn v2-load!
   "SerDes v2 load entry point.
@@ -114,10 +114,10 @@
                  (seq collection-ids)
                  (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
         report (try
-                 (serdes/with-cache
-                   (-> (v2.extract/extract opts)
-                       (v2.storage/store! path)))
-                 (events/publish-event! :event/serdes-dump {})
+                 (u/prog1 (serdes/with-cache
+                            (-> (v2.extract/extract opts)
+                                (v2.storage/store! path)))
+                   (events/publish-event! :event/serdes-dump {}))
                  (catch Exception e
                    (reset! err e)))]
     (analytics/track-event! :snowplow/serialization

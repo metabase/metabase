@@ -955,6 +955,7 @@
            app-db
            classloader
            config
+           events
            internal-stats
            settings
            util}}

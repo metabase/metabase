@@ -283,7 +283,8 @@
 
 (defmethod resolve-field :composite-field
   [driver metadata-provider col-spec]
-  (let [member-fields (mapcat (partial resolve-field driver metadata-provider)
+  (let [member-fields (mapcat #(->> (resolve-field driver metadata-provider %)
+                                    (keep :col))
                               (:member-fields col-spec))]
     [{:col {:name (get-name col-spec)
             :lib/desired-column-alias (get-name col-spec)

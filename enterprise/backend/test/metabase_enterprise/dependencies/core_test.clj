@@ -144,8 +144,8 @@
                                  lib/update-options assoc :lib/expression-name "Sales Taxes")
                          (dissoc :result-metadata))
               errors (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
-          (is (=? {:card {downstream-card-id  [[:field {} "Tax Rate"]]
-                          transformed-card-id [[:field {} (:id tax-rate)]]}}
+          (is (=? {:card {downstream-card-id  #{{:type :validate/missing-column, :name "Tax Rate"}}
+                          transformed-card-id #{{:type :validate/missing-column, :name "Tax Rate"}}}}
                   errors))
           (is (= [:card] (keys errors)))
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
@@ -170,16 +170,10 @@
               errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
-          (is (=? {:card      {direct-sql-card-id       [{:table {:table "NONEXISTENT_TABLE"},
-                                                          :type :all-columns,
-                                                          :metabase.driver.sql/bad-reference true}]
-                               transformed-sql-card-id  [{:table {:schema "TRANSFORMED", :table "OUTPUT_TF31"},
-                                                          :type :all-columns,
-                                                          :metabase.driver.sql/bad-reference true}]
-                               transformed-mbql-card-id [[:field {} (:id rating)]]}
-                   :transform {(:id sql-transform)      [{:table {:table "NONEXISTENT_TABLE"},
-                                                          :type :all-columns,
-                                                          :metabase.driver.sql/bad-reference true}]}}
+          (is (=? {:card      {direct-sql-card-id       #{{:type :validate/missing-table-alias, :name "NONEXISTENT_TABLE"}}
+                               transformed-sql-card-id  #{{:type :validate/missing-table-alias, :name "TRANSFORMED.OUTPUT_TF31"}}
+                               transformed-mbql-card-id #{{:type :validate/missing-column, :name "RATING"}}}
+                   :transform {(:id sql-transform)      #{{:type :validate/missing-table-alias, :name "NONEXISTENT_TABLE"}}}}
                   errors))
           (is (= #{:card :transform}
                  (set (keys errors))))
