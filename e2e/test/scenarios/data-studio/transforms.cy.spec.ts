@@ -1657,7 +1657,7 @@ LIMIT
 
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Q4 Reports");
-        cy.findByTestId("transform-collection-picker-button").click();
+        cy.findByTestId("collection-picker-button").click();
       });
 
       cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
@@ -1688,7 +1688,7 @@ LIMIT
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Sales Summary");
         cy.findByLabelText("Table name").clear().type("sales_summary");
-        cy.findByTestId("transform-collection-picker-button").click();
+        cy.findByTestId("collection-picker-button").click();
       });
 
       cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
@@ -1752,7 +1752,7 @@ LIMIT
         cy.findByRole("button", { name: "Select" }).click();
       });
 
-      H.undoToast().findByText("Transform moved").should("be.visible");
+      H.undoToastList().findByText("Transform moved").should("be.visible");
 
       cy.log("verify breadcrumbs no longer show collection");
       cy.findByTestId("data-studio-breadcrumbs").within(() => {
@@ -1815,7 +1815,7 @@ LIMIT
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Analytics Transform");
         cy.findByLabelText("Table name").clear().type("analytics_transform");
-        cy.findByTestId("transform-collection-picker-button").click();
+        cy.findByTestId("collection-picker-button").click();
       });
 
       cy.findByRole("dialog", { name: "Select a collection" }).within(() => {

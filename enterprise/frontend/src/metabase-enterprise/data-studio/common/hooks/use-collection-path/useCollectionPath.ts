@@ -15,9 +15,10 @@ export const useCollectionPath = ({
   collectionId,
   namespace,
 }: UseCollectionPathOptions) => {
-  const { data: collection, isLoading: isLoadingPath } = useGetCollectionQuery(
-    !collectionId ? skipToken : { id: collectionId, namespace },
-  );
+  const { currentData: collection, isLoading: isLoadingPath } =
+    useGetCollectionQuery(
+      collectionId == null ? skipToken : { id: collectionId, namespace },
+    );
 
   const ancestors =
     collection?.effective_ancestors?.filter((c) => !isRootCollection(c)) ?? [];
