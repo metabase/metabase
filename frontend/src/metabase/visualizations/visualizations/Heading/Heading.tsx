@@ -14,11 +14,11 @@ import {
   getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
+import { useSetting } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
-import { getSetting } from "metabase/selectors/settings";
 import { Box, Flex } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
@@ -109,9 +109,7 @@ export function Heading({
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can connect widgets to {{variables}} in heading cards.`;
 
-  const fontFamily = useSelector((state) =>
-    getSetting(state, "application-font"),
-  );
+  const fontFamily = useSetting("application-font");
 
   const { shouldCollapseList, containerRef, parameterListRef } =
     useResponsiveParameterList({

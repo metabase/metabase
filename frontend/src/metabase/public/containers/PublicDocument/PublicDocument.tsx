@@ -7,6 +7,7 @@ import { useEffect, useMemo } from "react";
 import { useAsync, useMount } from "react-use";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { initializeIframeResizer } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -22,7 +23,6 @@ import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeN
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
-import { getSetting } from "metabase/selectors/settings";
 import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
 import type { Document } from "metabase-types/api";
@@ -39,12 +39,10 @@ interface PublicDocumentProps {
 export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
   const { uuid } = params;
   const dispatch = useDispatch();
-  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const siteUrl = useSetting("site-url");
 
   const { theme } = useEmbedFrameOptions({ location });
-  const hasEmbedBranding = useSelector(
-    (state) => !getSetting(state, "hide-embed-branding?"),
-  );
+  const hasEmbedBranding = !useSetting("hide-embed-branding?");
 
   const {
     value: document,

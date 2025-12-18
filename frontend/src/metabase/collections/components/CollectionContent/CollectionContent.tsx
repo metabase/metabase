@@ -6,13 +6,13 @@ import {
   useBookmarkListQuery,
   useCollectionQuery,
   useDatabaseListQuery,
+  useSetting,
 } from "metabase/common/hooks";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Databases } from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
-import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type {
   BookmarkId,
@@ -40,9 +40,7 @@ export function CollectionContent({
     id: collectionId,
   });
 
-  const uploadDbId = useSelector(
-    (state) => getSetting(state, "uploads-settings")?.db_id,
-  );
+  const uploadDbId = useSetting("uploads-settings")?.db_id;
   const uploadsEnabled = !!uploadDbId;
 
   const canCreateUploadInDb = useSelector(
