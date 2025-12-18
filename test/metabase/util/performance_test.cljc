@@ -274,14 +274,14 @@
                      (= (#'perf/smallest-count short-coll trap-coll)
                         (min short-len extra-len))))))
 
-(:clj
- (defspec mapv-does-not-over-realize-2-colls 1000
-   (prop/for-all [short-len (mg/generator [:int {:min 0 :max 50}])
-                  extra-len (mg/generator [:int {:min 34 :max 100}])]
-                 (let [short-coll (vec (range short-len))
-                       trap-coll  (trap-seq (+ short-len extra-len))]
-                   (= (mapv vector short-coll trap-coll)
-                      (perf/mapv vector short-coll trap-coll))))))
+#?(:clj
+   (defspec mapv-does-not-over-realize-2-colls 1000
+     (prop/for-all [short-len (mg/generator [:int {:min 0 :max 50}])
+                    extra-len (mg/generator [:int {:min 34 :max 100}])]
+                   (let [short-coll (vec (range short-len))
+                         trap-coll  (trap-seq (+ short-len extra-len))]
+                     (= (mapv vector short-coll trap-coll)
+                        (perf/mapv vector short-coll trap-coll))))))
 
 #?(:clj
    (defspec mapv-does-not-over-realize-3-colls 1000
