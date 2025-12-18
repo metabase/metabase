@@ -1,11 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
-import { isSyncedCollection } from "metabase/collections/utils";
 import { useToast } from "metabase/common/hooks";
-import { buildCollectionTree } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Loader, Tooltip } from "metabase/ui";
@@ -47,20 +44,6 @@ export const GitSyncControls = () => {
       skip: !isRemoteSyncEnabled,
       refetchOnFocus: true,
     });
-
-  // Fetch collections to filter synced ones for the push modal
-  const { data: collections = [] } = useListCollectionsTreeQuery(
-    {
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-    },
-    { skip: !isRemoteSyncEnabled },
-  );
-
-  const syncedCollections = useMemo(() => {
-    const synced = collections.filter(isSyncedCollection);
-    return buildCollectionTree(synced);
-  }, [collections]);
 
   const isSwitchingBranch = !!nextBranch;
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
@@ -219,14 +202,12 @@ export const GitSyncControls = () => {
       {showPushModal && (
         <PushChangesModal
           onClose={handleClosePushModal}
-          collections={syncedCollections}
           currentBranch={currentBranch}
         />
       )}
 
       {syncConflictVariant && (
         <SyncConflictModal
-          collections={syncedCollections}
           currentBranch={currentBranch}
           nextBranch={nextBranch}
           onClose={handleCloseSyncConflictModal}

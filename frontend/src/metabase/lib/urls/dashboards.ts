@@ -7,6 +7,7 @@ import type {
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { appendSlug } from "./utils";
 
@@ -53,7 +54,7 @@ export function publicDashboard(uuid: string) {
   return `${siteUrl}/public/dashboard/${uuid}`;
 }
 
-export function embedDashboard(token: string) {
+export function embedDashboard(token: EntityToken) {
   const siteUrl = MetabaseSettings.get("site-url");
   return `${siteUrl}/embed/dashboard/${token}`;
 }

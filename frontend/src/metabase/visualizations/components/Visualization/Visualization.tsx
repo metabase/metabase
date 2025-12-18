@@ -77,6 +77,7 @@ import type {
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { Dispatch, State } from "metabase-types/store";
 
 import { EmptyVizState } from "../EmptyVizState";
@@ -164,7 +165,7 @@ type VisualizationOwnProps = {
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
   uuid?: string;
-  token?: string;
+  token?: EntityToken;
   zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
