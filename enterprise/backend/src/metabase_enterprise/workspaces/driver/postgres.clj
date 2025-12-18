@@ -44,10 +44,10 @@
     {:schema           schema-name
      :database_details read-user}))
 
-(defn- role-exists?
-  "Check if a PostgreSQL role exists."
-  [conn role-name]
-  (seq (jdbc/query conn ["SELECT 1 FROM pg_roles WHERE rolname = ?" role-name])))
+(defn- user-exists?
+  "Check if a PostgreSQL user exists. Uses pg_user which also works in Redshift."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
 
 (defmethod isolation/destroy-workspace-isolation! :postgres
   [database workspace]
@@ -56,8 +56,8 @@
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)]
-                      (role-exists? t-conn username)
+                      (user-exists? t-conn username)
                       (into [(format "DROP OWNED BY \"%s\"" username)
-                             (format "DROP ROLE \"%s\"" username)]))]
+                             (format "DROP USER \"%s\"" username)]))]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
