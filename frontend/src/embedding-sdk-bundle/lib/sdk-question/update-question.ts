@@ -10,6 +10,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import { runQuestionQuerySdk } from "./run-question-query";
@@ -35,7 +36,7 @@ interface UpdateQuestionParams {
   queryResults?: any[];
   cancelDeferred?: Deferred;
   isGuestEmbed: boolean;
-  token: string | null | undefined;
+  token: EntityToken | null | undefined;
 
   /** Optimistic update the question in the query builder UI */
   optimisticUpdateQuestion: (question: Question) => void;
