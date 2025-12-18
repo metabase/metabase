@@ -9,7 +9,8 @@ import {
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import CS from "metabase/css/core/index.css";
-import Collections, {
+import {
+  Collections,
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";

@@ -14,7 +14,7 @@ import { t } from "ttag";
 import CollapseSection from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
-import Bookmarks from "metabase/entities/bookmarks";
+import { Bookmarks } from "metabase/entities/bookmarks";
 import { getIcon } from "metabase/lib/icon";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

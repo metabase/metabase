@@ -241,7 +241,7 @@ export function initializePlugin() {
     };
 
     PLUGIN_TENANTS.getFormGroupsTitle = (isExternal: boolean) => {
-      return isExternal ? t`Tenant Groups` : null;
+      return isExternal ? t`Tenant groups` : null;
     };
 
     // Category 2: Collection namespace utilities
