@@ -28,6 +28,7 @@ export const SortableHeaderPill = forwardRef<
           name={sort === "asc" ? "chevronup" : "chevrondown"}
           size={10}
           className={S.sortIcon}
+          data-testid="header-sort-indicator"
         />
       )}
     </div>
