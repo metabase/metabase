@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.events.core :as events]
@@ -12,6 +13,9 @@
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]))
+
+(comment
+  metabase.dependencies.events/keep-me)
 
 (defn card-with-query
   "Create a card map with the given name and dataset query."

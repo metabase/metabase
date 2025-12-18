@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -13,6 +14,9 @@
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
+
+(comment
+  metabase.dependencies.events/keep-me)
 
 (deftest dashboard-update-sets-correct-dependencies
   (mt/with-test-user :rasta
