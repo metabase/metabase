@@ -59,7 +59,7 @@ export const MainNavSharedCollections = ({
 
   const [createCollection] = useCreateCollectionMutation();
 
-  const tenantCollectionTree = useMemo(
+  const sharedTenantCollectionTree = useMemo(
     () => buildCollectionTree(sharedTenantCollections),
     [sharedTenantCollections],
   );
@@ -100,10 +100,11 @@ export const MainNavSharedCollections = ({
     return null;
   }
 
-  const hasVisibleTenantCollections = tenantCollectionTree.length > 0;
+  const hasVisibleSharedTenantCollections =
+    sharedTenantCollectionTree.length > 0;
 
   const shouldShowSharedCollectionsSection =
-    hasVisibleTenantCollections || canCreateSharedCollection;
+    hasVisibleSharedTenantCollections || canCreateSharedCollection;
 
   return (
     <>
@@ -128,7 +129,7 @@ export const MainNavSharedCollections = ({
             )}
           </Flex>
           <Tree
-            data={tenantCollectionTree}
+            data={sharedTenantCollectionTree}
             TreeNode={SidebarCollectionLink}
             role="tree"
             aria-label="tenant-collection-tree"

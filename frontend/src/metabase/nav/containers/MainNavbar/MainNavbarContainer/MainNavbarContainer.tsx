@@ -118,10 +118,6 @@ function MainNavbarContainer({
     sharedTenantCollections,
   } = PLUGIN_TENANTS.useTenantMainNavbarData();
 
-  // START MOVE THIS TO PLUGIN
-
-  // END MOVE THIS TO PLUGIN
-
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
