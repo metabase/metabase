@@ -8,7 +8,8 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Flex, Group } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import * as Lib from "metabase-lib";
 import type { Segment } from "metabase-types/api";
@@ -93,14 +94,7 @@ export function SegmentDetailPage({
   }, [savedSegment]);
 
   return (
-    <Flex
-      direction="column"
-      pos="relative"
-      w="100%"
-      h="100%"
-      bg="bg-white"
-      data-testid="segment-detail-page"
-    >
+    <PageContainer data-testid="segment-detail-page">
       <SegmentHeader
         segment={segment}
         tabUrls={tabUrls}
@@ -134,6 +128,6 @@ export function SegmentDetailPage({
         route={route}
         isEnabled={isDirty && !isSaving}
       />
-    </Flex>
+    </PageContainer>
   );
 }

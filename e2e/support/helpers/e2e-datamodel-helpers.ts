@@ -512,7 +512,7 @@ function getSegmentEditorNameInput() {
 }
 
 function getSegmentEditorDescriptionInput() {
-  return getSegmentEditor().findByLabelText("Description");
+  return getSegmentEditor().findByLabelText("Give it a description");
 }
 
 function getSegmentEditorFilterPlaceholder() {

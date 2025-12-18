@@ -37,7 +37,6 @@ export function SegmentHeader({
 }: SegmentHeaderProps) {
   return (
     <Stack gap={0}>
-      {breadcrumbs}
       <PaneHeader
         data-testid="segment-pane-header"
         title={
@@ -47,6 +46,7 @@ export function SegmentHeader({
         menu={<SegmentMoreMenu previewUrl={previewUrl} onRemove={onRemove} />}
         tabs={<EntityDetailTabs urls={tabUrls} />}
         actions={actions}
+        breadcrumbs={breadcrumbs}
       />
     </Stack>
   );

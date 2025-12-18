@@ -71,6 +71,7 @@ export function createMockTransform(opts?: Partial<Transform>): Transform {
     description: null,
     source: createMockTransformSource(),
     target: createMockTransformTarget(),
+    collection_id: null,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     ...opts,
