@@ -225,9 +225,9 @@
                                               (fetch-schemas conn))
         {:keys [expired
                 old-style-cache
-                lacking-created-at]}      (classify-cache-schemas conn caches-with-info)
-        {expired-isolation :expired}      #p (classify-isolation-schemas conn isolation)
-        drop-sql                          (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
+                lacking-created-at]}  (classify-cache-schemas conn caches-with-info)
+        {expired-isolation :expired}  (classify-isolation-schemas conn isolation)
+        drop-sql                      (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
     (with-open [stmt (.createStatement conn)]
       ;; Drop schemas first
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
