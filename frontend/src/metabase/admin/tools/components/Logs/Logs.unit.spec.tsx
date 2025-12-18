@@ -84,9 +84,7 @@ describe("Logs", () => {
         resolve([log]);
       });
       await waitFor(() => {
-        expect(
-          screen.getByText(new RegExp(log.process_uuid)),
-        ).toBeInTheDocument();
+        expect(screen.getByText(new RegExp(log.fqns))).toBeInTheDocument();
       });
       act(() => {
         jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
@@ -129,9 +127,7 @@ describe("Logs", () => {
           search: `?query=${log.fqns}`,
         }),
       });
-      expect(
-        await screen.findByText(new RegExp(log.process_uuid)),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(new RegExp(log.fqns))).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Download/ })).toBeEnabled();
     });
 
@@ -139,9 +135,7 @@ describe("Logs", () => {
       fetchMock.get("path:/api/logger/logs", [log]);
       setup();
       await waitFor(() => {
-        expect(
-          screen.getByText(new RegExp(log.process_uuid)),
-        ).toBeInTheDocument();
+        expect(screen.getByText(new RegExp(log.fqns))).toBeInTheDocument();
       });
       expect(screen.getByRole("button", { name: /Download/ })).toBeEnabled();
     });
@@ -164,9 +158,7 @@ describe("Logs", () => {
     it("should stop polling on unmount", async () => {
       fetchMock.get("path:/api/logger/logs", [log]);
       const { unmount } = setup();
-      expect(
-        await screen.findByText(new RegExp(log.process_uuid)),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(new RegExp(log.fqns))).toBeInTheDocument();
 
       unmount();
       act(() => {
