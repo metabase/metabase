@@ -133,7 +133,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
           disabled={isBusy}
           leftSection={<Icon name="add" />}
           onClick={() => {
-            handleCreateWorkspace({ databaseId: transform.table?.db_id });
+            handleCreateWorkspace({ databaseId: sourceDatabaseId });
           }}
         >
           <Stack gap={0} align="flex-start">
