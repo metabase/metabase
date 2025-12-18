@@ -26,23 +26,23 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 ## Create a new embed
 
-Open a command palette with Ctrl/Cmd+K, type "New embed". You'll get a wizard to help you set up your embed.
+In your Metabase:
+
+1. Visit the item you want to embed.
+2. Click the sharing icon.
+3. Select **Embed**.
+
+![Embed share button](./images/embed-share-button.png)
+
+You can also open a command palette with Ctrl/Cmd+K, type "New embed". You'll get a wizard to help you set up your embed.
 
 You can also go to **Admin settings > Embedding > Modular embedding** and click **New embed**.
 
 ![New modular embed from the admin settings](./images/new-modular-embed-from-admin-settings.png)
 
-Or visit the item you want to embed and click the share button.
-
 ## Pick how to authenticate the embed
 
 How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which lets you do everything. This setup requires you to have [set up SSO for your Metabase](../people-and-groups/authenticating-with-jwt.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md).
-
-##  Pick what you want to embed
-
-If you haven't already picked, now's the time.
-
-Click **Next** to customize your embed.
 
 ## Customize your embed
 
