@@ -57,6 +57,7 @@
                 :name (case (keyword collection-namespace)
                         :shared-tenant-collections (tru "Shared collections")
                         :snippets (tru "SQL snippets")
+                        :transforms (tru "Transforms")
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :is_personal false

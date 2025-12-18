@@ -72,7 +72,7 @@ export const GroupsListingApp = ({
       return t`Groups`;
     }
 
-    return external ? t`Tenant Groups` : t`Internal Groups`;
+    return external ? t`Tenant groups` : t`Internal groups`;
   }, [external, isUsingTenants]);
 
   return (

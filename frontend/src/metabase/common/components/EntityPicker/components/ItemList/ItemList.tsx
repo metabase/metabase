@@ -3,8 +3,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
+import { getIsTenantUser } from "metabase/selectors/user";
 import {
   Box,
   type BoxProps,
@@ -56,6 +58,7 @@ export const ItemList = <
   navLinkProps,
   containerProps = { pb: "xs" },
 }: ItemListProps<Id, Model, Item>) => {
+  const isTenantUser = useSelector(getIsTenantUser);
   const filteredItems =
     items && shouldShowItem ? items.filter(shouldShowItem) : items;
   const activeItemIndex = useMemo(() => {
@@ -94,7 +97,10 @@ export const ItemList = <
     >
       {filteredItems.map((item: Item) => {
         const isSelected = isSelectedItem(item, selectedItem);
-        const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
+        const icon = getEntityPickerIcon(item, {
+          isSelected: isSelected && isCurrentLevel,
+          isTenantUser,
+        });
         const isDisabled = shouldDisableItem?.(item);
 
         return (

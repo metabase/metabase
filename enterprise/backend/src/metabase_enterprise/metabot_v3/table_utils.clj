@@ -44,19 +44,21 @@
                       priority-tables []
                       exclude-table-ids #{}}}]
    (let [priority-table-ids (set (map :id priority-tables))
+         {table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
+                                                                                :id
+                                                                                {:user-id       api/*current-user-id*
+                                                                                 :is-superuser? api/*is-superuser?*}
+                                                                                {:perms/view-data      :unrestricted
+                                                                                 :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
          fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
-                                :db_id database-id
-                                :active true
+                                :db_id           database-id
+                                :active          true
                                 :visibility_type nil
-                                {:where    (mi/visible-filter-clause :model/Table
-                                                                     :id
-                                                                     {:user-id       api/*current-user-id*
-                                                                      :is-superuser? api/*is-superuser?*}
-                                                                     {:perms/view-data      :unrestricted
-                                                                      :perms/create-queries :query-builder-and-native})
-                                 :order-by [[:view_count :desc]]
-                                 :limit    all-tables-limit})
+                                (cond-> {:where    table-where-clause
+                                         :order-by [[:view_count :desc]]
+                                         :limit    all-tables-limit}
+                                  table-cte (assoc :with table-cte)))
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
          fill-tables (t2/hydrate fill-tables :fields)
@@ -83,19 +85,21 @@
                       priority-tables []
                       exclude-table-ids #{}}}]
    (let [priority-table-ids (set (map :id priority-tables))
+         {table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
+                                                                                :id
+                                                                                {:user-id       api/*current-user-id*
+                                                                                 :is-superuser? api/*is-superuser?*}
+                                                                                {:perms/view-data      :unrestricted
+                                                                                 :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
          fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
                                 :db_id database-id
                                 :active true
                                 :visibility_type nil
-                                {:where    (mi/visible-filter-clause :model/Table
-                                                                     :id
-                                                                     {:user-id       api/*current-user-id*
-                                                                      :is-superuser? api/*is-superuser?*}
-                                                                     {:perms/view-data      :unrestricted
-                                                                      :perms/create-queries :query-builder-and-native})
-                                 :order-by [[:view_count :desc]]
-                                 :limit    all-tables-limit})
+                                (cond-> {:where    table-where-clause
+                                         :order-by [[:view_count :desc]]
+                                         :limit    all-tables-limit}
+                                  table-cte (assoc :with table-cte)))
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
          all-tables (concat priority-tables fill-tables)
@@ -164,12 +168,14 @@
 
 (defn- visible-filter-clause
   []
-  (mi/visible-filter-clause :model/Table
-                            :id
-                            {:user-id       api/*current-user-id*
-                             :is-superuser? api/*is-superuser?*}
-                            {:perms/view-data      :unrestricted
-                             :perms/create-queries :query-builder-and-native}))
+  (let [{table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
+                                                                               :id
+                                                                               {:user-id       api/*current-user-id*
+                                                                                :is-superuser? api/*is-superuser?*}
+                                                                               {:perms/view-data      :unrestricted
+                                                                                :perms/create-queries :query-builder-and-native})]
+    (cond-> {:where table-where-clause}
+      table-cte (assoc :with table-cte))))
 
 (defn find-matching-tables
   "Find tables in the database that are similar to the unrecognized tables using fuzzy matching.
@@ -186,6 +192,7 @@
   Returns:
   A vector of realized Table model instances that match the unrecognized tables."
   [database-id unrecognized-tables used-ids]
+
   (into []
         (keep (fn [table]
                 (when (some #(matching-tables? table % {:match-schema? false}) unrecognized-tables)
@@ -194,8 +201,8 @@
                              :db_id database-id
                              :active true
                              :visibility_type nil
-                             (cond-> {:where (visible-filter-clause)
-                                      :limit 10000}
+                             (cond-> (assoc (visible-filter-clause)
+                                            :limit 10000)
                                (seq used-ids) (update :where #(if %
                                                                 [:and % [:not-in :id used-ids]]
                                                                 [:not-in :id used-ids]))))))
@@ -212,7 +219,7 @@
                :id [:in table-ids]
                :active true
                :visibility_type nil
-               {:where (visible-filter-clause)})))
+               (visible-filter-clause))))
 
 (defn used-tables
   "Return all tables used in the query, including fuzzy-matched ones.

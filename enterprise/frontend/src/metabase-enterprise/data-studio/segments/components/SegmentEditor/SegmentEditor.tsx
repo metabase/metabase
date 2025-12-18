@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SegmentFilterEditor } from "metabase/querying/segments";
-import { Stack, Textarea } from "metabase/ui";
+import { Card, Stack, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import S from "./SegmentEditor.module.css";
@@ -20,15 +20,22 @@ export function SegmentEditor({
   onDescriptionChange,
 }: SegmentEditorProps) {
   return (
-    <Stack flex={1} gap="lg" px="lg" py="lg" className={S.scrollable}>
-      {query && <SegmentFilterEditor query={query} onChange={onQueryChange} />}
-      <Textarea
-        label={t`Description`}
-        placeholder={t`Give it a description`}
-        value={description}
-        onChange={(e) => onDescriptionChange(e.target.value)}
-        maw={400}
-      />
-    </Stack>
+    <Card withBorder p="xl">
+      <Stack flex={1} gap="xl" p={0} className={S.scrollable}>
+        {query && (
+          <SegmentFilterEditor query={query} onChange={onQueryChange} />
+        )}
+        <TextInput
+          label={t`Give it a description`}
+          placeholder={t`Only if it really needs it`}
+          value={description}
+          onChange={(e) => onDescriptionChange(e.target.value)}
+          maw={400}
+          classNames={{
+            label: S.descriptionLabel,
+          }}
+        />
+      </Stack>
+    </Card>
   );
 }

@@ -1,20 +1,11 @@
-export type LogLevel =
-  | "off"
-  | "fatal"
-  | "error"
-  | "warn"
-  | "info"
-  | "debug"
-  | "trace";
+import type {
+  MetabaseLoggerApiLogLevel,
+  MetabaseLoggerApiTimeUnit,
+} from "metabase-types/openapi";
 
-export type LoggerDurationUnit =
-  | "days"
-  | "hours"
-  | "minutes"
-  | "seconds"
-  | "milliseconds"
-  | "microseconds"
-  | "nanoseconds";
+export type LogLevel = MetabaseLoggerApiLogLevel;
+
+export type LoggerDurationUnit = MetabaseLoggerApiTimeUnit;
 
 export type LoggerName = string;
 
