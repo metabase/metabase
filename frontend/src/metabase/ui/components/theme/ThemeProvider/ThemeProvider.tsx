@@ -5,20 +5,35 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import {
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
 
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PUT } from "metabase/lib/api";
 import { parseHashOptions } from "metabase/lib/browser";
+import type {
+  ColorScheme,
+  ResolvedColorScheme,
+} from "metabase/lib/color-scheme";
+import {
+  getUserColorScheme,
+  isValidColorScheme,
+  setUserColorSchemeAfterUpdate,
+} from "metabase/lib/color-scheme";
+import { mutateColors } from "metabase/lib/colors/colors";
+import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
-import type { ResolvedColorScheme } from "../ColorSchemeProvider/ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
 import { ThemeProviderContext } from "./context";
@@ -34,10 +49,13 @@ interface ThemeProviderProps {
   theme?: MantineThemeOverride;
 
   displayTheme?: DisplayTheme | string;
+
+  initialColorScheme?: ColorScheme | undefined;
 }
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
   const { resolvedColorScheme } = useColorScheme();
+  const [themeCacheBuster, setThemeCacheBuster] = useState(1);
 
   // Merge default theme overrides with user-provided theme overrides
   const theme = useMemo(() => {
@@ -48,6 +66,13 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
 
     return {
       ...theme,
+      other: {
+        ...theme.other,
+        updateColorSettings: (newValue) => {
+          mutateColors(newValue);
+          setThemeCacheBuster(themeCacheBuster + 1);
+        },
+      },
       fn: {
         themeColor: (
           color: string,
@@ -83,7 +108,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
         },
       },
     } as MantineTheme;
-  }, [props.theme, resolvedColorScheme]);
+  }, [props.theme, resolvedColorScheme, themeCacheBuster]);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
@@ -112,6 +137,7 @@ const getColorSchemeFromDisplayTheme = (
   switch (displayTheme) {
     case "light":
     case "transparent":
+    case undefined:
       return "light";
     case "night":
     case "dark":
@@ -145,14 +171,45 @@ const useColorSchemeFromHash = ({
 
 export const ThemeProvider = (props: ThemeProviderProps) => {
   const schemeFromHash = useColorSchemeFromHash({
-    enabled: getIsEmbeddingIframe(),
+    enabled: isStaticEmbedding() || isPublicEmbedding(),
   });
   const forceColorScheme = props.displayTheme
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
     : schemeFromHash;
 
+  const [colorSchemeFromSettings, setColorSchemeFromSettings] =
+    useState<ColorScheme>(() => getUserColorScheme() ?? "auto");
+
+  // FIXME: Not only does this use a deprecated API, it also adds a complementary
+  // method to the already deprecated method to remove the listener. This is just
+  // done provisionally for CI testing purposes.
+  useEffect(() => {
+    const updateSetting = (value: ColorScheme) => {
+      if (value && isValidColorScheme(value)) {
+        setColorSchemeFromSettings(value);
+      }
+    };
+
+    MetabaseSettings.on("color-scheme", updateSetting);
+
+    return () => MetabaseSettings.off("color-scheme", updateSetting);
+  }, [setColorSchemeFromSettings]);
+
+  const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
+    await PUT("/api/setting/:key")({
+      key: "color-scheme",
+      value: value,
+    });
+
+    setUserColorSchemeAfterUpdate(value);
+  }, []);
+
   return (
-    <ColorSchemeProvider forceColorScheme={forceColorScheme}>
+    <ColorSchemeProvider
+      defaultColorScheme={colorSchemeFromSettings ?? getUserColorScheme()}
+      forceColorScheme={forceColorScheme}
+      onUpdateColorScheme={handleUpdateColorScheme}
+    >
       <ThemeProviderInner {...props} />
     </ColorSchemeProvider>
   );

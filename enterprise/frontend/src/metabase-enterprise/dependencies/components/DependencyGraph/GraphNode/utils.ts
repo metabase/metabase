@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import type { DependencyNode } from "metabase-types/api";
 
@@ -12,6 +12,10 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     table = 0,
     transform = 0,
     snippet = 0,
+    dashboard = 0,
+    document = 0,
+    sandbox = 0,
+    segment = 0,
   } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
@@ -21,6 +25,10 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "table", count: table },
     { type: "transform", count: transform },
     { type: "snippet", count: snippet },
+    { type: "dashboard", count: dashboard },
+    { type: "document", count: document },
+    { type: "sandbox", count: sandbox },
+    { type: "segment", count: segment },
   ];
 
   return groups.filter(({ count }) => count !== 0);
@@ -30,14 +38,13 @@ export function getDependencyGroupTitle(
   node: DependencyNode,
   groups: DependentGroup[],
 ) {
+  if (node.type === "sandbox") {
+    return t`Restricts table data`;
+  }
   if (groups.length === 0) {
     return t`Nothing uses this`;
   }
-  if (
-    node.type === "transform" &&
-    groups.length === 1 &&
-    groups[0].type === "table"
-  ) {
+  if (node.type === "transform") {
     return t`Generates`;
   }
   return t`Used by`;
@@ -60,5 +67,21 @@ export function getDependentGroupLabel({
       return ngettext(msgid`${count} transform`, `${count} transforms`, count);
     case "snippet":
       return ngettext(msgid`${count} snippet`, `${count} snippet`, count);
+    case "dashboard":
+      return ngettext(msgid`${count} dashboard`, `${count} dashboards`, count);
+    case "document":
+      return ngettext(msgid`${count} document`, `${count} documents`, count);
+    case "sandbox":
+      return ngettext(
+        msgid`${count} row and column security rule`,
+        `${count} row and column security rules`,
+        count,
+      );
+    case "segment":
+      return c("{0} is the number of segments").ngettext(
+        msgid`${count} segment`,
+        `${count} segments`,
+        count,
+      );
   }
 }

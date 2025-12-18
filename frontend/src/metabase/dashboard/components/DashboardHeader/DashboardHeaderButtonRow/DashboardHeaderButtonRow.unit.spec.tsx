@@ -75,10 +75,6 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "clock",
     tooltip: "Auto-refresh",
   },
-  [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    icon: "sun",
-    tooltip: "Switch to dark mode",
-  },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     icon: "expand",
     tooltip: "Enter fullscreen",
@@ -103,6 +99,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   DOWNLOAD_PDF: {
     icon: "download",
     tooltip: "Download as PDF",
+  },
+  DASHBOARD_SUBSCRIPTIONS: {
+    icon: "subscription",
+    tooltip: "Subscriptions",
   },
 };
 
@@ -336,17 +336,6 @@ describe("DashboardHeaderButtonRow", () => {
       setup({ isEditing: false, isPublic: true });
       await expectButtonsToExistInHeader({
         expectedButtons: [DASHBOARD_ACTION.FULLSCREEN_TOGGLE],
-      });
-    });
-
-    it("should show night mode toggle when in fullscreen", async () => {
-      setup({
-        isEditing: false,
-        isFullscreen: true,
-      });
-
-      await expectButtonsToExistInHeader({
-        expectedButtons: [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE],
       });
     });
   });

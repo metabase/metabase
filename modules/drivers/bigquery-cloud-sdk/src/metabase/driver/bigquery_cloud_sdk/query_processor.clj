@@ -1,5 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
-  (:refer-clojure :exclude [select-keys some])
+  (:refer-clojure :exclude [select-keys some not-empty])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -20,7 +20,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys some]])
+   [metabase.util.performance :refer [select-keys some not-empty]])
   (:import
    (com.google.cloud.bigquery
     Field
@@ -981,7 +981,7 @@
   (let [parent-method (get-method driver/mbql->native :sql)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
-           :table-name (or (when-let [source-table-id (get-in outer-query [:query :source-table])]
+           :table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
                              (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
                            sql.qp/source-query-alias)
            :mbql?      true)))

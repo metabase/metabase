@@ -1527,6 +1527,53 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
 
   - changeSet:
+      id: v57.2025-09-11T16:00:00
+      author: johnswanson
+      comment: Create remote_sync_object table to track remote sync objects
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: remote_sync_object
+      changes:
+        - createTable:
+            tableName: remote_sync_object
+            remarks: Track remote sync objects
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for remote-sync objects
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_type
+                  type: varchar(32)
+                  remarks: Type of model
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: ID of the model
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: Status of the object
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_changed_at
+                  type: ${timestamp_type}
+                  remarks: When the status changed
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v57.2025-09-12T16:08:00
       author: piranha
       comment: Create glossary table
@@ -1661,6 +1708,84 @@ databaseChangeLog:
         - createIndex:
             tableName: native_query_snippet
             indexName: idx_native_query_snippet_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:06:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to report_dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:07:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to report_dashboard
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:08:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to document
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:09:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to document
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:10:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to sandboxes
+      changes:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:11:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to sandboxes
+      changes:
+        - createIndex:
+            tableName: sandboxes
+            indexName: idx_sandboxes_dependency_analysis_version
             columns:
               - column:
                   name: dependency_analysis_version
@@ -1843,6 +1968,145 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
+      id: v57.2025-09-24T14:40:00
+      author: edpaget
+      comment: Create remote_sync_task table
+      changes:
+        - createTable:
+            tableName: remote_sync_task
+            remarks: Table to track remote sync tasks and their progress
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: sync_task_type
+                  type: varchar(24)
+                  remarks: Type of the sync task
+                  constraints:
+                    nullable: false
+              - column:
+                  name: progress
+                  type: float
+                  remarks: Progress percentage of the sync task (0.0 to 1.0)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: cancelled
+                  type: ${boolean.type}
+                  remarks: Whether the sync task was cancelled
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the sync task started
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the sync task ended
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_progress_report_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of the last progress update
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: ID of the user who initiated the sync task
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: error message if this task failed
+                  constraints:
+                    nullable: true
+              - column:
+                  name: version
+                  type: varchar(50)
+                  remarks: Version that was imported or exported (ex the Git SHA)
+
+  - changeSet:
+      id: v57.2025-09-24T14:41:00
+      author: edpaget
+      comment: Add index for remote_sync_task.initiated_by
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_initiated_by
+            columns:
+              - column:
+                  name: initiated_by
+
+  - changeSet:
+      id: v57.2025-09-24T14:42:00
+      author: edpaget
+      comment: Add foreign key constraint for remote_sync_task.initiated_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_task
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_task_initiated_by
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v57.2025-09-30T10:00:00
+      author: edpaget
+      comment: Add composite index on remote_sync_object for dirty detection queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_object
+            indexName: idx_remote_sync_object_model_lookup
+            columns:
+              - column:
+                  name: model_type
+              - column:
+                  name: model_id
+
+  - changeSet:
+      id: v57.2025-09-30T10:03:00
+      author: edpaget
+      comment: Add composite index on remote_sync_task for current task queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_current
+            columns:
+              - column:
+                  name: started_at
+                  descending: true
+              - column:
+                  name: id
+                  descending: true
+
+  - changeSet:
+      id: v57.2025-09-30T10:04:00
+      author: edpaget
+      comment: Add index on remote_sync_task for timeout detection
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_progress_report
+            columns:
+              - column:
+                  name: last_progress_report_at
+
+  - changeSet:
       id: v57.2025-10-06T18:26:00
       author: camsaul
       comment: >-
@@ -1905,6 +2169,105 @@ databaseChangeLog:
             UPDATE query_action
             SET dataset_query = legacy_query
             WHERE legacy_query IS NOT NULL;
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:00
+      author: jeff-bruemmer
+      comment: Add public_uuid column to document table for public sharing
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: public_uuid
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: UUID for publicly-accessible version of this document
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:01
+      author: jeff-bruemmer
+      comment: Add made_public_by_id column to document table for public sharing
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: made_public_by_id
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: ID of the user who made this document public
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:02
+      author: jeff-bruemmer
+      comment: Add index on document.public_uuid
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_public_uuid
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_public_uuid
+            unique: true
+            columns:
+              - column:
+                  name: public_uuid
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:03
+      author: jeff-bruemmer
+      comment: Add foreign key constraint for document.made_public_by_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_document_made_public_by_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: made_public_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_made_public_by_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:04
+      author: jeff-bruemmer
+      comment: Add index on document.made_public_by_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_made_public_by_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_made_public_by_id
+            columns:
+              - column:
+                  name: made_public_by_id
+      rollback:
+        - empty
 
   - changeSet:
       id: v57.2025-10-21T14:14:22
@@ -1982,6 +2345,276 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: database_default
 
+  - changeSet:
+      id: v57.2025-10-23T19:55:50
+      author: noahmoss
+      comment: Add source_type column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_type
+                  type: varchar(32)
+                  remarks: The type of transform ("python", "native", or "mbql")
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: source_type
+
+  - changeSet:
+      id: v57.2025-10-23T19:56:00
+      author: noahmoss
+      comment: Backfill source_type column for existing transforms
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillTransformSourceType"
+
+  - changeSet:
+      id: v57.2025-10-23T19:57:00
+      author: noahmoss
+      comment: Make transform.source_type column NOT NULL
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_type
+            columnDataType: varchar(32)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: transform
+            columnName: source_type
+            columnDataType: varchar(32)
+
+  - changeSet:
+      id: v57.2025-10-27T19:01:00
+      author: qnkhuat
+      comment: Usage analytics; Add documents to content view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v5/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v5/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v5/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v3/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v4/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v3/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:00
+      author: metamben
+      comment: Add creator_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: creator_id
+                  remarks: User who created this transform
+                  type: int
+                  defaultValue: 13371338
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:01
+      author: metamben
+      comment: Add index on transform.creator_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:02
+      author: metamben
+      comment: Add foreign key constraint for transform.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-11-13T22:27:19
+      author: nvoxland
+      comment: Update old remote-sync settings
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET value = 'read-write'
+                WHERE `key`='remote-sync-type' AND value='development';
+
+                UPDATE setting
+                SET value = 'read-only'
+                WHERE `key`='remote-sync-type' AND value='production';
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET value = 'read-write'
+                WHERE key='remote-sync-type' AND value='development';
+
+                UPDATE setting
+                SET value = 'read-only'
+                WHERE key='remote-sync-type' AND value='production';
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET "VALUE" = 'read-write'
+                WHERE "KEY"='remote-sync-type' AND "VALUE"='development';
+
+                UPDATE setting
+                SET "VALUE" = 'read-only'
+                WHERE "KEY"='remote-sync-type' AND "VALUE"='production';
+      rollback:
+        - sql:
+            dbms: mariadb,mysql
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET value = 'development'
+              WHERE `key`='remote-sync-type' AND value='read-write';
+
+              UPDATE setting
+              SET value = 'production'
+              WHERE `key`='remote-sync-type' AND value='read-only';
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET value = 'development'
+              WHERE key='remote-sync-type' AND value='read-write';
+
+              UPDATE setting
+              SET value = 'production'
+              WHERE key='remote-sync-type' AND value='read-only';
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET "VALUE" = 'development'
+              WHERE "KEY"='remote-sync-type' AND "VALUE"='read-write';
+
+              UPDATE setting
+              SET "VALUE" = 'production'
+              WHERE "KEY"='remote-sync-type' AND "VALUE"='read-only';
+
+  - changeSet:
+      id: v57.2025-11-18T10:00:00
+      author: bronsa
+      comment: Add creator_id column to glossary table
+      changes:
+        - addColumn:
+            tableName: glossary
+            columns:
+              - column:
+                  name: creator_id
+                  remarks: User who created this glossary entry
+                  type: int
+                  defaultValue: 13371338
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-11-18T10:00:01
+      author: bronsa
+      comment: Add index on glossary.creator_id
+      changes:
+        - createIndex:
+            tableName: glossary
+            indexName: idx_glossary_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v57.2025-11-18T10:00:02
+      author: bronsa
+      comment: Add foreign key constraint for glossary.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: glossary
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_glossary_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-11-18T10:01:00
+      author: bronsa
+      comment: Usage analytics; Add glossary to content, creator_id to transform content
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v6/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v6/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v6/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v5/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v5/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v5/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-12-09T12:45:01
+      author: dpsutton
+      comment: >-
+        Copy legacy MBQL queries from report_card.legacy_query to report_card.dataset_query where the parsed query is erroneously '{}'
+      changes:
+        - sql: >-
+            UPDATE report_card
+            SET dataset_query = legacy_query
+            where dataset_query = '{}' and legacy_query is not null;
+      rollback: # nothing to undo
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

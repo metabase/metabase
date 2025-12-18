@@ -261,8 +261,11 @@ describe("admin > database > database routing", () => {
 
       cy.log("should not see database in data picker");
       cy.visit("/question/notebook");
+      H.miniPicker()
+        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
+        .should("not.exist");
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
         cy.findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name).should(
           "not.exist",
         );

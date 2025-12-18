@@ -1,7 +1,7 @@
 name: Prepare back-end environment
 description: |
-  Prepare the backend. Installs jdk, Clojure, and fetches the cache for m2. The CI config fetchs `ci-test-config.json`
-  from master and lets us ignore tests at the var level if they are flaking.
+  Prepare the backend. Installs jdk, Clojure, and fetches the cache for m2.
+  The CI config fetches `ci-test-config.json` from master and lets us ignore tests at the var level if they are flaking.
 inputs:
   java-version:
     required: true
@@ -9,10 +9,6 @@ inputs:
   clojure-version:
     required: true
     default: '1.12.0.1488'
-  m2-cache-key:
-    description: 'Key to cache M2 packages from Maven Central'
-    required: true
-    default: 'm2'
 
 runs:
   using: "composite"
@@ -28,16 +24,15 @@ runs:
       run: |
         curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
         sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
-    - name: Fetch CI config
-      shell: bash
-      run: |
-        curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/ci-test-config.json
-    - name: Get M2 cache
-      uses: actions/cache@v4
+
+    - name: Get M2 cache key
+      uses: ./.github/actions/get-cache-keys
+      id: get-cache-keys
+
+    - name: Restore M2 cache
+      uses: actions/cache/restore@v4
       with:
         path: |
           ~/.m2
           ~/.gitlibs
-        key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ inputs.m2-cache-key }}-
+        key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}

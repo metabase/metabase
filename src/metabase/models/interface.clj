@@ -15,6 +15,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
@@ -258,6 +259,13 @@
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
                                                                                                :value       value}))))
 
+(mu/defn assert-optional-enum
+  "Assert that a value is one of the values in `enum` or `nil`."
+  [enum :- [:set :any]
+   value :- :any]
+  (when (some? value)
+    (assert-enum enum value)))
+
 (mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."
   [qualified-ns :- string?
@@ -314,12 +322,41 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
+;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
+;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
+(mr/def ::viz-settings-ref
+  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
+
+    [:ref [:field 1 nil]]"
+  [:tuple
+   {:decode/normalize vec}
+   [:= {:decode/normalize keyword} :ref]
+   [:ref ::mbql.s/Reference]])
+
+(mr/def ::viz-settings-name
+  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
+
+    [:ref [:field 1 nil]]"
+  [:tuple
+   {:decode/normalize vec}
+   [:= {:decode/normalize keyword} :name]
+   :string])
+
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to MBQL 4 clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/decode mbql.normalize/normalize json/encode))
+            (some-> k
+                    u/qualified-name
+                    json/decode
+                    ((fn [x]
+                       (cond
+                         (not (sequential? x)) x
+                         (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
+                         (= (first x) "name")  (lib/normalize ::viz-settings-name x)
+                         :else                 (mbql.normalize/normalize x))))
+                    json/encode))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
@@ -528,7 +565,6 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
-
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -638,10 +674,12 @@
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
 (defmulti visible-filter-clause
-  "Return a honey SQL query fragment that will limit another query to only selecting records visible to the supplied user
-  by filtering on a supplied column or honeysql expression, using a the map of permission type->minimum permission-level.
+  "Return a map with:
+   - :clause - honey SQL WHERE clause fragment to filter records visible to the user
+   - :with - optional vector of CTE definitions [[name query] ...] to be merged into the query
 
-  Defaults to returning a no-op false statement 0=1."
+  Uses the map of permission type->minimum permission-level for filtering.
+  Defaults to returning a no-op false statement {:clause [:= 0 1]}."
   {:arglists '([model column-or-exp user-info perm-type->perm-level])}
   dispatch-on-model)
 
@@ -732,7 +770,7 @@
 
 (defmethod visible-filter-clause :default
   [_m _column-or-expression _user-info _perm-type->perm-level]
-  [:= [:inline 0] [:inline 1]])
+  {:clause [:= [:inline 0] [:inline 1]]})
 
 ;;;; [[to-json]]
 

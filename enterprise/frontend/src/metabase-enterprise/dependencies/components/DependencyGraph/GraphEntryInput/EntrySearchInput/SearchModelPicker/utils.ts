@@ -12,10 +12,13 @@ import type { SearchModelItem } from "./types";
 export function getSearchModelItems(data: SearchResponse): SearchModelItem[] {
   const allLabels: Record<EnabledSearchModel, string> = {
     table: t`Tables`,
+    transform: t`Transforms`,
     card: t`Questions`,
     dataset: t`Models`,
     metric: t`Metrics`,
-    transform: t`Transforms`,
+    dashboard: t`Dashboards`,
+    document: t`Documents`,
+    segment: t`Segments`,
   };
 
   const allItems = ENABLED_SEARCH_MODELS.map((model) => ({

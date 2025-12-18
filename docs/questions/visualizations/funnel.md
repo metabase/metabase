@@ -36,7 +36,7 @@ By default, Metabase will present steps in the same order as they appear in the 
 
 To create a query with a result that has the shape required for a funnel chart, you'll probably need to summarize your data.
 
-If your (original, unaggregated) data already contains a field with the the step for every data point, you can build a simple query with a breakout by steps:
+If your (original, unaggregated) data already contains a field with the step for every data point, you can build a simple query with a breakout by steps:
 
 ![A query in the query builder used to build a funnel chart](../images/build-a-funnel-query.png)
 

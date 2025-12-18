@@ -26,7 +26,7 @@ Companies with large number of users can talk to sales about our [Enterprise pla
 Though we bill you monthly, we calculate how much you owe each day. So, say you're on the [Starter plan](https://www.metabase.com/pricing/). Your monthly bill would include:
 
 - $100 flat payment for the month. This payment additionally covers the first five people who use your Metabase that month. If you have fewer than five people using your Metabase, your bill will still be $100 that month.
-- Each additional person costs \$6, prorated for how many days their [accounts were available](#what-counts-as-a-user-account) that month. So if an account only existed for the last 10 days of your 30 day billing period, you'd only be charged for those 10 days, not for the full 30 days. Same goes if you deactivated an account prior to the end of the billing period, you'll only be charged for the days when the account was available for use during that billing period. Basically, you only ever pay for all accounts in your Metabase that haven't been deactivated yet.
+- Each additional person costs \$6, prorated for how many days their [accounts were available](#what-counts-as-a-user-account) that month. So if an account only existed for the last 10 days of your 30 day billing period, you'd only be charged for those 10 days, not for the full 30 days. Same goes if you deactivated an account before the end of the billing period, you'll only be charged for the days when the account was available for use during that billing period. Basically, you only ever pay for all accounts in your Metabase that haven't been deactivated yet.
 
 ## How annual billing works
 
@@ -60,9 +60,9 @@ A user account is any account which has been added to your Metabase instance (ma
 
 ## How billing works with embedding
 
-Interactive Embedding requires viewers to sign in to your Metabase, which means they will count as users for billing purposes.
+Full app embedding and modular embedding (unless using guest embeds) requires viewers to sign in to your Metabase, which means they will count as users for billing purposes.
 
-Static Embedding doesn’t require viewers to sign in to your Metabase, which means they won’t count as additional users for billing purposes.
+Guest embedding doesn’t require viewers to sign in to your Metabase, which means they won’t count as additional users for billing purposes.
 
 ## How we count active user accounts each day
 
@@ -79,7 +79,7 @@ For example, say you're running two Metabase instances, A and B, that both use t
 
 Then the number of user accounts would total 8 for that day.
 
-If you're on Metabase Cloud, counting active users works the same: each day we count the maxium number of user accounts at any one time over the previous 36 hours.
+If you're on Metabase Cloud, counting active users works the same: each day we count the maximum number of user accounts at any one time over the previous 36 hours.
 
 We refresh the user count you see in your [Metabase Store account page](https://store.metabase.com) every day. Since the refresh only happens once a day, there might be a delay between when you adjust the number of user accounts in your Metabase and when your accounts sync with your Store page.
 

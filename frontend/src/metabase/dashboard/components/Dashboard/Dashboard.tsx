@@ -2,11 +2,14 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK } from "embedding-sdk-bundle/components/public/subscriptions";
 import { DashboardArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/DashboardArchivedEntityBanner";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -18,7 +21,6 @@ import {
   DashboardInfoButton,
   ExportAsPdfButton,
   FullscreenToggle,
-  NightModeToggleButton,
 } from "../DashboardHeader/buttons";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -32,6 +34,8 @@ import { Grid, ParametersList } from "./components";
 const DashboardDefaultView = ({ className }: { className?: string }) => {
   const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
     useDashboardContext();
+
+  const isHeaderVisible = useSelector(getIsHeaderVisible);
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -58,6 +62,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   }
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
+  const hasTabs = dashboard.tabs && dashboard.tabs.length > 1;
 
   // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
   const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
@@ -89,6 +94,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           {
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
+            [S.noBorder]: !hasTabs && !isHeaderVisible,
           },
         )}
         data-element-id="dashboard-header-container"
@@ -140,8 +146,8 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   ParametersList: typeof ParametersList;
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
+  SubscriptionsButton: typeof PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton;
   InfoButton: typeof DashboardInfoButton;
-  NightModeButton: typeof NightModeToggleButton;
   RefreshPeriod: typeof RefreshWidget;
 };
 
@@ -153,8 +159,9 @@ DashboardComponent.Tabs = DashboardTabs;
 DashboardComponent.ParametersList = ParametersList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
+DashboardComponent.SubscriptionsButton =
+  PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton;
 DashboardComponent.InfoButton = DashboardInfoButton;
-DashboardComponent.NightModeButton = NightModeToggleButton;
 DashboardComponent.RefreshPeriod = RefreshWidget;
 
 export const Dashboard = DashboardComponent;

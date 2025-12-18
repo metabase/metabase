@@ -1,6 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv empty?])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf :refer [mapv]])
+   [metabase.util.performance :as perf :refer [mapv empty?]])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)

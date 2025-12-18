@@ -91,5 +91,5 @@ Here's an incomplete list of example functions:
 | -------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Postgres | `EXTRACT(WEEK FROM TIMESTAMP created_at)` | ISO algorithm                                                                                                         |
 | MySQL    | `WEEKOFYEAR("2017-06-15")`                | The first day of the week is Monday and the first week of the year has more than 3 days. Alternative functions exist. |
-| BigQuery | `EXTRACT(WEEK FROM DATE ticreated_at)`    | Weeks numbered from 0. Dates prior to the first Sunday of the year are in week 0. Alternative functions exist.        |
+| BigQuery | `EXTRACT(WEEK FROM DATE ticreated_at)`    | Weeks numbered from 0. Dates before the first Sunday of the year are in week 0. Alternative functions exist.        |
 | Redshift | `DATE_PART(week, TIMESTAMP created_at)`   | ISO algorithm                                                                                                         |

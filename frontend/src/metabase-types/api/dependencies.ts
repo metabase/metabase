@@ -1,10 +1,26 @@
+// IMPORTANT: The field selections in the *DependencyNodeData types below
+// MUST be kept in sync with the backend field selections in:
+// enterprise/backend/src/metabase_enterprise/dependencies/api.clj
+// (See entity-select-fields map)
+
 import type { Card, CardType } from "./card";
+import type { Dashboard } from "./dashboard";
+import type { Document } from "./document";
+import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
-import type { Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
 export type DependencyId = number;
-export type DependencyType = "card" | "table" | "transform" | "snippet";
+export type DependencyType =
+  | "card"
+  | "table"
+  | "transform"
+  | "snippet"
+  | "dashboard"
+  | "document"
+  | "sandbox"
+  | "segment";
 export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
 
 export type DependencyEntry = {
@@ -42,11 +58,12 @@ export type CardDependencyNodeData = Pick<
   | "collection"
   | "dashboard_id"
   | "dashboard"
+  | "document_id"
+  | "document"
   | "result_metadata"
   | "creator"
   | "created_at"
   | "last-edit-info"
-  | "moderation_reviews"
 > & {
   view_count?: number | null;
 };
@@ -55,6 +72,32 @@ export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
   "name" | "description"
 >;
+
+export type DashboardDependencyNodeData = Pick<
+  Dashboard,
+  | "name"
+  | "description"
+  | "created_at"
+  | "creator"
+  | "last-edit-info"
+  | "collection_id"
+  | "collection"
+  | "moderation_reviews"
+> & {
+  view_count?: number | null;
+};
+
+export type DocumentDependencyNodeData = Pick<
+  Document,
+  "name" | "created_at" | "creator" | "collection_id" | "collection"
+> & {
+  view_count?: number | null;
+};
+
+export type SandboxDependencyNodeData = {
+  table_id: TableId;
+  table?: Table | null;
+};
 
 export type TableDependencyNode = BaseDependencyNode<
   "table",
@@ -76,11 +119,42 @@ export type SnippetDependencyNode = BaseDependencyNode<
   SnippetDependencyNodeData
 >;
 
+export type DashboardDependencyNode = BaseDependencyNode<
+  "dashboard",
+  DashboardDependencyNodeData
+>;
+
+export type DocumentDependencyNode = BaseDependencyNode<
+  "document",
+  DocumentDependencyNodeData
+>;
+
+export type SandboxDependencyNode = BaseDependencyNode<
+  "sandbox",
+  SandboxDependencyNodeData
+>;
+
+export type SegmentDependencyNodeData = Pick<
+  Segment,
+  "name" | "description" | "table_id" | "created_at" | "creator_id" | "creator"
+> & {
+  table?: Table | null;
+};
+
+export type SegmentDependencyNode = BaseDependencyNode<
+  "segment",
+  SegmentDependencyNodeData
+>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
   | CardDependencyNode
-  | SnippetDependencyNode;
+  | SnippetDependencyNode
+  | DashboardDependencyNode
+  | DocumentDependencyNode
+  | SandboxDependencyNode
+  | SegmentDependencyNode;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;
@@ -104,6 +178,7 @@ export type ListNodeDependentsRequest = {
   type: DependencyType;
   dependent_type: DependencyType;
   dependent_card_type?: CardType;
+  archived?: boolean;
 };
 
 export type CheckDependenciesResponse = {

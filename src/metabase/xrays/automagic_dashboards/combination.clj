@@ -88,23 +88,13 @@
   (let [model? (and (mi/instance-of? :model/Card source)
                     (queries/model? source))
         mp     (lib-be/application-database-metadata-provider database)
-        query  (cond-> (lib/query mp (cond
-                                       (mi/instance-of? :model/Table source) (lib.metadata/table mp (u/the-id source))
-                                       (mi/instance-of? :model/Card source)  (lib.metadata/card mp (u/the-id source))))
-                 (:xrays/aggregations metric-definition)
-                 (as-> $query (reduce lib/aggregate $query (:xrays/aggregations metric-definition)))
-
-                 (:xrays/breakouts metric-definition)
-                 (as-> $query (reduce lib/breakout $query (:xrays/breakouts metric-definition)))
-
-                 (:xrays/filters metric-definition)
-                 (as-> $query (reduce lib/filter $query (:xrays/filters metric-definition)))
-
-                 (not model?)
-                 (as-> $query (reduce
-                               lib/filter
-                               $query
-                               query-filter)))]
+        query  (as-> (lib/query mp (cond
+                                     (mi/instance-of? :model/Table source) (lib.metadata/table mp (u/the-id source))
+                                     (mi/instance-of? :model/Card source)  (lib.metadata/card mp (u/the-id source)))) $query
+                 (reduce lib/aggregate $query (:xrays/aggregations metric-definition))
+                 (reduce lib/breakout  $query (:xrays/breakouts metric-definition))
+                 (reduce lib/filter    $query (:xrays/filters metric-definition))
+                 (reduce lib/filter    $query (when (not model?) query-filter)))]
     (assoc ground-metric-with-dimensions :dataset_query query)))
 
 (defn- instantiate-visualization

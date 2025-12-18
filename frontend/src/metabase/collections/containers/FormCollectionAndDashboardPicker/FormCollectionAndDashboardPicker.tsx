@@ -3,8 +3,9 @@ import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useLazyGetDashboardQuery } from "metabase/api";
+import { useGetCollectionQuery, useLazyGetDashboardQuery } from "metabase/api";
 import {
+  type EntityType,
   canonicalCollectionId,
   isTrashedCollection,
   isValidCollectionId,
@@ -20,8 +21,9 @@ import {
 } from "metabase/common/components/Pickers/CollectionPicker";
 import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import Collections from "metabase/entities/collections";
-import Dashboard from "metabase/entities/dashboards";
+import { Collections } from "metabase/entities/collections";
+import { getCollectionIcon } from "metabase/entities/collections/utils";
+import { Dashboards } from "metabase/entities/dashboards";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -35,18 +37,27 @@ function ItemName({
   dashboardId: DashboardId;
   type?: "collections" | "snippet-collections";
 }) {
+  const { data: collection } = useGetCollectionQuery(
+    { id: collectionId },
+    { skip: !collectionId || dashboardId != null },
+  );
+
   if (dashboardId) {
     return (
       <Flex align="center" gap="sm">
         <Icon name="dashboard" c="brand" />
-        <Dashboard.Name id={dashboardId} />
+        <Dashboards.Name id={dashboardId} />
       </Flex>
     );
   }
 
+  const collectionIcon = collection
+    ? getCollectionIcon(collection)
+    : { name: "collection" as const };
+
   return (
     <Flex align="center" gap="sm">
-      <Icon name="collection" c="brand" />
+      <Icon name={collectionIcon.name} c="brand" />
       {type === "snippet-collections" ? (
         <SnippetCollectionName id={collectionId} />
       ) : (
@@ -66,8 +77,14 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
+  entityType?: EntityType;
   zIndex?: number;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
+  /**
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
+   */
+  savingModel?: "collection" | null;
 }
 
 export function FormCollectionAndDashboardPicker({
@@ -81,6 +98,8 @@ export function FormCollectionAndDashboardPicker({
   collectionIdFieldName,
   dashboardIdFieldName,
   dashboardTabIdFieldName,
+  entityType,
+  savingModel,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -115,7 +134,7 @@ export function FormCollectionAndDashboardPicker({
 
   const selectedItem = useSelector(
     (state) =>
-      Dashboard.selectors.getObject(state, {
+      Dashboards.selectors.getObject(state, {
         entityId: dashboardIdInput.value,
       }) ||
       Collections.selectors.getObject(state, {
@@ -155,8 +174,14 @@ export function FormCollectionAndDashboardPicker({
         item === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
+      savingModel,
     }),
-    [filterPersonalCollections, type, showCreateNewCollectionOption],
+    [
+      filterPersonalCollections,
+      type,
+      showCreateNewCollectionOption,
+      savingModel,
+    ],
   );
 
   const [fetchDashboard] = useLazyGetDashboardQuery();
@@ -247,6 +272,7 @@ export function FormCollectionAndDashboardPicker({
           onChange={handleChange}
           onClose={handleModalClose}
           options={options}
+          entityType={entityType}
           {...collectionPickerModalProps}
         />
       )}

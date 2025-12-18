@@ -338,7 +338,7 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByLabelText("Event name").type("RC2");
         cy.findByLabelText("Date").clear().type("10/20/2023");
         cy.button("Create").click();
-        cy.wait("@createEvent");
+        waitForTimelinesAfterCreatingAnEvent("RC2");
 
         H.undoToast().icon("close").click();
         H.echartsIcon("star").should("be.visible");
@@ -413,6 +413,7 @@ describe("scenarios > organization > timelines > question", () => {
 
           cy.button("Create").click();
         });
+        waitForTimelinesAfterCreatingAnEvent("Event at the end of range");
 
         H.modal().should("not.exist"); // wait for modal to close
 
@@ -440,40 +441,36 @@ describe("scenarios > organization > timelines > question", () => {
       H.echartsIcon("star", true).should("be.visible");
     });
 
-    it(
-      "should open the sidebar when clicking an event icon",
-      { tags: "@flaky" },
-      () => {
-        H.createTimelineWithEvents({
-          timeline: { name: "Releases" },
-          events: [
-            { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
-          ],
-        });
+    it("should open the sidebar when clicking an event icon", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+        ],
+      });
 
-        H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-        H.echartsIcon("star").should("be.visible");
-        H.echartsIcon("star").click();
+      H.echartsIcon("star").should("be.visible");
+      H.echartsIcon("star").click();
 
-        // event should be selected in sidebar
-        timelineEventCard("RC1").should("be.visible");
-        timelineEventCard("RC1").should(
-          "have.css",
-          "border-left",
-          "4px solid rgb(80, 158, 226)",
-        );
+      // event should be selected in sidebar
+      timelineEventCard("RC1").should("be.visible");
+      timelineEventCard("RC1").should(
+        "have.css",
+        "border-left",
+        "4px solid rgb(80, 158, 226)",
+      );
 
-        // after clicking the icon again, it should be deselected in sidebar
-        H.echartsIcon("star", true).click();
-        timelineEventCard("RC1").should("be.visible");
-        timelineEventCard("RC1").should(
-          "have.css",
-          "border-left",
-          "4px solid rgba(0, 0, 0, 0)",
-        );
-      },
-    );
+      // after clicking the icon again, it should be deselected in sidebar
+      H.echartsIcon("star", true).click();
+      timelineEventCard("RC1").should("be.visible");
+      timelineEventCard("RC1").should(
+        "have.css",
+        "border-left",
+        "4px solid rgba(0, 0, 0, 0)",
+      );
+    });
 
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
@@ -590,4 +587,10 @@ function toggleEventVisibility(eventName) {
 
 function timelineEventVisibility(eventName) {
   return timelineEventCard(eventName).findByRole("checkbox");
+}
+
+function waitForTimelinesAfterCreatingAnEvent(eventName) {
+  return timelineEventCard(eventName)
+    .findByText(/^Bobby Tables added this on/)
+    .should("be.visible");
 }

@@ -6,7 +6,6 @@ job_tags: []
 name: Hourly job
 schedule: 0 0 * * * ? *
 ui_display_type: cron/builder
-updated_at: '2025-09-23T12:20:31.215628Z'
 serdes/meta:
 - id: RognTgBT2fXaxoQh4ws7z
   label: hourly_job

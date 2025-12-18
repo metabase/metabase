@@ -196,7 +196,7 @@
    :dashboard-templates-prefix ["table"]})
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
-  [segment :- ::segments.schema/segment]
+  [segment :- [:map [:definition ::segments.schema/segment]]]
   (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
@@ -766,7 +766,7 @@
   (automagic-dashboard (merge (->root table) opts)))
 
 (mu/defmethod automagic-analysis-method :model/Segment
-  [segment :- ::segments.schema/segment
+  [segment :- [:map [:definition ::segments.schema/segment]]
    opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
@@ -831,6 +831,10 @@
    entity
    getter-fn
    setter-fn]
+  ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
+  ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
+  ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework
+  ;; this code to be saner
   (binding [lib.schema/*HACK-disable-ref-validation* true]
     (if-let [element-value (some-> entity :dataset_query not-empty getter-fn)]
       (letfn [(splice-element [dashcard]
@@ -905,6 +909,10 @@
         cell-url (format "%sadhoc/%s/cell/%s" public-endpoint
                          (magic.util/encode-base64-json (:dataset_query query))
                          (magic.util/encode-base64-json cell-query))]
+    ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever
+    ;; that use columns from joins before adding the joins themselves (same with expressions), which is technically
+    ;; invalid at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we
+    ;; can rework this code to be saner
     (binding [lib.schema/*HACK-disable-ref-validation* true]
       (query-based-analysis root opts
                             (when cell-query

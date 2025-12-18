@@ -105,8 +105,8 @@
   (let [is-crufty? (if (and (= sync-stage ::update)
                             (not (:is_attached_dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
-                     ;; [[metabase.warehouse-schema.api.table/update-table!*]] to track occasions where the table was
-                     ;; updated by an admin, and respect their choices during an update.
+                     ;; [[metabase.warehouse-schema-rest.api.table/update-table!*]] to track occasions where the table
+                     ;; was updated by an admin, and respect their choices during an update.
                      ;;
                      ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
                      ;; during update steps. This is also how we handled this before the addition of auto-cruft-tables.
@@ -142,8 +142,13 @@
                                         (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
            :is_writable             (:is_writable table)}
+          (when (:data_source table)
+            {:data_source (:data_source table)})
+          (when (:data_authority table)
+            {:data_authority (:data_authority table)})
           (when (:is_sample database)
-            {:data_authority :ingested}))))
+            {:data_authority :ingested
+             :data_source    :ingested}))))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
@@ -165,7 +170,8 @@
                                              (assoc :active true)
 
                                              (:is_sample database)
-                                             (assoc :data_authority :ingested))))
+                                             (assoc :data_authority :ingested
+                                                    :data_source    :ingested))))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -205,7 +211,6 @@
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- (ms/InstanceOf :model/Database)]
-  (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
   (let [old-table               (select-keys metabase-table keys-to-update)
         new-table               (-> (zipmap keys-to-update (repeat nil))
                                     (merge table-metadata
@@ -261,8 +266,7 @@
    & filters]
   (set (apply
         t2/select
-        [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
-         :visibility_type :initial_sync_status]
+        (into [:model/Table :id :name :schema] keys-to-update)
         :db_id (u/the-id database)
         filters)))
 
@@ -312,7 +316,7 @@
         ;; we're just using this as a cheap namespace
         suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
         threshold-expr (apply
-                        (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
+                        (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
         tables-to-archive (t2/select :model/Table
                                      :db_id (u/the-id database)

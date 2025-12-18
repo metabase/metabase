@@ -7,11 +7,14 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   isExamplesCollection,
+  isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import CollapseSection from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
+import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -21,13 +24,16 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import {
-  ActionIcon,
-  Flex,
-  Icon,
-  type IconName,
-  type IconProps,
-  Tooltip,
-} from "metabase/ui";
+  PLUGIN_DATA_STUDIO,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
+import {
+  getIsTenantUser,
+  getUser,
+  getUserCanWriteToCollections,
+} from "metabase/selectors/user";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
@@ -49,10 +55,6 @@ import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 
-interface CollectionTreeItem extends Collection {
-  icon: IconName | IconProps;
-  children: CollectionTreeItem[];
-}
 type Props = {
   isAdmin: boolean;
   isOpen: boolean;
@@ -60,6 +62,9 @@ type Props = {
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
   selectedItems: SelectedItem[];
+  sharedTenantCollections?: Collection[];
+  canCreateSharedCollection: boolean;
+  showExternalCollectionsSection: boolean;
   handleCloseNavbar: () => void;
   handleLogout: () => void;
   handleCreateNewCollection: () => void;
@@ -82,12 +87,22 @@ export function MainNavbarView({
   reorderBookmarks,
   handleCreateNewCollection,
   handleCloseNavbar,
+  sharedTenantCollections,
+  canCreateSharedCollection,
+  showExternalCollectionsSection,
 }: Props) {
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
+  const [expandCollections = true, setExpandCollections] = useUserSetting(
+    "expand-collections-in-nav",
+  );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const currentUser = useSelector(getUser);
+  const useTenants = useSetting("use-tenants");
+  const isTenantUser = useSelector(getIsTenantUser);
 
   const [
     addDataModalOpened,
@@ -119,16 +134,40 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  const [regularCollections, trashCollection, examplesCollection] =
+  const { regularCollections, trashCollection, examplesCollection } =
     useMemo(() => {
-      return [
-        collections.filter(
-          (c) => !isRootTrashCollection(c) && !isExamplesCollection(c),
-        ),
-        collections.find(isRootTrashCollection),
-        collections.find(isExamplesCollection),
-      ];
-    }, [collections]);
+      const trashCollection = collections.find(isRootTrashCollection);
+      const examplesCollection = collections.find(isExamplesCollection);
+
+      const regularCollections = collections.filter((c) => {
+        const isNormalCollection =
+          !isRootTrashCollection(c) && !isExamplesCollection(c);
+        return isNormalCollection && !isLibraryCollection(c);
+      });
+
+      const collectionsByCategory = {
+        trashCollection,
+        examplesCollection,
+      };
+
+      return {
+        ...collectionsByCategory,
+        regularCollections:
+          useTenants && isTenantUser
+            ? PLUGIN_TENANTS.getFlattenedCollectionsForNavbar({
+                currentUser,
+                sharedTenantCollections,
+                regularCollections,
+              })
+            : regularCollections,
+      };
+    }, [
+      collections,
+      isTenantUser,
+      useTenants,
+      sharedTenantCollections,
+      currentUser,
+    ]);
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -137,6 +176,10 @@ export function MainNavbarView({
   const activeUsersCount = useSetting("active-users-count");
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
+
+  const collectionsHeading = showExternalCollectionsSection
+    ? t`Internal Collections`
+    : t`Collections`;
 
   return (
     <ErrorBoundary>
@@ -193,28 +236,74 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
+          {/* Tenant users don't see the section about "External collections" */}
+          {showExternalCollectionsSection && (
+            <PLUGIN_TENANTS.MainNavSharedCollections
+              canCreateSharedCollection={canCreateSharedCollection}
+              sharedTenantCollections={sharedTenantCollections}
+            />
+          )}
+
+          {PLUGIN_DATA_STUDIO.isEnabled && (
+            <PLUGIN_DATA_STUDIO.NavbarLibrarySection
+              collections={collections}
+              selectedId={collectionItem?.id}
+              onItemSelect={onItemSelect}
+            />
+          )}
+
           <SidebarSection>
             <ErrorBoundary>
-              <CollectionSectionHeading
-                handleCreateNewCollection={handleCreateNewCollection}
-              />
-
-              <Tree
-                data={regularCollections}
-                selectedId={collectionItem?.id}
-                onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
-                role="tree"
-                aria-label="collection-tree"
-              />
-              {showOtherUsersCollections && (
-                <PaddedSidebarLink
-                  icon="group"
-                  url={OTHER_USERS_COLLECTIONS_URL}
-                >
-                  {t`Other users' personal collections`}
-                </PaddedSidebarLink>
-              )}
+              <CollapseSection
+                header={<SidebarHeading>{collectionsHeading}</SidebarHeading>}
+                initialState={expandCollections ? "expanded" : "collapsed"}
+                iconPosition="right"
+                iconSize={8}
+                onToggle={setExpandCollections}
+                rightAction={
+                  canWriteToCollections && !isTenantUser ? (
+                    <Tooltip label={t`Create a new collection`}>
+                      <ActionIcon
+                        aria-label={t`Create a new collection`}
+                        color="var(--mb-color-text-medium)"
+                        onClick={() => {
+                          trackNewCollectionFromNavInitiated();
+                          handleCreateNewCollection();
+                        }}
+                      >
+                        <Icon name="add" />
+                      </ActionIcon>
+                    </Tooltip>
+                  ) : null
+                }
+                role="section"
+                aria-label={t`Collections`}
+              >
+                {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
+                  <PLUGIN_REMOTE_SYNC.CollectionsNavTree
+                    collections={regularCollections}
+                    selectedId={collectionItem?.id}
+                    onSelect={onItemSelect}
+                  />
+                ) : (
+                  <Tree
+                    data={regularCollections}
+                    selectedId={collectionItem?.id}
+                    onSelect={onItemSelect}
+                    TreeNode={SidebarCollectionLink}
+                    role="tree"
+                    aria-label="collection-tree"
+                  />
+                )}
+                {showOtherUsersCollections && (
+                  <PaddedSidebarLink
+                    icon="group"
+                    url={OTHER_USERS_COLLECTIONS_URL}
+                  >
+                    {t`Other users' personal collections`}
+                  </PaddedSidebarLink>
+                )}
+              </CollapseSection>
             </ErrorBoundary>
           </SidebarSection>
 
@@ -242,36 +331,13 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
+          <div>
+            <WhatsNewNotification />
+          </div>
         </div>
-        <WhatsNewNotification />
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </ErrorBoundary>
-  );
-}
-interface CollectionSectionHeadingProps {
-  handleCreateNewCollection: () => void;
-}
-
-function CollectionSectionHeading({
-  handleCreateNewCollection,
-}: CollectionSectionHeadingProps) {
-  return (
-    <Flex align="center" justify="space-between">
-      <SidebarHeading>{t`Collections`}</SidebarHeading>
-      <Tooltip label={t`Create a new collection`}>
-        <ActionIcon
-          aria-label={t`Create a new collection`}
-          color="var(--mb-color-text-medium)"
-          onClick={() => {
-            trackNewCollectionFromNavInitiated();
-            handleCreateNewCollection();
-          }}
-        >
-          <Icon name="add" />
-        </ActionIcon>
-      </Tooltip>
-    </Flex>
   );
 }

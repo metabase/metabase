@@ -11,7 +11,7 @@
   []
   (if-some [env-var-value (config/config-bool :mb-store-use-staging)]
     env-var-value
-    config/is-dev?))
+    (or config/is-dev? config/is-e2e?)))
 
 (defsetting store-api-url
   (deferred-tru "Store API URL.")

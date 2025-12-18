@@ -8,7 +8,7 @@
 (defn Field?
   "Is this a valid Field clause?"
   [x]
-  ((mr/validator ::mbql.s/field-or-expression-ref) x))
+  ((mr/validator ::mbql.s/FieldOrExpressionRef) x))
 
 (defn Filter?
   "Is this a valid `:filter` clause?"

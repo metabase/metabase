@@ -100,6 +100,7 @@
                             (= col :display)           :pie
                             (= col :made_public_by_id) (mt/user->id :crowberto)
                             (= col :embedding_params)  {:category_name "locked"}
+                            (= col :embedding_type)    "static-legacy"
                             (= col :public_uuid)       (str (random-uuid))
                             (= col :table_id)          (mt/id :venues)
                             (= col :source_card_id)    (:id base-card)

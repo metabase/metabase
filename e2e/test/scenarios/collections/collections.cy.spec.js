@@ -30,7 +30,7 @@ describe("scenarios > collection defaults", () => {
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
-  H.describeWithSnowplow("new collection button", () => {
+  describe("new collection button", () => {
     beforeEach(() => {
       H.restore();
       H.resetSnowplow();
@@ -533,6 +533,7 @@ describe("scenarios > collection defaults", () => {
               ({ body: { groups, revision } }) => {
                 // Give `Data` group permission to "curate" Child collection only
                 // Access to everything else is revoked by default - that's why we chose `Data` group
+                groups[DATA_GROUP] = {};
                 groups[DATA_GROUP][CHILD_COLLECTION_ID] = "write";
 
                 // We're chaining these 2 requestes in order to match schema (passing it from GET to PUT)

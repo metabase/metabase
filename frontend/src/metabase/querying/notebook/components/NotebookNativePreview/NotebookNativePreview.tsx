@@ -29,15 +29,19 @@ const BUTTON_TITLE = {
   },
 };
 
+type NotebookNativePreviewProps = {
+  question: Question;
+  title?: string;
+  buttonTitle?: string;
+  onConvertClick: (newQuestion: Question) => void;
+};
+
 export const NotebookNativePreview = ({
   question,
-  onConvertClick,
+  title,
   buttonTitle,
-}: {
-  question: Question;
-  onConvertClick: (newQuestion: Question) => void;
-  buttonTitle?: string;
-}) => {
+  onConvertClick,
+}: NotebookNativePreviewProps) => {
   const database = question.database();
   const engine = database?.engine;
   const engineType = getEngineNativeType(engine);
@@ -85,7 +89,7 @@ export const NotebookNativePreview = ({
         ta="start"
         p="1.5rem"
       >
-        {TITLE[engineType]}
+        {title ?? TITLE[engineType]}
       </Box>
       <Flex
         style={{

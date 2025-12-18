@@ -10,22 +10,25 @@ import {
   useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import Collections from "metabase/entities/collections/collections";
+import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
-import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
-  getHasDataAccess,
-  getHasDatabaseWithActionsEnabled,
-  getHasNativeWrite,
-} from "metabase/selectors/data";
+  closeModal,
+  setOpenModal,
+  setOpenModalWithProps,
+} from "metabase/redux/ui";
+import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
   getUserIsAdmin,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 import { useColorScheme } from "metabase/ui";
+import type { ModalName } from "metabase-types/store/modal";
 
 import {
   type RegisterShortcutProps,
@@ -52,17 +55,27 @@ export const useCommandPaletteBasicActions = ({
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;
   const hasEmbedJsFeature = useHasTokenFeature("embedding_simple");
 
   const openNewModal = useCallback(
-    (modalId: string) => {
+    (modalId: ModalName) => {
       dispatch(closeModal());
       dispatch(setOpenModal(modalId));
+    },
+    [dispatch],
+  );
+  const openNewModalWithProps = useCallback(
+    <TProps extends Record<string, unknown>>(
+      modalId: ModalName,
+      props?: TProps,
+    ) => {
+      dispatch(closeModal());
+      dispatch(setOpenModalWithProps({ id: modalId, props }));
     },
     [dispatch],
   );
@@ -122,17 +135,17 @@ export const useCommandPaletteBasicActions = ({
         openNewModal("dashboard");
       },
     });
-    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
-      actions.push({
-        id: "create-new-document",
-        name: t`New document`,
-        section: "basic",
-        icon: "document",
-        perform: () => {
-          dispatch(push(Urls.newDocument()));
-        },
-      });
-    }
+
+    actions.push({
+      id: "create-new-document",
+      name: t`New document`,
+      section: "basic",
+      icon: "document",
+      perform: () => {
+        dispatch(push(Urls.newDocument()));
+      },
+    });
+
     actions.push({
       id: "create-new-collection",
       name: t`New collection`,
@@ -233,7 +246,15 @@ export const useCommandPaletteBasicActions = ({
         section: "basic",
         icon: "embed",
         keywords: "embed flow, new embed, embed js",
-        perform: () => dispatch(push("/embed-js")),
+        perform: () =>
+          openNewModalWithProps<
+            Pick<SdkIframeEmbedSetupModalProps, "initialState">
+          >("embed", {
+            initialState: {
+              isGuest: true,
+              useExistingUserSession: true,
+            },
+          }),
       });
     }
 
@@ -266,6 +287,7 @@ export const useCommandPaletteBasicActions = ({
     hasNativeWrite,
     collectionId,
     openNewModal,
+    openNewModalWithProps,
     isAdmin,
     personalCollectionId,
     hasEmbedJsFeature,

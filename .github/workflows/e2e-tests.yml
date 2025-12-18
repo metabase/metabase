@@ -73,20 +73,6 @@ jobs:
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
 
-  # run this separately to make it non-blocking
-  flaky-e2e-tests:
-    name: Flaky e2e Tests
-    uses: ./.github/workflows/e2e-test.yml
-    needs:
-      - e2e-matrix-builder
-    # skip flaky test run if only e2e specs changed as an optimization
-    if: |
-      !cancelled() && !inputs.skip && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
-    secrets: inherit
-    with:
-      name: Flaky
-      tags: "@flaky"
-
   collect-timings:
     name: Collect E2E Timings
     runs-on: ubuntu-22.04
@@ -152,14 +138,12 @@ jobs:
   e2e-tests-result:
     needs:
       - e2e-tests
-      - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
-      FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
     steps:
       - name: Stub
         if: ${{ needs.e2e-tests.result == 'skipped' }}
@@ -169,7 +153,6 @@ jobs:
         if: ${{ needs.e2e-tests.result != 'skipped' }}
         run: | # sh
           echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-          echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
 
           if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
             echo "E2E Tests failed"

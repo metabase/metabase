@@ -22,10 +22,9 @@
   (:require
    #?@(:clj [[metabase.util.json :as json]])
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
-   ;; legacy usage -- do not use in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -367,6 +366,15 @@
   [mapping]
   (= "dimension" (get-in mapping [:target :type])))
 
+(defn- normalize [form]
+  (walk/postwalk
+   (fn [form]
+     (if (and (sequential? form)
+              (string? (first form)))
+       (into [(keyword (first form))] (map normalize) (rest form))
+       form))
+   form))
+
 (defn db->norm-param-mapping
   "Converts a `parameter-mapping` (i.e. value of `:parameterMapping`) from DB to normalized form"
   {:added "0.40.0"}
@@ -380,9 +388,7 @@
                        (if (dimension-param-mapping? v)
                          (let [parsed-id (-> (if (keyword? k) (keyname k) k)
                                              parse-json-string
-                                             ;; legacy usage -- do not use in new code
-                                             #_{:clj-kondo/ignore [:deprecated-var]}
-                                             mbql.normalize/normalize-tokens)]
+                                             normalize)]
                            [parsed-id (cond-> v
                                         (:source v) (assoc ::param-mapping-source
                                                            (db->norm-param-ref parsed-id (:source v)))
@@ -487,9 +493,9 @@
   [settings]
   (reduce-kv (fn [m k v]
                (try
-                 (let [k1 (parse-db-column-ref k)
-                       v1 (db->norm-column-settings-entries v)]
-                   (assoc m k1 v1))
+                 (let [k' (parse-db-column-ref k)
+                       v' (db->norm-column-settings-entries v)]
+                   (assoc m k' v'))
                  (catch #?(:clj Throwable :cljs js/Error) _e
                    m)))
              {}

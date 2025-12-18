@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.embedding.api.embed-test :as embed-test]
+   [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
@@ -427,7 +427,6 @@
             :type     :query
             :query    {:source-table (mt/id :venues)
                        :limit 1}}
-
     :viz-settings {:column_settings {},
                    :table.columns
                    [{:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
@@ -436,17 +435,14 @@
                     {:name "LATITUDE", :fieldRef [:field (mt/id :venues :latitude) nil], :enabled false}
                     {:name "LONGITUDE", :fieldRef [:field (mt/id :venues :longitude) nil], :enabled false}
                     {:name "PRICE", :fieldRef [:field (mt/id :venues :price) nil], :enabled true}]}
-
     :assertions {:csv (fn [results]
                         (is (= [["Name" "ID" "Category ID" "Price"]
                                 ["Red Medicine" "1" "4" "3"]]
                                (parse-csv-results results))))
-
                  :json (fn [results]
                          (is (= [["Name" "ID" "Category ID" "Price"]
                                  ["Red Medicine" "1" "4" "3"]]
                                 (parse-json-results results))))
-
                  :xlsx (fn [results]
                          (is (= [["Name" "ID" "Category ID" "Price"]
                                  ["Red Medicine" 1.0 4.0 3.0]]

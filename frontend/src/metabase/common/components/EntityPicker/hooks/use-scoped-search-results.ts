@@ -7,6 +7,7 @@ import {
   useListDashboardItemsQuery,
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
+import { DATABASES_COLLECTION } from "metabase/entities/collections";
 import { isNotNull } from "metabase/lib/types";
 import type {
   CollectionId,
@@ -48,10 +49,13 @@ export const useScopedSearchResults = <
   searchScope: EntityPickerSearchScope,
   folder: Item | undefined,
 ): SearchItem[] | null => {
-  const isScopedSearchEnabled = searchScope === "folder" && folder != null;
+  const isScopedSearchEnabled =
+    searchScope === "folder" && folder != null && folder.id !== "tenant";
 
   const shouldUseCollectionItems =
-    isScopedSearchEnabled && folder.model === "collection";
+    isScopedSearchEnabled &&
+    folder.model === "collection" &&
+    folder.id !== DATABASES_COLLECTION.id;
   const shouldUseDashboardItems =
     isScopedSearchEnabled && folder.model === "dashboard";
 
@@ -59,7 +63,7 @@ export const useScopedSearchResults = <
 
   const { data: collectionItemsData, isFetching: isFetchingCollectionItems } =
     useListCollectionItemsQuery(
-      shouldUseCollectionItems
+      shouldUseCollectionItems && searchQuery
         ? {
             id: folder.id as CollectionId,
             models: searchModelsToCollectionItemModels(searchModels),
@@ -69,7 +73,9 @@ export const useScopedSearchResults = <
 
   const { data: dashboardItemsData, isFetching: isFetchingDashboardItems } =
     useListDashboardItemsQuery(
-      shouldUseDashboardItems ? { id: folder.id as DashboardId } : skipToken,
+      shouldUseDashboardItems && searchQuery
+        ? { id: folder.id as DashboardId }
+        : skipToken,
     );
 
   const dbId =

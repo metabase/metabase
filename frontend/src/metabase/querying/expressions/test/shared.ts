@@ -45,9 +45,12 @@ const metadata = createMockMetadata({
               id: getNextId(),
               name: "Expensive Things",
               table_id: ORDERS_ID,
-              definition: createMockStructuredQuery({
-                "source-table": ORDERS_ID,
-                filter: [">", ["field", ORDERS.TOTAL, null], 30],
+              definition: createMockStructuredDatasetQuery({
+                database: 1,
+                query: {
+                  "source-table": ORDERS_ID,
+                  filter: [">", ["field", ORDERS.TOTAL, null], 30],
+                },
               }),
             }),
           ],

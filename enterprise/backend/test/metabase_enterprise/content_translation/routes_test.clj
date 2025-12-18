@@ -4,10 +4,10 @@
    [buddy.sign.jwt :as jwt]
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
-   [crypto.random :as crypto-random]
    [metabase-enterprise.content-translation.utils :as ct-utils]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -116,7 +116,7 @@
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                         {:file csv-with-invalid-locale}))))))))
 
-(defn random-embedding-secret-key [] (crypto-random/hex 32))
+(defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
 (defn do-with-new-secret-key! [f]
   (let [secret-key (random-embedding-secret-key)]

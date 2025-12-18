@@ -6,12 +6,13 @@ import { t } from "ttag";
 import EmptyState from "metabase/common/components/EmptyState";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
 } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
+import { modelToUrl } from "metabase/lib/urls";
 import {
   EmptyStateContainer,
   ResultsContainer,
@@ -123,8 +124,8 @@ export const SearchResults = ({
     if (item && typeof item !== "function") {
       if (onEntitySelect) {
         onEntitySelect(Search.wrapEntity(item, dispatch));
-      } else if (item && item.getUrl) {
-        dispatch(push(item.getUrl()));
+      } else if (item && modelToUrl(item)) {
+        dispatch(push(modelToUrl(item)));
       }
     }
   };

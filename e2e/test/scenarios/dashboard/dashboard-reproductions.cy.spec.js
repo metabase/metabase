@@ -1630,13 +1630,13 @@ describe("issue 47170", () => {
   });
 
   it("should show legible dark mode colors in fullscreen mode (metabase#51524)", () => {
+    cy.visit("/account/profile");
+    cy.findByDisplayValue("Use system default").click();
+    H.popover().findByText("Dark").click();
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
     H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Enter fullscreen").click();
-    H.dashboardHeader()
-      .findByLabelText(/dark mode/)
-      .click();
 
     const primaryTextColor = "rgba(255, 255, 255, 0.95)";
 

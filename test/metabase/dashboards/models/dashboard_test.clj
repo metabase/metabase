@@ -133,7 +133,7 @@
                    :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
                                                                             {:values_source_type    "card"
                                                                              :values_source_config {:card_id card-id}})]}]
-        ;; same setup as earlier test, we know the ParameterCard exists right now
+      ;; same setup as earlier test, we know the ParameterCard exists right now
       (t2/delete! :model/Dashboard :id dashboard-id)
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
 
@@ -211,7 +211,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
+               #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
                (t2/insert! :model/Dashboard (assoc (mt/with-temp-defaults :model/Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! :model/Dashboard :name dashboard-name)))))
@@ -220,7 +220,7 @@
       (mt/with-temp [:model/Dashboard {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
+             #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
              (t2/update! :model/Dashboard card-id {:collection_id collection-id})))))))
 
 (deftest ^:parallel validate-parameters-test
@@ -318,7 +318,7 @@
                                                  :values_source_config {:card_id     (:id card)
                                                                         :value_field [:field (:id field) nil]}}]}]
       (is (= {["Card" (:id card)] {"Dashboard" (:id dashboard)}}
-             (serdes/descendants "Dashboard" (:id dashboard)))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
 
 (deftest descendants-test-2
   (testing "dashboard which has a dashcard with an action"
@@ -330,7 +330,7 @@
                                          :parameter_mappings []}]
         (is (= {["Action" action-id] {"Dashboard"     (:id dashboard)
                                       "DashboardCard" (:id dc)}}
-               (serdes/descendants "Dashboard" (:id dashboard))))))))
+               (serdes/descendants "Dashboard" (:id dashboard) {})))))))
 
 (deftest ^:parallel descendants-test-3
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
@@ -350,7 +350,7 @@
                                     "DashboardCard" (:id dc)}
               ["Card" (:id card2)] {"Dashboard"     (:id dashboard)
                                     "DashboardCard" (:id dc)}}
-             (serdes/descendants "Dashboard" (:id dashboard)))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
 
 (deftest ^:parallel descendants-test-4
   (testing "dashboard in which its dashcards have series"
@@ -369,7 +369,7 @@
                         [["Card" (:id card)] (cond-> {"Dashboard"           (:id dashboard)
                                                       "DashboardCard"       (:id dashcard)}
                                                series (assoc "DashboardCardSeries" (:id series)))]))
-             (serdes/descendants "Dashboard" (:id dashboard)))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
 
 (deftest ^:parallel hydrate-tabs-test
   (mt/with-temp

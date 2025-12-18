@@ -274,7 +274,7 @@ To prevent the Email column from being exposed via a SQL question:
 
 ### Public sharing
 
-Row and column security permissions don't apply to public questions or public dashboards. If somone in an unsecured group creates a public link using an original table, the original table will be displayed to anyone who has the public link URL.
+Row and column security permissions don't apply to public questions or public dashboards. If someone in an unsecured group creates a public link using an original table, the original table will be displayed to anyone who has the public link URL.
 
 To prevent this from happening, you'll have to [disable public sharing](../embedding/public-links.md) for your Metabase.
 

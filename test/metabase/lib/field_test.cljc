@@ -1825,7 +1825,7 @@
         (is (=? ["Created At: Year" "Count"]
                 (mapv :display-name (lib/returned-columns query))))))))
 
-;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
+;;; adapted from [[metabase.query-processor.model-test/model-self-join-test]]
 (deftest ^:parallel model-self-join-test-display-name-test
   (binding [lib.metadata.calculation/*display-name-style* :long]
     (let [mp       meta/metadata-provider
@@ -1926,7 +1926,7 @@
               (lib/aggregate (lib/count))
               (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "People → Birth Date"} {}))))))
 
-;;; adapted from [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+;;; adapted from [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]]
 (deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test
   (testing "Remapped columns in joined source queries should work (#15578)"
     (let [mp    (lib.tu/remap-metadata-provider meta/metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
@@ -2196,3 +2196,28 @@
                                               :when (not= col "TITLE")]
                                           [:field {} col])}]}]}
             (lib.field/remove-field query -1 b-title)))))
+
+(deftest ^:parallel find-stage-index-and-clause-by-uuid-test
+  (let [query {:database 1
+               :lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table 2
+                           :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]}
+                          {:lib/type :mbql.stage/mbql
+                           :filters  [[:=
+                                       {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+                                       [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+                                       "wow"]]}]}]
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "00000000-0000-0000-0000-000000000001")))
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query 0 "00000000-0000-0000-0000-000000000001")))
+    (is (= [1 [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query 1 "1cb2a996-6ba1-45fb-8101-63dc3105c311")))
+    (is (= [1 [:=
+               {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+               [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+               "wow"]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "a1898aa6-4928-4e97-837d-e440ce21085e")))
+    (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "00000000-0000-0000-0000-000000000002")))
+    (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query 0  "a1898aa6-4928-4e97-837d-e440ce21085e")))))

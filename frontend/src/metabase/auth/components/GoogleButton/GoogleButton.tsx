@@ -8,7 +8,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import Link from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box, Checkbox } from "metabase/ui";
+import { Box, Checkbox, useColorScheme } from "metabase/ui";
 
 import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
@@ -30,6 +30,8 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
   const locale = useSelector(getSiteLocale);
   const [errors, setErrors] = useState<string[]>([]);
   const dispatch = useDispatch();
+
+  const { resolvedColorScheme } = useColorScheme();
 
   const handleLogin = useCallback(
     async ({ credential = "" }: CredentialResponse) => {
@@ -66,6 +68,14 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
               onError={handleError}
               locale={locale}
               width={width}
+              theme={
+                resolvedColorScheme === "dark" ? "filled_black" : "outline"
+              }
+              // This is needed to ensure that no white border shows up around the
+              // login button in dark mode (UXW-2138)
+              containerProps={{
+                style: { colorScheme: "light" },
+              }}
             />
           </GoogleOAuthProvider>
           <Checkbox

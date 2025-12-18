@@ -6,7 +6,6 @@ const fs = require("fs");
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const {
@@ -33,10 +32,8 @@ const ENTERPRISE_SRC_PATH =
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_PACKAGE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-package";
-const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
-const SDK_SHARED_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-shared";
+const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
+const SDK_SHARED_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-shared";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
@@ -49,8 +46,9 @@ const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
 // If you want to test metabase locally with a custom domain, either use
-// `metabase.local` or add your custom domain via the `MB_TEST_CUSTOM_DOMAINS`
-// environment variable so that rspack will allow requests from them.
+// `metabase.localhost` (anything .localhost should work out of the box) or add
+// your custom domain via the `MB_TEST_CUSTOM_DOMAINS` environment variable so
+// that rspack will allow requests from them.
 const TEST_CUSTOM_DOMAINS =
   process.env.MB_TEST_CUSTOM_DOMAINS?.split(",")
     .map((domain) => domain.trim())
@@ -236,7 +234,10 @@ const config = {
       // with ie11 point to the minified version
       icepick: __dirname + "/node_modules/icepick/icepick.min",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
+      "ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/plugins"
+          : SRC_PATH + "/plugins/noop",
       "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
@@ -245,8 +246,17 @@ const config = {
       "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-plugins",
       ),
-      "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
+      "sdk-iframe-embedding-script-ee-plugins": resolveEnterprisePathOrNoop(
+        "/sdk-iframe-embedding-script-plugins",
+      ),
+      "sdk-ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
+          : SRC_PATH + "/plugins/noop",
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
+    },
+    fallback: {
+      buffer: require.resolve("buffer/"),
     },
   },
   optimization: {
@@ -315,14 +325,16 @@ const config = {
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
-    new NodePolyfillPlugin(), // for crypto, among others
+    // https://github.com/orgs/remarkjs/discussions/903
+    new rspack.ProvidePlugin({
+      process: "process/browser.js",
+      Buffer: ["buffer", "Buffer"],
+    }),
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
-    // https://github.com/remarkjs/remark/discussions/903
-    new rspack.ProvidePlugin({ process: "process/browser.js" }),
   ],
 };
 
@@ -350,7 +362,7 @@ if (shouldEnableHotRefresh) {
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
-    allowedHosts: ["localhost", "metabase.local", ...TEST_CUSTOM_DOMAINS],
+    allowedHosts: ["localhost", ...TEST_CUSTOM_DOMAINS],
     // tweak stats to make the output in the console more legible
     devMiddleware: {
       stats: { preset: "errors-warnings", timings: true },

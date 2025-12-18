@@ -15,7 +15,6 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -32,7 +31,14 @@
   []
   (t/to-millis-from-epoch (t/instant)))
 
-(def ^:private entities [:model/Card :model/Transform :model/NativeQuerySnippet])
+(def ^:private entities
+  [:model/Card
+   :model/Transform
+   :model/NativeQuerySnippet
+   :model/Dashboard
+   :model/Document
+   :model/Sandbox
+   :model/Segment])
 
 ;; In-memory state for tracking failed entities
 ;; Stores {:model/Type {id {:fail-count N :next-retry-timestamp M}}}
@@ -69,7 +75,7 @@
                                  {:dependency_analysis_version target-version})]
     (when-let [card (and (pos? update-count)
                          (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-update {:object card :user-id config/internal-mb-user-id}))
+      (events/publish-event! :event/card-dependency-backfill {:object card}))
     update-count))
 
 (defn- backfill-entity!

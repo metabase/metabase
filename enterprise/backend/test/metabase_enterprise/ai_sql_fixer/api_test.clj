@@ -3,14 +3,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]))
 
 (deftest ^:parallel schema-sample-test
   (mt/test-driver :h2
-    (let [query {:database (mt/id)
-                 :native {:query (str "SELECT * FROM x.orders1"
-                                      " INNER JOIN products ON orders1.product_id = products.id"
-                                      " INNER JOIN ANALYTIC_EVENT ON true")}}
+    (let [query (lib/native-query (mt/metadata-provider)
+                                  (str "SELECT * FROM x.orders1"
+                                       " INNER JOIN products ON orders1.product_id = products.id"
+                                       " INNER JOIN ANALYTIC_EVENT ON true"))
           normalize #(into #{} (str/split % #"(?<=;)\n"))]
       (is (= (-> (str "CREATE TABLE PUBLIC.PRODUCTS (\n"
                       "  ID BIGINT,\n"
@@ -46,8 +47,7 @@
 
 (deftest ^:parallel no-used-table-test
   (mt/test-driver :postgres
-    (let [query {:database (mt/id)
-                 :native {:query "SELECT * FROM x.orders1"}}
+    (let [query (lib/native-query (mt/metadata-provider) "SELECT * FROM x.orders1")
           normalize #(into #{} (str/split % #"(?<=;)\n"))]
       (is (= (-> (str "CREATE TABLE public.orders (\n"
                       "  id int4,\n"

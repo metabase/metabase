@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sandbox.api.routes
   "API routes that are only enabled if we have a premium token with the `:sandboxes` feature."
   (:require
-   [metabase-enterprise.api.routes.common :as ee.api.common]
+   [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.sandbox.api.gtap]
    [metabase-enterprise.sandbox.api.table]
    [metabase-enterprise.sandbox.api.user]
@@ -23,7 +23,7 @@
   change this to `/sandboxes` or something like that."
   (->> (handlers/route-map-handler sandbox-route-map)
        +auth
-       (ee.api.common/+require-premium-feature :sandboxes (deferred-tru "Sandboxes"))))
+       (ee.api/+require-premium-feature :sandboxes (deferred-tru "Sandboxes"))))
 
 (def ^{:arglists '([request respond raise])} sandbox-table-routes
   "/api/table overrides for sandboxing.
@@ -33,4 +33,4 @@
   (->> (api.macros/ns-handler 'metabase-enterprise.sandbox.api.table)
        +auth
        #_{:clj-kondo/ignore [:deprecated-var]}
-       (ee.api.common/+when-premium-feature :sandboxes)))
+       (ee.api/+when-premium-feature :sandboxes)))

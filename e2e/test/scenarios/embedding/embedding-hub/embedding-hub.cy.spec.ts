@@ -37,7 +37,7 @@ describe("scenarios - embedding hub", () => {
           "be.visible",
         );
         // Click on the first available table
-        cy.get("[data-testid='picker-item']").first().click();
+        H.entityPickerModalItem(3, "Accounts").click();
       });
 
       cy.log("Should navigate to auto dashboard creation");
@@ -154,7 +154,11 @@ describe("scenarios - embedding hub", () => {
         .findByText("Get embed snippet")
         .click();
 
-      cy.url().should("include", "/embed-js?auth_method=user_session");
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Select your embed experience").should("be.visible");
+        });
     });
 
     it("Embed in production step should be locked until JWT is enabled", () => {
@@ -187,7 +191,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/");
 
-      cy.findAllByText("Get started with Embedded Analytics JS")
+      cy.findAllByText("Get started with modular embedding")
         .first()
         .should("be.visible");
 
@@ -207,7 +211,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/");
 
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("not.exist");
     });
 
@@ -240,7 +244,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/");
 
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("be.visible");
 
       cy.log("Click overflow menu button on the embedding homepage");
@@ -252,8 +256,79 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Verify guide is dismissed and no longer visible");
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("not.exist");
+    });
+
+    it('"Set up tenants" card should navigate to admin settings', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      H.main().findByText("Set up tenants").should("be.visible").click();
+
+      H.modal().within(() => {
+        cy.findByText("User strategy").should("be.visible");
+        cy.findByText("Multi tenant").click();
+        cy.button("Apply").click();
+      });
+
+      cy.log("the internal prefix should show up on the page");
+      H.main()
+        .findAllByText("Internal users")
+        .should("have.length", 2)
+        .should("be.visible");
+
+      cy.visit("/");
+
+      cy.log("'Set up tenants' should now be marked as done");
+      H.main()
+        .findByText("Set up tenants")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done", { timeout: 10_000 })
+        .should("be.visible");
+
+      cy.log("clicking on tenants should go to tenants page");
+      H.main().findByText("Set up tenants").click();
+      cy.url().should("include", "/admin/tenants");
+    });
+
+    it("should link to user strategy when tenants are disabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/people/user-strategy");
+    });
+
+    it("should link to tenants page when tenants are enabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      H.updateSetting("use-tenants", true);
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/tenants");
     });
   });
 });

@@ -204,3 +204,6 @@ export const getIsPaidPlan = createSelector(
     return tokenStatus != null && tokenStatus.valid;
   },
 );
+
+export const getTokenStatus = (state: State): TokenStatus | null =>
+  getSetting(state, "token-status");

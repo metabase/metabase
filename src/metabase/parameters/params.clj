@@ -110,7 +110,8 @@
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                          :table_id      [:in table-ids]
-                                         :semantic_type (app-db/isa :type/Name))
+                                         :semantic_type (app-db/isa :type/Name)
+                                         :active        true)
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
@@ -223,7 +224,7 @@
 
 (def ^:dynamic *field-id-context*
   "Conext for effective computation of field ids for parameters. Bound in
-  the [[metabase.dashboards.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
+  the [[metabase.dashboards-rest.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
   re-use values of previous `filterable-columns` computations (during the reduction itself and hydration of
   `:param_fields` and `:param_values` at the time of writing)."
   nil)

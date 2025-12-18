@@ -13,8 +13,7 @@
 
 (def search-models
   "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
-  (cond->  ["collection" "dashboard" "segment" "database" "action"]
-    config/ee-available? (conj "document")
+  (cond->  ["collection" "dashboard" "segment" "database" "action" "document"]
     config/ee-available? (conj "transform")
     ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
     ;; table and indexed-entity moved to the end because there can be a large number of them
@@ -78,7 +77,8 @@
    :view-count              :int
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
-   :display-type            :text})
+   :display-type            :text
+   :is-published            :boolean})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -101,7 +101,8 @@
          :view-count
          :updated-at
          :non-temporal-dim-ids
-         :has-temporal-dim])
+         :has-temporal-dim
+         :is-published])
        distinct
        vec))
 
@@ -140,7 +141,7 @@
 (def ^:private Specification
   [:map {:closed true}
    [:name SearchModel]
-   [:visibility [:enum :all :app-user]]
+   [:visibility [:enum :all :app-user :superuser]]
    [:model :keyword]
    [:attrs Attrs]
    [:search-terms [:or

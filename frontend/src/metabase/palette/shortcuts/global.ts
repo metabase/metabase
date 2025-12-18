@@ -136,7 +136,7 @@ export const globalShortcuts = {
 
   "navigate-embed-js": {
     get name() {
-      return t`Create a new embed`;
+      return t`New embed`;
     },
 
     shortcut: ["c e"],
@@ -145,8 +145,13 @@ export const globalShortcuts = {
 
   "toggle-dark-mode": {
     get name() {
-      return t`Toggle dark mode`;
+      return t`Toggle dark/light mode`;
     },
+
+    section: "basic",
+    keywords:
+      "toggle, toggle dark, toggle light, dark, light, dark mode, light mode, theme, mode, night",
+    icon: "moon",
 
     shortcut: ["$mod+Shift+KeyL"],
     shortcutGroup: "global" as const,

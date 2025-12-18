@@ -750,7 +750,64 @@
                   ["Card" card-id]             {"Collection" coll2-id}
                   ["NativeQuerySnippet" s1-id] {"Card" card-id}
                   ["Collection" coll-id]       {"NativeQuerySnippet" s1-id}}
-                 (#'extract/resolve-targets [["Collection" coll2-id]] nil))))))))
+                 (#'extract/resolve-targets {:targets [["Collection" coll2-id]]} nil))))))))
+
+(deftest resolve-targets-skip-archived-test
+  (testing "resolve-targets with skip-archived handles archived collections and nested items"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {parent-id :id}      {:name "Parent Collection"}
+                         :model/Collection {archived-child-id :id} {:name     "Archived Child Collection"
+                                                                    :archived true
+                                                                    :location (format "/%d/" parent-id)}
+                         :model/Collection {active-child-id :id}   {:name     "Active Child Collection"
+                                                                    :archived false
+                                                                    :location (format "/%d/" parent-id)}
+                         :model/Card       {card-in-archived-id :id} {:name          "Card in archived collection"
+                                                                      :collection_id archived-child-id}
+                         :model/Card       {card-in-active-id :id}   {:name          "Card in active collection"
+                                                                      :collection_id active-child-id}]
+        (testing "archived child collections and their contents are excluded when skip-archived: true"
+          (let [targets-with-skip (#'extract/resolve-targets {:targets       [["Collection" parent-id]]
+                                                              :skip-archived true} nil)]
+            (is (contains? targets-with-skip ["Collection" parent-id]))
+            (is (contains? targets-with-skip ["Collection" active-child-id]))
+            (is (not (contains? targets-with-skip ["Collection" archived-child-id])))
+            (is (contains? targets-with-skip ["Card" card-in-active-id]))
+            (is (not (contains? targets-with-skip ["Card" card-in-archived-id]))
+                "cards in archived collections should not be included")))
+
+        (testing "all collections and cards are included when skip-archived: false"
+          (let [targets-without-skip (#'extract/resolve-targets {:targets       [["Collection" parent-id]]
+                                                                 :skip-archived false} nil)]
+            (is (contains? targets-without-skip ["Collection" parent-id]))
+            (is (contains? targets-without-skip ["Collection" active-child-id]))
+            (is (contains? targets-without-skip ["Collection" archived-child-id]))
+            (is (contains? targets-without-skip ["Card" card-in-active-id]))
+            (is (contains? targets-without-skip ["Card" card-in-archived-id]))))))))
+
+(deftest extract-skip-archived-test
+  (testing "extract with skip-archived: true excludes archived items from final extraction"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id}       {:name "Test Collection"}
+                         :model/Card       {active-card-id :id}   {:name          "Active Card"
+                                                                   :archived      false
+                                                                   :collection_id coll-id}
+                         :model/Card       {archived-card-id :id} {:name          "Archived Card"
+                                                                   :archived      true
+                                                                   :collection_id coll-id}]
+        (testing "archived cards are excluded from extraction with skip-archived: true"
+          (let [extraction (extract/extract {:targets       [["Collection" coll-id]]
+                                             :skip-archived true})
+                card-ids   (into #{} (map (comp :id last :serdes/meta)) (by-model "Card" extraction))]
+            (is (contains? card-ids (:entity_id (t2/select-one :model/Card :id active-card-id))))
+            (is (not (contains? card-ids (:entity_id (t2/select-one :model/Card :id archived-card-id)))))))
+
+        (testing "archived cards are included in extraction with skip-archived: false"
+          (let [extraction (extract/extract {:targets       [["Collection" coll-id]]
+                                             :skip-archived false})
+                card-ids   (into #{} (map (comp :id last :serdes/meta)) (by-model "Card" extraction))]
+            (is (contains? card-ids (:entity_id (t2/select-one :model/Card :id active-card-id))))
+            (is (contains? card-ids (:entity_id (t2/select-one :model/Card :id archived-card-id))))))))))
 
 (deftest timelines-and-events-test
   (mt/with-empty-h2-app-db!
@@ -833,28 +890,66 @@
                         :creator_id ann-id
                         :table_id   no-schema-id
                         :definition {:source-table no-schema-id
-                                     :aggregation  [[:count]]
                                      :filter       [:< [:field field-id nil] 18]}}]
       (testing "segment"
         (let [ser (serdes/extract-one "Segment" {} (t2/select-one :model/Segment :id s1-id))]
           (is (=? {:serdes/meta [{:model "Segment" :id s1-eid :label "my_segment"}]
                    :table_id    ["My Database" nil "Schemaless Table"]
                    :creator_id  "ann@heart.band"
-                   :definition  {:source-table ["My Database" nil "Schemaless Table"]
-                                 :aggregation  [[:count]]
-                                 :filter       [:< [:field ["My Database" nil
-                                                            "Schemaless Table" "Some Field"]
-                                                    nil] 18]}
+                   :definition  {:database "My Database",
+                                 :type     :query,
+                                 :query    {:source-table ["My Database" nil "Schemaless Table"],
+                                            :filter       [:< [:field ["My Database" nil "Schemaless Table" "Some Field"] nil] 18]}}
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "depend on the Table and any fields from the definition"
-            (is (= #{[{:model "Database" :id "My Database"}
+          (testing "depend on the Database, the Table and any fields from the definition"
+            (is (= #{[{:model "Database" :id "My Database"}]
+                     [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}]
                      [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}
                       {:model "Field" :id "Some Field"}]}
                    (set (serdes/dependencies ser))))))))))
+
+(deftest table-publishing-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database   {db-id :id}           {:name "My Database"}
+                       :model/Table      {table-id :id}        {:name "Schemaless Table" :db_id db-id}
+                       :model/Collection {coll-id  :id
+                                          coll-eid :entity_id} {:name "Publishing Collection"}
+                       :model/Table      {pub-table-id :id}    {:name         "Published Table"
+                                                                :db_id        db-id
+                                                                :is_published true
+                                                                :collection_id coll-id}
+                       :model/Table      {unpub-table-id :id}  {:name         "Unpublished Table"
+                                                                :db_id        db-id
+                                                                :is_published false}]
+      (testing "published table with collection_id"
+        (let [ser (ts/extract-one "Table" pub-table-id)]
+          (testing "is_published is included in extraction"
+            (is (true? (:is_published ser))))
+          (testing "collection_id is transformed to entity_id"
+            (is (= coll-eid (:collection_id ser))))
+          (testing "depends on the collection"
+            (is (contains? (set (serdes/dependencies ser))
+                           [{:model "Collection" :id coll-eid}])))))
+      (testing "unpublished table without collection_id"
+        (let [ser (ts/extract-one "Table" unpub-table-id)]
+          (testing "is_published defaults to false"
+            (is (false? (:is_published ser))))
+          (testing "collection_id is nil"
+            (is (nil? (:collection_id ser))))
+          (testing "does not depend on any collection"
+            (is (not (some #(= "Collection" (:model (first %)))
+                           (serdes/dependencies ser)))))))
+      (testing "regular table without publishing fields set"
+        (let [ser (ts/extract-one "Table" table-id)]
+          (testing "is_published defaults to false"
+            (is (false? (:is_published ser))))
+
+          (testing "collection_id is nil"
+            (is (nil? (:collection_id ser)))))))))
 
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
@@ -1680,7 +1775,9 @@
                          :dashcards [(assoc dc2 :series nil)
                                      (assoc dc3 :series nil)]
                          :tabs nil)}
-                (set (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+                (into #{} (map (fn [dashboard]
+                                 (update dashboard :dashcards #(sort-by :id %))))
+                      (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 
@@ -1794,8 +1891,9 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "metabot depends on its model entities"
-            (is (= #{[{:model "Card" :id model-eid}]}
+          (testing "metabot depends on its model entities and collection"
+            (is (= #{[{:model "Card" :id model-eid}]
+                     [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest metabot-collection-test
@@ -1841,8 +1939,9 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "metabot depends on its prompts' cards"
-            (is (= #{[{:model "Card" :id card-eid}]}
+          (testing "metabot depends on its prompts' cards and collection"
+            (is (= #{[{:model "Card" :id card-eid}]
+                     [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest document-test
@@ -1986,8 +2085,7 @@
                                       :id hourly-tag-eid}]
                        :name "hourly"
                        :built_in_type "hourly"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
@@ -1998,8 +2096,7 @@
                                       :id custom-tag-eid}]
                        :name "custom-etl"
                        :built_in_type nil
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
@@ -2030,17 +2127,17 @@
                            :model/TransformTag
                            {hourly-tag-id :id
                             hourly-tag-eid :entity_id}
-                           {:name "hourly" :built_in_type "hourly"}
+                           {:name "hourly" :built_in_type "hourly" :entity_id "hourlyhourlyhourlyxxx"}
 
                            :model/TransformTag
                            {daily-tag-id :id
                             daily-tag-eid :entity_id}
-                           {:name "daily" :built_in_type "daily"}
+                           {:name "daily" :built_in_type "daily" :entity_id "dailydailydailydailyx"}
 
                            :model/TransformTag
                            {custom-tag-id :id
                             custom-tag-eid :entity_id}
-                           {:name "custom-etl"}
+                           {:name "custom-etl" :entity_id "custometlcustometlcus"}
 
                            ;; Create Transform
                            :model/Transform
@@ -2048,9 +2145,11 @@
                             transform-eid :entity_id}
                            {:name "Test Transform"
                             :description "A test transform for serialization"
+                            :entity_id "2HzIFwJ6720JAx07UMavl"
                             :source {:query {:database db-id
                                              :type     "query"
-                                             :query    {:source-table table-id}}}
+                                             :query    {:source-table table-id}}
+                                     :type "query"}
                             :target {:database db-id
                                      :type "table"
                                      :schema "public"
@@ -2081,8 +2180,7 @@
                                       :id transform-eid}]
                        :name "Test Transform"
                        :description "A test transform for serialization"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id))))
 
@@ -2177,8 +2275,7 @@
                        :description "Executes transforms tagged with 'hourly' every hour"
                        :schedule "0 0 * * * ? *"
                        :built_in_type "hourly"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has associated tags"
@@ -2197,8 +2294,7 @@
                        :description "Custom data processing job"
                        :schedule "0 0 2 * * ? *"
                        :built_in_type nil
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has multiple associated tags in correct order"

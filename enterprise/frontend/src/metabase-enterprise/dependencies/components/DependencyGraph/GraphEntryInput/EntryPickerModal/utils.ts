@@ -1,3 +1,4 @@
+import type { DashboardPickerItem } from "metabase/common/components/Pickers/DashboardPicker";
 import type { QuestionPickerItem } from "metabase/common/components/Pickers/QuestionPicker";
 import type {
   TablePickerItem,
@@ -46,31 +47,6 @@ export function getTablePickerItem(
   };
 }
 
-function getQuestionPickerModel(type: CardType): QuestionPickerItem["model"] {
-  switch (type) {
-    case "question":
-      return "card";
-    case "model":
-      return "dataset";
-    case "metric":
-      return "metric";
-  }
-}
-
-export function getQuestionPickerItem(
-  node: DependencyNode,
-): QuestionPickerItem | undefined {
-  if (node.type !== "card") {
-    return;
-  }
-
-  return {
-    id: node.id,
-    name: node.data.name,
-    model: getQuestionPickerModel(node.data.type),
-  };
-}
-
 export function getTransformPickerItem(
   node: DependencyNode,
 ): TransformPickerItem | undefined {
@@ -85,13 +61,69 @@ export function getTransformPickerItem(
   };
 }
 
+function getCardPickerModel(type: CardType): QuestionPickerItem["model"] {
+  switch (type) {
+    case "question":
+      return "card";
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+  }
+}
+
+function getCardPickerItem(
+  node: DependencyNode,
+  cardType: CardType,
+): QuestionPickerItem | undefined {
+  if (node.type !== "card" || node.data.type !== cardType) {
+    return;
+  }
+
+  return {
+    id: node.id,
+    name: node.data.name,
+    model: getCardPickerModel(node.data.type),
+  };
+}
+
+export function getQuestionPickerItem(
+  node: DependencyNode,
+): QuestionPickerItem | undefined {
+  return getCardPickerItem(node, "question");
+}
+
+export function getModelPickerItem(
+  node: DependencyNode,
+): QuestionPickerItem | undefined {
+  return getCardPickerItem(node, "model");
+}
+
+export function getMetricPickerItem(
+  node: DependencyNode,
+): QuestionPickerItem | undefined {
+  return getCardPickerItem(node, "metric");
+}
+
+export function getDashboardPickerItem(
+  node: DependencyNode,
+): DashboardPickerItem | undefined {
+  if (node.type !== "dashboard") {
+    return;
+  }
+  return { id: node.id, model: "dashboard", name: node.data.name };
+}
+
 export function getEntryPickerItem(
   node: DependencyNode,
 ): EntryPickerItem | undefined {
   return (
     getTablePickerItem(node) ??
+    getTransformPickerItem(node) ??
     getQuestionPickerItem(node) ??
-    getTransformPickerItem(node)
+    getModelPickerItem(node) ??
+    getMetricPickerItem(node) ??
+    getDashboardPickerItem(node)
   );
 }
 
@@ -118,4 +150,11 @@ export function hasAvailableModels(
 ) {
   const availableModels = response?.available_models ?? [];
   return models.some((model) => availableModels.includes(model));
+}
+
+export function selectOnlyCards(
+  onItemSelect: (item: QuestionPickerItem) => void,
+) {
+  return (item: QuestionPickerItem) =>
+    item.model === "card" ? onItemSelect(item) : undefined;
 }

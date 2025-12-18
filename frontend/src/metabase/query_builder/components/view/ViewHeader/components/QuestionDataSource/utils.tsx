@@ -1,7 +1,7 @@
 import { type ReactElement, isValidElement } from "react";
-import { match } from "ts-pattern";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { getIcon } from "metabase/lib/icon";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
@@ -164,7 +164,7 @@ function QuestionTableBadges({
               table={table}
               icon="info"
               size={16}
-              position="top"
+              position="bottom"
               className={HeaderS.HeaderBadgeIcon}
             />
           </span>
@@ -194,10 +194,5 @@ function getTableURL(table: Table) {
 }
 
 export function getQuestionIcon(question: Question): IconName {
-  return match(question.type())
-    .returnType<IconName>()
-    .with("question", () => "table2")
-    .with("model", () => "model")
-    .with("metric", () => "metric")
-    .exhaustive();
+  return getIcon({ model: "card", type: question.type() }).name;
 }

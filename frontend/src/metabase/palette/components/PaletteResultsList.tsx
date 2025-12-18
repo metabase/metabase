@@ -29,7 +29,8 @@ interface RenderParams<T = PaletteActionImpl | string> {
 interface PaletteResultListProps {
   items: (PaletteActionImpl | string)[];
   renderItem: (params: RenderParams) => React.ReactElement;
-  maxHeight?: number;
+  maxHeight: number;
+  minHeight: number;
 }
 
 export const PaletteResultList = (props: PaletteResultListProps) => {
@@ -149,7 +150,8 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
     <div
       ref={parentRef}
       style={{
-        maxHeight: props.maxHeight || 400,
+        maxHeight: props.maxHeight,
+        minHeight: props.minHeight,
         overflow: "auto",
       }}
     >

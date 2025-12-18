@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.metadata
+  (:refer-clojure :exclude [get-in])
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
@@ -9,7 +10,8 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 ;;; Column vs Field?
 ;;;
@@ -571,10 +573,9 @@
                 ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
                 ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
                 ;; styles so look at that.
-                (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
-                  (if ((some-fn :lib/type :base-type) col)
-                    :lib
-                    :legacy)))}
+                (if ((some-fn :lib/type #(get % "lib/type") :base-type #(get % "base-type")) col)
+                  :lib
+                  :legacy))}
    [:lib
     [:merge
      [:ref ::column]

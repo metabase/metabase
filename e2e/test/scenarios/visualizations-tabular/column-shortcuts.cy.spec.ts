@@ -81,7 +81,7 @@ const URL_CASES = [
   },
 ];
 
-H.describeWithSnowplow("extract shortcut", () => {
+describe("extract shortcut", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -347,7 +347,7 @@ function extractColumnAndCheck({
   }
 }
 
-H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
+describe("scenarios > visualizations > combine shortcut", () => {
   function combineColumns({
     columns,
     example,

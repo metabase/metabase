@@ -2,21 +2,22 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
-   [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
@@ -51,6 +52,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -81,7 +83,7 @@
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
   and including [[current-schema-version]]."
-  22)
+  23)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
@@ -119,14 +121,14 @@
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
-   (if (and
+   (and
+    (not (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (audit/default-audit-collection)))
+          (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (audit/default-audit-collection))))
-     false
-     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 
@@ -669,6 +671,17 @@
   (update card :result_metadata (fn [cols]
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
+;; Schema upgrade: 22 to 23 ==========================================================================================
+;; #66199 shows a customer upgrading to 57 breaking certain cards
+;; The cards in question have {} as their dataset_query.
+;; This schema upgrade is to overwrite cards with dataset_query = "{}" with a converted legacy_query.
+;; Discussion: https://metaboat.slack.com/archives/C05MPF0TM3L/p1764944945966649?thread_ts=1763990244.080579&cid=C05MPF0TM3L
+(defmethod upgrade-card-schema-to 23
+  [card _schema-version]
+  ;; This fix was a failure. We have to keep the schema upgrade, but now it's
+  ;; just a no-op.
+  card)
+
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]
   (-> (if (and (:id card)
@@ -683,7 +696,8 @@
                           {:card-id (:id card)}))
           ;; Plausible and has the schema, so run the upgrades over it.
           (loop [card card]
-            (if (= (:card_schema card) current-schema-version)
+            ;; Use >= to allow for downgrades.
+            (if (>= (:card_schema card) current-schema-version)
               card
               (let [new-version (inc (:card_schema card))]
                 (recur (assoc (upgrade-card-schema-to card new-version)
@@ -691,6 +705,51 @@
         ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
         card)
       queries.schema/normalize-card))
+
+(defonce ^:private unique-cards-with-blank-dataset-query
+  (atom #{}))
+
+(defn- monitor-blank-dataset-query
+  "Captures the IDs of all cards which get read and have `:dataset_query {}`. That happens when the MBQL 4->5
+  conversion fails, and usually indicates a problem with the MBQL 4 normalization.
+
+  This publishes a Prometheus metric with a count of the unique cards on this instance which have been read since
+  startup. If this is nonzero then there are known to be bad cards present. This function logs a message in that
+  case which will point out the bad cards and enable us to localize the problem.
+
+  Always returns `card`."
+  [card]
+  (when (= (:dataset_query card) {})
+    (log/infof "Card %d has a blank :dataset_query - this indicates a Metabase issue. Legacy MBQL: %s"
+               (:id card) (:legacy_query card))
+    (let [uniques (swap! unique-cards-with-blank-dataset-query conj (:id card))]
+      (analytics/set! :metabase-card/unique-cards-failed-conversion (count uniques))))
+  ;; Always returns the original card.
+  card)
+
+(defn- mbql5-conversion-clean-callback [untransformed-card pre-cleaning-query post-cleaning-query]
+  (analytics/inc! :metabase-card/conversions-requiring-cleaning)
+  (log/infof "MBQL 4->5 conversion for Card %d had real 'clean' changes from %s into %s; :legacy_query is %s"
+             (:id untransformed-card)
+             (pr-str (dissoc pre-cleaning-query :lib/metadata))
+             (pr-str (dissoc post-cleaning-query :lib/metadata))
+             (:legacy_query untransformed-card)))
+
+;; Dynamically binds [[lib.convert/*card-clean-hook*]] to a function that logs the impact of cleaning,
+;; during `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
+;; changes, which likely indicates a bug.
+(methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Card]
+  [query-type model]
+  (let [xform (next-method query-type model)]
+    (fn xform' [rf]
+      (let [rf' (xform rf)]
+        (fn rf''
+          ([] (rf'))
+          ([acc]
+           (rf' acc))
+          ([acc card]
+           (binding [lib.convert/*card-clean-hook* (partial mbql5-conversion-clean-callback card)]
+             (rf' acc card))))))))
 
 (t2/define-after-select :model/Card
   [card]
@@ -705,20 +764,23 @@
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ;; At this point, the card should be at schema version 20 or higher.
-      upgrade-card-schema-to-latest))
+      upgrade-card-schema-to-latest
+      monitor-blank-dataset-query))
 
 (t2/define-before-insert :model/Card
   [card]
-  (-> card
-      (assoc :metabase_version config/mb-version-string
-             :card_schema current-schema-version)
-      queries.schema/normalize-card
+  (u/prog1
+    (-> card
+        (assoc :metabase_version config/mb-version-string
+               :card_schema current-schema-version)
+        queries.schema/normalize-card
       ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
       ;; since we're removing `:ident`s; we can probably remove this now.
-      (u/assoc-default :entity_id (u/generate-nano-id))
-      card.metadata/populate-result-metadata
-      pre-insert
-      populate-query-fields))
+        (u/assoc-default :entity_id (u/generate-nano-id))
+        card.metadata/populate-result-metadata
+        pre-insert
+        populate-query-fields)
+    (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -752,6 +814,7 @@
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
         card    (queries.schema/normalize-card card)]
+    (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
         (assoc :card_schema current-schema-version)
@@ -917,9 +980,11 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (t2/insert-returning-instance! :model/Card (cond-> card-data
-                                                                                           metadata
-                                                                                           (assoc :result_metadata metadata))))]
+                                              (u/prog1 (t2/insert-returning-instance! :model/Card (cond-> card-data
+                                                                                                    metadata
+                                                                                                    (assoc :result_metadata metadata)))
+                                                (when (collections/remote-synced-collection? (:collection_id <>))
+                                                  (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
@@ -941,27 +1006,41 @@
   (-> card :moderation_reviews first :status #{"verified"} boolean))
 
 (defn- changed?
-  "Return whether there were any changes in the objects at the keys for `consider`.
+  "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
+  `before` an exception will be thrown.
 
-  returns false because changes to collection_id are ignored:
-  (changed? #{:description}
-            {:collection_id 1 :description \"foo\"}
-            {:collection_id 2 :description \"foo\"})
+  returns false, `description` has not changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"foo\"})
 
-  returns true:
-  (changed? #{:description}
-            {:collection_id 1 :description \"foo\"}
-            {:collection_id 2 :description \"diff\"})"
-  [consider card-before updates]
-  ;; have to ignore keyword vs strings over api. `{:type :query}` vs `{:type "query"}`
-  (let [prepare              (fn prepare [card] (walk/prewalk (fn [x] (if (keyword? x)
-                                                                        (name x)
-                                                                        x))
-                                                              card))
-        before               (prepare (select-keys card-before consider))
-        after                (prepare (select-keys updates consider))
-        [_ changes-in-after] (data/diff before after)]
-    (boolean (seq changes-in-after))))
+  returns true, `description` has changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"diff\"})
+
+  throws an exception, `before` is missing keys from `after`:
+  (changed? {:collection_id 1}
+            {:collection_id 1 :description \"foobar\"})
+
+  For keys that will be transformed before we insert them in the database, automatically runs
+  `(out-transform (in-transform ...))` before comparing to make sure we are comparing the canonical form."
+  [card-before updates]
+  ;; normalize the query before comparison
+  (let [transforms (t2/transforms :model/Card)
+        after (->> updates
+                   (map (fn [[k v]]
+                          (let [tvi (get-in transforms [k :in] identity)
+                                tvo (get-in transforms [k :out] identity)
+                                tv (tvo (tvi v))]
+                            [k tv])))
+                   (into {}))
+        before  (select-keys card-before (keys after))]
+    (when-not (set/subset? (set (keys after))
+                           (set (keys before)))
+      (throw (ex-info "`before-card` card is missing keys from `updates`"
+                      {:missing-keys (apply disj
+                                            (set (keys after))
+                                            (set (keys before)))})))
+    (boolean (some #(do (api/column-will-change? % before after)) (keys after)))))
 
 (def ^:private card-compare-keys
   "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
@@ -1077,29 +1156,30 @@
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
     (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
-    (assert-is-valid-dashboard-internal-update card-updates card-before-update)
+    (let [updated-fields (u/select-keys-when card-updates
+                                             ;; `collection_id` and `description` can be `nil` (in order to unset them).
+                                             ;; Other values should only be modified if they're passed in as non-nil
+                                             :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
+                                             :non-nil #{:dataset_query :display :name :visualization_settings :archived
+                                                        :enable_embedding :type :parameters :parameter_mappings :embedding_params
+                                                        :result_metadata :collection_preview :verified-result-metadata?})]
 
-    (when (and (card-is-verified? card-before-update)
-               (changed? card-compare-keys card-before-update card-updates))
-      ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
-      ;; to remove it regardless if enterprise edition is present at the moment.
-      (moderation/create-review! {:moderated_item_id   (:id card-before-update)
-                                  :moderated_item_type "card"
-                                  :moderator_id        (:id actor)
-                                  :status              nil
-                                  :text                (tru "Unverified due to edit")}))
-    ;; Invalidate the cache for card
-    (cache/invalidate-config! {:questions [(:id card-before-update)]
-                               :with-overrides? true})
-    ;; ok, now save the Card
-    (t2/update! :model/Card (:id card-before-update)
-                ;; `collection_id` and `description` can be `nil` (in order to unset them).
-                ;; Other values should only be modified if they're passed in as non-nil
-                (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id}
-                                    :non-nil #{:dataset_query :display :name :visualization_settings :archived
-                                               :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                               :result_metadata :collection_preview :verified-result-metadata?}))
+      (assert-is-valid-dashboard-internal-update card-updates card-before-update)
+
+      (when (and (card-is-verified? card-before-update)
+                 (changed? card-before-update (select-keys updated-fields card-compare-keys)))
+        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+        ;; to remove it regardless if enterprise edition is present at the moment.
+        (moderation/create-review! {:moderated_item_id   (:id card-before-update)
+                                    :moderated_item_type "card"
+                                    :moderator_id        (:id actor)
+                                    :status              nil
+                                    :text                (tru "Unverified due to edit")}))
+      ;; Invalidate the cache for card
+      (cache/invalidate-config! {:questions [(:id card-before-update)]
+                                 :with-overrides? true})
+      ;; ok, now save the Card
+      (t2/update! :model/Card (:id card-before-update) updated-fields))
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)
@@ -1107,7 +1187,8 @@
         (log/error e "Update of dependent card parameters failed!")
         (log/debug e
                    "`card-before-update`:" (pr-str card-before-update)
-                   "`card-updates`:" (pr-str card-updates)))))
+                   "`card-updates`:" (pr-str card-updates))))
+    (collection/check-for-remote-sync-update card-before-update))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`
@@ -1184,7 +1265,7 @@
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
-          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name
+          :embedding_params :enable_embedding :embedding_type :entity_id :metabase_version :public_uuid :query_type :type :name
           :card_schema]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
@@ -1232,15 +1313,15 @@
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))
 
-(defmethod serdes/descendants "Card" [_model-name id]
+(defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (t2/select-one :model/Card :id id)
         query              (not-empty (:dataset_query card))
-        source-card        (some-> query lib/source-card-id)
+        source-cards       (some-> query lib/all-source-card-ids)
         template-tags      (some-> query lib/all-template-tags)
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> template-tags (keep :snippet-id))]
     (into {} (concat
-              (when source-card
+              (for [source-card source-cards]
                 {["Card" source-card] {"Card" id}})
               (for [{:keys [card-id]} template-tags
                     :when             card-id]
@@ -1330,7 +1411,10 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where        [:and [:= :collection.namespace nil] [:= :this.document_id nil]]
+   :where [:and [:or [:= :collection.namespace nil]
+                 [:= :collection.namespace "shared-tenant-collection"]
+                 [:= :collection.namespace "tenant-specific"]]
+           [:= :this.document_id nil]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]

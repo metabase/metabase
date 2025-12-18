@@ -7,6 +7,10 @@ import {
   type EntityPickerTab,
 } from "metabase/common/components/EntityPicker";
 import {
+  DashboardPicker,
+  type DashboardPickerStatePath,
+} from "metabase/common/components/Pickers/DashboardPicker";
+import {
   QuestionPicker,
   type QuestionPickerStatePath,
 } from "metabase/common/components/Pickers/QuestionPicker";
@@ -21,19 +25,11 @@ import {
   isActivityModel,
 } from "metabase-types/api";
 
-import { SEARCH_MODELS } from "../constants";
-
 import {
+  DASHBOARD_PICKER_OPTIONS,
   ENTITY_PICKER_OPTIONS,
-  QUESTION_FOLDER_MODELS,
-  QUESTION_MODELS,
-  QUESTION_MODELS_WITH_DASHBOARDS,
   QUESTION_PICKER_OPTIONS,
   RECENTS_CONTEXT,
-  TABLE_FOLDER_MODELS,
-  TABLE_MODELS,
-  TRANSFORM_FOLDER_MODELS,
-  TRANSFORM_MODELS,
 } from "./constants";
 import type {
   EntryPickerItem,
@@ -41,12 +37,16 @@ import type {
   EntryPickerItemModel,
 } from "./types";
 import {
+  getDashboardPickerItem,
   getEntryPickerItem,
   getEntryPickerValue,
+  getMetricPickerItem,
+  getModelPickerItem,
   getQuestionPickerItem,
   getTablePickerValue,
   getTransformPickerItem,
   hasAvailableModels,
+  selectOnlyCards,
 } from "./utils";
 
 type EntryPickerModalProps = {
@@ -62,8 +62,12 @@ export function EntryPickerModal({
 }: EntryPickerModalProps) {
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
+  const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
+  const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
+  const [dashboardsPath, setDashboardsPath] =
+    useState<DashboardPickerStatePath>();
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery({
-    models: SEARCH_MODELS,
+    models: ["card"],
     limit: 0,
     calculate_available_models: true,
   });
@@ -83,8 +87,8 @@ export function EntryPickerModal({
     computedTabs.push({
       id: "tables-tab",
       displayName: t`Tables`,
-      models: TABLE_MODELS,
-      folderModels: TABLE_FOLDER_MODELS,
+      models: ["table"],
+      folderModels: ["database", "schema"],
       icon: "table",
       render: ({ onItemSelect }) => (
         <TablePicker
@@ -96,13 +100,13 @@ export function EntryPickerModal({
       ),
     });
 
-    if (hasAvailableModels(searchResponse, TRANSFORM_MODELS)) {
+    if (hasAvailableModels(searchResponse, ["transform"])) {
       computedTabs.push({
         id: "transforms-tab",
         displayName: t`Transforms`,
-        models: TRANSFORM_MODELS,
-        folderModels: TRANSFORM_FOLDER_MODELS,
-        icon: "refresh_downstream",
+        models: ["transform"],
+        folderModels: [],
+        icon: "transform",
         render: ({ onItemSelect }) => (
           <PLUGIN_TRANSFORMS.TransformPicker
             value={value ? getTransformPickerItem(value) : undefined}
@@ -112,29 +116,99 @@ export function EntryPickerModal({
       });
     }
 
-    if (hasAvailableModels(searchResponse, QUESTION_MODELS)) {
+    if (hasAvailableModels(searchResponse, ["card"])) {
       computedTabs.push({
-        id: "collections-tab",
-        displayName: t`Collections`,
-        models: QUESTION_MODELS,
-        folderModels: QUESTION_FOLDER_MODELS,
-        icon: "folder",
+        id: "questions-tab",
+        displayName: t`Questions`,
+        models: ["card"],
+        folderModels: ["collection", "dashboard"],
+        icon: "table2",
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={value ? getQuestionPickerItem(value) : undefined}
-            models={QUESTION_MODELS_WITH_DASHBOARDS}
+            models={["card", "dashboard"]}
             options={QUESTION_PICKER_OPTIONS}
             path={questionsPath}
-            onInit={onItemSelect}
-            onItemSelect={onItemSelect}
+            onInit={selectOnlyCards(onItemSelect)}
+            onItemSelect={selectOnlyCards(onItemSelect)}
             onPathChange={setQuestionsPath}
           />
         ),
       });
     }
 
+    if (hasAvailableModels(searchResponse, ["dataset"])) {
+      computedTabs.push({
+        id: "models-tab",
+        displayName: t`Models`,
+        models: ["dataset"],
+        folderModels: ["collection"],
+        icon: "model",
+        render: ({ onItemSelect }) => (
+          <QuestionPicker
+            initialValue={value ? getModelPickerItem(value) : undefined}
+            models={["dataset"]}
+            options={QUESTION_PICKER_OPTIONS}
+            path={modelsPath}
+            onInit={onItemSelect}
+            onItemSelect={onItemSelect}
+            onPathChange={setModelsPath}
+          />
+        ),
+      });
+    }
+
+    if (hasAvailableModels(searchResponse, ["metric"])) {
+      computedTabs.push({
+        id: "metrics-tab",
+        displayName: t`Metrics`,
+        models: ["metric"],
+        folderModels: ["collection"],
+        icon: "metric",
+        render: ({ onItemSelect }) => (
+          <QuestionPicker
+            initialValue={value ? getMetricPickerItem(value) : undefined}
+            models={["metric"]}
+            options={DASHBOARD_PICKER_OPTIONS}
+            path={metricsPath}
+            onInit={onItemSelect}
+            onItemSelect={onItemSelect}
+            onPathChange={setMetricsPath}
+          />
+        ),
+      });
+    }
+
+    if (hasAvailableModels(searchResponse, ["dashboard"])) {
+      computedTabs.push({
+        id: "dashboards-tab",
+        displayName: t`Dashboards`,
+        models: ["dashboard"],
+        folderModels: ["collection"],
+        icon: "dashboard",
+        render: ({ onItemSelect }) => (
+          <DashboardPicker
+            initialValue={value ? getDashboardPickerItem(value) : undefined}
+            models={["dashboard"]}
+            options={QUESTION_PICKER_OPTIONS}
+            path={dashboardsPath}
+            onItemSelect={onItemSelect}
+            onPathChange={setDashboardsPath}
+          />
+        ),
+      });
+    }
+
     return computedTabs;
-  }, [value, searchResponse, tablesPath, questionsPath]);
+  }, [
+    value,
+    searchResponse,
+    tablesPath,
+    questionsPath,
+    modelsPath,
+    metricsPath,
+    dashboardsPath,
+  ]);
 
   const handleItemSelect = (item: EntryPickerItem) => {
     const value = getEntryPickerValue(item);

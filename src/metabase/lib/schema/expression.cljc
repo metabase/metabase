@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.expression
-  (:refer-clojure :exclude [some #?(:clj for)])
+  (:refer-clojure :exclude [some empty? #?(:clj for)])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -10,7 +10,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some #?(:clj for)]]))
+   [metabase.util.performance :refer [some empty? #?(:clj for)]]))
 
 (defmulti type-of-method
   "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of-method]].

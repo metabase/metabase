@@ -6,7 +6,7 @@ import {
 
 import { toggleQuestionBookmarkStatus } from "./helpers/bookmark-helpers";
 
-H.describeWithSnowplow("scenarios > question > bookmarks", () => {
+describe("scenarios > question > bookmarks", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -53,8 +53,9 @@ H.describeWithSnowplow("scenarios > question > bookmarks", () => {
     // when we assert on the next toast (when we turn the model back to the question).
     H.undoToastList().icon("close").click();
 
+    H.openNavigationSidebar();
     H.navigationSidebar().within(() => {
-      cy.findByLabelText(/Bookmarks/)
+      cy.findByRole("section", { name: "Bookmarks" })
         .icon("model")
         .should("exist");
     });
@@ -67,7 +68,7 @@ H.describeWithSnowplow("scenarios > question > bookmarks", () => {
     H.openNavigationSidebar();
     cy.log("Should not find bookmark");
     H.navigationSidebar().within(() => {
-      cy.findByLabelText(/Bookmarks/)
+      cy.findByRole("section", { name: "Bookmarks" })
         .icon("model")
         .should("not.exist");
     });

@@ -13,18 +13,23 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import Modal from "metabase/common/components/Modal";
-import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
+import { Bookmarks, getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
-import Collections, {
+import {
+  Collections,
   ROOT_COLLECTION,
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import Databases from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
+import { Databases } from "metabase/entities/databases";
+import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getHasDataAccess } from "metabase/selectors/data";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  getUser,
+  getUserCanWriteToCollections,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -41,7 +46,7 @@ function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
   return {
     currentUser: getUser(state),
     isAdmin: getUserIsAdmin(state),
-    hasDataAccess: getHasDataAccess(databases),
+    hasDataAccess: databases.length > 0,
     bookmarks: getOrderedBookmarks(state),
   };
 }
@@ -88,17 +93,30 @@ function MainNavbarContainer({
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const {
     data: trashCollection,
     isLoading,
     error,
-  } = useGetCollectionQuery({ id: "trash" });
+  } = useGetCollectionQuery(
+    {
+      id: "trash",
+    },
+    { skip: !canWriteToCollections },
+  );
 
   const { data: collections = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,
     "exclude-archived": true,
+    "include-library": true,
   });
+
+  const {
+    canCreateSharedCollection,
+    showExternalCollectionsSection,
+    sharedTenantCollections,
+  } = PLUGIN_TENANTS.useTenantMainNavbarData();
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -194,6 +212,9 @@ function MainNavbarContainer({
         handleCreateNewCollection={onCreateNewCollection}
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
+        sharedTenantCollections={sharedTenantCollections}
+        canCreateSharedCollection={canCreateSharedCollection}
+        showExternalCollectionsSection={showExternalCollectionsSection}
       />
 
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}

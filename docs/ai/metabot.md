@@ -5,13 +5,13 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 # Metabot - Metabase's AI assistant
 
-{% include beta-blockquote.html
-   message="For now, <a href='https://www.metabase.com/features/metabot-ai'>Metabot</a> is only available as an add-on for Pro and Enterprise plans on Metabase Cloud."
-%}
+> Metabot is only available as an add-on on Metabase Cloud.
 
 ![Meet Metabot](./images/metabot.png)
 
 Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations.
+
+## Set up Metabot
 
 To set up Metabot, see [Metabot settings](./settings.md).
 
@@ -46,6 +46,7 @@ Some tips:
 - Whenever you want Metabot to do something completely different, you should reset the conversation, as Metabot might find that irrelevant historical context to be confusing.
 - Once Metabot creates a question for you, you can follow up with more questions or take over yourself. You can drill through the chart or step into the editor to tweak the query (both in the query builder and the SQL editor).
 - Metabot works best with English prompts. While it might understand other languages, you'll get the most reliable results by asking your questions in English.
+- Define domain-specific terms in the [glossary](../exploration-and-organization/data-model-reference.md#glossary) to help Metabot understand your organization's terminology.
 
 ### Metabot response menu
 

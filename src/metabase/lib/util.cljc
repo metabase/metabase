@@ -1,5 +1,5 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format every? mapv select-keys update-keys some #?(:clj for)])
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([potemkin :as p])
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? mapv select-keys update-keys some #?(:clj for)]]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in #?(:clj for)]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -41,7 +41,7 @@
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?
-  "Returns true if this is a clause."
+  "Returns true if this is a **normalized** MBQL 5 clause."
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
@@ -476,17 +476,6 @@
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 
-(defn find-stage-index-and-clause-by-uuid
-  "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
-  ([query lib-uuid]
-   (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
-  ([query stage-number lib-uuid]
-   (first (keep-indexed (fn [idx stage]
-                          (lib.util.match/match-lite-recursive stage
-                            (clause :guard (= lib-uuid (lib.options/uuid clause)))
-                            [idx clause]))
-                        (:stages (drop-later-stages query stage-number))))))
-
 (defn fresh-uuids
   "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
   than once."
@@ -510,6 +499,21 @@
 
      :else
      x)))
+
+(defn fresh-uuids-preserving-aggregation-refs
+  "Recursively replace all `:lib/uuid`s on an MBQL structure with fresh ones. Avoids duplicate UUID errors when
+  attaching something to a query more than once. This builds on [[fresh-uuids]] to include updating any
+  `[:aggregation {} \"uuid\"]` refs to use the corresponding new UUID."
+  [query]
+  (let [remapping (volatile! (transient {}))
+        query     (fresh-uuids query (fn [old-uuid new-uuid]
+                                       (vswap! remapping assoc! old-uuid new-uuid)))
+        remapping (persistent! @remapping)]
+    (lib.util.match/replace query
+      [:aggregation opts old-uuid]
+      [:aggregation opts (or (remapping old-uuid)
+                             (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"
+                                             {:aggregation &match})))])))
 
 (mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."

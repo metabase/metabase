@@ -10,6 +10,7 @@
   color: var(--mb-color-text-dark);
   line-height: 1rem;
   outline: none;
+  background-color: transparent;
 }
 
 .iconContainer {

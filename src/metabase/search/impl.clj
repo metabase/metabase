@@ -11,7 +11,6 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
-   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -56,10 +55,9 @@
 
 (defmethod check-permissions-for-model :document
   [search-ctx instance]
-  (and (premium-features/enable-documents?)
-       (if (:archived? search-ctx)
-         (can-write? search-ctx instance)
-         true)))
+  (if (:archived? search-ctx)
+    (can-write? search-ctx instance)
+    true))
 
 (defmethod check-permissions-for-model :transform
   [search-ctx instance]
@@ -185,7 +183,9 @@
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
                                         [:id :name :authority_level :type])
-                           (merge {:id              collection_id
+                           (merge {:id              (if (and (nil? collection_id) (some? collection_name))
+                                                      "root"
+                                                      collection_id)
                                    :name            collection_name
                                    :authority_level collection_authority_level
                                    :type            collection_type}
@@ -205,7 +205,9 @@
          :collection_type
          :archived_directly
          :display_name
-         :effective_parent))))
+         :effective_parent)
+        (cond-> (= model "transform")
+          (dissoc :source :target)))))
 
 (defn- bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
@@ -213,18 +215,6 @@
   (if (number? v)
     (not (zero? v))
     v))
-
-(defn default-engine
-  "In the absence of an explicit engine argument in a request, which engine should be used?"
-  []
-  (if-let [s (search.settings/search-engine)]
-    (let [engine (keyword "search.engine" (name s))]
-      (if (search.engine/supported-engine? engine)
-        engine
-        ;; It would be good to have a warning on start up for this.
-        :search.engine/in-place))
-    (first (filter search.engine/supported-engine?
-                   search.engine/fallback-engine-priority))))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
@@ -238,12 +228,12 @@
 
             :else
             engine)))
-      (default-engine)))
+      (search.engine/default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
 (defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
-  (let [default (default-engine)]
+  (let [default (search.engine/default-engine)]
     (when (= default search-engine)
       (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
     (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
@@ -269,13 +259,14 @@
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
+   [:collection                          {:optional true} [:maybe ms/PositiveInt]]
    [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
    [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:limit                               {:optional true} [:maybe ms/Int]]
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
-   [:search-native-query                 {:optional true} [:maybe true?]]
+   [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
@@ -284,11 +275,13 @@
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
    [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
-   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
+   [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           collection
            context
            calculate-available-models?
            created-at
@@ -315,7 +308,8 @@
            table-db-id
            verified
            non-temporal-dim-ids
-           has-temporal-dim]} :- ::search-context.input]
+           has-temporal-dim
+           weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -338,7 +332,9 @@
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
                         :search-engine                       engine
-                        :search-string                       search-string}
+                        :search-string                       search-string
+                        :weights                             weights}
+                 (some? collection)                          (assoc :collection collection)
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -371,12 +367,10 @@
 
 (defn- map-collection [collection]
   (cond-> collection
-    (:archived_directly collection)
-    (assoc :location (collection/trash-path))
     :always
     (assoc :type (:collection_type collection))
     :always
-    collection/maybe-localize-trash-name))
+    collection/maybe-localize-system-collection-name))
 
 (defn- normalize-result [result]
   (let [instance (to-toucan-instance (t2.realize/realize result))]

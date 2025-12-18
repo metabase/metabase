@@ -140,7 +140,8 @@
 (deftest ^:parallel modules-config-up-to-date-test
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
-    (let [expected (dev.deps-graph/generate-config)
+    (let [deps     (dev.deps-graph/dependencies)
+          expected (dev.deps-graph/generate-config deps)
           actual   (dev.deps-graph/kondo-config)
           modules  (set/union (set (keys expected))
                               (set (keys actual)))]
@@ -161,9 +162,9 @@
                                    :uses (reduce
                                           (partial merge-with set/union)
                                           {}
-                                          (map #(dev.deps-graph/module-usages-of-other-module module %)
+                                          (map #(dev.deps-graph/module-usages-of-other-module deps module %)
                                                missing))
-                                   :api  (select-keys (dev.deps-graph/external-usages-by-namespace module) missing))))
+                                   :api  (select-keys (dev.deps-graph/external-usages-by-namespace deps module) missing))))
           (is (empty? missing)))
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))

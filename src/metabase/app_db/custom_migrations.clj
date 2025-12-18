@@ -26,6 +26,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
+   [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
@@ -1793,3 +1794,32 @@
     (run! rollback-one! (t2/reducible-query {:select [:id :details]
                                              :from   [:metabase_database]
                                              :where  [:= :engine "clickhouse"]}))))
+
+;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
+;; This was commented out before the 57 release since this was a migration purely to avoid any breakages internally.
+(define-migration BackfillTransformSourceType
+  ;; Copied logic from metabase-enterprise.transforms.models.transform, aside from query normalization
+  #_(let [parse-transform-source (fn [source-json]
+                                   (-> source-json
+                                       (json-out true)
+                                       (m/update-existing :type keyword)))
+          ;; Copied from metabase.lib.schema/native-only-query?
+          native-only-query?     (fn [query]
+                                   (and (map? query)
+                                        (= (count (:stages query)) 1)
+                                        (= (get-in query [:stages 0 :lib/type]) "mbql.stage/native")))
+          transforms             (t2/query {:select [:id :source]
+                                            :from   [:transform]})]
+      (doseq [{:keys [id source]} transforms]
+        (let [parsed-source  (parse-transform-source source)
+              source-type    (:type parsed-source)
+              query          (:query parsed-source)
+              transform-type (case source-type
+                               :python "python"
+                               :query  (if (native-only-query? query) "native" "mbql")
+                               (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
+                                               {:transform-id id :source-type source-type})))]
+          (t2/update! :transform id {:source_type transform-type})))))
+
+(define-migration MoveExistingAtSymbolUserAttributes
+  (reserve-at-symbol-user-attributes/migrate!))

@@ -1,5 +1,8 @@
 import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
+import type { CollectionPickerItem } from "../CollectionPicker";
+import type { QuestionPickerItem } from "../QuestionPicker";
+
 export type DatabaseItem = {
   id: DatabaseId;
   name: string;
@@ -20,6 +23,7 @@ export type TableItem = {
   name: string;
   model: "table";
   database_id?: DatabaseId;
+  is_published?: boolean;
 };
 
 export type TablePickerValue = {
@@ -41,3 +45,12 @@ export type TablePickerValueItem = TableItem;
 export type TablePickerFolderItem = DatabaseItem | SchemaItem;
 
 export type TablePickerItem = TablePickerValueItem | TablePickerFolderItem;
+
+export const isTablePickerValue = (
+  input?: Pick<QuestionPickerItem, "model" | "id">,
+): input is TablePickerValue => input?.model === "table";
+
+export const isTablePickerFolder = (
+  input?: TablePickerItem | CollectionPickerItem,
+): input is TablePickerFolderItem =>
+  input?.model === "database" || input?.model === "schema";

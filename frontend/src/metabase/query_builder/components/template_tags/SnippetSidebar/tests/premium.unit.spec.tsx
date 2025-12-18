@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, queryIcon, screen } from "__support__/ui";
+// TODO remove this and use proper reset functions once
+// plugins initialization functions return proper teardown functions
+// eslint-disable-next-line no-restricted-imports
+import { resetPlugin } from "metabase-enterprise/snippets";
 
 import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
@@ -14,6 +18,10 @@ async function setup(options: SetupOpts = {}) {
 }
 
 describe("SnippetSidebar (EE with token feature)", () => {
+  beforeEach(() => {
+    resetPlugin();
+  });
+
   it("should display the `Change permissions` menu for admin users", async () => {
     await setup();
 

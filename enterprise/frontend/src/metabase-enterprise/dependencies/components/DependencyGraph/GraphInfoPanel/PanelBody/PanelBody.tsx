@@ -5,7 +5,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DependencyNode } from "metabase-types/api";
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -25,14 +25,15 @@ import {
 
 type PanelBodyProps = {
   node: DependencyNode;
+  getGraphUrl: (entry: DependencyEntry) => string;
 };
 
-export function PanelBody({ node }: PanelBodyProps) {
+export function PanelBody({ node, getGraphUrl }: PanelBodyProps) {
   return (
     <Stack className={S.body} p="lg" gap="lg">
       <DescriptionSection node={node} />
       <CreatorAndLastEditorSection node={node} />
-      <GeneratedTableSection node={node} />
+      <TableSection node={node} getGraphUrl={getGraphUrl} />
       <FieldsSection node={node} />
     </Stack>
   );
@@ -44,10 +45,13 @@ type SectionProps = {
 
 function DescriptionSection({ node }: SectionProps) {
   const description = getNodeDescription(node);
+  if (description == null) {
+    return null;
+  }
 
   return (
     <Box c={description ? "text-primary" : "text-secondary"} lh="h4">
-      {description ?? t`No description`}
+      {description.length > 0 ? description : t`No description`}
     </Box>
   );
 }
@@ -95,16 +99,21 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
   );
 }
 
-function GeneratedTableSection({ node }: SectionProps) {
-  const info = getNodeTableInfo(node);
+type TableSectionProps = {
+  node: DependencyNode;
+  getGraphUrl: (entry: DependencyEntry) => string;
+};
+
+function TableSection({ node, getGraphUrl }: TableSectionProps) {
+  const info = getNodeTableInfo(node, getGraphUrl);
   if (info == null) {
     return null;
   }
 
   return (
     <Stack gap="sm" lh="1rem">
-      <Title order={6}>{t`Generated table`}</Title>
-      <Group justify="space-between">
+      <Title order={6}>{info.label}</Title>
+      <Group justify="space-between" wrap="nowrap">
         <GraphLink label={info.title.label} icon="table" url={info.title.url} />
         <GraphExternalLink
           label={info.metadata.label}

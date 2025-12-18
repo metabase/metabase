@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
-  (:refer-clojure :exclude [every?])
+  (:refer-clojure :exclude [every? empty? not-empty])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -10,7 +10,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every?]]))
+   [metabase.util.performance :refer [every? empty? not-empty]]))
 
 (mu/defn- should-add-implicit-fields?
   "Whether we should add implicit Fields to a `stage`. True if all of the following are true:

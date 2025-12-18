@@ -127,6 +127,14 @@
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
+(defmethod driver/run-transform! [:sql :table-incremental]
+  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
+  (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
+                                                           :name (name output-table)})
+                  (driver/compile-insert driver transform-details)
+                  (driver/compile-transform driver transform-details))]
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
+
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [{schema :schema, table-name :name}]
@@ -225,7 +233,21 @@
                          ;; inner query, it can also refer to something in the outer query.
                          ;; sql.references/field-references organizes source-cols into a list of lists
                          ;; to account for this.
-                         (->> (mapcat (partial resolve-field driver metadata-provider) source-col-set)
+                         (->> (mapcat (fn [current-col]
+                                        ;; :unknown-columns is a placeholder for "we know there are columns being
+                                        ;; returned, but have no way of knowing what those are -- this is primarily
+                                        ;; used for table-functions like `select * from my_func()`.  If we encounter
+                                        ;; something like that, assume that the query is valid and make up a matching
+                                        ;; column to avoid false positives.
+                                        (if (= (:type current-col) :unknown-columns)
+                                          (let [name (:column col-spec)]
+                                            [{:base-type :type/*
+                                              :name name
+                                              :display-name (->> name (u.humanization/name->human-readable-name :simple))
+                                              :effective-type :type/*
+                                              :semantic-type :Semantic/*}])
+                                          (resolve-field driver metadata-provider current-col)))
+                                      source-col-set)
                               (some #(when (= (:name %) (:column col-spec))
                                        %))))))]
      (assoc found :lib/desired-column-alias (or alias name))
@@ -271,6 +293,10 @@
       :base-type (apply lca :type/* (map :base-type member-fields))
       :effective-type (apply lca :type/* (map :effective-type member-fields))
       :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}]))
+
+(defmethod resolve-field :unknown-columns
+  [_driver _metadata-provider _col-spec]
+  [])
 
 (mu/defmethod driver/native-result-metadata :sql
   [driver       :- :keyword

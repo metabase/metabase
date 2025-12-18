@@ -1,6 +1,6 @@
 (ns metabase.lib.join
   "Functions related to manipulating EXPLICIT joins in MBQL."
-  (:refer-clojure :exclude [mapv run! some #?(:clj for)])
+  (:refer-clojure :exclude [mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -36,7 +36,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv run! some #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- join? [x]
   (= (lib.dispatch/dispatch-value x) :mbql/join))
@@ -357,7 +357,7 @@
                         ;; ignore `:source-field` in field refs... join `:fields` probably shouldn't be adding
                         ;; implicitly joined columns anyway (this is not something you can do in the UI at any rate).
                         ;; It might possibly be getting incorrectly propagated somewhere,
-                        ;; see [[metabase.query-processor-test.remapping-test/explicit-join-with-fields-and-implicitly-joined-remaps-test]]
+                        ;; see [[metabase.query-processor.remapping-test/explicit-join-with-fields-and-implicitly-joined-remaps-test]]
                         ;; for an example of where this happens. Having it here will cause `lib.equality` to fail to
                         ;; find a match.
                         ;;
@@ -1079,13 +1079,19 @@
 
 (defn- join-lhs-display-name-from-condition-lhs
   [query stage-number join-or-joinable condition-lhs-or-nil]
-  (when-let [lhs-column-ref (or condition-lhs-or-nil
-                                (when (join? join-or-joinable)
-                                  (when-let [lhs (standard-join-condition-lhs (first (join-conditions join-or-joinable)))]
-                                    (when (lib.util/field-clause? lhs)
-                                      lhs))))]
-    (let [display-info (lib.metadata.calculation/display-info query stage-number lhs-column-ref)]
-      (get-in display-info [:table :display-name]))))
+  (when-let [lhs-column-refs (cond
+                               condition-lhs-or-nil [condition-lhs-or-nil]
+                               (join? join-or-joinable) (->> (join-conditions join-or-joinable)
+                                                             (keep #(let [lhs (standard-join-condition-lhs %)]
+                                                                      (when (and lhs (lib.util/field-clause? lhs))
+                                                                        lhs)))
+                                                             seq))]
+    (let [table-names (into #{}
+                            (map #(-> (lib.metadata.calculation/display-info query stage-number %)
+                                      (get-in [:table :display-name])))
+                            lhs-column-refs)]
+      (when (= (count table-names) 1)
+        (first table-names)))))
 
 (defn- first-join?
   "Whether a `join-or-joinable` is (or will be) the first join in a stage of a query.

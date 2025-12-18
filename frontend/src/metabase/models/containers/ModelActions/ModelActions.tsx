@@ -6,11 +6,11 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
-import Actions from "metabase/entities/actions";
-import Databases from "metabase/entities/databases";
-import Questions from "metabase/entities/questions";
-import Tables from "metabase/entities/tables";
-import title from "metabase/hoc/Title";
+import { Actions } from "metabase/entities/actions";
+import { Databases } from "metabase/entities/databases";
+import { Questions } from "metabase/entities/questions";
+import { Tables } from "metabase/entities/tables";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import ModelActionsView from "metabase/models/components/ModelActions";
@@ -56,6 +56,8 @@ function ModelActions({
   onChangeLocation,
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
+
+  usePageTitle(model?.displayName() || "");
 
   const database = model.database();
   const hasActions = actions.length > 0;
@@ -114,10 +116,6 @@ function getModelId(state: State, props: OwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
-function getPageTitle({ model }: Props) {
-  return model?.displayName();
-}
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "model" }),
@@ -131,5 +129,4 @@ export default _.compose(
     null,
     mapDispatchToProps,
   ),
-  title(getPageTitle),
 )(ModelActions);

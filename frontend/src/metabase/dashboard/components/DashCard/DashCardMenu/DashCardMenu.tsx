@@ -72,7 +72,8 @@ export const DashCardMenu = ({
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
-    dashboardId: checkNotNull(dashboardId),
+    // dashboardId can be an entityId and the download endpoint expects a numeric id
+    dashboardId: checkNotNull(dashboard?.id ?? dashboardId),
     dashcardId,
     uuid,
     token,
@@ -105,9 +106,10 @@ export const DashCardMenu = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
-          onDownload={(opts) => {
+          onDownload={async (opts) => {
             close();
-            handleDownload(opts);
+
+            await handleDownload(opts);
           }}
         />
       );

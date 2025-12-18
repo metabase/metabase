@@ -4,11 +4,15 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search.core]
+   [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -31,7 +35,8 @@
       mi/json-out-without-keywordization
       (update-keys keyword)
       (m/update-existing :query lib-be/normalize-query)
-      (m/update-existing :type keyword)))
+      (m/update-existing :type keyword)
+      (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
 
 (defn- transform-source-in [m]
   (-> m
@@ -39,9 +44,36 @@
       mi/json-in))
 
 (t2/deftransforms :model/Transform
-  {:source      {:out transform-source-out, :in transform-source-in}
+  {:source_type mi/transform-keyword
+   :source      {:out transform-source-out, :in transform-source-in}
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
+
+(defmethod collection/allowed-namespaces :model/Transform
+  [_]
+  #{:transforms})
+
+(t2/define-before-insert :model/Transform
+  [{:keys [source collection_id] :as transform}]
+  (collection/check-collection-namespace :model/Transform collection_id)
+  (when collection_id
+    (collection/check-allowed-content :model/Transform collection_id))
+  (assoc transform :source_type (transforms.util/transform-source-type source)))
+
+(t2/define-before-update :model/Transform
+  [{:keys [source] :as transform}]
+  (when-let [new-collection (:collection_id (t2/changes transform))]
+    (collection/check-collection-namespace :model/Transform new-collection)
+    (collection/check-allowed-content :model/Transform new-collection))
+  (if source
+    (assoc transform :source_type (transforms.util/transform-source-type source))
+    transform))
+
+(t2/define-after-select :model/Transform
+  [{:keys [source] :as transform}]
+  (if source
+    (assoc transform :source_type (transforms.util/transform-source-type source))
+    transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun"
@@ -67,18 +99,28 @@
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          tag-associations (when (seq transform-ids)
-                             (t2/select
-                              [:model/TransformTransformTag :transform_id :tag_id :position]
-                              :transform_id
-                              [:in transform-ids]
-                              {:order-by [[:position :asc]]}))
+          tag-associations (t2/select
+                            [:model/TransformTransformTag :transform_id :tag_id :position]
+                            :transform_id
+                            [:in transform-ids]
+                            {:order-by [[:position :asc]]})
           transform-id->tag-ids (reduce
                                  (fn [acc {:keys [transform_id tag_id]}]
                                    (update acc transform_id (fnil conj []) tag_id))
                                  {}
                                  tag-associations)]
       (for [transform transforms] (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Transform :creator]
+  "Add creator (user) to a transform"
+  [_model _k transforms]
+  (if-not (seq transforms)
+    transforms
+    (let [creator-ids (into #{} (map :creator_id) transforms)
+          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        :id [:in creator-ids])]
+      (for [transform transforms]
+        (assoc transform :creator (get id->creator (:creator_id transform)))))))
 
 (t2/define-after-insert :model/Transform [transform]
   (events/publish-event! :event/create-transform {:object transform})
@@ -90,6 +132,7 @@
 
 (t2/define-before-delete :model/Transform [transform]
   (events/publish-event! :event/delete-transform {:id (:id transform)})
+  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (defn update-transform-tags!
@@ -142,21 +185,6 @@
                          :tag_id       tag-id
                          :position     (get new-positions tag-id)})))))))
 
-;;; ----------------------------------------------- Search ----------------------------------------------------------
-
-(search.spec/define-spec "transform"
-  {:model :model/Transform
-   :attrs {:archived      false
-           :collection-id false
-           :creator-id    false
-           :database-id   false
-           :view-count    false
-           :created-at    true
-           :updated-at    true}
-   :search-terms [:name]
-   :render-terms {:transform-name :name
-                  :transform-id :id}})
-
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (mi/define-batched-hydration-method tags
@@ -184,13 +212,16 @@
                                           (when-not schema
                                             [db-id table-name]))
                                         table-keys)
-        tables (-> (t2/select :model/Table
-                              {:where [:or
-                                       [:in [:composite :db_id :schema :name] table-keys-with-schema]
-                                       [:and
-                                        [:= :schema nil]
-                                        [:in [:composite :db_id :name] table-keys-without-schema]]]})
-                   (t2/hydrate :db :fields))
+        tables (when (or (seq table-keys-with-schema) (seq table-keys-without-schema))
+                 (-> (t2/select :model/Table
+                                {:where [:or
+                                         (when (seq table-keys-with-schema)
+                                           [:in [:composite :db_id :schema :name] table-keys-with-schema])
+                                         (when (seq table-keys-without-schema)
+                                           [:and
+                                            [:= :schema nil]
+                                            [:in [:composite :db_id :name] table-keys-without-schema]])]})
+                     (t2/hydrate :db :fields)))
         table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
     (for [transform transforms]
       (assoc transform :table (get table-keys->table (table-key-fn transform))))))
@@ -201,14 +232,15 @@
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
-  {:copy [:name :description :entity_id]
-   :skip [:dependency_analysis_version]
-   :transform {:created_at (serdes/date)
-               :updated_at (serdes/date)
-               :source {:export #(update % :query serdes/export-mbql)
-                        :import #(update % :query serdes/import-mbql)}
-               :target {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+  {:copy      [:name :description :entity_id]
+   :skip      [:dependency_analysis_version :source_type]
+   :transform {:created_at    (serdes/date)
+               :creator_id    (serdes/fk :model/User)
+               :collection_id (serdes/fk :model/Collection)
+               :source        {:export #(update % :query serdes/export-mbql)
+                               :import #(update % :query serdes/import-mbql)}
+               :target        {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags          (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source tags]}]
@@ -221,3 +253,44 @@
 (defmethod serdes/storage-path "Transform" [transform _ctx]
   (let [{:keys [id label]} (-> transform serdes/path last)]
     ["transforms" (serdes/storage-leaf-file-name id label)]))
+
+(defn- maybe-extract-transform-query-text
+  "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
+  Extracts SQL from query-type transforms and Python code from python-type transforms."
+  [{transform-source-type :source_type source :source}]
+  (let [source-data (transform-source-out source)
+        ;; Use the top-level :source_type field since it differentiates between MBQL vs native transforms
+        query-text (case (keyword transform-source-type)
+                     :native (lib/raw-native-query (:query source-data))
+                     :python (:body source-data)
+                     nil)]
+    (when query-text
+      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
+
+(defn- extract-transform-db-id
+  "Return the database ID from transform source; else nil."
+  [{:keys [source]}]
+  (let [parsed-source (transform-source-out source)]
+    (case (:type parsed-source)
+      :query (get-in parsed-source [:query :database])
+      :python (parsed-source :source-database)
+      nil)))
+
+;;; ------------------------------------------------- Search ---------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model        :model/Transform
+   :visibility   :superuser
+   :attrs        {:archived      false
+                  :collection-id false
+                  :creator-id    false
+                  :created-at    true
+                  :updated-at    true
+                  :view-count    false
+                  :native-query  {:fn maybe-extract-transform-query-text
+                                  :fields [:source :source_type]}
+                  :database-id   {:fn extract-transform-db-id
+                                  :fields [:source]}}
+   :search-terms [:name :description]
+   :render-terms {:transform-name :name
+                  :transform-id   :id}})

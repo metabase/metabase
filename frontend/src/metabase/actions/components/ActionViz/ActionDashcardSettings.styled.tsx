@@ -16,15 +16,14 @@ export const ActionSettingsHeader = styled.h2`
 `;
 
 // make strolling nicer by fading out the top and bottom of the column
-// eslint-disable-next-line no-color-literals
 const fade = (side: "top" | "bottom") => `
   content  : "";
   position : absolute;
   z-index  : 1;
   pointer-events   : none;
   background-image : linear-gradient( to ${side},
-                    rgba(255,255,255, 0),
-                    rgba(255,255,255, 1) 90%);
+                    transparent,
+                    var(--mb-color-background) 90%);
   height   : 2rem;
 `;
 

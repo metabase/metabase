@@ -1,11 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useSelector } from "metabase/lib/redux";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { getUser } from "metabase/selectors/user";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 import { Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
@@ -30,9 +31,9 @@ export const Grid = ({
     onRefreshPeriodChange,
     isLoadingWithoutCards,
     onAddQuestion,
+    isEditableDashboard,
   } = useDashboardContext();
 
-  const canWrite = Boolean(dashboard?.can_write);
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
       return [];
@@ -53,20 +54,9 @@ export const Grid = ({
    * on `GET /api/database`. After the consolidation every dashboard uses the same component, so we probably
    * missed this case.
    */
-  const isLoggedIn = useSelector((state) => !!getUser(state));
-  const { data: databasesResponse, isError } = useListDatabasesQuery(
-    isLoggedIn ? undefined : skipToken,
-  );
-  const databases = useMemo(
-    () => databasesResponse?.data ?? [],
-    [databasesResponse],
-  );
-  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
-  const hasNativeWrite = useMemo(
-    () => getHasNativeWrite(databases),
-    [databases],
-  );
-  const canCreateQuestions = !isError && (hasDataAccess || hasNativeWrite);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
+  const canCreateQuestions = hasDataAccess || hasNativeWrite;
 
   const handleSetEditing = useCallback(() => {
     if (!isEditing) {
@@ -92,7 +82,7 @@ export const Grid = ({
 
   if (isEmpty) {
     if (!dashboardHasCards) {
-      return canWrite ? (
+      return isEditableDashboard ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}
@@ -105,7 +95,7 @@ export const Grid = ({
     }
 
     if (dashboardHasCards && !tabHasCards) {
-      return canWrite ? (
+      return isEditableDashboard ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}

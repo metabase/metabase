@@ -4,7 +4,7 @@
   `metabase.driver.sql-jdbc.execute.old-impl`, which will be removed in a future release; implementations of methods
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv empty? get-in])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.async :as a]
@@ -25,7 +25,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv]]
+   [metabase.util.performance :as perf :refer [mapv empty? get-in]]
    [potemkin :as p])
   (:import
    (java.sql
@@ -768,10 +768,12 @@
                                    (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                    (catch Throwable e
                                      (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                     {:driver driver
-                                                      :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                      :params params
-                                                      :type   driver-api/qp.error-type.invalid-query}
+                                                     (cond-> {:driver driver
+                                                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                              :params params
+                                                              :type   driver-api/qp.error-type.invalid-query}
+                                                       (driver/query-canceled? driver e)
+                                                       (assoc :query/query-canceled? true))
                                                      e))))]
          (let [rsmeta           (.getMetaData rs)
                results-metadata {:cols (column-metadata driver rsmeta)}]

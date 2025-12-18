@@ -1,6 +1,7 @@
 (ns metabase.search.filter
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.search.config :as search.config]
@@ -17,8 +18,9 @@
 
 (defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
-    :all      true
-    :app-user (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))))
+    :all       true
+    :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
+    :superuser (:is-superuser? search-ctx)))
 
 (def ^:private context-key->filter
   "Map the context keys to their corresponding filters"
@@ -40,7 +42,8 @@
           (remove nil?)
           (for [search-model (:models search-ctx)
                 :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
+            (when (and (visible-to? search-ctx spec)
+                       (every? (:attrs spec) required))
               (:name spec))))))
 
 (defn models-without-collection
@@ -84,6 +87,19 @@
 (defmethod where-clause* ::date-range [_ k v] (date-range-filter-clause k v))
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
+
+(defmethod where-clause* ::collection-hierarchy [_ k v]
+  ;; Filter by collection and all descendants
+  ;; Match items directly in the collection OR in descendant collections
+  ;; Tables in collections are an EE feature (data-studio), so exclude them in OSS
+  (let [collection-filter [:or
+                           [:= k v]
+                           [:like :collection.location (str "%" (collection/location-path v) "%")]]]
+    (if (premium-features/has-feature? :data-studio)
+      collection-filter
+      [:and
+       [:not= :search_index.model [:inline "table"]]
+       collection-filter])))
 
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.

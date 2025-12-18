@@ -1,10 +1,11 @@
 (ns metabase.lib.metadata.calculation
-  (:refer-clojure :exclude [select-keys mapv #?(:clj for)])
+  (:refer-clojure :exclude [select-keys mapv empty? #?(:clj for)])
   (:require
    #?(:clj  [metabase.config.core :as config]
       :cljs [metabase.lib.cache :as lib.cache])
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -24,7 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [select-keys mapv #?(:clj for)]]))
+   [metabase.util.performance :refer [select-keys mapv empty? #?(:clj for)]]))
 
 (mr/def ::display-name-style
   "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
@@ -108,7 +109,11 @@
            :cljs-dev     true
            :cljs-release false)
     (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-               (pr-str x)
+               ;; TODO: (Braden 11/04/2025) This logic would make sense in [[metabase.util]].
+               (let [s (pr-str x)]
+                 (if (> (count s) 2000)
+                   (str (subs s 0 1500) " ... " (subs s (- (count s) 500)))
+                   s))
                `display-name-method
                (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
@@ -207,12 +212,14 @@
       ;; otherwise if `:base-type` is specified, we can return that.
       (:base-type options)
       ;; if none of the special cases are true, fall back to [[type-of-method]].
-      (let [calculated-type (type-of-method query stage-number x)]
-        ;; if calculated type is not a true type but a placeholder like `:metabase.lib.schema.expression/type.unknown`
-        ;; or a union of types then fall back to `:type/*`, an actual type.
-        (if (isa? calculated-type :type/*)
-          calculated-type
-          :type/*))))))
+      (lib.computed/with-cache-ephemeral* query [:expression-types/by-clause stage-number x]
+        (fn []
+          (let [calculated-type (type-of-method query stage-number x)]
+            ;; if calculated type is not a true type but a placeholder like `:metabase.lib.schema.expression/type.unknown`
+            ;; or a union of types then fall back to `:type/*`, an actual type.
+            (if (isa? calculated-type :type/*)
+              calculated-type
+              :type/*))))))))
 
 (defmethod type-of-method :default
   [_query _stage-number expr]
@@ -232,16 +239,20 @@
     ;; Otherwise, just get the type of this first arg.
     (type-of query stage-number expr)))
 
-(defn- cache-key
+(defn cacheable-options
+  "Includes some dynamic variables etc. in the `options` so the `[[returned-columns]]` can be safely cached."
+  [options]
+  (assoc options
+         ::display-name-style              *display-name-style*
+         ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
+         ::ref-style                       lib.ref/*ref-style*))
+
+(defn cache-key
   "Create a cache key to use with [[lib.metadata.cache]]. This includes a few extra keys for the three dynamic variables
   that can affect metadata calculation."
   [unique-key query stage-number x options]
   (lib.metadata.cache/cache-key
-   unique-key query stage-number x
-   (assoc options
-          ::display-name-style              *display-name-style*
-          ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
-          ::ref-style                       lib.ref/*ref-style*)))
+   unique-key query stage-number x (cacheable-options options)))
 
 (defmulti metadata-method
   "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."
@@ -550,8 +561,7 @@
      ;; `returned-columns` purposes. As a bonus, this means undocumented options keys that aren't part of the schema
      ;; will effectively be ignored, which sorta forces people to actually go document them.
      (let [options (select-keys options returned-columns-options-keys)]
-       (lib.metadata.cache/with-cached-value query (cache-key ::returned-columns query stage-number x options)
-         (returned-columns-method query stage-number x options))))))
+       (returned-columns-method query stage-number x options)))))
 
 (mr/def ::visible-column
   "Schema for a column that should be returned by [[visible-columns]]. A visible column is a column metadata that is

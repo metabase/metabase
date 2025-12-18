@@ -25,5 +25,13 @@ export function getHeaderLabel(
       return t`Transforms that use ${nodeLabel}`;
     case "snippet":
       return t`Snippets that use ${nodeLabel}`;
+    case "dashboard":
+      return t`Dashboards that use ${nodeLabel}`;
+    case "document":
+      return t`Documents that use ${nodeLabel}`;
+    case "sandbox":
+      return t`Row and column security rules that use ${nodeLabel}`;
+    case "segment":
+      return t`Segments that use ${nodeLabel}`;
   }
 }

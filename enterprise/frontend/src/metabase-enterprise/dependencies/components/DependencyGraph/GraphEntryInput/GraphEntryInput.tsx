@@ -3,7 +3,6 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { Card } from "metabase/ui";
 import type {
   DependencyEntry,
@@ -19,11 +18,13 @@ import { SEARCH_MODELS } from "./constants";
 type GraphEntryInputProps = {
   node: DependencyNode | null;
   isGraphFetching: boolean;
+  getGraphUrl: (entry: DependencyEntry | undefined) => string;
 };
 
 export function GraphEntryInput({
   node,
   isGraphFetching,
+  getGraphUrl,
 }: GraphEntryInputProps) {
   const [searchModels, setSearchModels] =
     useState<SearchModel[]>(SEARCH_MODELS);
@@ -31,8 +32,8 @@ export function GraphEntryInput({
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
 
-  const handleEntryChange = (newEntry: DependencyEntry | null) => {
-    dispatch(push(Urls.dependencyGraph(newEntry ? { entry: newEntry } : {})));
+  const handleEntryChange = (newEntry: DependencyEntry | undefined) => {
+    dispatch(push(getGraphUrl(newEntry)));
   };
 
   const handlePickerChange = (newEntry: DependencyEntry) => {

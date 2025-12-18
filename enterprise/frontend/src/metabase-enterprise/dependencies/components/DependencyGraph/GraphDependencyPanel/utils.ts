@@ -42,35 +42,27 @@ function isMatchingSearchQuery(
 }
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
-  verified: (node) => {
-    if (node.type !== "card") {
-      return false;
-    }
-    const lastReview = node.data.moderation_reviews?.find(
-      (review) => review.most_recent,
-    );
-    return lastReview != null && lastReview.status === "verified";
-  },
   "in-dashboard": (node) => {
-    if (node.type !== "card") {
-      return false;
+    switch (node.type) {
+      case "card": {
+        const dashboard = node.data.dashboard;
+        return dashboard != null;
+      }
+      default:
+        return false;
     }
-    const dashboard = node.data.dashboard;
-    return dashboard != null;
-  },
-  "in-official-collection": (node) => {
-    if (node.type !== "card") {
-      return false;
-    }
-    const collection = node.data.collection;
-    return collection != null && collection.authority_level === "official";
   },
   "not-in-personal-collection": (node) => {
-    if (node.type !== "card") {
-      return false;
+    switch (node.type) {
+      case "card":
+      case "dashboard":
+      case "document": {
+        const collection = node.data.collection;
+        return collection != null && !collection.is_personal;
+      }
+      default:
+        return false;
     }
-    const collection = node.data.collection;
-    return collection != null && !collection.is_personal;
   },
 };
 
@@ -80,16 +72,20 @@ export function canFilterByOption(
 ): boolean {
   const type = getDependencyType(groupType);
   switch (option) {
-    case "verified":
     case "in-dashboard":
-    case "in-official-collection":
-    case "not-in-personal-collection":
       switch (type) {
         case "card":
           return true;
-        case "table":
-        case "transform":
-        case "snippet":
+        default:
+          return false;
+      }
+    case "not-in-personal-collection":
+      switch (type) {
+        case "card":
+        case "dashboard":
+        case "document":
+          return true;
+        default:
           return false;
       }
   }
@@ -144,25 +140,21 @@ export function canSortByColumn(
         case "question":
         case "model":
         case "metric":
+        case "dashboard":
+        case "document":
           return true;
-        case "table":
-        case "transform":
-        case "snippet":
+        default:
           return false;
       }
-      break;
     case "view-count":
       switch (groupType) {
         case "question":
+        case "dashboard":
+        case "document":
           return true;
-        case "model":
-        case "metric":
-        case "table":
-        case "transform":
-        case "snippet":
+        default:
           return false;
       }
-      break;
   }
 }
 

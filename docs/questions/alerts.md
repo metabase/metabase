@@ -81,7 +81,7 @@ To create an alert when a time series crosses a goal line:
     - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
     - How often you want Metabase to check to see if the goal line has been crossed.
 
-7. Select the schedule and recepients for the alert, and click "Done"
+7. Select the schedule and recipients for the alert, and click "Done"
 
 ## Progress bar alerts
 

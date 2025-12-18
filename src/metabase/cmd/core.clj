@@ -139,11 +139,16 @@
   (println "File encoding:"   (System/getProperty "file.encoding")))
 
 (defn ^:command api-documentation
-  "Generate a markdown file containing documentation for all API endpoints. This is written to a file called
-  `docs/api-documentation.md`."
+  "Generate an HTML file and a JSON file for Scalar docs for the Metabase API."
   []
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
+
+(defn ^:command generate-openapi-spec
+  "Generate OpenAPI specification file from Malli schema definitions. This is written to `resources/openapi/openapi.json`."
+  []
+  (classloader/require 'metabase.api-routes.cmd)
+  ((resolve 'metabase.api-routes.cmd/generate-openapi-spec!)))
 
 (defn ^:command environment-variables-documentation
   "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase.
@@ -159,6 +164,13 @@
   []
   (classloader/require 'metabase.cmd.config-file-gen)
   ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))
+
+(defn ^:command command-documentation
+  "Generates a markdown file containing documentation for all CLI commands. This is written to a file called
+  `docs/installation-and-operation/commands.md`."
+  []
+  (classloader/require 'metabase.cmd.command-dox)
+  ((resolve 'metabase.cmd.command-dox/generate-dox!)))
 
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."

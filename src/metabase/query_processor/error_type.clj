@@ -58,6 +58,16 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror multiple-conflicting-parameter-values
+  "The query is parameterized, and multiple filters provided conflicting values."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror multiple-conflicting-default-values
+  "The query is parameterized, no value was supplied, and multiple filters have conflicting default values."
+  :parent invalid-query
+  :show-in-embeds? true)
+
 (deferror invalid-parameter
   "The query is parameterized, and a supplied parameter has an invalid value."
   :parent invalid-query

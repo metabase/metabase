@@ -1,6 +1,6 @@
 (ns metabase.lib.walk
   "Tools for walking and transforming a query."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv empty? get-in])
   (:require
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -14,7 +14,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.performance :refer [mapv empty? get-in]]))
 
 (declare walk-stages*)
 
@@ -385,6 +385,21 @@
      clauses
      (range (count clauses)))))
 
+(mu/defn walk-clauses-in-stage :- [:maybe ::lib.schema/stage.mbql]
+  "Walk all the clauses in a stage. Calls
+
+    (f clause)
+
+  for every clause in the stage."
+  [stage :- ::lib.schema/stage
+   f     :- [:=> [:cat :any] :any]]
+  (when (lib.util/mbql-stage? stage)
+    (reduce
+     (fn [stage k]
+       (m/update-existing stage k walk-clauses* f))
+     stage
+     [:aggregation :breakout :expressions :fields :filters :order-by])))
+
 (mu/defn walk-clauses :- ::lib.schema/query
   "Walk all the MBQL clauses in a query in a depth-first manner.
 
@@ -420,9 +435,4 @@
                                             (walk-clauses* f)))))
 
          :lib.walk/stage
-         (when (lib.util/mbql-stage? stage-or-join)
-           (reduce
-            (fn [stage k]
-              (m/update-existing stage k walk-clauses* f))
-            stage-or-join
-            [:aggregation :breakout :expressions :fields :filters :order-by])))))))
+         (walk-clauses-in-stage stage-or-join f))))))

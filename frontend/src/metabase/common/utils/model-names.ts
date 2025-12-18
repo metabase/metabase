@@ -2,7 +2,9 @@ import { t } from "ttag";
 
 import type { SearchModel } from "metabase-types/api";
 
-const TRANSLATED_NAME_BY_MODEL_TYPE: Record<SearchModel, string> = {
+type ModelNames = SearchModel | "user";
+
+const TRANSLATED_NAME_BY_MODEL_TYPE: Record<ModelNames, string> = {
   get action() {
     return t`Action`;
   },
@@ -39,7 +41,10 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<SearchModel, string> = {
   get transform() {
     return t`Transform`;
   },
+  get user() {
+    return t`User`;
+  },
 };
 
-export const getTranslatedEntityName = (type: SearchModel) =>
+export const getTranslatedEntityName = (type: ModelNames) =>
   TRANSLATED_NAME_BY_MODEL_TYPE[type] || null;

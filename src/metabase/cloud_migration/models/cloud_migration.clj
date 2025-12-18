@@ -181,7 +181,12 @@
                           {:form-params  {:part_count (count parts)}
                            :content-type :json})
                 :body
-                json/decode+kw)
+                json/decode+kw
+                ;; This endpoint, and only this one in this ns, needs a backwards and forward compatible
+                ;; key conversion. This can be removed when Harbormaster does only underscores in the API,
+                ;; and the keys above (multipart-upload-id multipart-urls) renamed to use underscores.
+                ;; But it can also stay here indefinitly and will be correct.
+                u/deep-kebab-keys)
 
             etags
             (->> parts

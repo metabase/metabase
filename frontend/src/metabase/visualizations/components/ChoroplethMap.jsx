@@ -7,7 +7,6 @@ import ss from "simple-statistics";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-// eslint-disable-next-line no-restricted-imports -- deprecated sdk import
 import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
 import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";

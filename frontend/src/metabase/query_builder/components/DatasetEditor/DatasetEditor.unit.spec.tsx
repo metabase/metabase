@@ -38,7 +38,7 @@ const mockUnsavedCard = createMockUnsavedCard();
 const noop = () => {};
 const defaultDatasetEditorProps = {
   datasetEditorTab: "query",
-  rawSeries: [],
+  rawSeries: null,
   visualizationSettings: {},
   isDirty: false,
   isMetadataDirty: false,

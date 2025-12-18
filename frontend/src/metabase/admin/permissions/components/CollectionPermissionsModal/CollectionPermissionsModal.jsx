@@ -8,9 +8,9 @@ import Button from "metabase/common/components/Button";
 import Link from "metabase/common/components/Link";
 import ModalContent from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
-import Collections from "metabase/entities/collections";
-import Groups from "metabase/entities/groups";
-import { connect } from "metabase/lib/redux";
+import { Collections } from "metabase/entities/collections";
+import { Groups } from "metabase/entities/groups";
+import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 
 import {
@@ -82,6 +82,9 @@ const CollectionPermissionsModal = ({
   updateCollectionPermission,
   saveCollectionPermissions,
 }) => {
+  const originalPermissionsState = useSelector(
+    ({ admin }) => admin.permissions.originalCollectionPermissions,
+  );
   useEffect(() => {
     initialize(namespace);
   }, [initialize, namespace]);
@@ -114,9 +117,10 @@ const CollectionPermissionsModal = ({
         collection,
         value,
         shouldPropagate: toggleState,
+        originalPermissionsState,
       });
     },
-    [collection, updateCollectionPermission],
+    [collection, updateCollectionPermission, originalPermissionsState],
   );
 
   return (

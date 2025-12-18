@@ -7,7 +7,10 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockDocument,
+} from "metabase-types/api/mocks";
 
 const { admin } = USERS;
 
@@ -66,6 +69,7 @@ describe("command palette", () => {
 
     //Request to have an item in the recents list
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
+
     cy.visit("/");
 
     cy.findByRole("button", { name: /search/i }).click();
@@ -163,7 +167,7 @@ describe("command palette", () => {
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New metric" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
@@ -173,7 +177,7 @@ describe("command palette", () => {
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New metric" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
@@ -215,6 +219,29 @@ describe("command palette", () => {
           });
       });
     });
+  });
+
+  // Making this a separate test for now because it requires the bleeding edge token, which
+  // Enables a bunch of other stuff and messes up the "Renders a searchable command palette"
+  // test. In the future, this can be integrated into the test above, or moved to a BE test
+  it("should display collection names for documents in recents", () => {
+    //Create a document so that it appears in the recents list
+    cy.request(
+      "POST",
+      "/api/document",
+      createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
+    );
+
+    cy.visit("/");
+
+    cy.findByRole("button", { name: /search/i }).click();
+    H.commandPalette().should("be.visible");
+
+    // UXW-1786
+    cy.findByRole("option", { name: "Test Document" }).should(
+      "contain.text",
+      "Bobby Tables's Personal Collection",
+    );
   });
 
   describe("admin settings links", () => {
@@ -413,13 +440,13 @@ describe("command palette", () => {
       H.activateToken("bleeding-edge");
     });
 
-    it("should show the 'Create a new embed' command palette item", () => {
+    it("should show the 'New embed' command palette item", () => {
       cy.visit("/");
       cy.findByRole("button", { name: /search/i }).click();
 
       H.commandPalette().within(() => {
         H.commandPaletteInput().should("exist").type("new embed");
-        cy.findByText("Create a new embed").should("be.visible");
+        cy.findByText("New embed").should("be.visible");
       });
     });
 
@@ -435,7 +462,7 @@ describe("command palette", () => {
   });
 });
 
-H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
+describe("shortcuts", { tags: ["@actions"] }, () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -616,11 +643,11 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("o");
     H.openNavigationSidebar();
     H.navigationSidebar()
-      .findByRole("tab", { name: /bookmarks/i })
+      .findByRole("section", { name: "Bookmarks" })
       .should("contain.text", "Test Dashboard");
     cy.realPress("o");
     H.navigationSidebar()
-      .findByRole("tab", { name: /bookmarks/i })
+      .findByRole("section", { name: "Bookmarks" })
       .should("not.exist");
 
     cy.realPress("e");

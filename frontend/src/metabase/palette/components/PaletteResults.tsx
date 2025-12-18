@@ -5,11 +5,13 @@ import { Link } from "react-router";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
+import NoResults from "assets/img/no_results.svg";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   Flex,
   Group,
   Icon,
+  Image,
   Skeleton,
   Stack,
   type StackProps,
@@ -29,8 +31,8 @@ const PAGE_SIZE = 4;
 
 type Props = Omit<StackProps, "children"> & {
   locationQuery: Query;
-  searchRequestId: string | undefined;
-  searchResults: SearchResponse | undefined;
+  searchRequestId?: string;
+  searchResults?: SearchResponse;
   searchTerm: string;
 };
 
@@ -79,7 +81,11 @@ export const PaletteResults = ({
     );
   });
 
-  if (processedResults.length === 0) {
+  if (processedResults.length === 0 && searchTerm.length === 0) {
+    return <PaletteEmptyState />;
+  }
+
+  if (processedResults.length === 0 && searchTerm.length > 0) {
     return <PaletteResultsSkeleton />;
   }
 
@@ -88,6 +94,7 @@ export const PaletteResults = ({
       <PaletteResultList
         items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
+        minHeight={searchTerm.length === 0 ? 280 : 0}
         renderItem={({ item, active }) => {
           const isFirst = processedResults[0] === item;
 
@@ -152,6 +159,20 @@ export const PaletteResults = ({
     </Stack>
   );
 };
+
+function PaletteEmptyState() {
+  return (
+    <Stack align="center" justify="center" py="6rem" px="2rem" gap={0}>
+      <Image src={NoResults} alt="no results" w={115} h={65} />
+      <Text c="text-medium" fw={700} mt="xl">
+        {t`No recent items`}
+      </Text>
+      <Text c="text-light" size="sm" mt="xs" ta="center">
+        {t`Items you've recently viewed will appear here.`}
+      </Text>
+    </Stack>
+  );
+}
 
 function PaletteResultsSkeleton() {
   return (

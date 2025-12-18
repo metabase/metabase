@@ -808,7 +808,7 @@
                   ;; the series bars each have distinct colours, so we can group by those attrs to get a count.
                   ;; and remove any paths that are 'transparent'
                   series-counts          (-> (group-by #(get-in % [:attrs :fill]) dashcard-path-elements)
-                                             (dissoc "transparent")
+                                             (dissoc "none")
                                              (update-vals count))]
               ;; The series count should be 1 for each series, since we're filtering by a single month of the year
               ;; and each question is set up with a breakout on :created_at by :month, so filtering on a single month produces just 1 bar.

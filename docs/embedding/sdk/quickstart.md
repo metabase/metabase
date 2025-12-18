@@ -1,11 +1,11 @@
 ---
-title: Embedded analytics SDK - quickstart
-description: "This guide walks you through how to set up the Embedded analytics SDK in your application with your Metabase."
+title: Modular embedding SDK - quickstart
+description: "This guide walks you through how to set up the modular embedding SDK in your application with your Metabase."
 ---
 
-# Embedded analytics SDK - quickstart
+# Modular embedding SDK - quickstart
 
-This guide walks you through how to set up the Embedded analytics SDK in your application with your Metabase using API keys.
+This guide walks you through how to set up the Modular embedding SDK in your application with your Metabase using API keys.
 
 This setup:
 
@@ -18,7 +18,7 @@ If you want to use the SDK in production, however, you'll also need to [set up J
 ## Prerequisites
 
 - [Metabase](https://github.com/metabase/metabase/releases) version 52 or higher (OSS or EE). See [Installing Metabase](../../installation-and-operation/installing-metabase.md).
-- Make sure your [React version is compatible](./introduction.md#embedded-analytics-sdk-prerequisites). (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable).)
+- Make sure your [React version is compatible](./introduction.md#modular-embedding-sdk-prerequisites). (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable).)
 
 If you _don't_ have a Metabase up and running, check out the [Quickstart CLI](./quickstart-cli.md).
 
@@ -42,7 +42,7 @@ In Metabase, click on the gear icon in the upper right and navigate to **Admin S
 
 Still in the Admin console, go to **Settings > Authentication** and click on the **API keys** tab. [Create a new API key](../../people-and-groups/api-keys.md).
 
-- Key name: "Embedded analytics SDK" (just to make the key easy to identify).
+- Key name: "Modular embedding SDK" (just to make the key easy to identify).
 - Group: select “Admin” (since this is only for local testing).
 
 ## 3. Install the SDK in your app
@@ -78,4 +78,4 @@ Run your app and visit the page with the embedded dashboard.
 ## Next steps
 
 - Explore [theming to change the look and feel](./appearance.md).
-- Continue by [setting up JWT SSO in Metabase and your app](./authentication.md) in order to sign people in, manage permissions, and deploy your app in production.
+- Continue by [setting up JWT SSO in Metabase and your app](./authentication.md) to sign people in, manage permissions, and deploy your app in production.

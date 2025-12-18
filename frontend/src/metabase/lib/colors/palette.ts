@@ -2,12 +2,12 @@ import Color from "color";
 
 import type { ColorGetter } from "metabase/visualizations/types";
 
-import { colors } from "./colors";
+import { colors, getColors } from "./colors";
 import type { ColorName, ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
 
-export const originalColors = { ...colors };
+export const originalColors = getColors();
 
 export const aliases: Record<string, (palette: ColorPalette) => string> = {
   dashboard: (palette) => color("brand", palette),

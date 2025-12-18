@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 import type { DetailViewState } from "metabase-types/store";
@@ -34,7 +34,6 @@ export interface AppBarLargeProps {
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBarLarge = ({
@@ -53,7 +52,6 @@ const AppBarLarge = ({
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
-  onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
@@ -76,6 +74,7 @@ const AppBarLarge = ({
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
         />
+        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >
@@ -106,7 +105,7 @@ const AppBarLarge = ({
           {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
           {isProfileLinkVisible && (
             <Box c="var(--mb-color-text-primary)" aria-label={t`Settings menu`}>
-              <ProfileLink onLogout={onLogout} />
+              <ProfileLink />
             </Box>
           )}
         </Flex>

@@ -2,9 +2,10 @@ import {
   isRootCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
+  isSyncedCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
@@ -36,8 +37,20 @@ export function getCollectionIcon(
     return { name: "person" };
   }
 
-  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
+  if (isSyncedCollection(collection)) {
+    return { name: "synced_collection" };
+  }
 
+  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type)) {
+    case "root":
+      return { name: "repository" };
+    case "data":
+      return { name: "table" };
+    case "metrics":
+      return { name: "metric" };
+  }
+
+  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
   return type
     ? {
         name: type.icon as unknown as IconName,

@@ -9,7 +9,10 @@ import type {
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
-import { isTrashedCollection } from "metabase/collections/utils";
+import {
+  isRootTrashCollection,
+  isTrashedCollection,
+} from "metabase/collections/utils";
 import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
@@ -156,7 +159,8 @@ export const BaseItemsTable = ({
   ...props
 }: BaseItemsTableProps) => {
   const canSelect =
-    collection?.can_write && typeof onToggleSelected === "function";
+    (collection?.can_write || isRootTrashCollection(collection)) &&
+    typeof onToggleSelected === "function";
   const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (
@@ -168,6 +172,7 @@ export const BaseItemsTable = ({
           {visibleColumnsMap["name"] && (
             <Columns.Name.Col isInDragLayer={isInDragLayer} />
           )}
+          {visibleColumnsMap["description"] && <Columns.Description.Col />}
           {visibleColumnsMap["lastEditedBy"] && <Columns.LastEditedBy.Col />}
           {visibleColumnsMap["lastEditedAt"] && <Columns.LastEditedAt.Col />}
           {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Col />}
@@ -198,6 +203,12 @@ export const BaseItemsTable = ({
             )}
             {visibleColumnsMap["name"] && (
               <Columns.Name.Header
+                sortingOptions={sortingOptions}
+                onSortingOptionsChange={onSortingOptionsChange}
+              />
+            )}
+            {visibleColumnsMap["description"] && (
+              <Columns.Description.Header
                 sortingOptions={sortingOptions}
                 onSortingOptionsChange={onSortingOptionsChange}
               />

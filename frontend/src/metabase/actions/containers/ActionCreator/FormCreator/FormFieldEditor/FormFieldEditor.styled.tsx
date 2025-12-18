@@ -1,13 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { forwardRef } from "react";
 
 import FormField from "metabase/common/components/FormField";
 import Radio from "metabase/common/components/Radio";
 import { darken } from "metabase/lib/colors";
-import { Icon, type IconProps } from "metabase/ui";
-
-const DRAG_HANDLE_SIZE = 12;
 
 export const FormFieldContainer = styled.div`
   background-color: var(--mb-color-bg-white);
@@ -39,7 +35,6 @@ export const Column = styled.div<{ full?: boolean }>`
   display: flex;
   flex-direction: column;
   flex: ${(props) => (props.full ? 1 : "unset")};
-  min-width: ${DRAG_HANDLE_SIZE}px;
 `;
 
 export const Header = styled.div`
@@ -58,15 +53,6 @@ export const Subtitle = styled.div`
   font-size: 0.85rem;
   font-weight: 700;
   margin-top: 1.2rem;
-`;
-
-export const DragHandle = styled(
-  forwardRef<SVGSVGElement, IconProps>(function DragHandle(props, ref) {
-    return <Icon {...props} size={props.size ?? DRAG_HANDLE_SIZE} ref={ref} />;
-  }),
-)`
-  color: var(--mb-color-text-medium);
-  margin-top: 4px;
 `;
 
 export const PreviewContainer = styled(ContentContainer)`

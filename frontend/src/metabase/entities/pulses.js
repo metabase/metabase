@@ -12,7 +12,6 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 
 export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
@@ -20,7 +19,7 @@ export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Pulses = createEntity({
+export const Pulses = createEntity({
   name: "pulses",
   nameOne: "pulse",
   path: "/api/pulse",
@@ -91,8 +90,6 @@ const Pulses = createEntity({
 
   objectSelectors: {
     getName: (pulse) => pulse && pulse.name,
-    getUrl: (pulse) => pulse && Urls.pulse(pulse.id),
-    getIcon: (pulse) => ({ name: "pulse" }),
     getColor: (pulse) => color("pulse"),
   },
 
@@ -105,5 +102,3 @@ const Pulses = createEntity({
 const useGetQuery = ({ id }, options) => {
   return useGetSubscriptionQuery(id, options);
 };
-
-export default Pulses;

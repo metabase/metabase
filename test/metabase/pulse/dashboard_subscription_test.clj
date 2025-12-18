@@ -1287,7 +1287,7 @@
                                                                                (str "metabase-test" (random/random-name)))]
                                                               (.mkdirs dir)
                                                               dir))
-                  notification.payload.execute/rows-to-disk-threshold 1
+                  notification.payload.execute/cells-to-disk-threshold 1
                   channel/send!                      (fn [& _args]
                                                        (testing "sanity check that there are files there to cleanup"
                                                          (is (not-empty (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))]
@@ -1302,9 +1302,9 @@
 (deftest dashboard-with-rows-saved-to-disk-test
   (testing "whether the rows of a dashboard saved to disk or in memory, all channels should work"
     (doseq [limit [1 #_10]]
-      (with-redefs [notification.payload.execute/rows-to-disk-threshold 5]
+      (with-redefs [notification.payload.execute/cells-to-disk-threshold 5]
         (notification.tu/with-channel-fixtures [:channel/slack]
-          (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threshold)
+          (testing (if (> limit @#'notification.payload.execute/cells-to-disk-threshold)
                      "dashboard has rows saved to disk"
                      "dashboard has rows saved in memory")
             (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name

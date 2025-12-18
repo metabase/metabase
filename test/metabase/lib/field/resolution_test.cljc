@@ -723,7 +723,7 @@
                    {:display-name "Sum of Total"}]
                   (lib/returned-columns query))))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-model-metadata-test
   (let [mp        (metabase.lib.card-test/preserve-edited-metadata-test-mock-metadata-provider
                    {:result-metadata-style :metabase.lib.card-test/legacy-snake-case-qp})
@@ -982,7 +982,7 @@
                    2
                    [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "max"]))))))))
 
-;;; adapted from [[metabase.query-processor-test.uuid-test/joined-uuid-query-test]]
+;;; adapted from [[metabase.query-processor.uuid-test/joined-uuid-query-test]]
 (deftest ^:parallel resolve-field-missing-join-alias-test
   (testing "should resolve broken refs missing join-alias correctly and return appropriate metadata"
     (let [mp      lib.tu.uuid-dogs-metadata-provider/metadata-provider
@@ -1355,7 +1355,7 @@
                -1
                [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} "ID"]))))))
 
-;;; See also [[metabase.query-processor-test.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]]
+;;; See also [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]]
 (deftest ^:parallel resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test
   (let [query     (lib/query
                    meta/metadata-provider
@@ -1595,3 +1595,85 @@
                                                                       :lib/uuid   "00000000-0000-0000-0000-000000000000"
                                                                       :join-alias "Q1"}
                                                               "O__ID"])))))
+
+(deftest ^:parallel fallback-resolve-deduplicated-column-name-to-undeduplicated-name-test
+  ;; see https://metaboat.slack.com/archives/C0645JP1W81/p1761241427398479 for more context
+  (testing "If a query has something like `CATEGORY` but no `CATEGORY_2` we should resolve a `CATEGORY_2` ref to `CATEGORY`"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:lib/type :mbql/query
+                  :stages
+                  [{:lib/type     :mbql.stage/mbql
+                    :source-table (meta/id :products)
+                    :expressions  [[:concat
+                                    {:lib/uuid "e190e161-cecf-4c33-aba7-767d3540b54c", :lib/expression-name "CATEGORY"}
+                                    [:field
+                                     {:lib/uuid "20c331ec-949c-4666-ad25-d09148d79614", :base-type :type/Text}
+                                     (meta/id :products :category)]
+                                    "2"]]
+                    :fields       [[:expression
+                                    {:base-type :type/Text, :lib/uuid "702e8a86-bd62-4e4c-8b38-5cd67c6d41f3"}
+                                    "CATEGORY"]]}
+                   {:lib/type    :mbql.stage/mbql
+                    :breakout    [[:field
+                                   {:lib/uuid "8d3e962d-1593-411d-99ed-c9fb30bf21c6", :base-type :type/Text}
+                                   "CATEGORY"]]
+                    :aggregation [[:count {:lib/uuid "049bc679-bede-4cae-a28b-0a2b2a18ffd6"}]]
+                    :order-by    [[:asc
+                                   {:lib/uuid "4d859243-380d-4cef-9841-8edd0d90becc"}
+                                   [:field
+                                    {:lib/uuid "4e1391f8-3d4c-4c7c-a4cc-723cf15eb18a", :base-type :type/Text}
+                                    "CATEGORY"]]]}]
+                  :database (meta/id)})
+          expected (lib.field.resolution/resolve-field-ref
+                    query -1
+                    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000" :base-type :type/Number} "CATEGORY"])]
+      (is (= expected
+             (lib.field.resolution/resolve-field-ref
+              query -1
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Number} "CATEGORY_2"])))
+      (testing "Should be able to resolve nonexistent CATEGORY_3 to existent CATEGORY (i.e., try recursively)"
+        (is (= expected
+               (lib.field.resolution/resolve-field-ref
+                query -1
+                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Number} "CATEGORY_3"])))))))
+
+(deftest ^:parallel fallback-resolve-deduplicated-column-name-to-undeduplicated-name-test-2
+  (testing "Should be able to resolve nonexistent `CATEGORY_3` to existent `CATEGORY_2`"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:lib/type :mbql/query
+                  :stages
+                  [{:lib/type     :mbql.stage/mbql
+                    :source-table (meta/id :products)
+                    :expressions  [[:concat
+                                    {:lib/uuid "e190e161-cecf-4c33-aba7-767d3540b54c", :lib/expression-name "CATEGORY"}
+                                    [:field
+                                     {:lib/uuid "20c331ec-949c-4666-ad25-d09148d79614", :base-type :type/Text}
+                                     (meta/id :products :category)]
+                                    "2"]]
+                    :fields       [[:field
+                                    {:base-type :type/Text, :lib/uuid "5a26b338-dbf2-4586-82f5-08d1eafde373"}
+                                    "CATEGORY"]
+                                   [:expression
+                                    {:base-type :type/Text, :lib/uuid "702e8a86-bd62-4e4c-8b38-5cd67c6d41f3"}
+                                    "CATEGORY"]]}
+                   {:lib/type    :mbql.stage/mbql
+                    :breakout    [[:field
+                                   {:lib/uuid "8d3e962d-1593-411d-99ed-c9fb30bf21c6", :base-type :type/Text}
+                                   "CATEGORY_2"]]
+                    :aggregation [[:count {:lib/uuid "049bc679-bede-4cae-a28b-0a2b2a18ffd6"}]]
+                    :order-by    [[:asc
+                                   {:lib/uuid "4d859243-380d-4cef-9841-8edd0d90becc"}
+                                   [:field
+                                    {:lib/uuid "4e1391f8-3d4c-4c7c-a4cc-723cf15eb18a", :base-type :type/Text}
+                                    "CATEGORY_2"]]]}]
+                  :database (meta/id)})]
+      (is (=? {:lib/deduplicated-name                    "CATEGORY_2"
+               :lib/original-expression-name             "CATEGORY"
+               :lib/original-name                        "CATEGORY"
+               :lib/source-column-alias                  "CATEGORY_2"
+               ::lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Number} "CATEGORY_3"]))))))

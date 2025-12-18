@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import MetabotLogo from "metabase/common/components/MetabotLogo";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { alpha } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";

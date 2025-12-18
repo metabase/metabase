@@ -115,3 +115,7 @@
 .bgLightBlue {
   background-color: var(--mb-color-bg-light);
 }
+
+.textTooltipSecondary {
+  color: var(--mb-color-tooltip-text-secondary);
+}

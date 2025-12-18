@@ -6,7 +6,7 @@
   Some primitives below are duplicated from [[metabase.util.malli.schema]] since that's not `.cljc`. Other stuff is
   copied from [[metabase.legacy-mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
-  (:refer-clojure :exclude [ref every? some select-keys])
+  (:refer-clojure :exclude [ref every? some select-keys empty? get-in])
   (:require
    [medley.core :as m]
    [metabase.lib.schema.actions :as actions]
@@ -34,7 +34,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? select-keys some]]))
+   [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me
@@ -69,9 +69,13 @@
      {:decode/normalize   #(->> %
                                 normalize-stage-common
                                 ;; filter out null :collection keys -- see #59675
+                                ;;
+                                ;; also filter out empty `:template-tags` maps.
                                 (m/filter-kv (fn [k v]
-                                               (not (and (= k :collection)
-                                                         (nil? v))))))
+                                               (case k
+                                                 :collection    (some? v)
+                                                 :template-tags (seq v)
+                                                 true))))
       :encode/for-hashing #'common/encode-map-for-hashing}
      [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.

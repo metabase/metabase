@@ -583,10 +583,10 @@
    NOTE: This is called during **EXPORT**.
 
    Dispatched on model-name."
-  {:arglists '([model-name db-id])}
-  (fn [model-name _] model-name))
+  {:arglists '([model-name db-id opts])}
+  (fn [model-name _ _] model-name))
 
-(defmethod descendants :default [_ _]
+(defmethod descendants :default [_ _ _]
   nil)
 
 (defmulti required
@@ -1111,12 +1111,15 @@
   [form]
   (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment} form))
 
+(defn- normalize [mbql]
+  (if-not (mbql-entity-reference? mbql)
+    mbql
+    (into [(keyword (first mbql))] (map normalize) (rest mbql))))
+
 (defn- mbql-id->fully-qualified-name
   [mbql]
   (-> mbql
-      ;; legacy usages -- do not use in new code
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      mbql.normalize/normalize-tokens
+      normalize
       (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
@@ -1787,6 +1790,12 @@
   Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
   (constantly
    {:export name :import keyword}))
+
+(def optional-kw "Transformer for optional keywordized values.
+
+  Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
+  (constantly
+   {:export #(when % (name %)) :import #(when % (keyword %))}))
 
 (defn as
   "Serialize this field under the given key instead, typically because it has been logically transformed."

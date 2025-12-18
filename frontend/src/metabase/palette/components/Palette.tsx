@@ -1,26 +1,14 @@
+import type { Query } from "history";
 import { KBarPortal, KBarSearch, VisualState, useKBar } from "kbar";
-import { type HTMLAttributes, forwardRef, useEffect, useRef } from "react";
-import {
-  type PlainRoute,
-  type WithRouterProps,
-  withRouter,
-} from "react-router";
+import { useEffect, useRef } from "react";
+import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import {
-  Box,
-  Card,
-  Center,
-  Icon,
-  Overlay,
-  type OverlayProps,
-  Stack,
-  rem,
-} from "metabase/ui";
+import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
@@ -48,17 +36,29 @@ export const Palette = withRouter((props) => {
 
   return (
     <KBarPortal>
-      <PaletteContainer disabled={disabled} />
+      <Overlay backgroundOpacity={0.5}>
+        <Center pt="10vh">
+          <PaletteContainer
+            disabled={disabled}
+            locationQuery={props.location.query}
+          />
+        </Center>
+      </Overlay>
     </KBarPortal>
   );
 });
 
-const PaletteContainer = withRouter(
-  ({ disabled, ...props }: WithRouterProps & { disabled: boolean }) => {
+export const PaletteContainer = withRouter(
+  ({
+    disabled,
+    locationQuery,
+  }: {
+    disabled: boolean;
+    locationQuery: Query;
+  }) => {
     const { query } = useKBar((state) => ({ actions: state.actions }));
     const ref = useRef(null);
 
-    const locationQuery = props.location.query;
     const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
       locationQuery,
       disabled,
@@ -69,7 +69,13 @@ const PaletteContainer = withRouter(
     });
 
     return (
-      <PaletteCard ref={ref}>
+      <Card
+        ref={ref}
+        w="640px"
+        p="0"
+        data-testid="command-palette"
+        bd="1px solid var(--mb-color-border)"
+      >
         <Stack gap={rem(4)} pb="lg">
           <Box pos="relative">
             <KBarSearch
@@ -96,22 +102,7 @@ const PaletteContainer = withRouter(
             searchTerm={searchTerm}
           />
         </Stack>
-      </PaletteCard>
+      </Card>
     );
   },
 );
-
-export const PaletteCard = forwardRef<
-  HTMLDivElement,
-  OverlayProps & HTMLAttributes<HTMLDivElement>
->(function PaletteCard({ children, ...props }, ref) {
-  return (
-    <Overlay zIndex={500} backgroundOpacity={0.5} {...props}>
-      <Center>
-        <Card ref={ref} w="640px" mt="10vh" p="0" data-testid="command-palette">
-          {children}
-        </Card>
-      </Center>
-    </Overlay>
-  );
-});

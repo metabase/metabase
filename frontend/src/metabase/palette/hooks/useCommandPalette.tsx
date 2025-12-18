@@ -1,6 +1,6 @@
 import type { Query } from "history";
 import { Priority, VisualState, useKBar, useRegisterActions } from "kbar";
-import { useEffect, useMemo, useState } from "react";
+import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
@@ -9,12 +9,13 @@ import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/c
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
@@ -24,7 +25,7 @@ import {
 } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Group, Icon } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 import {
   type RecentItem,
   isRecentCollectionItem,
@@ -204,7 +205,7 @@ export const useCommandPalette = ({
             },
             extra: {
               moderatedStatus: result.moderated_status,
-              href: wrappedResult.getUrl?.(),
+              href: modelToUrl(wrappedResult),
               iconColor: icon.color,
               subtext: getSearchResultSubtext(wrappedResult),
             },
@@ -338,21 +339,29 @@ export const useCommandPalette = ({
 
 export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   if (wrappedSearchResult.model === "indexed-entity") {
-    return jt`a record in ${(
-      <Icon
-        flex="0 0 auto"
-        key="icon"
-        name="model"
-        style={{
-          verticalAlign: "bottom",
-          marginInlineStart: "0.25rem",
-        }}
-      />
-    )} ${wrappedSearchResult.model_name}`;
+    return (
+      <SubtitleText>{jt`a record in ${(
+        <Icon
+          flex="0 0 auto"
+          key="icon"
+          name="model"
+          style={{
+            verticalAlign: "bottom",
+            marginInlineStart: "0.25rem",
+          }}
+        />
+      )} ${wrappedSearchResult.model_name}`}</SubtitleText>
+    );
   } else if (wrappedSearchResult.model === "table") {
-    return wrappedSearchResult.table_schema
-      ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
-      : wrappedSearchResult.database_name;
+    return wrappedSearchResult.collection?.name ? (
+      <SubtitleText>{wrappedSearchResult.collection.name}</SubtitleText>
+    ) : (
+      <SubtitleText>
+        {wrappedSearchResult.table_schema
+          ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
+          : wrappedSearchResult.database_name}
+      </SubtitleText>
+    );
   } else if (
     wrappedSearchResult.model === "card" &&
     wrappedSearchResult.dashboard
@@ -367,39 +376,57 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
             marginInline: "0.25rem",
           }}
         />
-        {wrappedSearchResult.dashboard.name}
+        <SubtitleText>{wrappedSearchResult.dashboard.name}</SubtitleText>
       </>
     );
   } else {
-    return wrappedSearchResult.getCollection?.()?.name;
+    return (
+      <SubtitleText>{wrappedSearchResult.getCollection?.()?.name}</SubtitleText>
+    );
   }
 };
 
 export const getRecentItemSubtext = (item: RecentItem) => {
   if (isRecentTableItem(item)) {
-    return item.table_schema
-      ? `${item.database.name} (${item.table_schema})`
-      : item.database.name;
+    return (
+      <SubtitleText>
+        {item.table_schema
+          ? `${item.database.name} (${item.table_schema})`
+          : item.database.name}
+      </SubtitleText>
+    );
   } else if (item.dashboard) {
     return (
-      <Group align="center" gap="xs" wrap="nowrap">
+      <>
         <Icon flex="0 0 auto" name="dashboard" size={12} />
-        {item.dashboard.name}
-      </Group>
+        <SubtitleText>{item.dashboard.name}</SubtitleText>
+      </>
     );
   } else if (item.parent_collection.id === null) {
     return (
-      <Group align="center" gap="xs" wrap="nowrap">
+      <>
         <Icon flex="0 0 auto" name="collection" size={12} />
-        {ROOT_COLLECTION.name}
-      </Group>
+        <SubtitleText>{ROOT_COLLECTION.name}</SubtitleText>
+      </>
     );
   } else {
     return (
-      <Group align="center" gap="xs" wrap="nowrap">
+      <>
         <Icon flex="0 0 auto" name="collection" size={12} />
-        {item.parent_collection.name}
-      </Group>
+        <SubtitleText>{item.parent_collection.name}</SubtitleText>
+      </>
     );
   }
 };
+
+const SubtitleText = ({ children }: PropsWithChildren) => (
+  <Text
+    lineClamp={1}
+    fz="inherit"
+    lh="inherit"
+    c="inherit"
+    style={{ lineBreak: "anywhere" }}
+  >
+    {children}
+  </Text>
+);

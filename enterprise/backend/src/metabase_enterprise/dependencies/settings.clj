@@ -6,7 +6,7 @@
   "Batch size."
   :visibility :internal
   :type       :integer
-  :default    20
+  :default    500
   :setter     :none
   :export?    false)
 
@@ -22,6 +22,6 @@
   "Backfill variance (?) whatever that means."
   :visibility :internal
   :type       :integer
-  :default    10
+  :default    30
   :setter     :none
   :export?    false)

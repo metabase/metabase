@@ -241,6 +241,7 @@
   text
   today
   split-part
+  collate
   integer
   float]
  [lib.extraction
@@ -494,6 +495,9 @@
   find-bad-refs]
  [metabase.lib.walk.util
   all-field-ids
+  all-implicitly-joined-field-ids
+  all-implicitly-joined-table-ids
+  all-segment-ids
   all-source-card-ids
   all-source-table-ids
   all-template-tag-field-ids

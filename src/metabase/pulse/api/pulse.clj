@@ -48,17 +48,30 @@
 
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
-  themselves. Recipients that are plain email addresses are preserved."
+  themselves. Recipients that are plain email addresses are preserved.
+
+  If the current user is not a superuser, also filters the list of recipients to remove users from a different tenant."
   [pulses]
-  (if (perms/sandboxed-or-impersonated-user?)
-    (for [pulse pulses]
-      (assoc pulse :channels
-             (for [channel (:channels pulse)]
-               (assoc channel :recipients
-                      (filter (fn [recipient] (or (not (:id recipient))
-                                                  (= (:id recipient) api/*current-user-id*)))
-                              (:recipients channel))))))
-    pulses))
+  (cond->> pulses
+    (perms/sandboxed-or-impersonated-user?)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:id recipient) api/*current-user-id*)))
+                                   (:recipients channel)))))))
+
+    (not api/*is-superuser?*)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
+                                   (:recipients channel)))))))))
 
 (defn- maybe-filter-pulse-recipients
   [pulse]
@@ -75,6 +88,14 @@
                 (fn [channels]
                   (map #(dissoc % :recipients) channels))))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
   permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
@@ -104,16 +125,23 @@
         pulses               (if creator-or-recipient
                                (map maybe-strip-sensitive-metadata pulses)
                                pulses)]
-    (t2/hydrate pulses :can_write)))
+    (mapv
+     (fn [pulse]
+       (update pulse :cards
+               (fn [cards]
+                 (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
+                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card :dataset_query] (:id card)))
+                                                                     api/*current-user-id*)
+                                                                :no :none
+                                                                :ten-thousand-rows :limited
+                                                                :one-million-rows :full
+                                                                :full :full))) cards))))
+     (t2/hydrate pulses :can_write))))
 
-(defn check-card-read-permissions
-  "Users can only create a pulse for `cards` they have access to."
-  [cards]
-  (doseq [card cards
-          :let [card-id (u/the-id card)]]
-    (assert (integer? card-id))
-    (api/read-check :model/Card card-id)))
-
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `Pulse`."
   [_route-params
@@ -133,15 +161,6 @@
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
        [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (perms/check-has-application-permission :subscription false)
-  ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
-  (check-card-read-permissions cards)
-  ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
-  ;; make sure we have write permissions for that collection
-  (when-not dashboard-id
-    (collection/check-write-perms-for-collection collection-id))
-  ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
-  (when dashboard-id
-    (api/read-check :model/Dashboard dashboard-id))
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
                     :skip_if_empty       skip-if-empty
@@ -149,6 +168,7 @@
                     :collection_position collection-position
                     :dashboard_id        dashboard-id
                     :parameters          parameters}]
+    (api/create-check :model/Pulse (assoc pulse-data :cards cards))
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
@@ -159,6 +179,10 @@
         (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
         pulse))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
@@ -188,6 +212,18 @@
                  channel))))
     pulse-updates))
 
+(defn check-card-read-permissions
+  "Users can only create a pulse for `cards` they have access to."
+  [cards]
+  (doseq [card cards
+          :let [card-id (u/the-id card)]]
+    (assert (integer? card-id))
+    (api/read-check :model/Card card-id)))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Pulse with `id`."
   [{:keys [id]} :- [:map
@@ -240,12 +276,19 @@
   ;; return updated Pulse
   (models.pulse/retrieve-pulse id))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
   (perms/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types
-                       (assoc-in [:slack :configured] (channel.slack/slack-configured?))
+                       (assoc-in [:slack :configured] (channel.settings/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
@@ -281,6 +324,13 @@
        :context     :pulse
        :card-id     card-id}))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [{:keys [id]} :- [:map
@@ -296,6 +346,13 @@
                                                               result
                                                               {:channel.render/include-title? true, :channel.render/include-buttons? true})]])}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/preview_dashboard/:id"
   "Get HTML rendering of a Dashboard with `id`.
 
@@ -317,6 +374,13 @@
               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
                (channel.render/render-dashboard-to-html id)]))})
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [{:keys [id]} :- [:map
@@ -339,6 +403,13 @@
 
 (def ^:private preview-card-width 400)
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter."
   [{:keys [id]} :- [:map
@@ -355,6 +426,10 @@
                                                         {:channel.render/include-title? true})]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/test"
   "Test send an unsaved pulse."
   [_route-params
@@ -380,6 +455,10 @@
     (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [{:keys [id]} :- [:map

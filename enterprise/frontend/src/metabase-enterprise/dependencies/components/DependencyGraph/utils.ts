@@ -7,6 +7,7 @@ import visualizations from "metabase/visualizations";
 import type {
   CardType,
   DependencyEdge,
+  DependencyEntry,
   DependencyGraph,
   DependencyGroupType,
   DependencyId,
@@ -54,6 +55,7 @@ function getEdges(edges: DependencyEdge[]): Edge[] {
 
     return {
       id: getEdgeId(sourceId, targetId),
+      type: "edge",
       data: edge,
       source: sourceId,
       target: targetId,
@@ -71,27 +73,38 @@ export function getInitialGraph({ nodes, edges }: DependencyGraph): GraphData {
 }
 
 export function isSameNode(
-  node: DependencyNode,
-  id: DependencyId,
-  type: DependencyType,
+  entry1: DependencyEntry,
+  entry2: DependencyEntry,
 ): boolean {
-  return node.id === id && node.type === type;
+  return entry1.id === entry2.id && entry1.type === entry2.type;
 }
 
 export function findNode(
   nodes: NodeType[],
-  id: DependencyId,
-  type: DependencyType,
-): NodeType | null {
-  return nodes.find((node) => isSameNode(node.data, id, type)) ?? null;
+  entry: DependencyEntry,
+): NodeType | undefined {
+  return nodes.find((node) => isSameNode(node.data, entry));
 }
 
 export function getNodeLabel(node: DependencyNode): string {
-  return node.type === "table" ? node.data.display_name : node.data.name;
+  switch (node.type) {
+    case "table":
+      return node.data.display_name;
+    case "sandbox":
+      return node.data.table?.display_name ?? t`Row and column security rule`;
+    default:
+      return node.data.name;
+  }
 }
 
 export function getNodeDescription(node: DependencyNode): string | null {
-  return node.data.description;
+  switch (node.type) {
+    case "document":
+    case "sandbox":
+      return null;
+    default:
+      return node.data.description ?? "";
+  }
 }
 
 export function getNodeIcon(node: DependencyNode): IconName {
@@ -124,9 +137,17 @@ export function getNodeIconWithType(
     case "table":
       return "table";
     case "transform":
-      return "refresh_downstream";
+      return "transform";
     case "snippet":
       return "sql";
+    case "dashboard":
+      return "dashboard";
+    case "document":
+      return "document";
+    case "sandbox":
+      return "permissions_limited";
+    case "segment":
+      return "segment";
   }
 }
 
@@ -155,12 +176,43 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "table":
       return {
         label: t`View metadata`,
-        url: Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
+        url: Urls.dataModel({
+          databaseId: node.data.db_id,
+          schemaName: node.data.schema,
+          tableId: node.id,
+        }),
       };
     case "transform":
       return {
         label: t`View this transform`,
         url: Urls.transform(node.id),
+      };
+    case "dashboard":
+      return {
+        label: `View this dashboard`,
+        url: Urls.dashboard({ id: node.id, name: node.data.name }),
+      };
+    case "document":
+      return {
+        label: `View this document`,
+        url: Urls.document({ id: node.id }),
+      };
+    case "sandbox":
+      if (node.data.table != null) {
+        return {
+          label: `View this permission`,
+          url: Urls.tableDataPermissions(
+            node.data.table.db_id,
+            node.data.table.schema,
+            node.data.table.id,
+          ),
+        };
+      }
+      return null;
+    case "segment":
+      return {
+        label: t`View this segment`,
+        url: Urls.dataModelSegment(node.id),
       };
     case "snippet":
       return null;
@@ -178,6 +230,14 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
           },
         ];
       }
+      if (node.data.document != null) {
+        return [
+          {
+            label: node.data.document.name,
+            url: Urls.document(node.data.document),
+          },
+        ];
+      }
       if (node.data.collection != null) {
         return [
           {
@@ -192,17 +252,46 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
         return [
           {
             label: node.data.db.name,
-            url: Urls.dataModelDatabase(node.data.db_id),
+            url: Urls.dataModel({ databaseId: node.data.db_id }),
           },
           {
             label: node.data.schema,
-            url: Urls.dataModelSchema(node.data.db_id, node.data.schema),
+            url: Urls.dataModel({
+              databaseId: node.data.db_id,
+              schemaName: node.data.schema,
+            }),
+          },
+        ];
+      }
+      return null;
+    case "dashboard":
+    case "document":
+      if (node.data.collection != null) {
+        return [
+          {
+            label: node.data.collection.name,
+            url: Urls.collection(node.data.collection),
+          },
+        ];
+      }
+      return null;
+    case "segment":
+      if (node.data.table != null) {
+        return [
+          {
+            label: node.data.table.display_name,
+            url: Urls.dataModel({
+              databaseId: node.data.table.db_id,
+              schemaName: node.data.table.schema,
+              tableId: node.data.table.id,
+            }),
           },
         ];
       }
       return null;
     case "transform":
     case "snippet":
+    case "sandbox":
       return null;
   }
 }
@@ -215,9 +304,14 @@ export function getNodeViewCount(node: DependencyNode): number | null {
       return node.data.type === "question"
         ? (node.data.view_count ?? null)
         : null;
+    case "dashboard":
+    case "document":
+      return node.data.view_count ?? null;
     case "table":
     case "transform":
     case "snippet":
+    case "sandbox":
+    case "segment":
       return null;
   }
 }
@@ -264,5 +358,13 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Transform`, color: "warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
+    case "dashboard":
+      return { label: t`Dashboard`, color: "filter" };
+    case "document":
+      return { label: t`Document`, color: "text-secondary" };
+    case "sandbox":
+      return { label: t`Row and column security rule`, color: "error" };
+    case "segment":
+      return { label: t`Segment`, color: "accent2" };
   }
 }

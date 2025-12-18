@@ -1,6 +1,10 @@
 import { match } from "ts-pattern";
 
-import { entityPickerModal } from "e2e/support/helpers";
+import {
+  embedModalEnableEmbedding,
+  entityPickerModal,
+  modal,
+} from "e2e/support/helpers";
 import type { Dashboard, RecentItem } from "metabase-types/api";
 
 type RecentActivityIntercept = {
@@ -11,25 +15,44 @@ type DashboardIntercept = {
   response: Cypress.Response<Dashboard>;
 };
 
-export const getEmbedSidebar = () => cy.findByRole("complementary");
+export const getEmbedSidebar = () =>
+  modal()
+    .first()
+    .within(() => cy.findByRole("complementary"));
 
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
+export const visitNewEmbedPage = (
+  { waitForResource } = { waitForResource: true },
+) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
-  const params = new URLSearchParams();
+  cy.visit("/admin/embedding");
 
-  if (locale) {
-    params.append("locale", locale);
-  }
+  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
+    .first()
+    .within(() => {
+      cy.findByText("New embed").click();
+    });
 
-  cy.visit("/embed-js?" + params);
+  cy.get("body").then(($body) => {
+    const isEmbeddingDisabled =
+      $body.find('[data-testid="enable-embedding-card"]').length > 0;
 
-  cy.wait("@dashboard");
+    if (isEmbeddingDisabled) {
+      embedModalEnableEmbedding();
+    }
 
-  cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
+    if (waitForResource) {
+      cy.wait("@dashboard");
+
+      cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
+        "have.length",
+        1,
+      );
+    }
+  });
 };
 
 export const assertRecentItemName = (
@@ -56,23 +79,31 @@ type NavigateToStepOptions =
   | {
       experience: "exploration" | "metabot";
       resourceName?: never;
+      preselectSso?: boolean;
     }
   | {
       experience: "dashboard" | "chart" | "browser";
       resourceName: string;
+      preselectSso?: boolean;
     };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience } = options;
+  const { experience, preselectSso } = options;
 
   visitNewEmbedPage();
 
   cy.log("select an experience");
 
+  const isQuestionOrDashboardExperience =
+    experience === "chart" || experience === "dashboard";
   const hasEntitySelection =
     experience !== "exploration" && experience !== "metabot";
+
+  if (preselectSso || !isQuestionOrDashboardExperience) {
+    cy.findByLabelText("Metabase account (SSO)").click();
+  }
 
   const labelByExperience = match(experience)
     .with("chart", () => "Chart")
@@ -136,6 +167,15 @@ export const navigateToGetCodeStep = (options: NavigateToStepOptions) => {
   cy.log("navigate to get code step");
   getEmbedSidebar().within(() => {
     cy.findByText("Get code").click(); // Get code step
+  });
+};
+
+export const completeWizard = (options: NavigateToStepOptions) => {
+  navigateToGetCodeStep(options);
+
+  cy.log("complete wizard");
+  getEmbedSidebar().within(() => {
+    cy.findByText("Done").click();
   });
 };
 

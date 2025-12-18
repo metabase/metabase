@@ -1,12 +1,12 @@
 (ns metabase.lib.parse
   "Code for parsing parameters in raw SQL strings."
-  (:refer-clojure :exclude [some #?(:clj for)])
+  (:refer-clojure :exclude [some empty? #?(:clj for)])
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [some #?(:clj for)]]))
+   [metabase.util.performance :refer [some empty? #?(:clj for)]]))
 
 (defn- combine-adjacent-strings
   "Returns any adjacent strings in coll combined together"

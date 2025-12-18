@@ -1,9 +1,8 @@
 import { assoc, assocIn, chain, dissoc, merge, updateIn } from "icepick";
-import reduceReducers from "reduce-reducers";
 import _ from "underscore";
 
-import Actions from "metabase/entities/actions";
-import Questions from "metabase/entities/questions";
+import { Actions } from "metabase/entities/actions";
+import { Questions } from "metabase/entities/questions";
 import { combineReducers, handleActions } from "metabase/lib/redux";
 
 import {
@@ -197,27 +196,26 @@ const draftParameterValues = handleActions(
   {},
 );
 
-export const dashboardReducers = reduceReducers(
-  INITIAL_DASHBOARD_STATE,
-  combineReducers({
-    dashboardId,
-    missingActionParameters,
-    autoApplyFilters,
-    slowCards,
-    isNavigatingBackToDashboard,
-    isAddParameterPopoverOpen,
-    editingDashboard,
-    loadingControls,
-    sidebar,
-    parameterValues,
-    dashboards,
-    loadingDashCards,
-    dashcards,
-    dashcardData,
-    draftParameterValues,
-    // Combined reducer needs to init state for every slice
-    selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
-    tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
-  }),
-  tabsReducer,
-);
+const combinedDashboardReducer = combineReducers({
+  dashboardId,
+  missingActionParameters,
+  autoApplyFilters,
+  slowCards,
+  isNavigatingBackToDashboard,
+  isAddParameterPopoverOpen,
+  editingDashboard,
+  loadingControls,
+  sidebar,
+  parameterValues,
+  dashboards,
+  loadingDashCards,
+  dashcards,
+  dashcardData,
+  draftParameterValues,
+  // Combined reducer needs to init state for every slice
+  selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
+  tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
+});
+
+export const dashboardReducers = (state = INITIAL_DASHBOARD_STATE, action) =>
+  tabsReducer(combinedDashboardReducer(state, action), action);

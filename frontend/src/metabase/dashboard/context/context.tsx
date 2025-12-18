@@ -20,6 +20,7 @@ import type {
   DashboardId,
   ParameterValuesMap,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -51,6 +52,7 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
+  token?: EntityToken | null;
   parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
@@ -62,14 +64,14 @@ export type DashboardContextOwnProps = {
   dashcardMenu?: DashboardCardMenu | null;
   dashboardActions?:
     | DashboardActionButtonList
-    | (({
-        isEditing,
-        downloadsEnabled,
-      }: Pick<
-        DashboardContextReturned,
-        "isEditing" | "downloadsEnabled"
-      >) => DashboardActionButtonList);
+    | ((
+        props: Pick<
+          DashboardContextReturned,
+          "isEditing" | "downloadsEnabled" | "withSubscriptions"
+        >,
+      ) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
+  isGuestEmbed?: boolean;
   /**
    * I want this to be optional, and error out when it's not passed, so it's obvious we need to pass it.
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
@@ -80,6 +82,7 @@ export type DashboardContextOwnProps = {
 export type DashboardContextOwnResult = {
   dashboardId: DashboardId | null;
   dashboardActions?: DashboardActionButtonList;
+  isEditableDashboard: boolean;
 };
 
 export type DashboardControls = UseAutoScrollToDashcardResult &
@@ -116,6 +119,7 @@ const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
       dashboardId,
+      token,
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
@@ -134,6 +138,12 @@ const DashboardContextProviderInner = forwardRef(
       font = null,
       hideParameters: hide_parameters = null,
       downloadsEnabled = { pdf: true, results: true },
+      /**
+       * TODO: (Kelvin 2025-11-17) See if we could communicate better how these default values are derived from. E.g. some are passed via the SDK props
+       * which already have default values and we're setting another default values here again. One thing we could do is to have a constant file that
+       * multiple places could refer to.
+       */
+      withSubscriptions = false,
       autoScrollToDashcardId = undefined,
       reportAutoScrolledToDashcard = noop,
       cardTitled = true,
@@ -150,6 +160,7 @@ const DashboardContextProviderInner = forwardRef(
       isLoadingWithoutCards,
       parameters,
       isEmbeddingIframe,
+      isGuestEmbed,
 
       // redux actions
       addCardToDashboard,
@@ -198,7 +209,16 @@ const DashboardContextProviderInner = forwardRef(
     );
 
     const fetchData = useCallback(
-      async (dashboardId: DashboardId, option: FetchOption = {}) => {
+      async (
+        {
+          dashboardId,
+          token,
+        }: {
+          dashboardId: DashboardId;
+          token: EntityToken | null | undefined;
+        },
+        option: FetchOption = {},
+      ) => {
         const hasDashboardChanged = dashboardId !== previousDashboardId;
         const { forceRefetch } = option;
         // When forcing a refetch, we want to clear the cache
@@ -209,7 +229,7 @@ const DashboardContextProviderInner = forwardRef(
 
           initialize({ clearCache: !effectiveIsNavigatingBackToDashboard });
           fetchDashboard({
-            dashId: dashboardId,
+            dashId: token ?? dashboardId,
             queryParams: parameterQueryParams,
             options: {
               clearCache: !effectiveIsNavigatingBackToDashboard,
@@ -265,20 +285,26 @@ const DashboardContextProviderInner = forwardRef(
       return {
         refetchDashboard() {
           if (dashboardId) {
-            fetchData(dashboardId, {
-              forceRefetch: true,
-            });
+            fetchData(
+              {
+                dashboardId,
+                token,
+              },
+              {
+                forceRefetch: true,
+              },
+            );
           }
         },
       };
-    }, [dashboardId, fetchData]);
+    }, [dashboardId, token, fetchData]);
 
     useEffect(() => {
       if (dashboardId && dashboardId !== previousDashboardId) {
         reset();
-        fetchData(dashboardId);
+        fetchData({ dashboardId, token });
       }
-    }, [dashboardId, fetchData, previousDashboardId, reset]);
+    }, [dashboardId, token, fetchData, previousDashboardId, reset]);
 
     useEffect(() => {
       if (dashboard) {
@@ -345,13 +371,35 @@ const DashboardContextProviderInner = forwardRef(
 
     const dashboardActions =
       typeof initDashboardActions === "function"
-        ? initDashboardActions({ isEditing, downloadsEnabled })
+        ? initDashboardActions({
+            isEditing,
+            downloadsEnabled,
+            withSubscriptions,
+          })
         : (initDashboardActions ?? null);
+
+    // Determine if the dashboard is editable.
+    // This lets us distinguish read-only dashboards (e.g. public embeds, InteractiveDashboard)
+    // from editable dashboards (e.g. main app, EditableDashboard).
+    const isEditableDashboard = useMemo(() => {
+      // When the dashboard is being edited, the "edit" action won't exist.
+      if (isEditing) {
+        return true;
+      }
+
+      // A dashboard is editable if it has the edit action and the user has write permissions.
+      const hasEditDashboardAction = (dashboardActions ?? []).includes(
+        "EDIT_DASHBOARD",
+      );
+
+      return hasEditDashboardAction && Boolean(dashboard?.can_write);
+    }, [isEditing, dashboardActions, dashboard?.can_write]);
 
     return (
       <DashboardContext.Provider
         value={{
           dashboardId,
+          token,
           dashboard: dashboardWithFilteredCards,
           parameterQueryParams,
           onLoad,
@@ -359,6 +407,7 @@ const DashboardContextProviderInner = forwardRef(
           dashcardMenu,
           dashboardActions,
           onNewQuestion,
+          isEditableDashboard,
 
           navigateToNewCardFromDashboard,
           isLoading,
@@ -378,6 +427,7 @@ const DashboardContextProviderInner = forwardRef(
           font,
           hideParameters,
           downloadsEnabled,
+          withSubscriptions,
           autoScrollToDashcardId,
           reportAutoScrolledToDashcard,
           cardTitled,
@@ -391,6 +441,7 @@ const DashboardContextProviderInner = forwardRef(
           parameters,
           parameterValues,
           isEmbeddingIframe,
+          isGuestEmbed,
 
           // redux actions
           addCardToDashboard,

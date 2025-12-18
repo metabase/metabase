@@ -1,6 +1,7 @@
 import querystring from "querystring";
 import _ from "underscore";
 
+import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
@@ -33,16 +34,6 @@ export const isWithinIframe = function () {
 
 // add a global so we can check if the parent iframe is Metabase
 window.METABASE = true;
-
-// check that we're both iframed, and the parent is a Metabase instance
-// used for detecting if we're previewing an embed
-export const IFRAMED_IN_SELF = (function () {
-  try {
-    return window.self !== window.parent && window.parent.METABASE;
-  } catch (e) {
-    return false;
-  }
-})();
 
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
@@ -320,6 +311,12 @@ export function open(
 ) {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
+  // In the react sdk, allow the host app to override how to open links
+  if (isEmbeddingSdk() && handleLinkSdkPlugin(url).handled) {
+    // Plugin handled the link, don't continue with default behavior
+    return;
+  }
+
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
@@ -366,7 +363,7 @@ export function shouldOpenInBlankWindow(
   } = {},
 ) {
   if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + EAJS)
+    // always open in new window in modular embedding (react SDK + modular embedding)
     return true;
   }
   const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
@@ -446,13 +443,17 @@ export function isSameOrSiteUrlOrigin(url) {
 
 export function getUrlTarget(url) {
   if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + EAJS)
+    // always open in new window in modular embedding (react SDK + modular embedding)
     return "_blank";
   }
   return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
 export function removeAllChildren(element) {
+  if (!element) {
+    return;
+  }
+
   while (element.firstChild) {
     element.removeChild(element.firstChild);
   }

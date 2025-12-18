@@ -4,6 +4,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.test.data :as data]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -83,7 +84,7 @@
   ;; force creation of test-data if it is not already created
   (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions
+    (doseq [[perm-type _] permissions.schema/data-permissions
             db-id         (t2/select-pks-set :model/Database)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
@@ -104,7 +105,7 @@
   ;; make sure app DB is set up and test users are created
   (initialize/initialize-if-needed! :db :test-users)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions
+    (doseq [[perm-type _] permissions.schema/data-permissions
             db-id         (t2/select-pks-set :model/Database)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id

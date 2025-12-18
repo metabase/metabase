@@ -41,6 +41,7 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
   return css`
     :root {
       --mb-default-font-family: ${font};
+      ${createColorVars("light")}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
@@ -53,8 +54,8 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
  * These CSS variables are part of the core design system colors.
  *
  * Only keep colors that depend on the theme and are not specified anywhere else here.
- * You don't need to add new colors from `colors.module.css` here since they'll already
- * be available globally at :root
+ * You don't need to add new colors from `frontend/src/metabase/lib/colors/colors.ts` here since
+ * they're already included in `getMetabaseSdkCssVariables`
  **/
 function getSdkDesignSystemCssVariables(theme: MantineTheme) {
   const createSdkColorVars = (colorName: ColorName) => {

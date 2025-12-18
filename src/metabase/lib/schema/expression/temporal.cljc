@@ -115,7 +115,7 @@
     [:cat
      [:merge
       ::common/options
-      [:map [:mode {:optional true} ;; no mode should be iso string
+      [:map [:mode {:optional true} ; no mode should be iso string
              (into [:enum {:decode/normalize normalize-datetime-mode}]
                    datetime-string-modes)]]]
      [:schema [:ref ::expression/string]]]
@@ -134,7 +134,7 @@
       ::common/options
       [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
                          datetime-binary-modes)]]]
-     :any]]])
+     [:schema [:ref ::expression/expression]]]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
@@ -182,7 +182,11 @@
     (into [:enum
            {:error/message "valid timezone ID"
             :error/fn      (fn [{:keys [value]} _]
-                             (str "invalid timezone ID: " (pr-str value)))}]
+                             (str "invalid timezone ID: " (pr-str value)))
+            :description   "A valid timezone ID like: \"Asia/Aden\", \"America/Cuiaba\"."
+            ;; The timezone list is dynamic which make the .github/workflows/openapi-check.yml flaky on CI
+            ;; so we need to hack this to write a static schema
+            :json-schema   {:type "string"}}]
           (sort
            #?(;; 600 timezones on java 17
               :clj (ZoneId/getAvailableZoneIds)

@@ -19,6 +19,7 @@ import type { DependencyEntry } from "metabase-types/api";
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
 import { GraphDependencyPanel } from "./GraphDependencyPanel";
+import { GraphEdge } from "./GraphEdge";
 import { GraphEntryInput } from "./GraphEntryInput";
 import { GraphInfoPanel } from "./GraphInfoPanel";
 import { GraphNode } from "./GraphNode";
@@ -32,11 +33,21 @@ const NODE_TYPES = {
   node: GraphNode,
 };
 
-type DependencyGraphProps = {
-  entry?: DependencyEntry;
+const EDGE_TYPES = {
+  edge: GraphEdge,
 };
 
-export function DependencyGraph({ entry }: DependencyGraphProps) {
+type DependencyGraphProps = {
+  entry?: DependencyEntry;
+  getGraphUrl: (entry?: DependencyEntry) => string;
+  withEntryPicker?: boolean;
+};
+
+export function DependencyGraph({
+  entry,
+  getGraphUrl,
+  withEntryPicker,
+}: DependencyGraphProps) {
   const {
     data: graph,
     isFetching,
@@ -48,13 +59,11 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
   const { sendErrorToast } = useMetadataToasts();
 
   const entryNode = useMemo(() => {
-    return entry != null ? findNode(nodes, entry.id, entry.type) : null;
+    return entry != null ? findNode(nodes, entry) : null;
   }, [nodes, entry]);
 
   const selectedNode = useMemo(() => {
-    return selection != null
-      ? findNode(nodes, selection.id, selection.type)
-      : null;
+    return selection != null ? findNode(nodes, selection) : null;
   }, [nodes, selection]);
 
   useEffect(() => {
@@ -87,6 +96,7 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         fitView
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
@@ -99,24 +109,29 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
         <GraphNodeLayout />
         <Panel position="top-left">
           <Group>
-            <GraphEntryInput
-              node={entryNode?.data ?? null}
-              isGraphFetching={isFetching}
-            />
+            {withEntryPicker && (
+              <GraphEntryInput
+                node={entryNode?.data ?? null}
+                isGraphFetching={isFetching}
+                getGraphUrl={getGraphUrl}
+              />
+            )}
             {nodes.length > 1 && <GraphSelectInput nodes={nodes} />}
           </Group>
         </Panel>
-        {selection != null && selection.withInfo && selectedNode != null && (
+        {selection != null && selectedNode != null && (
           <Panel className={S.panel} position="top-right">
             {selection.groupType != null ? (
               <GraphDependencyPanel
                 node={selectedNode.data}
                 groupType={selection.groupType}
+                getGraphUrl={getGraphUrl}
                 onClose={handlePanelClose}
               />
             ) : (
               <GraphInfoPanel
                 node={selectedNode.data}
+                getGraphUrl={getGraphUrl}
                 onClose={handlePanelClose}
               />
             )}
