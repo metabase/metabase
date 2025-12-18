@@ -12,14 +12,14 @@ const DATA_BY_MB_EDITION = {
   oss: {
     cardTestId: "guest-embeds-setting-card",
     cardText:
-      "To continue, enable Guest embeds and agree to the usage conditions.",
+      "To continue, enable guest embeds and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-static",
     showTermsSettingName: "show-static-embed-terms",
   },
   ee: {
     cardTestId: "sdk-setting-card",
     cardText:
-      "To continue, enable Modular embedding and agree to the usage conditions.",
+      "To continue, enable modular embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-simple",
     showTermsSettingName: "show-simple-embed-terms",
   },
