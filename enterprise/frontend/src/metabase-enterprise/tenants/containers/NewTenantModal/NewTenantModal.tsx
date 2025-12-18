@@ -12,7 +12,7 @@ import { TenantForm } from "../../components/TenantForm";
 
 interface NewUserModalProps {
   onClose: () => void;
-  location: Location;
+  location?: Location;
 }
 
 export const NewTenantModal = ({ onClose, location }: NewUserModalProps) => {
@@ -21,10 +21,10 @@ export const NewTenantModal = ({ onClose, location }: NewUserModalProps) => {
   const [createTenant] = useCreateTenantMutation();
 
   const isOnboarding = useMemo(() => {
-    const searchParams = new URLSearchParams(location.search);
+    const searchParams = new URLSearchParams(location?.search);
 
     return searchParams.get("onboarding") === "true";
-  }, [location.search]);
+  }, [location?.search]);
 
   const handleSubmit = async (vals: Partial<Tenant>) => {
     await createTenant({
