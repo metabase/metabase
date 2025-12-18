@@ -85,9 +85,7 @@ export const MetabotChat = ({
         <Box ref={headerRef} className={Styles.header}>
           <Flex align-items="center">
             <Text lh={1} fz="sm" c="text-secondary">
-              {metabot.profileOverride
-                ? t`Using profile: ${metabot.profileOverride}`
-                : t`Metabot isn't perfect. Double-check results.`}
+              {t`Metabot isn't perfect. Double-check results.`}
             </Text>
           </Flex>
 
@@ -206,7 +204,7 @@ export const MetabotChat = ({
               onChange={metabot.setPrompt}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
-              suggestionModels={config.suggestionModels}
+              suggestionConfig={{ suggestionModels: config.suggestionModels }}
             />
           </Paper>
         </Box>
