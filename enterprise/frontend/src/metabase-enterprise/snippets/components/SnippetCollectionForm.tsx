@@ -4,6 +4,7 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import { isItemInCollectionOrItsDescendants } from "metabase/collections/utils";
 import Button from "metabase/common/components/Button";
 import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -109,18 +110,8 @@ function SnippetCollectionForm({
   );
 
   const shouldDisableItem = useCallback(
-    (item: CollectionPickerItem) => {
-      if (passedCollection.id === undefined) {
-        return false;
-      } else {
-        return (
-          item.effective_location
-            ?.split("/")
-            .includes(String(passedCollection.id)) ||
-          passedCollection.id === item.id
-        );
-      }
-    },
+    (item: CollectionPickerItem) =>
+      isItemInCollectionOrItsDescendants(item, passedCollection.id),
     [passedCollection.id],
   );
 

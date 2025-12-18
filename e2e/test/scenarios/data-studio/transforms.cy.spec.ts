@@ -1907,6 +1907,45 @@ LIMIT
       ]);
     });
 
+    it("should edit collection details", () => {
+      H.createTransformCollection({ name: "Original Name" });
+      H.createTransformCollection({ name: "Target Parent" });
+
+      visitTransformListPage();
+
+      cy.log("open edit modal via collection menu");
+      getTransformsList()
+        .findByText("Original Name")
+        .closest('[role="row"]')
+        .findByRole("button", { name: "Collection menu" })
+        .click();
+
+      H.popover().findByText("Edit collection details").click();
+
+      cy.log("edit name and description");
+      H.modal().within(() => {
+        cy.findByText("Editing Original Name").should("be.visible");
+        cy.findByLabelText("Name").clear().type("Renamed Collection");
+        cy.findByLabelText("Description").type("A helpful description");
+        cy.findByTestId("collection-picker-button").click();
+      });
+
+      cy.log("change parent collection");
+      cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
+        cy.findByText("Target Parent").click();
+        cy.findByRole("button", { name: "Select" }).click();
+      });
+
+      H.modal().button("Save").click();
+
+      cy.log("verify collection was renamed and moved");
+      getTransformsList().within(() => {
+        cy.findByText("Original Name").should("not.exist");
+        cy.findByText("Target Parent").click();
+        cy.findByText("Renamed Collection").should("be.visible");
+      });
+    });
+
     it("should archive a collection with transforms", () => {
       H.createTransformCollection({ name: "Archive Me" }).then((collection) => {
         createMbqlTransform({
@@ -1935,14 +1974,18 @@ LIMIT
 
       H.modal().within(() => {
         cy.findByText('Archive "Archive Me"?').should("be.visible");
+        cy.findByText("This will also archive 1 transform inside it.").should(
+          "be.visible",
+        );
         cy.button("Archive").click();
       });
 
       H.undoToast().findByText("Collection archived").should("be.visible");
 
-      cy.log("verify collection is no longer visible");
+      cy.log("verify collection and its children are no longer visible");
       getTransformsList().within(() => {
         cy.findByText("Archive Me").should("not.exist");
+        cy.findByText("Transform In Collection").should("not.exist");
         cy.findByText("No transforms yet").should("be.visible");
       });
     });

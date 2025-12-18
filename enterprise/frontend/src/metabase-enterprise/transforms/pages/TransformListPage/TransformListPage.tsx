@@ -42,6 +42,18 @@ const getNodeId = (node: TreeNode) => node.id;
 const getSubRows = (node: TreeNode) => node.children;
 const isFilterable = (node: TreeNode) => node.nodeType === "transform";
 
+const countTransforms = (node: TreeNode): number => {
+  if (!node.children) {
+    return 0;
+  }
+  return node.children.reduce((count, child) => {
+    if (child.nodeType === "transform") {
+      return count + 1;
+    }
+    return count + countTransforms(child);
+  }, 0);
+};
+
 const globalFilterFn = (
   row: { original: TreeNode },
   _columnId: string,
@@ -152,6 +164,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             <CollectionRowMenu
               collectionId={row.original.collectionId}
               collectionName={row.original.name}
+              transformCount={countTransforms(row.original)}
             />
           ) : null,
       },
