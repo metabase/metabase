@@ -79,7 +79,7 @@
 
     ;; The URL and email extractions are powered by regular expressions that use lookaheads and lookbehinds, and not
     ;; every database supports those. If the target database doesn't support `:regex/lookaheads-and-lookbehinds`
-    ;; feature, return `nil`/
+    ;; feature, return `nil`.
     (not (regex-with-lookaheads-and-lookbehinds-available? query)) nil
     (lib.types.isa/email? column)                                  (email-extractions column)
     (lib.types.isa/URL? column)                                    (url-extractions column)))
