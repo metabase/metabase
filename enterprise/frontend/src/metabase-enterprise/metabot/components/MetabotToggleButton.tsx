@@ -10,7 +10,7 @@ interface MetabotToggleButtonProps {
 }
 
 export function MetabotToggleButton({ className }: MetabotToggleButtonProps) {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotAgent("omnibot");
 
   const handleClick = () => {
     if (!metabot.visible) {
