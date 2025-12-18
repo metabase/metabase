@@ -113,6 +113,11 @@ export const getMessages = createSelector(
   },
 );
 
+export const getDeveloperMessage = createSelector(
+  getMetabotConversation,
+  (convo) => convo.experimental.developerMessage,
+);
+
 export const getActiveToolCalls = createSelector(
   getMetabotConversation,
   (convo) => convo.activeToolCalls,
@@ -218,4 +223,14 @@ export const getAgentRequestMetadata = createSelector(
     ),
     ...(profile ? { profile_id: profile } : {}),
   }),
+);
+
+export const getMetabotSuggestedCodeEdits = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.suggestedCodeEdits,
+);
+
+export const getMetabotSuggestedCodeEdit = createSelector(
+  [getMetabotSuggestedCodeEdits, (_, bufferId: string) => bufferId],
+  (suggestedCodeEdits, bufferId) => suggestedCodeEdits[bufferId],
 );

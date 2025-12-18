@@ -48,7 +48,6 @@ const MODAL_SIDEBAR_FEATURES = {
   snippets: false,
   promptInput: false,
   formatQuery: false,
-  aiGeneration: false,
 } as const;
 
 const getRunQueryShortcut = () => (isMac() ? t`⌘ + return` : t`Ctrl + enter`);
