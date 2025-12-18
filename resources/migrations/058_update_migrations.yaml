@@ -3805,6 +3805,12 @@ databaseChangeLog:
             baseTableName: metabase_field
             constraintName: fk_metabase_field_workspace_id
       rollback:
+        - createIndex:
+            tableName: metabase_field
+            indexName: idx_metabase_field_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
         - addForeignKeyConstraint:
             baseTableName: metabase_field
             baseColumnNames: workspace_id
@@ -3883,27 +3889,8 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-17T17:54:06
       author: christruter
-      comment: Drop index on metabase_table.workspace_id
-      preConditions:
-        - onFail: MARK_RAN
-        - indexExists:
-            indexName: idx_metabase_table_workspace_id
-      changes:
-        - dropIndex:
-            tableName: metabase_table
-            indexName: idx_metabase_table_workspace_id
-      rollback:
-        - createIndex:
-            tableName: metabase_table
-            indexName: idx_metabase_table_workspace_id
-            columns:
-              - column:
-                  name: workspace_id
-
-  - changeSet:
-      id: v58.2025-12-17T17:54:07
-      author: christruter
       comment: Drop foreign key constraint from metabase_table.workspace_id to workspace
+      validCheckSum: ANY
       preConditions:
         - onFail: MARK_RAN
         - foreignKeyConstraintExists:
@@ -3919,6 +3906,27 @@ databaseChangeLog:
             constraintName: fk_metabase_table_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
+
+  - changeSet:
+      id: v58.2025-12-17T17:54:07
+      author: christruter
+      comment: Drop index on metabase_table.workspace_id
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - indexExists:
+            indexName: idx_metabase_table_workspace_id
+      changes:
+        - dropIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_workspace_id
+      rollback:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
 
   - changeSet:
       id: v58.2025-12-17T17:54:08
