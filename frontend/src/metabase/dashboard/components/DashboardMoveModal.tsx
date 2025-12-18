@@ -56,7 +56,6 @@ function DashboardMoveModal({
         onClose();
       }}
       recentAndSearchFilter={recentsAndSearchFilter}
-      savingModel="dashboard"
     />
   );
 }

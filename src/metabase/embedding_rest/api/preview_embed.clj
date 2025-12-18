@@ -61,6 +61,19 @@
      :constraints      {:max-results max-results}
      :query-params     (api.embed.common/parse-query-params query-params))))
 
+(api.macros/defendpoint :get "/card/:token/params/:param-key/values" :- ms/FieldValuesResult
+  "Embedded version of api.card filter values endpoint."
+  [{:keys [token param-key]} :- [:map
+                                 [:token     string?]
+                                 [:param-key string?]]]
+  (let [unsigned-token (check-and-unsign token)
+        card           (api.embed.common/card-for-unsigned-token
+                        unsigned-token
+                        :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))]
+    (api.embed.common/card-param-values {:unsigned-token unsigned-token
+                                         :card           card
+                                         :param-key      param-key})))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;

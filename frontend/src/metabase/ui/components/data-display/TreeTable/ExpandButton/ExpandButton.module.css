@@ -1,0 +1,27 @@
+.wrapper {
+  flex-shrink: 0;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-focus);
+    outline-offset: 1px;
+    border-radius: 2px;
+  }
+}
+
+.icon {
+  transition: transform 0.15s ease;
+}
+
+.iconExpanded {
+  transform: rotate(90deg);
+}
