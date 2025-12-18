@@ -57,7 +57,7 @@ export function DetailViewPage({
 
   return (
     <Stack
-      bg="var(--mb-color-background-light)"
+      bg="background-light"
       data-testid="object-detail"
       gap={0}
       mih="100%"

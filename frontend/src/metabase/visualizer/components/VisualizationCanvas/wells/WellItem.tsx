@@ -19,7 +19,7 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
       <Flex
         direction="row"
         align="center"
-        bg="var(--mb-color-bg-white)"
+        bg="bg-white"
         px="sm"
         data-testid="well-item"
         {...props}

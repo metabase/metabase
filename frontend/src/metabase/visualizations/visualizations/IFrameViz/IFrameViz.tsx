@@ -182,7 +182,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
 
   return (
     <Box p={12} w="100%" style={{ textAlign: "center" }}>
-      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
+      <Icon name="lock" color="text-dark" mb="s" />
       <Text color="text-dark">
         {jt`${(
           <Text key="domain" fw="bold" display="inline">
@@ -200,7 +200,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
 function GenericError() {
   return (
     <Box p={12} w="100%" style={{ textAlign: "center" }}>
-      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
+      <Icon name="lock" color="text-dark" mb="s" />
       <Text color="text-dark">
         {t`There was a problem rendering this content.`}
       </Text>

@@ -127,7 +127,7 @@ export function PreviousValueComparison({
           {fittedChangeDisplay}
         </VariationPercent>
 
-        <VariationDetails color="var(--mb-color-text-secondary)">
+        <VariationDetails color="text-secondary">
           {fittedDetailDisplay}
         </VariationDetails>
 

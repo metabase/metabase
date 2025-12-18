@@ -75,7 +75,7 @@ export function EmbeddingSettingsCard({
             <Flex gap="sm">
               <Box>
                 <Icon
-                  color="var(--mb-color-text-secondary)"
+                  color="text-secondary"
                   name="info"
                   mt="2px"
                 />

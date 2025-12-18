@@ -84,7 +84,7 @@ export const BrowseModels = () => {
               <Group gap="sm">
                 <Icon
                   size={24}
-                  color="var(--mb-color-icon-primary)"
+                  color="icon-primary"
                   name="model"
                 />
                 {t`Models`}

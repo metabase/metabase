@@ -86,7 +86,7 @@ export function BrowseMetrics() {
               <Group gap="sm">
                 <Icon
                   size={24}
-                  color="var(--mb-color-icon-primary)"
+                  color="icon-primary"
                   name="metric"
                 />
                 {t`Metrics`}
