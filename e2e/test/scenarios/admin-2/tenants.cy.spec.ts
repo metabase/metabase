@@ -138,7 +138,7 @@ describe("Tenants - management", () => {
     cy.findByRole("link", { name: /Tenant users/ }).should("exist");
     cy.findByRole("link", { name: /Tenants/ }).should("exist");
 
-    H.main().within(() => {
+    cy.findByTestId("admin-layout-content").within(() => {
       cy.log("after enabling multi-tenancy, it takes you to the tenants page");
       cy.findByText("Tenants", { timeout: 10_000 }).should("be.visible");
 
