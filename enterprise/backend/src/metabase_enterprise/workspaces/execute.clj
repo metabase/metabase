@@ -52,7 +52,8 @@
                                              :table  source-table}] target-table)))
                    {:schemas {}
                     :tables  {}}
-                   table-mapping)]
+                   ;; Strip out the numeric keys (table ids)
+                   (filter (comp map? key) table-mapping))]
     ;; We may need to set other options, like the case insensitivity (driver dependent)
     (update-in source [:query :stages 0 :native] #(macaw/replace-names % remapping {:allow-unused? true}))))
 
