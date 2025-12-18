@@ -166,14 +166,13 @@
   (let [grouped (group-by (fn [perm]
                             [(:group-id perm) (:db-id perm) (:type perm)])
                           data-perms)]
-    (run!
-     (fn [[[group-id db-id perm-type] perms]]
-       (let [db-level (first (filter (comp nil? :table-id) perms))
-             individual (filter :table-id perms)]
-         (when (and db-level (seq individual))
-           (log/errorf "Conflicting entries for db_id:%s, group_id:%s, perm_type:%s, IDS: db-level:%s table-level:[%s]" db-id group-id (symbol perm-type)
-                       (:id db-level) (str/join ", " (map :id individual))))))
-     grouped)))
+    (doseq [[[group-id db-id perm-type] perms] grouped]
+      (let [db-level (first (filter (comp nil? :table-id) perms))
+            individual (filter :table-id perms)]
+        (when (and db-level (seq individual))
+          (log/with-context {:db-id db-id :group-id group-id :perm-type perm-type
+                             :permission-ids {:db (:id db-level) :table (map :id individual)}}
+            (log/error "Conflicting entries for database and tables in permissions graph")))))))
 
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
