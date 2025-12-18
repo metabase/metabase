@@ -424,3 +424,14 @@
             {:name "Min+sec", :display-name "Min+sec"}]
            normalized))
     (is (mr/validate ::mbql.s/Aggregation normalized))))
+
+(deftest ^:parallel normalize-aggregation-options-with-nil-options-test
+  (testing "nil options in :aggregation-options should get normalized to an empty map"
+    (let [normalized (lib/normalize ::mbql.s/aggregation-options [:aggregation-options [:count] nil])]
+      (is (= [:aggregation-options [:count] {}]
+             normalized))
+      (is (mr/validate ::mbql.s/aggregation-options normalized))))
+  (testing "::Aggregation itself should unwrap :aggregation-options with an empty options map"
+    (is (= [:count]
+           (lib/normalize ::mbql.s/Aggregation [:aggregation-options [:count] nil])
+           (lib/normalize ::mbql.s/Aggregation [:aggregation-options [:count] {}])))))

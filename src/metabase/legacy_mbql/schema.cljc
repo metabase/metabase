@@ -1322,7 +1322,11 @@
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
   [:map
    {:error/message    ":aggregation-options options"
-    :decode/normalize lib.schema.common/normalize-map}
+    :decode/normalize (fn [m]
+                        (let [m (if (nil? m)
+                                  {}
+                                  m)]
+                          (lib.schema.common/normalize-map m)))}
    ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
    ;; user-facing display name for this aggregation instead of the default one
@@ -1352,14 +1356,23 @@
 
 (mr/def ::Aggregation
   "Schema for anything that is a valid `:aggregation` clause."
-  [:multi
-   {:error/message "aggregation clause or numeric expression"
-    :dispatch      (fn [x]
-                     (if (is-clause? #{:aggregation-options :named} x)
-                       :aggregation-options
-                       :unnamed-aggregation))}
-   [:aggregation-options [:ref ::aggregation-options]]
-   [:unnamed-aggregation [:ref ::UnnamedAggregation]]])
+  [:and
+   [:multi
+    {:error/message "aggregation clause or numeric expression"
+     :dispatch      (fn [x]
+                      (if (is-clause? #{:aggregation-options :named} x)
+                        :aggregation-options
+                        :unnamed-aggregation))}
+    [:aggregation-options [:ref ::aggregation-options]]
+    [:unnamed-aggregation [:ref ::UnnamedAggregation]]]
+   [:any
+    {:description      "Normalization should automatically unwrap :aggregation-options with an empty options map"
+     :decode/normalize (fn [x]
+                         (or (when (is-clause? :aggregation-options x)
+                               (let [[_tag wrapped options] x]
+                                 (when (empty? options)
+                                   wrapped)))
+                             x))}]])
 
 (defn- normalize-aggregations [x]
   (let [xs (cond
