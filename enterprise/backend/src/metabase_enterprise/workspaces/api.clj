@@ -720,11 +720,11 @@
    {:keys [commit-message]
     :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
-  (let [ws               (u/prog1 (t2/select-one :model/Workspace :id ws-id)
+  (let [ws               (u/prog1 (t2/select-one [:model/Workspace :id :name :archived_at] :id ws-id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged
-                errors]} (-> (ws.merge/merge-workspace! ws-id api/*current-user-id* commit-message)
+                errors]} (-> (ws.merge/merge-workspace! ws api/*current-user-id* commit-message)
                              (update :errors
                                      (partial mapv #(-> %
                                                         (update :error (fn [e] (.getMessage ^Throwable e)))
@@ -759,9 +759,9 @@
    {:keys [commit-message]
     :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
-  (let [_ws          (api/check-404 (t2/select-one [:model/Workspace :id] :id ws-id))
+  (let [ws           (api/check-404 (t2/select-one [:model/Workspace :id :name] :id ws-id))
         ws-transform (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
-        {:keys [error] :as result} (ws.merge/merge-transform! ws-transform nil api/*current-user-id* commit-message)]
+        {:keys [error] :as result} (ws.merge/merge-transform! ws-transform ws nil api/*current-user-id* commit-message)]
     (if error
       (throw (ex-info "Failed to merge transform."
                       (-> result

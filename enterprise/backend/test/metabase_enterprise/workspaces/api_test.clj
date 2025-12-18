@@ -236,7 +236,7 @@
           (is (=? {:transform_id   (:id x1)
                    :commit_message commit-msg}
                   (t2/select-one :model/WorkspaceMergeTransform
-                                 :workspace_transform_ref_id ws-tx-ref-id))))))))
+                                 :transform_id (:id x1))))))))
 
 (deftest merge-workspace-transaction-failure-test
   (testing "transactions"
@@ -460,7 +460,7 @@
                    (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))
           (testing "merge history was created for single transform merge"
             (let [merge-transform (t2/select-one :model/WorkspaceMergeTransform
-                                                 :workspace_transform_ref_id ws-x-1-id)]
+                                                 :transform_id (:id x1))]
               (is (=? {:workspace_merge_id pos-int?
                        :transform_id       (:id x1)
                        :commit_message     commit-msg}
@@ -512,14 +512,13 @@
 
         (testing "returns merge history for a transform"
           ;; workspace_id is nil because workspace is deleted after merge (SET NULL FK)
-          (is (=? [{:id                         pos-int?
-                    :workspace_merge_id         pos-int?
-                    :commit_message             commit-msg
-                    :workspace_id               nil
-                    :workspace_name             ws-name
-                    :workspace_transform_ref_id ws-tx-ref-id
-                    :creator_id                 (mt/user->id :crowberto)
-                    :created_at                 some?}]
+          (is (=? [{:id                 pos-int?
+                    :workspace_merge_id pos-int?
+                    :commit_message     commit-msg
+                    :workspace_id       nil
+                    :workspace_name     ws-name
+                    :merging_user_id    (mt/user->id :crowberto)
+                    :created_at         some?}]
                   (mt/user-http-request :crowberto :get 200
                                         (str "ee/transform/" (:id x1) "/merge-history")))))
 

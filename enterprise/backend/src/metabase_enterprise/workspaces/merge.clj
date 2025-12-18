@@ -29,24 +29,24 @@
    This should also clear it out from the Changset, as it no longer has any changes.
 
    Creates a WorkspaceMerge and WorkspaceMergeTransform history record.
+   - workspace: The workspace map (must have :id and :name keys)
    - workspace-merge-id: ID of parent WorkspaceMerge (nil to create a new one for single-transform merges)
-   - actor-id: user performing the merge
+   - merging-user-id: user performing the merge
    - commit-message: description of the merge"
-  [{:keys [global_id ref_id archived_at workspace_id] :as ws-transform} workspace-merge-id actor-id commit-message]
+  [{:keys [global_id ref_id archived_at] :as ws-transform} workspace workspace-merge-id merging-user-id commit-message]
   ;; Problems this may run into:
   ;; It will recalculate and validate the dag greedily as it inserts each items, and this might fail of temporary conflicts.
   ;; Some of these conflicts could be solved by ordering things smartly, but in the general case (e.g. reversing a
   ;; chain) this will not be possible - we would need to defer all validation and calculation, which is a bit scary.
   ;; Let's just focus on the happy path for now though, as this is a fundamental problem and unrelated to the design.
 
-  (let [workspace      (t2/select-one [:model/Workspace :id :name] :id workspace_id)
-        ws-merge-id    (or workspace-merge-id
+  (let [ws-merge-id    (or workspace-merge-id
                            (t2/insert-returning-pk!
                             :model/WorkspaceMerge
-                            {:workspace_id   workspace_id
+                            {:workspace_id   (:id workspace)
                              :workspace_name (:name workspace)
                              :commit_message commit-message
-                             :creator_id     actor-id}))
+                             :creator_id     merging-user-id}))
         {:keys [error] :as result}
         (cond (and global_id archived_at)
               (merge
@@ -83,13 +83,12 @@
       (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
       (create-merge-transform-history!
        (:op result)
-       {:workspace_merge_id         ws-merge-id
-        :workspace_id               (:id workspace)
-        :workspace_name             (:name workspace)
-        :transform_id               (:global_id result)
-        :workspace_transform_ref_id ref_id
-        :commit_message             commit-message
-        :creator_id                 actor-id}))
+       {:workspace_merge_id ws-merge-id
+        :workspace_id       (:id workspace)
+        :workspace_name     (:name workspace)
+        :transform_id       (:global_id result)
+        :commit_message     commit-message
+        :merging_user_id    merging-user-id}))
 
     result))
 
@@ -98,24 +97,23 @@
   "Make all the transforms in the Changeset public, i.e. create or update the relevant model/Transform entities.
    This should also clear the entire Changeset, as it no longer has any changes.
 
-   - ws-id: ID of the workspace to merge
-   - actor-id: user performing the merge
+   - workspace: The workspace map (must have :id and :name keys)
+   - merging-user-id: user performing the merge
    - commit-message: description of the merge"
-  [ws-id actor-id commit-message]
+  [workspace merging-user-id commit-message]
   ;; Perhaps we want to solve the N+1?
   ;; This will require reworking the lifecycle for validating and recalculating dependencies for the transforms.
   (t2/with-transaction [tx]
     (let [savepoint   (.setSavepoint ^Connection tx)
-          workspace   (t2/select-one [:model/Workspace :id :name] :id ws-id)
           ws-merge-id (t2/insert-returning-pk!
                        :model/WorkspaceMerge
-                       {:workspace_id   ws-id
+                       {:workspace_id   (:id workspace)
                         :workspace_name (:name workspace)
                         :commit_message commit-message
-                        :creator_id     actor-id})
+                        :creator_id     merging-user-id})
           result     (reduce
                       (fn [acc ws-transform]
-                        (let [{:keys [error] :as result} (merge-transform! ws-transform ws-merge-id actor-id commit-message)]
+                        (let [{:keys [error] :as result} (merge-transform! ws-transform workspace ws-merge-id merging-user-id commit-message)]
                           (if error
                             (reduced (-> acc
                                          (update :errors conj result)
@@ -125,7 +123,7 @@
                       {:merged {:transforms []}
                        :errors []
                        #_#_:short_circuit false}
-                      (t2/select :model/WorkspaceTransform :workspace_id ws-id))]
+                      (t2/select :model/WorkspaceTransform :workspace_id (:id workspace)))]
       (when (seq (:errors result))
         (.rollback ^Connection tx savepoint))
       result)))

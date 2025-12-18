@@ -198,8 +198,7 @@
    [:commit_message :string]
    [:workspace_id [:maybe ms/PositiveInt]]
    [:workspace_name :string]
-   [:workspace_transform_ref_id :string]
-   [:creator_id ms/PositiveInt]
+   [:merging_user_id ms/PositiveInt]
    [:created_at :any]])
 
 (api.macros/defendpoint :get "/:id/merge-history"
@@ -215,8 +214,7 @@
               :commit_message
               :workspace_id
               :workspace_name
-              :workspace_transform_ref_id
-              :creator_id
+              :merging_user_id
               :created_at]
              {:where    [:= :transform_id id]
               :order-by [[:created_at :desc]]}))

@@ -3942,23 +3942,18 @@ databaseChangeLog:
                     foreignKeyName: fk_workspace_merge_transform_transform_id
                     deleteCascade: true
               - column:
-                  name: workspace_transform_ref_id
-                  type: varchar(255)
-                  remarks: Foreign key to workspace_transform.ref_id, SET NULL on delete
-                  constraints:
-                    nullable: true
-              - column:
                   name: commit_message
                   type: ${text.type}
                   constraints:
                     nullable: false
               - column:
-                  name: creator_id
+                  name: merging_user_id
                   type: int
+                  remarks: User who performed the merge
                   constraints:
                     nullable: false
                     references: core_user(id)
-                    foreignKeyName: fk_workspace_merge_transform_creator_id
+                    foreignKeyName: fk_workspace_merge_transform_merging_user_id
               - column:
                   name: created_at
                   type: ${timestamp_type}
@@ -3985,22 +3980,6 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: workspace_merge_transform
             constraintName: fk_workspace_merge_transform_workspace_id
-
-  - changeSet:
-      id: v58.2025-12-17T11:00:06
-      author: qnkhuat
-      comment: Add index on workspace_merge_transform.workspace_transform_ref_id
-      changes:
-        - createIndex:
-            tableName: workspace_merge_transform
-            indexName: idx_workspace_merge_transform_ref_id
-            columns:
-              - column:
-                  name: workspace_transform_ref_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_merge_transform
-            indexName: idx_workspace_merge_transform_ref_id
 
   - changeSet:
       id: v58.2025-12-17T11:00:07
@@ -4053,18 +4032,18 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-17T11:00:10
       author: qnkhuat
-      comment: Add index on workspace_merge_transform.creator_id
+      comment: Add index on workspace_merge_transform.merging_user_id
       changes:
         - createIndex:
             tableName: workspace_merge_transform
-            indexName: idx_workspace_merge_transform_creator_id
+            indexName: idx_workspace_merge_transform_merging_user_id
             columns:
               - column:
-                  name: creator_id
+                  name: merging_user_id
       rollback:
         - dropIndex:
             tableName: workspace_merge_transform
-            indexName: idx_workspace_merge_transform_creator_id
+            indexName: idx_workspace_merge_transform_merging_user_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
