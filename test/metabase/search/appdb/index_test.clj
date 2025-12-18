@@ -550,9 +550,7 @@
    "document"          #{"action" "model_index_value" "report_card"}
    "report_card"       #{"action" "model_index_value" "report_card"}
    "report_dashboard"  #{"action" "model_index_value" "report_card"}
-   ;; TODO (lbrdnk 2025/12/17): Following is probably wrong and will be hopefully changed with project going forward,
-   ;; e.g. when workspace schema is adjusted to v2.2.
-   "workspace"        #{"action" "collection" "model_index_value" "report_card" "transform"}})
+   "workspace"        #{"collection"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants
