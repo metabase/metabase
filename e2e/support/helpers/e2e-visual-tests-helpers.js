@@ -1,6 +1,6 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/lib/colors";
-import { Icons } from "metabase/ui";
+import { Icons } from "metabase/ui/components/icons/Icon/icons";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
 import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
 import {
