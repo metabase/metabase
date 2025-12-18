@@ -117,9 +117,9 @@ You can also use the Redux actions and selectors directly, for example, `dispatc
 
 ### Set up Prettier
 
-We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `pnpm prettier`, and verify it has been formatted correctly using `pnpm lint-prettier`.
+We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run prettier`, and verify it has been formatted correctly using `bun run lint-prettier`.
 
-We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `pnpm lint-eslint` to check.
+We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `bun run lint-eslint` to check.
 
 ### React and JSX Style Guide
 

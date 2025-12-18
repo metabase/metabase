@@ -20,7 +20,7 @@ version: '3.1'
 # ;; when you connect to data warehouses, you'll use docker networking to
 # ;; connect (e.g. metabasedb_postgres_14_data:5432 vs. localhost:15432).
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file dev/docker-compose.yml up
-# ;; All of the above, and builds the frontend, too. No need for `pnpm build-hot` locally.
+# ;; All of the above, and builds the frontend, too. No need for `bun run build-hot` locally.
 # ;; NOTE: See comment below on fe-builder service. This isn't quite ready yet.
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file dev/docker-compose.yml up
 #
@@ -74,20 +74,18 @@ services:
 #       Hopefully one of our node geniuses can figure it out.
   # Just build the frontend. Mounts local dev so nothing else needed
   fe-builder:
-    image: node:22-bullseye
+    image: oven/bun:latest
     container_name: fe-builder
     working_dir: /dev/metabase
     volumes:
       - ../:/dev/metabase
-      - ~/.npm:/root/.npm
-      - ~/.local/share/pnpm/store:/root/.local/share/pnpm/store
+      - ~/.bun/install/cache:/root/.bun/install/cache
     command:
       - /bin/sh
       - -c
       - |
-        npm install -g pnpm@10
-        pnpm install
-        pnpm build-hot
+        bun install
+        bun run build-hot
     profiles:
       - fe-builder
 

@@ -1,5 +1,4 @@
 // Storybook helpers
-// @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { useEffect, useMemo } from "react";

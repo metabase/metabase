@@ -11,7 +11,9 @@ type NotMountedYet = typeof NOT_MOUNTED_YET;
 type NotebookScreenSize = "small" | "large" | NotMountedYet;
 
 export const useNotebookScreenSize = (): NotebookScreenSize => {
-  const { width: windowWidth } = useWindowSize(INITIAL_WINDOW_WIDTH);
+  const { width: windowWidth } = useWindowSize({
+    initialWidth: INITIAL_WINDOW_WIDTH,
+  });
   const isMounted = Number.isFinite(windowWidth);
   const isBelowBreakpoint = windowWidth < BREAKPOINT;
 

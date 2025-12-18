@@ -37,22 +37,22 @@ get_node_version() {
 }
 
 # =============================================================================
-# Yarn
+# Bun
 # =============================================================================
 
-get_yarn_version() {
-    if has_tool yarn; then
-        yarn --version
+get_bun_version() {
+    if has_tool bun; then
+        bun --version
     else
         echo ""
     fi
 }
 
-check_yarn_classic() {
+check_bun_version() {
     local version=$1
     if [ -n "$version" ]; then
         local major_version=$(echo "$version" | cut -d. -f1)
-        if [ "$major_version" = "1" ]; then
+        if [ "$major_version" -ge 1 ]; then
             return 0
         fi
     fi

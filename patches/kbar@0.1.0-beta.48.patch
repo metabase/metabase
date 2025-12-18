@@ -1,0 +1,29 @@
+diff --git a/node_modules/kbar/.bun-tag-d0c4bb990a15e37e b/.bun-tag-d0c4bb990a15e37e
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/lib/InternalEvents.js b/lib/InternalEvents.js
+index 7900f508d977afad3110f57f8041bdc8f5c544a6..48cc20751d48e64f3e756f77e10e0ef810398d0a 100644
+--- a/lib/InternalEvents.js
++++ b/lib/InternalEvents.js
+@@ -221,7 +221,7 @@ function useShortcuts() {
+                     (_c = (_b = options.callbacks) === null || _b === void 0 ? void 0 : _b.onOpen) === null || _c === void 0 ? void 0 : _c.call(_b);
+                 }
+                 else {
+-                    (_d = action.command) === null || _d === void 0 ? void 0 : _d.perform();
++                    (_d = action.command) === null || _d === void 0 ? void 0 : _d.perform(action, event);
+                     (_f = (_e = options.callbacks) === null || _e === void 0 ? void 0 : _e.onSelectAction) === null || _f === void 0 ? void 0 : _f.call(_e, action);
+                 }
+             });
+diff --git a/lib/types.d.ts b/lib/types.d.ts
+index 0f55bc8fd86a1d2df91ee2cfeb3078ced3094f72..9edbeb2f1f920b0ef961c64f031a052dbcd062fe 100644
+--- a/lib/types.d.ts
++++ b/lib/types.d.ts
+@@ -14,7 +14,7 @@ export declare type Action = {
+     section?: ActionSection;
+     icon?: string | React.ReactElement | React.ReactNode;
+     subtitle?: string;
+-    perform?: (currentActionImpl: ActionImpl) => any;
++    perform?: (currentActionImpl: ActionImpl, event?: KeyboardEvent) => any;
+     parent?: ActionId;
+     priority?: Priority;
+ };

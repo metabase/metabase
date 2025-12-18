@@ -1,4 +1,3 @@
-// @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react/*";

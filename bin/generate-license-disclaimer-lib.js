@@ -13,9 +13,9 @@ function normalizeRepoUrl(url) {
 }
 
 /**
- * Generate disclaimer text from pnpm licenses data.
+ * Generate disclaimer text from bun licenses data.
  *
- * @param {object} licensesData - Raw output from `pnpm licenses list --json`
+ * @param {object} licensesData - Raw output from `bun pm licenses --json`
  * @param {function} getLicenseInfo - Callback (pkg) => {licenseText, repoUrl} to resolve license info for each package
  * @returns {string} The disclaimer text
  */

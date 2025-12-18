@@ -1,12 +1,12 @@
 name: Prepare Release Scripts
-description: Set up pnpm and build release scripts
+description: Set up bun and build release scripts
 
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@v4
+    - uses: oven-sh/setup-bun@v2
       with:
-        version: 10
+        bun-version: latest
     - name: Build release scripts
       shell: bash
-      run: cd ${{ github.workspace }}/release && pnpm install --frozen-lockfile && pnpm build
+      run: cd ${{ github.workspace }}/release && bun install --frozen-lockfile && bun run build

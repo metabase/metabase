@@ -12,11 +12,11 @@ Before running Loki tests locally, ensure that both Storybook and Docker are run
 
 ### Commands
 
-- Run Visual Tests: `pnpm test-visual:loki` (Note: do not commit screenshots from this, use the CI variant below, they will be more consistent)
-- Run Visual Tests in CI: `pnpm test-visual:loki:ci`
-- Update failing snapshots: `pnpm test-visual:loki-approve-diff`
-- Generate an HTML Report: `pnpm test-visual:loki-report`
-- Generate and Open Report: `pnpm test-visual:loki-report-open`
+- Run Visual Tests: `bun run test-visual:loki` (Note: do not commit screenshots from this, use the CI variant below, they will be more consistent)
+- Run Visual Tests in CI: `bun run test-visual:loki:ci`
+- Update failing snapshots: `bun run test-visual:loki-approve-diff`
+- Generate an HTML Report: `bun run test-visual:loki-report`
+- Generate and Open Report: `bun run test-visual:loki-report-open`
 
 ## CI
 

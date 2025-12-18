@@ -7,7 +7,7 @@ const BASE_ENV = {
 };
 
 const BASE_SETUP_CONFIG = {
-  "app-run-command": "pnpm start",
+  "app-run-command": "bun run start",
   "app-down-command": `kill -9 $(lsof -ti:"${BASE_ENV.CLIENT_PORT}");`,
   env: BASE_ENV,
   cypressEnv: {

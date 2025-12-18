@@ -16,10 +16,10 @@ runs:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
+    - name: Install bun
+      uses: oven-sh/setup-bun@v2
       with:
-        version: 10
+        bun-version: latest
 
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys
@@ -33,12 +33,12 @@ runs:
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
-    - name: Get pnpm store directory
-      id: pnpm-cache
+    - name: Get bun cache directory
+      id: bun-cache
       run: |
-        PNPM_STORE_DIR=$(pnpm store path)
-        echo "Pnpm store directory: $PNPM_STORE_DIR"
-        echo "dir=$PNPM_STORE_DIR" >> $GITHUB_OUTPUT
+        BUN_CACHE_DIR=$(bun pm cache)
+        echo "Bun cache directory: $BUN_CACHE_DIR"
+        echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
       shell: bash
 
     # TEMPORARILY DISABLED: Testing if cache causes Next.js host app CI failures
@@ -47,7 +47,7 @@ runs:
     #   id: node-modules-cache
     #   with:
     #     path: |
-    #       ${{ steps.pnpm-cache.outputs.dir }}
+    #       ${{ steps.bun-cache.outputs.dir }}
     #       node_modules
     #     key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
@@ -55,9 +55,9 @@ runs:
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
     - name: Clean install
-      run: pnpm install --frozen-lockfile --prefer-offline
+      run: bun install --frozen-lockfile
       shell: bash
     - name: Patch frontend dependencies
       if: inputs.apply-patches == 'true'
-      run: pnpm patch-package
+      run: bun run patch-package
       shell: bash

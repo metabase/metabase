@@ -3,9 +3,9 @@ const {
 } = require("./generate-license-disclaimer-lib");
 
 describe("generateDisclaimerText", () => {
-  // Helper to create pnpm licenses data structure
+  // Helper to create bun licenses data structure
   const makeLicensesData = packages => {
-    // pnpm groups by license type, but we just need entries
+    // bun groups by license type, but we just need entries
     return {
       MIT: packages,
     };
@@ -24,7 +24,7 @@ describe("generateDisclaimerText", () => {
     );
   });
 
-  it("flattens packages from pnpm structure", () => {
+  it("flattens packages from bun structure", () => {
     const licensesData = {
       MIT: [
         {

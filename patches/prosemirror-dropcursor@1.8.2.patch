@@ -1,7 +1,7 @@
-diff --git a/node_modules/prosemirror-dropcursor/dist/index.js b/node_modules/prosemirror-dropcursor/dist/index.js
+diff --git a/dist/index.js b/dist/index.js
 index c9bc7b5..ae9fcce 100644
---- a/node_modules/prosemirror-dropcursor/dist/index.js
-+++ b/node_modules/prosemirror-dropcursor/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
 @@ -128,7 +128,7 @@ class DropCursorView {
                      target = point;
              }

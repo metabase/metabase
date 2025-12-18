@@ -8,8 +8,8 @@ Code in this directory should carefully reference external code, including code 
 
 ## Build
 
-You can build the SDK NPM package with `pnpm build-embedding-sdk-package`.
-You can build the SDK bundle with `pnpm build-release:embedding-sdk-bundle`
+You can build the SDK NPM package with `bun run build-embedding-sdk-package`.
+You can build the SDK bundle with `bun run build-release:embedding-sdk-bundle`
 
 #### embedding-sdk:dev
 
@@ -36,7 +36,7 @@ Storybook expects an instance running on `localhost:3000` with some configuratio
 - on [/admin/embedding/modular](http://localhost:3000/admin/embedding/modular)
   - Enable the "SDK for React" card
 
-Then you can run `pnpm storybook-embedding-sdk` to start storybook.
+Then you can run `bun run storybook-embedding-sdk` to start storybook.
 
 Storybook will use the source files and not the built package.
 
@@ -62,10 +62,10 @@ We recommend running either the dev or the watch command to have shorter a feedb
 To start the cypress for the e2e tests:
 
 ```bash
-CYPRESS_TESTING_TYPE="component" pnpm test-cypress
+CYPRESS_TESTING_TYPE="component" bun run test-cypress
 ```
 
-Then in a separate terminal run `pnpm embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
+Then in a separate terminal run `bun run embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
 
 ### Sample Apps compatibility with Embedding SDK tests
 
@@ -78,13 +78,13 @@ Define one of the following environment variables with enterprise token: `CYPRES
 To run these tests locally, run:
 
 ```
-SDK_TEST_SUITE=<sample_app_repo_name>-e2e pnpm test-cypress-host-sample-apps
+SDK_TEST_SUITE=<sample_app_repo_name>-e2e bun run test-cypress-host-sample-apps
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 
 ```
-SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e pnpm test-cypress-host-sample-apps
+SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e bun run test-cypress-host-sample-apps
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
@@ -130,13 +130,13 @@ Tests a bit similar to Sample App tests, but:
 To run these tests locally, run:
 
 ```
-ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production pnpm test-cypress-host-sample-apps
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production bun run test-cypress-host-sample-apps
 ```
 
 For example for the `vite-6-host-app` Host App, run:
 
 ```
-ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production pnpm test-cypress-host-sample-apps
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production bun run test-cypress-host-sample-apps
 ```
 
 #### CI runs
@@ -150,7 +150,7 @@ To test a local build of the sdk in a local project, you can install the sdk fro
 Assuming your projects are in a sibling directory of the metabase core app, you can run
 
 ```
-pnpm add file:../metabase/resources/embedding-sdk
+bun run add file:../metabase/resources/embedding-sdk
 ```
 
 or
@@ -172,10 +172,10 @@ webpack: `rm -rf node_modules/.cache`
 We recommend clearing the cache every time you install the sdk, a common workflow is to:
 
 - remove `node_modules/@metabase` to make sure no old files are used
-- install the sdk with `pnpm add file:../metabase/resources/embedding-sdk` / `npm install --install-links ../metabase/resources/embedding-sdk`
+- install the sdk with `bun run add file:../metabase/resources/embedding-sdk` / `npm install --install-links ../metabase/resources/embedding-sdk`
 - clean the cache of your bundler
 
-An example for vite: `rm -rf node_modules/@metabase && rm -rf node_modules/.vite && pnpm add file:../metabase/resources/embedding-sdk`
+An example for vite: `rm -rf node_modules/@metabase && rm -rf node_modules/.vite && bun run add file:../metabase/resources/embedding-sdk`
 
 We usually create a custom `dev:link` script in the package.json to simplify the process.
 

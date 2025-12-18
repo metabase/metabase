@@ -1,0 +1,12 @@
+[install]
+# Increase timeout for large packages (in milliseconds)
+timeout = 600000
+
+# Strict mode settings
+peer = false                    # Don't auto-install peer dependencies
+production = false              # Include devDependencies
+exact = true                    # Use exact versions in package.json when adding deps
+
+[install.lockfile]
+save = true                     # Always save lockfile changes
+print = "yarn"                  # Human-readable lockfile format for better diffs

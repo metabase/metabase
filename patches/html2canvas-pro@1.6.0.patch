@@ -1,0 +1,12 @@
+diff --git a/dist/types/index.d.ts b/dist/types/index.d.ts
+index afe2fcc518466ace2b8d48131c44f05a117a3da4..a78d9c9a65d42df9101c4f6ef5ac053b695c82d2 100644
+--- a/dist/types/index.d.ts
++++ b/dist/types/index.d.ts
+@@ -5,6 +5,7 @@ export type Options = CloneOptions & WindowOptions & RenderOptions & ContextOpti
+     backgroundColor: string | null;
+     foreignObjectRendering: boolean;
+     removeContainer?: boolean;
++    nonce?: string;
+ };
+ declare const html2canvas: (element: HTMLElement, options?: Partial<Options>) => Promise<HTMLCanvasElement>;
+ export default html2canvas;

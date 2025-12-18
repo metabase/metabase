@@ -1,7 +1,7 @@
-diff --git a/node_modules/echarts/lib/chart/line/LineView.js b/node_modules/echarts/lib/chart/line/LineView.js
+diff --git a/lib/chart/line/LineView.js b/lib/chart/line/LineView.js
 index 79ac429..4075c93 100644
---- a/node_modules/echarts/lib/chart/line/LineView.js
-+++ b/node_modules/echarts/lib/chart/line/LineView.js
+--- a/lib/chart/line/LineView.js
++++ b/lib/chart/line/LineView.js
 @@ -156,6 +156,9 @@ function turnPointsIntoStep(points, basePoints, coordSys, stepTurnAt, connectNul
      pt[0] = points[i];
      pt[1] = points[i + 1];
@@ -12,10 +12,10 @@ index 79ac429..4075c93 100644
      switch (stepTurnAt) {
        case 'end':
          stepPt[baseIndex] = nextPt[baseIndex];
-diff --git a/node_modules/echarts/lib/chart/line/helper.js b/node_modules/echarts/lib/chart/line/helper.js
+diff --git a/lib/chart/line/helper.js b/lib/chart/line/helper.js
 index b9cef72..4729614 100644
---- a/node_modules/echarts/lib/chart/line/helper.js
-+++ b/node_modules/echarts/lib/chart/line/helper.js
+--- a/lib/chart/line/helper.js
++++ b/lib/chart/line/helper.js
 @@ -107,16 +107,20 @@ function getValueStart(valueAxis, valueOrigin) {
    return valueStart;
  }
@@ -42,10 +42,10 @@ index b9cef72..4729614 100644
 +  stackedData[1 - baseDataOffset] = stackedOverValue;
    return coordSys.dataToPoint(stackedData);
  }
-diff --git a/node_modules/echarts/lib/data/helper/dataStackHelper.js b/node_modules/echarts/lib/data/helper/dataStackHelper.js
+diff --git a/lib/data/helper/dataStackHelper.js b/lib/data/helper/dataStackHelper.js
 index c25de1b..454a3d3 100644
---- a/node_modules/echarts/lib/data/helper/dataStackHelper.js
-+++ b/node_modules/echarts/lib/data/helper/dataStackHelper.js
+--- a/lib/data/helper/dataStackHelper.js
++++ b/lib/data/helper/dataStackHelper.js
 @@ -83,6 +83,12 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
    var stackedDimInfo;
    var stackResultDimension;
@@ -84,10 +84,10 @@ index c25de1b..454a3d3 100644
    }
    // Add stack dimension, they can be both calculated by coordinate system in `unionExtent`.
    // That put stack logic in List is for using conveniently in echarts extensions, but it
-diff --git a/node_modules/echarts/lib/label/labelLayoutHelper.js b/node_modules/echarts/lib/label/labelLayoutHelper.js
+diff --git a/lib/label/labelLayoutHelper.js b/lib/label/labelLayoutHelper.js
 index 8927284..3ba88fc 100644
---- a/node_modules/echarts/lib/label/labelLayoutHelper.js
-+++ b/node_modules/echarts/lib/label/labelLayoutHelper.js
+--- a/lib/label/labelLayoutHelper.js
++++ b/lib/label/labelLayoutHelper.js
 @@ -411,6 +411,12 @@ export function hideOverlap(labelList) {
      }
      var label = labelItem.label;

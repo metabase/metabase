@@ -84,7 +84,7 @@ export const PlainLink = Link.extend({
   addOptions() {
     const base = this.parent?.();
     return {
-      ...base,
+      ...base!,
       HTMLAttributes: {
         ...base?.HTMLAttributes,
         class: cx(CS.link, S.plainLink, base?.HTMLAttributes?.class),

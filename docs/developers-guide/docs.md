@@ -11,19 +11,19 @@ Notes on writing docs for Metabase.
 You can check for broken links in the [docs](../) directory by running:
 
 ```
-pnpm run docs-lint-links
+bun run run docs-lint-links
 ```
 
 This command uses [Markdown link check](https://github.com/tcort/markdown-link-check) to vet links in all of the markdown files in the [docs](../) directory. We recommend writing the command's output to a file. E.links.,
 
 ```
-touch ~/links-to-fix.txt && pnpm run docs-lint-links > ~/links-to-fix.txt
+touch ~/links-to-fix.txt && bun run run docs-lint-links > ~/links-to-fix.txt
 ```
 
 Alternatively, if you just want to check the in-product links to make sure they link to actual documents:
 
 ```
-pnpm run lint-docs-links
+bun run run lint-docs-links
 ```
 
 You can view both commands in the [package.json](https://github.com/metabase/metabase/blob/master/package.json) file under `scripts`.

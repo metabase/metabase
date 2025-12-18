@@ -5,7 +5,7 @@ function prepare_files() {
 }
 
 function install_dependencies() {
-  pnpm --dir ./enterprise/frontend/src/embedding-sdk-package/cli-snippets-tmp/express-server install --frozen-lockfile
+  cd ./enterprise/frontend/src/embedding-sdk-package/cli-snippets-tmp/express-server && bun install --frozen-lockfile && cd ../../../../../../..
 }
 
 function type_check() {

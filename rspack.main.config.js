@@ -348,7 +348,7 @@ if (shouldEnableHotRefresh) {
     throw new Error("webpack config is missing configuration");
   }
 
-  // suffixing with ".hot" allows us to run both `pnpm run build-hot` and `pnpm run test` or `pnpm run test-watch` simultaneously
+  // suffixing with ".hot" allows us to run both `bun run build-hot` and `bun run test` or `bun run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server

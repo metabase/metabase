@@ -22,7 +22,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: pnpm test-unit frontend/src/metabase/querying/expressions/pratt/fuzz.lexifier.unit.spec.ts
+      - run: bun run test-unit frontend/src/metabase/querying/expressions/pratt/fuzz.lexifier.unit.spec.ts
         env:
           MB_FUZZ: 1
         name: Run fuzz testing on the lexifier
@@ -36,7 +36,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: pnpm test-unit frontend/src/metabase/querying/expressions/fuzz.compiler.unit.spec.ts
+      - run: bun run test-unit frontend/src/metabase/querying/expressions/fuzz.compiler.unit.spec.ts
         env:
           MB_FUZZ: 1
         name: Run fuzz testing on the custom expression compiler
@@ -50,7 +50,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: pnpm test-unit frontend/src/metabase/querying/expressions/fuzz.string.unit.spec.ts
+      - run: bun run test-unit frontend/src/metabase/querying/expressions/fuzz.string.unit.spec.ts
         env:
           MB_FUZZ: 1
         name: Run fuzz testing on the custom expression string quoter

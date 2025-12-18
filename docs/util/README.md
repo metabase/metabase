@@ -7,13 +7,13 @@ Scripts for generating docs.
 From this directory, run:
 
 ```bash
-pnpm install
+bun run install
 ```
 
 Then:
 
 ```bash
-pnpm generate-shortcuts
+bun run generate-shortcuts
 ```
 Docs will be written to:
 
