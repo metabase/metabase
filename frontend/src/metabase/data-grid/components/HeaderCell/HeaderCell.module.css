@@ -11,36 +11,15 @@
 }
 
 .content {
-  display: flex;
-  align-items: center;
-  padding: 0.25rem 0.625em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--mb-color-brand);
-  border-radius: 5px;
   overflow: auto;
   outline: none;
-  gap: 0.25rem;
-}
-
-.alignRight {
-  flex-direction: row-reverse;
-}
-
-.light .content {
-  transition: background-color 200ms ease-in-out;
-  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 92%);
-  cursor: pointer;
-}
-
-.light .content:hover {
-  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 82%);
 }
 
 .outline .content {
+  background-color: transparent;
   border: 1px solid var(--mb-color-border);
 }
 
-.sortIndicator {
-  flex-shrink: 0;
+.outline .content:hover {
+  background-color: transparent;
 }
