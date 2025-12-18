@@ -294,54 +294,48 @@ describe("scenarios > data studio > data model > measures", () => {
         aggregation: ["count"],
       });
       cy.get<number>("@measureId").then((measureId) => {
-        cy.log("update measure name");
-        cy.request("PUT", `/api/measure/${measureId}`, {
-          name: "Updated Name",
-          description: "Original description",
-          revision_message: "Updated from Data Studio",
-          definition: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-            },
-          },
+        // Fetch the measure to get the current pMBQL definition
+        cy.request("GET", `/api/measure/${measureId}`).then(({ body }) => {
+          const currentDefinition = body.definition;
+
+          cy.log("update measure name");
+          cy.request("PUT", `/api/measure/${measureId}`, {
+            name: "Updated Name",
+            description: "Original description",
+            revision_message: "Updated from Data Studio",
+            definition: currentDefinition,
+          });
+
+          cy.log("update measure description");
+          cy.request("PUT", `/api/measure/${measureId}`, {
+            name: "Updated Name",
+            description: "Updated description",
+            revision_message: "Updated from Data Studio",
+            definition: currentDefinition,
+          });
+
+          cy.log("update measure aggregation");
+          // Update aggregation in the pMBQL definition
+          const updatedDefinition = {
+            ...currentDefinition,
+            stages: [
+              {
+                ...currentDefinition.stages[0],
+                aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+              },
+            ],
+          };
+          cy.request("PUT", `/api/measure/${measureId}`, {
+            name: "Updated Name",
+            description: "Updated description",
+            revision_message: "Updated from Data Studio",
+            definition: updatedDefinition,
+          });
+
+          cy.wait(1000);
+
+          visitDataModelMeasure(ORDERS_ID, measureId);
         });
-
-        cy.log("update measure description");
-        cy.request("PUT", `/api/measure/${measureId}`, {
-          name: "Updated Name",
-          description: "Updated description",
-          revision_message: "Updated from Data Studio",
-          definition: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-            },
-          },
-        });
-
-        cy.log("update measure aggregation");
-        cy.request("PUT", `/api/measure/${measureId}`, {
-          name: "Updated Name",
-          description: "Updated description",
-          revision_message: "Updated from Data Studio",
-          definition: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-            },
-          },
-        });
-
-        cy.wait(1000);
-
-        visitDataModelMeasure(ORDERS_ID, measureId);
       });
 
       cy.log("navigate to revision history tab");
