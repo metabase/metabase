@@ -1,4 +1,4 @@
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import {
   closeObjectDetail,

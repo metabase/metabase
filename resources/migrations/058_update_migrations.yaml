@@ -1002,6 +1002,13 @@ databaseChangeLog:
       id: v58.2025-11-25T17:04:00
       author: dependencies
       comment: Add dependency_analysis_version to segment table for tracking dependency changes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v57.2025-11-25T17:04:00
+              author: dependencies
+              changeLogFile: migrations/057_update_migrations.yaml
       changes:
         - addColumn:
             tableName: segment
@@ -1087,6 +1094,43 @@ databaseChangeLog:
                   remarks: The ID of the collection
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v58.2025-12-03T17:08:36
+      author: nvoxland
+      comment: Add collection_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection the transform is in
+
+  - changeSet:
+      id: v58.2025-12-03T17:08:37
+      author: nvoxland
+      comment: Add index on transform.collection_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v58.2025-12-03T17:08:38
+      author: nvoxland
+      comment: Add fk_transform_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_transform_collection_id
 
   - changeSet:
       id: v58.2025-12-05T17:41:51

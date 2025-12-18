@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -48,12 +49,22 @@
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
+(defmethod collection/allowed-namespaces :model/Transform
+  [_]
+  #{:transforms})
+
 (t2/define-before-insert :model/Transform
-  [{:keys [source] :as transform}]
+  [{:keys [source collection_id] :as transform}]
+  (collection/check-collection-namespace :model/Transform collection_id)
+  (when collection_id
+    (collection/check-allowed-content :model/Transform collection_id))
   (assoc transform :source_type (transforms.util/transform-source-type source)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
+  (when-let [new-collection (:collection_id (t2/changes transform))]
+    (collection/check-collection-namespace :model/Transform new-collection)
+    (collection/check-allowed-content :model/Transform new-collection))
   (if source
     (assoc transform :source_type (transforms.util/transform-source-type source))
     transform))
@@ -221,14 +232,15 @@
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
-  {:copy [:name :description :entity_id]
-   :skip [:dependency_analysis_version :source_type]
-   :transform {:created_at (serdes/date)
-               :creator_id (serdes/fk :model/User)
-               :source     {:export #(update % :query serdes/export-mbql)
-                            :import #(update % :query serdes/import-mbql)}
-               :target     {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags       (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+  {:copy      [:name :description :entity_id]
+   :skip      [:dependency_analysis_version :source_type]
+   :transform {:created_at    (serdes/date)
+               :creator_id    (serdes/fk :model/User)
+               :collection_id (serdes/fk :model/Collection)
+               :source        {:export #(update % :query serdes/export-mbql)
+                               :import #(update % :query serdes/import-mbql)}
+               :target        {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags          (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source tags]}]
