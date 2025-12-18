@@ -44,6 +44,11 @@
 
       :else false)))
 
+(defn effective-type
+  "Returns the :effective-type of `column`, if set. Otherwise, returns the :base-type."
+  [column]
+  (or (:effective-type column) (:base-type column)))
+
 (defn ^:export temporal?
   "Is `column` of a temporal type?"
   [column]
@@ -142,12 +147,12 @@
 (defn ^:export date-or-datetime?
   "Is `column` a date or datetime?"
   [column]
-  (clojure.core/isa? (:effective-type column) :type/HasDate))
+  (clojure.core/isa? (effective-type column) :type/HasDate))
 
 (defn ^:export date-without-time?
   "Is `column` a date without time?"
   [column]
-  (clojure.core/isa? (:effective-type column) :type/Date))
+  (clojure.core/isa? (effective-type column) :type/Date))
 
 (defn ^:export creation-timestamp?
   "Is `column` a creation timestamp column?"
@@ -172,7 +177,7 @@
 (defn ^:export time?
   "Is `column` a time?"
   [column]
-  (clojure.core/isa? (:effective-type column) :type/Time))
+  (clojure.core/isa? (effective-type column) :type/Time))
 
 (defn ^:export address?
   "Is `column` an address?"
