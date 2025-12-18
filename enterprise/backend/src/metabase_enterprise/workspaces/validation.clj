@@ -36,15 +36,17 @@
    - `target-table-id`: the global table ID whose fields we're overriding
    - `replacement-fields`: the fields from the isolated table (what fields will exist after merge)"
   [base-provider target-table-id replacement-fields]
-  (let [replacement-field-names (into #{} (map :name) replacement-fields)]
+  (let [replacement-field-names (into #{} (map :name) replacement-fields)
+        ;; TODO we probably want to do one query for *all* the tables we care about, earlier in our validation.
+        table-field-id?         (t2/select-fn-set :id [:model/Field :id] :table_id target-table-id)]
     (reify
       lib.metadata.protocols/MetadataProvider
       (database [_this]
         (lib.metadata.protocols/database base-provider))
       (metadatas [_this metadata-spec]
-        (let [{spec-type :lib/type spec-table-id :table-id} metadata-spec]
-          (if (and (= spec-type :metadata/column)
-                   (= spec-table-id target-table-id))
+       ;; Yes, for some reason :id is actually a set of ids
+        (let [{spec-type :lib/type spec-field-ids :id} metadata-spec]
+          (if (and (= :metadata/column spec-type) (some table-field-id? spec-field-ids))
             ;; Return replacement fields with :active based on whether they exist
             (let [original-fields (lib.metadata.protocols/metadatas base-provider metadata-spec)]
               (map (fn [field]
@@ -129,17 +131,16 @@
    Excludes transforms that are checked out or enclosed in the workspace."
   [global-table-id checked-out-ids enclosed-ids]
   (when global-table-id
-    (let [dependent-transform-ids
-          (t2/select-fn-set :from_entity_id
-                            [:model/Dependency :from_entity_id]
-                            :to_entity_type :table
-                            :to_entity_id global-table-id
-                            :from_entity_type :transform)
+    (let [dependent-transform-ids (t2/select-fn-set :from_entity_id
+                                                    [:model/Dependency :from_entity_id]
+                                                    :to_entity_type :table
+                                                    :to_entity_id global-table-id
+                                                    :from_entity_type :transform)
           ;; Remove checked out and enclosed transforms
-          external-ids (-> dependent-transform-ids
-                           (disj nil)
-                           (as-> ids (apply disj ids checked-out-ids))
-                           (as-> ids (apply disj ids enclosed-ids)))]
+          external-ids            (-> dependent-transform-ids
+                                      (disj nil)
+                                      (as-> ids (apply disj ids checked-out-ids))
+                                      (as-> ids (apply disj ids enclosed-ids)))]
       (when (seq external-ids)
         (t2/select [:model/Transform :id :name :source] :id [:in external-ids])))))
 
