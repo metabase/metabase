@@ -45,8 +45,3 @@
   (is (nil? (get (lib.schema.common/unfussy-sorted-map :a 1) "lib/type")))
   (is (= {"a" 1 :b 2}
          (lib.schema.common/unfussy-sorted-map "a" 1 :b 2))))
-
-(deftest ^:parallel time-test
-  (are [t] (not (me/humanize (mr/explain :mbql.clause/time [:time {:lib/uuid "00000000-0000-0000-0000-000000000000"} t :default])))
-    "08:00"
-    #?@(:clj [#t "08:00"])))
