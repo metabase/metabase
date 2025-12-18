@@ -1,36 +1,38 @@
 (ns metabase.lib.validate
   "Checks and validation for queries."
-  (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [not-empty]]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn missing-column :- [:ref ::lib.schema.validate/missing-column]
-  [name :- :string]
+  "Create a missing-column lib validation error"
+  [col-name :- :string]
   {:type :validate/missing-column
-   :name name})
+   :name col-name})
 
 (mu/defn missing-table-alias :- [:ref ::lib.schema.validate/missing-table-alias]
-  [name :- :string]
+  "Create a missing-table-alias lib validation error"
+  [alias-name :- :string]
   {:type :validate/missing-table-alias
-   :name name})
+   :name alias-name})
 
 (mu/defn duplicate-column :- [:ref ::lib.schema.validate/duplicate-column]
-  [name :- :string]
+  "Create a duplicate-column lib validation error"
+  [col-name :- :string]
   {:type :validate/duplicate-column
-   :name name})
+   :name col-name})
 
 (mu/defn syntax-error :- [:ref ::lib.schema.validate/syntax-error]
+  "Create a syntax-error lib validation error"
   []
   {:type :validate/syntax-error})
 
 (mu/defn validation-error :- [:ref ::lib.schema.validate/validation-error]
+  "Create a validation-error lib validation error"
   [message :- :string]
   {:type :validate/validation-error
    :message message})

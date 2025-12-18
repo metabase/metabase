@@ -9,10 +9,11 @@
    [toucan2.core :as t2]))
 
 (defn- backfill-all-entity-analyses! []
-  (doseq [model [:card :transform]]
+  (doseq [model [:card :transform :segment]]
     (while (> (deps.findings/analyze-batch! model 100) 0))))
 
-(deftest can-analyze-entity-batches-test
+(deftest ^:sequential can-analyze-entity-batches-test
+  (backfill-all-entity-analyses!)
   (let [mp (mt/metadata-provider)
         products-id (mt/id :products)
         orders-id (mt/id :orders)
@@ -28,26 +29,23 @@
                                  :analyzed_entity_id [:in [card-id other-card-id]]
                                  :analyzed_entity_type :card)))))))
 
-(deftest does-not-repeatedly-analyze-entities-test
+(deftest ^:sequential does-not-repeatedly-analyze-entities-test
+  (backfill-all-entity-analyses!)
   (let [mp (mt/metadata-provider)
         products-id (mt/id :products)
         orders-id (mt/id :orders)
         products (lib.metadata/table mp products-id)
         orders (lib.metadata/table mp orders-id)]
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
-                     :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}]
+      (mt/with-temp [:model/Card _ {:dataset_query (lib/query mp products)}
+                     :model/Card _ {:dataset_query (lib/query mp orders)}]
         (is (= 2 (deps.findings/analyze-batch! :card 2)))
         (is (= 0 (deps.findings/analyze-batch! :card 2)))))))
 
-(deftest re-analyze-entities-when-analysis-version-bumped-test
-  (let [mp (mt/metadata-provider)
-        products-id (mt/id :products)
-        orders-id (mt/id :orders)
-        products (lib.metadata/table mp products-id)
-        orders (lib.metadata/table mp orders-id)]
-    (mt/with-premium-features #{:dependencies}
-      (is (= 0 (deps.findings/analyze-batch! :card 2)))
-      (binding [models.analysis-finding/current-analysis-version (inc models.analysis-finding/current-analysis-version)]
-        ;; can't check the actual cards analyzed here because this could be any starting card in the data
-        (is (= 2 (deps.findings/analyze-batch! :card 2)))))))
+(deftest ^:sequential re-analyze-entities-when-analysis-version-bumped-test
+  (backfill-all-entity-analyses!)
+  (mt/with-premium-features #{:dependencies}
+    (is (= 0 (deps.findings/analyze-batch! :card 2)))
+    (binding [models.analysis-finding/current-analysis-version (inc models.analysis-finding/current-analysis-version)]
+      ;; can't check the actual cards analyzed here because this could be any starting card in the data
+      (is (= 2 (deps.findings/analyze-batch! :card 2))))))

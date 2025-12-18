@@ -4,7 +4,6 @@
   {:deprecated "0.57.0"}
   (:require
    [clojure.core.match :refer [match]]
-   [clojure.string :as str]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]

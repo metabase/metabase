@@ -1,7 +1,6 @@
 (ns metabase.lib.schema.validate
   (:require
    [metabase.lib.schema.common :as common]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::missing-column

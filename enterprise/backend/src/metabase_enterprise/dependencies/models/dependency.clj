@@ -81,7 +81,7 @@
   (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering
   the child side of a dependency."
   ([key-seq]
-   (key-dependencies key-seq nil))
+   (key-dependencies key-seq nil nil))
   ([key-seq destination-filter-fn source-filter-fn]
    (deps-children :from_entity_type :from_entity_id :to_entity_type :to_entity_id key-seq destination-filter-fn source-filter-fn)))
 

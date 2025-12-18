@@ -469,13 +469,10 @@
   (mt/with-test-user :rasta
     (let [mp (mt/metadata-provider)
           products-id (mt/id :products)
-          orders-id (mt/id :orders)
-          products (lib.metadata/table mp products-id)
-          orders (lib.metadata/table mp orders-id)]
+          products (lib.metadata/table mp products-id)]
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
                        :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
-                       :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}
                        :model/Dependency _ {:from_entity_type :card
                                             :from_entity_id child-card-id
                                             :to_entity_type :card
@@ -591,11 +588,9 @@
   (mt/with-test-user :rasta
     (let [mp (mt/metadata-provider)
           products-id (mt/id :products)
-          orders-id (mt/id :orders)
-          products (lib.metadata/table mp products-id)
-          orders (lib.metadata/table mp orders-id)]
+          products (lib.metadata/table mp products-id)]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                        :model/Transform {transform-id :id :as transform} {:source {:type :query
                                                                                    :query (lib/query mp products)}
                                                                           :name "transform_sample"
@@ -675,17 +670,15 @@
   (mt/with-test-user :rasta
     (let [mp (mt/metadata-provider)
           products-id (mt/id :products)
-          orders-id (mt/id :orders)
-          products (lib.metadata/table mp products-id)
-          orders (lib.metadata/table mp orders-id)]
+          products (lib.metadata/table mp products-id)]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
-                       :model/Transform {transform-id :id :as transform} {:source {:type :query
-                                                                                   :query (lib/query mp products)}
-                                                                          :name "transform_sample"
-                                                                          :target {:schema "public"
-                                                                                   :name "sample"
-                                                                                   :type :table}}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                       :model/Transform {transform-id :id} {:source {:type :query
+                                                                     :query (lib/query mp products)}
+                                                            :name "transform_sample"
+                                                            :target {:schema "public"
+                                                                     :name "sample"
+                                                                     :type :table}}
                        :model/Dependency _ {:from_entity_type :card
                                             :from_entity_id card-id
                                             :to_entity_type :transform

@@ -2,7 +2,6 @@
   (:require
    [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
-   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -19,13 +18,18 @@
    :finding_details {:in  mi/json-in
                      :out normalize-analysis-finding}})
 
+;; This generally shouldn't be rebound in real code so *name* probably isn't correct, but declaring it dynamic is
+;; useful during tests
+#_{:clj-kondo/ignore [:dynamic-var-not-earmuffed]}
 (def ^:dynamic current-analysis-version
   "Current version of the analysis logic.
   This should be incremented when the analysis logic changes.
   The background task will re-analyze anything with out-of-date analyses."
   3)
 
-(defn upsert-analysis! [type instance-id result finding-details]
+(defn upsert-analysis!
+  "Given the details of an AnalysisFinding row, upsert the data into the actual db."
+  [type instance-id result finding-details]
   (let [update {:analyzed_at (mi/now)
                 :analysis_version current-analysis-version
                 :result result
@@ -45,7 +49,9 @@
    :transform [:model/Transform :transform :transform.* :transform.id]
    :segment [:model/Segment :segment :segment.* :segment.id]})
 
-(defn instances-for-analysis [type batch-size]
+(defn instances-for-analysis
+  "Find a batch of instances with missing or outdated AnalysisFindings"
+  [type batch-size]
   (let [[model table-name table-wildcard table-id] (table-info type)]
     (t2/select model
                {:select [table-wildcard]
@@ -57,10 +63,3 @@
                         [:= :analysis_finding.analysis_version nil]
                         [:< :analysis_finding.analysis_version current-analysis-version]]
                 :limit batch-size})))
-
-(defn reset-analysis! [type instance-ids]
-  (doseq [ids-batch (partition 50 50 nil instance-ids)]
-    (t2/update! :model/AnalysisFinding
-                :analyzed_entity_id [:in ids-batch]
-                :analyzed_entity_type type
-                {:analysis_version -1})))

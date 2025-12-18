@@ -5,17 +5,10 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.findings :as deps.findings]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase.config.core :as config]
-   [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.util Map Set)
-   (java.util.concurrent ConcurrentHashMap)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 

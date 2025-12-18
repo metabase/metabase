@@ -4,7 +4,6 @@
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
-   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
@@ -246,11 +245,13 @@
    :transform :model/Transform
    :segment :model/Segment})
 
-(defn- check-dependents [type object]
-  (let [graph (models.dependency/filtered-graph-dependents
-               nil
-               (fn [type-field _id-field]
-                 [:not= type-field "transform"]))
+(defn- check-dependents [type object recur-through-transforms?]
+  (let [graph (if recur-through-transforms?
+                (models.dependency/graph-dependents)
+                (models.dependency/filtered-graph-dependents
+                 nil
+                 (fn [type-field _id-field]
+                   [:not= type-field "transform"])))
         children-map (models.dependency/transitive-dependents graph {type [object]})]
     (doseq [[type children] children-map
             :when (types-to-check type)
@@ -268,7 +269,7 @@
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object)
-      (check-dependents :card object))))
+      (check-dependents :card object false))))
 
 (derive ::check-transform :metabase/event)
 (derive :event/create-transform ::check-transform)
@@ -291,7 +292,7 @@
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object)
-      (check-dependents :segment object))))
+      (check-dependents :segment object false))))
 
 (derive ::check-transform-dependents :metabase/event)
 (derive :event/transform-run-complete ::check-transform-dependents)
@@ -300,4 +301,4 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
-      (check-dependents :transform {:id (:transform-id object)}))))
+      (check-dependents :transform {:id (:transform-id object)} true))))

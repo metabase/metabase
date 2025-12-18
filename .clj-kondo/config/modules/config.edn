@@ -496,13 +496,15 @@
    :api  #{metabase.documents.api
            metabase.documents.core
            metabase.documents.init
-           metabase.documents.prose-mirror}
+           metabase.documents.prose-mirror
+           metabase.documents.schema}
    :uses #{activity-feed
            api
            app-db
            batch-processing
            collections
            events
+           lib
            models
            public-sharing
            queries
@@ -830,7 +832,8 @@
   native-query-snippets
   {:team "Querying"
    :api  #{metabase.native-query-snippets.api
-           metabase.native-query-snippets.core}
+           metabase.native-query-snippets.core
+           metabase.native-query-snippets.schema}
    :uses #{api
            collections
            events
@@ -1592,6 +1595,7 @@
            metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
+           metabase.warehouse-schema.schema
            metabase.warehouse-schema.table}
    :uses #{analyze
            api
@@ -1944,6 +1948,8 @@
            api
            app-db
            collections
+           config
+           dashboards
            documents
            driver
            events
@@ -1958,9 +1964,13 @@
            query-processor
            request
            revisions
+           segments
            settings
            task
-           util}}
+           util
+           warehouse-schema
+           enterprise/sandbox
+           enterprise/transforms}}
 
   enterprise/email
   {:team "UX West"
@@ -2118,7 +2128,8 @@
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
-           metabase-enterprise.sandbox.api.util}
+           metabase-enterprise.sandbox.api.util
+           metabase-enterprise.sandbox.schema}
    :uses #{api
            app-db
            audit-app
@@ -2194,6 +2205,7 @@
            appearance
            collections
            config
+           events
            logger
            models
            plugins
@@ -2279,6 +2291,7 @@
            metabase-enterprise.transforms.init
            metabase-enterprise.transforms.instrumentation
            metabase-enterprise.transforms.interface
+           metabase-enterprise.transforms.schema
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api
