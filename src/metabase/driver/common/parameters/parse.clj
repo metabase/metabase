@@ -4,6 +4,7 @@
   {:deprecated "0.57.0"}
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.string :as str]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -25,7 +26,7 @@
   (match [value]
     [s :guard string?] s
     [{:type :metabase.lib.parse/param
-      :name name}] (params/->Param (lib/match-and-normalize-tag-name name))
+      :name name}] (params/->Param (or (lib/match-and-normalize-tag-name name) (str/trim name)))
     [{:type :metabase.lib.parse/optional
       :contents contents}] (params/->Optional (map ->param contents))))
 

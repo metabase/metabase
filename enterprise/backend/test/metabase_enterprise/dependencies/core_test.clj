@@ -121,7 +121,6 @@
      :sql-base                    (lib.metadata/card mp 7)
      :sql-transform               transform2
      :sql-transform-output        tf2-output
-     :sql-transform-cols          (m/index-by :name tf2-cols)
      :sql-transform-mbql-consumer (lib.metadata/card mp 303)
      :sql-transform-sql-consumer  (lib.metadata/card mp 304)}))
 
@@ -157,7 +156,7 @@
 
 (deftest ^:parallel sql-snippet->card->transform->cards-test
   (testing "changing a snippet correctly finds downstream errors"
-    (let [{:keys [provider graph sql-transform snippet-inner sql-transform-cols]
+    (let [{:keys [provider graph sql-transform snippet-inner]
            {direct-sql-card-id       :id} :sql-base
            {transformed-sql-card-id  :id} :sql-transform-sql-consumer
            {transformed-mbql-card-id :id} :sql-transform-mbql-consumer} (testbed)]
