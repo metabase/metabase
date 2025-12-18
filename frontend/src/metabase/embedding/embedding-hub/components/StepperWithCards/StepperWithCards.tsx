@@ -199,38 +199,10 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                 </Grid>
 
                 {step.alert && (
-                  <Alert
-                    icon={
-                      <Icon
-                        size={14}
-                        name={step.alert.type === "success" ? "check" : "info"}
-                        c={
-                          step.alert.type === "success"
-                            ? "success"
-                            : "text-secondary"
-                        }
-                      />
-                    }
-                    mt="xl"
-                    bg={
-                      step.alert.type === "success"
-                        ? "background-success"
-                        : "brand-light"
-                    }
-                    bd={
-                      step.alert.type === "success"
-                        ? "1px solid var(--mb-color-success)"
-                        : undefined
-                    }
-                    lh="lg"
-                    classNames={{
-                      wrapper: S.infoAlertWrapper,
-                      icon: S.infoAlertIcon,
-                      message: S.infoAlertMessage,
-                    }}
-                  >
-                    {step.alert.message}
-                  </Alert>
+                  <StepAlert
+                    type={step.alert.type}
+                    message={step.alert.message}
+                  />
                 )}
               </div>
             }
@@ -267,3 +239,32 @@ const CardAction = ({
       );
     })
     .otherwise(() => children);
+
+const StepAlert = ({
+  type,
+  message,
+}: {
+  type: "info" | "success";
+  message: string;
+}) => (
+  <Alert
+    icon={
+      <Icon
+        size={14}
+        name={type === "success" ? "check" : "info"}
+        c={type === "success" ? "success" : "text-secondary"}
+      />
+    }
+    mt="xl"
+    bg={type === "success" ? "background-success" : "brand-light"}
+    bd={type === "success" ? "1px solid var(--mb-color-success)" : undefined}
+    lh="lg"
+    classNames={{
+      wrapper: S.infoAlertWrapper,
+      icon: S.infoAlertIcon,
+      message: S.infoAlertMessage,
+    }}
+  >
+    {message}
+  </Alert>
+);
