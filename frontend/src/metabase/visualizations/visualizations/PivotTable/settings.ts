@@ -127,12 +127,12 @@ export const settings = {
 
         if (dimensions.length < 2) {
           columns = [];
-          rows = [first];
+          rows = [first].filter(Boolean);
         } else if (dimensions.length <= 3) {
-          columns = [first];
-          rows = [second, ...rest];
+          columns = [first].filter(Boolean);
+          rows = [second, ...rest].filter(Boolean);
         } else {
-          columns = [first, second];
+          columns = [first, second].filter(Boolean);
           rows = rest;
         }
         setting = _.mapObject({ rows, columns, values }, (cols) =>
