@@ -21,13 +21,13 @@ runs:
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys
 
-    - name: Restore M2 cache
-      uses: actions/cache/restore@v4
-      with:
-        path: |
-          ~/.m2
-          ~/.gitlibs
-        key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
+    # - name: Restore M2 cache
+    #   uses: actions/cache/restore@v4
+    #   with:
+    #     path: |
+    #       ~/.m2
+    #       ~/.gitlibs
+    #     key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
     - name: Get bun cache directory
       id: bun-cache
