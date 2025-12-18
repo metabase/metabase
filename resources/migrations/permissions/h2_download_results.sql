@@ -54,45 +54,44 @@ WHERE pg.name != 'Administrators'
       END;
 
 -- Insert table-level permissions corresponding to the approrpiate permission paths
-WITH escaped_schema_table AS (
+MERGE INTO data_permissions dp
+USING (
+  WITH escaped_schema_table AS (
     SELECT
-        mt.id AS table_id,
-        mt.db_id,
-        mt.schema,
-        CONCAT('/download/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/') AS download_schema_path,
-        CONCAT('/download/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/table/', mt.id, '/') AS download_table_path,
-        CONCAT('/download/limited/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/') AS limited_download_schema_path,
-        CONCAT('/download/limited/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/table/', mt.id, '/') AS limited_download_table_path
+      mt.id AS table_id,
+      mt.db_id,
+      mt.schema,
+      CONCAT('/download/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/') AS download_schema_path,
+      CONCAT('/download/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/table/', mt.id, '/') AS download_table_path,
+      CONCAT('/download/limited/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/') AS limited_download_schema_path,
+      CONCAT('/download/limited/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/table/', mt.id, '/') AS limited_download_table_path
     FROM metabase_table mt
-)
--- Insert one-million-rows or ten-thousand-rows permissions based on existing permissions
-INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
-SELECT
+  )
+  SELECT
     p.group_id,
     'perms/download-results' AS perm_type,
     est.db_id,
     est.schema AS schema_name,
     est.table_id,
     CASE
-        WHEN p.object IN (est.download_schema_path, est.download_table_path) THEN 'one-million-rows'
-        WHEN p.object IN (est.limited_download_schema_path, est.limited_download_table_path) THEN 'ten-thousand-rows'
+      WHEN p.object IN (est.download_schema_path, est.download_table_path) THEN 'one-million-rows'
+      WHEN p.object IN (est.limited_download_schema_path, est.limited_download_table_path) THEN 'ten-thousand-rows'
     END AS perm_value
-FROM escaped_schema_table est
-JOIN permissions p
-ON p.object IN (
-    est.download_schema_path,
-    est.download_table_path,
-    est.limited_download_schema_path,
-    est.limited_download_table_path
-)
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM data_permissions dp
-    WHERE dp.group_id = p.group_id
-      AND dp.db_id = est.db_id
-      AND dp.table_id = est.table_id
-      AND dp.perm_type = 'perms/download-results'
-);
+  FROM escaped_schema_table est
+  JOIN permissions p
+    ON p.object IN (
+      est.download_schema_path,
+      est.download_table_path,
+      est.limited_download_schema_path,
+      est.limited_download_table_path
+    )
+) AS src
+ON dp.group_id = src.group_id
+   AND dp.db_id = src.db_id
+   AND dp.table_id = src.table_id
+   AND dp.perm_type = 'perms/download-results'
+WHEN NOT MATCHED THEN INSERT (group_id, perm_type, db_id, schema_name, table_id, perm_value)
+  VALUES (src.group_id, src.perm_type, src.db_id, src.schema_name, src.table_id, src.perm_value);
 
 -- Insert 'no' permissions for any table and group combinations that weren't covered by the previous query
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)

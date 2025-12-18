@@ -876,7 +876,8 @@ databaseChangeLog:
             # because of https://github.com/h2database/h2database/issues/1034, which is fixed in 1.4.198. So this will
             # have to do for now, even if it's a little ugly.
             sql: >-
-              WITH created_ats AS (
+              MERGE INTO collection c
+              USING (
                 SELECT min(created_at) AS created_at, collection_id
                 FROM (
                   SELECT created_at, collection_id FROM app                  UNION ALL
@@ -887,19 +888,9 @@ databaseChangeLog:
                   SELECT created_at, collection_id FROM native_query_snippet
                 ) created_ats
                 GROUP BY collection_id
-              )
-              UPDATE collection c
-              SET created_at = (
-                SELECT created_ats.created_at
-                FROM created_ats
-                WHERE created_ats.collection_id = c.id
-              )
-              WHERE EXISTS (
-                SELECT created_ats.collection_id
-                FROM created_ats
-                WHERE c.id = created_ats.collection_id
-                  AND c.personal_owner_id IS NULL
-              );
+              ) AS created_ats
+              ON c.id = created_ats.collection_id AND c.personal_owner_id IS NULL
+              WHEN MATCHED THEN UPDATE SET c.created_at = created_ats.created_at;
       rollback: # rollback is a no-op for most seed migrations, but required for sql change type
 
   - changeSet:
@@ -8171,6 +8162,7 @@ databaseChangeLog:
       id: v50.2024-05-29T18:42:13
       author: johnswanson
       dbms: h2
+      validCheckSum: ANY
       comment: Populate `archived_directly` and `archive_operation_id` (H2)
       changes:
         - sqlFile:

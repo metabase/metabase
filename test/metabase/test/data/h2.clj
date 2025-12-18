@@ -23,7 +23,7 @@
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"
                                    :type/Date           "DATE"
-                                   :type/DateTime       "DATETIME"
+                                   :type/DateTime       "TIMESTAMP"
                                    :type/DateTimeWithTZ "TIMESTAMP WITH TIME ZONE"
                                    :type/Decimal        "DECIMAL"
                                    :type/Float          "FLOAT"

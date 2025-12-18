@@ -20,35 +20,33 @@ WHERE archived = true;
 
 -- COLLECTIONS
 -- Set `collection.archived_directly`.
-WITH CollectionWithParentID AS (
-  SELECT
-  id,
-  archived,
-  CASE
-      WHEN location = '/' THEN NULL
-      ELSE REGEXP_SUBSTR(location, '/([0-9]+)(/$)', 1, 1, '', 1)::INTEGER
-  END AS parent_id
-  FROM
-  collection
-)
-
-UPDATE collection c
-SET archived_directly = true
-WHERE EXISTS (
-  SELECT 1
-  FROM CollectionWithParentID cp
-  WHERE c.id = cp.id
-  AND cp.archived = true
-  AND (
-    cp.parent_id IS NULL
-    OR NOT EXISTS (
-      SELECT 1
-      FROM CollectionWithParentID pp
-      WHERE pp.id = cp.parent_id
-      AND pp.archived = true
-    )
+MERGE INTO collection c
+USING (
+  WITH CollectionWithParentID AS (
+    SELECT
+      id,
+      archived,
+      CASE
+        WHEN location = '/' THEN NULL
+        ELSE REGEXP_SUBSTR(location, '/([0-9]+)(/$)', 1, 1, '', 1)::INTEGER
+      END AS parent_id
+    FROM collection
   )
-);
+  SELECT cp.id
+  FROM CollectionWithParentID cp
+  WHERE cp.archived = true
+    AND (
+      cp.parent_id IS NULL
+      OR NOT EXISTS (
+        SELECT 1
+        FROM CollectionWithParentID pp
+        WHERE pp.id = cp.parent_id
+          AND pp.archived = true
+      )
+    )
+) AS src
+ON c.id = src.id
+WHEN MATCHED THEN UPDATE SET c.archived_directly = true;
 
 -- Set `collection.archive_operation_id` for collections that were archived directly
 UPDATE collection
@@ -77,25 +75,33 @@ CASE
 END
 WHERE archived AND archived_directly;
 
-WITH Ancestors(id, archived, archived_directly, archive_operation_id, location) AS (
+MERGE INTO collection c
+USING (
+  WITH Ancestors AS (
+    SELECT id, archive_operation_id, location
+    FROM collection
+    WHERE archived_directly = true AND archived = true
+  ),
+  CollectionsToUpdate AS (
+    SELECT id, location
+    FROM collection
+    WHERE archived_directly IS NULL
+      AND archive_operation_id IS NULL
+      AND archived = true
+  ),
+  Matched AS (
     SELECT
-    id,
-    archived,
-    archived_directly,
-    archive_operation_id,
-    location
-  FROM
-    collection
-  WHERE
-    archived_directly = true
-    AND archived = true
-)
-UPDATE collection
-SET archive_operation_id = (
-  SELECT a.archive_operation_id
-  FROM Ancestors a
-  WHERE collection.location LIKE concat(a.location, a.id, '/%')
-  ORDER BY LENGTH(a.location) DESC
-  LIMIT 1
-), archived_directly = false
-WHERE archived_directly IS NULL AND archive_operation_id IS NULL AND archived = true;
+      ctu.id,
+      a.archive_operation_id,
+      ROW_NUMBER() OVER (PARTITION BY ctu.id ORDER BY LENGTH(a.location) DESC) AS rn
+    FROM CollectionsToUpdate ctu
+    JOIN Ancestors a ON ctu.location LIKE CONCAT(a.location, a.id, '/%')
+  )
+  SELECT id, archive_operation_id
+  FROM Matched
+  WHERE rn = 1
+) AS src
+ON c.id = src.id
+WHEN MATCHED THEN UPDATE SET
+  c.archive_operation_id = src.archive_operation_id,
+  c.archived_directly = false;
