@@ -191,61 +191,69 @@
    [:dependents_count [:maybe [:ref ::usages]]]
    [:errors {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
 
+(defn- fields-for [entity-key]
+  ;; these specs should really use something like
+  #_[:data [:select-keys [:ref ::warehouse-schema.schema/table] (entity-keys :table)]]
+  ;; but :select-keys seems to mess up open-api spec generation
+  (into [:map]
+        (map (fn [key] [key {:optional true} :any]))
+        (entity-keys entity-key)))
+
 (mr/def ::table-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/table]
     [:type [:= :table]]
-    [:data [:select-keys ::warehouse-schema.schema/table (entity-keys :table)]]]])
+    [:data (fields-for :table)]]])
 
 (mr/def ::card-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/card]
     [:type [:= :card]]
-    [:data [:select-keys ::queries.schema/card (entity-keys :card)]]]])
+    [:data (fields-for :card)]]])
 
 (mr/def ::snippet-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/snippet]
     [:type [:= :snippet]]
-    [:data [:select-keys ::native-query-snippets.schema/native-query-snippet (entity-keys :snippet)]]]])
+    [:data (fields-for :snippet)]]])
 
 (mr/def ::transform-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/transform]
     [:type [:= :transform]]
-    [:data [:select-keys ::transforms.schema/transform (entity-keys :transform)]]]])
+    [:data (fields-for :transform)]]])
 
 (mr/def ::dashboard-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/dashboard]
     [:type [:= :dashboard]]
-    [:data [:select-keys ::dashboards.schema/dashboard (entity-keys :dashboard)]]]])
+    [:data (fields-for :dashboard)]]])
 
 (mr/def ::document-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/document]
     [:type [:= :document]]
-    [:data [:select-keys ::documents.schema/document (entity-keys :document)]]]])
+    [:data (fields-for :document)]]])
 
 (mr/def ::sandbox-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/sandbox]
     [:type [:= :sandbox]]
-    [:data [:select-keys ::sandbox.schema/sandbox (entity-keys :sandbox)]]]])
+    [:data (fields-for :sandbox)]]])
 
 (mr/def ::segment-entity
   [:merge ::base-entity
    [:map
     [:id ::lib.schema.id/segment]
     [:type [:= :segment]]
-    [:data [:select-keys ::segments.schema/segment (entity-keys :segment)]]]])
+    [:data (fields-for :card)]]])
 
 (mr/def ::entity
   [:multi {:dispatch :type}
