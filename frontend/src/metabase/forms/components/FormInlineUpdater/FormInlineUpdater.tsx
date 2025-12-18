@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { FormObserver } from "metabase/forms";
 
-type Props<T, TSuccess> = {
+type FormInlineUpdaterProps<T, TSuccess> = {
   update: (values: T) => Promise<TSuccess>;
   onSuccess?: (value: TSuccess) => void;
   onError?: (error: unknown) => void;
@@ -39,7 +39,7 @@ export const FormInlineUpdater = <T, TSuccess>({
   onSuccess,
   onError,
   debounceMs = DEFAULT_INLINE_UPDATE_DEBOUNCE_MS,
-}: Props<T, TSuccess>) => {
+}: FormInlineUpdaterProps<T, TSuccess>) => {
   const { initialValues } = useFormikContext<T>();
   const updateInProgress = useRef(false);
   const pendingUpdate = useRef<T | null>(null);
