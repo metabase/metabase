@@ -71,7 +71,7 @@ export const MetabotInlineSQLPrompt = ({
   }, [disabled, handleSubmit, handleClose]);
 
   return (
-    <Box className={S.container}>
+    <Box className={S.container} data-testid="metabot-inline-sql-prompt">
       <Box className={S.inputContainer}>
         <MetabotPromptInput
           ref={inputRef}
@@ -95,6 +95,7 @@ export const MetabotInlineSQLPrompt = ({
       </Box>
       <Flex justify="flex-start" align="center" gap="xs" mt="xs">
         <Button
+          data-testid="metabot-inline-sql-generate"
           size="xs"
           px="sm"
           variant="filled"
@@ -110,11 +111,17 @@ export const MetabotInlineSQLPrompt = ({
         >
           {isDoingScience ? t`Generating...` : t`Generate`}
         </Button>
-        <Button size="xs" variant="subtle" onClick={handleClose}>
+        <Button
+          data-testid="metabot-inline-sql-cancel"
+          size="xs"
+          variant="subtle"
+          onClick={handleClose}
+        >
           {t`Cancel`}
         </Button>
         {hasError && (
           <Box
+            data-testid="metabot-inline-sql-error"
             fz="sm"
             c="error"
             ml="sm"
