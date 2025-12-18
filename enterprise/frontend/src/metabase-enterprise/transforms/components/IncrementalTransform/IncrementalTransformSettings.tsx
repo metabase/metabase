@@ -199,7 +199,7 @@ export const IncrementalTransformSettings = ({
   }
 
   return (
-    <Stack gap="lg">
+    <Group gap="lg">
       <Box>
         <Text fw="bold">{label}</Text>
         <Text size="sm" c="text-secondary" mb="sm">
@@ -218,7 +218,7 @@ export const IncrementalTransformSettings = ({
           <TargetStrategyFields variant={variant} />
         </>
       )}
-    </Stack>
+    </Group>
   );
 };
 
@@ -228,7 +228,7 @@ function TargetStrategyFields({
   variant: "embedded" | "standalone";
 }) {
   const content = TARGET_STRATEGY_OPTIONS.length > 1 && (
-    <Stack style={{ display: "grid", gridTemplateColumns: "max-content" }}>
+    <Stack>
       <FormSelect
         name="targetStrategy"
         label={t`Target Strategy`}
@@ -240,17 +240,18 @@ function TargetStrategyFields({
     </Stack>
   );
 
-  if (variant === "standalone") {
-    return (
-      content && (
-        <>
-          <Divider />
-          <Group p="md">{content}</Group>
-        </>
-      )
-    );
+  if (variant === "embedded") {
+    return content;
   }
-  return content;
+
+  return (
+    content && (
+      <>
+        <Divider />
+        <Group p="lg">{content}</Group>
+      </>
+    )
+  );
 }
 
 type SourceStrategyFieldsProps = {
@@ -266,10 +267,7 @@ function SourceStrategyFields({
 }: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
   return (
-    <Stack
-      gap="lg"
-      style={{ display: "grid", gridTemplateColumns: "max-content" }}
-    >
+    <>
       {SOURCE_STRATEGY_OPTIONS.length > 1 && (
         <FormSelect
           name="sourceStrategy"
@@ -312,6 +310,6 @@ function SourceStrategyFields({
           )}
         </>
       )}
-    </Stack>
+    </>
   );
 }

@@ -85,10 +85,8 @@ function CreateTransformForm({
 
   const supportsSchemas = database && hasFeature(database, "schemas");
 
-  const { initialValues, validationSchema, create } = useCreateTransform(
-    schemas,
-    defaultValues,
-  );
+  const { initialValues, validationSchema, createTransform } =
+    useCreateTransform(schemas, defaultValues);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -99,7 +97,7 @@ function CreateTransformForm({
       throw new Error("Database ID is required");
     }
     try {
-      const transform = await create(databaseId, source, values);
+      const transform = await createTransform(databaseId, source, values);
       onCreate(transform);
     } catch (err) {}
   };

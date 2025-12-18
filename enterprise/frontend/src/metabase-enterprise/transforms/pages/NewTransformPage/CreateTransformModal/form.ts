@@ -2,16 +2,17 @@ import * as Yup from "yup";
 
 import * as Errors from "metabase/lib/errors";
 import { slugify } from "metabase/lib/formatting/url";
+import type {
+  CreateTransformRequest,
+  TransformSource,
+} from "metabase-types/api";
+
 import {
   VALIDATION_SCHEMA as INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA,
   buildIncrementalSource,
   buildIncrementalTarget,
   getInitialValues as incrementalTransformGetInitialValues,
-} from "metabase-enterprise/transforms/components/IncrementalTransform";
-import type {
-  CreateTransformRequest,
-  TransformSource,
-} from "metabase-types/api";
+} from "../../../components/IncrementalTransform";
 
 export const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),

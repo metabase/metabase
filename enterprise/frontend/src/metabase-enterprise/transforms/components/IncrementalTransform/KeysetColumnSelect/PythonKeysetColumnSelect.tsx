@@ -1,5 +1,5 @@
 import { skipToken } from "@reduxjs/toolkit/query";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
@@ -14,7 +14,7 @@ type PythonKeysetColumnSelectProps = {
   name: string;
   label: string;
   placeholder: string;
-  description: ReactNode;
+  description: React.ReactNode;
   descriptionProps?: InputDescriptionProps & DataAttributes;
   sourceTables: PythonTransformTableAliases;
 };

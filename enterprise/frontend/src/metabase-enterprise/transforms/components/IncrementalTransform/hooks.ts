@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
@@ -17,20 +17,16 @@ export const useUpdateIncrementalSettings = (transform: Transform) => {
     [transform],
   );
 
-  const update = useCallback(
-    async (values: IncrementalSettingsFormValues) => {
-      const requestData = convertTransformFormToUpdateRequest(
-        transform,
-        values,
-      );
-      return await updateTransform(requestData).unwrap();
-    },
-    [updateTransform, transform],
-  );
+  const updateIncrementalSettings = async (
+    values: IncrementalSettingsFormValues,
+  ) => {
+    const requestData = convertTransformFormToUpdateRequest(transform, values);
+    return await updateTransform(requestData).unwrap();
+  };
 
   return {
     initialValues,
     validationSchema: VALIDATION_SCHEMA,
-    update,
+    updateIncrementalSettings,
   };
 };

@@ -3,11 +3,12 @@ import _ from "underscore";
 
 import { Form, FormInlineUpdater, FormProvider } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { Transform } from "metabase-types/api";
+
 import {
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
-} from "metabase-enterprise/transforms/components/IncrementalTransform";
-import type { Transform } from "metabase-types/api";
+} from "../../../components/IncrementalTransform";
 
 type Props = {
   transform: Transform;
@@ -15,7 +16,7 @@ type Props = {
 
 export const UpdateIncrementalSettings = ({ transform }: Props) => {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const { initialValues, validationSchema, update } =
+  const { initialValues, validationSchema, updateIncrementalSettings } =
     useUpdateIncrementalSettings(transform);
 
   const showSuccessToast = () =>
@@ -33,7 +34,7 @@ export const UpdateIncrementalSettings = ({ transform }: Props) => {
     >
       <Form>
         <FormInlineUpdater
-          update={update}
+          update={updateIncrementalSettings}
           onSuccess={showSuccessToast}
           onError={showErrorToast}
         />

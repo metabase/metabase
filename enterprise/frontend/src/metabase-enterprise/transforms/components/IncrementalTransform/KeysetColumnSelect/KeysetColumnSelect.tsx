@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 
 import { FormSelect } from "metabase/forms";
 import type {
@@ -12,7 +12,7 @@ type KeysetColumnSelectProps = {
   name: string;
   label: string;
   placeholder: string;
-  description: ReactNode;
+  description: React.ReactNode;
   descriptionProps?: InputDescriptionProps & DataAttributes;
   query: Lib.Query | null;
   disabled?: boolean;

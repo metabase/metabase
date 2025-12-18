@@ -19,13 +19,13 @@ export const useCreateTransform = (
   defaultValues: Partial<NewTransformValues>,
 ) => {
   const [sendToast] = useToast();
-  const [createTransform] = useCreateTransformMutation();
+  const [createTransformMutation] = useCreateTransformMutation();
   const initialValues: NewTransformValues = useMemo(
     () => getInitialValues(schemas, defaultValues),
     [schemas, defaultValues],
   );
 
-  const create = async (
+  const createTransform = async (
     databaseId: number,
     source: TransformSource,
     values: NewTransformValues,
@@ -36,7 +36,7 @@ export const useCreateTransform = (
       databaseId,
     );
     try {
-      const transform = await createTransform(request).unwrap();
+      const transform = await createTransformMutation(request).unwrap();
       trackTransformCreated({ transformId: transform.id });
       return transform;
     } catch (error) {
@@ -51,6 +51,6 @@ export const useCreateTransform = (
   return {
     initialValues,
     validationSchema: VALIDATION_SCHEMA,
-    create,
+    createTransform,
   };
 };
