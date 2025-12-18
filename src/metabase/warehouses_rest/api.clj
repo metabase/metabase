@@ -274,7 +274,7 @@
                       [:= :router_database_id router-database-id]
                       [:= :router_database_id nil])]
         where-clause (if filter-by-data-access?
-                       [:and base-where (mi/visible-filter-clause :model/Database :id user-info permission-mapping)]
+                       [:and base-where (:clause (mi/visible-filter-clause :model/Database :id user-info permission-mapping))]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]
@@ -1387,7 +1387,8 @@
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [{:keys [id schema]} :- [:map
-                           [:id ms/PositiveInt]]
+                           [:id ms/PositiveInt]
+                           [:schema ms/NonBlankString]]
    {:keys [include_hidden include_editable_data_model]} :- [:map
                                                             [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
                                                             [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]

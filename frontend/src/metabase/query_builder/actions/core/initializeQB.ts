@@ -2,14 +2,13 @@ import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
 import { replace } from "react-router-redux";
 
-import Questions from "metabase/entities/questions";
-import Snippets from "metabase/entities/snippets";
+import { Questions } from "metabase/entities/questions";
+import { Snippets } from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getIsEditingInDashboard,
-  getIsNotebookNativePreviewShown,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -375,8 +374,6 @@ async function handleQBInit(
 
   const objectId = params?.objectId || queryParams?.objectId;
 
-  uiControls.isShowingNotebookNativePreview =
-    getIsNotebookNativePreviewShown(getState());
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
 

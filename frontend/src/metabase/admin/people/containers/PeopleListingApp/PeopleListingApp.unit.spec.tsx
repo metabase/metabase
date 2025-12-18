@@ -85,11 +85,11 @@ describe("page title", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show 'Internal Users' when tenants is enabled and viewing internal users", async () => {
+  it("should show 'Internal users' when tenants is enabled and viewing internal users", async () => {
     setup({ useTenants: true, external: false });
 
     expect(
-      await screen.findByRole("heading", { name: "Internal Users", level: 1 }),
+      await screen.findByRole("heading", { name: "Internal users", level: 1 }),
     ).toBeInTheDocument();
   });
 

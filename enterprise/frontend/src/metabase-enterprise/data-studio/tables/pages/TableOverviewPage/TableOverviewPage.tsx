@@ -1,6 +1,7 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Center, Flex } from "metabase/ui";
+import { Center } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 
 import { TableHeader } from "../../components/TableHeader";
@@ -28,9 +29,9 @@ export function TableOverviewPage({ params }: TableOverviewPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%" data-testid="table-overview-page">
+    <PageContainer data-testid="table-overview-page">
       <TableHeader table={table} />
       <TableOverview table={table} />
-    </Flex>
+    </PageContainer>
   );
 }

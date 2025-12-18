@@ -41,16 +41,6 @@ describe("scenarios > data studio > library", () => {
       event: "data_studio_library_created",
     });
 
-    cy.log("Verify empty state shows on library root");
-    H.DataStudio.Library.emptyPage().should("be.visible");
-
-    H.DataStudio.Library.libraryPage().button(/New/).click();
-    H.popover().findByText("New snippet folder").click();
-    H.modal().within(() => {
-      cy.findByLabelText("Give your folder a name").type("My Snippets");
-      cy.button("Create").click();
-    });
-
     cy.log("Verify library collections appear in the library table");
     H.DataStudio.Library.collectionItem("Data").should("be.visible");
     H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
@@ -112,5 +102,37 @@ describe("scenarios > data studio > library", () => {
     H.entityPickerModalItem(0, "Library").click();
     H.entityPickerModalItem(1, "Data").click();
     H.entityPickerModalItem(2, "Orders").should("exist");
+  });
+
+  describe("+New button", () => {
+    it("should allow you to publish a table", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Publish a table from the 'New' menu");
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Publish a table").click();
+
+      cy.log("Select a table and click 'Publish'");
+      H.entityPickerModalItem(3, "Orders").click();
+      H.entityPickerModal().button("Publish").click();
+
+      cy.log("Verify the table is published");
+      H.DataStudio.Tables.overviewPage().should("exist");
+      H.DataStudio.Tables.header().findByDisplayValue("Orders").should("exist");
+      H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();
+      H.DataStudio.Library.tableItem("Orders").should("exist");
+
+      cy.log(
+        "Verify tables in the entity picker are disabled if already published",
+      );
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Publish a table").click();
+      H.entityPickerModalItem(3, "Orders").should("have.attr", "data-disabled");
+      H.entityPickerModalItem(3, "People").should(
+        "not.have.attr",
+        "data-disabled",
+      );
+    });
   });
 });

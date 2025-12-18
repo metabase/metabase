@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.models.transform-tag :as transform-tag]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -326,3 +327,15 @@
                 source-table (get-in saved [:source :source-tables "input"])]
             (is (= 999 (:table_id source-table))
                 "explicit table_id should be preserved")))))))
+
+(deftest check-allowed-content-transforms
+  (mt/with-premium-features #{:data-studio}
+    (mt/with-temp [:model/Collection transforms {:name "Test Transforms" :namespace collection/transforms-ns}
+                   :model/Collection regular-col {:name "Test Regular"}]
+      (mt/with-model-cleanup [:model/Transform :model/Card]
+        (testing "Can only add allowed content types"
+          (is (some? (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id transforms)))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Card can only go in Collections in the.*"
+                                (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)}))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Transform can only go in Collections in the :transforms namespace."
+                                (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))))))))))

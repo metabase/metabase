@@ -17,7 +17,7 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should create a new metric with proper validation and save to collection", () => {
-    visitLibraryPage();
+    H.DataStudio.Library.visit();
 
     cy.log("Create a new metric");
     H.DataStudio.Library.newButton().click();
@@ -332,8 +332,3 @@ describe("scenarios > data studio > library > metrics", () => {
       .should("not.exist");
   });
 });
-
-function visitLibraryPage() {
-  cy.visit("/data-studio/library");
-  H.DataStudio.Library.libraryPage().should("be.visible");
-}
