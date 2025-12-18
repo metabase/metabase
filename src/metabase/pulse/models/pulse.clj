@@ -541,7 +541,8 @@
                 [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-                [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
+                [:parameters          {:optional true} [:maybe [:sequential :map]]]
+                [:creation_context    {:optional true} [:maybe ms/NonBlankString]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
     (u/prog1 (retrieve-pulse pulse-id)
