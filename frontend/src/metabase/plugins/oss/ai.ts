@@ -65,7 +65,7 @@ type PluginMetabotType = {
   getAdminRoutes: () => React.ReactElement;
   getMetabotRoutes: () => React.ReactElement | null;
   MetabotAdminPage: ComponentType;
-  getMetabotVisible: (state: State) => boolean;
+  getMetabotVisible: (state: State, conversation_id: string) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
   MetabotAdminAppBarButton: ComponentType;
