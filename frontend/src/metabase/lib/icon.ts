@@ -74,7 +74,11 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "group" };
   }
 
-  if (item.model === "collection" && item.is_personal) {
+  if (
+    item.model === "collection" &&
+    item.is_personal &&
+    item.location === "/"
+  ) {
     return { name: "person" };
   }
 
