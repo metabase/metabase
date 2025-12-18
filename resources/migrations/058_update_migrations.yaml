@@ -1002,6 +1002,13 @@ databaseChangeLog:
       id: v58.2025-11-25T17:04:00
       author: dependencies
       comment: Add dependency_analysis_version to segment table for tracking dependency changes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v57.2025-11-25T17:04:00
+              author: dependencies
+              changeLogFile: migrations/057_update_migrations.yaml
       changes:
         - addColumn:
             tableName: segment
