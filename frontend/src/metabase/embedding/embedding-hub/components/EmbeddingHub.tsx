@@ -49,7 +49,7 @@ export const EmbeddingHub = () => {
         if (areSimpleStepsCompleted) {
           return {
             type: "success" as const,
-            message: t`If all you want is a simple embedded dashboard, you’re done! \n If you have a more sophisticated setup in mind, with many users and tenants, then keep going.`,
+            message: t`If all you want is a simple embedded dashboard, you're done! \n If you have a more sophisticated setup in mind, with many users and tenants, then keep going.`,
           };
         }
 
