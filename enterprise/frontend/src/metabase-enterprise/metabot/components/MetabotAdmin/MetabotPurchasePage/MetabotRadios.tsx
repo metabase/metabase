@@ -48,7 +48,7 @@ export function MetabotRadios({
   billingPeriodMonths,
 }: IMetabotRadiosProps): ReactElement {
   const [selectedQuantity, setSelectedQuantity] = useState(quantity);
-  const billingPeriod = billingPeriodMonths === 1 ? t`month` : t`yearly`;
+  const billingPeriod = billingPeriodMonths === 1 ? t`month` : t`year`;
   return (
     <FormRadioGroup
       defaultValue={selectedQuantity}

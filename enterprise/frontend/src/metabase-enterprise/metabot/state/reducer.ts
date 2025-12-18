@@ -3,7 +3,7 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
-import type { SuggestedTransform } from "metabase-types/api";
+import type { MetabotCodeEdit, SuggestedTransform } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -53,6 +53,12 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
+    // CONVERSATION REDUCERS
+    addDeveloperMessage: convoReducer(
+      (convo, action: ConvoPayloadAction<{ message: string }>) => {
+        convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;
+      },
+    ),
     addUserMessage: convoReducer(
       (
         convo,
@@ -239,6 +245,18 @@ export const metabot = createSlice({
           t.active = false;
         }
       });
+    },
+    addSuggestedCodeEdit: (
+      state,
+      { payload: codeEdit }: PayloadAction<MetabotCodeEdit>,
+    ) => {
+      state.reactions.suggestedCodeEdits[codeEdit.bufferId] = codeEdit;
+    },
+    removeSuggestedCodeEdit: (
+      state,
+      action: PayloadAction<MetabotCodeEdit["bufferId"]>,
+    ) => {
+      delete state.reactions.suggestedCodeEdits[action.payload];
     },
   },
   extraReducers: (builder) => {
