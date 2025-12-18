@@ -9,4 +9,3 @@ exact = true                    # Use exact versions in package.json when adding
 
 [install.lockfile]
 save = true                     # Always save lockfile changes
-print = "yarn"                  # Human-readable lockfile format for better diffs

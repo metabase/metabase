@@ -3,10 +3,6 @@ inputs:
   node-version:
     description: "The version of Node.js to use, overriding .nvmrc"
     required: false
-  apply-patches:
-    description: "Whether to patch frontend dependencies with patch-package."
-    required: true
-    default: "true"
 runs:
   using: "composite"
   steps:
@@ -54,10 +50,7 @@ runs:
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
+    # Bun applies patches from patchedDependencies automatically during install
     - name: Clean install
       run: bun install --frozen-lockfile
-      shell: bash
-    - name: Patch frontend dependencies
-      if: inputs.apply-patches == 'true'
-      run: bun run patch-package
       shell: bash
