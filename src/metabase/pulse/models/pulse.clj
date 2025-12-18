@@ -168,11 +168,21 @@
         (and (mi/current-user-has-full-permissions? :read notification)
              (current-user-is-creator? notification)))))
 
+(defn- can-read-attachments?
+  "Return true if the card has attachments and those can be read. If it has no attachments, return true"
+  [card]
+  (if (or (:include_csv card) (:include_xls card))
+    (let [level (perms/download-perms-level (or (:dataset_query card) (t2/select-one-fn :dataset_query :model/Card :id (:id card))) api/*current-user-id*)]
+      (and level (not= level  :no)))
+    true))
+
 (defmethod mi/can-create? :model/Pulse
   [_m {cards :cards dashboard-id :dashboard_id collection-id :collection_id}]
   (and
    ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
-   (every? #(mi/can-read? :model/Card (u/the-id %)) cards)
+   (every? #(and
+             (mi/can-read? :model/Card (u/the-id %))
+             (can-read-attachments? %)) cards)
    ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
    ;; make sure we have write permissions for that collection
    (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))

@@ -4,8 +4,10 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -90,7 +92,8 @@
     result :result
     :as part}]
   (when (and (or (:include_csv card) (:include_xls card))
-             (pos-int? (:row_count result)))
+             (pos-int? (:row_count result))
+             (not= (perms/download-perms-level (:dataset_query card) (:creator_id card))  :no))
     (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
           result            (:result (maybe-realize-data-rows part))
           visualizer-title (when (and dashcard (get-in dashcard [:visualization_settings :visualization]))
