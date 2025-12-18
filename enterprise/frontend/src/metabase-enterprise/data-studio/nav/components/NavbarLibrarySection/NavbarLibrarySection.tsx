@@ -34,7 +34,9 @@ export function NavbarLibrarySection({
     if (!libraryCollection) {
       return [];
     }
-    const tree = buildCollectionTree([libraryCollection], () => true);
+    const tree = buildCollectionTree([libraryCollection], {
+      modelFilter: () => true,
+    });
     if (tree.length === 0) {
       return [];
     }
