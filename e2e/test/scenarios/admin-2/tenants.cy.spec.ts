@@ -287,9 +287,7 @@ describe("Tenants - management", () => {
     });
 
     cy.findByRole("navigation", { name: "people-nav" })
-      .findAllByRole("link", { name: /Groups/ })
-      .should("have.length", 2)
-      .first()
+      .findByRole("link", { name: /Internal groups/ })
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
@@ -300,7 +298,7 @@ describe("Tenants - management", () => {
     });
 
     cy.findByRole("navigation", { name: "people-nav" })
-      .findAllByRole("link", { name: /Tenant Groups/ })
+      .findAllByRole("link", { name: /Tenant groups/ })
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
@@ -768,14 +766,14 @@ describe("tenant users", () => {
     H.popover().findByText("Edit user").click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant Groups");
+      cy.findByText("Tenant groups");
       cy.findByText("All tenant users").click();
     });
 
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant Groups").click(); // trigger blur
+      cy.findByText("Tenant groups").click(); // trigger blur
       cy.findByText("2 other groups").should("be.visible");
       cy.button("Update").click();
     });
@@ -802,7 +800,7 @@ describe("tenant users", () => {
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant Groups").click(); // trigger blur
+      cy.findByText("Tenant groups").click(); // trigger blur
       cy.findByText("2 other groups").should("be.visible");
       cy.button("Create").click();
     });
@@ -917,11 +915,11 @@ const createTenantGroupFromUI = (groupName: string) => {
 
   // FIXME shouldn't be necessary - caused by slow route guard
   cy.findByTestId("admin-layout-sidebar")
-    .findByText(/Tenant Groups/)
+    .findByText(/Tenant groups/)
     .click();
 
   cy.findByTestId("admin-layout-content")
-    .findByRole("heading", { name: /Tenant Groups/ })
+    .findByRole("heading", { name: /Tenant groups/ })
     .should("be.visible");
 
   cy.button("Create a group").click();
