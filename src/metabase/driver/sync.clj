@@ -80,3 +80,21 @@
   ([inclusion-patterns exclusion-patterns schema-name]
    (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
      (filter-fn schema-name))))
+
+(defn inclusion-patterns->literal-schema-names
+  "Given inclusion patterns string (comma-separated), returns a set of literal schema names if ALL patterns
+  are simple literals (no wildcards or regex metacharacters). Returns nil if any pattern contains wildcards
+  or if patterns is nil/blank.
+
+  This is useful for pushing schema filters down into SQL queries when possible.
+
+  Examples:
+    \"public,test_schema\" => #{\"public\" \"test_schema\"}
+    \"public,test*\"       => nil (contains wildcard)
+    nil                    => nil"
+  [inclusion-patterns]
+  (when-not (str/blank? inclusion-patterns)
+    (let [schemas (map str/trim (str/split inclusion-patterns #","))]
+      ;; Only return schemas if none contain wildcards or regex metacharacters
+      (when (every? #(not (re-find #"[*?\\]" %)) schemas)
+        (set schemas)))))
