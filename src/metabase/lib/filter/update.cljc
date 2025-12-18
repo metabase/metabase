@@ -205,7 +205,10 @@
        (let [;; clamp range to unit to ensure we select exactly what's represented by the dots/bars. E.g. if I draw my
              ;; filter from `2024-01-02` to `2024-03-05` and the unit is `:month`, we should only show the months
              ;; between those two values, i.e. only `2024-02` and `2024-03`.
-             start         (u.time/truncate (u.time/add start unit 1) unit)
+             start         (let [truncated (u.time/truncate start unit)]
+                             (if (= (str truncated) (str start))
+                               truncated
+                               (u.time/truncate (u.time/add start unit 1) unit)))
              end           (u.time/truncate end unit)
              ;; update the breakout unit if appropriate.
              breakout-unit (temporal-filter-find-best-breakout-unit unit start end (:effective-type temporal-column))

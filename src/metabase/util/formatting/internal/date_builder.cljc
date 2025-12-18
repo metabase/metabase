@@ -53,17 +53,24 @@
   "Given a data structure describing the date format, as given in [[format-strings]], return a function that takes a
   date object and formats it."
   [format-list]
-  (let [js->clj   #?(:cljs js->clj :clj identity)
-        parts     (for [fmt (js->clj format-list)]
-                    (cond
-                      (keyword? fmt)             (get format-strings fmt)
-                      (= fmt ":")                (format-string-literal ":")
-                      (str/starts-with? fmt ":") (-> fmt (subs 1) keyword format-strings)
-                      (string? fmt)              (format-string-literal fmt)
-                      :else                      (throw (ex-info "Unknown element of date format"
-                                                                 {:bad-element fmt
-                                                                  :format      format-list}))))
-        fmt-str   (apply str parts)]
-    #?(:cljs #(.format % fmt-str)
+  (let [js->clj          #?(:cljs js->clj :clj identity)
+        doy-placeholder  #?(:cljs "__MB_DAY_OF_YEAR__" :clj nil)
+        parts            (for [fmt (js->clj format-list)]
+                           (cond
+                             #?(:cljs (= fmt :day-of-year) :clj false) (format-string-literal doy-placeholder)
+                             (keyword? fmt)                             (get format-strings fmt)
+                             (= fmt ":")                                (format-string-literal ":")
+                             (str/starts-with? fmt ":")                 (-> fmt (subs 1) keyword format-strings)
+                             (string? fmt)                              (format-string-literal fmt)
+                             :else                                      (throw (ex-info "Unknown element of date format"
+                                                                                    {:bad-element fmt
+                                                                                     :format      format-list}))))
+        fmt-str          (apply str parts)]
+    #?(:cljs (let [needs-doy? (str/includes? fmt-str doy-placeholder)]
+               (fn [d]
+                 (let [formatted (.format d fmt-str)]
+                   (if needs-doy?
+                     (str/replace formatted doy-placeholder (.padStart (str (.dayOfYear d)) 3 "0"))
+                     formatted))))
        :clj  (let [formatter (DateTimeFormatter/ofPattern fmt-str)]
                #(.format formatter %)))))
