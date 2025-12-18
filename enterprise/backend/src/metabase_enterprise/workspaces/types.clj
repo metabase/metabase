@@ -35,8 +35,7 @@
 ;;; ---------------------------------------- Graph/Problem Types ----------------------------------------
 
 ;; Node types used in workspace graphs and problem detection
-;; Note: :global-transform is for transforms completely outside the workspace (not enclosed, not checked out)
-(mr/def ::node-type [:enum :input-table :external-transform :workspace-transform :global-transform])
+(mr/def ::node-type [:enum :input-table :external-transform :workspace-transform])
 
 (mr/def ::table-coord
   "Logical reference to a table by database, schema, and name."
@@ -63,7 +62,7 @@
    Each entry has:
    - :description - human-readable explanation
    - :severity - :error, :warning, or :info
-   - :blocks-merge? - whether this problem should prevent merging
+   - :block-merge - whether this problem should prevent merging
    - :static? - true if determinable from metadata alone, false if requires runtime info
 
    ## Categories
@@ -77,77 +76,86 @@
    - internal-* : between workspace transforms only
    - external-* : involves global transforms (upstream or downstream)"
   {;; No dependents (informational)
-   :unused-not-run {:description   "Output hasn't been created yet, but nothing depends on it"
+   :unused/not-run {:description   "Output hasn't been created yet, but nothing depends on it"
                     :severity      :info
-                    :blocks-merge? false
+                    :block-merge false
                     :static?       true}
-   :unused-stale   {:description   "Output is stale (needs re-run), but nothing depends on it"
+   :unused/stale   {:description   "Output is stale (needs re-run), but nothing depends on it"
                     :severity      :info
-                    :blocks-merge? false
+                    :block-merge false
                     :static?       true}
-   :unused-failed  {:description   "Transform failed on last run, but nothing depends on it"
+   :unused/failed  {:description   "Transform failed on last run, but nothing depends on it"
                     :severity      :error
-                    :blocks-merge? false
+                    :block-merge false
                     :static?       false}
 
    ;; Internal dependents (blocks workspace progress)
-   :internal-downstream-not-run {:description   "Output hasn't been created yet, other workspace transforms need it"
+   :internal-downstream/not-run {:description   "Output hasn't been created yet, other workspace transforms need it"
                                  :severity      :warning
-                                 :blocks-merge? true
+                                 :block-merge true
                                  :static?       true}
-   :internal-downstream-stale   {:description   "Output is stale, other workspace transforms need fresh data"
+   :internal-downstream/stale   {:description   "Output is stale, other workspace transforms need fresh data"
                                  :severity      :warning
-                                 :blocks-merge? true
+                                 :block-merge true
                                  :static?       true}
-   :internal-downstream-failed  {:description   "Transform failed on last run, other workspace transforms need it"
+   :internal-downstream/failed  {:description   "Transform failed on last run, other workspace transforms need it"
                                  :severity      :error
-                                 :blocks-merge? true
+                                 :block-merge true
                                  :static?       false}
 
    ;; External dependents (would affect things after merge)
-   :external-downstream-not-run       {:description   "Output hasn't been created yet, external transforms depend on it"
+   :external-downstream/not-run       {:description   "Output hasn't been created yet, external transforms depend on it"
                                        :severity      :warning
-                                       :blocks-merge? true
+                                       :block-merge true
                                        :static?       true}
-   :external-downstream-stale         {:description   "Output is stale, external transforms are using outdated data"
+   :external-downstream/stale         {:description   "Output is stale, external transforms are using outdated data"
                                        :severity      :warning
-                                       :blocks-merge? true
+                                       :block-merge true
                                        :static?       true}
-   :external-downstream-removed-field {:description   "Field was removed that external transforms reference"
+   :external-downstream/removed-field {:description   "Field was removed that external transforms reference"
                                        :severity      :error
-                                       :blocks-merge? true
+                                       :block-merge true
                                        :static?       true}
-   :external-downstream-removed-table {:description   "Table was removed, external transforms will stop receiving updates"
+   :external-downstream/removed-table {:description   "Table was removed, external transforms will stop receiving updates"
                                        :severity      :warning
-                                       :blocks-merge? false
+                                       :block-merge false
                                        :static?       true}
 
    ;; Structural issues (conflicts/cycles)
-   :internal-target-conflict {:description   "Multiple workspace transforms target the same table"
+   :internal/target-conflict {:description   "Multiple workspace transforms target the same table"
                               :severity      :error
-                              :blocks-merge? true
+                              :block-merge true
                               :static?       true}
-   :internal-cycle           {:description   "Circular dependency between workspace transforms"
+   :internal/cycle           {:description   "Circular dependency between workspace transforms"
                               :severity      :error
-                              :blocks-merge? true
+                              :block-merge true
                               :static?       true}
-   :external-target-conflict {:description   "Workspace transform conflicts with an existing global transform's target"
+   :external/target-conflict {:description   "Workspace transform conflicts with an existing global transform's target"
                               :severity      :error
-                              :blocks-merge? true
+                              :block-merge true
                               :static?       true}
-   :external-cycle           {:description   "Workspace changes would create a circular dependency with global transforms"
+   :external/cycle           {:description   "Workspace changes would create a circular dependency with global transforms"
                               :severity      :error
-                              :blocks-merge? true
+                              :block-merge true
                               :static?       true}})
 
 (mr/def ::problem-type (into [:enum] (keys problem-types)))
 
 (mr/def ::severity [:enum :error :warning :info])
 
+;; Categories derived from problem-type namespaces
+(mr/def ::problem-category
+  (into [:enum] (distinct (map (comp keyword namespace) (keys problem-types)))))
+
+;; Problem names derived from problem-type names
+(mr/def ::problem-name
+  (into [:enum] (distinct (map (comp keyword name) (keys problem-types)))))
+
 (mr/def ::problem
   "A problem detected during workspace validation."
   [:map
-   [:type ::problem-type]
+   [:category ::problem-category]
+   [:problem ::problem-name]
    [:severity ::severity]
-   [:blocks-merge? :boolean]
+   [:block-merge :boolean]
    [:data :map]])

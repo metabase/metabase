@@ -11,13 +11,13 @@
 
    ## Currently Implemented
 
-   | Type                                | Description                                              |
-   |-------------------------------------|----------------------------------------------------------|
-   | unused-not-run                      | Output hasn't been created, nothing depends on it        |
-   | external-downstream-not-run         | Output hasn't been created, external transforms need it  |
-   | external-downstream-removed-field   | Field was removed that external transforms reference     |"
+   | Category            | Problem       | Description                                                    |
+   |---------------------|---------------|----------------------------------------------------------------|
+   | unused              | not-run       | Output hasn't been created, nothing depends on it              |
+   | internal-downstream | not-run       | Output hasn't been created, other workspace transforms need it |
+   | external-downstream | not-run       | Output hasn't been created, external transforms need it        |
+   | external-downstream | removed-field | Field was removed that external transforms reference           |"
   (:require
-   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -73,39 +73,58 @@
 
 ;;;; ---------------------------------------- External Transform Discovery ----------------------------------------
 
-(defn- get-workspace-outputs
+;; TODO we could join these extra fields onto the graph before calling into this namespace, and save coupling
+(defn- workspace-outputs
   "Get all workspace outputs with their global and isolated table info."
   [workspace-id]
+  ;; TODO this is currently incomplete - it doesn't include the outputs for enclosed transforms
   (t2/select [:model/WorkspaceOutput
               :id :ref_id :db_id
               :global_schema :global_table :global_table_id
               :isolated_schema :isolated_table :isolated_table_id]
              :workspace_id workspace-id))
 
-(defn- get-checked-out-transform-ids
-  "Get the global IDs of transforms that are checked out into this workspace."
-  [workspace-id]
-  (into #{} (t2/select-fn-set :global_id
-                              [:model/WorkspaceTransform :global_id]
-                              :workspace_id workspace-id
-                              {:where [:not= :global_id nil]})))
+(defn- ids-for-type [entities desired-node-type]
+  (for [{:keys [node-type id]} entities, :when (= node-type desired-node-type)] id))
 
-(defn- get-enclosed-transform-ids
+(defn- checked-out-transform-ids
+  "Get the global IDs of transforms that are checked out into this workspace.
+   Extracts workspace-transform ref_ids from the graph and looks up their global_ids."
+  [{:keys [entities] :as _graph}]
+  (if-let [ref-ids (seq (ids-for-type entities :workspace-transform))]
+    ;; TODO if we keep track of the global_id properties when building the graph, we can save this query.
+    (t2/select-fn-set :global_id
+                      [:model/WorkspaceTransform :global_id]
+                      :ref_id [:in ref-ids]
+                      {:where [:not= :global_id nil]})
+    #{}))
+
+(defn- enclosed-transform-ids
   "Get the IDs of external transforms that are enclosed by the workspace graph.
-   These transforms run within the workspace, so they don't need validation."
-  [workspace-id]
-  (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}]
-                                      {:entity-type :transform, :id ref_id})
-                                    [:model/WorkspaceTransform :ref_id]
-                                    :workspace_id workspace-id)
-        {:keys [entities]} (ws.dag/path-induced-subgraph workspace-id changeset)]
-    ;; Extract IDs of external transforms from the graph
-    (into #{} (keep (fn [{:keys [node-type id]}]
-                      (when (= node-type :external-transform)
-                        id)))
-          entities)))
+   These transforms run within the workspace, so they don't need further static validation."
+  [{:keys [entities] :as _graph}]
+  (ids-for-type entities :external-transform))
 
-(defn- get-external-transform-dependents
+(def ^:private table? #{:table})
+
+(defn- internal-dependents
+  "Build a map of non-table ids to the non-table ids that directly depend on it (internal to workspace).
+   This is essentially an inversion of the dependencies map, with some filtering."
+  [{:keys [dependencies] :as _graph}]
+  ;; :dependencies is {child #{parents...}}, we need to invert to {parent #{children...}}
+  (reduce (fn [acc [{child-type :node-type, child-id :id} parents]]
+            (if (table? child-type)
+              acc
+              (reduce (fn [acc {parent-type :node-type, parent-id :id}]
+                        (if (table? parent-type)
+                          acc
+                          (update acc parent-id (fnil conj #{}) child-id)))
+                      acc
+                      parents)))
+          {}
+          dependencies))
+
+(defn- external-transform-dependents
   "Get external transforms that depend on a given table (by global_table_id).
    Excludes transforms that are checked out or enclosed in the workspace."
   [global-table-id checked-out-ids enclosed-ids]
@@ -116,7 +135,7 @@
                             :to_entity_type :table
                             :to_entity_id global-table-id
                             :from_entity_type :transform)
-          ;; Filter out checked out and enclosed transforms
+          ;; Remove checked out and enclosed transforms
           external-ids (-> dependent-transform-ids
                            (disj nil)
                            (as-> ids (apply disj ids checked-out-ids))
@@ -132,9 +151,9 @@
   [transform global-table-id replacement-fields]
   (let [db-id (get-in transform [:source :query :database])]
     (when db-id
-      (let [base-provider (lib-be/application-database-metadata-provider db-id)
+      (let [base-provider     (lib-be/application-database-metadata-provider db-id)
             override-provider (make-field-override-provider base-provider global-table-id replacement-fields)
-            query (lib/query override-provider (get-in transform [:source :query]))]
+            query             (lib/query override-provider (get-in transform [:source :query]))]
         (lib/find-bad-refs query)))))
 
 (defn- get-table-fields
@@ -146,43 +165,59 @@
                :active true)))
 
 (defn- make-problem
-  "Construct a problem map with type metadata from ws.t/problem-types."
+  "Construct a problem map with type metadata from ws.t/problem-types.
+   Splits the namespaced problem-type into :category and :problem keys."
   [problem-type data]
-  (let [{:keys [severity blocks-merge?]} (get ws.t/problem-types problem-type)]
-    {:type          problem-type
-     :severity      severity
-     :blocks-merge? blocks-merge?
-     :data          data}))
+  (let [{:keys [severity block-merge]} (get ws.t/problem-types problem-type)]
+    {:category    (keyword (namespace problem-type))
+     :problem     (keyword (name problem-type))
+     :severity    severity
+     :block-merge block-merge
+     :data        data}))
 
-(defn- find-problems-for-output
+(defn- problems-for-output
   "Find problems related to a single workspace output.
    Returns a sequence of problem maps."
-  [output checked-out-ids enclosed-ids]
+  [output checked-out-ids enclosed-ids internal-dependents-map]
   (let [{:keys [ref_id db_id global_schema global_table global_table_id
                 isolated_table_id]} output
-        external-transforms (get-external-transform-dependents global_table_id checked-out-ids enclosed-ids)
+        external-transforms      (external-transform-dependents global_table_id checked-out-ids enclosed-ids)
         has-external-dependents? (seq external-transforms)
-        table-coord {:db_id db_id :schema global_schema :table global_table}]
+        internal-dependents      (get internal-dependents-map ref_id)
+        has-internal-dependents? (seq internal-dependents)
+        table-coord              {:db_id db_id :schema global_schema :table global_table}]
 
     (cond
       ;; Case 1: Isolated table doesn't exist yet
       (nil? isolated_table_id)
-      (if has-external-dependents?
+      (cond
         ;; External transforms depend on this output that doesn't exist
-        [(make-problem :external-downstream-not-run
-                       {:output table-coord
-                        :transform {:type :workspace-transform
-                                    :id ref_id}
+        has-external-dependents?
+        [(make-problem :external-downstream/not-run
+                       {:output     table-coord
+                        :transform  {:type :workspace-transform
+                                     :id   ref_id}
                         :dependents (mapv (fn [{:keys [id name]}]
-                                            {:type :global-transform
-                                             :id id
+                                            {:type :external-transform
+                                             :id   id
                                              :name name})
                                           external-transforms)})]
-        ;; No external dependents - just informational
-        [(make-problem :unused-not-run
-                       {:output table-coord
+        ;; Internal workspace transforms depend on this output that doesn't exist
+        has-internal-dependents?
+        [(make-problem :internal-downstream/not-run
+                       {:output     table-coord
+                        :transform  {:type :workspace-transform
+                                     :id   ref_id}
+                        :dependents (mapv (fn [dep-ref-id]
+                                            {:type :workspace-transform
+                                             :id   dep-ref-id})
+                                          internal-dependents)})]
+        ;; No dependents - just informational
+        :else
+        [(make-problem :unused/not-run
+                       {:output    table-coord
                         :transform {:type :workspace-transform
-                                    :id ref_id}})])
+                                    :id   ref_id}})])
 
       ;; Case 2: Isolated table exists - check for field breakages
       has-external-dependents?
@@ -191,12 +226,12 @@
               (mapcat (fn [transform]
                         (when-let [bad-refs (validate-transform-against-fields
                                              transform global_table_id isolated-fields)]
-                          [(make-problem :external-downstream-removed-field
-                                         {:output table-coord
-                                          :transform {:type :global-transform
-                                                      :id (:id transform)
+                          [(make-problem :external-downstream/removed-field
+                                         {:output    table-coord
+                                          :transform {:type :external-transform
+                                                      :id   (:id transform)
                                                       :name (:name transform)}
-                                          :bad-refs bad-refs})])))
+                                          :bad-refs  bad-refs})])))
               external-transforms))
 
       ;; Case 3: No problems
@@ -207,20 +242,25 @@
 (defn find-downstream-problems
   "Find problems that would affect transforms outside the workspace after merge.
 
-   Returns a sequence of problem maps, each with:
-   - :type - the problem type keyword (see ws.t/problem-types)
-   - :severity - :error, :warning, or :info
-   - :blocks-merge? - whether this problem should prevent merging
-   - :data - polymorphic data depending on type
+   Takes the workspace graph (from `ws.dag/path-induced-subgraph`) as an argument.
 
-   Currently implemented problem types:
-   - :external-downstream-not-run - output table hasn't been created, but external transforms depend on it
-   - :external-downstream-removed-field - a field was removed that external transforms need
-   - :unused-not-run - output table hasn't been created (informational, no dependents)"
-  [workspace-id]
-  (let [outputs (get-workspace-outputs workspace-id)
-        checked-out-ids (get-checked-out-transform-ids workspace-id)
-        enclosed-ids (get-enclosed-transform-ids workspace-id)]
+   Returns a sequence of problem maps, each with:
+   - :category    - the problem category (e.g. :unused, :internal-downstream, :external-downstream)
+   - :problem     - the specific problem (e.g. :not-run, :removed-field)
+   - :severity    - :error, :warning, or :info
+   - :block-merge - whether this problem should prevent merging
+   - :data        - further data, depending on type
+
+   Currently implemented problem types (category + problem):
+   -              :unused/not-run       - output table hasn't been created (informational, no dependents)
+   - :internal-downstream/not-run       - output table hasn't been created, other workspace transforms need it
+   - :external-downstream/not-run       - output table hasn't been created, but external transforms depend on it
+   - :external-downstream/removed-field - a field was removed that external transforms need"
+  [workspace-id graph]
+  (let [outputs         (workspace-outputs workspace-id)
+        checked-out-ids (checked-out-transform-ids graph)
+        enclosed-ids    (enclosed-transform-ids graph)
+        dependents      (internal-dependents graph)]
     (into []
-          (mapcat #(find-problems-for-output % checked-out-ids enclosed-ids))
+          (mapcat #(problems-for-output % checked-out-ids enclosed-ids dependents))
           outputs)))

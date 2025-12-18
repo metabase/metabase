@@ -460,21 +460,25 @@
 
 ;;; ---------------------------------------- Problems/Validation ----------------------------------------
 
-(api.macros/defendpoint :get "/:id/problems" :- [:sequential ::ws.t/problem]
+(api.macros/defendpoint :get "/:id/problem" :- [:sequential ::ws.t/problem]
   "Detect problems in the workspace that would affect downstream transforms after merge.
 
    Returns a list of problems, each with:
-   - type: the problem type (e.g. 'dependent-transform-removed-field')
+   - category: the problem category (e.g. 'unused', 'internal-downstream', 'external-downstream')
+   - problem: the specific problem (e.g. 'not-run', 'stale', 'removed-field')
+   - severity: :error, :warning, or :info
+   - block-merge: whether this problem prevents merging
    - data: polymorphic data depending on the problem type
 
-   Problem types:
-   - 'dependent-transform-output-not-yet-created': Output table hasn't been created, but external transforms depend on it
-   - 'unused-output-not-yet-created': Output table hasn't been created (informational)
-   - 'dependent-transform-removed-field': A field was removed that external transforms need"
+   See `metabase-enterprise.workspaces.types/problem-types` for the full list."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  (ws.validation/find-downstream-problems id))
+  (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
+                                    [:model/WorkspaceTransform :ref_id] :workspace_id id)
+        graph (when (seq changeset)
+                (ws.dag/path-induced-subgraph id changeset))]
+    (ws.validation/find-downstream-problems id graph)))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
 
