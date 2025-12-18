@@ -30,10 +30,7 @@ export const CollectionSyncList = ({
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
 
-  const syncMap: CollectionSyncPreferences = useMemo(
-    () => values[COLLECTIONS_KEY] ?? {},
-    [values],
-  );
+  const syncMap: CollectionSyncPreferences = values[COLLECTIONS_KEY] ?? {};
   const currentType = values[TYPE_KEY];
   const isReadOnly = currentType === "read-only";
   const previousType = usePrevious(currentType);
