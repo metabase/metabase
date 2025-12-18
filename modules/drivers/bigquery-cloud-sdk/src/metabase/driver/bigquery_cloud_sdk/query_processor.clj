@@ -692,8 +692,9 @@
       ;; attach temporal type info to the field clause, this will get attached to the resulting [[h2x/identifier]] by
       ;; SQL QP parent method, and we can access that inside other things like [[sql.qp/date]] implementations which it
       ;; may call in turn.
-      (let [field-clause (-> (with-temporal-type field-clause (temporal-type field-clause))
-                             (with-base-temporal-type))
+      (let [field-clause (-> field-clause
+                             (with-temporal-type (temporal-type field-clause))
+                             with-base-temporal-type)
             stored-field  (when (integer? id-or-name)
                             (driver-api/field (driver-api/metadata-provider) id-or-name))
             result       (parent-method driver field-clause)
