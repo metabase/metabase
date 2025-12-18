@@ -2,12 +2,11 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.25rem 0.625rem;
-  font-size: 0.75rem;
+  padding: 0.25rem 0.625em;
   font-weight: 700;
   color: var(--mb-color-brand);
   white-space: nowrap;
-  border-radius: 6px;
+  border-radius: 5px;
   background-color: var(--mb-color-brand-lighter);
   cursor: pointer;
   transition: background-color 200ms ease-in-out;

@@ -5,6 +5,7 @@
 .header {
   z-index: 1;
   flex-shrink: 0;
+  font-size: 12.5px;
   background-color: var(--mb-color-background);
 }
 
