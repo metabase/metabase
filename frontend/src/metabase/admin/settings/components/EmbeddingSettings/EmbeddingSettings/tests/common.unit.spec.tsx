@@ -8,7 +8,6 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       await setup({
         isEmbeddingSdkEnabled: false,
         showSdkEmbedTerms: false,
-        specificPlugins: undefined, // so EE is set to false
       });
       expect(
         screen.queryByText(/Enable modular embedding SDK/i),
@@ -54,7 +53,6 @@ describe("EmbeddingSdkSettings (OSS)", () => {
   it("does not show the modular embedding toggle when token features are missing", () => {
     setup({
       tokenFeatures: { embedding_simple: false },
-      specificPlugins: undefined, // so EE is set to false
     });
 
     expect(

@@ -50,7 +50,7 @@ export async function setup({
     settings: mockSettings(settings),
   });
 
-  if (specificPlugins) {
+  if (specificPlugins?.length) {
     PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
     specificPlugins.forEach((plugin) => {
