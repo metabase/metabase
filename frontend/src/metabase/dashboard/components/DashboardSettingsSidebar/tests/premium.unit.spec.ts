@@ -21,7 +21,7 @@ describe("DashboardSettingsSidebar > premium enterprise", () => {
       settings: createMockSettings({
         "token-features": createMockTokenFeatures(tokenFeatures),
       }),
-      specificPlugins: ["audit_app", "caching"],
+      enterprisePlugins: ["audit_app", "caching"],
     });
 
     expect(screen.getByText("Dashboard settings")).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe("DashboardSettingsSidebar > premium enterprise", () => {
       settings: createMockSettings({
         "token-features": createMockTokenFeatures(tokenFeatures),
       }),
-      specificPlugins: ["audit_app", "caching"],
+      enterprisePlugins: ["audit_app", "caching"],
     });
 
     expect(await screen.findByText("Caching")).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe("DashboardSettingsSidebar > premium enterprise", () => {
       settings: createMockSettings({
         "token-features": createMockTokenFeatures(tokenFeatures),
       }),
-      specificPlugins: ["audit_app", "caching"],
+      enterprisePlugins: ["audit_app", "caching"],
     });
 
     await userEvent.click(await screen.findByText("Use default"));
@@ -63,7 +63,7 @@ describe("DashboardSettingsSidebar > premium enterprise", () => {
       settings: createMockSettings({
         "token-features": createMockTokenFeatures(tokenFeatures),
       }),
-      specificPlugins: ["audit_app", "caching"],
+      enterprisePlugins: ["audit_app", "caching"],
     });
 
     expect(screen.queryByText("History")).not.toBeInTheDocument();

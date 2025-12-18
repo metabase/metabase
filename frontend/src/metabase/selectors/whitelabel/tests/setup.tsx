@@ -12,7 +12,7 @@ export interface SetupOpts {
   applicationName?: string;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export function setup({
@@ -20,7 +20,7 @@ export function setup({
   applicationName = "Metabase",
   showMetabaseLinks = true,
   tokenFeatures = {},
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const state = createMockState({
     settings: mockSettings({
@@ -31,7 +31,7 @@ export function setup({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

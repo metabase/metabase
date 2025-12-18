@@ -39,7 +39,7 @@ export interface SetupOpts {
   hasParameterValuesError?: boolean;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = async ({
@@ -50,7 +50,7 @@ export const setup = async ({
   hasParameterValuesError = false,
   showMetabaseLinks = true,
   tokenFeatures = {},
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts = {}) => {
   const currentUser = createMockUser();
   const databases = [createMockDatabase()];
@@ -106,7 +106,7 @@ export const setup = async ({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

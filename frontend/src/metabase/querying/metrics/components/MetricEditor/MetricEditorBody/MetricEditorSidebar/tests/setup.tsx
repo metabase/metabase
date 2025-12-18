@@ -10,13 +10,13 @@ import { MetricEditorSidebar } from "../MetricEditorSidebar";
 export type SetupOpts = {
   tokenFeatures?: Partial<TokenFeatures>;
   showMetabaseLinks?: boolean;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export function setup({
   tokenFeatures,
   showMetabaseLinks,
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const state = createMockState({
     settings: mockSettings({
@@ -25,7 +25,7 @@ export function setup({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

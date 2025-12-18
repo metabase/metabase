@@ -11,7 +11,7 @@ const setupEnterprise = (opts: any) => {
     ...opts,
     hasEnterprisePlugins: true,
     tokenFeatures: { audit_app: true },
-    specificPlugins: ["audit_app", "database_routing", "collections"],
+    enterprisePlugins: ["audit_app", "database_routing", "collections"],
   });
 };
 

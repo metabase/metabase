@@ -7,7 +7,7 @@ const setupPremium = async (opts?: SearchSidebarSetupOptions) => {
   setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({ content_verification: true }),
-    specificPlugins: ["content_verification"],
+    enterprisePlugins: ["content_verification"],
   });
 };
 

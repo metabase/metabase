@@ -6,7 +6,7 @@ import { setup } from "./setup";
 const setupEnterprise = async (opts?: SearchSidebarSetupOptions) => {
   setup({
     ...opts,
-    specificPlugins: ["content_verification"],
+    enterprisePlugins: ["content_verification"],
   });
 };
 

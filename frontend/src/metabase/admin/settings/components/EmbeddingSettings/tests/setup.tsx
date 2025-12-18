@@ -26,7 +26,7 @@ export interface SetupOpts {
   isEmbeddingSimpleEnabled?: Settings["enable-embedding-simple"];
   isHosted?: Settings["is-hosted?"];
   tokenFeatures?: Partial<TokenFeatures>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
@@ -36,7 +36,7 @@ export async function setup({
   isEmbeddingSimpleEnabled = false,
   isHosted = false,
   tokenFeatures = {},
-  specificPlugins,
+  enterprisePlugins,
 }: SetupOpts) {
   const settings = createMockSettings({
     "show-sdk-embed-terms": showSdkEmbedTerms,
@@ -50,10 +50,10 @@ export async function setup({
     settings: mockSettings(settings),
   });
 
-  if (specificPlugins?.length) {
+  if (enterprisePlugins?.length) {
     PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
-    specificPlugins.forEach((plugin) => {
+    enterprisePlugins.forEach((plugin) => {
       setupEnterpriseOnlyPlugin(plugin);
     });
 

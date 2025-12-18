@@ -16,7 +16,7 @@ const setupContentVerification = (opts: SetupOpts) => {
       ...opts?.settings,
       "token-features": createMockTokenFeatures({ content_verification: true }),
     }),
-    specificPlugins: ["content_verification", "moderation"],
+    enterprisePlugins: ["content_verification", "moderation"],
   });
 };
 

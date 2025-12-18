@@ -210,7 +210,7 @@ export type SetupOpts = {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   canCreateQueries?: boolean;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export function setup({
@@ -219,7 +219,7 @@ export function setup({
   showMetabaseLinks = true,
   tokenFeatures = {},
   canCreateQueries = true,
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const state = createMockState({
     setup: createMockSetupState({
@@ -237,7 +237,7 @@ export function setup({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

@@ -20,7 +20,7 @@ const setupEnterprise = (opts: SetupOpts) => {
         audit_app: true,
       }),
     }),
-    specificPlugins: ["collections"],
+    enterprisePlugins: ["collections"],
   });
 };
 

@@ -14,7 +14,7 @@ describe("EmbeddingSdkSettings (EE)", () => {
       isEmbeddingSdkEnabled: false,
       showSdkEmbedTerms: false,
       isHosted: true,
-      specificPlugins: [
+      enterprisePlugins: [
         "embedding-sdk",
         "embedding_iframe_sdk",
         "embedding_iframe_sdk_setup",
@@ -39,7 +39,7 @@ describe("EmbeddingSdkSettings (EE)", () => {
   it("should show Tenants in related settings when tenants feature is available", async () => {
     await setup({
       tokenFeatures: { tenants: true },
-      specificPlugins: [
+      enterprisePlugins: [
         "embedding-sdk",
         "embedding_iframe_sdk",
         "embedding_iframe_sdk_setup",

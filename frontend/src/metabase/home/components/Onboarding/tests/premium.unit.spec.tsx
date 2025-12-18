@@ -5,7 +5,7 @@ import { type SetupProps, setup as baseSetup } from "./setup";
 function setup(opts?: SetupProps) {
   baseSetup({
     tokenFeatures: { whitelabel: true },
-    specificPlugins: ["whitelabel"],
+    enterprisePlugins: ["whitelabel"],
     ...opts,
   });
 }

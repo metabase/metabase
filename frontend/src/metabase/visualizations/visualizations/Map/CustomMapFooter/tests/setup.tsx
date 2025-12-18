@@ -16,14 +16,14 @@ export interface SetupOpts {
   isAdmin: boolean;
   showMetabaseLinks: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
   isAdmin,
   showMetabaseLinks = true,
   tokenFeatures = {},
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts) => {
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
@@ -33,7 +33,7 @@ export const setup = ({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

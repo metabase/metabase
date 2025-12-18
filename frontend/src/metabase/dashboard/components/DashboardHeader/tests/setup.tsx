@@ -46,7 +46,7 @@ export const setup = async ({
   email = false,
   slack = false,
   collections = [],
-  specificPlugins,
+  enterprisePlugins,
   tokenFeatures = {},
 }: {
   dashboard?: typeof TEST_DASHBOARD;
@@ -54,7 +54,7 @@ export const setup = async ({
   email?: boolean;
   slack?: boolean;
   collections?: Collection[];
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 }) => {
   setupCollectionsEndpoints({ collections });
@@ -65,8 +65,8 @@ export const setup = async ({
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
 
-  if (specificPlugins) {
-    specificPlugins.forEach((plugin) => {
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
       setupEnterpriseOnlyPlugin(plugin);
     });
   }

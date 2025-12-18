@@ -19,7 +19,7 @@ export interface SetupOpts {
   isModel?: boolean;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
@@ -27,7 +27,7 @@ export const setup = ({
   cardType = "question",
   showMetabaseLinks = true,
   tokenFeatures = {},
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({
@@ -40,7 +40,7 @@ export const setup = ({
     SAMPLE_METADATA,
   );
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

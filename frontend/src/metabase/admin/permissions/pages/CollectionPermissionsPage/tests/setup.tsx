@@ -144,7 +144,7 @@ interface SetupOptions {
   permissionGroups?: GroupInfo[];
   tokenFeatures?: Partial<TokenFeatures>;
   settings?: Partial<Settings>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export function setup({
@@ -155,7 +155,7 @@ export function setup({
   permissionGroups = defaultPermissionGroups,
   tokenFeatures,
   settings = {},
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: Partial<SetupOptions> = {}) {
   const initialState = createMockState({
     settings: mockSettings({
@@ -165,7 +165,7 @@ export function setup({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

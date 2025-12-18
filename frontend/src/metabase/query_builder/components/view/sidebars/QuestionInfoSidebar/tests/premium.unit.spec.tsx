@@ -22,7 +22,7 @@ const setupEnterprise = (opts: SetupOpts) => {
         audit_app: true,
       }),
     }),
-    specificPlugins: [
+    enterprisePlugins: [
       "content_verification",
       "audit_app",
       "collections",

@@ -10,7 +10,7 @@ export type SetupOpts = Omit<BaseSetupOpts, "renderCallback">;
 
 export async function setup(setupOptions: SetupOpts = {}) {
   baseSetup({
-    // specificPlugins: [], // ensures PLUGIN_IS_EE_BUILD.isEEBuild is set to true
+    enterprisePlugins: [], // ensures PLUGIN_IS_EE_BUILD.isEEBuild is set to true
     ...setupOptions,
     renderCallback: ({ state }) =>
       renderWithProviders(<EmbeddingSettings />, { storeInitialState: state }),

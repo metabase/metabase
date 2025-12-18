@@ -33,14 +33,14 @@ export interface SetupOpts {
   card?: Card;
   settings?: Settings;
   user?: Partial<User>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
   user,
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
@@ -62,11 +62,11 @@ export const setup = async ({
   const question = checkNotNull(getQuestion(state));
   const onSave = jest.fn();
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  setupTokenStatusEndpoint({ valid: specificPlugins.length > 0 });
+  setupTokenStatusEndpoint({ valid: enterprisePlugins.length > 0 });
 
   const TestQuestionInfoSidebar = () => (
     <QuestionInfoSidebar question={question} onSave={onSave} />

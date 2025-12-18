@@ -16,7 +16,7 @@ export interface SearchSidebarSetupOptions {
   hasEnterprisePlugins?: boolean;
   value?: URLSearchFilterQueryParams;
   onChange?: (filters: URLSearchFilterQueryParams) => void;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 const TEST_DATABASE = createMockDatabase();
@@ -25,7 +25,7 @@ export const setup = ({
   tokenFeatures = createMockTokenFeatures(),
   value = {},
   onChange = jest.fn(),
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SearchSidebarSetupOptions = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
 
@@ -35,7 +35,7 @@ export const setup = ({
     settings,
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

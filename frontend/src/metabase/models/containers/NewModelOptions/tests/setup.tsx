@@ -18,7 +18,7 @@ export interface SetupOpts {
   canCreateNativeQueries?: boolean;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export function setup({
@@ -26,7 +26,7 @@ export function setup({
   canCreateNativeQueries = false,
   showMetabaseLinks = true,
   tokenFeatures = {},
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts) {
   const state = createMockState({
     currentUser: createMockUser({
@@ -41,7 +41,7 @@ export function setup({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

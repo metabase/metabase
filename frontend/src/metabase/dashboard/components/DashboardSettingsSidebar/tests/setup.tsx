@@ -26,13 +26,13 @@ import { DashboardSettingsSidebar } from "../DashboardSettingsSidebar";
 export interface SetupOpts {
   dashboard?: Dashboard;
   settings?: Settings;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
   dashboard = createMockDashboard(),
   settings = createMockSettings(),
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const setDashboardAttribute = jest.fn();
   const onClose = jest.fn();
@@ -57,7 +57,7 @@ export async function setup({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

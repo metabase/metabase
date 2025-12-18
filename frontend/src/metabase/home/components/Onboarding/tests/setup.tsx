@@ -31,7 +31,7 @@ export type SetupProps = {
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export const setup = ({
@@ -43,7 +43,7 @@ export const setup = ({
   openItem,
   showMetabaseLinks = true,
   tokenFeatures = {},
-  specificPlugins = [],
+  enterprisePlugins = [],
 }: SetupProps = {}) => {
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
   setupPropertiesEndpoints(createMockSettings());
@@ -68,7 +68,7 @@ export const setup = ({
     }),
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

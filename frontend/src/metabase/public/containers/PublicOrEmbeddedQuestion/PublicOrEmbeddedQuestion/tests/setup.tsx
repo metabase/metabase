@@ -67,7 +67,7 @@ export type SetupOpts = {
   tokenFeatures?: TokenFeatures;
   questionName: string;
   uuid: string;
-  specificPlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export async function setup(
@@ -76,14 +76,14 @@ export async function setup(
     tokenFeatures = createMockTokenFeatures(),
     questionName,
     uuid,
-    specificPlugins = [],
+    enterprisePlugins = [],
   }: SetupOpts = { questionName: "", uuid: "" },
 ) {
   const settings = mockSettings({
     "token-features": tokenFeatures,
   });
 
-  specificPlugins.forEach((plugin) => {
+  enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
 

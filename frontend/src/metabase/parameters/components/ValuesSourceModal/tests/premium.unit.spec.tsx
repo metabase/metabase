@@ -12,7 +12,7 @@ function setup(opts: Partial<SetupOpts> = {}) {
   return baseSetup({
     ...opts,
     tokenFeatures: { whitelabel: true },
-    specificPlugins: ["whitelabel"],
+    enterprisePlugins: ["whitelabel"],
   });
 }
 

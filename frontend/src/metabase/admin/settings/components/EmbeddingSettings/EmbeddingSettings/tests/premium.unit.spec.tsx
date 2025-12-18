@@ -13,7 +13,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     await setup({
       isEmbeddingSdkEnabled: true,
       showSdkEmbedTerms: false,
-      specificPlugins: [
+      enterprisePlugins: [
         "embedding-sdk",
         "embedding_iframe_sdk",
         "embedding_iframe_sdk_setup",
@@ -44,7 +44,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
         isEmbeddingSdkEnabled: true,
         showSdkEmbedTerms: false,
         isHosted: true,
-        specificPlugins: [
+        enterprisePlugins: [
           "embedding-sdk",
           "embedding_iframe_sdk",
           "embedding_iframe_sdk_setup",

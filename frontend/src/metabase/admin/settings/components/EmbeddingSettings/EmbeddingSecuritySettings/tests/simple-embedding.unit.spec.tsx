@@ -24,7 +24,7 @@ const setup = async ({
       embedding_sdk: true,
       embedding_simple: true,
     },
-    specificPlugins: ["embedding-sdk"],
+    enterprisePlugins: ["embedding-sdk"],
   });
 
   expect(await screen.findByText("Security")).toBeInTheDocument();
