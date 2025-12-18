@@ -388,8 +388,13 @@ export const useDataGridInstance = <TData, TValue>({
       const newWidth = Math.max(MIN_COLUMN_WIDTH, width);
       setColumnSizingMap({ ...columnSizingMap, [columnName]: newWidth });
 
+      // Mark column as expanded if resized beyond truncate width
       if (newWidth > truncateLongCellWidth) {
-        handleUpdateColumnExpanded(columnName);
+        handleUpdateColumnExpanded(columnName, true);
+      } else {
+        // Reset expanded state when column is resized to a smaller width
+        // This allows the expand button to reappear if content is still truncated
+        handleUpdateColumnExpanded(columnName, false);
       }
 
       onColumnResize?.(columnName, newWidth);
