@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -15,9 +14,7 @@ import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
 import { TenantsListing } from "../components/TenantsListing";
-import { TenantsListingEmptyState } from "../components/TenantsListingEmptyState";
 
-import { NewTenantModal } from "./NewTenantModal/NewTenantModal";
 import S from "./TenantsListingApp.module.css";
 
 export const TenantsListingApp = ({
@@ -29,10 +26,6 @@ export const TenantsListingApp = ({
 
   const [searchInputValue, setSearchInputValue] = useState("");
   const [status, setStatus] = useState<ActiveStatus>(ACTIVE_STATUS.active);
-  const [
-    isCreatingFirstTenant,
-    { open: openFirstTenantModal, close: closeFirstTenantModal },
-  ] = useDisclosure(false);
 
   const { isLoading, error, data } = useListTenantsQuery({ status: "all" });
 
@@ -49,8 +42,6 @@ export const TenantsListingApp = ({
     [data?.data],
   );
 
-  const hasNoTenants = data?.data?.length === 0;
-
   const handleTabChange = (tab: string | null) => {
     if (tab) {
       setStatus(tab as ActiveStatus);
@@ -63,7 +54,10 @@ export const TenantsListingApp = ({
     }
   }, [hasDeactivatedTenants]);
 
+  const hasNoTenants = data?.data?.length === 0;
+
   return (
+    // Make the layout narrow when there are no tenants
     <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
       <Group justify="space-between" w="100%" mb="lg">
         <Title order={1}>{t`Tenants`}</Title>
@@ -87,25 +81,18 @@ export const TenantsListingApp = ({
 
       <SettingsSection>
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
-          {hasNoTenants ? (
-            <TenantsListingEmptyState onCreateTenant={openFirstTenantModal} />
-          ) : (
-            <TenantsListing
-              isAdmin={isAdmin}
-              tenants={tenants}
-              searchInputValue={searchInputValue}
-              setSearchInputValue={setSearchInputValue}
-              status={status}
-            />
-          )}
+          <TenantsListing
+            isAdmin={isAdmin}
+            tenants={tenants}
+            searchInputValue={searchInputValue}
+            setSearchInputValue={setSearchInputValue}
+            status={status}
+            hasNoTenants={hasNoTenants}
+          />
         </LoadingAndErrorWrapper>
 
         {children}
       </SettingsSection>
-
-      {isCreatingFirstTenant && (
-        <NewTenantModal onClose={closeFirstTenantModal} isFirstTenant />
-      )}
     </Box>
   );
 };
