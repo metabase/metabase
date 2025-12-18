@@ -14,8 +14,8 @@ import { useFavicon } from "metabase/common/hooks/use-favicon";
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
-import Bookmark from "metabase/entities/bookmarks";
-import Timelines from "metabase/entities/timelines";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
@@ -203,9 +203,9 @@ const mapDispatchToProps = {
   closeNavbar,
   onChangeLocation: push,
   createBookmark: (id: BookmarkId) =>
-    Bookmark.actions.create({ id, type: "card" }),
+    Bookmarks.actions.create({ id, type: "card" }),
   deleteBookmark: (id: BookmarkId) =>
-    Bookmark.actions.delete({ id, type: "card" }),
+    Bookmarks.actions.delete({ id, type: "card" }),
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -490,7 +490,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 }
 
 export const QueryBuilder = _.compose(
-  Bookmark.loadList(),
+  Bookmarks.loadList(),
   Timelines.loadList(timelineProps),
   connector,
 )(QueryBuilderInner);

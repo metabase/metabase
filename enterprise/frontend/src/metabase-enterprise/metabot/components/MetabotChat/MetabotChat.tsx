@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -18,7 +18,7 @@ import {
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
-import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
+import { useMetabotAgent } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
@@ -28,6 +28,7 @@ import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotConfig = {
+  agentId: "omnibot",
   suggestionModels: [
     "dataset",
     "metric",
@@ -43,9 +44,7 @@ export const MetabotChat = ({
 }: {
   config?: MetabotConfig;
 }) => {
-  const metabot = useMetabotAgent();
-  const { handleSubmitInput, handleRetryMessage, handleResetInput } =
-    useMetabotChatHandlers(config);
+  const metabot = useMetabotAgent(config.agentId);
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -62,19 +61,17 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
+  const handleResetChat = () => {
+    metabot.resetConversation();
+    suggestedPromptsReq.refetch();
+  };
+
   const handleClose = () => {
-    handleResetInput();
+    metabot.setPrompt("");
     metabot.setVisible(false);
   };
 
-  const handleEditorChange = useCallback(
-    (value: string) => metabot.setPrompt(value),
-    [metabot],
-  );
-
-  const handleEditorSubmit = useCallback(() => {
-    handleSubmitInput(metabot.prompt);
-  }, [handleSubmitInput, metabot.prompt]);
+  const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
 
   return (
     <Sidebar
@@ -97,7 +94,7 @@ export const MetabotChat = ({
           <Flex gap="sm">
             <Tooltip label={t`Clear conversation`} position="bottom">
               <ActionIcon
-                onClick={() => metabot.resetConversation()}
+                onClick={handleResetChat}
                 data-testid="metabot-reset-chat"
               >
                 <Icon c="text-primary" name="revert" />
@@ -149,7 +146,7 @@ export const MetabotChat = ({
                         <Button
                           fz="sm"
                           size="xs"
-                          onClick={() => handleSubmitInput(prompt)}
+                          onClick={() => metabot.submitInput(prompt)}
                           className={Styles.promptSuggestionButton}
                         >
                           {prompt}
@@ -171,7 +168,9 @@ export const MetabotChat = ({
               <Messages
                 messages={metabot.messages}
                 errorMessages={metabot.errorMessages}
-                onRetryMessage={handleRetryMessage}
+                onRetryMessage={
+                  config.preventRetryMessage ? undefined : metabot.retryMessage
+                }
                 isDoingScience={metabot.isDoingScience}
                 showFeedbackButtons
               />
@@ -182,7 +181,11 @@ export const MetabotChat = ({
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
               {/* long convo warning */}
-              {metabot.isLongConversation && <MetabotResetLongChatButton />}
+              {metabot.isLongConversation && (
+                <MetabotResetLongChatButton
+                  onResetConversation={metabot.resetConversation}
+                />
+              )}
             </Box>
           )}
         </Box>
@@ -200,7 +203,7 @@ export const MetabotChat = ({
               autoFocus
               isResponding={metabot.isDoingScience}
               placeholder={t`Tell me to do something, or ask a question`}
-              onChange={handleEditorChange}
+              onChange={metabot.setPrompt}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
               suggestionModels={config.suggestionModels}

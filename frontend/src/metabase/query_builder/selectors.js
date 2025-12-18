@@ -5,9 +5,9 @@ import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
-import Databases from "metabase/entities/databases";
+import { Databases } from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
-import Timelines from "metabase/entities/timelines";
+import { Timelines } from "metabase/entities/timelines";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
@@ -1087,9 +1087,6 @@ export const getSubmittableQuestion = (state, question) => {
 
   return submittableQuestion;
 };
-
-export const getIsNotebookNativePreviewShown = (state) =>
-  getSetting(state, "notebook-native-preview-shown");
 
 export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");

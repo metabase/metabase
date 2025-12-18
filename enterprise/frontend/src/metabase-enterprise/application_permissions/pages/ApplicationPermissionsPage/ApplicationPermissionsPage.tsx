@@ -5,7 +5,7 @@ import _ from "underscore";
 import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
-import Groups from "metabase/entities/groups";
+import { Groups } from "metabase/entities/groups";
 import { connect } from "metabase/lib/redux";
 import {
   initializeApplicationPermissions,

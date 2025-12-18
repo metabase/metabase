@@ -43,7 +43,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   database: "database",
   table: "table",
   dataset: "model",
-  schema: "folder",
+  schema: "folder_database",
   action: "bolt",
   "indexed-entity": "index",
   dashboard: "dashboard",
@@ -74,7 +74,11 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "group" };
   }
 
-  if (item.model === "collection" && item.is_personal) {
+  if (
+    item.model === "collection" &&
+    item.is_personal &&
+    item.location === "/"
+  ) {
     return { name: "person" };
   }
 
