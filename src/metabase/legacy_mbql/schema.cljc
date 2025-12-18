@@ -1934,7 +1934,8 @@
      :breakout     "A join should not have top-level 'inner' query keys like :breakout"
      :aggreggation "A join should not have top-level 'inner' query keys like :aggreggation"
      :expressions  "A join should not have top-level 'inner' query keys like :expressions"
-     :joins        "A join should not have top-level 'inner' query keys like :joins"})])
+     :joins        "A join should not have top-level 'inner' query keys like :joins"
+     :ident        ":ident is deprecated and should not be included in joins"})])
 
 (mr/def ::Joins
   "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."
