@@ -47,6 +47,7 @@ import {
   useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";
 import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
@@ -62,7 +63,6 @@ import type {
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
-import { MergeWorkspaceModal } from "../../components/MergeWorkspaceModal/MergeWorkspaceModal";
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";

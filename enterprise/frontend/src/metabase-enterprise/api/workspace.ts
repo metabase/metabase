@@ -10,6 +10,7 @@ import type {
   ValidateTableNameRequest,
   ValidateTableNameResponse,
   Workspace,
+  WorkspaceAllowedDatabasesResponse,
   WorkspaceCheckoutResponse,
   WorkspaceGraphResponse,
   WorkspaceId,
@@ -352,6 +353,15 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           tag("transform"),
         ]),
     }),
+    getWorkspaceAllowedDatabases: builder.query<
+      WorkspaceAllowedDatabasesResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/workspace/database`,
+      }),
+    }),
   }),
 });
 
@@ -384,6 +394,7 @@ export const {
   useGetWorkspaceLogQuery,
   useRunWorkspaceMutation,
   useRunWorkspaceTransformMutation,
+  useGetWorkspaceAllowedDatabasesQuery,
 } = workspaceApi;
 
 export const DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE: WorkspaceTablesResponse =

@@ -5,7 +5,6 @@ import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api/database";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -32,10 +31,10 @@ import {
   useDeleteWorkspaceMutation,
   useGetWorkspacesQuery,
   useUnarchiveWorkspaceMutation,
+  useGetWorkspaceAllowedDatabasesQuery,
 } from "metabase-enterprise/api/workspace";
 import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
 import { TOOLTIP_OPEN_DELAY } from "metabase-enterprise/dependencies/components/DependencyGraph/constants";
-import type { Database } from "metabase-types/api";
 import type { Workspace, WorkspaceId } from "metabase-types/api/workspace";
 
 import S from "./DataStudioLayout.module.css";
@@ -50,8 +49,8 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { pathname } = useSelector(getLocation);
   const { data: workspacesData, isLoading } = useGetWorkspacesQuery();
-  const { data: databaseData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_analytics: true });
+  const { data: allowedDatabasesData, isLoading: isLoadingDatabases } =
+    useGetWorkspaceAllowedDatabasesQuery();
   const [createWorkspace, { isLoading: isCreating }] =
     useCreateWorkspaceMutation();
 
@@ -73,11 +72,12 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
 
   const databaseOptions = useMemo(
     () =>
-      (databaseData?.data ?? []).map((db: Database) => ({
+      (allowedDatabasesData?.databases ?? []).map((db) => ({
         value: String(db.id),
         label: db.name,
+        disabled: !db.supported,
       })),
-    [databaseData],
+    [allowedDatabasesData],
   );
 
   const handleOpenWorkspace = useCallback(

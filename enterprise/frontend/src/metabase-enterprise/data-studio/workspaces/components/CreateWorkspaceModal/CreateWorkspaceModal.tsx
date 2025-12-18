@@ -77,6 +77,7 @@ export function CreateWorkspaceModal({
           <Select
             label={t`Database`}
             placeholder={t`Select a database`}
+            description={t`Data warehouses that don't support workspaces feature are disabled.`}
             data={databaseOptions}
             value={selectedDatabaseId}
             onChange={setSelectedDatabaseId}
