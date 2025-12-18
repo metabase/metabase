@@ -676,7 +676,7 @@
   nfc-path)
 
 (defn- with-base-temporal-type
-  [[_ _id-or-name {:keys [base-type _effective-type _temporal-unit]} :as clause]]
+  [[_ _id-or-name {:keys [base-type]} :as clause]]
   (if (not (instance? clojure.lang.IObj clause))
     clause
     (vary-meta clause assoc :bigquery-cloud-sdk/base-temporal-type (base-type->temporal-type base-type))))
