@@ -276,9 +276,7 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
 
 export const runOrCancelQuestionOrSelectedQuery =
   () => (dispatch: Dispatch, getState: GetState) => {
-    const state = getState();
-    const question = getQuestion(state);
-
+    const question = getQuestion(getState());
     if (!question) {
       return;
     }
