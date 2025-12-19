@@ -1,6 +1,14 @@
 import cx from "classnames";
-import type { CSSProperties, MouseEvent, ReactNode, Ref } from "react";
-import { forwardRef, useMemo, useRef } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  forwardRef,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -66,18 +74,19 @@ const ChartWithLegendInner = ({
   onToggleSeriesVisibility = () => {},
   forwardedRef,
 }: ChartWithLegendProps) => {
-  // Keep stable reference to last valid dimensions
-  const lastValidDimensionsRef = useRef({ width, height });
+  const [stableWidth, setStableWidth] = useState(width);
+  const [stableHeight, setStableHeight] = useState(height);
 
-  // Update reference only when dimensions are valid
-  if (width > 0 && height > 0) {
-    // lastValidDimensionsRef.current = { width, height };
-  }
+  useEffect(() => {
+    // Use last valid dimensions to prevent flickering
+    if (width > 0) {
+      setStableWidth(width);
+    }
 
-  // Use last valid dimensions to prevent flickering
-  const stableWidth = width > 0 ? width : lastValidDimensionsRef.current.width;
-  const stableHeight =
-    height > 0 ? height : lastValidDimensionsRef.current.height;
+    if (height > 0) {
+      setStableHeight(height);
+    }
+  }, [height, width]);
 
   const layout = useMemo(() => {
     // padding
@@ -220,5 +229,5 @@ const ChartWithLegendRefWrapper = forwardRef(
 
 export const ChartWithLegend = ExplicitSize<ChartWithLegendProps>({
   wrapped: true,
-  refreshMode: "debounceLeading",
+  refreshMode: "debounce",
 })(ChartWithLegendRefWrapper);
