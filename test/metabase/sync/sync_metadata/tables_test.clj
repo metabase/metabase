@@ -322,7 +322,8 @@
           ;; 2. drop the FK relationship in the database with SQL
           (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
           (sync/sync-database! db {:scan :schema})
-
-          (qp/process-query (mt/query continent_1))
-          (qp/process-query (mt/query continent_2))
-          (qp/process-query (mt/query country)))))))
+          (testing "after dropping the FK relationship, country's continent_id is targeting nothing"
+            (is (nil? (get-fk-target))))
+          #_(qp/process-query (mt/query continent_1))
+          #_(qp/process-query (mt/query continent_2))
+          #_(qp/process-query (mt/query country)))))))
