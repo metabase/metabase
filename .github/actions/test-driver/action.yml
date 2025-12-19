@@ -81,8 +81,8 @@ runs:
         list-suites: failed
         list-tests: failed
         fail-on-error: false
-    - name: Upload Logs on Failure
-      if: always() && steps.run-test.outcome != 'success' && steps.check-driver.outputs.skip != 'true'
+    - name: Upload Logs When Not Skipped
+      if: always() && steps.check-driver.outputs.skip != 'true'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ format('test-logs-{0}{1}', github.job, (inputs.logs-artifact-suffix == '' || inputs.logs-artifact-suffix == null) && '' || format('-{0}', inputs.logs-artifact-suffix)) }}
