@@ -41,7 +41,9 @@
    [:authority_level {:optional true} [:maybe :string]]
    [:display {:optional true} [:maybe :string]]
    [:query_type {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]])
+   [:description {:optional true} [:maybe :string]]
+   [:table_id {:optional true} [:maybe pos-int?]]
+   [:table_name {:optional true} [:maybe :string]]])
 
 ;;; ------------------------------------------- API Response Schemas -------------------------------------------
 
