@@ -1875,6 +1875,7 @@ LIMIT
 
       getRowNames().should("deep.equal", [
         "Middle Transform",
+        "Python library",
         "Reports",
         "Alpha Transform",
         "Zebra Transform",
@@ -1886,6 +1887,7 @@ LIMIT
         "Zebra Transform",
         "Reports",
         "Alpha Transform",
+        "Python library",
         "Middle Transform",
       ]);
 
@@ -1894,6 +1896,7 @@ LIMIT
       getRowNames().should("deep.equal", [
         "Reports",
         "Alpha Transform",
+        "Python library",
         "Middle Transform",
         "Zebra Transform",
       ]);
@@ -1905,6 +1908,7 @@ LIMIT
         "Middle Transform",
         "Reports",
         "Alpha Transform",
+        "Python library",
       ]);
     });
 
@@ -1987,8 +1991,23 @@ LIMIT
       getTransformsList().within(() => {
         cy.findByText("Archive Me").should("not.exist");
         cy.findByText("Transform In Collection").should("not.exist");
-        cy.findByText("No transforms yet").should("be.visible");
+        cy.findByText("Python library").should("be.visible");
       });
+    });
+
+    it("should show Python library item and navigate to it", () => {
+      visitTransformListPage();
+
+      cy.log("Python library should be visible in the list");
+      getTransformsList().within(() => {
+        cy.findByText("Python library").should("be.visible");
+      });
+
+      cy.log("clicking Python library should navigate to the library editor");
+      getTransformsList().findByText("Python library").click();
+
+      cy.url().should("include", "/data-studio/transforms/library/common.py");
+      cy.findByTestId("python-library-header").should("be.visible");
     });
   });
 });
