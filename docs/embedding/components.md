@@ -22,7 +22,7 @@ To render a dashboard:
 
 ### Required parameters
 
-- `dashboard-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another.
+- `dashboard-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another. Only for SSO. Guest embeds set the id with token.
 
 ### Optional parameters
 
@@ -33,6 +33,7 @@ To render a dashboard:
 - `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md).
 - `refresh` - auto-refreshes the dashbaord. `refresh="60"` will refresh the dashboard every 60 seconds.
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
+- `locale` - see [translations](./translations.md) (only available for guest embeds).
 
 If you surround your attribute value with double quotes, make sure to use single quotes:
 
@@ -66,7 +67,7 @@ To render a question (chart):
 
 ### Required parameters
 
-- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another.
+- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another. Only for SSO embeds. Guest embeds set the id with a token.
 
   Use `question-id="new"` to embed the query builder exploration interface.
 
@@ -116,7 +117,7 @@ None.
 
 ## Customizing loader and error components
 
-If you're using the [modular embedding React SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
+If you're using the [modular embedding SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
 ```tsx
 {% include_file "{{ dirname }}/sdk/snippets/appearance/customizing-loader-and-components.tsx" snippet="imports" %}

@@ -42,7 +42,7 @@ You can also go to **Admin settings > Embedding > Modular embedding** and click 
 
 ## Pick how to authenticate the embed
 
-How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which lets you do everything. This setup requires you to have [set up SSO for your Metabase](../people-and-groups/authenticating-with-jwt.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md).
+How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which lets you do everything. This setup requires you to have [set up SSO for your Metabase](./authentication.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md). But we recommend setting up modular embedding with SSO.
 
 ## Customize your embed
 

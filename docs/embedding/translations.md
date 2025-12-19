@@ -32,10 +32,15 @@ To remove a translation dictionary, upload a blank dictionary.
 
 ## Translate content in guest embeds
 
-To translate content in a guest embed using the uploaded dictionary, add the [`locale` parameter](./static-embedding-parameters.md#setting-the-language-for-a-static-embed) to the embed URL:
-
+To translate content in a guest embed using the uploaded dictionary, add the [`locale` parameter](./components.md).
 ```
-https://metabase.example.com/public/dashboard/7b6e347b-6928-4aff-a56f-6cfa5b718c6b?category=&city=&state=#locale=ko
+ <metabase-dashboard
+    dashboard-id="1"
+    with-title="false"
+    with-subscriptions="true"
+    drills="true"
+    locale="es"
+ </metabase-dashboard>
 ```
 
 Metabase UI elements (like button labels) will be translated automatically - you don't need to add translations for them to your dictionary.
