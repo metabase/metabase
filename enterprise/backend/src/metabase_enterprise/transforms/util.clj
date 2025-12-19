@@ -464,11 +464,10 @@
 
 (defn ->type-filter-xf
   "Returns an xform for a transform source type filter."
-  ;; TODO: Ngoc - 2025-12-05 We have transform.source_type column so we can just use it to query
   [types]
   (if-let [types (->> types (map keyword) set not-empty)]
     (filter (fn [transform]
-              (contains? types (:source_type transform))))
+              (contains? types (keyword (:source_type transform)))))
     identity))
 
 (defn ->database-id-filter-xf

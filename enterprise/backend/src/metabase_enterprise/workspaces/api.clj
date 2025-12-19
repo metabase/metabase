@@ -337,6 +337,7 @@
    [:checkout_disabled [:maybe :string]]])
 
 (api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential ExternalTransform]]]
+  "Get transforms that are external to the workspace, i.e. no matching workspace_transform row exists."
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params]
   (api/check-superuser)

@@ -1285,16 +1285,18 @@
                           ;; a non-nil value means Table is hidden --
                           ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
                           (not include-hidden?) (conj [:= :visibility_type nil])
-                          (not include-workspace?) (conj [:not
+                          (not include-workspace?) (conj [:or
+                                                          [:= :schema nil]
+                                                          [:not
                                                           ;; TODO dislike coupling to a constant, at least until we have an e2e test
-                                                          [:like :schema "mb__isolation_%"]
+                                                           [:like :schema "mb__isolation_%"]
                                                           ;; TODO this might behave terribly without an index when there are lots of workspaces
-                                                          #_[:exists {:select [1]
-                                                                      :from   [[(t2/table-name :model/Workspace) :w]]
-                                                                      :where  [:and
-                                                                               [:= :w.database_id id]
-                                                                               [:= :w.schema :metabase_table.schema]
-                                                                               [:= :w.archived_at nil]]}]]))]
+                                                           #_[:exists {:select [1]
+                                                                       :from   [[(t2/table-name :model/Workspace) :w]]
+                                                                       :where  [:and
+                                                                                [:= :w.database_id id]
+                                                                                [:= :w.schema :metabase_table.schema]
+                                                                                [:= :w.archived_at nil]]}]]]))]
     (get-database id {:include-editable-data-model? include-editable-data-model?})
     (->> (t2/select-fn-set :schema :model/Table
                            :db_id id :active true
