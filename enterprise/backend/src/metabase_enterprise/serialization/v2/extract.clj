@@ -145,9 +145,8 @@
             ;; When targets are specified, also include Tables found via descendants
             ;; (published tables in target collections). These are extracted by ID, not all.
             targeted-tables (when (seq targets) (get by-model "Table"))
-            by-model        (select-keys by-model models)
-            ;; Add Tables back if they were found in descendants
-            by-model        (cond-> by-model
+            by-model        (cond-> (select-keys by-model models)
+                              ;; Add Tables back if they were found in descendants
                               (seq targeted-tables) (assoc "Table" targeted-tables))
             extract-by-ids  (fn [[model ids]]
                               (serdes/extract-all model (merge opts {:collection-set coll-set
