@@ -149,18 +149,19 @@ const ChartWithLegendInner = ({
     };
   }, [stableWidth, stableHeight, gridSize, aspectRatio, legendTitles]);
 
-  const legend = layout.LegendComponent ? (
-    <layout.LegendComponent
-      className={styles.Legend}
-      titles={layout.processedLegendTitles}
-      hiddenIndices={legendHiddenIndices}
-      colors={legendColors}
-      dotSize={isDashboard ? "8px" : "12px"}
-      hovered={hovered}
-      onHoverChange={onHoverChange}
-      onToggleSeriesVisibility={onToggleSeriesVisibility}
-    />
-  ) : null;
+  const legend =
+    showLegend && layout.type !== "small" && layout.LegendComponent ? (
+      <layout.LegendComponent
+        className={styles.Legend}
+        titles={layout.processedLegendTitles}
+        hiddenIndices={legendHiddenIndices}
+        colors={legendColors}
+        dotSize={isDashboard ? "8px" : "12px"}
+        hovered={hovered}
+        onHoverChange={onHoverChange}
+        onToggleSeriesVisibility={onToggleSeriesVisibility}
+      />
+    ) : null;
 
   return (
     <div
@@ -179,7 +180,7 @@ const ChartWithLegendInner = ({
       }}
       ref={forwardedRef}
     >
-      {showLegend && (
+      {legend && (
         <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
           {legend}
         </div>
@@ -194,7 +195,7 @@ const ChartWithLegendInner = ({
         {layout.hasDimensions && children}
       </div>
       {/* spacer div to balance legend */}
-      {showLegend && (
+      {legend && (
         <div
           className={cx(styles.LegendSpacer)}
           // don't center the chart on dashboards
