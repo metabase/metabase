@@ -1010,7 +1010,7 @@
                                                          :dataset_query (lib/native-query mp "not a query")}]
           (prn "card")
           (println (u/pprint-to-str (dissoc (t2/select-one :model/Card :id broken-card-id) :result_metadata)))
-          (while (> 0 (dependencies.findings/analyze-batch! :card 50)))
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (prn "dependencies")
           (println (u/pprint-to-str (t2/select-one :model/AnalysisFinding :analyzed_entity_id broken-card-id :analyzed_entity_type :card)))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
@@ -1034,7 +1034,7 @@
                                                     :query (lib/query mp products)}
                                            :target {:schema "PUBLIC"
                                                     :name "referenced_transform_table"}}]
-          (while (> 0 (dependencies.findings/analyze-batch! :transform 50)))
+          (while (> (dependencies.findings/analyze-batch! :transform 50) 0))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=transform&query=brokentest")]
             (is (=? [{:id broken-transform-id
                       :type "transform"
@@ -1051,7 +1051,7 @@
                        :model/Card {broken-metric-id :id} {:name "B - Broken Metric - cardtype"
                                                            :type :metric
                                                            :dataset_query (lib/native-query mp "not a query")}]
-          (while (> 0 (dependencies.findings/analyze-batch! :card 50)))
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (testing "filtering by model only"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=model&query=cardtype")]
               (is (=? [{:id broken-model-id
