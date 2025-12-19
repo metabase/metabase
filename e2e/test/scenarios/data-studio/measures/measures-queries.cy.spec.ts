@@ -3,9 +3,9 @@ import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { MeasureEditor } = H.DataModel;
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
-const MEASURE_NAME = "A measure";
+const MEASURE_NAME = "Table Measure";
 
 describe("scenarios > data studio > measures > queries", () => {
   beforeEach(() => {
@@ -65,6 +65,28 @@ describe("scenarios > data studio > measures > queries", () => {
           H.CustomExpressionEditor.type(
             "DistinctIf([Product → ID], [ID] > 1) + DistinctIf([ID], [Product → ID] > 1)",
           );
+          H.CustomExpressionEditor.nameInput().type("Custom");
+          H.popover().button("Done").click();
+        },
+      });
+    });
+
+    it("should create a measure based on a segment", () => {
+      H.createSegment({
+        name: "TotalSegment",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "13,005",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type("CountIf([TotalSegment])");
           H.CustomExpressionEditor.nameInput().type("Custom");
           H.popover().button("Done").click();
         },
