@@ -487,6 +487,13 @@
   (cond-> [[{:model "Database" :id db_id}]]
     collection_id (conj [{:model "Collection" :id collection_id}])))
 
+(defmethod serdes/descendants "Table" [_model-name id _opts]
+  (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
+                            {["Field" field-id] {"Table" id}}))
+        segments (into {} (for [segment-id (t2/select-pks-set :model/Segment {:where [:= :table_id id]})]
+                            {["Segment" segment-id] {"Table" id}}))]
+    (merge fields segments)))
+
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
