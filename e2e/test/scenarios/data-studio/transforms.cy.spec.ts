@@ -458,7 +458,7 @@ LIMIT
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
-      H.undoToast()
+      H.modal()
         .findByText("A table with that name already exists.")
         .should("be.visible");
     });
@@ -1813,11 +1813,12 @@ LIMIT
 
         H.PythonEditor.clear().type(
           dedent`
-          import pandas as pd
+            import pandas as pd
 
-          def transform():
-          return pd.DataFrame([{"foo": common.useful_calculation(1, 2)}])
-        `,
+            def transform():
+                return pd.DataFrame([{"foo": common.useful_calculation(1, 2)}])
+          `,
+          { allowFastSet: true },
         );
 
         getQueryEditor().findByLabelText("Import common library").click();
@@ -2128,6 +2129,7 @@ LIMIT
 
       getRowNames().should("deep.equal", [
         "Middle Transform",
+        "Python library",
         "Reports",
         "Alpha Transform",
         "Zebra Transform",
@@ -2139,6 +2141,7 @@ LIMIT
         "Zebra Transform",
         "Reports",
         "Alpha Transform",
+        "Python library",
         "Middle Transform",
       ]);
 
@@ -2147,6 +2150,7 @@ LIMIT
       getRowNames().should("deep.equal", [
         "Reports",
         "Alpha Transform",
+        "Python library",
         "Middle Transform",
         "Zebra Transform",
       ]);
@@ -2158,7 +2162,106 @@ LIMIT
         "Middle Transform",
         "Reports",
         "Alpha Transform",
+        "Python library",
       ]);
+    });
+
+    it("should edit collection details", () => {
+      H.createTransformCollection({ name: "Original Name" });
+      H.createTransformCollection({ name: "Target Parent" });
+
+      visitTransformListPage();
+
+      cy.log("open edit modal via collection menu");
+      getTransformsList()
+        .findByText("Original Name")
+        .closest('[role="row"]')
+        .findByRole("button", { name: "Collection menu" })
+        .click();
+
+      H.popover().findByText("Edit collection details").click();
+
+      cy.log("edit name and description");
+      H.modal().within(() => {
+        cy.findByText("Editing Original Name").should("be.visible");
+        cy.findByLabelText("Name").clear().type("Renamed Collection");
+        cy.findByLabelText("Description").type("A helpful description");
+        cy.findByTestId("collection-picker-button").click();
+      });
+
+      cy.log("change parent collection");
+      cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
+        cy.findByText("Target Parent").click();
+        cy.findByRole("button", { name: "Select" }).click();
+      });
+
+      H.modal().button("Save").click();
+
+      cy.log("verify collection was renamed and moved");
+      getTransformsList().within(() => {
+        cy.findByText("Original Name").should("not.exist");
+        cy.findByText("Target Parent").click();
+        cy.findByText("Renamed Collection").should("be.visible");
+      });
+    });
+
+    it("should archive a collection with transforms", () => {
+      H.createTransformCollection({ name: "Archive Me" }).then((collection) => {
+        createMbqlTransform({
+          name: "Transform In Collection",
+          targetTable: "archived_transform_table",
+          collectionId: collection.body.id,
+        });
+      });
+
+      visitTransformListPage();
+
+      getTransformsList().within(() => {
+        cy.findByText("Archive Me").should("be.visible");
+        cy.findByText("Archive Me").click();
+        cy.findByText("Transform In Collection").should("be.visible");
+      });
+
+      cy.log("archive the collection via menu");
+      getTransformsList()
+        .findByText("Archive Me")
+        .closest('[role="row"]')
+        .findByRole("button", { name: "Collection menu" })
+        .click();
+
+      H.popover().findByText("Archive").click();
+
+      H.modal().within(() => {
+        cy.findByText('Archive "Archive Me"?').should("be.visible");
+        cy.findByText("This will also archive 1 transform inside it.").should(
+          "be.visible",
+        );
+        cy.button("Archive").click();
+      });
+
+      H.undoToast().findByText("Collection archived").should("be.visible");
+
+      cy.log("verify collection and its children are no longer visible");
+      getTransformsList().within(() => {
+        cy.findByText("Archive Me").should("not.exist");
+        cy.findByText("Transform In Collection").should("not.exist");
+        cy.findByText("Python library").should("be.visible");
+      });
+    });
+
+    it("should show Python library item and navigate to it", () => {
+      visitTransformListPage();
+
+      cy.log("Python library should be visible in the list");
+      getTransformsList().within(() => {
+        cy.findByText("Python library").should("be.visible");
+      });
+
+      cy.log("clicking Python library should navigate to the library editor");
+      getTransformsList().findByText("Python library").click();
+
+      cy.url().should("include", "/data-studio/transforms/library/common.py");
+      cy.findByTestId("python-library-header").should("be.visible");
     });
   });
 });
@@ -2845,6 +2948,77 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
+describe(
+  "scenarios > admin > transforms > python runner",
+  { tags: ["@python"] },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_schemas" });
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+      setPythonRunnerSettings();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should be possible to test run a Python script", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonLibrary(
+            "common.py",
+            dedent`
+              def useful_calculation(a, b):
+                return a + b
+            `,
+          );
+
+          createPythonTransform({
+            body: dedent`
+          import pandas as pd
+          import common
+
+
+          def transform(foo):
+            print("Hello, world!")
+            return pd.DataFrame([{"foo": common.useful_calculation(40, 2) }])
+        `,
+            sourceTables: { foo: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      cy.log("running the script should work");
+      runPythonScriptAndWaitForSuccess();
+      H.assertTableData({
+        columns: ["foo"],
+        firstRows: [["42"]],
+      });
+
+      cy.log("updating the common library should affect the results");
+      createPythonLibrary(
+        "common.py",
+        dedent`
+              def useful_calculation(a, b):
+                return a + b + 1
+            `,
+      );
+
+      runPythonScriptAndWaitForSuccess();
+      H.assertTableData({
+        columns: ["foo"],
+        firstRows: [["43"]],
+      });
+    });
+  },
+);
+
 describe("scenarios > admin > transforms", () => {
   beforeEach(() => {
     H.restore();
@@ -3152,6 +3326,16 @@ function setPythonRunnerSettings() {
     "http://localstack:4566",
   );
   H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
+}
+
+function runPythonScriptAndWaitForSuccess() {
+  getQueryEditor().findByTestId("run-button").click();
+
+  getQueryEditor()
+    .findByTestId("loading-indicator", { timeout: 60000 })
+    .should("not.exist");
+
+  cy.findByTestId("python-results").should("be.visible");
 }
 
 function getRowNames(): Cypress.Chainable<string[]> {

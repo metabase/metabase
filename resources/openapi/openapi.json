@@ -4821,8 +4821,7 @@
           "options" : {
             "description" : "optional map to be appended to filter clause",
             "oneOf" : [ {
-              "additionalProperties" : { },
-              "type" : "object"
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options"
             }, {
               "type" : "null"
             } ]
@@ -4840,6 +4839,10 @@
           }
         },
         "required" : [ "type", "name", "display-name", "dimension", "widget-type" ],
+        "type" : "object"
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options" : {
+        "additionalProperties" : { },
         "type" : "object"
       },
       "metabase.legacy-mbql.schema..TemplateTag.RawValue" : {
@@ -5280,12 +5283,16 @@
         } ]
       },
       "metabase.legacy-mbql.schema.Aggregation" : {
-        "description" : "Schema for anything that is a valid `:aggregation` clause.",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
+        "allOf" : [ {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
+          } ]
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
-        } ]
+          "description" : "Normalization should automatically unwrap :aggregation-options with an empty options map"
+        } ],
+        "description" : "Schema for anything that is a valid `:aggregation` clause."
       },
       "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
         "description" : "Additional options for any aggregation clause when wrapping it in `:aggregation-options`.",
@@ -5468,6 +5475,12 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.datetime"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.today"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.coalesce"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
         } ]
       },
       "metabase.legacy-mbql.schema.DatetimeOptions" : {
@@ -5615,12 +5628,18 @@
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpression"
         }, {
+          "type" : "number"
+        }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpression"
+        }, {
+          "type" : "string"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.BooleanExpression"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+          "type" : "boolean"
         }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+        }, { }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
@@ -22585,9 +22604,6 @@
                   "state" : {
                     "properties" : { },
                     "type" : "object"
-                  },
-                  "use_case" : {
-                    "type" : "string"
                   }
                 },
                 "required" : [ "message", "context", "conversation_id", "history", "state" ],
@@ -22749,24 +22765,6 @@
                     }, {
                       "type" : "null"
                     } ]
-                  },
-                  "use_cases" : {
-                    "items" : {
-                      "additionalProperties" : false,
-                      "properties" : {
-                        "enabled" : {
-                          "type" : "boolean"
-                        },
-                        "id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "minimum" : 1,
-                          "type" : "integer"
-                        }
-                      },
-                      "required" : [ "id" ],
-                      "type" : "object"
-                    },
-                    "type" : "array"
                   },
                   "use_verified_content" : {
                     "type" : "boolean"
@@ -30094,6 +30092,66 @@
           }
         },
         "summary" : "GET /api/preview_embed/card/{token}/params/{param-key}/remapping",
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
+    "/api/preview_embed/card/{token}/params/{param-key}/values" : {
+      "get" : {
+        "description" : "Embedded version of api.card filter values endpoint.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "has_more_values" : {
+                      "type" : "boolean"
+                    },
+                    "values" : {
+                      "items" : {
+                        "anyOf" : [ {
+                          "prefixItems" : [ { }, {
+                            "type" : "string"
+                          } ],
+                          "type" : "array"
+                        }, {
+                          "prefixItems" : [ { } ],
+                          "type" : "array"
+                        } ]
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "has_more_values", "values" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:has_more_values -> <boolean>, :values -> <sequence of vector with exactly 2 items of type: anything, string, or vector with exactly 1 items of type: anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/preview_embed/card/{token}/params/{param-key}/values",
         "tags" : [ "/api/preview_embed" ]
       }
     },

@@ -65,7 +65,7 @@
           req           {:context         {:some "context"}
                          :message         {:role :user :content "stuff"}
                          :history         []
-                         :use-case        "nlq"
+                         :profile-id      "test-profile"
                          :conversation-id cid
                          :session-id      "test-session"
                          :state           {:some "state"}}]
@@ -79,6 +79,36 @@
             (is (=? [{:_type :TEXT :content "a1a2a3"}
                      {:_type :FINISH_MESSAGE :finish_reason "stop"}]
                     (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
+
+(deftest streaming-request-error-excludes-headers-test
+  (testing "When streaming-request gets an error response, the exception should not include headers"
+    (mt/with-premium-features #{:metabot-v3}
+      (let [req {:context         {:some "context"}
+                 :message         {:role :user :content "stuff"}
+                 :history         []
+                 :profile-id      "test-profile"
+                 :conversation-id (str (random-uuid))
+                 :session-id      "test-session"
+                 :state           {:some "state"}}]
+        (mt/with-dynamic-fn-redefs [http/post (fn [_url _opts]
+                                                {:status        500
+                                                 :reason-phrase "Internal Server Error"
+                                                 :headers       {"x-secret-header" "sensitive-value"
+                                                                 "x-request-id"    "abc123"}
+                                                 :body          "Error message"})]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [ex (try
+                       (metabot-v3.client/streaming-request req)
+                       nil
+                       (catch Exception e
+                         e))]
+              (is (some? ex) "Expected an exception to be thrown")
+              (when ex
+                (let [data (ex-data (ex-cause ex))]
+                  (is (not (contains? (:request data) :headers))
+                      "Exception data should not contain :headers in request")
+                  (is (not (contains? (:response data) :headers))
+                      "Exception data should not contain :headers in response"))))))))))
 
 (deftest example-generation-payload-unknown-field-types-test
   (let [mp (mt/metadata-provider)]

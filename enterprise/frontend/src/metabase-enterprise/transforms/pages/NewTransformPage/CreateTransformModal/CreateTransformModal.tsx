@@ -126,6 +126,7 @@ function CreateTransformForm({
           <TargetNameInput />
           <FormCollectionPicker
             name="collection_id"
+            title={t`Collection`}
             type="transform-collections"
           />
           <IncrementalTransformSettings source={source} />
@@ -133,7 +134,7 @@ function CreateTransformForm({
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
+            <Button onClick={onClose}>{t`Back`}</Button>
             <FormSubmitButton label={t`Save`} variant="filled" />
           </Group>
         </Stack>

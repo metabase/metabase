@@ -163,3 +163,9 @@
            ["field"
             {:lib/uuid "9da67f88-9c46-4917-b964-07806f60870c", :effective-type "type/*", :base-type "type/*"}
             "DATE_TIME"]]))))
+
+(deftest ^:parallel time-test
+  (are [t] (not (me/humanize (mr/explain :mbql.clause/time [:time {:lib/uuid "00000000-0000-0000-0000-000000000000"} t :default])))
+    "08:00"
+    #?@(:clj [#t "08:00"
+              #t "08:00+05:30"])))
