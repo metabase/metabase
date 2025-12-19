@@ -11,16 +11,14 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
 
 import { NewSegmentHeader } from "../../components/NewSegmentHeader";
 import { SegmentEditor } from "../../components/SegmentEditor";
 import { useSegmentQuery } from "../../hooks/use-segment-query";
-import {
-  createInitialQueryForTable,
-  getPreviewUrl,
-} from "../../utils/segment-query";
+import { createInitialQueryForTable } from "../../utils/segment-query";
 
 type NewSegmentPageProps = {
   route: Route;
@@ -57,7 +55,8 @@ export function NewSegmentPage({
   const isDirty =
     name.trim().length > 0 || description.length > 0 || filters.length > 0;
   const isValid = name.trim().length > 0 && filters.length > 0;
-  const previewUrl = filters.length > 0 ? getPreviewUrl(definition) : undefined;
+  const previewUrl =
+    filters.length > 0 ? getDatasetQueryPreviewUrl(definition) : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));

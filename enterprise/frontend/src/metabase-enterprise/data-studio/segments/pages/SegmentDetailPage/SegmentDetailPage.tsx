@@ -10,6 +10,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import * as Lib from "metabase-lib";
 import type { Segment } from "metabase-types/api";
 
@@ -17,7 +18,6 @@ import { SegmentEditor } from "../../components/SegmentEditor";
 import { SegmentHeader } from "../../components/SegmentHeader";
 import { useSegmentQuery } from "../../hooks/use-segment-query";
 import type { SegmentTabUrls } from "../../types";
-import { getPreviewUrl } from "../../utils/segment-query";
 
 type SegmentDetailPageProps = {
   route: Route;
@@ -51,10 +51,8 @@ export function SegmentDetailPage({
   );
 
   const isValid = filters.length > 0;
-  const previewUrl = useMemo(
-    () => (filters.length > 0 ? getPreviewUrl(definition) : undefined),
-    [definition, filters],
-  );
+  const previewUrl =
+    filters.length > 0 ? getDatasetQueryPreviewUrl(definition) : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));

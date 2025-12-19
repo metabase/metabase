@@ -120,7 +120,9 @@
     :model/Document
     :model/DocumentBookmark
     :model/Comment
-    :model/CommentReaction]
+    :model/CommentReaction
+    ;; 59+
+    :model/Measure]
    (when config/ee-available?
      [:model/Sandbox
       :model/Tenant

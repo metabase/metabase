@@ -16,7 +16,7 @@
 
 (def search-models
   "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
-  (cond->  ["collection" "dashboard" "segment" "database" "action" "document"]
+  (cond->  ["collection" "dashboard" "segment" "measure" "database" "action" "document"]
     config/ee-available? (conj "transform")
     ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
     ;; table and indexed-entity moved to the end because there can be a large number of them

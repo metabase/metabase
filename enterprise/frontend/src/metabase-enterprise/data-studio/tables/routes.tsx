@@ -1,6 +1,10 @@
 import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PublishedTableMeasureDependenciesPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
+import { PublishedTableMeasureDetailPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureDetailPage";
+import { PublishedTableMeasureRevisionHistoryPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureRevisionHistoryPage";
+import { PublishedTableNewMeasurePage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableNewMeasurePage";
 import { PublishedTableNewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableNewSegmentPage";
 import { PublishedTableSegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableSegmentDependenciesPage";
 import { PublishedTableSegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableSegmentDetailPage";
@@ -8,6 +12,7 @@ import { PublishedTableSegmentRevisionHistoryPage } from "metabase-enterprise/da
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
+import { TableMeasuresPage } from "./pages/TableMeasuresPage";
 import { TableOverviewPage } from "./pages/TableOverviewPage";
 import { TableSegmentsPage } from "./pages/TableSegmentsPage";
 
@@ -34,6 +39,27 @@ export function getDataStudioTableRoutes() {
         <Route
           path=":tableId/segments/:segmentId/dependencies"
           component={PublishedTableSegmentDependenciesPage}
+        >
+          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        </Route>
+      )}
+      <Route path=":tableId/measures" component={TableMeasuresPage} />
+      <Route
+        path=":tableId/measures/new"
+        component={PublishedTableNewMeasurePage}
+      />
+      <Route
+        path=":tableId/measures/:measureId"
+        component={PublishedTableMeasureDetailPage}
+      />
+      <Route
+        path=":tableId/measures/:measureId/revisions"
+        component={PublishedTableMeasureRevisionHistoryPage}
+      />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route
+          path=":tableId/measures/:measureId/dependencies"
+          component={PublishedTableMeasureDependenciesPage}
         >
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>

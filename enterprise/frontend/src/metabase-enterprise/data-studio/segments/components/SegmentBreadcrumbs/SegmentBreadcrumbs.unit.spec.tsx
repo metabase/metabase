@@ -82,7 +82,7 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
     const collectionLink = screen.getByText("Data").closest("a");
     expect(collectionLink).toHaveAttribute(
       "href",
-      "/data-studio/library?expandedId=1",
+      "/data-studio/library/collections/1",
     );
 
     const tableLink = screen.getByText("Orders").closest("a");
@@ -127,14 +127,14 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
 
     expect(screen.getByText("Root").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/library",
+      "/data-studio/library/collections/3",
     );
     expect(screen.getByText("Analytics").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/library?expandedId=2",
+      "/data-studio/library/collections/2",
     );
 
-    const separators = screen.getAllByRole("img");
+    const separators = screen.getAllByText("/");
     expect(separators.length).toBeGreaterThan(0);
   });
 
@@ -232,7 +232,7 @@ describe("DataModelSegmentBreadcrumbs", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("New segment")).toBeInTheDocument();
 
-    const separators = screen.getAllByRole("img");
+    const separators = screen.getAllByText("/");
     expect(separators).toHaveLength(2);
   });
 });

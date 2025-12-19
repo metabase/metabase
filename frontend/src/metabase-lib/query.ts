@@ -16,6 +16,7 @@ import type {
   ClauseType,
   ColumnMetadata,
   Join,
+  MeasureMetadata,
   MetadataProvider,
   MetricMetadata,
   Query,
@@ -89,7 +90,13 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
+  newClause:
+    | Clause
+    | ColumnMetadata
+    | MeasureMetadata
+    | MetricMetadata
+    | SegmentMetadata
+    | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }

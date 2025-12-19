@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useUpdateSegmentMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack } from "metabase/ui";
+import { EntityDetailTabs } from "metabase-enterprise/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {
   PaneHeader,
   PaneHeaderInput,
@@ -12,8 +13,6 @@ import type { SegmentTabUrls } from "metabase-enterprise/data-studio/segments/ty
 import type { Segment } from "metabase-types/api";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";
-
-import { SegmentTabs } from "./SegmentTabs";
 
 const SEGMENT_NAME_MAX_LENGTH = 254;
 
@@ -45,7 +44,7 @@ export function SegmentHeader({
         }
         icon="segment"
         menu={<SegmentMoreMenu previewUrl={previewUrl} onRemove={onRemove} />}
-        tabs={<SegmentTabs urls={tabUrls} />}
+        tabs={<EntityDetailTabs urls={tabUrls} />}
         actions={actions}
         breadcrumbs={breadcrumbs}
       />

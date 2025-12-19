@@ -7,13 +7,18 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import type { SegmentTabUrls } from "metabase-enterprise/data-studio/segments/types";
 
-type SegmentTabsProps = {
-  urls: SegmentTabUrls;
+export type EntityDetailTabUrls = {
+  definition: string;
+  revisions: string;
+  dependencies: string;
 };
 
-export function SegmentTabs({ urls }: SegmentTabsProps) {
+type EntityDetailTabsProps = {
+  urls: EntityDetailTabUrls;
+};
+
+export function EntityDetailTabs({ urls }: EntityDetailTabsProps) {
   const location = useSelector(getLocation);
 
   const tabs: PaneHeaderTab[] = [

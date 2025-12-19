@@ -1,32 +1,38 @@
 import { diffWords } from "diff";
 import { t } from "ttag";
 
-import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { DatasetQuery, TableId } from "metabase-types/api";
+
+import { QueryClauseDisplay } from "./QueryClauseDisplay";
+import type { DefinitionType } from "./types";
 
 type DiffValue = {
   before?: unknown;
   after?: unknown;
 };
 
-type SegmentRevisionDiffProps = {
+type RevisionDiffProps = {
   property: string;
   diff: DiffValue | undefined;
   tableId: TableId;
+  definitionLabel: string;
+  definitionType: DefinitionType;
 };
 
-export function SegmentRevisionDiff({
+export function RevisionDiff({
   property,
   diff,
   tableId,
-}: SegmentRevisionDiffProps) {
+  definitionLabel,
+  definitionType,
+}: RevisionDiffProps) {
   if (!diff) {
     return null;
   }
 
   const { before, after } = diff;
-  const label = getPropertyLabel(property);
+  const label = getPropertyLabel(property, definitionLabel);
 
   return (
     <Box p="md" bg="bg-light" bd="1px solid border">
@@ -38,7 +44,12 @@ export function SegmentRevisionDiff({
       </Flex>
 
       {property === "definition" ? (
-        <DefinitionDiff before={before} after={after} tableId={tableId} />
+        <DefinitionDiff
+          before={before}
+          after={after}
+          tableId={tableId}
+          definitionType={definitionType}
+        />
       ) : (
         <TextDiff before={before} after={after} />
       )}
@@ -56,14 +67,14 @@ function DiffIcon({ before, after }: { before: unknown; after: unknown }) {
   return <Icon name="add" size={12} c="success" />;
 }
 
-function getPropertyLabel(property: string): string {
+function getPropertyLabel(property: string, definitionLabel: string): string {
   switch (property) {
     case "name":
       return t`Name`;
     case "description":
       return t`Description`;
     case "definition":
-      return t`Filter`;
+      return definitionLabel;
     default:
       return property;
   }
@@ -116,18 +127,30 @@ type DefinitionDiffProps = {
   before: unknown;
   after: unknown;
   tableId: TableId;
+  definitionType: DefinitionType;
 };
 
 function isDatasetQuery(value: unknown): value is DatasetQuery {
   return value != null && typeof value === "object";
 }
 
-function DefinitionDiff({ before, after, tableId }: DefinitionDiffProps) {
+function DefinitionDiff({
+  before,
+  after,
+  tableId,
+  definitionType,
+}: DefinitionDiffProps) {
   const definition = after ?? before;
 
   if (!isDatasetQuery(definition)) {
     return null;
   }
 
-  return <QueryDefinition definition={definition} tableId={tableId} />;
+  return (
+    <QueryClauseDisplay
+      definition={definition}
+      tableId={tableId}
+      clauseType={definitionType}
+    />
+  );
 }

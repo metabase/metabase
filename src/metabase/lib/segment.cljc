@@ -9,8 +9,10 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv empty?]]))
@@ -89,3 +91,43 @@
                                                 ;; plain filters referencing columns
                                                 filter-pos (assoc :filter-positions [filter-pos]))))
                                           segments)))))))
+
+(defn- check-segment-cycles
+  "DFS to detect cycles starting from `segment-id` with `definition`.
+  `metadata-provider` is used for looking up referenced segments.
+  `path-nodes` is the set of segment IDs currently in the DFS path (for cycle detection).
+  `visited` is the set of segment IDs we've fully processed (for avoiding redundant work).
+  Returns updated `visited` set. Throws if a cycle is detected or if a referenced segment doesn't exist."
+  ([metadata-provider definition segment-id]
+   (check-segment-cycles metadata-provider definition segment-id #{} #{}))
+  ([metadata-provider definition segment-id path-nodes visited]
+   (cond
+     (contains? path-nodes segment-id)
+     (throw (ex-info (i18n/tru "Segment cycle detected.")
+                     {:segment-id segment-id}))
+
+     (contains? visited segment-id)
+     visited
+
+     :else
+     (let [referenced-ids (lib.walk.util/all-segment-ids definition)
+           path-nodes'    (conj path-nodes segment-id)]
+       (reduce (fn [visited' ref-id]
+                 (if-let [segment (lib.metadata/segment metadata-provider ref-id)]
+                   (check-segment-cycles metadata-provider (:definition segment) ref-id path-nodes' visited')
+                   (throw (ex-info (i18n/tru "Segment {0} does not exist." ref-id)
+                                   {:segment-id ref-id}))))
+               (conj visited segment-id)
+               referenced-ids)))))
+
+(mu/defn check-segment-overwrite
+  "Check if saving a segment with `segment-id` and `definition` would create a cycle.
+  Returns nil if safe to save, throws an exception if it would create a cycle.
+
+  `segment-id` can be nil for new segments that don't have an ID yet.
+  `definition` is the segment's MBQL5 query which also serves as the metadata provider
+  for looking up referenced segments."
+  [segment-id :- [:maybe ::lib.schema.id/segment]
+   definition :- ::lib.schema/query]
+  (check-segment-cycles definition definition segment-id)
+  nil)

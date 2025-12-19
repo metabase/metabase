@@ -86,12 +86,6 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-(t2/define-before-update :model/Segment [segment]
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes segment) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
-  segment)
-
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
   (let [database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
@@ -99,8 +93,23 @@
 
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
-  (cond-> segment
-    (some? definition) (assoc :definition (migrated-segment-definition segment))))
+  (let [segment (cond-> segment
+                  (some? definition) (assoc :definition (migrated-segment-definition segment)))]
+    (when (seq (:definition segment))
+      (lib/check-segment-overwrite nil (:definition segment)))
+    segment))
+
+(t2/define-before-update :model/Segment [{:keys [id] :as segment}]
+  ;; throw an Exception if someone tries to update creator_id
+  (when (contains? (t2/changes segment) :creator_id)
+    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+  ;; normalize and check for cycles if definition is being updated
+  (if-let [def-change (:definition (t2/changes segment))]
+    (let [normalized-def (migrated-segment-definition (assoc segment :definition def-change))]
+      (when (seq normalized-def)
+        (lib/check-segment-overwrite id normalized-def))
+      (assoc segment :definition normalized-def))
+    segment))
 
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]

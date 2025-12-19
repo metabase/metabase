@@ -209,6 +209,13 @@
             :ip_address "0:0:0:0:0:0:0:1"
             :timestamp (t/zoned-date-time)})
 
+   :model/Measure
+   (fn [_] (default-timestamped
+            {:creator_id (rasta-id)
+             :definition {}
+             :name "Mock Measure"
+             :table_id (data/id :checkins)}))
+
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
