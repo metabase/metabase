@@ -514,13 +514,14 @@
   (testing "create-remote-sync-object-entry! creates new entry when none exists"
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
-      (#'lib.events/create-or-update-remote-sync-object-entry! "Card" 123 "create" 456)
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "Card"
-                 :model_id 123
-                 :status "create"}
-                (first entries)))))))
+      (let [existing-card-id (t2/select-one-fn :id [:model/Card :id])]
+        (#'lib.events/create-or-update-remote-sync-object-entry! "Card" existing-card-id "create" 456)
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Card"
+                   :model_id existing-card-id
+                   :status "create"}
+                  (first entries))))))))
 
 (deftest create-remote-sync-object-entry-updates-existing-entry-test
   (testing "create-remote-sync-object-entry! updates existing entry when one exists"
