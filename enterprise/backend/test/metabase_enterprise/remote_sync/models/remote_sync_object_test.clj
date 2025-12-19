@@ -347,3 +347,156 @@
                                     :status_changed_at (java.time.OffsetDateTime/now)}]
         (is (true? (rs-object/dirty-global?)))
         (is (= 1 (count (rs-object/dirty-for-global))))))))
+
+;;; ------------------------------------------------------------------------------------------------
+;;; Tests for Table, Field, and Segment in dirty-state queries
+;;; ------------------------------------------------------------------------------------------------
+
+(deftest dirty-for-global-includes-tables-test
+  (testing "dirty-for-global includes table items"
+    (mt/with-temp
+      [:model/Collection collection {:name "Test Collection"
+                                     :location "/"}
+       :model/Table table {:name "Test Table"
+                           :collection_id (:id collection)
+                           :is_published true}
+       :model/RemoteSyncObject _ {:model_type "Table"
+                                  :model_id (:id table)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}]
+      (let [dirty-items (rs-object/dirty-for-global)]
+        (is (= 1 (count dirty-items)))
+        (let [item (first dirty-items)]
+          (is (= (:id table) (:id item)))
+          (is (= "Test Table" (:name item)))
+          (is (= "table" (:model item)))
+          (is (= "pending" (:sync_status item))))))))
+
+(deftest dirty-for-global-includes-fields-test
+  (testing "dirty-for-global includes field items with collection_id from parent table"
+    (mt/with-temp
+      [:model/Collection collection {:name "Test Collection"
+                                     :location "/"}
+       :model/Table table {:name "Test Table"
+                           :collection_id (:id collection)
+                           :is_published true}
+       :model/Field field {:name "test_field"
+                           :table_id (:id table)
+                           :base_type :type/Text
+                           :database_type "TEXT"}
+       :model/RemoteSyncObject _ {:model_type "Field"
+                                  :model_id (:id field)
+                                  :status "update"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}]
+      (let [dirty-items (rs-object/dirty-for-global)]
+        (is (= 1 (count dirty-items)))
+        (let [item (first dirty-items)]
+          (is (= (:id field) (:id item)))
+          (is (= "test_field" (:name item)))
+          (is (= "field" (:model item)))
+          (is (= "update" (:sync_status item)))
+          ;; collection_id should come from the parent table
+          (is (= (:id collection) (:collection_id item))))))))
+
+(deftest dirty-for-global-includes-segments-test
+  (testing "dirty-for-global includes segment items with collection_id from parent table"
+    (mt/with-temp
+      [:model/Collection collection {:name "Test Collection"
+                                     :location "/"}
+       :model/Table table {:name "Test Table"
+                           :collection_id (:id collection)
+                           :is_published true}
+       :model/Field field {:name "test_field"
+                           :table_id (:id table)
+                           :base_type :type/Text
+                           :database_type "TEXT"}
+       :model/Segment segment {:name "Test Segment"
+                               :table_id (:id table)
+                               :creator_id (mt/user->id :rasta)
+                               :definition {:source-table (:id table)
+                                            :filter [:= [:field (:id field) nil] "test"]}}
+       :model/RemoteSyncObject _ {:model_type "Segment"
+                                  :model_id (:id segment)
+                                  :status "create"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}]
+      (let [dirty-items (rs-object/dirty-for-global)]
+        (is (= 1 (count dirty-items)))
+        (let [item (first dirty-items)]
+          (is (= (:id segment) (:id item)))
+          (is (= "Test Segment" (:name item)))
+          (is (= "segment" (:model item)))
+          (is (= "create" (:sync_status item)))
+          ;; collection_id should come from the parent table
+          (is (= (:id collection) (:collection_id item))))))))
+
+(deftest dirty-for-global-all-model-types-including-new-test
+  (testing "dirty-for-global handles all supported model types including Table, Field, and Segment"
+    (mt/with-temp
+      [:model/Collection collection {:name "Test Collection"
+                                     :location "/"}
+       :model/Collection snip-collection {:name "Snippet Collection"
+                                          :namespace "snippets"
+                                          :location "/"}
+       :model/Card card {:name "Card Item"
+                         :collection_id (:id collection)
+                         :creator_id (mt/user->id :rasta)
+                         :display "table"
+                         :dataset_query (mt/native-query {:query "SELECT 1"})}
+       :model/Dashboard dashboard {:name "Dashboard Item"
+                                   :collection_id (:id collection)
+                                   :creator_id (mt/user->id :rasta)}
+       :model/Document document {:name "Document Item"
+                                 :collection_id (:id collection)
+                                 :creator_id (mt/user->id :rasta)}
+       :model/NativeQuerySnippet snippet {:name "Snippet Item"
+                                          :collection_id (:id snip-collection)
+                                          :creator_id (mt/user->id :rasta)
+                                          :content "SELECT * FROM table"}
+       :model/Table table {:name "Table Item"
+                           :collection_id (:id collection)
+                           :is_published true}
+       :model/Field field {:name "field_item"
+                           :table_id (:id table)
+                           :base_type :type/Text
+                           :database_type "TEXT"}
+       :model/Segment segment {:name "Segment Item"
+                               :table_id (:id table)
+                               :creator_id (mt/user->id :rasta)
+                               :definition {:source-table (:id table)
+                                            :filter [:= [:field (:id field) nil] "test"]}}
+       :model/RemoteSyncObject _ {:model_type "Collection"
+                                  :model_id (:id collection)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}
+       :model/RemoteSyncObject _ {:model_type "Card"
+                                  :model_id (:id card)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}
+       :model/RemoteSyncObject _ {:model_type "Dashboard"
+                                  :model_id (:id dashboard)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}
+       :model/RemoteSyncObject _ {:model_type "Document"
+                                  :model_id (:id document)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}
+       :model/RemoteSyncObject _ {:model_type "NativeQuerySnippet"
+                                  :model_id (:id snippet)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}
+       :model/RemoteSyncObject _ {:model_type "Table"
+                                  :model_id (:id table)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}
+       :model/RemoteSyncObject _ {:model_type "Field"
+                                  :model_id (:id field)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}
+       :model/RemoteSyncObject _ {:model_type "Segment"
+                                  :model_id (:id segment)
+                                  :status "pending"
+                                  :status_changed_at (java.time.OffsetDateTime/now)}]
+      (let [dirty-items (rs-object/dirty-for-global)
+            models (set (map :model dirty-items))]
+        (is (= 8 (count dirty-items)))
+        (is (= #{"collection" "card" "dashboard" "document" "snippet" "table" "field" "segment"} models))))))
