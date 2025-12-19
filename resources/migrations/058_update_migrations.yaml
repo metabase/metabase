@@ -3845,6 +3845,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback: # will be deleted with the table
 
   - changeSet:
       id: v58.2025-12-17T11:00:03
@@ -3857,6 +3858,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
+      rollback: # will be deleted with the table
 
   - changeSet:
       id: v58.2025-12-17T11:00:04
@@ -3957,6 +3959,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_merge_id
+      rollback: # will be deleted with the table
 
   - changeSet:
       id: v58.2025-12-17T11:00:08
@@ -3969,6 +3972,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback: # will be deleted with the table
 
   - changeSet:
       id: v58.2025-12-17T11:00:09
@@ -3981,6 +3985,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: transform_id
+      rollback: # will be deleted with the table
 
   - changeSet:
       id: v58.2025-12-17T11:00:10
