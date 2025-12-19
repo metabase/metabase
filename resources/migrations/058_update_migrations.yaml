@@ -3332,10 +3332,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: table_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_table_id
+      rollback: # will be deleted with the table
 
   - changeSet:
       id: v58.2025-12-10T16:00:00
