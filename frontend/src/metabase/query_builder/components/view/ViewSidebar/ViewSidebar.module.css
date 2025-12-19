@@ -11,7 +11,7 @@
       border-left: 1px solid var(--mb-color-border);
     }
 
-    @media screen and (max-width: --breakpoint-max-sm) {
+    @media screen and (max-width: 40em) {
       margin-left: auto;
     }
   }

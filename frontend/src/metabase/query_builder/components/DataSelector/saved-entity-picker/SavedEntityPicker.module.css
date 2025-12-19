@@ -4,7 +4,7 @@
   overflow: hidden;
   border-top: 1px solid var(--mb-color-border);
 
-  @media screen and (max-width: --breakpoint-max-sm) {
+  @media screen and (max-width: 40em) {
     flex-direction: column;
     width: 300px;
     overflow: auto;
@@ -18,7 +18,7 @@
   background-color: var(--mb-color-background-secondary);
   overflow: auto;
 
-  @media screen and (max-width: --breakpoint-max-sm) {
+  @media screen and (max-width: 40em) {
     min-height: 220px;
     border-bottom: 1px solid var(--mb-color-border);
   }

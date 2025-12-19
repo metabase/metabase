@@ -11,7 +11,7 @@
   flex: 1 0 auto;
   position: relative;
 
-  @media screen and (max-width: --breakpoint-max-sm) {
+  @media screen and (max-width: 40em) {
     justify-content: flex-end;
   }
 }

@@ -12,7 +12,7 @@
   flex-direction: row;
   align-items: flex-start;
 
-  @media screen and (max-width: --breakpoint-max-sm) {
+  @media screen and (max-width: 40em) {
     flex-direction: column;
   }
 }

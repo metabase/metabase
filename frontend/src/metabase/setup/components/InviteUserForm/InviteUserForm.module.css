@@ -2,7 +2,7 @@
   display: block;
 }
 
-@media screen and (min-width: --breakpoint-min-sm) {
+@media (min-width: 40rem) {
   .UserFieldGroup {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

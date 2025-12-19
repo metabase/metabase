@@ -16,7 +16,7 @@
   margin-bottom: 0.5rem;
   padding-bottom: 0.5rem;
 
-  @media screen and (max-width: --breakpoint-min-sm) {
+  @media screen and (min-width: 40em) {
     margin-bottom: 1rem;
     padding-bottom: 1rem;
   }
