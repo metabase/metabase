@@ -285,7 +285,7 @@
             server-url      (transforms-python.settings/python-runner-url)
             _               (python-runner/copy-tables-to-s3! {:run-id         run-id
                                                                :shared-storage @shared-storage-ref
-                                                               :source         source
+                                                               :source         (assoc source :source-tables resolved-source-tables)
                                                                :cancel-chan    cancel-chan
                                                                :limit          (:limit source)
                                                                :transform-id   (:id transform)})
