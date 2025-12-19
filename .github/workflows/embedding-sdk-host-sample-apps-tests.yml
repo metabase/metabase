@@ -209,6 +209,9 @@ jobs:
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite != 'shoppy-e2e' }}
         run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts ${{ matrix.test_suite }}
 
+      - name: Log free disk space 6
+        run: df -h /
+
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
@@ -217,7 +220,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: DEBUG=cypress:* node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
-      - name: Log free disk space 6
+      - name: Log free disk space 7
         run: df -h /
 
       - name: Upload Cypress Artifacts upon failure
