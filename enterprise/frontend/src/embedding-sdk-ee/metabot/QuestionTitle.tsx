@@ -11,7 +11,7 @@ export function QuestionTitle() {
   }
 
   return (
-    <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+    <Text fw={700} c="text-primary" fz="xl">
       {titleText}
     </Text>
   );

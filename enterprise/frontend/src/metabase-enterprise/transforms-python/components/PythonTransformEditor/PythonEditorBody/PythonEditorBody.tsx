@@ -170,7 +170,7 @@ function SharedLibraryImportButton({
   return (
     <Tooltip label={label}>
       <ActionIcon aria-label={label} onClick={handleToggleSharedLib}>
-        <Icon name="reference" c="text-dark" />
+        <Icon name="reference" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );
@@ -187,7 +187,7 @@ function SharedLibraryEditLink() {
         aria-label={label}
         to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
       >
-        <Icon name="pencil" c="text-dark" />
+        <Icon name="pencil" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );

@@ -7,7 +7,7 @@ import type { BoxProps } from "../../utils";
 import { Button } from "../Button";
 
 export type PopoverBackButtonProps = { withArrow?: boolean } & BoxProps &
-  ButtonHTMLAttributes<HTMLButtonElement>;
+  Omit<ButtonHTMLAttributes<HTMLButtonElement>, "color">;
 
 export function PopoverBackButton(props: PopoverBackButtonProps) {
   const { withArrow = true, ...rest } = props;
@@ -15,7 +15,7 @@ export function PopoverBackButton(props: PopoverBackButtonProps) {
     <Button
       p={0}
       aria-label={t`Back`}
-      c="var(--mb-color-text-primary)"
+      c="text-primary"
       fz="1rem"
       lh="1.25rem"
       {...rest}

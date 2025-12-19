@@ -29,6 +29,7 @@
 .tableHeaderCell {
   border-right: 1px solid var(--mb-color-border);
   font-weight: 700;
+  background-color: var(--cell-bg-color);
 
   &:hover {
     color: var(--mb-color-brand);

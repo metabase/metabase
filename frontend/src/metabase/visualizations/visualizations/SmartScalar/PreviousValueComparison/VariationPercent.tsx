@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Flex } from "metabase/ui";
 
 import type { ComparisonResult } from "../compute";
@@ -11,7 +12,7 @@ import {
 
 interface Props {
   children: ReactNode;
-  color?: string;
+  color?: ColorName;
   comparison: ComparisonResult;
   iconSize: string | number;
 }

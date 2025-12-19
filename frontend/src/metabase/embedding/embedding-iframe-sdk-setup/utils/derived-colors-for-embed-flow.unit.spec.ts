@@ -26,7 +26,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
       expect(colors?.["background-hover"]).toBe("rgb(252, 252, 252)");
       expect(colors?.["background-disabled"]).toBe("rgb(247, 247, 247)");
       expect(colors?.["text-secondary"]).toBe("rgb(66, 66, 66)");
-      expect(colors?.["text-tertiary"]).toBe("rgb(82, 82, 82)");
+      expect(colors?.["text-disabled"]).toBe("rgb(82, 82, 82)");
     });
 
     it("derives colors for dark theme", () => {
@@ -48,7 +48,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
       expect(colors?.["background-hover"]).toBe("rgb(39, 39, 39)");
       expect(colors?.["background-disabled"]).toBe("rgb(31, 31, 31)");
       expect(colors?.["text-secondary"]).toBe("rgb(179, 179, 179)");
-      expect(colors?.["text-tertiary"]).toBe("rgb(102, 102, 102)");
+      expect(colors?.["text-disabled"]).toBe("rgb(102, 102, 102)");
     });
 
     it("uses the default text-primary color if only background is defined", () => {
@@ -88,8 +88,8 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
       const theme: MetabaseTheme = {};
 
       const applicationColors = {
-        "bg-white": "#2d3030",
-        "text-dark": "#eee",
+        "background-primary": "#2d3030",
+        "text-primary": "#eee",
       };
 
       const { colors } = getDerivedDefaultColorsForEmbedFlow({

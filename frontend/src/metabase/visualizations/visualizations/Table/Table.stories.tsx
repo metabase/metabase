@@ -12,6 +12,7 @@ import {
 } from "__support__/storybook";
 import { Api } from "metabase/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import type { ColorName } from "metabase/lib/colors/types";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { commonReducers } from "metabase/reducers-common";
 import { Box } from "metabase/ui";
@@ -65,7 +66,7 @@ const DefaultTemplate: StoryFn<{
 }: {
   series: RawSeries;
   isDashboard?: boolean;
-  bgColor?: string;
+  bgColor?: ColorName;
   theme?: MetabaseTheme;
   hasDevWatermark?: boolean;
 }) => {

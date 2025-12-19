@@ -53,7 +53,7 @@ export const AddRow = ({
     </Button>
     <Button
       variant={isValid ? "filled" : "outline"}
-      bg={!isValid ? "transparent" : ""}
+      bg={!isValid ? "transparent" : "none"}
       disabled={!isValid}
       onClick={onDone}
     >

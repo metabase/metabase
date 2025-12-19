@@ -249,7 +249,6 @@ const ValueInput = ({
         <Button
           leftSection={<Icon name="close" />}
           onClick={onDelete}
-          color={"text"}
           data-testid="remove-mapping"
         />
       )}
@@ -260,7 +259,6 @@ const ValueInput = ({
           <Button
             leftSection={<Icon name="refresh" />}
             onClick={onRevert}
-            color={"text"}
             data-testid="revert-mapping"
           />
         </Tooltip>

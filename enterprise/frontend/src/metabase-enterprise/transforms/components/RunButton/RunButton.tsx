@@ -7,6 +7,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Button, Icon, Loader, Tooltip } from "metabase/ui";
 import type {
   TransformId,
@@ -87,7 +88,7 @@ type RunButtonOpts = {
 
 type RunButtonInfo = {
   label: string;
-  color?: string;
+  color?: ColorName;
   leftSection?: ReactNode;
   isDisabled?: boolean;
 };
@@ -134,8 +135,8 @@ function getRunButtonInfo({
   if (run.status === "canceled") {
     return {
       label: t`Canceled`,
-      color: "var(--mb-color-warning)",
-      leftSection: <Icon name="close" color="white" aria-hidden />,
+      color: "warning",
+      leftSection: <Icon name="close" c="white" aria-hidden />,
       isDisabled,
     };
   }

@@ -140,7 +140,7 @@ export const AgentSuggestionMessage = ({
     <Paper
       shadow="none"
       radius="md"
-      bg="bg-white"
+      bg="background-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
@@ -156,10 +156,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          <Text
-            size="sm"
-            c={isNew ? "var(--mb-color-saturated-blue)" : "text-secondary"}
-          >
+          <Text size="sm" c={isNew ? "saturated-blue" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
           <Flex align="center" justify="center" h="md" w="md">

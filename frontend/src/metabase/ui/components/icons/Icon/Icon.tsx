@@ -12,7 +12,7 @@ import { Icons } from "./icons";
 
 const defaultSize = 16;
 
-export type IconProps = SVGAttributes<SVGSVGElement> &
+export type IconProps = Omit<SVGAttributes<SVGSVGElement>, "color"> &
   BoxProps & {
     name: IconName;
     size?: string | number;

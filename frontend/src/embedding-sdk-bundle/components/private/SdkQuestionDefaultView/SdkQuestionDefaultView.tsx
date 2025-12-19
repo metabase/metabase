@@ -201,7 +201,7 @@ export const SdkQuestionDefaultView = ({
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
-                  color="brand"
+                  c="brand"
                   fz="md"
                   ml="sm"
                 >
@@ -220,7 +220,7 @@ export const SdkQuestionDefaultView = ({
                         <Divider
                           mx="xs"
                           orientation="vertical"
-                          // we have to do this for now because Mantine's divider overrides this color no matter what
+                          // @ts-expect-error we have to do this for now because Mantine's divider overrides this color no matter what
                           color="var(--mb-color-border) !important"
                         />
                       )}

@@ -365,12 +365,7 @@ export function DetailViewSidesheet({
             hasPk &&
             tableForeignKeys &&
             tableForeignKeys.length > 0 && (
-              <Box
-                flex="1"
-                bg="var(--mb-color-background-secondary)"
-                px={rem(56)}
-                py={rem(48)}
-              >
+              <Box flex="1" bg="background-secondary" px={rem(56)} py={rem(48)}>
                 <Relationships
                   rowId={rowId}
                   rowName={rowName}

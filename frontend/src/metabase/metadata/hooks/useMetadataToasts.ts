@@ -22,7 +22,7 @@ export const useMetadataToasts = () => {
     (message: string) => {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message,
       });
     },

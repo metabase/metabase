@@ -8,6 +8,7 @@ import { forwardRef } from "react";
 import Link from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import { alpha } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
@@ -20,7 +21,7 @@ export const SidebarIcon = styled(
     },
   ),
 )<{
-  color?: string | null;
+  color?: ColorName;
   isSelected: boolean;
 }>`
   ${(props) =>

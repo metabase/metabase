@@ -1,4 +1,3 @@
-import { useTheme } from "@emotion/react";
 import { t } from "ttag";
 
 import { HoverCard, Icon, Stack, Text } from "metabase/ui";
@@ -30,11 +29,10 @@ const DESCRIPTIONS: Record<IllustrationType, string[]> = {
 };
 
 export const ImageUploadInfoDot = ({ type }: CustomFileUploadInfoDot) => {
-  const theme = useTheme();
   return (
     <HoverCard position="top-start">
       <HoverCard.Target>
-        <Icon name="info" color={theme.fn.themeColor("text-disabled")} />
+        <Icon name="info" c="text-disabled" />
       </HoverCard.Target>
       <HoverCard.Dropdown>
         <Stack p="md" gap="sm" maw={DESCRIPTIONS_WIDTHS[type]}>

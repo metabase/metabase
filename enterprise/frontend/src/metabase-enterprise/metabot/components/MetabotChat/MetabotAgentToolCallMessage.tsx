@@ -74,7 +74,7 @@ const ToolCallDetailsModal = ({
               <Flex align="center">
                 <Text fw="bold">{t`Response`}</Text>
                 {message.is_error && (
-                  <Badge ml="sm" bg="danger" c="text-white">
+                  <Badge ml="sm" bg="danger" c="text-primary-inverse">
                     {t`Errored`}
                   </Badge>
                 )}

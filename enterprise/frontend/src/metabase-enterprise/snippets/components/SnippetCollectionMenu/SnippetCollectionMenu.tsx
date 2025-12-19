@@ -58,7 +58,7 @@ export function SnippetCollectionMenu({
           <Button
             w={24}
             h={24}
-            c="text-medium"
+            c="text-secondary"
             size="compact-xs"
             variant="subtle"
             leftSection={<FixedSizeIcon name="ellipsis" size={16} />}

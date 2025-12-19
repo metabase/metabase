@@ -66,11 +66,11 @@ export function NativeQueryPreviewSidebarToggle({
         onClick={onToggleNativeQueryPreviewSidebar}
         size="lg"
         className={S.nativeSidebarToggle}
-        color="text"
+        c="text-primary"
         variant="subtle"
         aria-label={label}
       >
-        <Icon name="sql" color="text" />
+        <Icon name="sql" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );

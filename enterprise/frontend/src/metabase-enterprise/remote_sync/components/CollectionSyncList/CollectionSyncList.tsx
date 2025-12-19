@@ -61,7 +61,7 @@ export const CollectionSyncList = ({
   }
 
   if (collections.length === 0) {
-    return <Text c="text-medium">{emptyMessage}</Text>;
+    return <Text c="text-secondary">{emptyMessage}</Text>;
   }
 
   return (

@@ -13,6 +13,7 @@ export const ResultToolbar = ({
   <Group
     justify="space-between"
     p="sm"
+    //@ts-expect-error SDK Stuff... I don't know what to do
     bg="var(--mb-color-bg-sdk-question-toolbar)"
     style={{ borderRadius: "0.5rem" }}
     data-testid={dataTestId}

@@ -98,7 +98,7 @@ const PinnedQuestionCard = ({
                 <Icon
                   className={cx(CS.hoverChild, CS.hoverChildSmooth)}
                   name="info"
-                  color="text-disabled"
+                  c="text-disabled"
                   tooltip={item.description}
                 />
               )}

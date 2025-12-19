@@ -20,7 +20,7 @@ export function HeaderCell({ name, sort, variant }: HeaderCellProps) {
       gap="0.25rem"
       fz="0.75rem"
       fw={700}
-      c="text-medium"
+      c="text-secondary"
     >
       {name}
       {sort && (

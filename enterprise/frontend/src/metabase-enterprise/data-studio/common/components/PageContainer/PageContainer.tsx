@@ -8,7 +8,7 @@ export const PageContainer = ({
 }: React.PropsWithChildren<StackProps>) => {
   return (
     <Stack
-      bg="background-light"
+      bg="background-secondary"
       h="100%"
       pb="2rem"
       px="3.5rem"

@@ -52,7 +52,10 @@ export const ColorRange = forwardRef(function ColorRange(
       )}
     >
       {_.range(0, sections).map((section) => (
-        <Box key={section} flex="1" bg={scale(section)} />
+        <>
+          {/* @ts-expect-error Color Range needs to handle arbitrary color values due to whitelabelling */}
+          <Box key={section} flex="1" bg={scale(section)} />
+        </>
       ))}
     </Flex>
   );

@@ -53,7 +53,7 @@ export function SourceModelBreadcrumbs({
             <span>
               <HeadBreadcrumbs.Badge
                 inactiveColor="text-disabled"
-                icon={{ name: "warning", color: "var(--mb-color-danger)" }}
+                icon={{ name: "warning", c: "danger" }}
                 to={Urls.question(question.card())}
               >
                 {question.displayName()}

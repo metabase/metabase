@@ -1,6 +1,7 @@
 import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   Avatar,
@@ -21,7 +22,7 @@ interface ExtraItemProps extends DOMAttributes<HTMLButtonElement> {
 
 export interface MenuItem {
   icon: IconName;
-  iconColor?: string;
+  iconColor?: ColorName;
   label: string;
   description?: string;
   action: () => void;
@@ -52,7 +53,7 @@ export const MenuItemComponent = ({
       {item.model === "user" && <Avatar name={item.label} size={16} />}
 
       {item.model !== "user" && (
-        <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
+        <Icon name={item.icon} size={16} c={item.iconColor || "inherit"} />
       )}
 
       <Stack gap={2} className={S.menuItemStack}>
@@ -67,7 +68,7 @@ export const MenuItemComponent = ({
       </Stack>
 
       {item.hasSubmenu && (
-        <Icon name="chevronright" size=".75rem" color="text-disabled" />
+        <Icon name="chevronright" size=".75rem" c="text-disabled" />
       )}
     </Group>
   </UnstyledButton>

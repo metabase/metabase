@@ -29,7 +29,7 @@ export function SegmentRevisionDiff({
   const label = getPropertyLabel(property);
 
   return (
-    <Box p="md" bg="bg-light" bd="1px solid border">
+    <Box p="md" bg="background-secondary" bd="1px solid border">
       <Flex align="center" gap="sm" mb="sm">
         <DiffIcon before={before} after={after} />
         <Text size="sm" fw={400} c="text-secondary">
@@ -88,7 +88,7 @@ function TextDiff({ before, after }: TextDiffProps) {
             span
             fw={part.added ? 600 : undefined}
             td={part.removed ? "line-through" : undefined}
-            c={part.removed ? "text-tertiary" : undefined}
+            c={part.removed ? "text-disabled" : undefined}
           >
             {part.value}
           </Text>
@@ -99,7 +99,7 @@ function TextDiff({ before, after }: TextDiffProps) {
 
   if (beforeStr != null) {
     return (
-      <Text size="sm" td="line-through" c="text-tertiary">
+      <Text size="sm" td="line-through" c="text-disabled">
         {beforeStr}
       </Text>
     );

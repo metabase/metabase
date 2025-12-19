@@ -15,12 +15,9 @@ export const EmbeddingHubAdminSettingsPage = () => {
   return (
     <Stack mx="auto" py="xl" gap="xl" maw={800}>
       <Stack gap="xs">
-        <Title
-          order={1}
-          c="var(--mb-color-text-primary)"
-        >{t`Embedding setup guide`}</Title>
+        <Title order={1} c="text-primary">{t`Embedding setup guide`}</Title>
 
-        <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with modular embedding`}</Text>
+        <Text c="text-secondary">{t`Follow the guide to get started with modular embedding`}</Text>
       </Stack>
 
       <EmbeddingHub />

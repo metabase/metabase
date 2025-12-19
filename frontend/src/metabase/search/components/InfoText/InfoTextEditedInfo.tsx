@@ -16,7 +16,7 @@ import {
 
 const LoadingText = () => (
   <Text
-    color="text-1"
+    c="text-primary"
     span
     size="sm"
     truncate

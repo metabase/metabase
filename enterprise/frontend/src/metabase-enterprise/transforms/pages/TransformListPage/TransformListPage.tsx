@@ -123,7 +123,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             data-testid="tree-node-name"
             icon={row.original.icon}
             iconColor={
-              row.original.nodeType === "folder" ? "text-medium" : "brand"
+              row.original.nodeType === "folder" ? "text-secondary" : "brand"
             }
             name={row.original.name}
           />

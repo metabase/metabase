@@ -82,11 +82,7 @@ export const BrowseModels = () => {
           >
             <Title order={2} c="text-primary" id={titleId}>
               <Group gap="sm">
-                <Icon
-                  size={24}
-                  color="var(--mb-color-icon-primary)"
-                  name="model"
-                />
+                <Icon size={24} c="icon-primary" name="model" />
                 {t`Models`}
               </Group>
             </Title>

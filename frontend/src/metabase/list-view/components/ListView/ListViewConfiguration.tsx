@@ -16,6 +16,7 @@ import {
   ReorderableTagsInput,
   SortablePill,
 } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
+import type { ColorName } from "metabase/lib/colors/types";
 import { getColumnExample } from "metabase/query_builder/components/expressions/CombineColumns/util";
 import {
   ActionIcon,
@@ -268,7 +269,7 @@ export const ListViewConfiguration = ({
                         className={S.listEntityIcon}
                         c={
                           iconConfig.entityIconEnabled
-                            ? iconConfig.selectedIconColor
+                            ? (iconConfig.selectedIconColor as ColorName)
                             : "text-disabled"
                         }
                       />
@@ -371,7 +372,7 @@ export const ListViewConfiguration = ({
                 </SimpleGrid>
                 <Menu.Divider m={0} />
                 <SimpleGrid cols={6} p="md" data-testid="list-view-icon-colors">
-                  {ENTITY_ICON_COLORS.map((color: string) => (
+                  {ENTITY_ICON_COLORS.map((color) => (
                     <Flex justify="center" align="center" key={color}>
                       <Button
                         className={cx(S.iconColorButton, {
