@@ -217,12 +217,6 @@ jobs:
       - name: Prune build cache
         run: docker builder prune -af
 
-      - name: Log Docker disk usage 2
-        run: docker system df
-
-      - name: Docker prune images
-        run: docker image prune -a
-
       - name: Log Docker disk usage 3
         run: docker system df
 
