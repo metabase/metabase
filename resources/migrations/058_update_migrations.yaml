@@ -1193,7 +1193,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: type
-                  value: "library-data"
+                  value: 'library-data'
             where: type = 'library-models'
       rollback:
         - update:
@@ -1201,7 +1201,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: type
-                  value: "library-models"
+                  value: 'library-models'
             where: type = 'library-data'
 
   - changeSet:
