@@ -594,3 +594,20 @@
 (deftest ^:parallel normalize-unwrapped-field-id-test
   (is (= [:sum [:field 10 nil]]
          (lib/normalize ::mbql.s/sum [:sum 10]))))
+
+(deftest ^:parallel is-null-not-null-arbitrary-expressions-test
+  (testing "is-null and not-null should allow arbitrary expressions"
+    (doseq [clause [:is-null
+                    :not-null]]
+      (let [schema     (keyword "metabase.legacy-mbql.schema" (name clause))
+            expr       [(name clause)
+                        ["="
+                         ["field" 620 {"base-type" "type/Text"}]
+                         false]]
+            normalized (lib/normalize schema expr)]
+        (is (= [clause
+                [:=
+                 [:field 620 {:base-type :type/Text}]
+                 false]]
+               normalized))
+        (is (mr/validate schema normalized))))))

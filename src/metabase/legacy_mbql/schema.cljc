@@ -1041,8 +1041,8 @@
   lon-max   [:ref ::OrderComparable])
 
 ;; SUGAR CLAUSES: These are rewritten as `[:= <field> nil]` and `[:not= <field> nil]` respectively
-(defclause is-null,  field [:ref ::FieldOrExpressionRef])
-(defclause not-null, field [:ref ::FieldOrExpressionRef])
+(defclause is-null,  field [:ref ::FieldOrExpressionDef])
+(defclause not-null, field [:ref ::FieldOrExpressionDef])
 
 (mr/def ::Emptyable
   "Schema for a valid is-empty or not-empty argument."
