@@ -998,9 +998,12 @@ export const setOrUnsetParameterValues =
             ({ id: itemId }) => id === itemId,
           );
 
-          if (parameter?.default && parameter?.required) {
-            return setParameterValue(id, parameter.default || null);
-          }
+          const valueToSet =
+            parameter?.default && parameter?.required
+              ? parameter.default || null
+              : null;
+
+          return setParameterValue(id, valueToSet);
         }
 
         return setParameterValue(id, value);
