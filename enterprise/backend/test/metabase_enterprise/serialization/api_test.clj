@@ -129,6 +129,22 @@
                   (is (= #{:log :dir :dashboard :card :collection :transform}
                          (tar-file-types f)))))
 
+              (testing "Export with non-existent entity id should fail"
+                (let [res (binding [api.serialization/*additive-logging* false]
+                            (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
+                                                  :collection "eid:this-id-does-not-exist"
+                                                  :data_model false :settings false))
+                      log (slurp (io/input-stream res))]
+                  (is (re-find #"No Collection found with entity_id this-id-does-not-exist" log))))
+
+              (testing "Export with non-existent entity id (without eid: prefix) should fail"
+                (let [res (binding [api.serialization/*additive-logging* false]
+                            (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
+                                                  :collection "nonexistent123456789"
+                                                  :data_model false :settings false))
+                      log (slurp (io/input-stream res))]
+                  (is (re-find #"No Collection found with entity_id nonexistent123456789" log))))
+
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
                   (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database}
