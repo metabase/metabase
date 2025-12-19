@@ -167,9 +167,11 @@
           (cons root))))
     (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
-    ;; and for personal collections we translate the name to user's locale
-    (collection/personal-collections-with-ui-details  (for [collection collections]
-                                                        (dissoc collection ::collection.root/is-root?)))))
+    ;; and for personal/tenant collections we translate the name to user's locale
+    (->> (for [collection collections]
+           (dissoc collection ::collection.root/is-root?))
+         collection/personal-collections-with-ui-details
+         collection/maybe-localize-tenant-collection-names)))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
@@ -187,7 +189,8 @@
   ```"
   [colls]
   (->> colls
-       (map collection/personal-collection-with-ui-details)
+       (map (comp collection/maybe-localize-tenant-collection-name
+                  collection/personal-collection-with-ui-details))
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
@@ -274,7 +277,9 @@
                                                                          [:= :archived_at nil]]})
                                                       (map :collection_id)
                                                       (into #{}))}))
-            collections-with-details (map collection/personal-collection-with-ui-details collections)]
+            collections-with-details (map (comp collection/maybe-localize-tenant-collection-name
+                                                collection/personal-collection-with-ui-details)
+                                          collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -847,6 +852,7 @@
       (let [type-value (:type row)]
         (-> (t2/instance :model/Collection row)
             collection/maybe-localize-system-collection-name
+            collection/maybe-localize-tenant-collection-name
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
@@ -1105,6 +1111,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
+      collection/maybe-localize-tenant-collection-name
       (t2/hydrate :parent_id
                   :effective_location
                   [:effective_ancestors :can_write]
@@ -1591,6 +1598,9 @@
                                                                   [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+    ;; tenant-specific-root-collection collections cannot be updated
+    (api/check-400
+     (not= (:type collection-before-update) "tenant-specific-root-collection"))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority-level) (:authority_level collection-before-update)))
