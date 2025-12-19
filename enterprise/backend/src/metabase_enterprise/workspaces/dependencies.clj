@@ -19,7 +19,7 @@
    Transform B reads from `analytics.orders_summary`:
    ```
    {:ref_id \"brave-lion-g7h8\"
-    :source {:type \"query\" :query <SELECT * FROM analytics.orders_summary>}
+    :source {:type \"query\" :query \"SELECT * FROM analytics.orders_summary\"}
     :target {:database 1 :schema \"analytics\" :name \"orders_report\"}}
    ```
 
@@ -52,8 +52,6 @@
    | transform        | happy-dolphin-a1b2 | input          | 201          | A depends on external ORDERS |
    | transform        | brave-lion-g7h8    | output         | 101          | B depends on A's output      |"
   (:require
-   ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
-   #_{:clj-kondo/ignore [:metabase/modules]}
    [clojure.set :as set]
    [metabase-enterprise.workspaces.models.workspace-dependency]
    [metabase-enterprise.workspaces.models.workspace-input]
@@ -62,8 +60,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
-   ;; TODO (lbrdnk 2025/12/17): we should handle this resonably, probably using driver-api?
-   #_{:clj-kondo/ignore [:metabase/modules]}
+   ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
+   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
