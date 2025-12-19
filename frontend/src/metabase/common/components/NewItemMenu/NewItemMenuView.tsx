@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
@@ -43,22 +44,12 @@ const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    if (hasDataAccess) {
-      // TODO: move to enterprise / conditional add if metabot is enabled
-      items.push(
-        <Menu.Item
-          key="nlq"
-          component={ForwardRefLink}
-          to={Urls.newQuestion({
-            mode: "ask",
-            collectionId,
-            cardType: "question",
-          })}
-          leftSection={<Icon name="comment" />}
-        >
-          {t`AI exploration`}
-        </Menu.Item>,
-      );
+    const aiExplorationItem = PLUGIN_METABOT.getNewMenuItemAIExploration(
+      hasDataAccess,
+      collectionId,
+    );
+    if (aiExplorationItem) {
+      items.push(aiExplorationItem);
     }
 
     if (hasDataAccess) {

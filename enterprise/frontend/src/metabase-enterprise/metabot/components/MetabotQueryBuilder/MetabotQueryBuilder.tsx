@@ -1,19 +1,20 @@
+import { isFulfilled } from "@reduxjs/toolkit";
 import cx from "classnames";
-import _ from "underscore";
+import { useEffect, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
+import { useRouter } from "metabase/router";
 import { Box, Button, Icon, Paper, Stack, Text } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
-import { MetabotPromptInput } from "metabase-enterprise/metabot/components/MetabotPromptInput";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { Urls } from "metabase-enterprise/urls";
+
+import { useMetabotAgent } from "../../hooks";
+import { MetabotPromptInput } from "../MetabotPromptInput";
 
 import S from "./MetabotQueryBuilder.module.css";
-import { useEffect, useState } from "react";
-import { useRouter } from "metabase/router";
-import { isFulfilled } from "@reduxjs/toolkit";
-import { Urls } from "metabase-enterprise/urls";
-import { push } from "react-router-redux";
 
 const defaultSuggestionModels = [
   "dataset",

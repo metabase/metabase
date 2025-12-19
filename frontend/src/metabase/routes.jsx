@@ -47,7 +47,6 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { MetabotQueryBuilder } from "metabase/query_builder/containers/MetabotQueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
@@ -252,7 +251,7 @@ export const getRoutes = (store) => {
               })}
             />
             <IndexRoute component={QueryBuilder} />
-            <Route path="ask" component={MetabotQueryBuilder} />
+            {PLUGIN_METABOT.getMetabotQueryBuilderRoute()}
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />

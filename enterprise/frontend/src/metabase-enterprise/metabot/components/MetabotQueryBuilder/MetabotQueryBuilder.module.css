@@ -44,12 +44,16 @@
   flex-direction: column;
   padding: 0.5rem 1rem 1rem;
   border-radius: 0.75rem;
-  box-shadow: 0 0 0 1px var(--mb-color-border), 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 0 0 1px var(--mb-color-border),
+    0 4px 24px rgba(0, 0, 0, 0.08);
   min-height: 7rem;
   transition: box-shadow 150ms ease;
 
   &:focus-within {
-    box-shadow: 0 0 0 1px var(--mb-color-border), 0 4px 24px rgba(0, 0, 0, 0.12);
+    box-shadow:
+      0 0 0 1px var(--mb-color-border),
+      0 4px 24px rgba(0, 0, 0, 0.12);
   }
 }
 
@@ -98,7 +102,9 @@
   color: var(--mb-color-text-secondary);
   cursor: pointer;
   border-radius: 0.5rem;
-  transition: background 150ms ease, color 150ms ease;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
   opacity: 0;
   animation: fade-in 300ms ease forwards;
 
@@ -112,6 +118,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
