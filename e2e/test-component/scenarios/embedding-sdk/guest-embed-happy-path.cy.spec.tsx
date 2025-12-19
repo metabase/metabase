@@ -282,6 +282,105 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
       });
     });
 
+    it("should trigger `/search` endpoint when using search-based parameter", () => {
+      signInAsAdminAndSetupGuestEmbedding({
+        token: "starter",
+      });
+
+      // Set up external remapping: ORDERS.USER_ID -> PEOPLE.NAME
+      cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
+        type: "external",
+        name: "User ID",
+        human_readable_field_id: PEOPLE.NAME,
+      });
+
+      // Set field to use search instead of dropdown list
+      [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach((id) =>
+        cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
+      );
+
+      const questionTemplateTags: TemplateTags = {
+        user_id: {
+          id: "user_id",
+          name: "user_id",
+          "display-name": "User",
+          type: "dimension",
+          "widget-type": "id",
+          dimension: ["field", ORDERS.USER_ID, null],
+        },
+      };
+
+      const questionParameters = [
+        createMockParameter({
+          id: "user_id",
+          name: "User",
+          slug: "user_id",
+          type: "id",
+          target: ["dimension", ["template-tag", "user_id"]],
+        }),
+      ];
+
+      createNativeQuestion(
+        {
+          name: "Orders with User filter",
+          native: {
+            query: "SELECT * FROM ORDERS WHERE {{user_id}}",
+            "template-tags": questionTemplateTags,
+          },
+          parameters: questionParameters,
+          enable_embedding: true,
+          embedding_params: {
+            user_id: "enabled",
+          },
+        },
+        {
+          wrapId: true,
+        },
+      );
+
+      cy.signOut();
+
+      cy.intercept("GET", "/api/embed/card/*/params/*/search/*").as(
+        "parameterSearchApiRequest",
+      );
+
+      cy.get("@questionId").then(async (questionId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: questionId as unknown as number,
+          resourceType: "question",
+        });
+
+        mountGuestEmbedQuestion(
+          { token },
+          {
+            shouldAssertCardQuery: false,
+          },
+        );
+
+        getSdkRoot().within(() => {
+          cy.findAllByTestId("parameter-widget").should("have.length", 1);
+        });
+
+        cy.log("Click on User parameter and search");
+        getSdkRoot()
+          .findAllByTestId("parameter-widget")
+          .filter(':contains("User")')
+          .click();
+
+        // Type in the search input to trigger the search endpoint
+        cy.findByPlaceholderText("Search by Name or enter an ID").type("Hud");
+
+        cy.wait("@parameterSearchApiRequest");
+
+        cy.get("@parameterSearchApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length.greaterThan(0);
+        });
+
+        // Verify search results are displayed
+        cy.findByText("Hudson Borer").should("exist");
+      });
+    });
+
     it("should show remapped parameter values and trigger proper `/embed remapping endpoint", () => {
       signInAsAdminAndSetupGuestEmbedding({
         token: "starter",
@@ -682,6 +781,123 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
             .findAllByRole("row")
             .should("have.length", 1);
         });
+      });
+    });
+
+    it("should trigger `/search` endpoint when using search-based parameter", () => {
+      signInAsAdminAndSetupGuestEmbedding({
+        token: "starter",
+      });
+
+      // Set up external remapping: ORDERS.USER_ID -> PEOPLE.NAME
+      cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
+        type: "external",
+        name: "User ID",
+        human_readable_field_id: PEOPLE.NAME,
+      });
+
+      // Set field to use search instead of dropdown list
+      [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach((id) =>
+        cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
+      );
+
+      const dashboardTemplateTags: TemplateTags = {
+        user_id: {
+          id: "user_id",
+          name: "user_id",
+          "display-name": "User",
+          type: "dimension",
+          "widget-type": "id",
+          dimension: ["field", ORDERS.USER_ID, null],
+        },
+      };
+
+      const dashboardParameters = [
+        createMockParameter({
+          id: "user_id",
+          name: "User",
+          slug: "user_id",
+          type: "id",
+          target: ["dimension", ["template-tag", "user_id"]],
+        }),
+      ];
+
+      createNativeQuestionAndDashboard({
+        questionDetails: {
+          name: "Orders with User filter",
+          native: {
+            query: "SELECT * FROM ORDERS WHERE {{user_id}}",
+            "template-tags": dashboardTemplateTags,
+          },
+        },
+        dashboardDetails: {
+          name: "Search Parameter Test Dashboard",
+          embedding_type: "guest-embed",
+          parameters: dashboardParameters,
+          enable_embedding: true,
+          embedding_params: {
+            user_id: "enabled",
+          },
+        },
+      }).then(({ body: { id: dashcardId, card_id, dashboard_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id: dashcardId,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: "user_id",
+                  card_id,
+                  target: ["dimension", ["template-tag", "user_id"]],
+                },
+              ],
+            },
+          ],
+        });
+
+        cy.wrap(dashboard_id).as("dashboardId");
+      });
+
+      cy.signOut();
+
+      cy.intercept("GET", "/api/embed/dashboard/*/params/*/search/*").as(
+        "parameterSearchApiRequest",
+      );
+
+      cy.get("@dashboardId").then(async (dashboardId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: dashboardId as unknown as number,
+          resourceType: "dashboard",
+        });
+
+        mountGuestEmbedDashboard({ token });
+
+        getSdkRoot().within(() => {
+          cy.findAllByTestId("parameter-widget").should("have.length", 1);
+        });
+
+        cy.log("Click on User parameter and search");
+        getSdkRoot()
+          .findAllByTestId("parameter-widget")
+          .filter(':contains("User")')
+          .click();
+
+        // Type in the search input to trigger the search endpoint
+        cy.findByPlaceholderText("Search by Name or enter an ID").type("Hud");
+
+        cy.wait("@parameterSearchApiRequest");
+
+        cy.get("@parameterSearchApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length.greaterThan(0);
+        });
+
+        // Verify search results are displayed
+        cy.findByText("Hudson Borer").should("exist");
       });
     });
 
