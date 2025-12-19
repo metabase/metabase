@@ -28,9 +28,6 @@
 (defn- check-premium-token! []
   (premium-features/assert-has-feature :serialization (trs "Serialization")))
 
-(derive :event/serdes-load :metabase/event)
-(derive :event/serdes-dump :metabase/event)
-
 (mu/defn v2-load-internal!
   "SerDes v2 load entry point for internal users.
 
@@ -114,10 +111,11 @@
                  (seq collection-ids)
                  (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
         report (try
-                 (u/prog1 (serdes/with-cache
-                            (-> (v2.extract/extract opts)
-                                (v2.storage/store! path)))
-                   (events/publish-event! :event/serdes-dump {}))
+                 (serdes/with-cache
+                   (-> (v2.extract/extract opts)
+                       (v2.storage/store! path)))
+                 ;; we could publish :event/serdes-dump to go with :event/serdes-load above, but
+                 ;; nothing would listen to it currently
                  (catch Exception e
                    (reset! err e)))]
     (analytics/track-event! :snowplow/serialization

@@ -12,7 +12,8 @@
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (comment
   metabase-enterprise.dependencies.events/keep-me)
@@ -311,7 +312,7 @@
                        :type "table"}]}
                     (-> response
                         (update :edges set)
-                        (update :nodes #(sort-by :type %)))))))))))
+                        (update :nodes #(sort-by (juxt :type :id) %)))))))))))
 
 (deftest graph-transform-hydrates-creator-test
   (testing "GET /api/ee/dependencies/graph hydrates creator for transforms"
@@ -1008,6 +1009,10 @@
                                                          :type :question
                                                          :dataset_query (lib/native-query mp "not a query")}]
           (while (> 0 (dependencies.findings/analyze-batch! :card 50)))
+          (prn "card")
+          (println (u/pprint-to-str (dissoc (t2/select-one :model/Card :id broken-card-id) :result_metadata)))
+          (prn "dependencies")
+          (println (u/pprint-to-str (t2/select-one :model/AnalysisFinding :analyzed_entity_id broken-card-id :analyzed_entity_type :card)))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
             (is (=? [{:id broken-card-id
                       :type "card"
