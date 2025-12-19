@@ -56,7 +56,12 @@
     :model/TransformTransformTag
     :model/Undo
     :model/UserKeyValue
-    :model/Workspace})
+    :model/Workspace
+    :model/WorkspaceDependency
+    :model/WorkspaceInput
+    :model/WorkspaceLog
+    :model/WorkspaceOutput
+    :model/WorkspaceTransform})
 
 (defn- all-model-names []
   (into (sorted-set)

@@ -1373,7 +1373,7 @@
   [[metabase.driver-api.core/raw-native-query]] to get the raw native query as needed.
 
   The return value should match the `:metabase.driver/native-query-table-refs` schema."
-  {:added "0.58.0" :arglists '([driver query])}
+  {:changelog-test/ignore true :added "0.58.0" :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

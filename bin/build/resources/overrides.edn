@@ -24,6 +24,9 @@
  "dev.failsafe"                {"failsafe" {:resource "LICENSE"}}
  "colorize"                    {"colorize" {:resource "EPL.txt"}}
  "com.github.jnr"              {"jffi$native" {:resource "apache2_0.txt"}}
+ "com.google.api"              {"gax" {:resource "BSD.txt"}
+                                "gax-grpc" {:resource "BSD.txt"}
+                                "gax-httpjson" {:resource "BSD.txt"}}
  "com.google.api-client"       {"google-api-client" {:resource "apache2_0.txt"}}
  "com.google.auto.value"       {"auto-value-annotations" {:resource "apache2_0.txt"}}
  "com.google.http-client"      {"google-http-client"          {:resource "apache2_0.txt"}
@@ -60,6 +63,7 @@
  "net.thisptr"                 {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                   {"antlr-runtime"  {:resource "BSD.txt"}
                                 "antlr4-runtime" {:resource "BSD.txt"}}
+ "org.codehaus.mojo"           {"animal-sniffer-annotations" {:resource "MIT.txt"}}
  "org.eclipse.jgit"            {"org.eclipse.jgit" {:resource "BSD.txt"}}
  "org.eclipse.jetty"           {"jetty-webapp" {:resource "EPL.txt"}}
  "org.eclipse.jetty.toolchain" {"jetty-jakarta-servlet-api" {:resource "EPL.txt"}}

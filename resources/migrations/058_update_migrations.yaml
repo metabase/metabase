@@ -2937,13 +2937,19 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-10T10:00:03
       author: qnkhuat
-      comment: Add foreign key constraint from workspace_input.table_id to metabase_table with SET NULL
+      comment: Add index and foreign key constraint from workspace_input.table_id to metabase_table with SET NULL
       preConditions:
         - onFail: MARK_RAN
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_input_table_id
       changes:
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_table_id
+            columns:
+              - column:
+                  name: table_id
         - addForeignKeyConstraint:
             baseTableName: workspace_input
             baseColumnNames: table_id
@@ -2955,6 +2961,9 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: workspace_input
             constraintName: fk_workspace_input_table_id
+        - dropIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_table_id
 
   - changeSet:
       id: v58.2025-12-10T10:00:04
