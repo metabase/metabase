@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   defaultAuditInfo,
   setupAuditInfoEndpoint,
@@ -63,7 +63,8 @@ const setup = ({
     }),
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("audit_app");
+  setupEnterpriseOnlyPlugin("collections");
 
   renderWithProviders(
     <SaveQuestionProvider
