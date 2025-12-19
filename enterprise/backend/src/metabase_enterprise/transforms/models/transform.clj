@@ -60,7 +60,7 @@
     (collection/check-allowed-content :model/Transform collection_id))
   (assoc transform
          :source_type (transforms.util/transform-source-type source)
-         :target_db_id (:database target)))
+         :target_db_id (or (:database target) (:target_db_id transform))))
 
 (t2/define-before-update :model/Transform
   [{:keys [source target] :as transform}]
@@ -68,8 +68,8 @@
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
   (cond-> transform
-    source (assoc :source_type (transforms.util/transform-source-type source))
-    target (assoc :target_db_id (:database target))))
+    source             (assoc :source_type (transforms.util/transform-source-type source))
+    (:database target) (assoc :target_db_id (:database target))))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
