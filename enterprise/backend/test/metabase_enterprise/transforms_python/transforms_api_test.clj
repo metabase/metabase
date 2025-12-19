@@ -565,6 +565,6 @@
                 (is (= "python" (:source_type response))))
 
               (testing "Source tables are preserved in response"
-                (is (map? (get-in response [:source :source-tables "input"])))
+                (is (map? (get-in response [:source :source-tables :input])))
                 (is (= "transforms_products"
-                       (get-in response [:source :source-tables "input" :table])))))))))))
+                       (get-in response [:source :source-tables :input :table])))))))))))
