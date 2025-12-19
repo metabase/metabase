@@ -81,6 +81,16 @@
 (defn- ai-url [path]
   (str (metabot-v3.settings/ai-service-base-url) path))
 
+(defn- check-response!
+  "Returns response body on success (200 or 202), throws on failure."
+  [response request]
+  (if (#{200 202} (:status response))
+    (:body response)
+    (throw (ex-info (format "Unexpected status code: %d %s"
+                            (:status response) (:reason-phrase response))
+                    {:request  (dissoc request :headers)
+                     :response (dissoc response :headers)}))))
+
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
 
@@ -182,9 +192,7 @@
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (when-not (#{200 202} (:status response))
-        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
-                        {:request  (assoc options :body body)
-                         :response response})))
+        (check-response! response body))
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
         ;; see `quick-closing-body` docs and see `Connection` header supporting this behavior
         (with-open [^BufferedReader response-reader (io/reader (quick-closing-body response))]
@@ -226,12 +234,8 @@
                 :query query}
           options (build-request-options body)
           response (post! url options)]
-      (if (= (:status response) 200)
-        (u/prog1 (:body response)
-          (log/debugf "Response:\n%s" (u/pprint-to-str <>)))
-        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
-                        {:request (assoc options :body body)
-                         :response response}))))
+      (u/prog1 (check-response! response body)
+        (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e))
                       {}
@@ -245,12 +249,8 @@
           body {:values values}
           options (build-request-options body)
           response (post! url options)]
-      (if (= (:status response) 200)
-        (u/prog1 (:body response)
-          (log/debugf "Response:\n%s" (u/pprint-to-str <>)))
-        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
-                        {:request (assoc options :body body)
-                         :response response}))))
+      (u/prog1 (check-response! response body)
+        (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI service: %s" (ex-message e))
                       {}
@@ -266,12 +266,7 @@
   (let [url (fix-sql-endpoint)
         options (build-request-options body)
         response (post! url options)]
-    (if (= (:status response) 200)
-      (:body response)
-      (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
-                              (:status response) (:reason-phrase response))
-                      {:request (assoc options :body body)
-                       :response response})))))
+    (check-response! response body)))
 
 (mu/defn generate-sql
   "Ask the AI service to generate a SQL query based on provided instructions."
@@ -289,12 +284,7 @@
   (let [url (generate-sql-endpoint)
         options (build-request-options body)
         response (post! url options)]
-    (if (= (:status response) 200)
-      (:body response)
-      (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
-                              (:status response) (:reason-phrase response))
-                      {:request (assoc options :body body)
-                       :response response})))))
+    (check-response! response body)))
 
 (mu/defn document-generate-content
   "Ask the AI service to generate a new node for a document."
@@ -306,12 +296,7 @@
                                            "x-metabase-url"            (system/site-url)})
         options (assoc options :headers headers)
         response (post! url options)]
-    (if (= (:status response) 200)
-      (:body response)
-      (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
-                              (:status response) (:reason-phrase response))
-                      {:request (assoc options :body body)
-                       :response response})))))
+    (check-response! response body)))
 
 (def chart-analysis-schema
   "Schema for chart analysis data input."
@@ -331,12 +316,7 @@
   (let [url (analyze-chart-endpoint)
         options (build-request-options chart-data)
         response (post! url options)]
-    (if (= (:status response) 200)
-      (:body response)
-      (throw (ex-info (format "Error in chart analysis request to AI service: unexpected status code: %d %s"
-                              (:status response) (:reason-phrase response))
-                      {:request options
-                       :response response})))))
+    (check-response! response chart-data)))
 
 (def dashboard-analysis-schema
   "Schema for dashboard analysis data input."
@@ -353,12 +333,7 @@
   (let [url (analyze-dashboard-endpoint)
         options (build-request-options dashboard-data)
         response (post! url options)]
-    (if (= (:status response) 200)
-      (:body response)
-      (throw (ex-info (format "Error in dashboard analysis request to AI service: unexpected status code: %d %s"
-                              (:status response) (:reason-phrase response))
-                      {:request options
-                       :response response})))))
+    (check-response! response dashboard-data)))
 
 (mr/def ::example-generation-column
   [:and
@@ -397,12 +372,7 @@
                            (mtx/transformer {:name :ai-service-request}))
         options (build-request-options payload)
         response (post! url options)]
-    (if (= (:status response) 200)
-      (:body response)
-      (throw (ex-info (format "Error in generate-example-questions request to AI service: unexpected status: %d %s"
-                              (:status response) (:reason-phrase response))
-                      {:request (assoc options :body payload)
-                       :response response})))))
+    (check-response! response payload)))
 
 (defn generate-embeddings
   "Generate vector embeddings for a batch of inputs questions for the given models and metrics."
@@ -413,9 +383,4 @@
               :encoding_format "base64"}
         options (build-request-options body)
         response (post! url options)]
-    (if (= (:status response) 200)
-      (:body response)
-      (throw (ex-info (format "Error in generate-embeddings request to AI service: unexpected status: %d %s"
-                              (:status response) (:reason-phrase response))
-                      {:request (assoc options :body body)
-                       :response response})))))
+    (check-response! response body)))
