@@ -1559,11 +1559,12 @@ LIMIT
 
         H.PythonEditor.clear().type(
           dedent`
-          import pandas as pd
+            import pandas as pd
 
-          def transform():
-          return pd.DataFrame([{"foo": common.useful_calculation(1, 2)}])
-        `,
+            def transform():
+                return pd.DataFrame([{"foo": common.useful_calculation(1, 2)}])
+          `,
+          { allowFastSet: true },
         );
 
         getQueryEditor().findByLabelText("Import common library").click();
@@ -2674,6 +2675,77 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
+describe(
+  "scenarios > admin > transforms > python runner",
+  { tags: ["@python"] },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_schemas" });
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+      setPythonRunnerSettings();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should be possible to test run a Python script", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonLibrary(
+            "common.py",
+            dedent`
+              def useful_calculation(a, b):
+                return a + b
+            `,
+          );
+
+          createPythonTransform({
+            body: dedent`
+          import pandas as pd
+          import common
+
+
+          def transform(foo):
+            print("Hello, world!")
+            return pd.DataFrame([{"foo": common.useful_calculation(40, 2) }])
+        `,
+            sourceTables: { foo: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      cy.log("running the script should work");
+      runPythonScriptAndWaitForSuccess();
+      H.assertTableData({
+        columns: ["foo"],
+        firstRows: [["42"]],
+      });
+
+      cy.log("updating the common library should affect the results");
+      createPythonLibrary(
+        "common.py",
+        dedent`
+              def useful_calculation(a, b):
+                return a + b + 1
+            `,
+      );
+
+      runPythonScriptAndWaitForSuccess();
+      H.assertTableData({
+        columns: ["foo"],
+        firstRows: [["43"]],
+      });
+    });
+  },
+);
+
 describe("scenarios > admin > transforms", () => {
   beforeEach(() => {
     H.restore();
@@ -2966,6 +3038,16 @@ function setPythonRunnerSettings() {
     "http://localstack:4566",
   );
   H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
+}
+
+function runPythonScriptAndWaitForSuccess() {
+  getQueryEditor().findByTestId("run-button").click();
+
+  getQueryEditor()
+    .findByTestId("loading-indicator", { timeout: 60000 })
+    .should("not.exist");
+
+  cy.findByTestId("python-results").should("be.visible");
 }
 
 function getRowNames(): Cypress.Chainable<string[]> {
