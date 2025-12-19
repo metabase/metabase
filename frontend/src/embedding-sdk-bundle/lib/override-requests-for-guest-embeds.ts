@@ -31,7 +31,10 @@ const URL_PATTERNS = {
  */
 const EMBED_URL_TRANSFORMATIONS: Record<
   string,
-  { url: string; method: "GET" | "POST" }
+  {
+    url: string;
+    method: "GET" | "POST";
+  }
 > = {
   [URL_PATTERNS.CARD_QUERY]: {
     url: `${getEmbedBase()}/card/:token/query`,
@@ -49,20 +52,12 @@ const EMBED_URL_TRANSFORMATIONS: Record<
     url: `${getEmbedBase()}/card/:token/params/:paramId/search/:query`,
     method: "GET",
   },
-  [URL_PATTERNS.CARD_PARAMETER_REMAPPING]: {
-    url: `${getEmbedBase()}/card/:token/params/:paramId/remapping`,
-    method: "GET",
-  },
   [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: {
     url: `${getEmbedBase()}/dashboard/:token/params/:paramId/values`,
     method: "GET",
   },
   [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: {
     url: `${getEmbedBase()}/dashboard/:token/params/:paramId/search/:query`,
-    method: "GET",
-  },
-  [URL_PATTERNS.DASHBOARD_PARAMETER_REMAPPING]: {
-    url: `${getEmbedBase()}/dashboard/:token/params/:paramId/remapping`,
     method: "GET",
   },
 } as const;

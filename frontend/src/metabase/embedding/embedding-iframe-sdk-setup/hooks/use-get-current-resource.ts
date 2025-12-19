@@ -33,8 +33,8 @@ export const useGetCurrentResource = ({
   questionId,
 }: {
   experience: SdkIframeEmbedSetupExperience;
-  dashboardId?: DashboardId;
-  questionId?: string | number;
+  dashboardId?: DashboardId | null;
+  questionId?: string | number | null;
 }) => {
   const dispatch = useDispatch();
 

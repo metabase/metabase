@@ -19,6 +19,7 @@ const setup = ({
   syncType = "read-write",
   dirty = [],
   branches = ["main", "develop"],
+  fullWidth = false,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
@@ -26,12 +27,13 @@ const setup = ({
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
+  fullWidth?: boolean;
 } = {}) => {
   setupRemoteSyncEndpoints({ branches, dirty });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
 
-  return renderWithProviders(<GitSyncControls />, {
+  return renderWithProviders(<GitSyncControls fullWidth={fullWidth} />, {
     storeInitialState: createRemoteSyncStoreState({
       isAdmin,
       remoteSyncEnabled,
@@ -245,6 +247,31 @@ describe("GitSyncControls", () => {
       await waitFor(() => {
         expect(screen.getByTestId("git-push-button")).toBeEnabled();
       });
+    });
+  });
+
+  describe("fullWidth prop", () => {
+    it("should render with default styling when fullWidth is false", async () => {
+      setup({ fullWidth: false });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
+      });
+
+      const controls = screen.getByTestId("git-sync-controls");
+      expect(controls).toHaveStyle({ width: "13.5rem" });
+    });
+
+    it("should render with full width when fullWidth is true", async () => {
+      setup({ fullWidth: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
+      });
+
+      const controls = screen.getByTestId("git-sync-controls");
+      expect(controls).toHaveStyle({ width: "100%" });
+      expect(controls).not.toHaveStyle({ maxWidth: "13.5rem" });
     });
   });
 });

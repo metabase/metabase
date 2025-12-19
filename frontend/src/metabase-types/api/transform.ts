@@ -16,6 +16,7 @@ export type Transform = {
   description: string | null;
   source: TransformSource;
   target: TransformTarget;
+  collection_id: number | null;
   created_at: string;
   updated_at: string;
 
@@ -145,6 +146,7 @@ export type CreateTransformRequest = {
   source: TransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
+  collection_id?: number | null;
 };
 
 export type UpdateTransformRequest = {
@@ -154,6 +156,7 @@ export type UpdateTransformRequest = {
   source?: TransformSource;
   target?: TransformTarget;
   tag_ids?: TransformTagId[];
+  collection_id?: number | null;
 };
 
 export type CreateTransformJobRequest = {
