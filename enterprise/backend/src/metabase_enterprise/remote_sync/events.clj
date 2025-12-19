@@ -238,9 +238,35 @@
    (and is_published
         (collections/remote-synced-collection? collection_id))))
 
+(defn- model-in-published-table-in-remote-synced-collection?
+  "Check if a model (field, segment) belongs to a published table in a remote-synced collection.
+   The model must have a :table_id that points to a table with :is_published true
+   and :collection_id in a remote-synced collection."
+  [{:keys [table_id]}]
+  (boolean
+   (when table_id
+     (when-let [table (t2/select-one :model/Table :id table_id)]
+       (published-table-in-remote-synced-collection? table)))))
+
 (defmodel-change-handler table
   {:model-type   "Table"
    :event-prefix :event/table
    :log-name     "table"
    :archived-key :archived_at
    :in-sync-pred published-table-in-remote-synced-collection?})
+
+;; Segment events - track segments in published tables in remote-synced collections
+
+(defmodel-change-handler segment
+  {:model-type   "Segment"
+   :event-prefix :event/segment
+   :log-name     "segment"
+   :in-sync-pred model-in-published-table-in-remote-synced-collection?})
+
+;; Field events - track fields in published tables in remote-synced collections
+
+(defmodel-change-handler field
+  {:model-type   "Field"
+   :event-prefix :event/field
+   :log-name     "field"
+   :in-sync-pred model-in-published-table-in-remote-synced-collection?})
