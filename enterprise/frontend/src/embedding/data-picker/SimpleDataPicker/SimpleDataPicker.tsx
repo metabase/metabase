@@ -58,7 +58,12 @@ export function SimpleDataPicker({
       trapFocus
     >
       <Popover.Target>
-        <Box onClick={toggle}>{triggerElement}</Box>
+        <Box
+          onClick={toggle}
+          data-testid="embedding-simple-data-picker-trigger"
+        >
+          {triggerElement}
+        </Box>
       </Popover.Target>
       <Popover.Dropdown>
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
