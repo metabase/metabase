@@ -12,8 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (comment
   metabase-enterprise.dependencies.events/keep-me)

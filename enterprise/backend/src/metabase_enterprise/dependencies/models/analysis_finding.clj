@@ -18,10 +18,8 @@
    :finding_details {:in  mi/json-in
                      :out normalize-analysis-finding}})
 
-;; This generally shouldn't be rebound in real code so *name* probably isn't correct, but declaring it dynamic is
-;; useful during tests
-#_{:clj-kondo/ignore [:dynamic-var-not-earmuffed]}
-(def ^:dynamic current-analysis-version
+;; This generally shouldn't be rebound in real code, but making it dynamic is convenient for testing
+(def ^:dynamic *current-analysis-version*
   "Current version of the analysis logic.
   This should be incremented when the analysis logic changes.
   The background task will re-analyze anything with out-of-date analyses."
@@ -31,7 +29,7 @@
   "Given the details of an AnalysisFinding row, upsert the data into the actual db."
   [type instance-id result finding-details]
   (let [update {:analyzed_at (mi/now)
-                :analysis_version current-analysis-version
+                :analysis_version *current-analysis-version*
                 :result result
                 :finding_details finding-details}
         existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
@@ -61,5 +59,5 @@
                                                [:= :analysis_finding.analyzed_entity_type (name type)]]]
                 :where [:or
                         [:= :analysis_finding.analysis_version nil]
-                        [:< :analysis_finding.analysis_version current-analysis-version]]
+                        [:< :analysis_finding.analysis_version *current-analysis-version*]]
                 :limit batch-size})))
