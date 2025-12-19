@@ -154,7 +154,7 @@ The flow might look something like this:
 
 1. A customer logs into our web app.
 2. Our app backend looks up the customer's `account_id` based on the account email used during login.
-3. Our app backend uses Metabase's [secret key](./guest-embedding.md#regenerating-the-guest-embedding-secret-key) to [generate the embedding URL](./guest-embedding.md#how-guest-embedding-works) with a signed JWT. The signed JWT encodes the query parameters to filter the Accounts dashboard on `Account ID = account_id`.
+3. Our app backend uses Metabase's [secret key](./guest-embedding.md#regenerating-the-embedding-secret-key) to [generate the embedding URL](./guest-embedding.md#how-guest-embedding-works) with a signed JWT. The signed JWT encodes the query parameters to filter the Accounts dashboard on `Account ID = account_id`.
 4. Metabase returns the filtered dashboard at the guest embedding URL.
 5. Our app frontend displays the filtered dashboard in an iframe.
 

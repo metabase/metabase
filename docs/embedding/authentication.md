@@ -179,7 +179,7 @@ If you're upgrading from an SDK version 1.54.x or below and you're using JWT SSO
 
 - [Update backend endpoint to return `{ jwt: "token" }` JSON response for SDK requests](#update-your-jwt-endpoint-to-handle-sdk-requests).
 
-Additionally, if you have SAML set up, but you'd prefer to use JWT SSO, you'll need to set a [preferred authentication method](#if-both-saml-and-jwt-are-enabled-the-sdk-will-default-to-saml).
+Additionally, if you have SAML set up, but you'd prefer to use JWT SSO, you'll need to set a [preferred authentication method](#if-both-saml-and-jwt-are-enabled-modular-embedding-will-default-to-saml).
 
 ### Remove `authProviderUri` from your auth config
 
