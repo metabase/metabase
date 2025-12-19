@@ -173,7 +173,7 @@
                                   #"You don't have permissions to do that"
                                   (collection/maybe-localize-tenant-collection-names
                                    [(t2/select-one :model/Collection tenant2-coll-id)])))
-            (is (= ["Our Data"
+            (is (= ["Our data"
                     "Regular Collection"]
                    (map :name (collection/maybe-localize-tenant-collection-names [(t2/select-one :model/Collection tenant1-coll-id)
                                                                                   regular-coll]))))))))))
@@ -192,4 +192,4 @@
           (mt/with-current-user tenant-user
             (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
                   localized-coll (collection/maybe-localize-tenant-collection-name coll)]
-              (is (= "Our Data" (:name localized-coll))))))))))
+              (is (= "Our data" (:name localized-coll))))))))))

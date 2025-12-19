@@ -107,7 +107,7 @@
                              (let [[_tenant-name tenant-id] (collection-id->tenant-name-and-id id)]
                                ;; this should never happen, but juuuuuust in case
                                (api/check-403 (= user-tenant-id tenant-id))
-                               (tru "Our Data"))
+                               (tru "Our data"))
                              (let [[tenant-name _tenant-id] (collection-id->tenant-name-and-id id)]
                                (tru "Tenant collection: {0}" tenant-name))))))
           collections)))
