@@ -374,6 +374,9 @@
                                                             :from   [:workspace]
                                                             :where  [:= :id workspace-id]}])
           ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
+          ;; -> lbrdnk: requring resolve instead of normal :require here to avoid reformat attempt of the cljfmt
+          ;;            performed in CI, which if successful moves the ignore where it should not be, hence the linter
+          ;;            is failing, or the reformat alone fails the CI.
           normalize             (partial @(requiring-resolve 'metabase.driver.sql.normalize/normalize-name) driver)]
       (upsert-workspace-output! workspace-id ref-id isolated-schema output normalize)
       (let [{internal-inputs true external-inputs false} (group-by (fn [{:keys [db_id schema table]}]
