@@ -272,9 +272,16 @@
                     [:model/WorkspaceInput :id :db_id :schema :table :table_id]
                     :workspace_id workspace-id))
 
+(defn- normalize-input-schema
+  "Normalize an input's schema: replace nil with the driver's default schema.
+   This ensures consistent comparison with output schemas which are always explicit."
+  [default-schema input]
+  (update input :schema #(or % default-schema)))
+
 (defn- ensure-workspace-inputs!
   "Ensure all external inputs exist in workspace_input table.
-   Uses batch lookup to avoid N+1. Returns map of [db_id schema table] -> input_id."
+   Uses batch lookup to avoid N+1. Returns map of [db_id schema table] -> input_id.
+   Inputs should already have normalized schemas (nil replaced with driver default)."
   [workspace-id inputs existing-input-lookup]
   (let [{existing true new-inputs false}
         (group-by (fn [{:keys [db_id schema table]}]
@@ -374,12 +381,15 @@
       (let [{internal-inputs true external-inputs false} (group-by (fn [{:keys [db_id schema table]}]
                                                                      (contains? output-lookup [db_id schema table]))
                                                                    inputs)
-            input-id-lookup (ensure-workspace-inputs! workspace-id external-inputs existing-input-lookup)
+            default-schema (driver.sql/default-schema driver)
+            ;; Normalize external inputs so lookups use consistent schema keys
+            normalized-external-inputs (map (partial normalize-input-schema default-schema) external-inputs)
+            input-id-lookup (ensure-workspace-inputs! workspace-id normalized-external-inputs existing-input-lookup)
             new-dep-specs (concat
                            (for [{:keys [db_id schema table]} internal-inputs]
                              {:to_entity_type :output
                               :to_entity_id   (get output-lookup [db_id schema table])})
-                           (for [{:keys [db_id schema table]} external-inputs]
+                           (for [{:keys [db_id schema table]} normalized-external-inputs]
                              {:to_entity_type :input
                               :to_entity_id   (get input-id-lookup [db_id schema table])}))
             new-dep-specs-set (set new-dep-specs)
