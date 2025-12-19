@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
   setupPropertiesEndpoints,
@@ -26,24 +26,24 @@ export type SetupProps = {
   isAdmin?: boolean;
   applicationName?: string;
   enableXrays?: boolean;
-  hasEnterprisePlugins?: boolean;
   hasExampleDashboard?: boolean;
   isHosted?: boolean;
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export const setup = ({
   isAdmin = true,
   applicationName,
   enableXrays = true,
-  hasEnterprisePlugins = false,
   hasExampleDashboard = true,
   isHosted = false,
   openItem,
   showMetabaseLinks = true,
   tokenFeatures = {},
+  enterprisePlugins = [],
 }: SetupProps = {}) => {
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
   setupPropertiesEndpoints(createMockSettings());
@@ -68,9 +68,9 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(
     <Route path="/getting-started" component={Onboarding} />,
