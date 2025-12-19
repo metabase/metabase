@@ -31,7 +31,7 @@ To render a dashboard:
 - `drills` (default is true) - lets you drill through the dashboard
 - `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
 - `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md).
-- `refresh` - auto-refreshes the dashbaord. `refresh="60"` will refresh the dashboard every 60 seconds.
+- `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
 - `locale` - see [translations](./translations.md) (only available for guest embeds).
 
