@@ -135,8 +135,11 @@ jobs:
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
-          node e2e/runner/run_cypress_ci.js snapshot \
-            --env grepTags="${{inputs.qa_db && '' || '-@external'}}"
+          if [[ "${{ inputs.qa_db }}" == "true" ]]; then
+            node e2e/runner/run_cypress_ci.js snapshot
+          else
+            node e2e/runner/run_cypress_ci.js snapshot --env grepTags="-@external"
+          fi
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep
