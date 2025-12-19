@@ -145,7 +145,7 @@ jobs:
           output-name: "metabase.jar"
 
       - name: Log free disk space 1
-        run: du -a /
+        run: df -h /
 
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
@@ -154,20 +154,20 @@ jobs:
           path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Log free disk space 2
-        run: du -a /
+        run: df -h /
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
       - name: Log free disk space 3
-        run: du -a /
+        run: df -h /
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
       - name: Log free disk space 4
-        run: du -a /
+        run: df -h /
 
       - name: Check if sample app branch exists
         id: check-sample-app-branch
@@ -196,7 +196,7 @@ jobs:
           aws s3 cp s3://${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}/${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }} ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql
 
       - name: Log free disk space 5
-        run: du -a /
+        run: df -h /
 
       - name: Prepare and launch Sample Apps for shoppy-e2e test suite
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite == 'shoppy-e2e' }}
@@ -218,7 +218,7 @@ jobs:
         run: DEBUG=cypress:* node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
       - name: Log free disk space 6
-        run: du -a /
+        run: df -h /
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
