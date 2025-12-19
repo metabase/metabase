@@ -16,9 +16,9 @@
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql [(format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
-                     (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
+                     (format "CREATE USER IF NOT EXISTS `%s` IDENTIFIED BY '%s'"
                              (:user read-user) (:password read-user))
-                     (format "GRANT ALL ON `%s`.* TO %s" db-name (:user read-user))]]
+                     (format "GRANT ALL ON `%s`.* TO `%s`" db-name (:user read-user))]]
           (.addBatch ^java.sql.Statement stmt ^String sql))
         (.executeBatch ^java.sql.Statement stmt)))
     {:schema           db-name
@@ -28,7 +28,7 @@
   [database workspace tables]
   (let [read-user-name (-> workspace :database_details :user)
         sqls           (for [table tables]
-                         (format "GRANT SELECT ON `%s`.`%s` TO %s"
+                         (format "GRANT SELECT ON `%s`.`%s` TO `%s`"
                                  (:schema table)
                                  (:name table)
                                  read-user-name))]
@@ -46,6 +46,6 @@
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql [;; DROP DATABASE cascades to all tables within it
                      (format "DROP DATABASE IF EXISTS `%s`" db-name)
-                     (format "DROP USER IF EXISTS %s" username)]]
+                     (format "DROP USER IF EXISTS `%s`" username)]]
           (.addBatch ^java.sql.Statement stmt ^String sql))
         (.executeBatch ^java.sql.Statement stmt)))))

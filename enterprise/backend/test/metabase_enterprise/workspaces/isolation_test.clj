@@ -35,7 +35,7 @@
                              ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema-name])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM pg_roles WHERE rolname = ?" username])
+                             ["SELECT 1 FROM pg_user WHERE usename = ?" username])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :h2

@@ -29,15 +29,15 @@
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
     (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
-                 (format "CREATE ROLE IF NOT EXISTS %s" role-name)
-                 (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE %s" db-name role-name)
-                 (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE %s" warehouse role-name)
-                 (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE %s" db-name schema-name role-name)
-                 (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE %s" db-name schema-name role-name)
-                 (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE %s" db-name schema-name role-name)
-                 (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
+                 (format "CREATE ROLE IF NOT EXISTS \"%s\"" role-name)
+                 (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE \"%s\"" db-name role-name)
+                 (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE \"%s\"" warehouse role-name)
+                 (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                 (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                 (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                 (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = \"%s\""
                          (:user read-user) (:password read-user) role-name)
-                 (format "GRANT ROLE %s TO USER \"%s\"" role-name (:user read-user))]]
+                 (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
       (jdbc/execute! conn-spec [sql]))
     {:schema           schema-name
      :database_details (assoc read-user :role role-name)}))
@@ -49,9 +49,9 @@
         role-name (-> workspace :database_details :role)
         schemas   (distinct (map :schema tables))]
     (doseq [schema schemas]
-      (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE %s" db-name schema role-name)]))
+      (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema role-name)]))
     (doseq [table tables]
-      (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE %s"
+      (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE \"%s\""
                                         db-name (:schema table) (:name table) role-name)]))))
 
 (defmethod isolation/destroy-workspace-isolation! :snowflake
@@ -64,5 +64,5 @@
     ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
     (doseq [sql [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE" db-name schema-name)
                  (format "DROP USER IF EXISTS \"%s\"" username)
-                 (format "DROP ROLE IF EXISTS %s" role-name)]]
+                 (format "DROP ROLE IF EXISTS \"%s\"" role-name)]]
       (jdbc/execute! conn-spec [sql]))))
