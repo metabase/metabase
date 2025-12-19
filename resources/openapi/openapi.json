@@ -32444,7 +32444,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "segment" ],
+            "enum" : [ "card", "dashboard", "document", "segment", "transform" ],
             "type" : "string"
           }
         } ],
@@ -32473,7 +32473,7 @@
               "schema" : {
                 "properties" : {
                   "entity" : {
-                    "enum" : [ "card", "dashboard", "document", "segment" ],
+                    "enum" : [ "card", "dashboard", "document", "segment", "transform" ],
                     "type" : "string"
                   },
                   "id" : {
@@ -32516,7 +32516,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "segment" ],
+            "enum" : [ "card", "dashboard", "document", "segment", "transform" ],
             "type" : "string"
           }
         }, {
