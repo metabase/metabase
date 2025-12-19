@@ -5,7 +5,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
-(defn- diff-string [k v1 v2 identifier]
+(defn- match-1 [k v1 v2 identifier]
   (match [k v1 v2]
     [:name _ _]
     (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
@@ -46,6 +46,10 @@
     [:embedding_params _ _]
     (deferred-tru "changed the embedding parameters")
 
+    :else nil))
+
+(defn- match-2 [k v1 v2 identifier]
+  (match [k v1 v2]
     [:archived _ after]
     (if after
       (deferred-tru "trashed {0}" identifier)
@@ -119,6 +123,10 @@
     nil
 
     :else nil))
+
+(defn- diff-string [k v1 v2 identifier]
+  (or (match-1 k v1 v2 identifier)
+      (match-2 k v1 v2 identifier)))
 
 (defn build-sentence
   "Join parts of a sentence together to build a compound one."
