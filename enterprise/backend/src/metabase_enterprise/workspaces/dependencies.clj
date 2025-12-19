@@ -1,3 +1,7 @@
+;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
+;; -> lbrdnk: moved ignore here to avoid reformat attempt of the cljfmt performed in CI, which if successful moves the
+;;    ignore where it should not be, hence the linter is failing, or the reformat alone fails the CI.
+^:clj-kondo/ignore
 (ns metabase-enterprise.workspaces.dependencies
   "Workspace-local dependency tracking.
 
@@ -60,8 +64,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
-   ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
-   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
