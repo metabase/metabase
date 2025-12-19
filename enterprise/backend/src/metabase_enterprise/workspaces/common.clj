@@ -97,9 +97,9 @@
     (let [{:keys [_database_details]} (ws.log/track! ws-id :database-isolation
                                         (-> (ws.isolation/ensure-database-isolation! workspace database)
                                            ;; it actually returns just those, this is more like a doc than behavior
-                                            (select-keys [:schema :database_details]Z
-                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))])
-    (t2/update! :model/Workspace ws-id {:status :ready})))
+                                            (select-keys [:schema :database_details])
+                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))]
+      (t2/update! :model/Workspace ws-id {:status :ready}))))
 
 (defn- create-workspace-with-unique-name!
   "Create a workspace with status=updating, then kick off async setup."
