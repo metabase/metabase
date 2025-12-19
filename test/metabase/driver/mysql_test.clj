@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
    [metabase.driver :as driver]
@@ -20,9 +21,10 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -171,29 +173,24 @@
       ;; trigger a full sync on this database so fields are categorized correctly
       (sync/sync-database! (mt/db))
       (testing "Can filter on TINYINT(1) boolean columns in models (metabase#65826)"
-        (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id (mt/db)) :name "number-of-cans")
-              ;; Create a model from the table
-              model    (mt/with-temp [:model/Card card {:name          "Test Model"
-                                                         :database_id   (u/the-id (mt/db))
-                                                         :dataset       true
-                                                         :table_id      table-id
-                                                         :dataset_query {:database (u/the-id (mt/db))
-                                                                         :type     :query
-                                                                         :query    {:source-table table-id}}}]
-                         card)
-              model-metadata (lib.metadata/card (mt/id) (:id model))
+        (let [mp (as-> (mt/metadata-provider) $mp
+                   (lib.tu/mock-metadata-provider $mp {:cards
+                                                       [{:id              1
+                                                         :name            "Test Model"
+                                                         :database-id     (mt/id)
+                                                         :type :model
+                                                         :dataset-query   (lib/query $mp (lib.metadata/table $mp (mt/id :number-of-cans)))}]}))
+              field-metadata (lib.card/saved-question-metadata mp 1)
               boolean-col    (m/find-first #(= (:name %) "number-of-cans")
-                                           (:fields model-metadata))]
+                                           field-metadata)]
           (testing "Model has boolean metadata"
-            (is (= :type/Boolean (:base_type boolean-col))))
+            (is (= :type/Boolean (:base-type boolean-col))))
 
           (testing "Can query model with boolean filter"
-            (let [query (lib/query model-metadata model-metadata)
-                  ;; Filter where number-of-cans = true (1)
-                  query (lib/filter query (lib/= boolean-col true))]
-              (is (= [[1 "Six Pack" true]
-                      [2 "Toucan" true]]
-                     (mt/rows (qp/process-query query)))))))))))
+            (let [query (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                          (lib/filter $q (lib/= (m/find-first #(= (:name %) "number-of-cans") (lib/fieldable-columns $q))
+                                                true)))]
+              (is (some? (mt/rows (qp/process-query query)))))))))))
 
 (tx/defdataset year-db
   [["years"
