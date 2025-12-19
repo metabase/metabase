@@ -107,7 +107,18 @@
         pulses               (if creator-or-recipient
                                (map maybe-strip-sensitive-metadata pulses)
                                pulses)]
-    (t2/hydrate pulses :can_write)))
+    (mapv
+     (fn [pulse]
+       (update pulse :cards
+               (fn [cards]
+                 (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
+                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card :dataset_query] (:id card)))
+                                                                     api/*current-user-id*)
+                                                                :no :none
+                                                                :ten-thousand-rows :limited
+                                                                :one-million-rows :full
+                                                                :full :full))) cards))))
+     (t2/hydrate pulses :can_write))))
 
 (api.macros/defendpoint :post "/"
   "Create a new `Pulse`."

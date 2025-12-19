@@ -2,6 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import SchedulePicker, {
   type ScheduleChangeProp,
 } from "metabase/common/components/SchedulePicker";
@@ -80,6 +81,11 @@ export const AddEditEmailSidebar = ({
 }: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
+
+  // Return true if the results of all cards can be downloaded
+  const allowDownload = pulse.cards?.every(
+    (card) => card.download_perms !== DataPermissionValue.NONE,
+  );
 
   return (
     <Sidebar
@@ -175,6 +181,7 @@ export const AddEditEmailSidebar = ({
           cards={pulse.cards}
           pulse={pulse}
           setPulse={setPulse}
+          allowDownload={allowDownload}
         />
         {pulse.id != null && (
           <DeleteSubscriptionAction
