@@ -720,7 +720,7 @@
             [:= :archived true]
             [:= :id (collection/trash-collection-id)]]
            [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
-        (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
+        (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
