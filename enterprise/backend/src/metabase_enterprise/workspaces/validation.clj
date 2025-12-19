@@ -173,7 +173,7 @@
     {:category    (keyword (namespace problem-type))
      :problem     (keyword (name problem-type))
      :severity    severity
-     :block-merge block-merge
+     :block_merge block-merge
      :data        data}))
 
 (defn- problems-for-output
