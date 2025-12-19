@@ -236,7 +236,7 @@
           (is (=? {:transform_id   (:id x1)
                    :commit_message commit-msg}
                   (t2/select-one :model/WorkspaceMergeTransform
-                                 :transform_id (:id x1))))))))
+                                 :transform_id (:id x1)))))))))
 
 (deftest merge-workspace-transaction-failure-test
   (testing "transactions"
@@ -422,7 +422,7 @@
           {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                             {:name        "Merge test"
                                                              :database_id  (mt/id)}))
-              ;; Add 2 transforms
+          ;; Add 2 transforms
           {ws-x-1-id :ref_id}
           (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                 (merge {:global_id (:id x1)}
@@ -431,7 +431,7 @@
           (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                 (merge {:global_id (:id x2)}
                                        (select-keys x2 [:name :description :source :target])))
-              ;; Update transform names
+          ;; Update transform names
           {ws-x-1-id :ref_id :as ws-x-1}
           (mt/user-http-request :crowberto :put 200
                                 (ws-url ws-id (str "/transform/" ws-x-1-id))
@@ -590,7 +590,7 @@
             {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                               {:name        "Merge test"
                                                                :database_id  (mt/id)}))
-          ;; Add 2 transforms
+            ;; Add 2 transforms
             {ws-x-1-id :ref_id :as ws-x-1}
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x1)}
@@ -853,7 +853,7 @@
 
 (defn- create-transform-with-card-source!
   "Create a transform whose source query depends on a card.
-   The after-insert hook triggers dependency calculation automatically."
+  The after-insert hook triggers dependency calculation automatically."
   [card]
   (t2/insert-returning-instance! :model/Transform
                                  {:name   "Transform depending on card"
@@ -1233,7 +1233,7 @@
                                                                  :source {:type  "query"
                                                                           :query (my-native-query db-1 "SELECT 1")}
                                                                  :target (random-target db-1)}
-                       ;; Native transform referencing a card - should be disabled once BOT-694 is implemented
+                         ;; Native transform referencing a card - should be disabled once BOT-694 is implemented
                          :model/Card               {card-id :id} {:name          "Source Card"
                                                                   :database_id   db-1
                                                                   :dataset_query (mt/mbql-query venues)}
@@ -1255,12 +1255,12 @@
             (testing "excludes irrelevant transforms, and indicates which remaining transforms cannot be checked out."
               (let [transforms (:transforms (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" (:id ws1) "/external/transform")))
                     test-ids   #{xf1-id xf2-id xf3-id xf4-id xf5-id xf6-id xf7-id}
-                  ;; Filter out cruft from dev, leaky tests, etc
+                    ;; Filter out cruft from dev, leaky tests, etc
                     ids        (into #{} (comp (map :id) (filter test-ids)) transforms)]
                 (testing "we filter out the expected transforms"
-                 ;; ❌ xf1 is checked out in this workspace, so it's filtered out
-                 ;; ✅ xf2 is only checked out in another workspace, so it's kept
-                 ;; ❌ xf7 is in another database, so it's filtered out
+                  ;; ❌ xf1 is checked out in this workspace, so it's filtered out
+                  ;; ✅ xf2 is only checked out in another workspace, so it's kept
+                  ;; ❌ xf7 is in another database, so it's filtered out
                   (is (= (disj test-ids xf1-id xf7-id) ids)))
                 (testing "we get the correct checkout_disabled reasons"
                   (is (= {xf2-id nil
