@@ -2243,6 +2243,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-27T10:00:00
       author: christruter
+      validCheckSum: ANY
       comment: Add collection_id column to transform table
       validCheckSum: ANY
       changes:
@@ -2254,6 +2255,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-27T10:00:01
       author: christruter
+      validCheckSum: ANY
       comment: Add index on transform.collection_id
       validCheckSum: ANY
       changes:
@@ -2265,6 +2267,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-27T10:00:02
       author: christruter
+      validCheckSum: ANY
       comment: Add foreign key constraint from transform.collection_id to collection
       validCheckSum: ANY
       changes:
