@@ -195,7 +195,7 @@ export const addRemappings = (fieldId, remappings) => {
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
 export const fetchRemapping = createThunkAction(
   FETCH_REMAPPING,
-  ({ parameter, value, field, cardId, dashboardId }) =>
+  ({ parameter, value, field, cardId, dashboardId, token }) =>
     async (dispatch, getState) => {
       if (
         field == null ||
@@ -208,7 +208,7 @@ export const fetchRemapping = createThunkAction(
       if (dashboardId != null && parameter != null) {
         const remapping = await entityCompatibleQuery(
           {
-            dashboard_id: dashboardId,
+            dashboard_id: token ?? dashboardId,
             parameter_id: parameter.id,
             value,
           },
@@ -222,7 +222,7 @@ export const fetchRemapping = createThunkAction(
       } else if (cardId != null && parameter != null) {
         const remapping = await entityCompatibleQuery(
           {
-            card_id: cardId,
+            card_id: token ?? cardId,
             parameter_id: parameter.id,
             value,
           },

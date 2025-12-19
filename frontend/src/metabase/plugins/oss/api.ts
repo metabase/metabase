@@ -2,7 +2,7 @@ import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 const getDefaultPluginApi = () => ({
   getRemappedCardParameterValueUrl: (
-    cardId: CardId,
+    cardId: CardId | string,
     parameterId: ParameterId,
   ) =>
     `/api/card/${cardId}/params/${encodeURIComponent(parameterId)}/remapping`,

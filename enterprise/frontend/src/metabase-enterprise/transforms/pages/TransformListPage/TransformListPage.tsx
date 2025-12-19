@@ -34,12 +34,25 @@ import { CreateTransformMenu } from "metabase-enterprise/transforms/components/C
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 
-import { type TreeNode, getCollectionNodeId } from "./types";
+import { CollectionRowMenu } from "./CollectionRowMenu";
+import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
 const getSubRows = (node: TreeNode) => node.children;
 const isFilterable = (node: TreeNode) => node.nodeType === "transform";
+
+const countTransforms = (node: TreeNode): number => {
+  if (!node.children) {
+    return 0;
+  }
+  return node.children.reduce((count, child) => {
+    if (child.nodeType === "transform") {
+      return count + 1;
+    }
+    return count + countTransforms(child);
+  }, 0);
+};
 
 const globalFilterFn = (
   row: { original: TreeNode },
@@ -139,6 +152,20 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         cell: ({ row }) =>
           row.original.target?.name ? (
             <Ellipsified>{row.original.target.name}</Ellipsified>
+          ) : null,
+      },
+      {
+        id: "actions",
+        header: "",
+        width: 48,
+        enableSorting: false,
+        cell: ({ row }) =>
+          isCollectionNode(row.original) ? (
+            <CollectionRowMenu
+              collectionId={row.original.collectionId}
+              collectionName={row.original.name}
+              transformCount={countTransforms(row.original)}
+            />
           ) : null,
       },
     ],

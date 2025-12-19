@@ -56,7 +56,6 @@
     :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
     :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
     :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
-    :model/MetabotUseCase                    metabase-enterprise.metabot-v3.models.metabot-use-case
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.content-verification.models.moderation-review

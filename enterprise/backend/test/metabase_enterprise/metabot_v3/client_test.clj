@@ -65,7 +65,7 @@
           req           {:context         {:some "context"}
                          :message         {:role :user :content "stuff"}
                          :history         []
-                         :use-case        "nlq"
+                         :profile-id      "test-profile"
                          :conversation-id cid
                          :session-id      "test-session"
                          :state           {:some "state"}}]

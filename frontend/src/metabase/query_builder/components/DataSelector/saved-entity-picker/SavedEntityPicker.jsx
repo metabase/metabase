@@ -89,7 +89,7 @@ function SavedEntityPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...buildCollectionTree(preparedCollections, modelFilter),
+      ...buildCollectionTree(preparedCollections, { modelFilter }),
     ];
   }, [collections, rootCollection, currentUser, type]);
 

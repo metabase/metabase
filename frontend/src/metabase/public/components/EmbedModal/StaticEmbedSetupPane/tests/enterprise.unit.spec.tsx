@@ -18,7 +18,7 @@ describe("Static Embed Setup phase - EE, no token", () => {
             resourceType,
           },
           activeTab: "Look and Feel",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
         });
 
         expect(
@@ -32,7 +32,7 @@ describe("Static Embed Setup phase - EE, no token", () => {
         await setup({
           props: {},
           activeTab: "Look and Feel",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
         });
 
         expect(screen.getByText("Removing the banner")).toBeVisible();
