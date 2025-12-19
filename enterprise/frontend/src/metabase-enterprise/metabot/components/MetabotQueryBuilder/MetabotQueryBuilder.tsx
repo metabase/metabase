@@ -8,7 +8,15 @@ import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
 import { useRouter } from "metabase/router";
-import { Box, Button, Icon, Paper, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Icon,
+  Paper,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { Urls } from "metabase-enterprise/urls";
 
@@ -71,6 +79,7 @@ export const MetabotQueryBuilder = () => {
     sample: true,
   });
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
+  const suggestedPromptCount = suggestedPrompts?.length ?? 0;
 
   const handleSubmitPrompt = async (prompt: string) => {
     // start new nlq convo
@@ -97,8 +106,6 @@ export const MetabotQueryBuilder = () => {
       }
       return setHasError(true);
     }
-
-    setVisible(true);
 
     // as a fallback, if we receive no new query, we'll take the user
     // to an empty notebook query and show the chat sidebar as it's
@@ -132,14 +139,29 @@ export const MetabotQueryBuilder = () => {
   useEffect(
     function cancelRequestOnRouteLeave() {
       return router.setRouteLeaveHook(currentRoute, (nextLocation) => {
-        if (!nextLocation?.pathname.startsWith("/question")) {
-          cancelRequest();
-          resetConversation(); // clear any parital response and reset profile
+        const isNavigatingToQuestion =
+          nextLocation?.pathname.startsWith("/question");
+        if (isDoingScience) {
+          if (isNavigatingToQuestion) {
+            // we want to open the sidebar at this point as the agent could be sending a
+            // navigate_to before the response has been fully completed
+            setVisible(true);
+          } else {
+            cancelRequest();
+            resetConversation(); // clear any parital response and reset profile
+          }
         }
         return true;
       });
     },
-    [router, currentRoute, cancelRequest, resetConversation],
+    [
+      router,
+      currentRoute,
+      setVisible,
+      cancelRequest,
+      resetConversation,
+      isDoingScience,
+    ],
   );
 
   return (
@@ -196,15 +218,23 @@ export const MetabotQueryBuilder = () => {
           </Paper>
 
           <Box className={S.promptSuggestionsContainer}>
-            {suggestedPrompts?.map(({ prompt }, index) => (
-              <Text
+            {suggestedPrompts?.map(({ prompt: suggestedPrompt }, index) => (
+              <UnstyledButton
                 key={index}
-                className={S.promptSuggestion}
-                style={{ animationDelay: `${index * 75}ms` }}
-                onClick={() => handleSubmitPrompt(prompt)}
+                className={cx(S.promptSuggestion, {
+                  [S.promptSuggestionShow]: !isDoingScience,
+                  [S.promptSuggestionHide]: isDoingScience,
+                })}
+                style={{
+                  animationDelay: isDoingScience
+                    ? `${(suggestedPromptCount - index - 1) * 50}ms`
+                    : `${index * 75}ms`,
+                }}
+                onClick={() => handleSubmitPrompt(suggestedPrompt)}
+                disabled={isDoingScience}
               >
-                {prompt}
-              </Text>
+                <Text>{suggestedPrompt}</Text>
+              </UnstyledButton>
             ))}
           </Box>
         </Stack>

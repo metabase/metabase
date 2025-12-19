@@ -22,9 +22,9 @@ import {
   getProfileOverride,
   resetConversation as resetConversationAction,
   retryPrompt,
+  setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
-  setProfileOverride as setProfileOverrideAction,
 } from "../state";
 
 import { useMetabotDispatch, useMetabotSelector } from "./use-metabot-store";
