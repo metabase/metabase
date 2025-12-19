@@ -22585,9 +22585,6 @@
                   "state" : {
                     "properties" : { },
                     "type" : "object"
-                  },
-                  "use_case" : {
-                    "type" : "string"
                   }
                 },
                 "required" : [ "message", "context", "conversation_id", "history", "state" ],
@@ -22749,24 +22746,6 @@
                     }, {
                       "type" : "null"
                     } ]
-                  },
-                  "use_cases" : {
-                    "items" : {
-                      "additionalProperties" : false,
-                      "properties" : {
-                        "enabled" : {
-                          "type" : "boolean"
-                        },
-                        "id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "minimum" : 1,
-                          "type" : "integer"
-                        }
-                      },
-                      "required" : [ "id" ],
-                      "type" : "object"
-                    },
-                    "type" : "array"
                   },
                   "use_verified_content" : {
                     "type" : "boolean"
