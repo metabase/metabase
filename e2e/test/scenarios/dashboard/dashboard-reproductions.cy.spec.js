@@ -2264,7 +2264,7 @@ describe("issue 64138", () => {
   }
 });
 
-describe("issue 58556", () => {
+describe("issue 58556, issue 66277", () => {
   const QUESTION = {
     query: {
       "source-table": ORDERS_ID,
@@ -2330,7 +2330,9 @@ describe("issue 58556", () => {
 
     H.editDashboard();
     H.showDashboardCardActions();
+  });
 
+  it("should be possible to add a click action on a time column with hour granularity and have the time be present in the resulting parameter (metabase#58556)", () => {
     H.clickBehaviorSidebar().within(() => {
       cy.findByText("Created At: Hour").click();
       cy.findByText("Update a dashboard filter").click();
@@ -2341,9 +2343,7 @@ describe("issue 58556", () => {
     H.sidebar().button("Done").click();
 
     H.saveDashboard();
-  });
 
-  it("should be possible to add a click action on a time column with hour granularity and have the time be present in the resulting parameter (metabase#58556)", () => {
     cy.log("click a row");
     H.dashboardCards()
       .findByTestId("table-body")
@@ -2357,5 +2357,35 @@ describe("issue 58556", () => {
       const date = url.searchParams.get("date");
       cy.wrap(date).should("match", /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
     });
+  });
+
+  it("should pass hour or minutes to linked questions from click actions (metabase#66277)", () => {
+    H.clickBehaviorSidebar().within(() => {
+      cy.findByText("Created At: Hour").click();
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Saved question").click();
+    });
+
+    H.entityPickerModal().findByText("Orders").click();
+
+    H.sidebar().findByText("Created At").scrollIntoView().click();
+
+    H.popover().findByText("Created At: Hour").click();
+    H.sidebar().button("Done").click();
+
+    H.saveDashboard();
+
+    cy.log("click a row");
+    H.dashboardCards()
+      .findByTestId("table-body")
+      .findAllByTestId("link-formatted-text")
+      .eq(0)
+      .click();
+
+    H.queryBuilderFiltersPanel()
+      .findByText(
+        /Created At is .* \d{1,2}:\d{2} (AM|PM) – \d{1,2}:\d{2} (AM|PM)/,
+      )
+      .should("be.visible");
   });
 });
