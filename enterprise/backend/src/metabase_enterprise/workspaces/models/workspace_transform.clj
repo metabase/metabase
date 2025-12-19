@@ -101,5 +101,7 @@
 
 (t2/define-before-insert :model/WorkspaceTransform
   [instance]
-  (cond-> instance
-    (not (:ref_id instance)) (assoc :ref_id (generate-ref-id))))
+  (when-not (string? (not-empty (:ref_id instance)))
+    (throw (ex-info "ref_id required for WorkspaceTransform insertion."
+                    {:instance instance})))
+  instance)
