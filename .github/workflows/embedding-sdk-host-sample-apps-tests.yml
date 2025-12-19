@@ -117,6 +117,12 @@ jobs:
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: true
 
       # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
       - name: Set up Docker Compose
@@ -138,18 +144,30 @@ jobs:
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
 
+      - name: Log free disk space 1
+        run: du -h /
+
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
 
+      - name: Log free disk space 2
+        run: du -h /
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+
+      - name: Log free disk space 3
+        run: du -h /
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
+      - name: Log free disk space 4
+        run: du -h /
 
       - name: Check if sample app branch exists
         id: check-sample-app-branch
@@ -177,6 +195,9 @@ jobs:
         run: |
           aws s3 cp s3://${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}/${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }} ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql
 
+      - name: Log free disk space 5
+        run: du -h /
+
       - name: Prepare and launch Sample Apps for shoppy-e2e test suite
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite == 'shoppy-e2e' }}
         env:
@@ -195,6 +216,9 @@ jobs:
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: DEBUG=cypress:* node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
+
+      - name: Log free disk space 6
+        run: du -h /
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
