@@ -130,9 +130,8 @@
   [fresh pre-existing]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (let [by-name (m/index-by :name pre-existing)]
-    (for [{:keys [source] :as col} fresh]
-      (if-let [existing (and (not= :aggregation source)
-                             (get by-name (:name col)))]
+    (for [col fresh]
+      (if-let [existing (get by-name (:name col))]
         (merge col (select-keys existing preserved-keys))
         col))))
 

@@ -100,10 +100,13 @@
               ;; This ensures we don't silently overwrite custom model metadata. See #26755.
               card              (when-not stored-metadata
                                   (t2/select-one [:model/Card :type :result_metadata] :id card-id))
+              ;; Always fetch card type if necessary to determine if we need to merge preserved metadata.
+              card-type         (or (:type card)
+                                    (t2/select-one-fn :type :model/Card :id card-id))
               existing-metadata (or stored-metadata (:result_metadata card))
               ;; For models, merge preserved keys from existing metadata into new metadata
               ;; to avoid silently overwriting user customizations like display_name.
-              merged-metadata   (if (= :model (:type card))
+              merged-metadata   (if (= :model card-type)
                                   (merge-preserved-model-metadata actual-metadata existing-metadata)
                                   actual-metadata)]
           ;; Only update changed metadata
