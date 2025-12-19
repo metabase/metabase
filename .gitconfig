@@ -2,4 +2,4 @@
 # echo '\n[include]\npath=../.gitconfig' >> .git/config
 [merge "yaml-migrations"]
     name = YAML migration changeset-aware merge
-    driver = mage -merge-yaml-migrations %O %A %B %L %P
+    driver = bin/mage -merge-yaml-migrations %O %A %B %L %P
