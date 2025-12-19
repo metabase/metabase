@@ -10,7 +10,7 @@ import {
   createMockTransformRun,
 } from "metabase-types/api/mocks";
 
-import { TargetSection } from "./TargetSection";
+import { TransformSettingsSection } from "./TransformSettingsSection";
 
 type SetupOpts = {
   transform?: Transform;
@@ -22,7 +22,7 @@ function setup({ transform = createMockTransform() }: SetupOpts) {
   renderWithProviders(
     <Route
       path={Urls.transform(transform.id)}
-      component={() => <TargetSection transform={transform} />}
+      component={() => <TransformSettingsSection transform={transform} />}
     />,
     { withRouter: true, initialRoute: Urls.transform(transform.id) },
   );
