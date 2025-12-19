@@ -654,12 +654,11 @@
   (with-cluster-lock {:db-id     (u/the-id db-or-id)
                       :perm-type (u/qualified-name perm-type)
                       :group-id  (u/the-id group-or-id)}
-    (t2/with-transaction [_conn]
-      (let [{:keys [to-insert to-delete]} (build-database-permission group-or-id db-or-id perm-type value)]
-        (when (seq to-delete)
-          (batch-delete-permissions! (map :id to-delete)))
-        (when (seq to-insert)
-          (batch-insert-permissions! to-insert))))))
+    (let [{:keys [to-insert to-delete]} (build-database-permission group-or-id db-or-id perm-type value)]
+      (when (seq to-delete)
+        (batch-delete-permissions! (map :id to-delete)))
+      (when (seq to-insert)
+        (batch-insert-permissions! to-insert)))))
 
 (defn- lowest-permission-level-in-any-database
   "Given a group and a permission type, returns the lowest permission level for that group in any database, at the DB or table-level.
@@ -895,12 +894,11 @@
   [group-or-id :- TheIdable
    perm-type   :- ::permissions.schema/data-permission-type
    table-perms :- [:map-of TheIdable :keyword]]
-  (t2/with-transaction [_conn]
-    (let [{:keys [to-delete to-insert]} (build-table-permissions group-or-id perm-type table-perms)]
-      (when (seq to-delete)
-        (batch-delete-permissions! (map :id to-delete)))
-      (when (seq to-insert)
-        (batch-insert-permissions! to-insert)))))
+  (let [{:keys [to-delete to-insert]} (build-table-permissions group-or-id perm-type table-perms)]
+    (when (seq to-delete)
+      (batch-delete-permissions! (map :id to-delete)))
+    (when (seq to-insert)
+      (batch-insert-permissions! to-insert))))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified group and table,
@@ -982,59 +980,58 @@
                                  :perm-type (u/qualified-name perm-type)})
                               group-ids)]
       (with-cluster-locks cluster-locks
-        (t2/with-transaction [_conn]
-          (let [schema-name            (:schema table)
-                db-level-perms         (t2/select :model/DataPermissions
-                                                  {:where
-                                                   [:and
-                                                    [:= :db_id db-id]
-                                                    [:= :table_id nil]
-                                                    [:= :perm_type (u/qualified-name perm-type)]
-                                                    [:in :group_id group-ids]]})
-                db-level-group-ids     (set (map :group_id db-level-perms))
-                new-perms              (reduce
-                                        (fn [new-perms group-id]
-                                          (let [new-value (or
-                                                           ;; Make sure we set `blocked` data access if we're on EE and *any*
-                                                           ;; other table in the DB has `blocked` or `sandboxed`
-                                                           (and (= perm-type :perms/view-data)
-                                                                (new-table-view-data-permission-level db-id group-id))
-                                                           ;; Otherwise, if all tables in the schema have the same
-                                                           ;; value, use that value for the new table
-                                                           (schema-permission-value db-id group-id schema-name perm-type)
-                                                           ;; Otherwise, use the default value passed in
-                                                           default-value)
-                                                new-perm {:perm_type   perm-type
-                                                          :group_id    group-id
-                                                          :perm_value  new-value
-                                                          :db_id       db-id
-                                                          :table_id    (u/the-id table)
-                                                          :schema_name schema-name}]
-                                            (cond
-                                              ;; Perms that are being added at the table-level for a group currently set at the DB
-                                              ;; level. This should only happen when adding a table to a DB where some existing
-                                              ;; tables are sandboxed, because the DB might have `:unrestricted` DB-level perms which
-                                              ;; need to be split out to table-level perms.
-                                              (and (db-level-group-ids group-id)
-                                                   (= new-value :blocked))
-                                              (update new-perms :going-granular conj new-perm)
+        (let [schema-name            (:schema table)
+              db-level-perms         (t2/select :model/DataPermissions
+                                                {:where
+                                                 [:and
+                                                  [:= :db_id db-id]
+                                                  [:= :table_id nil]
+                                                  [:= :perm_type (u/qualified-name perm-type)]
+                                                  [:in :group_id group-ids]]})
+              db-level-group-ids     (set (map :group_id db-level-perms))
+              new-perms              (reduce
+                                      (fn [new-perms group-id]
+                                        (let [new-value (or
+                                                         ;; Make sure we set `blocked` data access if we're on EE and *any*
+                                                         ;; other table in the DB has `blocked` or `sandboxed`
+                                                         (and (= perm-type :perms/view-data)
+                                                              (new-table-view-data-permission-level db-id group-id))
+                                                         ;; Otherwise, if all tables in the schema have the same
+                                                         ;; value, use that value for the new table
+                                                         (schema-permission-value db-id group-id schema-name perm-type)
+                                                         ;; Otherwise, use the default value passed in
+                                                         default-value)
+                                              new-perm {:perm_type   perm-type
+                                                        :group_id    group-id
+                                                        :perm_value  new-value
+                                                        :db_id       db-id
+                                                        :table_id    (u/the-id table)
+                                                        :schema_name schema-name}]
+                                          (cond
+                                            ;; Perms that are being added at the table-level for a group currently set at the DB
+                                            ;; level. This should only happen when adding a table to a DB where some existing
+                                            ;; tables are sandboxed, because the DB might have `:unrestricted` DB-level perms which
+                                            ;; need to be split out to table-level perms.
+                                            (and (db-level-group-ids group-id)
+                                                 (= new-value :blocked))
+                                            (update new-perms :going-granular conj new-perm)
 
-                                              ;; Otherwise, we only add a new table-level permission row if existing perms
-                                              ;; are table-level
-                                              (not (db-level-group-ids group-id))
-                                              (update new-perms :simple-perms conj new-perm)
+                                            ;; Otherwise, we only add a new table-level permission row if existing perms
+                                            ;; are table-level
+                                            (not (db-level-group-ids group-id))
+                                            (update new-perms :simple-perms conj new-perm)
 
-                                              :else
-                                              new-perms)))
-                                        {:simple-perms [] :going-granular []}
-                                        group-ids)
-                {:keys [going-granular
-                        simple-perms]} new-perms]
-            ;; These perms might need existing DB-level perms to be broken out to table-level perms
-            (doseq [{:keys [perm_type perm_value group_id]} going-granular]
-              (set-table-permissions-internal! group_id perm_type {table perm_value}))
-            ;; These perms can be inserted raw, and don't require changes to existing perms in the DB
-            (t2/insert! :model/DataPermissions simple-perms)))))))
+                                            :else
+                                            new-perms)))
+                                      {:simple-perms [] :going-granular []}
+                                      group-ids)
+              {:keys [going-granular
+                      simple-perms]} new-perms]
+          ;; These perms might need existing DB-level perms to be broken out to table-level perms
+          (doseq [{:keys [perm_type perm_value group_id]} going-granular]
+            (set-table-permissions-internal! group_id perm_type {table perm_value}))
+          ;; These perms can be inserted raw, and don't require changes to existing perms in the DB
+          (t2/insert! :model/DataPermissions simple-perms))))))
 
 (defenterprise download-perms-level
   "Return the download permission for the query that the given user has. OSS returns :full"
