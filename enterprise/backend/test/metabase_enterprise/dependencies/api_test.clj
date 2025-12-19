@@ -1008,9 +1008,9 @@
                        :model/Card {broken-card-id :id} {:name "Broken Card - brokentest"
                                                          :type :question
                                                          :dataset_query (lib/native-query mp "not a query")}]
-          (while (> 0 (dependencies.findings/analyze-batch! :card 50)))
           (prn "card")
           (println (u/pprint-to-str (dissoc (t2/select-one :model/Card :id broken-card-id) :result_metadata)))
+          (while (> 0 (dependencies.findings/analyze-batch! :card 50)))
           (prn "dependencies")
           (println (u/pprint-to-str (t2/select-one :model/AnalysisFinding :analyzed_entity_id broken-card-id :analyzed_entity_type :card)))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
