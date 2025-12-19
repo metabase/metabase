@@ -1418,22 +1418,6 @@ databaseChangeLog:
             constraintName: fk_report_card_workspace_id
 
   - changeSet:
-      id: v58.2025-11-26T12:00:15
-      author: qnkhuat
-      comment: Add index on report_card.workspace_id
-      changes:
-        - createIndex:
-            tableName: report_card
-            indexName: idx_report_card_workspace_id
-            columns:
-              - column:
-                  name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: report_card
-            indexName: idx_report_card_workspace_id
-
-  - changeSet:
       id: v58.2025-11-26T12:00:17
       validCheckSum: ANY
       author: piranha
@@ -1480,22 +1464,6 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: transform
             constraintName: fk_transform_workspace_id
-
-  - changeSet:
-      id: v58.2025-11-26T12:00:19
-      author: qnkhuat
-      comment: Add index on transform.workspace_id
-      changes:
-        - createIndex:
-            tableName: transform
-            indexName: idx_transform_workspace_id
-            columns:
-              - column:
-                  name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: transform
-            indexName: idx_transform_workspace_id
 
   - changeSet:
       id: v58.2025-11-26T13:34:41
