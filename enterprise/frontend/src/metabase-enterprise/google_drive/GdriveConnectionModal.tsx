@@ -141,7 +141,7 @@ function GoogleSheetsConnectModal({
         fullWidth
         autoContrast
         color="brand"
-        c="var(--mb-color-text-primary-inverse)"
+        c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={
@@ -194,7 +194,7 @@ function GoogleSheetsConnectModal({
                 : "https://docs.google.com/spreadsheets/d/abc123-xyz456"
             }
           />
-          <Text size="sm" color="secondary">
+          <Text size="sm" c="text-secondary">
             {copyInstruction}
           </Text>
         </Box>

@@ -141,7 +141,7 @@ export function TreeTable<TData extends TreeNodeData>({
         style={styles?.body}
       >
         {showEmptyState ? (
-          <Center h="100%" p="xl" c="text-light">
+          <Center h="100%" p="xl" c="text-disabled">
             {emptyState}
           </Center>
         ) : (

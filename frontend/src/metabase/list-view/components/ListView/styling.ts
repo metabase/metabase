@@ -1,3 +1,4 @@
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { color, maybeColor } from "metabase/ui/utils/colors";
 
@@ -27,13 +28,13 @@ export const getEntityIcon = (entityType?: string) => {
   ) as IconName;
 };
 
-export const ENTITY_ICON_COLORS = [
-  color("text-primary"),
-  color("brand"),
-  color("accent1"),
-  color("accent2"),
-  color("accent3"),
-  color("accent6"),
+export const ENTITY_ICON_COLORS: ColorName[] = [
+  "text-primary",
+  "brand",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent6",
 ];
 
 // For icons with default color, use white background,

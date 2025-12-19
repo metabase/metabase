@@ -555,13 +555,15 @@ export const CardEmbedComponent = memo(
                           className={styles.titleText}
                           data-testid="card-embed-title"
                           size="md"
-                          color="text-primary"
+                          c="text-primary"
                           fw={700}
-                          c={isPublicDocument ? undefined : "pointer"}
                           truncate="end"
                           onClick={
                             isPublicDocument ? undefined : handleTitleClick
                           }
+                          style={{
+                            cursor: isPublicDocument ? undefined : "pointer",
+                          }}
                         >
                           {displayName}
                         </Text>
@@ -570,9 +572,8 @@ export const CardEmbedComponent = memo(
                         <Icon
                           name="pencil"
                           size={14}
-                          color="var(--mb-color-text-secondary)"
+                          c="text-secondary"
                           className={styles.titleEditIcon}
-                          c="pointer"
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             setEditedTitle(displayName);
@@ -622,7 +623,7 @@ export const CardEmbedComponent = memo(
                             <Icon
                               name="ellipsis"
                               size={16}
-                              color="var(--mb-color-text-secondary)"
+                              c="text-secondary"
                             />
                           </Flex>
                         </Menu.Target>

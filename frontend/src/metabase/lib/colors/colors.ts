@@ -569,6 +569,25 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
   },
+
+  // one-off colors for data layers which are not part of Metabase color palette
+  // we got a blessing from the design team to use these colors 😇
+  copper: {
+    light: "#B87333",
+    dark: "#B87333",
+  },
+  bronze: {
+    light: "#CD7F32",
+    dark: "#CD7F32",
+  },
+  silver: {
+    light: "#C0C0C0",
+    dark: "#C0C0C0",
+  },
+  gold: {
+    light: "#FFD700",
+    dark: "#FFD700",
+  },
 });
 
 export const colorConfig = getColorConfig(whitelabelColors);
@@ -606,13 +625,3 @@ export const staticVizOverrides = {
   "text-secondary": baseColors.orion[60],
   "text-disabled": baseColors.orion[40],
 };
-
-// one-off colors for data layers which are not part of Metabase color palette
-//  we got a blessing from the design team to use these colors 😇
-export const dataLayerColors = {
-  copper: "#B87333",
-  bronze: "#CD7F32",
-  silver: "#C0C0C0",
-  gold: "#FFD700",
-  default: "#B87333",
-} as const;

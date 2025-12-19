@@ -125,7 +125,7 @@ function UndoToast({
           {undo.icon && (
             <CardIcon
               name={undo.icon}
-              color={undo.iconColor ?? "var(--mb-color-text-secondary-inverse)"}
+              c={undo.iconColor ?? "text-secondary-inverse"}
             />
           )}
           {undo.renderChildren ? (
@@ -156,10 +156,7 @@ function UndoToast({
           )}
           {undo.canDismiss && (
             <DismissIcon
-              color={
-                undo.dismissIconColor ||
-                "var(--mb-color-text-secondary-inverse)"
-              }
+              color={undo.dismissIconColor || "text-secondary-inverse"}
               name="close"
               onClick={onDismiss}
             />

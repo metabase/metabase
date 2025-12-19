@@ -8,7 +8,7 @@ const PRESET_COLOR_KEYS = [
   "background-light",
   "text-primary",
   "text-secondary",
-  "text-tertiary",
+  "text-disabled",
   "border",
   "brand-hover",
   "brand-hover-light",

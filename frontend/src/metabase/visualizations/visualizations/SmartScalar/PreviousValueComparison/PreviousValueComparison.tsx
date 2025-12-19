@@ -74,7 +74,7 @@ export function PreviousValueComparison({
     // intentionally calling the component as a function
     // since otherwise measurements don't work as expected
     return DetailCandidate({
-      color: "var(--mb-color-text-secondary)",
+      color: "text-secondary",
       comparison,
       valueFormatted,
     });
@@ -127,7 +127,7 @@ export function PreviousValueComparison({
           {fittedChangeDisplay}
         </VariationPercent>
 
-        <VariationDetails color="var(--mb-color-text-secondary)">
+        <VariationDetails color="text-secondary">
           {fittedDetailDisplay}
         </VariationDetails>
 

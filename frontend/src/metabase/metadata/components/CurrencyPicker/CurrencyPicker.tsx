@@ -73,13 +73,7 @@ export const CurrencyPicker = ({
       }}
       rightSection={
         <Flex align="center" gap="xs" pos="relative">
-          <Text
-            bg="var(--input-bg)"
-            c="text-disabled"
-            pos="absolute"
-            px="sm"
-            right="100%"
-          >
+          <Text c="text-disabled" pos="absolute" px="sm" right="100%">
             {SYMBOLS[value]}
           </Text>
 

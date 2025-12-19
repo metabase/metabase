@@ -79,7 +79,7 @@ export const EmptyVizState = ({
               <ExternalLink href={url}>
                 <Group gap="xs">
                   <strong>{secondaryText}</strong>
-                  <Icon name="external" color="brand" />
+                  <Icon name="external" c="brand" />
                 </Group>
               </ExternalLink>
             )}

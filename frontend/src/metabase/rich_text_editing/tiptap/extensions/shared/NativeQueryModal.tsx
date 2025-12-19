@@ -445,7 +445,7 @@ export const NativeQueryModal = ({
             <Box
               w="350px"
               miw="350px"
-              bg="var(--mb-color-background-primary)"
+              bg="background-primary"
               className={S.dataReferenceSidebar}
             >
               <DataReference
@@ -472,7 +472,7 @@ export const NativeQueryModal = ({
           justify="flex-end"
           gap="0.5rem"
           p="1rem"
-          bg="var(--mb-color-background-primary)"
+          bg="background-primary"
           className={S.footer}
         >
           <Button variant="subtle" onClick={onClose}>

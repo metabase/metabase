@@ -120,8 +120,8 @@ const ResourceNotFoundError = ({
   <SdkError
     message={jt`${resource} ${(
       <Code
-        bg="var(--mb-color-background-error-secondary)"
-        c="var(--mb-color-text-secondary)"
+        bg="background-error-secondary"
+        c="text-secondary"
         key="question-id"
       >
         {id}

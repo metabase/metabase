@@ -127,7 +127,7 @@ function QuestionPickerInner({
                     name={collection.name}
                     icon={{
                       ...icon,
-                      color: iconColor,
+                      c: iconColor,
                     }}
                     rightIcon="chevronright"
                     onSelect={(collectionId) =>

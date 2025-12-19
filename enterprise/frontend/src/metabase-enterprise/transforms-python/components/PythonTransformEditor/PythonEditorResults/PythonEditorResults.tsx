@@ -159,11 +159,15 @@ function ExecutionOutputLogs({
   executionResult: TestPythonTransformResponse | null;
 }) {
   return (
-    <Box fz="sm" p="md" bg="bg-light" h="100%" className={S.logs}>
+    <Box fz="sm" p="md" bg="background-secondary" h="100%" className={S.logs}>
       {executionResult?.logs ? (
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
-        <Text c="text-light" fz="sm" fs="italic">{t`No logs to display`}</Text>
+        <Text
+          c="text-disabled"
+          fz="sm"
+          fs="italic"
+        >{t`No logs to display`}</Text>
       )}
     </Box>
   );

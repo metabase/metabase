@@ -1,3 +1,4 @@
+import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Center, Loader } from "metabase/ui";
 
 /**
@@ -9,18 +10,14 @@ export const EmbedPreviewLoadingOverlay = ({
   bg,
 }: {
   isVisible: boolean;
-  bg?: string;
+  bg?: ColorName;
 }) => {
   if (!isVisible) {
     return null;
   }
 
   return (
-    <Box
-      pos="absolute"
-      bg={bg ?? "var(--mb-color-background-primary)"}
-      inset={0}
-    >
+    <Box pos="absolute" bg={bg ?? "background-primary"} inset={0}>
       <Center h="100%" w="100%" mx="auto">
         <Loader data-testid="preview-loading-indicator" />
       </Center>

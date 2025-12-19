@@ -45,7 +45,7 @@ export function QuestionDetails() {
   ].filter((section) => section.length > 0);
 
   return (
-    <Text size="0.75rem" c="var(--mb-color-text-disabled)">
+    <Text size="0.75rem" c="text-disabled">
       {sections.join(" ")}
     </Text>
   );

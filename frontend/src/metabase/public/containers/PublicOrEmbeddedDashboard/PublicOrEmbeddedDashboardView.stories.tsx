@@ -374,7 +374,7 @@ export function ComponentCompatibility() {
     <Box pb="50px">
       <Tooltip
         label={
-          <Text size="sm" c="var(--mb-color-text-primary)">
+          <Text size="sm" c="text-primary">
             Label
           </Text>
         }
@@ -391,7 +391,7 @@ export function ComponentCompatibility() {
           </Card>
         </Popover.Target>
         <Popover.Dropdown>
-          <Text size="sm" c="var(--mb-color-text-primary)">
+          <Text size="sm" c="text-primary">
             Dropdown
           </Text>
         </Popover.Dropdown>
@@ -461,6 +461,7 @@ function ScrollDecorator(Story: StoryFn) {
 
 function DarkBackgroundDecorator(Story: StoryFn) {
   return (
+    // @ts-expect-error storybook
     <Box bg="#434e56" mih="100vh">
       <Story />
     </Box>
@@ -469,6 +470,7 @@ function DarkBackgroundDecorator(Story: StoryFn) {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
+    // @ts-expect-error storybook
     <Box bg="#ddd" mih="100vh">
       <Story />
     </Box>

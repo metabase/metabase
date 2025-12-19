@@ -237,7 +237,7 @@ const StrategyFormBody = ({
             <Box lh="1rem" pt="md" color="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
-                  <FixedSizeIcon name="database" color="inherit" />
+                  <FixedSizeIcon name="database" c="inherit" />
                 )}
                 <Text fw="bold" py="1rem">
                   {targetName}

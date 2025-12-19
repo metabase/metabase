@@ -54,7 +54,7 @@ export const ChartTypeOption = ({
         >
           <Icon
             name={visualization.iconName}
-            color={isSelected ? "white" : "brand"}
+            c={isSelected ? "white" : "brand"}
             size={20}
           />
         </ActionIcon>
