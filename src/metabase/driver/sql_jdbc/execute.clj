@@ -45,6 +45,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime)
+   (java.util.concurrent Executors)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -352,6 +353,9 @@
           (with-open [conn ^Connection (get-conn)]
             (f conn)))))))
 
+(defonce ^:private network-timeout-executor
+  (delay (Executors/newCachedThreadPool)))
+
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
@@ -411,6 +415,12 @@
             (.setAutoCommit conn false)
             (catch Throwable e
               (log/debug e "Error setting connection autoCommit to false"))))
+    (try
+      ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
+      ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads
+      (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
+      (catch Throwable e
+        (log/debug e "Error setting network timeout for connection")))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
