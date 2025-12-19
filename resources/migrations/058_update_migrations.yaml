@@ -2239,73 +2239,35 @@ databaseChangeLog:
       rollback:
         # will be deleted with the table
 
+# TODO: Empty in favor of v58.2025-12-03T17:08:36 and following, will be removed with migrations cleanup in WS
   - changeSet:
       id: v58.2025-11-27T10:00:00
       author: christruter
       comment: Add collection_id column to transform table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: transform
-                columnName: collection_id
       changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: collection_id
-                  type: int
-                  remarks: Collection containing this transform
-                  constraints:
-                    nullable: true
+        - sql:
+            sql: select 1;
       rollback:
-        - dropColumn:
-            tableName: transform
-            columnName: collection_id
 
+# TODO: Empty in favor of v58.2025-12-03T17:08:36 and following, will be removed with migrations cleanup in WS
   - changeSet:
       id: v58.2025-11-27T10:00:01
       author: christruter
       comment: Add index on transform.collection_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                indexName: idx_transform_collection_id
       changes:
-        - createIndex:
-            tableName: transform
-            indexName: idx_transform_collection_id
-            columns:
-              - column:
-                  name: collection_id
+        - sql:
+            sql: select 1;
       rollback:
-        - dropIndex:
-            tableName: transform
-            indexName: idx_transform_collection_id
 
+# TODO: Empty in favor of v58.2025-12-03T17:08:36 and following, will be removed with migrations cleanup in WS
   - changeSet:
       id: v58.2025-11-27T10:00:02
       author: christruter
       comment: Add foreign key constraint from transform.collection_id to collection
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_transform_collection_id
       changes:
-        - addForeignKeyConstraint:
-            baseTableName: transform
-            baseColumnNames: collection_id
-            constraintName: fk_transform_collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            onDelete: SET NULL
+        - sql:
+            sql: select 1;
       rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: transform
-            constraintName: fk_transform_collection_id
 
   - changeSet:
       id: v58.2025-12-01T05:21:37
@@ -2980,37 +2942,6 @@ databaseChangeLog:
             constraintName: fk_workspace_input_workspace_id
 
   - changeSet:
-      id: v58.2025-12-10T10:00:03
-      author: qnkhuat
-      comment: Add index and foreign key constraint from workspace_input.table_id to metabase_table with SET NULL
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_workspace_input_table_id
-      changes:
-        - createIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_table_id
-            columns:
-              - column:
-                  name: table_id
-        - addForeignKeyConstraint:
-            baseTableName: workspace_input
-            baseColumnNames: table_id
-            constraintName: fk_workspace_input_table_id
-            referencedTableName: metabase_table
-            referencedColumnNames: id
-            onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_input
-            constraintName: fk_workspace_input_table_id
-        - dropIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_table_id
-
-  - changeSet:
       id: v58.2025-12-10T10:00:04
       author: qnkhuat
       comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
@@ -3374,6 +3305,45 @@ databaseChangeLog:
         - dropIndex:
             tableName: workspace_dependency
             indexName: idx_workspace_dependency_to
+
+  - changeSet:
+      id: v58.2025-12-10T10:30:00
+      author: lbrdnk
+      comment: Add idx_workspace_input_table_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_input_table_id
+      changes:
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: v58.2025-12-10T10:30:05
+      author: qnkhuat
+      comment: Add foreign key constraint from workspace_input.table_id to metabase_table with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_input
+            constraintName: fk_workspace_input_table_id
 
   - changeSet:
       id: v58.2025-12-11T10:00:00
