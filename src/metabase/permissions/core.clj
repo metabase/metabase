@@ -39,6 +39,7 @@
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
   disable-perms-cache
+  download-perms-level
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
