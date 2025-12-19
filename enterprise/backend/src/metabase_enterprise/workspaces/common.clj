@@ -107,14 +107,19 @@
    Updates database_id (if different from provisional), sets schema, creates isolation resources async,
    and transitions to :pending status. Returns the updated workspace with schema set."
   [workspace database-id]
-  ;; TODO (Sanya 2025-12-19) -- this can race really badly, we ought to add some locking here.
-  ;; But our existing cluster-wide locking can only take non-parametrized keys and does not delete entries, so with
-  ;; ids unbounded it's not very suitable.
   (let [database (t2/select-one :model/Database :id database-id)
-        schema   (ws.u/isolation-namespace-name workspace)]
-    (t2/update! :model/Workspace (:id workspace) {:database_id database-id
-                                                  :schema      schema
-                                                  :status      :pending})
+        schema   (ws.u/isolation-namespace-name workspace)
+        res      (t2/update! :model/Workspace {:id     (:id workspace)
+                                               :status :uninitialized}
+                             {:database_id database-id
+                              :schema      schema
+                              :status      :pending})]
+    (when (zero? res)
+      (let [new-db-id (t2/select-one-fn :database_id :model/Workspace (:id workspace))]
+        (when (not= database-id new-db-id)
+          (throw (ex-info "Workspace has been initialized already with a different database"
+                          {:requested-db-id database-id
+                           :actual-db-id    new-db-id})))))
     (u/prog1 (t2/select-one :model/Workspace :id (:id workspace))
       (quick-task/submit-task! #(run-workspace-setup! <> database)))))
 
