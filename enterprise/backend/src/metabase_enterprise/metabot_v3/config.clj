@@ -1,60 +1,55 @@
 (ns metabase-enterprise.metabot-v3.config
   (:require
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (def internal-metabot-id
-  "The UUID of the internal Metabot instance."
+  "The ID of the internal Metabot instance."
   "b5716059-ad40-4d83-a4e1-673af020b2d8")
 
 (def embedded-metabot-id
-  "The UUID of the embedded Metabot instance."
+  "The ID of the embedded Metabot instance."
   "c61bf5f5-1025-47b6-9298-bf1827105bb6")
 
 (def metabot-config
-  "Configuration for the built-in metabot instances."
-  {internal-metabot-id {:entity-id "metabotmetabotmetabot"
-                        :default-use-case "omnibot"}
-   embedded-metabot-id {:entity-id "embeddedmetabotmetabo"
-                        :default-use-case "embedding"}})
+  "The name of the collection exposed by the answer-sources tool."
+  {internal-metabot-id {:profile-id "internal"
+                        :entity-id "metabotmetabotmetabot"}
+   embedded-metabot-id {:profile-id "embedding"
+                        :entity-id "embeddedmetabotmetabo"}})
+
+(defn metabot-id->profile-id
+  "Return the profile-id for the Metabot instance with ID `metabot-id` or \"default\" if no profile-id is configured."
+  [metabot-id]
+  (or (get-in metabot-config [metabot-id :profile-id])
+      (:profile-id (m/find-first #(when (= (:entity-id %) metabot-id)
+                                    (:profile-id %))
+                                 (vals metabot-config)))))
 
 (defn normalize-metabot-id
   "Return the primary key for the metabot instance identified by `metabot-id`.
 
-  Returns nil if no entry can be found.
+  Returns nil, no entry can be found.
   The provided ID can be a UUID from [[metabot-config]] or an entity_id of a Metabot instance."
   [metabot-id]
   (t2/select-one-pk :model/Metabot :entity_id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
 
-(defn default-use-case
-  "Return the default use case for a metabot. Falls back to \"omnibot\" for unknown metabots."
-  [metabot-id]
-  (or (get-in metabot-config [metabot-id :default-use-case])
-      "omnibot"))
-
 (defn resolve-dynamic-metabot-id
-  "Resolve dynamic metabot ID with logical fall backs.
+  "Resolve dynamic metabot ID with logical fall backs
    Precedence: explicit metabot-id > env metabot-id > default (internal)"
   [metabot-id]
   (or metabot-id
       (metabot-v3.settings/metabot-id)
       internal-metabot-id))
 
-(defn resolve-profile
-  "Resolve the AI service profile for a use case.
-   Precedence: explicit profile override > use case profile from DB
-
-   Arguments:
-   - metabot-pk: The primary key of the metabot instance
-   - use-case: The use case name (e.g., \"nlq\", \"transforms\")
-   - profile-override: Optional explicit profile override (e.g., from /profile command)"
-  [metabot-pk use-case profile-override]
-  (or profile-override
-      (when (and metabot-pk use-case)
-        (let [profile (t2/select-one-fn :profile :model/MetabotUseCase
-                                        :metabot_id metabot-pk
-                                        :name use-case)]
-          (when-not profile
-            (log/warnf "No profile found for metabot %d with use-case %s" metabot-pk use-case))
-          profile))))
+(defn resolve-dynamic-profile-id
+  "Resolve the ultimate ai-service profile ID with logical fall backs
+   Precedence: explicit profile_id > env profile_id > metabot-id->profile-id > default (embedded)"
+  ([profile-id]
+   (resolve-dynamic-profile-id profile-id (resolve-dynamic-metabot-id nil)))
+  ([profile-id metabot-id]
+   (or profile-id
+       (metabot-v3.settings/ai-service-profile-id)
+       (metabot-id->profile-id metabot-id)
+       "default")))

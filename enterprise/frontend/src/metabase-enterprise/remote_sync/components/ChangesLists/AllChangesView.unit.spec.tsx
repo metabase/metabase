@@ -1,11 +1,16 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createMockRemoteSyncEntity } from "metabase-types/api/mocks/remote-sync";
 
 import { AllChangesView } from "./AllChangesView";
+
+const defaultCollection = createMockCollection({
+  id: 1,
+  name: "Entity Collection",
+});
 
 const updatedEntity = createMockRemoteSyncEntity({
   collection_id: 1,
@@ -25,18 +30,16 @@ const deletedEntity = createMockRemoteSyncEntity({
 
 const setup = ({
   entities = [updatedEntity],
+  collections = [defaultCollection],
 }: {
   entities: RemoteSyncEntity[];
+  collections?: Collection[];
 }) => {
-  const collections = [createMockCollection({ name: "Entity Collection" })];
+  // Mock the new useListCollectionsTreeQuery endpoint format
+  fetchMock.get("path:/api/collection/tree", collections);
+  fetchMock.get("path:/api/session/properties", { "use-tenants": false });
 
-  fetchMock.get("/api/collection/tree", collections);
-  fetchMock.get("/api/collection/tree?namespace=shared-tenant-collection", []);
-  fetchMock.get("path:/api/session/properties", {});
-
-  renderWithProviders(
-    <AllChangesView entities={entities} collections={collections} />,
-  );
+  renderWithProviders(<AllChangesView entities={entities} />);
 };
 
 describe("AllChangesView", () => {
@@ -63,7 +66,7 @@ describe("AllChangesView", () => {
   });
 
   describe("namespaced collections", () => {
-    it("should display collections from namespaces like shared-tenant-collection", () => {
+    it("should display collections from namespaces like shared-tenant-collection", async () => {
       const namespacedCollection = createMockCollection({
         id: 10,
         name: "Tenant Collection",
@@ -78,38 +81,29 @@ describe("AllChangesView", () => {
         sync_status: "update",
       });
 
-      fetchMock.get("/api/collection/tree", []);
-      fetchMock.get("/api/collection/tree?namespace=shared-tenant-collection", [
-        namespacedCollection,
-      ]);
-      fetchMock.get("path:/api/session/properties", {});
+      setup({
+        entities: [entityInNamespacedCollection],
+        collections: [namespacedCollection],
+      });
 
-      renderWithProviders(
-        <AllChangesView
-          entities={[entityInNamespacedCollection]}
-          collections={[namespacedCollection]}
-        />,
-      );
-
-      expect(screen.getByText("Tenant Collection")).toBeInTheDocument();
+      expect(await screen.findByText("Tenant Collection")).toBeInTheDocument();
       expect(
         screen.getByText("Dashboard in Tenant Collection"),
       ).toBeInTheDocument();
     });
 
-    it("should display collection hierarchy for namespaced collections with ancestors", () => {
-      const parentCollection = createMockCollection({
-        id: 5,
-        name: "Parent Tenant Collection",
-        namespace: "shared-tenant-collection",
-      });
+    it("should display collection hierarchy for namespaced collections with ancestors", async () => {
       const childCollection = createMockCollection({
         id: 10,
         name: "Child Tenant Collection",
         namespace: "shared-tenant-collection",
-        effective_ancestors: [
-          { id: 5, name: "Parent Tenant Collection" } as any,
-        ],
+      });
+      // Use nested tree structure - parent contains child
+      const parentCollection = createMockCollection({
+        id: 5,
+        name: "Parent Tenant Collection",
+        namespace: "shared-tenant-collection",
+        children: [childCollection],
       });
       const entityInChildCollection = createMockRemoteSyncEntity({
         id: 20,
@@ -119,26 +113,19 @@ describe("AllChangesView", () => {
         sync_status: "create",
       });
 
-      fetchMock.get("/api/collection/tree", []);
-      fetchMock.get("/api/collection/tree?namespace=shared-tenant-collection", [
-        parentCollection,
-        childCollection,
-      ]);
-      fetchMock.get("path:/api/session/properties", {});
+      setup({
+        entities: [entityInChildCollection],
+        collections: [parentCollection],
+      });
 
-      renderWithProviders(
-        <AllChangesView
-          entities={[entityInChildCollection]}
-          collections={[parentCollection, childCollection]}
-        />,
-      );
-
-      expect(screen.getByText("Parent Tenant Collection")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Parent Tenant Collection"),
+      ).toBeInTheDocument();
       expect(screen.getByText("Child Tenant Collection")).toBeInTheDocument();
       expect(screen.getByText("Item in Child Collection")).toBeInTheDocument();
     });
 
-    it("should display regular items in collections", () => {
+    it("should display regular items in collections", async () => {
       const entityInCollection = createMockRemoteSyncEntity({
         id: 20,
         name: "Regular Item",
@@ -151,7 +138,7 @@ describe("AllChangesView", () => {
         entities: [entityInCollection],
       });
 
-      expect(screen.getByText("Entity Collection")).toBeInTheDocument();
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
       expect(screen.getByText("Regular Item")).toBeInTheDocument();
     });
   });

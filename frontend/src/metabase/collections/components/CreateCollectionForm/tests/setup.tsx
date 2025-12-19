@@ -1,5 +1,5 @@
 /* istanbul ignore file */
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -23,33 +23,41 @@ const ROOT_COLLECTION = createMockCollection({
 export interface SetupOpts {
   user?: User;
   tokenFeatures?: TokenFeatures;
-  hasEnterprisePlugins?: boolean;
+  showAuthorityLevelPicker?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
   user = createMockUser({ is_superuser: true }),
   tokenFeatures = createMockTokenFeatures(),
-  hasEnterprisePlugins = false,
+  showAuthorityLevelPicker,
+  enterprisePlugins,
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
   setupCollectionsEndpoints({
     collections: [],
     rootCollection: ROOT_COLLECTION,
   });
-  renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
-    storeInitialState: createMockState({
-      currentUser: user,
-      settings,
-      entities: createMockEntitiesState({
-        collections: [ROOT_COLLECTION],
+  renderWithProviders(
+    <CreateCollectionForm
+      onCancel={onCancel}
+      showAuthorityLevelPicker={showAuthorityLevelPicker}
+    />,
+    {
+      storeInitialState: createMockState({
+        currentUser: user,
+        settings,
+        entities: createMockEntitiesState({
+          collections: [ROOT_COLLECTION],
+        }),
       }),
-    }),
-  });
+    },
+  );
 
   return { onCancel };
 };

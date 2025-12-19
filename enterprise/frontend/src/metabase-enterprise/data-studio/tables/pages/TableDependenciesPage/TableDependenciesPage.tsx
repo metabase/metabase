@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Center, Flex } from "metabase/ui";
+import { Card, Center } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 
 import { TableHeader } from "../../components/TableHeader";
@@ -33,7 +34,7 @@ export function TableDependenciesPage({
   }
 
   return (
-    <Flex direction="column" h="100%" data-testid="table-dependencies-page">
+    <PageContainer data-testid="table-dependencies-page">
       <TableHeader table={table} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
@@ -41,8 +42,10 @@ export function TableDependenciesPage({
           defaultEntry: { id: table.id, type: "table" },
         }}
       >
-        {children}
+        <Card p={0} withBorder flex={1}>
+          {children}
+        </Card>
       </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
-    </Flex>
+    </PageContainer>
   );
 }

@@ -24,9 +24,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- store-message!
-  "Store a message in the conversation. `profile-id` is optional (for legacy/dev override)."
-  [conversation-id use-case profile-id messages]
+(defn- store-message! [conversation-id profile-id messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -44,7 +42,6 @@
                  :data            messages
                  :usage           (:usage finish)
                  :role            (:role (first messages))
-                 :use_case        use-case
                  :profile_id      profile-id
                  :total_tokens    (->> (vals (:usage finish))
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
@@ -55,26 +52,23 @@
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id use_case profile_id message context history conversation_id state]}]
+  [{:keys [metabot_id profile_id message context history conversation_id state]}]
   (let [message    (metabot-v3.envelope/user-message message)
         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        use-case   (or use_case (metabot-v3.config/default-use-case metabot-id))
-        metabot-pk (metabot-v3.config/normalize-metabot-id metabot-id)
-        profile    (metabot-v3.config/resolve-profile metabot-pk use-case profile_id)
+        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
         session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
-    (store-message! conversation_id use-case profile [message])
+    (store-message! conversation_id profile-id [message])
     (metabot-v3.client/streaming-request
      {:context         (metabot-v3.context/create-context context)
       :metabot-id      metabot-id
-      :use-case        use-case
-      :profile-id      profile
+      :profile-id      profile-id
       :session-id      session-id
       :conversation-id conversation_id
       :message         message
       :history         history
       :state           state
       :on-complete     (fn [lines]
-                         (store-message! conversation_id use-case profile (metabot-v3.u/aisdk->messages :assistant lines))
+                         (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
                          :store-in-db)})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -86,7 +80,6 @@
   [_route-params
    _query-params
    body :- [:map
-            [:use_case {:optional true} :string]
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
             [:message ms/NonBlankString]
