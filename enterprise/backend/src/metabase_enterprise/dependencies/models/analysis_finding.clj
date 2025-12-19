@@ -37,6 +37,7 @@
         existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
                                       :analyzed_entity_type type
                                       :analyzed_entity_id instance-id)]
+    (prn "upserting" type instance-id)
     (if existing-id
       (t2/update! :model/AnalysisFinding existing-id update)
       (t2/insert! :model/AnalysisFinding
