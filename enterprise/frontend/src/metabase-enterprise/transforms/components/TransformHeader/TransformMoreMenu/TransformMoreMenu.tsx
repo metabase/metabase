@@ -11,6 +11,7 @@ import type { Transform } from "metabase-types/api";
 import { TransformRevisionHistorySidebar } from "../../TransformRevisionHistorySidebar";
 
 import { DeleteTransformModal } from "./DeleteTransformModal";
+import { MoveTransformModal } from "./MoveTransformModal";
 import type { TransformMoreMenuModalType } from "./types";
 
 type TransformMoreMenuProps = {
@@ -65,9 +66,15 @@ function TransformMenu({ onOpenModal, onShowHistory }: TransformMenuProps) {
       <Menu.Dropdown>
         <Menu.Item
           leftSection={<Icon name="history" />}
-          onClick={() => onShowHistory()}
+          onClick={onShowHistory}
         >
           {t`History`}
+        </Menu.Item>
+        <Menu.Item
+          leftSection={<Icon name="move" />}
+          onClick={() => onOpenModal("move")}
+        >
+          {t`Move`}
         </Menu.Item>
         <Menu.Item
           leftSection={<Icon name="trash" />}
@@ -100,12 +107,25 @@ function TransformModal({
     onClose();
   };
 
+  const handleMove = () => {
+    sendSuccessToast(t`Transform moved`);
+    onClose();
+  };
+
   switch (modalType) {
     case "delete":
       return (
         <DeleteTransformModal
           transform={transform}
           onDelete={handleDelete}
+          onClose={onClose}
+        />
+      );
+    case "move":
+      return (
+        <MoveTransformModal
+          transform={transform}
+          onMove={handleMove}
           onClose={onClose}
         />
       );

@@ -480,7 +480,7 @@ export const getIsResultDirty = createSelector(
     getTableMetadata,
   ],
   (
-    question,
+    currentQuestion,
     originalQuestion,
     lastRunQuestion,
     lastParameters,
@@ -489,15 +489,15 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
-
+      !!currentQuestion &&
+      Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
     return (
       haveParametersChanged ||
       (isEditable &&
         !areQueriesEquivalent({
           originalQuestion,
           lastRunQuestion,
-          currentQuestion: question,
+          currentQuestion,
           tableMetadata,
         }))
     );
@@ -1087,9 +1087,6 @@ export const getSubmittableQuestion = (state, question) => {
 
   return submittableQuestion;
 };
-
-export const getIsNotebookNativePreviewShown = (state) =>
-  getSetting(state, "notebook-native-preview-shown");
 
 export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");

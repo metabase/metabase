@@ -66,7 +66,7 @@ function TableSourcePath({ tableId }: TableSourcePathProps) {
       name: table.db.name,
       url: table.db.is_audit
         ? undefined
-        : Urls.dataModel({ databaseId: table.db_id }),
+        : Urls.dataStudioData({ databaseId: table.db_id }),
     });
 
     if (table.schema) {
@@ -74,7 +74,7 @@ function TableSourcePath({ tableId }: TableSourcePathProps) {
         name: table.schema,
         url: table.db.is_audit
           ? undefined
-          : Urls.dataModel({
+          : Urls.dataStudioData({
               databaseId: table.db_id,
               schemaName: table.schema,
             }),
@@ -85,7 +85,7 @@ function TableSourcePath({ tableId }: TableSourcePathProps) {
       name: table.display_name,
       url: table.db.is_audit
         ? undefined
-        : Urls.dataModel({
+        : Urls.dataStudioData({
             databaseId: table.db_id,
             schemaName: table.schema,
             tableId: table.id,

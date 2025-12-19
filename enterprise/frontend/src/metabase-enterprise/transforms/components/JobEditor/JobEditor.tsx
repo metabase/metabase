@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
+import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
+import { Stack } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderInput,
@@ -7,7 +13,6 @@ import {
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
-import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { ScheduleSection } from "./ScheduleSection";
@@ -35,7 +40,7 @@ export function JobEditor({
   onTagListChange,
 }: JobEditorProps) {
   return (
-    <ColumnLayout data-testid="transforms-job-editor">
+    <PageContainer data-testid="transforms-job-editor" gap="2.5rem">
       <PaneHeader
         title={
           <PaneHeaderInput
@@ -44,15 +49,24 @@ export function JobEditor({
             onChange={onNameChange}
           />
         }
+        py={0}
+        breadcrumbs={
+          <DataStudioBreadcrumbs>
+            <Link key="transform-job-list" to={Urls.transformJobList()}>
+              {t`Jobs`}
+            </Link>
+            {job.name}
+          </DataStudioBreadcrumbs>
+        }
         menu={menu}
         actions={actions}
         data-testid="jobs-header"
       />
-      <ColumnLayoutBody>
+      <Stack gap="3.5rem">
         <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
         <TagSection job={job} onTagsChange={onTagListChange} />
         {job.id != null && <DependenciesSection jobId={job.id} />}
-      </ColumnLayoutBody>
-    </ColumnLayout>
+      </Stack>
+    </PageContainer>
   );
 }
