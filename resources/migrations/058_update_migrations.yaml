@@ -3845,10 +3845,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_merge
-            indexName: idx_workspace_merge_workspace_id
 
   - changeSet:
       id: v58.2025-12-17T11:00:03
@@ -3861,10 +3857,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_merge
-            indexName: idx_workspace_merge_creator_id
 
   - changeSet:
       id: v58.2025-12-17T11:00:04
@@ -3965,10 +3957,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_merge_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_merge_transform
-            indexName: idx_workspace_merge_transform_workspace_merge_id
 
   - changeSet:
       id: v58.2025-12-17T11:00:08
@@ -3981,10 +3969,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_merge_transform
-            indexName: idx_workspace_merge_transform_workspace_id
 
   - changeSet:
       id: v58.2025-12-17T11:00:09
@@ -3997,10 +3981,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: transform_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_merge_transform
-            indexName: idx_workspace_merge_transform_transform_id
 
   - changeSet:
       id: v58.2025-12-17T11:00:10
@@ -4013,10 +3993,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: merging_user_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_merge_transform
-            indexName: idx_workspace_merge_transform_merging_user_id
 
   - changeSet:
       id: v58.2025-12-17T17:54:00
