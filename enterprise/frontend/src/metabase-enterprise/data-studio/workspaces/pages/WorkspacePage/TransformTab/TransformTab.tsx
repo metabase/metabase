@@ -45,7 +45,7 @@ import type {
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { SaveTransformButton } from "../SaveTransformButton";
 import { TransformEditor } from "../TransformEditor";
-import type { EditedTransform } from "../WorkspaceProvider";
+import type { EditedTransform, OpenTable } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
@@ -56,9 +56,10 @@ interface Props {
   transform: Transform | WorkspaceTransform;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
-  isArchived: boolean;
+  isDisabled: boolean;
   onChange: (patch: Partial<EditedTransform>) => void;
   onOpenTransform: (transformId: number | string) => void;
+  onResultsClick?: (table: OpenTable) => void;
 }
 
 export const TransformTab = ({
@@ -67,9 +68,10 @@ export const TransformTab = ({
   transform,
   workspaceId,
   workspaceTransforms,
-  isArchived,
+  isDisabled,
   onChange,
   onOpenTransform,
+  onResultsClick,
 }: Props) => {
   const {
     updateTransformState,
@@ -144,7 +146,7 @@ export const TransformTab = ({
   const isSaved = workspaceTransforms.some(
     (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
   );
-  const isEditable = !isArchived;
+  const isEditable = !isDisabled;
 
   const isCheckoutDisabled =
     isExternalTransform(transform) &&
@@ -317,7 +319,7 @@ export const TransformTab = ({
               <Button
                 leftSection={<Icon name="pencil_lines" />}
                 size="sm"
-                disabled={isRunning || hasChanges || isArchived}
+                disabled={isRunning || hasChanges || isDisabled}
                 onClick={openChangeTargetModal}
               >{t`Change target`}</Button>
             )}
@@ -329,7 +331,7 @@ export const TransformTab = ({
                 <WorkspaceRunButton
                   id={transform.id}
                   run={buttonRun}
-                  isDisabled={hasChanges || isArchived}
+                  isDisabled={hasChanges || isDisabled}
                   onRun={handleRun}
                 />
               )}
@@ -340,7 +342,7 @@ export const TransformTab = ({
                   workspaceId={workspaceId}
                   editedTransform={editedTransform}
                   transform={transform}
-                  isArchived={isArchived}
+                  isArchived={isDisabled}
                 />
               )}
             </Group>
@@ -349,7 +351,7 @@ export const TransformTab = ({
               <Button
                 leftSection={<Icon name="check" />}
                 size="sm"
-                disabled={isArchived}
+                disabled={isDisabled}
                 onClick={() => setSaveModalOpen(true)}
               >{t`Save`}</Button>
             )}
@@ -359,7 +361,7 @@ export const TransformTab = ({
                 leftSection={<Icon name="check" />}
                 size="sm"
                 variant="filled"
-                disabled={isArchived || isCheckoutDisabled}
+                disabled={isDisabled || isCheckoutDisabled}
                 onClick={handleSaveExternalTransform}
               >{t`Save`}</Button>
             )}
@@ -381,20 +383,26 @@ export const TransformTab = ({
             ))}
           {output && (
             <Tooltip label={t`View transform output`}>
-              <a
+              <Box
                 style={{
                   marginLeft: "auto",
                   alignSelf: "flex-end",
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
+                  cursor: "pointer",
                 }}
-                target="_blank"
-                rel="noreferrer"
-                href={Urls.queryBuilderTable(output.table_id, output.db_id)}
+                onClick={() =>
+                  onResultsClick?.({
+                    tableId: output.table_id,
+                    name: output.table_name,
+                    schema: output.schema,
+                    transformId: wsTransform.id,
+                  })
+                }
               >
                 <Icon name="table2" mr="xs" c="brand" />
                 <Text c="brand">{t`Results`}</Text>
-              </a>
+              </Box>
             </Tooltip>
           )}
         </Group>

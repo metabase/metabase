@@ -715,11 +715,12 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                     editedTransform={activeEditedTransform}
                     workspaceId={id}
                     workspaceTransforms={workspaceTransforms}
-                    isArchived={isArchived}
+                    isDisabled={isArchived}
                     onChange={handleTransformChange}
                     onOpenTransform={(transformId) =>
                       setTab(String(transformId))
                     }
+                    onResultsClick={handleTableSelect}
                   />
                 )}
               </Tabs.Panel>

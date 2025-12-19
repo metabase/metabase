@@ -33,7 +33,12 @@ type UseWorkspaceTransformRunResult = {
   /** Trigger a transform run */
   handleRun: () => Promise<void>;
   /** Output table info */
-  output: { db_id: number; table_id: number } | null;
+  output: {
+    db_id: number;
+    table_id: number;
+    table_name: string;
+    schema: string;
+  } | null;
 };
 
 export function useWorkspaceTransformRun({
@@ -102,6 +107,8 @@ export function useWorkspaceTransformRun({
     return {
       db_id: table?.db_id,
       table_id: table?.isolated.table_id,
+      table_name: table?.isolated.table,
+      schema: table?.isolated.schema,
     };
   }, [workspaceTables, transform.ref_id, statusRun]);
 

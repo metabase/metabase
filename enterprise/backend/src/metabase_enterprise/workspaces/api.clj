@@ -202,12 +202,13 @@
 (api.macros/defendpoint :get "/:id/log"
   :- [:map
       [:workspace_id ms/PositiveInt]
-      [:status [:enum :pending :ready]]
+      [:status [:enum :pending :ready :archived]]
       [:updated_at :any]
       [:last_completed_at [:maybe :any]]
       [:logs [:sequential [:map
                            [:id ms/PositiveInt]
                            [:task :keyword]
+                           [:description ms/LocalizedString]
                            [:started_at :any]
                            [:updated_at :any]
                            [:completed_at [:maybe :any]]
