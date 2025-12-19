@@ -3942,7 +3942,7 @@
             "type" : "string"
           },
           "schema" : {
-            "anyOf" : [ {
+            "oneOf" : [ {
               "minLength" : 1,
               "type" : "string"
             }, {
@@ -3968,7 +3968,7 @@
             "type" : "string"
           },
           "schema" : {
-            "anyOf" : [ {
+            "oneOf" : [ {
               "minLength" : 1,
               "type" : "string"
             }, {
@@ -4033,6 +4033,303 @@
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.table-incremental-target"
         } ]
+      },
+      "metabase-enterprise.workspaces.api.appdb-or-ref-id" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+        } ]
+      },
+      "metabase-enterprise.workspaces.api.graph-edge" : {
+        "properties" : {
+          "from_entity_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.appdb-or-ref-id"
+          },
+          "from_entity_type" : {
+            "type" : "string"
+          },
+          "to_entity_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.appdb-or-ref-id"
+          },
+          "to_entity_type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "from_entity_id", "from_entity_type", "to_entity_id", "to_entity_type" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.workspaces.api.graph-node" : {
+        "properties" : {
+          "data" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "additionalProperties" : {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "type" : "object"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.appdb-or-ref-id"
+          },
+          "type" : {
+            "enum" : [ "input-table", "external-transform", "workspace-transform" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "type", "dependents_count", "data" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.workspaces.api.graph-node-type" : {
+        "enum" : [ "input-table", "external-transform", "workspace-transform" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.workspaces.api.input-table" : {
+        "properties" : {
+          "db_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "db_id", "schema", "table", "table_id" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.workspaces.api.output-table" : {
+        "properties" : {
+          "db_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          },
+          "global" : {
+            "properties" : {
+              "schema" : {
+                "oneOf" : [ {
+                  "type" : "string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "table" : {
+                "type" : "string"
+              },
+              "table_id" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "transform_id" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            },
+            "required" : [ "transform_id", "schema", "table", "table_id" ],
+            "type" : "object"
+          },
+          "isolated" : {
+            "properties" : {
+              "schema" : {
+                "type" : "string"
+              },
+              "table" : {
+                "type" : "string"
+              },
+              "table_id" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "transform_id" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                }, {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                } ]
+              }
+            },
+            "required" : [ "transform_id", "schema", "table", "table_id" ],
+            "type" : "object"
+          }
+        },
+        "required" : [ "db_id", "global", "isolated" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.workspaces.api.status" : {
+        "enum" : [ "uninitialized", "pending", "ready" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.workspaces.api.transform-source" : {
+        "oneOf" : [ {
+          "properties" : {
+            "query" : {
+              "$ref" : "#/components/schemas/metabase.queries.schema.query"
+            },
+            "type" : {
+              "const" : "query"
+            }
+          },
+          "required" : [ "type", "query" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "body" : {
+              "type" : "string"
+            },
+            "source-database" : {
+              "type" : "integer"
+            },
+            "source-tables" : {
+              "additionalProperties" : {
+                "type" : "integer"
+              },
+              "type" : "object"
+            },
+            "type" : {
+              "const" : "python"
+            }
+          },
+          "required" : [ "source-tables", "type", "body" ],
+          "type" : "object"
+        } ]
+      },
+      "metabase-enterprise.workspaces.api.transform-target" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "database" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          },
+          "name" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "enum" : [ "table" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.workspaces.types.appdb-id" : {
+        "description" : "value must be an integer greater than zero.",
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase-enterprise.workspaces.types.execution-result" : {
+        "properties" : {
+          "end_time" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "message" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "start_time" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "enum" : [ "succeeded", "failed" ],
+            "type" : "string"
+          },
+          "table" : {
+            "properties" : {
+              "name" : {
+                "type" : "string"
+              },
+              "schema" : {
+                "oneOf" : [ {
+                  "type" : "string"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            },
+            "required" : [ "name" ],
+            "type" : "object"
+          }
+        },
+        "required" : [ "status", "table" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.workspaces.types.problem" : {
+        "description" : "A problem detected during workspace validation.",
+        "properties" : {
+          "block_merge" : {
+            "type" : "boolean"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.problem-category"
+          },
+          "data" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "problem" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.problem-name"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.severity"
+          }
+        },
+        "required" : [ "category", "problem", "severity", "block_merge", "data" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.workspaces.types.problem-category" : {
+        "enum" : [ "external", "external-downstream", "unused", "internal", "internal-downstream" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.workspaces.types.problem-name" : {
+        "enum" : [ "target-conflict", "not-run", "stale", "cycle", "failed", "removed-table", "removed-field" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.workspaces.types.ref-id" : {
+        "minLength" : 1,
+        "type" : "string"
+      },
+      "metabase-enterprise.workspaces.types.severity" : {
+        "enum" : [ "error", "warning", "info" ],
+        "type" : "string"
       },
       "metabase.actions.schema..action.for-insert" : {
         "allOf" : [ {
@@ -18120,6 +18417,18 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "include_workspace",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -25528,6 +25837,34 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "database_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "type",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "items" : {
+                "enum" : [ "query", "native", "python" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -25596,7 +25933,27 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "name" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "name" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:name -> <string>, :description (optional) -> <nullable string>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25981,6 +26338,78 @@
         "tags" : [ "/api/ee/transform" ]
       }
     },
+    "/api/ee/transform/{id}/merge-history" : {
+      "get" : {
+        "description" : "Get merge history for a transform. Returns all merge events that affected this transform,\n   ordered by created_at descending (newest first).",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "properties" : {
+                      "commit_message" : {
+                        "type" : "string"
+                      },
+                      "created_at" : { },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "merging_user_id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "workspace_id" : {
+                        "oneOf" : [ {
+                          "description" : "value must be an integer greater than zero.",
+                          "minimum" : 1,
+                          "type" : "integer"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "workspace_merge_id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "workspace_name" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "id", "workspace_merge_id", "commit_message", "workspace_id", "workspace_name", "merging_user_id", "created_at" ],
+                    "type" : "object"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "sequence of map where {:id -> <value must be an integer greater than zero.>, :workspace_merge_id -> <value must be an integer greater than zero.>, :commit_message -> <string>, :workspace_id -> <nullable value must be an integer greater than zero.>, :workspace_name -> <string>, :merging_user_id -> <value must be an integer greater than zero.>, :created_at -> <anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/transform/{id}/merge-history",
+        "tags" : [ "/api/ee/transform" ]
+      }
+    },
     "/api/ee/transform/{id}/run" : {
       "post" : {
         "description" : "Run a transform.",
@@ -26268,6 +26697,1786 @@
         },
         "summary" : "DELETE /api/ee/upload-management/tables/{id}",
         "tags" : [ "/api/ee/upload-management" ]
+      }
+    },
+    "/api/ee/workspace/" : {
+      "get" : {
+        "description" : "Get a list of all workspaces",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "items" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "archived" : {
+                            "type" : "boolean"
+                          },
+                          "id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "name", "archived" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "items", "limit", "offset" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:items -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :archived -> <boolean>} with no other keys>, :limit -> <nullable integer>, :offset -> <nullable integer>} with no other keys"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/",
+        "tags" : [ "/api/ee/workspace" ]
+      },
+      "post" : {
+        "description" : "Create a new workspace\n\n  Potential payload:\n  {:name \"a\" :database_id 2}}",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                  },
+                  "name" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "name" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "archived_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "collection_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "created_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    },
+                    "database_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                    },
+                    "updated_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "id", "name", "collection_id", "database_id", "status", "created_at", "updated_at", "archived_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :collection_id -> <value must be an integer greater than zero.>, :database_id -> <value must be an integer greater than zero.>, :status -> <enum of :uninitialized, :pending, :ready>, :created_at -> <value must be a valid date/time/datetime>, :updated_at -> <value must be a valid date/time/datetime>, :archived_at -> <nullable anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/checkout" : {
+      "get" : {
+        "description" : "Get all downstream transforms for a transform that is not in a workspace.\n   Returns the transforms that were mirrored from this upstream transform, with workspace info.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "query",
+          "name" : "transform-id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "transforms" : {
+                      "items" : {
+                        "properties" : {
+                          "id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "workspace" : {
+                            "properties" : {
+                              "id" : {
+                                "description" : "value must be an integer greater than zero.",
+                                "minimum" : 1,
+                                "type" : "integer"
+                              },
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "id", "name" ],
+                            "type" : "object"
+                          }
+                        },
+                        "required" : [ "id", "name", "workspace" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "transforms" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:transforms -> <sequence of map where {:id -> <string with length >= 1>, :name -> <string>, :workspace -> <map where {:id -> <value must be an integer greater than zero.>, :name -> <string>}>}>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/checkout",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/database" : {
+      "get" : {
+        "description" : "Get a list of databases to show in the workspace picker, along with whether they're supported.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "databases" : {
+                      "items" : {
+                        "properties" : {
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "reason" : {
+                            "type" : "string"
+                          },
+                          "supported" : {
+                            "type" : "boolean"
+                          }
+                        },
+                        "required" : [ "id", "name", "supported" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "databases" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:databases -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :supported -> <boolean>, :reason (optional) -> <string>}>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/database",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/enabled" : {
+      "get" : {
+        "description" : "Test whether the current user can use Workspaces. Optionally takes a specific database.\n   Factors include: driver support, database user privileges, metabase permissions.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "query",
+          "name" : "database-id",
+          "required" : false,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "reason" : {
+                      "type" : "string"
+                    },
+                    "supported" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "supported" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:supported -> <boolean>, :reason (optional) -> <string>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/enabled",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}" : {
+      "get" : {
+        "description" : "Get a single workspace by ID",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "archived_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "collection_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "created_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    },
+                    "database_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                    },
+                    "updated_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "id", "name", "collection_id", "database_id", "status", "created_at", "updated_at", "archived_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :collection_id -> <value must be an integer greater than zero.>, :database_id -> <value must be an integer greater than zero.>, :status -> <enum of :uninitialized, :pending, :ready>, :created_at -> <value must be a valid date/time/datetime>, :updated_at -> <value must be a valid date/time/datetime>, :archived_at -> <nullable anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/{id}",
+        "tags" : [ "/api/ee/workspace" ]
+      },
+      "put" : {
+        "description" : "Update simple workspace properties.\n\n  Can set database_id only on uninitialized workspaces.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                  },
+                  "name" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "archived_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "collection_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "created_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    },
+                    "database_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                    },
+                    "updated_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "id", "name", "collection_id", "database_id", "status", "created_at", "updated_at", "archived_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :collection_id -> <value must be an integer greater than zero.>, :database_id -> <value must be an integer greater than zero.>, :status -> <enum of :uninitialized, :pending, :ready>, :created_at -> <value must be a valid date/time/datetime>, :updated_at -> <value must be a valid date/time/datetime>, :archived_at -> <nullable anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/workspace/{id}",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/archive" : {
+      "post" : {
+        "description" : "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "archived_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "collection_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "created_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    },
+                    "database_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                    },
+                    "updated_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "id", "name", "collection_id", "database_id", "status", "created_at", "updated_at", "archived_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :collection_id -> <value must be an integer greater than zero.>, :database_id -> <value must be an integer greater than zero.>, :status -> <enum of :uninitialized, :pending, :ready>, :created_at -> <value must be a valid date/time/datetime>, :updated_at -> <value must be a valid date/time/datetime>, :archived_at -> <nullable anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{id}/archive",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/log" : {
+      "get" : {
+        "description" : "Get workspace creation status and recent log entries for polling during async setup",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "last_completed_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "logs" : {
+                      "items" : {
+                        "properties" : {
+                          "completed_at" : {
+                            "oneOf" : [ { }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "description" : { },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "message" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "started_at" : { },
+                          "status" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "task" : {
+                            "type" : "string"
+                          },
+                          "updated_at" : { }
+                        },
+                        "required" : [ "id", "task", "description", "started_at", "updated_at", "completed_at", "status", "message" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "status" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                    },
+                    "updated_at" : { },
+                    "workspace_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "workspace_id", "status", "updated_at", "last_completed_at", "logs" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:workspace_id -> <value must be an integer greater than zero.>, :status -> <enum of :uninitialized, :pending, :ready>, :updated_at -> <anything>, :last_completed_at -> <nullable anything>, :logs -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :task -> <keyword>, :description -> <function>, :started_at -> <anything>, :updated_at -> <anything>, :completed_at -> <nullable anything>, :status -> <nullable keyword>, :message -> <nullable string>}>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/{id}/log",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/problem" : {
+      "get" : {
+        "description" : "Detect problems in the workspace that would affect downstream transforms after merge.\n\n   Returns a list of problems, each with:\n   - category:    the problem category (e.g. 'unused', 'internal-downstream', 'external-downstream')\n   - problem:     the specific problem (e.g. 'not-run', 'stale', 'removed-field')\n   - severity:    :error, :warning, or :info\n   - block-merge: whether this problem prevents merging\n   - data:        extra information, shape depends on the problem type\n\n   See `metabase-enterprise.workspaces.types/problem-types` for the full list.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.problem"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "sequence of A problem detected during workspace validation."
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/{id}/problem",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/table" : {
+      "get" : {
+        "description" : "Get workspace tables",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "inputs" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.input-table"
+                      },
+                      "type" : "array"
+                    },
+                    "outputs" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.output-table"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "inputs", "outputs" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:inputs -> <sequence of map where {:db_id -> <value must be an integer greater than zero.>, :schema -> <nullable string>, :table -> <string>, :table_id -> <nullable value must be an integer greater than zero.>}>, :outputs -> <sequence of map where {:db_id -> <value must be an integer greater than zero.>, :global -> <map where {:transform_id -> <nullable value must be an integer greater than zero.>, :schema -> <nullable string>, :table -> <string>, :table_id -> <nullable value must be an integer greater than zero.>}>, :isolated -> <map where {:transform_id -> <string with length >= 1, or value must be an integer greater than zero.>, :schema -> <string>, :table -> <string>, :table_id -> <nullable value must be an integer greater than zero.>}>}>} with no other keys"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/{id}/table",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/transform" : {
+      "get" : {
+        "description" : "Get all transforms in a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "transforms" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "global_id" : {
+                            "oneOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "ref_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                          },
+                          "source_type" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "ref_id", "global_id", "name", "source_type" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "transforms" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:transforms -> <sequence of map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :source_type -> <nullable keyword>} with no other keys>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/{id}/transform",
+        "tags" : [ "/api/ee/workspace" ]
+      },
+      "post" : {
+        "description" : "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "type" : "string"
+                  },
+                  "source" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.transform-source"
+                  }
+                },
+                "required" : [ "name", "source" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "archived_at" : { },
+                    "created_at" : { },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "global_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "last_run_at" : { },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "ref_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                    },
+                    "source" : {
+                      "properties" : { },
+                      "type" : "object"
+                    },
+                    "target" : {
+                      "properties" : { },
+                      "type" : "object"
+                    },
+                    "target_stale" : {
+                      "type" : "boolean"
+                    },
+                    "updated_at" : { },
+                    "workspace_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    }
+                  },
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{id}/transform",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/transform/{tx-id}" : {
+      "delete" : {
+        "description" : "Discard a transform from the changeset.\n   Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "null"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/workspace/{id}/transform/{tx-id}",
+        "tags" : [ "/api/ee/workspace" ]
+      },
+      "get" : {
+        "description" : "Get a specific transform in a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "archived_at" : { },
+                    "created_at" : { },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "global_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "last_run_at" : { },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "ref_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                    },
+                    "source" : {
+                      "properties" : { },
+                      "type" : "object"
+                    },
+                    "target" : {
+                      "properties" : { },
+                      "type" : "object"
+                    },
+                    "target_stale" : {
+                      "type" : "boolean"
+                    },
+                    "updated_at" : { },
+                    "workspace_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    }
+                  },
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/{id}/transform/{tx-id}",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/transform/{tx-id}/archive" : {
+      "post" : {
+        "description" : "Mark the given transform to be archived when the workspace is merged.\n   For provisional transforms we will skip even creating it in the first place.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "null"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{id}/transform/{tx-id}/archive",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/transform/{tx-id}/run" : {
+      "post" : {
+        "description" : "Run a transform in a workspace.\n\n  App DB changes are rolled back. Warehouse DB changes persist.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.execution-result"
+                }
+              }
+            },
+            "description" : "map where {:status -> <enum of :succeeded, :failed>, :start_time (optional) -> <nullable anything but null>, :end_time (optional) -> <nullable anything but null>, :message (optional) -> <nullable string>, :table -> <map where {:name -> <string>, :schema (optional) -> <nullable string>}>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{id}/transform/{tx-id}/run",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/transform/{tx-id}/unarchive" : {
+      "post" : {
+        "description" : "Unmark the given transform for archival. This will recall the last definition it had within the workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "null"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{id}/transform/{tx-id}/unarchive",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{id}/unarchive" : {
+      "post" : {
+        "description" : "Restore an archived workspace. Recreates the isolated schema and tables.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "archived_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "collection_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "created_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    },
+                    "database_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                    },
+                    "updated_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "id", "name", "collection_id", "database_id", "status", "created_at", "updated_at", "archived_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :collection_id -> <value must be an integer greater than zero.>, :database_id -> <value must be an integer greater than zero.>, :status -> <enum of :uninitialized, :pending, :ready>, :created_at -> <value must be a valid date/time/datetime>, :updated_at -> <value must be a valid date/time/datetime>, :archived_at -> <nullable anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{id}/unarchive",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{ws-id}" : {
+      "delete" : {
+        "description" : "Delete a workspace and all its contents, including mirrored entities.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "ok" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "ok" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:ok -> <must equal true>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/workspace/{ws-id}",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{ws-id}/external/transform" : {
+      "get" : {
+        "description" : "Get transforms that are external to the workspace, i.e. no matching workspace_transform row exists.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "transforms" : {
+                      "items" : {
+                        "properties" : {
+                          "checkout_disabled" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "source_type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "name", "source_type", "checkout_disabled" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "transforms" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:transforms -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :source_type -> <keyword>, :checkout_disabled -> <nullable string>}>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/{ws-id}/external/transform",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{ws-id}/graph" : {
+      "get" : {
+        "description" : "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "edges" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.graph-edge"
+                      },
+                      "type" : "array"
+                    },
+                    "nodes" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.graph-node"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "nodes", "edges" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:nodes -> <sequence of map where {:id -> <value must be an integer greater than zero., or string with length >= 1>, :type -> <enum of :input-table, :external-transform, :workspace-transform>, :dependents_count -> <map from <enum of :input-table, :external-transform, :workspace-transform> to <value must be an integer greater than zero.>>, :data -> <map>}>, :edges -> <sequence of map where {:from_entity_id -> <value must be an integer greater than zero., or string with length >= 1>, :from_entity_type -> <string>, :to_entity_id -> <value must be an integer greater than zero., or string with length >= 1>, :to_entity_type -> <string>}>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/workspace/{ws-id}/graph",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{ws-id}/merge" : {
+      "post" : {
+        "description" : "This will:\n   1. Update original transforms with workspace versions\n   2. Delete the workspace and clean up isolated resources\n   Returns a report of merged entities, or error in errors key.\n\n   Request body may include:\n   - commit-message: A description of what changes are being merged (optional, will be required in future)",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "commit-message" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "properties" : {
+                      "archived_at" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "errors" : {
+                        "items" : {
+                          "properties" : {
+                            "global_id" : {
+                              "oneOf" : [ {
+                                "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "op" : {
+                              "enum" : [ "create", "delete", "update", "noop" ],
+                              "type" : "string"
+                            },
+                            "ref_id" : {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                            }
+                          },
+                          "required" : [ "op", "ref_id" ],
+                          "type" : "object"
+                        },
+                        "type" : "array"
+                      },
+                      "merged" : {
+                        "properties" : {
+                          "transforms" : {
+                            "items" : {
+                              "properties" : {
+                                "global_id" : {
+                                  "oneOf" : [ {
+                                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                },
+                                "op" : {
+                                  "enum" : [ "create", "delete", "update", "noop" ],
+                                  "type" : "string"
+                                },
+                                "ref_id" : {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                                }
+                              },
+                              "required" : [ "op", "ref_id" ],
+                              "type" : "object"
+                            },
+                            "type" : "array"
+                          }
+                        },
+                        "required" : [ "transforms" ],
+                        "type" : "object"
+                      },
+                      "workspace" : {
+                        "properties" : {
+                          "id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "name" ],
+                        "type" : "object"
+                      }
+                    },
+                    "required" : [ "merged", "errors", "workspace", "archived_at" ],
+                    "type" : "object"
+                  }, {
+                    "type" : "string"
+                  } ]
+                }
+              }
+            },
+            "description" : "map where {:merged -> <map where {:transforms -> <sequence of map where {:op -> <enum of :create, :delete, :update, :noop>, :global_id (optional) -> <nullable value must be an integer greater than zero.>, :ref_id -> <string with length >= 1>}>}>, :errors -> <sequence of map where {:op -> <enum of :create, :delete, :update, :noop>, :global_id (optional) -> <nullable value must be an integer greater than zero.>, :ref_id -> <string with length >= 1>}>, :workspace -> <map where {:id -> <value must be an integer greater than zero.>, :name -> <string>}>, :archived_at -> <nullable anything>}, or string"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{ws-id}/merge",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{ws-id}/run" : {
+      "post" : {
+        "description" : "Execute all transforms in the workspace in dependency order.\n   Returns which transforms succeeded, failed, and were not run.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "stale_only" : {
+                    "anyOf" : [ {
+                      "const" : 1
+                    }, {
+                      "type" : "boolean"
+                    } ]
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "failed" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                      },
+                      "type" : "array"
+                    },
+                    "not_run" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                      },
+                      "type" : "array"
+                    },
+                    "succeeded" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "succeeded", "failed", "not_run" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:succeeded -> <sequence of string with length >= 1>, :failed -> <sequence of string with length >= 1>, :not_run -> <sequence of string with length >= 1>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{ws-id}/run",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{ws-id}/transform/validate/target" : {
+      "post" : {
+        "description" : "Validate the target table for a workspace transform",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "query",
+          "name" : "transform-id",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "db_id" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                  },
+                  "target" : {
+                    "properties" : {
+                      "database" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "schema" : {
+                        "type" : "string"
+                      },
+                      "type" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "type", "schema", "name" ],
+                    "type" : "object"
+                  }
+                },
+                "required" : [ "target" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "body" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "anyOf" : [ { }, { } ]
+                      } ]
+                    },
+                    "status" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "status", "body" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:status -> <integer>, :body -> <string, or function, or function>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{ws-id}/transform/validate/target",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{ws-id}/transform/{tx-id}" : {
+      "put" : {
+        "description" : "Update a transform in a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "type" : "string"
+                  },
+                  "source" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.transform-source"
+                  },
+                  "target" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.transform-target"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "archived_at" : { },
+                    "created_at" : { },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "global_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "last_run_at" : { },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "ref_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                    },
+                    "source" : {
+                      "properties" : { },
+                      "type" : "object"
+                    },
+                    "target" : {
+                      "properties" : { },
+                      "type" : "object"
+                    },
+                    "target_stale" : {
+                      "type" : "boolean"
+                    },
+                    "updated_at" : { },
+                    "workspace_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    }
+                  },
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/workspace/{ws-id}/transform/{tx-id}",
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
+    "/api/ee/workspace/{ws-id}/transform/{tx-id}/merge" : {
+      "post" : {
+        "description" : "Merge single transform from workspace back to the core. If workspace transform is archived\n  the corresponding core transform is deleted.\n\n   Request body may include:\n   - commit-message: A description of what changes are being merged (optional, will be required in future)",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "commit-message" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "global_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "message" : {
+                      "type" : "string"
+                    },
+                    "op" : {
+                      "enum" : [ "create", "delete", "update", "noop" ],
+                      "type" : "string"
+                    },
+                    "ref_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                    }
+                  },
+                  "required" : [ "op", "global_id", "ref_id" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:op -> <enum of :create, :delete, :update, :noop>, :global_id -> <nullable value must be an integer greater than zero.>, :ref_id -> <string with length >= 1>, :message (optional) -> <string>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/workspace/{ws-id}/transform/{tx-id}/merge",
+        "tags" : [ "/api/ee/workspace" ]
       }
     },
     "/api/eid-translation/translate" : {

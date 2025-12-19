@@ -19,7 +19,7 @@
    Transform B reads from `analytics.orders_summary`:
    ```
    {:ref_id \"brave-lion-g7h8\"
-    :source {:type \"query\" :query <SELECT * FROM analytics.orders_summary>}
+    :source {:type \"query\" :query \"SELECT * FROM analytics.orders_summary\"}
     :target {:database 1 :schema \"analytics\" :name \"orders_report\"}}
    ```
 
@@ -52,8 +52,6 @@
    | transform        | happy-dolphin-a1b2 | input          | 201          | A depends on external ORDERS |
    | transform        | brave-lion-g7h8    | output         | 101          | B depends on A's output      |"
   (:require
-   ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
-   #_{:clj-kondo/ignore [:metabase/modules]}
    [clojure.set :as set]
    [metabase-enterprise.workspaces.models.workspace-dependency]
    [metabase-enterprise.workspaces.models.workspace-input]
@@ -62,8 +60,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
-   ;; TODO (lbrdnk 2025/12/17): we should handle this resonably, probably using driver-api?
-   #_{:clj-kondo/ignore [:metabase/modules]}
+   ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
+   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -274,9 +272,16 @@
                     [:model/WorkspaceInput :id :db_id :schema :table :table_id]
                     :workspace_id workspace-id))
 
+(defn- normalize-input-schema
+  "Normalize an input's schema: replace nil with the driver's default schema.
+   This ensures consistent comparison with output schemas which are always explicit."
+  [default-schema input]
+  (update input :schema #(or % default-schema)))
+
 (defn- ensure-workspace-inputs!
   "Ensure all external inputs exist in workspace_input table.
-   Uses batch lookup to avoid N+1. Returns map of [db_id schema table] -> input_id."
+   Uses batch lookup to avoid N+1. Returns map of [db_id schema table] -> input_id.
+   Inputs should already have normalized schemas (nil replaced with driver default)."
   [workspace-id inputs existing-input-lookup]
   (let [{existing true new-inputs false}
         (group-by (fn [{:keys [db_id schema table]}]
@@ -376,12 +381,15 @@
       (let [{internal-inputs true external-inputs false} (group-by (fn [{:keys [db_id schema table]}]
                                                                      (contains? output-lookup [db_id schema table]))
                                                                    inputs)
-            input-id-lookup (ensure-workspace-inputs! workspace-id external-inputs existing-input-lookup)
+            default-schema (driver.sql/default-schema driver)
+            ;; Normalize external inputs so lookups use consistent schema keys
+            normalized-external-inputs (map (partial normalize-input-schema default-schema) external-inputs)
+            input-id-lookup (ensure-workspace-inputs! workspace-id normalized-external-inputs existing-input-lookup)
             new-dep-specs (concat
                            (for [{:keys [db_id schema table]} internal-inputs]
                              {:to_entity_type :output
                               :to_entity_id   (get output-lookup [db_id schema table])})
-                           (for [{:keys [db_id schema table]} external-inputs]
+                           (for [{:keys [db_id schema table]} normalized-external-inputs]
                              {:to_entity_type :input
                               :to_entity_id   (get input-id-lookup [db_id schema table])}))
             new-dep-specs-set (set new-dep-specs)

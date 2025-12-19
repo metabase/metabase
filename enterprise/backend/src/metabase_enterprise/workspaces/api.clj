@@ -10,6 +10,9 @@
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
+   [metabase-enterprise.workspaces.models.workspace-input-external]
+   [metabase-enterprise.workspaces.models.workspace-log]
+   [metabase-enterprise.workspaces.models.workspace-output-external]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.api.common :as api]
@@ -20,7 +23,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru deferred-tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -123,12 +126,14 @@
    ;; Future-proof with multi-db Workspaces, plus necessary to resolve table references when id is null.
    [:db_id ::ws.t/appdb-id]
    [:global [:map
+             ;; transform_id is nil for workspace outputs, int for external outputs
              [:transform_id [:maybe ::ws.t/appdb-id]]
              [:schema [:maybe :string]]
              [:table :string]
              [:table_id [:maybe ::ws.t/appdb-id]]]]
    [:isolated [:map
-               [:transform_id ::ws.t/ref-id]
+               ;; transform_id is ref_id (string) for workspace outputs, int for external outputs
+               [:transform_id [:or ::ws.t/ref-id ::ws.t/appdb-id]]
                [:schema :string]
                [:table :string]
                [:table_id [:maybe ::ws.t/appdb-id]]]]])
@@ -165,32 +170,56 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  (let [order-by        {:order-by [:db_id :global_schema :global_table]}
-        outputs         (t2/select [:model/WorkspaceOutput
-                                    :db_id :global_schema :global_table :global_table_id
-                                    :isolated_schema :isolated_table :isolated_table_id :ref_id]
-                                   :workspace_id id order-by)
-        raw-inputs      (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
-                                   :workspace_id id {:order-by [:db_id :schema :table]})
+  (let [order-by         {:order-by [:db_id :global_schema :global_table]}
+        outputs          (t2/select [:model/WorkspaceOutput
+                                     :db_id :global_schema :global_table :global_table_id
+                                     :isolated_schema :isolated_table :isolated_table_id :ref_id]
+                                    :workspace_id id order-by)
+        external-outputs (t2/select [:model/WorkspaceOutputExternal
+                                     :db_id :global_schema :global_table :global_table_id
+                                     :isolated_schema :isolated_table :isolated_table_id :transform_id]
+                                    :workspace_id id order-by)
+        all-outputs      (concat outputs external-outputs)
+        raw-inputs       (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
+                                    :workspace_id id {:order-by [:db_id :schema :table]})
+        external-inputs  (t2/select [:model/WorkspaceInputExternal :db_id :schema :table :table_id]
+                                    :workspace_id id {:order-by [:db_id :schema :table]})
+        all-raw-inputs   (concat raw-inputs external-inputs)
         ;; Some of our inputs may be shadowed by the outputs of other transforms. We only want external inputs.
-        shadowed?       (into #{} (map (juxt :db_id :global_schema :global_table)) outputs)
-        inputs          (remove (comp shadowed? (juxt :db_id :schema :table)) raw-inputs)
+        shadowed?        (into #{} (map (juxt :db_id :global_schema :global_table)) all-outputs)
+        inputs           (remove (comp shadowed? (juxt :db_id :schema :table)) all-raw-inputs)
         ;; Build a map of [d s t] => id for every table that has been synced since the output row was written.
-        fallback-map    (merge
-                         (table-ids-fallbacks :global_schema :global_table :global_table_id outputs)
-                         (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id outputs))]
-    {:inputs  inputs
-     :outputs (for [{:keys [ref_id db_id global_schema global_table global_table_id
-                            isolated_schema isolated_table isolated_table_id]} outputs]
-                {:db_id    db_id
-                 :global   {:transform_id nil
-                            :schema       global_schema
-                            :table        global_table
-                            :table_id     (or global_table_id (get fallback-map [db_id global_schema global_table]))}
-                 :isolated {:transform_id ref_id
-                            :schema       isolated_schema
-                            :table        isolated_table
-                            :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})}))
+        fallback-map     (merge
+                          (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
+                          (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))]
+    {:inputs  (sort-by (juxt :db_id :schema :table) inputs)
+     :outputs (sort-by
+               (juxt :db_id (comp (juxt :schema :table) :global))
+               (concat
+                ;; Workspace transform outputs
+                (for [{:keys [ref_id db_id global_schema global_table global_table_id
+                              isolated_schema isolated_table isolated_table_id]} outputs]
+                  {:db_id    db_id
+                   :global   {:transform_id nil
+                              :schema       global_schema
+                              :table        global_table
+                              :table_id     (or global_table_id (get fallback-map [db_id global_schema global_table]))}
+                   :isolated {:transform_id ref_id
+                              :schema       isolated_schema
+                              :table        isolated_table
+                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})
+                ;; External transform outputs
+                (for [{:keys [transform_id db_id global_schema global_table global_table_id
+                              isolated_schema isolated_table isolated_table_id]} external-outputs]
+                  {:db_id    db_id
+                   :global   {:transform_id transform_id
+                              :schema       global_schema
+                              :table        global_table
+                              :table_id     (or global_table_id (get fallback-map [db_id global_schema global_table]))}
+                   :isolated {:transform_id transform_id
+                              :schema       isolated_schema
+                              :table        isolated_table
+                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})))}))
 
 (api.macros/defendpoint :get "/:id" :- Workspace
   "Get a single workspace by ID"

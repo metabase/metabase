@@ -2243,6 +2243,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-27T10:00:00
       author: christruter
+      validCheckSum: ANY
       comment: Add collection_id column to transform table
       validCheckSum: ANY
       changes:
@@ -2254,6 +2255,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-27T10:00:01
       author: christruter
+      validCheckSum: ANY
       comment: Add index on transform.collection_id
       validCheckSum: ANY
       changes:
@@ -2265,6 +2267,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-27T10:00:02
       author: christruter
+      validCheckSum: ANY
       comment: Add foreign key constraint from transform.collection_id to collection
       validCheckSum: ANY
       changes:
@@ -4027,6 +4030,342 @@ databaseChangeLog:
                   remarks: Workspace containing this table
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:00
+      author: christruter
+      comment: Create workspace_output_external table for tracking outputs of enclosed external transforms
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: workspace_output_external
+      changes:
+        - createTable:
+            tableName: workspace_output_external
+            remarks: Output tables produced by external transforms enclosed in a workspace
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: FK to transform (the external transform)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  remarks: Database where the output table is created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: global_schema
+                  type: varchar(254)
+                  remarks: Schema of the original output table
+                  constraints:
+                    nullable: true
+              - column:
+                  name: global_table
+                  type: varchar(254)
+                  remarks: Name of the original output table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: global_table_id
+                  type: int
+                  remarks: FK to metabase_table for the global output table
+                  constraints:
+                    nullable: true
+              - column:
+                  name: isolated_schema
+                  type: varchar(254)
+                  remarks: Schema name in the isolated workspace namespace
+                  constraints:
+                    nullable: true
+              - column:
+                  name: isolated_table
+                  type: varchar(254)
+                  remarks: Table name in the isolated workspace namespace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: isolated_table_id
+                  type: int
+                  remarks: FK to metabase_table for the isolated output table
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the output was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the output was last updated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_output_external
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:01
+      author: christruter
+      comment: Add index on workspace_output_external.workspace_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_output_external_workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:02
+      author: christruter
+      comment: Add index on workspace_output_external.transform_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_output_external_transform_id
+      changes:
+        - createIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_transform_id
+            columns:
+              - column:
+                  name: transform_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_transform_id
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:03
+      author: christruter
+      comment: Add foreign key constraint from workspace_output_external.workspace_id to workspace
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_output_external_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_output_external_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            constraintName: fk_workspace_output_external_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:04
+      author: christruter
+      comment: Add foreign key constraint from workspace_output_external.transform_id to transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_output_external_transform_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            baseColumnNames: transform_id
+            constraintName: fk_workspace_output_external_transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            constraintName: fk_workspace_output_external_transform_id
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:05
+      author: christruter
+      comment: Add unique constraint on workspace_output_external (workspace_id, transform_id)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: workspace_output_external
+                constraintName: uq_workspace_output_external_workspace_transform
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_output_external
+            columnNames: workspace_id, transform_id
+            constraintName: uq_workspace_output_external_workspace_transform
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_output_external
+            constraintName: uq_workspace_output_external_workspace_transform
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:06
+      author: christruter
+      comment: Create workspace_input_external table for tracking inputs of enclosed external transforms
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: workspace_input_external
+      changes:
+        - createTable:
+            tableName: workspace_input_external
+            remarks: External tables consumed by external transforms enclosed in a workspace (deduplicated per workspace)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  remarks: Database containing the source table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  remarks: Schema of the source table (nullable for DBs without schemas)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254)
+                  remarks: Name of the source table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: FK to metabase_table if table exists and is synced
+                  constraints:
+                    nullable: true
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  remarks: Whether read access has been granted to the workspace user
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the input was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the input was last updated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_input_external
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:07
+      author: christruter
+      comment: Add index on workspace_input_external.workspace_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_input_external_workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_input_external
+            indexName: idx_workspace_input_external_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_input_external
+            indexName: idx_workspace_input_external_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:08
+      author: christruter
+      comment: Add foreign key constraint from workspace_input_external.workspace_id to workspace
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_external_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input_external
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_input_external_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_input_external
+            constraintName: fk_workspace_input_external_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-19T10:00:09
+      author: christruter
+      comment: Add unique constraint on workspace_input_external (workspace_id, db_id, schema, table)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: workspace_input_external
+                constraintName: uq_workspace_input_external_logical_table
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_input_external
+            columnNames: workspace_id, db_id, schema, table
+            constraintName: uq_workspace_input_external_logical_table
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_input_external
+            constraintName: uq_workspace_input_external_logical_table
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

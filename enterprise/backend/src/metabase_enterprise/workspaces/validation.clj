@@ -77,14 +77,23 @@
 
 ;; TODO we could join these extra fields onto the graph before calling into this namespace, and save coupling
 (defn- workspace-outputs
-  "Get all workspace outputs with their global and isolated table info."
+  "Get all workspace outputs with their global and isolated table info.
+   Includes both workspace transform outputs and enclosed external transform outputs."
   [workspace-id]
-  ;; TODO this is currently incomplete - it doesn't include the outputs for enclosed transforms
-  (t2/select [:model/WorkspaceOutput
-              :id :ref_id :db_id
-              :global_schema :global_table :global_table_id
-              :isolated_schema :isolated_table :isolated_table_id]
-             :workspace_id workspace-id))
+  (let [ws-outputs  (t2/select [:model/WorkspaceOutput
+                                :id :ref_id :db_id
+                                :global_schema :global_table :global_table_id
+                                :isolated_schema :isolated_table :isolated_table_id]
+                               :workspace_id workspace-id)
+        ;; External outputs use transform_id (int) instead of ref_id (string)
+        ;; Map transform_id to ref_id for compatibility with the rest of the validation code
+        ext-outputs (map #(assoc % :ref_id (:transform_id %) :external? true)
+                         (t2/select [:model/WorkspaceOutputExternal
+                                     :id :transform_id :db_id
+                                     :global_schema :global_table :global_table_id
+                                     :isolated_schema :isolated_table :isolated_table_id]
+                                    :workspace_id workspace-id))]
+    (concat ws-outputs ext-outputs)))
 
 (defn- ids-for-type [entities desired-node-type]
   (for [{:keys [node-type id]} entities, :when (= node-type desired-node-type)] id))
@@ -182,7 +191,9 @@
    Returns a sequence of problem maps."
   [output checked-out-ids enclosed-ids internal-dependents-map]
   (let [{:keys [ref_id db_id global_schema global_table global_table_id
-                isolated_table_id]} output
+                isolated_table_id external?]} output
+        ;; For external outputs, ref_id is actually the transform_id (an int)
+        transform-type           (if external? :external-transform :workspace-transform)
         external-transforms      (external-transform-dependents global_table_id checked-out-ids enclosed-ids)
         has-external-dependents? (seq external-transforms)
         internal-dependents      (get internal-dependents-map ref_id)
@@ -197,7 +208,7 @@
         has-external-dependents?
         [(make-problem :external-downstream/not-run
                        {:output     table-coord
-                        :transform  {:type :workspace-transform
+                        :transform  {:type transform-type
                                      :id   ref_id}
                         :dependents (mapv (fn [{:keys [id name]}]
                                             {:type :external-transform
@@ -208,7 +219,7 @@
         has-internal-dependents?
         [(make-problem :internal-downstream/not-run
                        {:output     table-coord
-                        :transform  {:type :workspace-transform
+                        :transform  {:type transform-type
                                      :id   ref_id}
                         :dependents (mapv (fn [dep-ref-id]
                                             {:type :workspace-transform
@@ -218,7 +229,7 @@
         :else
         [(make-problem :unused/not-run
                        {:output    table-coord
-                        :transform {:type :workspace-transform
+                        :transform {:type transform-type
                                     :id   ref_id}})])
 
       ;; Case 2: Isolated table exists - check for field breakages
