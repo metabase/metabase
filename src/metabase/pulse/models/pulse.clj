@@ -324,7 +324,10 @@
   [notification :- (ms/InstanceOf :model/Pulse)]
   (-> notification
       (assoc :card (first (:cards notification)))
-      (dissoc :cards)))
+      (dissoc :cards)
+      ;; TODO (Kelvin 2025-12-19) Remove this once we support alerts on modular embedding,
+      ;; as we only currently have `creation_context` column on Subscriptions.
+      (dissoc :creation_context)))
 
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
