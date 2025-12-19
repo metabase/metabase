@@ -562,3 +562,21 @@
         (is (= coll1-id (-> hydrated first :collection :id)))
         (is (= coll2-id (-> hydrated second :collection :id)))
         (is (nil? (-> hydrated (nth 2) :collection)))))))
+
+(deftest serdes-descendants-includes-fields-and-segments-test
+  (testing "Table descendants includes Fields and Segments"
+    (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
+                   :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
+                   :model/Field    {field1-id :id}  {:name "Field 1" :table_id table-id :base_type :type/Integer}
+                   :model/Field    {field2-id :id}  {:name "Field 2" :table_id table-id :base_type :type/Text}
+                   :model/Segment  {segment-id :id} {:name "Test Segment" :table_id table-id :definition {}}]
+      (let [descendants (serdes/descendants "Table" table-id {})]
+        (testing "Fields are included"
+          (is (contains? descendants ["Field" field1-id]))
+          (is (contains? descendants ["Field" field2-id])))
+        (testing "Segments are included"
+          (is (contains? descendants ["Segment" segment-id]))))))
+  (testing "Table with no fields or segments returns empty map"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "Test DB"}
+                   :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
+      (is (= {} (serdes/descendants "Table" table-id {}))))))
