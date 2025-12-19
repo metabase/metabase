@@ -216,6 +216,19 @@
         (str/starts-with? stn "mediumtext") :type/Text
         (str/starts-with? stn "longtext")   :type/Text
 
+        ;; Iceberg table types - https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+        (= stn "string")                    :type/Text
+        (= stn "boolean")                   :type/Boolean
+        (= stn "long")                      :type/BigInteger
+        (str/starts-with? stn "decimal(")   :type/Decimal
+        (= stn "binary")                    :type/*
+        (= stn "date")                      :type/Date
+        (= stn "timestamp")                 :type/DateTime
+        (= stn "timestamptz")               :type/DateTimeWithTZ
+
+        ;; MySQL federated table enum types
+        (str/starts-with? stn "enum(")      :type/Text
+
         (= stn "datetime")                  :type/DateTime
         (= stn "year")                      :type/Integer))))
 
