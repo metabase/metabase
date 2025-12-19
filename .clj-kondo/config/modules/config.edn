@@ -498,8 +498,7 @@
    :api  #{metabase.documents.api
            metabase.documents.core
            metabase.documents.init
-           metabase.documents.prose-mirror
-           metabase.documents.schema}
+           metabase.documents.prose-mirror}
    :uses #{activity-feed
            api
            app-db
@@ -834,8 +833,7 @@
 
   native-query-snippets
   {:team "Querying"
-   :api  #{metabase.native-query-snippets.api
-           metabase.native-query-snippets.core
+   :api  #{metabase.native-query-snippets.core
            metabase.native-query-snippets.schema}
    :uses #{api
            collections
@@ -1600,7 +1598,6 @@
            metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
-           metabase.warehouse-schema.schema
            metabase.warehouse-schema.table}
    :uses #{analyze
            api
@@ -1955,7 +1952,6 @@
            app-db
            collections
            config
-           dashboards
            documents
            driver
            events
@@ -1968,14 +1964,10 @@
            premium-features
            queries
            query-processor
-           request
            revisions
-           segments
            settings
            task
            util
-           warehouse-schema
-           enterprise/sandbox
            enterprise/transforms}}
 
   enterprise/email
@@ -2134,8 +2126,7 @@
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
-           metabase-enterprise.sandbox.api.util
-           metabase-enterprise.sandbox.schema}
+           metabase-enterprise.sandbox.api.util}
    :uses #{api
            app-db
            audit-app
