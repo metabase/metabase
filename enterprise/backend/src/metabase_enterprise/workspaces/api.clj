@@ -194,7 +194,7 @@
                           (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))]
     {:inputs  (sort-by (juxt :db_id :schema :table) inputs)
      :outputs (sort-by
-               (juxt :db (comp (juxt :schema :table) :global))
+               (juxt :db_id (comp (juxt :schema :table) :global))
                (concat
                 ;; Workspace transform outputs
                 (for [{:keys [ref_id db_id global_schema global_table global_table_id
