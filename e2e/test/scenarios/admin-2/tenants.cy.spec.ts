@@ -135,34 +135,64 @@ describe("Tenants - management", () => {
       cy.button("Apply").click();
     });
 
-    cy.log("should show toast hint message about tenant collections");
-    cy.findAllByText(
-      "You can create tenant collections from the main Metabase navigation",
-    )
-      .first()
+    cy.findByRole("link", { name: /Tenant users/ }).should("exist");
+    cy.findByRole("link", { name: /Tenants/ }).should("exist");
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.log("after enabling multi-tenancy, it takes you to the tenants page");
+      cy.findByText("Tenants", { timeout: 10_000 }).should("be.visible");
+
+      cy.findByText(/Create your first tenant to start adding/).should(
+        "be.visible",
+      );
+    });
+
+    // Onboarding: create the first tenant
+    cy.findByRole("button", { name: "Create your first tenant" })
+      .should("be.visible")
+      .click();
+
+    H.modal().within(() => {
+      cy.findByText("Set up your first tenant").should("be.visible");
+
+      cy.findByRole("textbox", { name: "Give this tenant a name" }).type(
+        "Parrot",
+      );
+
+      cy.log("slug should be pre-filled");
+      cy.findByRole("textbox", { name: "Slug for this tenant" }).should(
+        "have.value",
+        "parrot",
+      );
+
+      cy.button("Create tenant").click();
+    });
+
+    H.undoToastList()
+      .contains("Tenant creation successful")
       .should("be.visible");
 
-    cy.findByRole("link", { name: /Tenant users/ }).should("exist");
-    cy.findByRole("link", { name: /Tenants/ }).click();
-
-    // Create some tenants
     cy.findByRole("button", { name: "New tenant" }).click();
+
     H.modal().within(() => {
-      cy.findByRole("textbox", { name: "Display name" }).type("Parrot");
-      cy.findByRole("textbox", { name: "Slug" }).should("have.value", "parrot");
-      cy.button("Create").click();
+      cy.findByRole("textbox", { name: "Give this tenant a name" }).type(
+        "Eagle",
+      );
+
+      cy.button("Create tenant").click();
     });
 
-    cy.findByRole("button", { name: "New tenant" }).click();
-    H.modal().within(() => {
-      cy.findByRole("textbox", { name: "Display name" }).type("Eagle");
-      cy.button("Create").click();
-    });
+    H.undoToastList()
+      .contains("Tenant creation successful")
+      .should("be.visible");
 
     cy.findByRole("button", { name: "New tenant" }).click();
+
     H.modal().within(() => {
-      cy.findByRole("textbox", { name: "Display name" }).type("Turkey");
-      cy.button("Create").click();
+      cy.findByRole("textbox", { name: "Give this tenant a name" }).type(
+        "Turkey",
+      );
+      cy.button("Create tenant").click();
     });
 
     cy.findByTestId("admin-content-table").within(() => {
@@ -179,11 +209,12 @@ describe("Tenants - management", () => {
     H.popover().findByText("Edit tenant").click();
 
     H.modal().within(() => {
-      cy.findByRole("textbox", { name: "Display name" })
+      cy.findByRole("textbox", { name: "Give this tenant a name" })
         .should("have.value", "Turkey")
         .clear()
         .type("Chicken");
-      cy.findByRole("textbox", { name: "Slug" })
+
+      cy.findByRole("textbox", { name: "Slug for this tenant" })
         .should("have.value", "turkey")
         .should("be.disabled");
 
