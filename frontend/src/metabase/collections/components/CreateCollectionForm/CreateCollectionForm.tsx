@@ -45,6 +45,7 @@ export interface CreateCollectionFormOwnProps {
   onCancel?: () => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   showCollectionPicker?: boolean;
+  showAuthorityLevelPicker?: boolean;
 }
 
 interface CreateCollectionFormStateProps {
@@ -83,6 +84,7 @@ function CreateCollectionForm({
   onCancel,
   filterPersonalCollections,
   showCollectionPicker = true,
+  showAuthorityLevelPicker = true,
 }: Props) {
   const initialValues = useMemo(
     () => ({
@@ -125,7 +127,7 @@ function CreateCollectionForm({
               savingModel="collection"
             />
           )}
-          <FormAuthorityLevelField />
+          {showAuthorityLevelPicker && <FormAuthorityLevelField />}
           <FormFooter>
             <FormErrorMessage inline />
             {!!onCancel && (

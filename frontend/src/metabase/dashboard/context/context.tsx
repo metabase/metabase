@@ -20,6 +20,7 @@ import type {
   DashboardId,
   ParameterValuesMap,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -51,7 +52,7 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  token?: string | null;
+  token?: EntityToken | null;
   parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
@@ -214,7 +215,7 @@ const DashboardContextProviderInner = forwardRef(
           token,
         }: {
           dashboardId: DashboardId;
-          token: string | null | undefined;
+          token: EntityToken | null | undefined;
         },
         option: FetchOption = {},
       ) => {

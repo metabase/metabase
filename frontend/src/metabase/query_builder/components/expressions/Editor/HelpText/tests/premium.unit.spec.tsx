@@ -5,7 +5,7 @@ import { setup as baseSetup } from "./setup";
 
 async function setup(opts: SetupOpts) {
   await baseSetup({
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["whitelabel"],
     tokenFeatures: { whitelabel: true },
     ...opts,
   });

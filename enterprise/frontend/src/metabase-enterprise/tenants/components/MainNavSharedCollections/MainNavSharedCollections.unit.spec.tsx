@@ -40,9 +40,15 @@ const setup = ({
     }),
   });
 
-  renderWithProviders(<MainNavSharedCollections />, {
-    storeInitialState: createMockState({ settings, currentUser }),
-  });
+  renderWithProviders(
+    <MainNavSharedCollections
+      canCreateSharedCollection={canWriteToSharedCollectionRoot}
+      sharedTenantCollections={tenantCollections}
+    />,
+    {
+      storeInitialState: createMockState({ settings, currentUser }),
+    },
+  );
 };
 
 describe("MainNavSharedCollections > create shared tenant collection button", () => {
@@ -60,6 +66,25 @@ describe("MainNavSharedCollections > create shared tenant collection button", ()
     expect(
       screen.queryByRole("button", { name: /add/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("MainNavSharedCollections > new shared collection modal", () => {
+  it("hides the authority level picker when creating a shared tenant collection", async () => {
+    setup({ isAdmin: true, canWriteToSharedCollectionRoot: true });
+    await screen.findByText("External collections");
+
+    const addButton = screen.getByRole("button", { name: /add/i });
+    addButton.click();
+
+    expect(
+      await screen.findByText("New shared collection"),
+    ).toBeInTheDocument();
+
+    // Assert that the Collection type field is not present
+    expect(screen.queryByText(/Collection type/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Regular")).not.toBeInTheDocument();
+    expect(screen.queryByText("Official")).not.toBeInTheDocument();
   });
 });
 
@@ -112,9 +137,15 @@ describe("MainNavSharedCollections > section visibility", () => {
       return 404;
     });
 
-    renderWithProviders(<MainNavSharedCollections />, {
-      storeInitialState: createMockState({ settings, currentUser }),
-    });
+    renderWithProviders(
+      <MainNavSharedCollections
+        canCreateSharedCollection={false}
+        sharedTenantCollections={[]}
+      />,
+      {
+        storeInitialState: createMockState({ settings, currentUser }),
+      },
+    );
 
     expect(screen.queryByText("External collections")).not.toBeInTheDocument();
   });
