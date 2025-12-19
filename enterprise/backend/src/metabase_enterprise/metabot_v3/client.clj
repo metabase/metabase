@@ -83,13 +83,13 @@
 
 (defn- check-response!
   "Returns response body on success (200 or 202), throws on failure."
-  [response request-body]
+  [response request]
   (if (#{200 202} (:status response))
     (:body response)
     (throw (ex-info (format "Unexpected status code: %d %s"
                             (:status response) (:reason-phrase response))
-                    {:request  request-body
-                     :response response}))))
+                    {:request  (dissoc request :headers)
+                     :response (dissoc response :headers)}))))
 
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
