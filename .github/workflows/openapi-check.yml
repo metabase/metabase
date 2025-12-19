@@ -13,6 +13,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -21,5 +24,9 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Generate version.properties
         run: ./bin/build.sh :steps [:version]
+      - name: Check and commit OpenAPI changes
+        if: github.event_name == 'pull_request'
+        run: ./bin/openapi-check.sh --auto-commit
       - name: Check OpenAPI specs are up to date
+        if: github.event_name == 'push'
         run: ./bin/openapi-check.sh
