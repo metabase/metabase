@@ -47,7 +47,6 @@ const createQueryWithBreakout = () => {
 
 function setup(opts: SetupOpts = {}) {
   return baseSetup({
-    hasEnterprisePlugins: false,
     ...opts,
   });
 }

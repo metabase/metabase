@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
@@ -13,7 +13,7 @@ interface SetupOpts {
   initialRoute?: string;
   isPasswordLoginEnabled?: boolean;
   isGoogleAuthEnabled?: boolean;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
@@ -21,7 +21,7 @@ export const setup = ({
   initialRoute = "/auth/login",
   isPasswordLoginEnabled = true,
   isGoogleAuthEnabled = false,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
   const state = createMockState({
@@ -32,8 +32,8 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(

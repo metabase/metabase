@@ -1502,7 +1502,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.popover().findByText("Custom Expression").click();
 
     cy.log("Close summarize modal by clicking outside");
-    cy.button("View SQL").click();
+    cy.findByLabelText("View SQL").click();
 
     H.modal().should("not.exist");
     cy.get("popover").should("not.exist");
