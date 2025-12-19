@@ -11,9 +11,6 @@ const loginWithJWT = (user: TenantUser, returnTo: string = "/") => {
   );
 };
 
-// !TODO: the backend fix for this has not merged yet, we're assessing the old name for now
-const NAME_OF_COLLECTION_FROM_BE = "Tenant Collection: Gizmos";
-
 interface TenantAttributes {
   CAPS?: string;
   color?: string;
@@ -119,10 +116,7 @@ describe("scenarios > sidecar > tenant users", () => {
     cy.url().should("include", "/collection/");
 
     // Check the collection name on the collection page, it should be read only
-    cy.findByTestId("collection-name-heading").should(
-      "have.text",
-      NAME_OF_COLLECTION_FROM_BE,
-    );
+    cy.findByTestId("collection-name-heading").should("have.text", "Our data");
     cy.findByTestId("collection-name-heading").should("be.disabled");
 
     // Check the save modal
@@ -134,7 +128,7 @@ describe("scenarios > sidecar > tenant users", () => {
     // Check the entity picker modal
     H.modal()
       .findByLabelText(/Where do you want to save this/)
-      .should("have.text", NAME_OF_COLLECTION_FROM_BE)
+      .should("have.text", "Our data")
       .click();
 
     H.entityPickerModal().findByText("Our data").should("be.visible");
