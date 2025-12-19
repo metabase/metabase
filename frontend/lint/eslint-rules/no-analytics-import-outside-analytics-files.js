@@ -7,7 +7,7 @@
 //------------------------------------------------------------------------------
 
 const ERROR_MESSAGE =
-  'Imports from "metabase/lib/analytics" are only allowed in files named "analytics.ts", "analytics.tsx", "analytics.js", or "analytics.jsx". Please move this import to an analytics file.';
+  'Imports from "metabase/lib/analytics" are only allowed in files named "analytics", Please move this import to an analytics file.';
 
 // eslint-disable-next-line import/no-commonjs
 module.exports = {
@@ -26,10 +26,10 @@ module.exports = {
   },
   create(context) {
     const filename = context.getFilename();
-    
+
     // Get the base filename without path
     const baseFilename = filename.split("/").pop() || "";
-    
+
     // Check if the file is an analytics file
     const isAnalyticsFile = /^analytics\.(ts|tsx|js|jsx)$/.test(baseFilename);
 
