@@ -4745,6 +4745,344 @@
         "required" : [ "moved" ],
         "type" : "object"
       },
+      "metabase.collections.schema.CardType" : {
+        "enum" : [ "model", "question", "metric" ],
+        "type" : "string"
+      },
+      "metabase.collections.schema.Collection" : {
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "below" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+            },
+            "type" : "array"
+          },
+          "can_delete" : {
+            "type" : "boolean"
+          },
+          "can_restore" : {
+            "type" : "boolean"
+          },
+          "can_write" : {
+            "type" : "boolean"
+          },
+          "children" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.Collection"
+            },
+            "type" : "array"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "effective_ancestors" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "effective_location" : {
+            "type" : "string"
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "git_sync_enabled" : {
+            "type" : "boolean"
+          },
+          "here" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            } ]
+          },
+          "is_personal" : {
+            "type" : "boolean"
+          },
+          "is_remote_synced" : {
+            "type" : "boolean"
+          },
+          "is_sample" : {
+            "type" : "boolean"
+          },
+          "location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "parent_id" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "description" : "value must be an integer greater than zero.",
+                "minimum" : 1,
+                "type" : "integer"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "personal_owner_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.collections.schema.CollectionType"
+          }
+        },
+        "required" : [ "id", "name", "description", "can_write", "can_restore", "can_delete", "archived", "location" ],
+        "type" : "object"
+      },
+      "metabase.collections.schema.CollectionItem" : {
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "based_on_upload" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "minimum" : 1,
+                "type" : "integer"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "below" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+            },
+            "type" : "array"
+          },
+          "can_delete" : {
+            "type" : "boolean"
+          },
+          "can_restore" : {
+            "type" : "boolean"
+          },
+          "can_write" : {
+            "type" : "boolean"
+          },
+          "collection" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.collections.schema.Collection"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "minimum" : 1,
+                "type" : "integer"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_position" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_preview" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "copy" : {
+            "type" : "boolean"
+          },
+          "dashboard_count" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "type" : "string"
+          },
+          "effective_location" : {
+            "type" : "string"
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "fully_parameterized" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "here" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "last-edit-info" : {
+            "$ref" : "#/components/schemas/metabase.collections.schema.LastEditInfo"
+          },
+          "location" : {
+            "type" : "string"
+          },
+          "model" : {
+            "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+          },
+          "moderated_status" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "personal_owner_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionType"
+            }, {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CardType"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "description", "archived" ],
+        "type" : "object"
+      },
+      "metabase.collections.schema.CollectionItemModel" : {
+        "enum" : [ "card", "dataset", "metric", "dashboard", "snippet", "collection", "indexed-entity", "indexed-entity", "document", "table" ],
+        "type" : "string"
+      },
+      "metabase.collections.schema.CollectionType" : {
+        "enum" : [ "instance-analytics", "trash", "remote-synced", "library", "library-models", "library-metrics" ],
+        "type" : "string"
+      },
+      "metabase.collections.schema.LastEditInfo" : {
+        "properties" : {
+          "email" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "first_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "timestamp" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name", "timestamp" ],
+        "type" : "object"
+      },
       "metabase.legacy-mbql.schema.!=" : {
         "allOf" : [ ],
         "description" : "schema for a valid MBQL 4 :!= clause"
@@ -21101,11 +21439,28 @@
     },
     "/api/ee/library/" : {
       "get" : {
-        "description" : "Get the Library. If no library exists, it doesn't fail but returns an empty response.",
+        "description" : "Get the Library. If no library exists, it doesn't fail but returns an empty response",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItem"
+                  }, {
+                    "properties" : {
+                      "data" : {
+                        "type" : "null"
+                      }
+                    },
+                    "required" : [ "data" ],
+                    "type" : "object"
+                  } ]
+                }
+              }
+            },
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :entity_id (optional) -> <string>, :model (optional) -> <enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :name -> <string>, :description -> <nullable string>, :archived -> <boolean>, :copy (optional) -> <boolean>, :collection_position (optional) -> <nullable value must be an integer greater than zero.>, :collection_preview (optional) -> <nullable boolean>, :fully_parameterized (optional) -> <nullable boolean>, :based_on_upload (optional) -> <nullable value must be an integer greater than zero., or string>, :collection (optional) -> <nullable map where {:id -> <string, or value must be an integer greater than zero.>, :name -> <string>, :slug (optional) -> <string>, :entity_id (optional) -> <string>, :description -> <nullable string>, :can_write -> <boolean>, :can_restore -> <boolean>, :can_delete -> <boolean>, :archived -> <boolean>, :children (optional) -> <sequence of map where {:id -> <string, or value must be an integer greater than zero.>, :name -> <string>, :slug (optional) -> <string>, :entity_id (optional) -> <string>, :description -> <nullable string>, :can_write -> <boolean>, :can_restore -> <boolean>, :can_delete -> <boolean>, :archived -> <boolean>, :children (optional) -> <sequence of recursive :metabase.collections.schema/Collection>, :authority_level (optional) -> <nullable string>, :type (optional) -> <enum of instance-analytics, trash, remote-synced, library, library-models, library-metrics>, :is_remote_synced (optional) -> <boolean>, :parent_id (optional) -> <nullable string, or value must be an integer greater than zero.>, :personal_owner_id (optional) -> <value must be an integer greater than zero.>, :is_personal (optional) -> <boolean>, :is_sample (optional) -> <boolean>, :location -> <nullable string>, :effective_location (optional) -> <string>, :effective_ancestors (optional) -> <map>, :here (optional) -> <set of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :below (optional) -> <sequence of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :git_sync_enabled (optional) -> <boolean>}>, :authority_level (optional) -> <nullable string>, :type (optional) -> <enum of instance-analytics, trash, remote-synced, library, library-models, library-metrics>, :is_remote_synced (optional) -> <boolean>, :parent_id (optional) -> <nullable string, or value must be an integer greater than zero.>, :personal_owner_id (optional) -> <value must be an integer greater than zero.>, :is_personal (optional) -> <boolean>, :is_sample (optional) -> <boolean>, :location -> <nullable string>, :effective_location (optional) -> <string>, :effective_ancestors (optional) -> <map>, :here (optional) -> <set of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :below (optional) -> <sequence of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :git_sync_enabled (optional) -> <boolean>}>, :collection_id (optional) -> <nullable value must be an integer greater than zero., or string>, :display (optional) -> <string>, :personal_owner_id (optional) -> <nullable value must be an integer greater than zero.>, :database_id (optional) -> <nullable value must be an integer greater than zero.>, :moderated_status (optional) -> <string>, :type (optional) -> <enum of instance-analytics, trash, remote-synced, library, library-models, library-metrics, or enum of model, question, metric>, :here (optional) -> <set of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :below (optional) -> <sequence of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :can_write (optional) -> <boolean>, :can_restore (optional) -> <boolean>, :can_delete (optional) -> <boolean>, :last-edit-info (optional) -> <map where {:id -> <nullable value must be an integer greater than zero.>, :email -> <nullable string>, :first_name -> <nullable string>, :last_name -> <nullable string>, :timestamp -> <nullable string>}>, :location (optional) -> <string>, :effective_location (optional) -> <string>, :authority_level (optional) -> <nullable string>, :dashboard_count (optional) -> <nullable value must be an integer greater than zero.>}, or map where {:data -> <null>}"
           },
           "4XX" : {
             "description" : "Client error response"
