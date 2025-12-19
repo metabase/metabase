@@ -220,6 +220,12 @@ jobs:
       - name: Log Docker disk usage 2
         run: docker system df
 
+      - name: Docker prune images
+        run: docker image prune
+
+      - name: Log Docker disk usage 3
+        run: docker system df
+
       - name: Log free disk space 6
         run: df -h /
 
