@@ -7,11 +7,9 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
-   [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.api.common :as api]
@@ -765,14 +763,20 @@
   "This will:
    1. Update original transforms with workspace versions
    2. Delete the workspace and clean up isolated resources
-   Returns a report of merged entities, or error in errors key."
+   Returns a report of merged entities, or error in errors key.
+
+   Request body may include:
+   - commit-message: A description of what changes are being merged (optional, will be required in future)"
   [{:keys [ws-id] :as _query-params} :- [:map [:ws-id ::ws.t/appdb-id]]
-   _body-params]
-  (let [ws               (u/prog1 (t2/select-one :model/Workspace :id ws-id)
+   _query-params
+   {:keys [commit-message]
+    :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
+                                                                                                 [:commit-message {:optional true} [:string {:min 1}]]]]
+  (let [ws               (u/prog1 (t2/select-one [:model/Workspace :id :name :archived_at] :id ws-id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged
-                errors]} (-> (ws.merge/merge-workspace! ws-id)
+                errors]} (-> (ws.merge/merge-workspace! ws api/*current-user-id* commit-message)
                              (update :errors
                                      (partial mapv #(-> %
                                                         (update :error (fn [e] (.getMessage ^Throwable e)))
@@ -796,14 +800,30 @@
       [:ref_id ::ws.t/ref-id]
       [:message {:optional true} :string]]
   "Merge single transform from workspace back to the core. If workspace transform is archived
-  the corresponding core transform is deleted."
+  the corresponding core transform is deleted.
+
+   Request body may include:
+   - commit-message: A description of what changes are being merged (optional, will be required in future)"
   [{:keys [ws-id tx-id] :as _query-params} :- [:map
                                                [:ws-id ::ws.t/appdb-id]
                                                [:tx-id ::ws.t/ref-id]]
-   _body-params]
-  (let [ws-transform (u/prog1 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id)
-                       (api/check-404 <>))
-        {:keys [error] :as result} (ws.merge/merge-transform! ws-transform)]
+   _query-params
+   {:keys [commit-message]
+    :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
+                                                                                                 [:commit-message {:optional true} [:string {:min 1}]]]]
+  (let [ws              (api/check-404 (t2/select-one [:model/Workspace :id :name] :id ws-id))
+        ws-transform    (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
+        ws-merge-id     (t2/insert-returning-pk!
+                         :model/WorkspaceMerge
+                         {:workspace_id   (:id ws)
+                          :workspace_name (:name ws)
+                          :commit_message commit-message
+                          :creator_id     api/*current-user-id*})
+        {:keys [error] :as result} (ws.merge/merge-transform! {:ws-transform       ws-transform
+                                                               :workspace          ws
+                                                               :workspace-merge-id ws-merge-id
+                                                               :merging-user-id    api/*current-user-id*
+                                                               :commit-message     commit-message})]
     (if error
       (throw (ex-info "Failed to merge transform."
                       (-> result

@@ -204,6 +204,34 @@
         dependencies (map id->transform dep-ids)]
     (t2/hydrate dependencies :creator)))
 
+(def ^:private MergeHistoryEntry
+  [:map
+   [:id ms/PositiveInt]
+   [:workspace_merge_id ms/PositiveInt]
+   [:commit_message :string]
+   [:workspace_id [:maybe ms/PositiveInt]]
+   [:workspace_name :string]
+   [:merging_user_id ms/PositiveInt]
+   [:created_at :any]])
+
+(api.macros/defendpoint :get "/:id/merge-history"
+  :- [:sequential MergeHistoryEntry]
+  "Get merge history for a transform. Returns all merge events that affected this transform,
+   ordered by created_at descending (newest first)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/Transform id))
+  (t2/select [:model/WorkspaceMergeTransform
+              :id
+              :workspace_merge_id
+              :commit_message
+              :workspace_id
+              :workspace_name
+              :merging_user_id
+              :created_at]
+             {:where    [:= :transform_id id]
+              :order-by [[:created_at :desc]]}))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;

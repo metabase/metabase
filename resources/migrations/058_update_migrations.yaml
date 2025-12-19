@@ -3589,6 +3589,242 @@ databaseChangeLog:
             columnName: access_granted
 
   - changeSet:
+      id: v58.2025-12-17T11:00:00
+      author: qnkhuat
+      comment: Create workspace_merge table to track batch merge events
+      changes:
+        - createTable:
+            tableName: workspace_merge
+            remarks: Tracks batch merge events with commit messages. Survives workspace deletion.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Foreign key to workspace, SET NULL on delete
+                  constraints:
+                    nullable: true
+              - column:
+                  name: workspace_name
+                  type: ${text.type}
+                  remarks: Inlined copy of workspace name (survives deletion)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: commit_message
+                  type: ${text.type}
+                  remarks: Description of the merge operation
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who performed the merge
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_workspace_merge_creator_id
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the merge was performed
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_merge
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:01
+      author: qnkhuat
+      comment: Add FK workspace_merge.workspace_id with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_merge_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_merge
+            constraintName: fk_workspace_merge_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:02
+      author: qnkhuat
+      comment: Add index on workspace_merge.workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_merge
+            indexName: idx_workspace_merge_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback: # will be deleted with the table
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:03
+      author: qnkhuat
+      comment: Add index on workspace_merge.creator_id
+      changes:
+        - createIndex:
+            tableName: workspace_merge
+            indexName: idx_workspace_merge_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback: # will be deleted with the table
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:04
+      author: qnkhuat
+      comment: Create workspace_merge_transform table to track individual transform merges
+      changes:
+        - createTable:
+            tableName: workspace_merge_transform
+            remarks: Tracks individual transform merges. Linked to workspace_merge for batch merges, standalone for single-transform merges.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_merge_id
+                  type: int
+                  remarks: Foreign key to workspace_merge, CASCADE on delete
+                  constraints:
+                    nullable: false
+                    references: workspace_merge(id)
+                    foreignKeyName: fk_workspace_merge_transform_workspace_merge_id
+                    deleteCascade: true
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Foreign key to workspace, SET NULL on delete
+                  constraints:
+                    nullable: true
+              - column:
+                  name: workspace_name
+                  type: ${text.type}
+                  remarks: Inlined copy of workspace name (survives deletion)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: Foreign key to transform
+                  constraints:
+                    nullable: true
+                    references: transform(id)
+                    foreignKeyName: fk_workspace_merge_transform_transform_id
+                    deleteCascade: true
+              - column:
+                  name: commit_message
+                  type: ${text.type}
+                  remarks: Description of the merge operation
+                  constraints:
+                    nullable: false
+              - column:
+                  name: merging_user_id
+                  type: int
+                  remarks: User who performed the merge
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_workspace_merge_transform_merging_user_id
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the merge was performed
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_merge_transform
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:05
+      author: qnkhuat
+      comment: Add FK workspace_merge_transform.workspace_id with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge_transform
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_merge_transform_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_merge_transform
+            constraintName: fk_workspace_merge_transform_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:07
+      author: qnkhuat
+      comment: Add index on workspace_merge_transform.workspace_merge_id
+      changes:
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_workspace_merge_id
+            columns:
+              - column:
+                  name: workspace_merge_id
+      rollback: # will be deleted with the table
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:08
+      author: qnkhuat
+      comment: Add index on workspace_merge_transform.workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback: # will be deleted with the table
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:09
+      author: qnkhuat
+      comment: Add index on workspace_merge_transform.transform_id
+      changes:
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_transform_id
+            columns:
+              - column:
+                  name: transform_id
+      rollback: # will be deleted with the table
+
+  - changeSet:
+      id: v58.2025-12-17T11:00:10
+      author: qnkhuat
+      comment: Add index on workspace_merge_transform.merging_user_id
+      changes:
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_merging_user_id
+            columns:
+              - column:
+                  name: merging_user_id
+      rollback: # will be deleted with the table
+
+  - changeSet:
       id: v58.2025-12-17T17:54:00
       author: christruter
       comment: Drop foreign key constraint from transform.workspace_id to workspace

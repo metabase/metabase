@@ -210,24 +210,33 @@
                                                                          :database 1
                                                                          :schema   "public"
                                                                          :name     "merge_test_table"}}]
-      (let [{ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                              {:name        "Merge test"
-                                                               :database_id (mt/id)}))]
-        (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
-                              (merge {:global_id (:id x1)}
-                                     (select-keys x1 [:name :description :source :target])))
+      (let [{ws-id :id ws-name :name} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                                            {:name        (mt/random-name)
+                                                                             :database_id (mt/id)}))
+            {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
+                                                            (merge {:global_id (:id x1)}
+                                                                   (select-keys x1 [:name :description :source :target])))
+            commit-msg                "Test batch merge commit"]
         (testing "We've got our workspace with transform to merge"
           (is (int? ws-id))
           ;; (sanya) TODO: maybe switch to using transform APIs once we get our own
-          (let [ref-id (t2/select-one-fn :ref_id :model/WorkspaceTransform :global_id (:id x1))]
-            (t2/update! :model/WorkspaceTransform :ref_id ref-id {:description "Modified in workspace"})))
+          (t2/update! :model/WorkspaceTransform :ref_id ws-tx-ref-id {:description "Modified in workspace"}))
         (testing "returns merged transforms"
           (is (=? {:merged    {:transforms [{:global_id (:id x1)}]}
                    :errors    []
-                   :workspace {:id ws-id :name "Merge test"}}
-                  (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")))))
+                   :workspace {:id ws-id :name ws-name}}
+                  (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
+                                        {:commit-message commit-msg}))))
         (testing "workspace was deleted after successful merge"
-          (is (nil? (t2/select-one :model/Workspace :id ws-id))))))))
+          (is (nil? (t2/select-one :model/Workspace :id ws-id))))
+        (testing "merge history was created"
+          (is (=? {:commit_message commit-msg
+                   :creator_id     (mt/user->id :crowberto)}
+                  (t2/select-one :model/WorkspaceMerge :workspace_name ws-name)))
+          (is (=? {:transform_id   (:id x1)
+                   :commit_message commit-msg}
+                  (t2/select-one :model/WorkspaceMergeTransform
+                                 :transform_id (:id x1)))))))))
 
 (deftest merge-workspace-transaction-failure-test
   (testing "transactions"
@@ -413,7 +422,7 @@
           {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                             {:name        "Merge test"
                                                              :database_id  (mt/id)}))
-              ;; Add 2 transforms
+          ;; Add 2 transforms
           {ws-x-1-id :ref_id}
           (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                 (merge {:global_id (:id x1)}
@@ -422,7 +431,7 @@
           (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                 (merge {:global_id (:id x2)}
                                        (select-keys x2 [:name :description :source :target])))
-              ;; Update transform names
+          ;; Update transform names
           {ws-x-1-id :ref_id :as ws-x-1}
           (mt/user-http-request :crowberto :put 200
                                 (ws-url ws-id (str "/transform/" ws-x-1-id))
@@ -432,7 +441,9 @@
                                 (ws-url ws-id (str "/transform/" ws-x-2-id))
                                 {:name "UPDATED 2"})]
       (testing "Merging first of 2 workspace transfroms"
-        (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id (str "/transform/" ws-x-1-id "/merge")))
+        (let [commit-msg "Single transform merge 1"
+              resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id (str "/transform/" ws-x-1-id "/merge"))
+                                         {:commit-message commit-msg})
               remaining (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
           (testing "Response"
             (is (empty? (:errors resp)))
@@ -446,7 +457,19 @@
                     (:name (first remaining)))))
           (testing "Propagation back to core"
             (is (= (:name ws-x-1)
-                   (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))))
+                   (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))
+          (testing "merge history was created for single transform merge"
+            (let [merge-transform (t2/select-one :model/WorkspaceMergeTransform
+                                                 :transform_id (:id x1))]
+              (is (=? {:workspace_merge_id pos-int?
+                       :transform_id       (:id x1)
+                       :commit_message     commit-msg}
+                      merge-transform))
+              (testing "workspace_merge record was also created"
+                (is (=? {:commit_message commit-msg
+                         :creator_id     (mt/user->id :crowberto)}
+                        (t2/select-one :model/WorkspaceMerge
+                                       :id (:workspace_merge_id merge-transform)))))))))
       (testing "Merging last workspace transfrom"
         (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id (str "/transform/" ws-x-2-id "/merge")))
               remaining (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
@@ -465,6 +488,49 @@
             (let [ws-after (t2/select-one :model/Workspace :id ws-id)]
               (is (some? ws-after))
               (is (empty? (:archived_at ws-after))))))))))
+
+(deftest merge-history-endpoint-test
+  (testing "GET /api/ee/transform/:id/merge-history"
+    (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
+                   :model/Transform x1     {:name        "Transform for history"
+                                            :description "Test transform"
+                                            :target      {:type     "table"
+                                                          :database 1
+                                                          :schema   "public"
+                                                          :name     "merge_history_test_table"}}]
+      (let [{ws-id :id ws-name :name} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                                            {:name        (mt/random-name)
+                                                                             :database_id (mt/id)}))
+            {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
+                                                            (merge {:global_id (:id x1)}
+                                                                   (select-keys x1 [:name :description :source :target])))
+            commit-msg                "Test merge for history endpoint"]
+        ;; Modify and merge the transform
+        (t2/update! :model/WorkspaceTransform :ref_id ws-tx-ref-id {:description "Modified for history test"})
+        (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
+                              {:commit-message commit-msg})
+
+        (testing "returns merge history for a transform"
+          ;; workspace_id is nil because workspace is deleted after merge (SET NULL FK)
+          (is (=? [{:id                 pos-int?
+                    :workspace_merge_id pos-int?
+                    :commit_message     commit-msg
+                    :workspace_id       nil
+                    :workspace_name     ws-name
+                    :merging_user_id    (mt/user->id :crowberto)
+                    :created_at         some?}]
+                  (mt/user-http-request :crowberto :get 200
+                                        (str "ee/transform/" (:id x1) "/merge-history")))))
+
+        (testing "returns 404 for non-existent transform"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404
+                                       "ee/transform/999999/merge-history"))))
+
+        (testing "requires superuser"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403
+                                       (str "ee/transform/" (:id x1) "/merge-history")))))))))
 
 (deftest merge-single-transfom-failure-test
   (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
@@ -524,7 +590,7 @@
             {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                               {:name        "Merge test"
                                                                :database_id  (mt/id)}))
-          ;; Add 2 transforms
+            ;; Add 2 transforms
             {ws-x-1-id :ref_id :as ws-x-1}
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x1)}
@@ -787,7 +853,7 @@
 
 (defn- create-transform-with-card-source!
   "Create a transform whose source query depends on a card.
-   The after-insert hook triggers dependency calculation automatically."
+  The after-insert hook triggers dependency calculation automatically."
   [card]
   (t2/insert-returning-instance! :model/Transform
                                  {:name   "Transform depending on card"
@@ -1204,7 +1270,7 @@
                                                                  :source {:type  "query"
                                                                           :query (my-native-query db-1 "SELECT 1")}
                                                                  :target (random-target db-1)}
-                       ;; Native transform referencing a card - should be disabled once BOT-694 is implemented
+                         ;; Native transform referencing a card - should be disabled once BOT-694 is implemented
                          :model/Card               {card-id :id} {:name          "Source Card"
                                                                   :database_id   db-1
                                                                   :dataset_query (mt/mbql-query venues)}
@@ -1226,12 +1292,12 @@
             (testing "excludes irrelevant transforms, and indicates which remaining transforms cannot be checked out."
               (let [transforms (:transforms (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" (:id ws1) "/external/transform")))
                     test-ids   #{xf1-id xf2-id xf3-id xf4-id xf5-id xf6-id xf7-id}
-                  ;; Filter out cruft from dev, leaky tests, etc
+                    ;; Filter out cruft from dev, leaky tests, etc
                     ids        (into #{} (comp (map :id) (filter test-ids)) transforms)]
                 (testing "we filter out the expected transforms"
-                 ;; ❌ xf1 is checked out in this workspace, so it's filtered out
-                 ;; ✅ xf2 is only checked out in another workspace, so it's kept
-                 ;; ❌ xf7 is in another database, so it's filtered out
+                  ;; ❌ xf1 is checked out in this workspace, so it's filtered out
+                  ;; ✅ xf2 is only checked out in another workspace, so it's kept
+                  ;; ❌ xf7 is in another database, so it's filtered out
                   (is (= (disj test-ids xf1-id xf7-id) ids)))
                 (testing "we get the correct checkout_disabled reasons"
                   (is (= {xf2-id nil
