@@ -834,7 +834,7 @@
   native-query-snippets
   {:team "Querying"
    :api  #{metabase.native-query-snippets.core
-           metabase.native-query-snippets.schema}
+           metabase.native-query-snippets.api}
    :uses #{api
            collections
            events
