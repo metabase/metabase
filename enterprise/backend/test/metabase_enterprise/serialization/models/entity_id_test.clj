@@ -113,8 +113,12 @@
     :model/Workspace
     :model/WorkspaceDependency
     :model/WorkspaceInput
+    :model/WorkspaceInputExternal
     :model/WorkspaceLog
+    :model/WorkspaceMerge
+    :model/WorkspaceMergeTransform
     :model/WorkspaceOutput
+    :model/WorkspaceOutputExternal
     :model/WorkspaceTransform})
 
 (deftest ^:parallel comprehensive-entity-id-test
