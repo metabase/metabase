@@ -135,34 +135,64 @@ describe("Tenants - management", () => {
       cy.button("Apply").click();
     });
 
-    cy.log("should show toast hint message about tenant collections");
-    cy.findAllByText(
-      "You can create tenant collections from the main Metabase navigation",
-    )
-      .first()
+    cy.findByRole("link", { name: /Tenant users/ }).should("exist");
+    cy.findByRole("link", { name: /Tenants/ }).should("exist");
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.log("after enabling multi-tenancy, it takes you to the tenants page");
+      cy.findByText("Tenants", { timeout: 10_000 }).should("be.visible");
+
+      cy.findByText(/Create your first tenant to start adding/).should(
+        "be.visible",
+      );
+    });
+
+    // Onboarding: create the first tenant
+    cy.findByRole("button", { name: "Create your first tenant" })
+      .should("be.visible")
+      .click();
+
+    H.modal().within(() => {
+      cy.findByText("Set up your first tenant").should("be.visible");
+
+      cy.findByRole("textbox", { name: "Give this tenant a name" }).type(
+        "Parrot",
+      );
+
+      cy.log("slug should be pre-filled");
+      cy.findByRole("textbox", { name: "Slug for this tenant" }).should(
+        "have.value",
+        "parrot",
+      );
+
+      cy.button("Create tenant").click();
+    });
+
+    H.undoToastList()
+      .contains("Tenant creation successful")
       .should("be.visible");
 
-    cy.findByRole("link", { name: /Tenant users/ }).should("exist");
-    cy.findByRole("link", { name: /Tenants/ }).click();
-
-    // Create some tenants
     cy.findByRole("button", { name: "New tenant" }).click();
+
     H.modal().within(() => {
-      cy.findByRole("textbox", { name: "Display name" }).type("Parrot");
-      cy.findByRole("textbox", { name: "Slug" }).should("have.value", "parrot");
-      cy.button("Create").click();
+      cy.findByRole("textbox", { name: "Give this tenant a name" }).type(
+        "Eagle",
+      );
+
+      cy.button("Create tenant").click();
     });
 
-    cy.findByRole("button", { name: "New tenant" }).click();
-    H.modal().within(() => {
-      cy.findByRole("textbox", { name: "Display name" }).type("Eagle");
-      cy.button("Create").click();
-    });
+    H.undoToastList()
+      .contains("Tenant creation successful")
+      .should("be.visible");
 
     cy.findByRole("button", { name: "New tenant" }).click();
+
     H.modal().within(() => {
-      cy.findByRole("textbox", { name: "Display name" }).type("Turkey");
-      cy.button("Create").click();
+      cy.findByRole("textbox", { name: "Give this tenant a name" }).type(
+        "Turkey",
+      );
+      cy.button("Create tenant").click();
     });
 
     cy.findByTestId("admin-content-table").within(() => {
@@ -179,11 +209,12 @@ describe("Tenants - management", () => {
     H.popover().findByText("Edit tenant").click();
 
     H.modal().within(() => {
-      cy.findByRole("textbox", { name: "Display name" })
+      cy.findByRole("textbox", { name: "Give this tenant a name" })
         .should("have.value", "Turkey")
         .clear()
         .type("Chicken");
-      cy.findByRole("textbox", { name: "Slug" })
+
+      cy.findByRole("textbox", { name: "Slug for this tenant" })
         .should("have.value", "turkey")
         .should("be.disabled");
 
@@ -291,7 +322,7 @@ describe("Tenants - management", () => {
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
-      cy.findByRole("link", { name: /All Internal Users/ }).should(
+      cy.findByRole("link", { name: /All internal users/ }).should(
         "be.visible",
       );
       cy.findByRole("link", { name: /All tenant users/ }).should("not.exist");
@@ -302,7 +333,7 @@ describe("Tenants - management", () => {
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
-      cy.findByRole("link", { name: /All Internal Users/ }).should("not.exist");
+      cy.findByRole("link", { name: /All internal users/ }).should("not.exist");
       cy.findByRole("row", {
         name: `group-${ALL_EXTERNAL_USERS_GROUP_ID}-row`,
       }).within(() => {
@@ -385,7 +416,7 @@ describe("Tenants - management", () => {
     hasGlobeIcon(EXTERNAL_USER_GROUP_NAME);
     hasGlobeIcon(TENANT_GROUP_NAME);
     lacksGlobeIcon("Administrators");
-    lacksGlobeIcon("All Internal Users");
+    lacksGlobeIcon("All internal users");
   });
 
   it("should show 'All tenant users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
@@ -422,12 +453,61 @@ describe("Tenants - management", () => {
         .findByLabelText("warning icon")
         .realHover();
 
-      // Tooltip must reference "All tenant users" not "All Internal Users"
+      // Tooltip must reference "All tenant users" not "All internal users"
       H.tooltip().should(
         "contain",
         'The "All tenant users" group has a higher level of access',
       );
-      H.tooltip().should("not.contain", "All Internal Users");
+      H.tooltip().should("not.contain", "All internal users");
+    });
+  });
+
+  it("should show 'All internal users' in permission warning modal for internal groups on tenant collections (EMB-1143)", () => {
+    cy.request("PUT", "/api/setting", { "use-tenants": true });
+
+    cy.request("POST", "/api/permissions/group", {
+      name: "Test Internal Group",
+      is_tenant_group: false,
+    });
+
+    cy.visit("/admin/permissions/tenant-collections/root");
+
+    cy.log("all internal users should have 'View' access");
+    cy.findAllByRole("row")
+      .contains("tr", "All internal users")
+      .findByText("View")
+      .should("be.visible");
+
+    cy.log("internal group should have no access");
+    cy.findAllByRole("row")
+      .contains("tr", "Test Internal Group")
+      .findByText("No access")
+      .click();
+
+    cy.log("change internal group to view-only");
+    H.popover().findByText("View").click();
+
+    cy.findAllByRole("row")
+      .contains("tr", "Test Internal Group")
+      .findByText("View")
+      .click();
+
+    cy.log("change internal group back to no access");
+    H.popover().findByText("No access").click();
+
+    H.modal().within(() => {
+      cy.log("title should mention internal users group");
+      cy.findByText(/Revoke access even though "All internal users"/).should(
+        "be.visible",
+      );
+
+      cy.log("description should mention internal users group");
+      cy.findByText(
+        /The "All internal users" group has a higher level of access/,
+      ).should("be.visible");
+
+      cy.log("should not mention tenant users");
+      cy.contains("Tenant users").should("not.exist");
     });
   });
 
@@ -706,11 +786,7 @@ describe("tenant users", () => {
       cy.visit(`/auth/sso?return_to=/question/notebook&jwt=${key}`),
     );
 
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, "Products").click();
-    });
+    H.popover().findByText("Products").click();
     cy.button("Visualize").click();
 
     cy.get("[data-column-id=CATEGORY]")
@@ -726,11 +802,7 @@ describe("tenant users", () => {
       cy.visit(`/auth/sso?return_to=/question/notebook&jwt=${key}`),
     );
 
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, "Products").click();
-    });
+    H.popover().findByText("Products").click();
     cy.button("Visualize").click();
 
     cy.get("[data-column-id=CATEGORY]")
