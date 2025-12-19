@@ -222,7 +222,7 @@ function NameCell({ model }: { model?: ModelResult }) {
         <Icon
           size={16}
           {...icon}
-          color="var(--mb-color-icon-primary)"
+          color="icon-primary"
           style={{ flexShrink: 0 }}
         />
         {

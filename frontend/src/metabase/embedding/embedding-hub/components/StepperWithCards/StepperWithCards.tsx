@@ -132,7 +132,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                               </Text>
 
                               <Text
-                                c="var(--mb-color-text-secondary)"
+                                c="text-secondary"
                                 size="sm"
                                 lh="lg"
                               >
@@ -147,12 +147,12 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                     <Group gap="xs">
                                       <Icon
                                         name="check"
-                                        c="var(--mb-color-success-darker)"
+                                        c="success-darker"
                                         size={12}
                                       />
                                       <Text
                                         size="sm"
-                                        c="var(--mb-color-success-darker)"
+                                        c="success-darker"
                                       >
                                         {t`Done`}
                                       </Text>
@@ -162,12 +162,12 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                     <Group gap="xs">
                                       <Icon
                                         name="lock"
-                                        c="var(--mb-color-text-secondary)"
+                                        c="text-secondary"
                                         size={12}
                                       />
 
                                       <Text
-                                        c="var(--mb-color-text-secondary)"
+                                        c="text-secondary"
                                         fz={12}
                                       >
                                         {t`Complete the other steps to unlock`}
@@ -177,7 +177,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                   .with({ optional: true }, () => (
                                     <Text
                                       size="sm"
-                                      c="var(--mb-color-text-secondary)"
+                                      c="text-secondary"
                                     >
                                       {t`Optional`}
                                     </Text>

@@ -562,9 +562,8 @@ export const CardEmbedComponent = memo(
                         <Icon
                           name="pencil"
                           size={14}
-                          color="var(--mb-color-text-medium)"
+                          color="text-medium"
                           className={styles.titleEditIcon}
-                          c="pointer"
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             setEditedTitle(displayName);
@@ -614,7 +613,7 @@ export const CardEmbedComponent = memo(
                             <Icon
                               name="ellipsis"
                               size={16}
-                              color="var(--mb-color-text-medium)"
+                              color="text-medium"
                             />
                           </Flex>
                         </Menu.Target>

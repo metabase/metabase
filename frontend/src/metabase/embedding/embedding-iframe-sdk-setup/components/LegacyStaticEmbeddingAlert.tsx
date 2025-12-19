@@ -42,7 +42,7 @@ export const LegacyStaticEmbeddingAlert = () => {
     <Alert color="info" variant="outline">
       <Flex gap="sm">
         <Box>
-          <Icon color="var(--mb-color-text-secondary)" name="info" mt="2px" />
+          <Icon color="text-secondary" name="info" mt="2px" />
         </Box>
 
         <Stack>

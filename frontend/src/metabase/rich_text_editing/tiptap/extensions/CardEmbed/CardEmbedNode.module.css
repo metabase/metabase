@@ -69,6 +69,7 @@
   opacity: 0;
   transition: opacity 0.2s ease;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .titleContainer:hover .titleEditIcon {

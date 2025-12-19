@@ -339,7 +339,7 @@ export const Onboarding = () => {
                       <Text>
                         {jt`Hover over a table and click the yellow lightning bolt ${(
                           <Icon
-                            c="var(--mb-color-warning)"
+                            c="warning"
                             className={S.inlineIcon}
                             key="bolt_icon"
                             name="bolt_filled"

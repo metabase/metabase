@@ -50,7 +50,7 @@ export function EmbeddingSettingsCard({
           {title}
         </Text>
 
-        <Text c="var(--mb-color-text-secondary)" lh="lg" mb="md" maw="38rem">
+        <Text c="text-secondary" lh="lg" mb="md" maw="38rem">
           {description}
         </Text>
 
@@ -75,7 +75,7 @@ export function EmbeddingSettingsCard({
             <Flex gap="sm">
               <Box>
                 <Icon
-                  color="var(--mb-color-text-secondary)"
+                  color="text-secondary"
                   name="info"
                   mt="2px"
                 />
