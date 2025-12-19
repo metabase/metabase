@@ -52,7 +52,8 @@
    :dashboard_id        nil
    :skip_if_empty       false
    :archived            false
-   :parameters          []})
+   :parameters          []
+   :creation_context    nil})
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
