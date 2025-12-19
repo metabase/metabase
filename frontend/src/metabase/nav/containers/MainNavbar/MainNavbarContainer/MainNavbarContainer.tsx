@@ -25,6 +25,7 @@ import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
+  getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
   getUserIsAdmin,
@@ -93,6 +94,7 @@ function MainNavbarContainer({
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const isTenantUser = useSelector(getIsTenantUser);
 
   const {
     data: trashCollection,
@@ -130,12 +132,12 @@ function MainNavbarContainer({
     preparedCollections.push(...userPersonalCollections);
     preparedCollections.push(...displayableCollections);
 
-    const tree = buildCollectionTree(preparedCollections);
+    const tree = buildCollectionTree(preparedCollections, { isTenantUser });
     if (trashCollection) {
       const trash: CollectionTreeItem = {
         ...trashCollection,
         id: "trash",
-        icon: getCollectionIcon(trashCollection),
+        icon: getCollectionIcon(trashCollection, { isTenantUser }),
         children: [],
       };
       tree.push(trash);
@@ -144,14 +146,14 @@ function MainNavbarContainer({
     if (rootCollection) {
       const root: CollectionTreeItem = {
         ...rootCollection,
-        icon: getCollectionIcon(rootCollection),
+        icon: getCollectionIcon(rootCollection, { isTenantUser }),
         children: [],
       };
       return [root, ...tree];
     } else {
       return tree;
     }
-  }, [rootCollection, trashCollection, collections, currentUser]);
+  }, [rootCollection, trashCollection, collections, currentUser, isTenantUser]);
 
   const reorderBookmarks = useCallback(
     async ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {

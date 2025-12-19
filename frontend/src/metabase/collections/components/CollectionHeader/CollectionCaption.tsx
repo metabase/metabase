@@ -6,10 +6,12 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
+import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -83,6 +85,8 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
+  const isTenantUser = useSelector(getIsTenantUser);
+
   if (isInstanceAnalyticsCollection(collection)) {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
@@ -94,7 +98,8 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     );
   }
 
-  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection)) {
+  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
+    // external users should see the normal icon, they should not know about what synced collections are
     return <Icon name="synced_collection" size={24} c="brand" />;
   }
 
