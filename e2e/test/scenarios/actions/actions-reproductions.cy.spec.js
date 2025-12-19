@@ -381,7 +381,8 @@ describe("issue 51020", () => {
         .click();
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("foo");
+        cy.get('[type="search"]').type("foo");
+        cy.findByText("Everywhere").click();
         cy.findByText("Foo").click();
       });
       cy.findByTestId("run-button").click();
