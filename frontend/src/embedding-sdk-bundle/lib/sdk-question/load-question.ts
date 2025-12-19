@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
@@ -16,6 +14,8 @@ import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
+
+import { parseInitialSqlParameters } from "./parse-initial-sql-parameters";
 
 type LoadQuestionSdkParams = LoadSdkQuestionParams & {
   token: EntityToken | null | undefined;
@@ -76,9 +76,10 @@ export const loadQuestionSdk =
       question = question.applyTemplateTagParameters();
     }
 
-    const queryParams = initialSqlParameters
-      ? _.mapObject(initialSqlParameters, String)
-      : {};
+    const queryParams = parseInitialSqlParameters({
+      initialSqlParameters,
+      card,
+    });
 
     const parameterValues = getParameterValuesForQuestion({
       card,
