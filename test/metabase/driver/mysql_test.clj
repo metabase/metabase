@@ -772,7 +772,14 @@
     (is (= {:type  :roles
             :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
-    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
+    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (testing "with wildcards"
+      (is (= {:type            :privileges
+              :privilege-types #{:select}
+              :level           :database
+              :object          "`%`.*"}
+             (#'mysql/parse-grant "GRANT SELECT ON `%`.* TO 'testuser'@'%'"))
+          "Wildcard database grant should be parsed correctly"))))
 
 (deftest ^:parallel table-name->privileges-test
   (testing "table-names->privileges should work correctly"
@@ -796,7 +803,34 @@
                                               :level           :table
                                               :object          "`test-data`.`foo`"}]
                                             "test-data"
-                                            ["foo" "bar"])))))
+                                            ["foo" "bar"])))
+    (testing "with wildcards in database name"
+      (is (= {"foo" #{:select}, "bar" #{:select}}
+             (#'mysql/table-names->privileges [{:type            :privileges
+                                                :privilege-types #{:select}
+                                                :level           :database
+                                                :object          "`%`.*"}]
+                                              "test-data"
+                                              ["foo" "bar"]))
+          "Wildcard database grant `%`.* should match all databases"))
+    (testing "with wildcards in table name"
+      (is (= {"foo" #{:select}, "bar" #{:select}}
+             (#'mysql/table-names->privileges [{:type            :privileges
+                                                :privilege-types #{:select}
+                                                :level           :table
+                                                :object          "`test-data`.`%`"}]
+                                              "test-data"
+                                              ["foo" "bar"]))
+          "Wildcard table grant should match all tables in the database"))
+    (testing "with wildcards in both database and table names"
+      (is (= {"foo" #{:select}, "bar" #{:select}}
+             (#'mysql/table-names->privileges [{:type            :privileges
+                                                :privilege-types #{:select}
+                                                :level           :table
+                                                :object          "`%`.`%`"}]
+                                              "test-data"
+                                              ["foo" "bar"]))
+          "Double wildcard grant should match all tables in all databases"))))
 
 (deftest table-privileges-test
   (mt/test-driver :mysql

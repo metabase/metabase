@@ -1057,6 +1057,30 @@
         privilege-grants)
       privilege-grants)))
 
+(defn- sql-wildcard->regex-pattern
+  "Convert a SQL wildcard pattern to a regex pattern.
+   SQL wildcards: % matches any sequence of characters, _ matches any single character.
+   This function escapes regex special characters and converts SQL wildcards to regex equivalents."
+  [sql-pattern]
+  (-> sql-pattern
+      ;; Escape regex special characters first (except % and _)
+      (str/replace #"[.\\+*?\[\^\]$(){}=!<>|:\-]" "\\\\$0")
+      ;; Convert SQL wildcards to regex
+      (str/replace #"%" ".*")
+      (str/replace #"_" ".")))
+
+(defn- matches-grant-pattern?
+  "Check if a name matches a grant pattern that may contain SQL wildcards.
+   The pattern is expected to be a backtick-quoted identifier like `dbname` or `%`.
+   Returns true if the lowercased name matches the pattern."
+  [name pattern]
+  (let [;; Extract the content between backticks
+        quoted-pattern (second (re-find #"^`(.+)`$" pattern))]
+    (when quoted-pattern
+      (let [regex-pattern (sql-wildcard->regex-pattern quoted-pattern)
+            lower-name (u/lower-case-en name)]
+        (boolean (re-matches (re-pattern (str "^" regex-pattern "$")) lower-name))))))
+
 (defn- table-names->privileges
   "Given a set of parsed grants for a user, a database name, and a list of table names in the database,
    return a map with table names as keys, and the set of privilege types that the user has on the table as values.
@@ -1064,21 +1088,46 @@
    The rules are:
    - global grants apply to all tables
    - database grants apply to all tables in the database
-   - table grants apply to the table"
+   - table grants apply to the table
+
+   Supports SQL wildcards (% and _) in database and table names."
   [privilege-grants database-name table-names]
   (let [{global-grants   :global
          database-grants :database
          table-grants    :table} (group-by :level privilege-grants)
         lower-database-name  (u/lower-case-en database-name)
+        ;; Check if any database grant matches the current database (including wildcards)
+        matching-db-grant (m/find-first
+                           (fn [grant]
+                             (when-let [match (re-find #"^`(.+)`\.\*$" (:object grant))]
+                               (let [db-pattern (str "`" (second match) "`")]
+                                 (matches-grant-pattern? lower-database-name db-pattern))))
+                           database-grants)
         all-table-privileges (set/union (:privilege-types (first global-grants))
-                                        (:privilege-types (m/find-first #(= (:object %) (str "`" lower-database-name "`.*"))
-                                                                        database-grants)))
-        table-privileges (into {}
-                               (keep (fn [grant]
-                                       (when-let [match (re-find (re-pattern (str "^`" lower-database-name "`.`(.+)`")) (:object grant))]
-                                         (let [[_ table-name] match]
-                                           [table-name (:privilege-types grant)]))))
-                               table-grants)]
+                                        (:privilege-types matching-db-grant))
+        ;; For table grants, check if they match the current database and extract matching tables
+        ;; Build a map of table-name -> privileges by checking all grants against all tables
+        table-privileges (reduce
+                          (fn [acc grant]
+                            ;; Match pattern: `dbname`.`tablename`
+                            (if-let [match (re-find #"^`(.+)`\.`(.+)`$" (:object grant))]
+                              (let [[_ db-pattern table-pattern] match
+                                    db-pattern-quoted (str "`" db-pattern "`")
+                                    table-pattern-quoted (str "`" table-pattern "`")]
+                                ;; Check if the database pattern matches our current database
+                                (if (matches-grant-pattern? lower-database-name db-pattern-quoted)
+                                  ;; For each table name, check if it matches the table pattern
+                                  (reduce
+                                   (fn [table-acc table-name]
+                                     (if (matches-grant-pattern? table-name table-pattern-quoted)
+                                       (update table-acc table-name set/union (:privilege-types grant))
+                                       table-acc))
+                                   acc
+                                   table-names)
+                                  acc))
+                              acc))
+                          {}
+                          table-grants)]
     (into {}
           (keep (fn [table-name]
                   (when-let [privileges (not-empty (set/union all-table-privileges (get table-privileges table-name)))]
