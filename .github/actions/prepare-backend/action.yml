@@ -36,3 +36,11 @@ runs:
           ~/.m2
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
+    - name: Generate OpenAPI spec and TypeScript types
+      shell: bash
+      run: |
+        if command -v yarn &> /dev/null; then
+          yarn generate-openapi && yarn types:generate
+        else
+          echo "Skipping OpenAPI generation (yarn not available)"
+        fi
