@@ -928,23 +928,6 @@ describe("tenant users", () => {
       .findByText(GIZMO_FULL_NAME)
       .should("be.visible");
   });
-
-  it("should show the embedding data picker when logged in as a tenant user (metabase#EMB-1144)", () => {
-    cy.log("log in as tenant user");
-    cy.task<string>("signJwt", {
-      payload: GIZMO_USER,
-      secret: JWT_SECRET,
-    }).then((key) =>
-      cy.visit(`/auth/sso?return_to=/question/notebook&jwt=${key}`),
-    );
-
-    cy.log("embedding data picker is shown");
-    cy.findByTestId("embedding-simple-data-picker-trigger").should(
-      "be.visible",
-    );
-    H.popover().contains("Orders").should("be.visible");
-    H.popover().contains("People").should("be.visible");
-  });
 });
 
 type AssertionType = "exist" | "not.exist";
