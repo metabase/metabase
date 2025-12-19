@@ -638,3 +638,23 @@
                                   {:archived true})
             (testing "card is archived"
               (is (true? (t2/select-one-fn :archived :model/Card :id card-id))))))))))
+
+(deftest shared-tenant-collections-appear-in-trash-test
+  (testing "GET /api/collection/:id/items for trash collection"
+    (testing "archived collections with shared-tenant-collection and tenant-specific namespaces appear in trash"
+      (mt/with-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Collection {normal-id :id}     {:name "Normal Collection"}
+                         :model/Collection {shared-id :id}     {:name      "Shared Tenant Collection"
+                                                                :namespace "shared-tenant-collection"}
+                         :model/Collection {tenant-id :id}     {:name      "Tenant Specific Collection"
+                                                                :namespace "tenant-specific"}]
+            ;; Archive all three collections
+            (doseq [id [normal-id shared-id tenant-id]]
+              (mt/user-http-request :crowberto :put 200 (str "collection/" id) {:archived true}))
+            (let [trash-items (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (collection/trash-collection-id) "/items"))
+                                   :data
+                                   (map :name)
+                                   (into #{}))]
+              (is (= #{"Normal Collection" "Shared Tenant Collection" "Tenant Specific Collection"}
+                     trash-items)))))))))

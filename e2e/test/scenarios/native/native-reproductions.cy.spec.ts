@@ -933,3 +933,44 @@ describe("issue 66745", () => {
     });
   });
 });
+
+describe("issue 51717", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should open question info sidebar when variables sidebar is already open (metabase#51717)", () => {
+    H.createNativeQuestion(
+      {
+        name: "42",
+        native: { query: "select 42" },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .click();
+
+    cy.log("Open variables sidebar");
+    cy.findByTestId("native-query-editor-action-buttons")
+      .should("be.visible")
+      .findByLabelText("Variables")
+      .click();
+    cy.findByTestId("sidebar-right")
+      .should("be.visible")
+      .and("contain", "Variables and parameters");
+
+    cy.log("Info sidebar is opened");
+    H.openQuestionInfoSidesheet();
+    cy.findByTestId("sidesheet")
+      .as("infoSidebar")
+      .should("be.visible")
+      .and("contain", "Info");
+
+    cy.log("Make sure info sidebar is interactive (on top of the stack)");
+    cy.get("@infoSidebar").findByRole("tab", { name: "History" }).click();
+    cy.get("@infoSidebar").should("contain", "You created this");
+  });
+});

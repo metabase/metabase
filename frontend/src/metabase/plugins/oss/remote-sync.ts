@@ -16,12 +16,18 @@ export type CollectionsNavTreeProps = {
   onSelect?: (item: ITreeNodeItem) => void;
 };
 
+export interface GitSyncAppBarControlsProps {
+  fullWidth?: boolean;
+}
+
 const getDefaultPluginRemoteSync = () => ({
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
-  GitSyncAppBarControls: PluginPlaceholder,
+  GitSyncAppBarControls:
+    PluginPlaceholder as ComponentType<GitSyncAppBarControlsProps>,
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
+  CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -30,14 +36,17 @@ const getDefaultPluginRemoteSync = () => ({
     message: "",
     progressModal: null,
   }),
+  useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
+  useHasLibraryDirtyChanges: () => false,
 });
 
 export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
-  GitSyncAppBarControls: ComponentType;
+  GitSyncAppBarControls: ComponentType<GitSyncAppBarControlsProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
+  CollectionSyncStatusBadge: ComponentType | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;
@@ -46,6 +55,11 @@ export const PLUGIN_REMOTE_SYNC: {
     message: string;
     progressModal: ReactNode;
   };
+  useGitSyncVisible: () => {
+    isVisible: boolean;
+    currentBranch: string | null | undefined;
+  };
+  useHasLibraryDirtyChanges: () => boolean;
 } = getDefaultPluginRemoteSync();
 
 /**

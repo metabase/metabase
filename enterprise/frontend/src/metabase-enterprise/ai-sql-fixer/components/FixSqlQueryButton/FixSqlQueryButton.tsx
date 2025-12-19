@@ -6,7 +6,7 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { trackQueryFixClicked } from "../../analytics";
 
 export function FixSqlQueryButton() {
-  const { submitInput } = useMetabotAgent();
+  const { submitInput } = useMetabotAgent("omnibot");
 
   const handleClick = () => {
     trackQueryFixClicked();

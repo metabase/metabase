@@ -2,8 +2,8 @@
 import { Component } from "react";
 import _ from "underscore";
 
-import Segments from "metabase/entities/segments";
-import Tables from "metabase/entities/tables";
+import { Segments } from "metabase/entities/segments";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 
 import RevisionHistory from "../components/revisions/RevisionHistory";

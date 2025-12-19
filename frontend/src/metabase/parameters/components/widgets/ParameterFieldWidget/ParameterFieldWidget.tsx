@@ -18,6 +18,7 @@ import {
   hasValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { CardId, DashboardId, RowValue } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { Footer } from "../Widget";
 import { MIN_WIDTH } from "../constants";
@@ -34,7 +35,7 @@ interface ParameterFieldWidgetProps {
   value?: string | string[];
   cardId?: CardId;
   dashboardId?: DashboardId;
-  token?: string | null;
+  token?: EntityToken | null;
 }
 
 export function ParameterFieldWidget({

@@ -70,7 +70,7 @@ export class Scalar extends Component<
         {
           data: { cols },
         },
-      ]) => cols[0].name,
+      ]) => cols[0]?.name,
       getHidden: ([
         {
           data: { cols },

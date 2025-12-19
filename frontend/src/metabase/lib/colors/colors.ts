@@ -317,6 +317,10 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.lobster[10],
     dark: baseColors.lobster[90],
   },
+  "background-success": {
+    light: baseColors.palm[5],
+    dark: baseColors.palm[90],
+  },
   "bg-light": { light: baseColors.orion[5], dark: baseColors.orion[110] }, //should be background-secondary
   "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[80] }, //should be background-tertiary
   "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //merge with background-secondary-inverse?

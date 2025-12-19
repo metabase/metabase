@@ -34,7 +34,7 @@ const ModalHeader = ({
       <Flex align="center">
         <HeaderLink onClick={onGoBack}>
           {onGoBack && <HeaderBackIcon name="chevronleft" />}
-          <HeaderTitle tooltipMaxWidth="auto">{title}</HeaderTitle>
+          <HeaderTitle tooltipProps={{ w: "auto" }}>{title}</HeaderTitle>
         </HeaderLink>
         {children && <HeaderMenu>{children}</HeaderMenu>}
         {onClose && (

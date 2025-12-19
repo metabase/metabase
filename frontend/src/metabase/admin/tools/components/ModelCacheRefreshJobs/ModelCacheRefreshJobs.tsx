@@ -17,7 +17,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import PersistedModels from "metabase/entities/persisted-models";
+import { PersistedModels } from "metabase/entities/persisted-models";
 import { capitalize } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

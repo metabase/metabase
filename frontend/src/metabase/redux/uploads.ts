@@ -2,7 +2,7 @@ import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import {
   createAction,

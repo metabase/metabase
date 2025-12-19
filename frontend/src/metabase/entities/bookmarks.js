@@ -4,10 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { bookmarkApi, useListBookmarksQuery } from "metabase/api";
-import Collections from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
-import Documents from "metabase/entities/documents";
-import Questions from "metabase/entities/questions";
+import { Collections } from "metabase/entities/collections";
+import { Dashboards } from "metabase/entities/dashboards";
+import { Documents } from "metabase/entities/documents";
+import { Questions } from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { addUndo } from "metabase/redux/undo";
 import { BookmarkSchema } from "metabase/schema";
@@ -17,7 +17,7 @@ const REORDER_ACTION = `metabase/entities/bookmarks/REORDER_ACTION`;
 /**
  * @deprecated use "metabase/api" instead
  */
-const Bookmarks = createEntity({
+export const Bookmarks = createEntity({
   name: "bookmarks",
   nameOne: "bookmark",
   path: "/api/bookmark",
@@ -160,5 +160,3 @@ export const getOrderedBookmarks = createSelector(
   [Bookmarks.selectors.getList],
   (bookmarks) => _.sortBy(bookmarks, (bookmark) => bookmark.index),
 );
-
-export default Bookmarks;

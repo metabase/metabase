@@ -4,7 +4,7 @@ import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts = {}) {
-  return baseSetup({ hasEnterprisePlugins: true, ...opts });
+  return baseSetup({ ...opts });
 }
 
 describe("HomeHelpCard (EE without token)", () => {

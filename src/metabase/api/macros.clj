@@ -29,6 +29,7 @@
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -708,7 +709,13 @@
                  (update metadata :api/endpoints update-api-endpoints))
                (rebuild-handler [metadata]
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
-         (-> metadata update-info rebuild-handler))))))
+         (-> metadata update-info rebuild-handler))))
+    ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
+    (when config/is-dev?
+      (try
+        (events/publish-event! :event/api-handler-update {})
+        (catch Throwable e
+          (log/debug e "Failed to publish api-handler-update event"))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in

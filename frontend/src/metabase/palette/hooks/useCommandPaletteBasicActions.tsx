@@ -10,7 +10,7 @@ import {
   useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import Collections from "metabase/entities/collections/collections";
+import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";

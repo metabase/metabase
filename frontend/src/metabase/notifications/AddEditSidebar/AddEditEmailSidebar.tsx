@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import SchedulePicker, {
   type ScheduleChangeProp,
 } from "metabase/common/components/SchedulePicker";
@@ -84,6 +85,11 @@ export const AddEditEmailSidebar = ({
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getCurrentUser);
+
+  // Return true if the results of all cards can be downloaded
+  const allowDownload = pulse.cards?.every(
+    (card) => card.download_perms !== DataPermissionValue.NONE,
+  );
 
   useEffect(() => {
     if (isEmbeddingSdk()) {
@@ -187,6 +193,7 @@ export const AddEditEmailSidebar = ({
           cards={pulse.cards}
           pulse={pulse}
           setPulse={setPulse}
+          allowDownload={allowDownload}
         />
         {pulse.id != null && (
           <DeleteSubscriptionAction

@@ -40,6 +40,7 @@ export const initialState: DocumentsState = {
   childTargetId: undefined,
   hoveredChildTargetId: undefined,
   hasUnsavedChanges: false,
+  isHistorySidebarOpen: false,
 };
 
 const documentsSlice = createSlice({
@@ -128,6 +129,9 @@ const documentsSlice = createSlice({
     setHasUnsavedChanges: (state, action: PayloadAction<boolean>) => {
       state.hasUnsavedChanges = action.payload;
     },
+    setIsHistorySidebarOpen: (state, action: PayloadAction<boolean>) => {
+      state.isHistorySidebarOpen = action.payload;
+    },
   },
 });
 
@@ -146,6 +150,7 @@ export const {
   setChildTargetId,
   setHoveredChildTargetId,
   setHasUnsavedChanges,
+  setIsHistorySidebarOpen,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

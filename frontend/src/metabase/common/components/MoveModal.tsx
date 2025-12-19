@@ -20,6 +20,7 @@ import {
   type CollectionPickerValueItem,
   getCollectionType,
 } from "metabase/common/components/Pickers/CollectionPicker";
+import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionId,
@@ -37,10 +38,10 @@ interface BaseMoveModalProps {
   entityType?: EntityType;
   recentAndSearchFilter?: (item: CollectionPickerItem) => boolean;
   /**
-   * The type of item being moved. When set to a non-collection model,
-   * namespace root collections (like tenant root) will be disabled.
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
    */
-  savingModel?: "collection" | "dashboard" | "question" | "model";
+  savingModel?: "collection" | null;
   /**
    * The namespace of the collection being moved. Used to restrict which
    * collections are shown in the picker:
@@ -98,15 +99,8 @@ export const MoveModal = ({
     movingCollectionNamespace,
   );
   const shouldDisableItem = (item: CollectionPickerItem): boolean => {
-    if (movingCollectionId) {
-      if (
-        item.id === movingCollectionId ||
-        (item.effective_location ?? item?.location)
-          ?.split("/")
-          .includes(String(movingCollectionId))
-      ) {
-        return true;
-      }
+    if (isItemInCollectionOrItsDescendants(item, movingCollectionId)) {
+      return true;
     }
 
     if (entityType && item.model === "collection") {

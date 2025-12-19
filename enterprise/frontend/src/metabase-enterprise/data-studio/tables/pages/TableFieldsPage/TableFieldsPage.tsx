@@ -13,6 +13,7 @@ import {
   TableSection,
 } from "metabase/metadata/components";
 import { Box, Center, Flex, Stack } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 
 import { trackMetadataChange } from "../../analytics";
@@ -53,9 +54,9 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%" data-testid="table-fields-page">
+    <PageContainer data-testid="table-fields-page" gap="md">
       <TableHeader table={table} />
-      <Flex className={S.body} flex={1} bg="accent-gray-light">
+      <Flex className={S.body} flex={1}>
         <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
           <TableSection
             /**
@@ -69,6 +70,8 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               Urls.dataStudioTableFields(tableId, fieldId)
             }
             onSyncOptionsClick={openSyncModal}
+            px={0}
+            pr="lg"
           />
         </Stack>
         {field != null && (
@@ -121,6 +124,6 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
           onClose={closeFieldValuesModal}
         />
       )}
-    </Flex>
+    </PageContainer>
   );
 }

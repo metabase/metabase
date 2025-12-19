@@ -330,6 +330,7 @@ describe("scenarios > embedding > Modular embedding", () => {
           component: "metabase-dashboard",
           attributes: {
             dashboardId: ORDERS_DASHBOARD_ID,
+            "with-subscriptions": true,
           },
         },
         {
@@ -373,6 +374,10 @@ describe("scenarios > embedding > Modular embedding", () => {
           true: 0,
         },
         drills: {
+          false: 0,
+          true: 1,
+        },
+        with_subscriptions: {
           false: 0,
           true: 1,
         },

@@ -10,7 +10,10 @@ import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
 const setupEnterprise = (opts?: SetupOpts) => {
-  return setup({ ...opts, hasEnterprisePlugins: true });
+  return setup({
+    ...opts,
+    enterprisePlugins: ["advanced_permissions", "tenants"],
+  });
 };
 
 describe("CollectionMenu", () => {

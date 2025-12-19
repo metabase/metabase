@@ -44,6 +44,6 @@ export function reactivateTenant(tenantId: Tenant["id"]) {
   return `/admin/tenants/${tenantId}/reactivate`;
 }
 
-export function editUserStrategy() {
-  return `/admin/people/user-strategy`;
+export function editUserStrategy(page: "people" | "tenants") {
+  return `/admin/${page}/user-strategy`;
 }

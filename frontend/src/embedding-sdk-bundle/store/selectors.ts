@@ -29,9 +29,6 @@ export const getEventHandlers = (state: SdkStoreState | State) =>
 
 export const getUsageProblem = (state: SdkStoreState) => state.sdk.usageProblem;
 
-export const getLoaderComponent = (state: SdkStoreState) =>
-  state.sdk.loaderComponent;
-
 export const getErrorComponent = (state: SdkStoreState) =>
   state.sdk.errorComponent;
 

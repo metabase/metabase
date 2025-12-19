@@ -147,3 +147,49 @@
                  #"cannot move a Collection to a different namespace"
                  (t2/update! :model/Collection tenant-collection-id
                              {:namespace nil})))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      Tenant Collection Name Localization                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest maybe-localize-tenant-collection-names-turns-all-dtcs-into-our-data
+  (testing "maybe-localize-tenant-collection-names handles multiple collections efficiently"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant1-coll-id :tenant_collection_id tenant1-id :id} {:name "Tenant One" :slug "tenant1"}
+                       :model/Tenant {tenant2-coll-id :tenant_collection_id} {:name "Tenant Two" :slug "tenant2"}
+                       :model/Collection regular-coll {:name "Regular Collection" :location "/"}
+                       :model/User {tenant-user-id :id} {:tenant_id tenant1-id}]
+          (let [colls [(t2/select-one :model/Collection :id tenant1-coll-id)
+                       (t2/select-one :model/Collection :id tenant2-coll-id)
+                       regular-coll]
+                localized-colls (collection/maybe-localize-tenant-collection-names colls)]
+            (is (= ["Tenant collection: Tenant One"
+                    "Tenant collection: Tenant Two"
+                    "Regular Collection"]
+                   (map :name localized-colls))))
+          (mt/with-current-user tenant-user-id
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"You don't have permissions to do that"
+                                  (collection/maybe-localize-tenant-collection-names
+                                   [(t2/select-one :model/Collection tenant2-coll-id)])))
+            (is (= ["Our data"
+                    "Regular Collection"]
+                   (map :name (collection/maybe-localize-tenant-collection-names [(t2/select-one :model/Collection tenant1-coll-id)
+                                                                                  regular-coll]))))))))))
+
+(deftest maybe-localize-tenant-collection-name-single-test
+  (testing "maybe-localize-tenant-collection-name works for single collection"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id
+                                      tenant-id :id} {:name "My Tenant" :slug "mytenant"}
+                       :model/User {tenant-user :id} {:tenant_id tenant-id}]
+          (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
+                localized-coll (collection/maybe-localize-tenant-collection-name coll)]
+            (is (= "Tenant collection: My Tenant" (:name localized-coll))))
+
+          (mt/with-current-user tenant-user
+            (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
+                  localized-coll (collection/maybe-localize-tenant-collection-name coll)]
+              (is (= "Our data" (:name localized-coll))))))))))

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
-import { Group, Stack } from "metabase/ui";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";
 
@@ -22,31 +22,23 @@ export function NewSegmentHeader({
   actions,
 }: NewSegmentHeaderProps) {
   return (
-    <Stack gap="sm">
-      {breadcrumbs}
-      <Group
-        gap="xs"
-        align="center"
-        justify="space-between"
-        w="100%"
-        px="lg"
-        mih={40}
-      >
-        <Group gap="xs" align="center">
-          <EditableText
-            initialValue=""
-            placeholder={t`New segment`}
-            maxLength={SEGMENT_NAME_MAX_LENGTH}
-            p={0}
-            fw="bold"
-            fz="h3"
-            lh="h3"
-            onContentChange={onNameChange}
-          />
-          {previewUrl && <SegmentMoreMenu previewUrl={previewUrl} />}
-        </Group>
-        {actions}
-      </Group>
-    </Stack>
+    <PaneHeader
+      data-testid="segment-pane-header"
+      title={
+        <EditableText
+          initialValue=""
+          placeholder={t`New segment`}
+          maxLength={SEGMENT_NAME_MAX_LENGTH}
+          p={0}
+          fw="bold"
+          fz="h3"
+          lh="h3"
+          onContentChange={onNameChange}
+        />
+      }
+      menu={previewUrl && <SegmentMoreMenu previewUrl={previewUrl} />}
+      actions={actions}
+      breadcrumbs={breadcrumbs}
+    />
   );
 }

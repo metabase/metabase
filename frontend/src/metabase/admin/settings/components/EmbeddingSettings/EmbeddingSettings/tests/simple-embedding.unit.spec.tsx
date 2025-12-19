@@ -7,11 +7,11 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
-    hasEnterprisePlugins: true,
     tokenFeatures: {
       embedding_sdk: true,
       embedding_simple: true,
     },
+    enterprisePlugins: ["embedding"],
     ...opts,
   });
 

@@ -34,6 +34,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
@@ -59,6 +60,7 @@ import {
   URL_KEY,
 } from "../../constants";
 import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
+import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
 import { PullChangesButton } from "./PullChangesButton";
 
@@ -76,6 +78,23 @@ export const RemoteSyncAdminSettings = () => {
   const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
   const useTenants = useSetting("use-tenants");
   const applicationName = useSelector(getApplicationName);
+
+  // Fetch top-level collections to build initial sync state
+  const { data: topLevelCollectionsData } = useListCollectionItemsQuery(
+    { id: "root", models: ["collection"] },
+    { skip: !isRemoteSyncEnabled },
+  );
+
+  // Fetch library collection to build initial sync state
+  const { data: libraryCollectionData } = useGetLibraryCollectionQuery(
+    undefined,
+    { skip: !isRemoteSyncEnabled },
+  );
+  // Library collection endpoint returns { data: null } when not found
+  const libraryCollection =
+    libraryCollectionData && "name" in libraryCollectionData
+      ? libraryCollectionData
+      : undefined;
 
   // Fetch tenant collections to build initial sync state
   const { data: tenantCollectionsData } = useListCollectionItemsQuery(
@@ -101,9 +120,20 @@ export const RemoteSyncAdminSettings = () => {
     async (values: RemoteSyncConfigurationSettings) => {
       const didBranchChange =
         values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
-      const saveSettings = async (values: RemoteSyncConfigurationSettings) => {
+
+      // Don't send collections when in read-only mode
+      const settingsToSave =
+        values[TYPE_KEY] === "read-only"
+          ? (Object.fromEntries(
+              Object.entries(values).filter(([key]) => key !== COLLECTIONS_KEY),
+            ) as RemoteSyncConfigurationSettings)
+          : values;
+
+      const saveSettings = async (
+        settings: RemoteSyncConfigurationSettings,
+      ) => {
         try {
-          await updateRemoteSyncSettings(values).unwrap();
+          await updateRemoteSyncSettings(settings).unwrap();
 
           trackRemoteSyncSettingsChanged();
 
@@ -128,7 +158,7 @@ export const RemoteSyncAdminSettings = () => {
       };
 
       if (didBranchChange) {
-        pendingConfirmationSettingsRef.current = values;
+        pendingConfirmationSettingsRef.current = settingsToSave;
         showChangeBranchConfirmation({
           title: t`Switch branches?`,
           message: t`The synced collection will update to match the new branch. Questions that exist in the current branch but not the new one will be removed from any dashboards or content that reference them permanently, even if you switch back.`,
@@ -149,7 +179,7 @@ export const RemoteSyncAdminSettings = () => {
         });
         return;
       }
-      await saveSettings(values);
+      await saveSettings(settingsToSave);
     },
     [
       settingValues,
@@ -193,6 +223,21 @@ export const RemoteSyncAdminSettings = () => {
 
     // Build initial collection sync map from server data
     const collectionSyncMap: Record<number, boolean> = {};
+
+    // Add library collection
+    if (libraryCollection) {
+      collectionSyncMap[libraryCollection.id] =
+        libraryCollection.is_remote_synced ?? false;
+    }
+
+    // Add top-level collections (excluding personal)
+    topLevelCollectionsData?.data
+      ?.filter((c) => !c.personal_owner_id)
+      .forEach((collection) => {
+        collectionSyncMap[collection.id] = collection.is_remote_synced ?? false;
+      });
+
+    // Add tenant collections
     tenantCollectionsData?.data?.forEach((collection) => {
       collectionSyncMap[collection.id] = collection.is_remote_synced ?? false;
     });
@@ -202,7 +247,13 @@ export const RemoteSyncAdminSettings = () => {
       [TOKEN_KEY]: tokenValue,
       [COLLECTIONS_KEY]: collectionSyncMap,
     };
-  }, [settingValues, settingDetails, tenantCollectionsData]);
+  }, [
+    settingValues,
+    settingDetails,
+    libraryCollection,
+    topLevelCollectionsData,
+    tenantCollectionsData,
+  ]);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
@@ -313,13 +364,25 @@ export const RemoteSyncAdminSettings = () => {
                 </SettingsSection>
               )}
 
-              {/* Section 4: Shared tenant collections to sync */}
-              {isRemoteSyncEnabled && useTenants && (
+              {/* Section 4: Collections to sync */}
+              {isRemoteSyncEnabled && (
                 <SettingsSection
-                  title={t`Shared tenant collections to sync`}
-                  description={t`Choose which shared tenant collections to sync with git.`}
+                  title={t`Collections to sync`}
+                  description={t`Choose which collections to sync with git.`}
                 >
-                  <SharedTenantCollectionsList />
+                  <Stack gap="lg">
+                    <TopLevelCollectionsList />
+                    {useTenants && (
+                      <>
+                        <Text
+                          fw={700}
+                          size="md"
+                          lh="16px"
+                        >{t`Shared collections`}</Text>
+                        <SharedTenantCollectionsList />
+                      </>
+                    )}
+                  </Stack>
                 </SettingsSection>
               )}
 

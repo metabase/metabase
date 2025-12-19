@@ -65,7 +65,7 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Permissions for Nested One"),
       ).toBeVisible();
       expect(await screen.findByText("Administrators")).toBeVisible();
-      expect(await screen.findByText("All Internal Users")).toBeVisible();
+      expect(await screen.findByText("All internal users")).toBeVisible();
       expect(await screen.findByText("Other Users")).toBeVisible();
 
       // 1 groups has write, 1 has read, 1 has none

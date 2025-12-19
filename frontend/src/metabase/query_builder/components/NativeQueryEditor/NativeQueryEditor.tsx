@@ -12,9 +12,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import Databases from "metabase/entities/databases";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import Snippets from "metabase/entities/snippets";
+import { Databases } from "metabase/entities/databases";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { Snippets } from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
 import {
   runOrCancelQuestionOrSelectedQuery,
@@ -239,7 +239,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         snippets: true,
         promptInput: true,
         formatQuery: true,
-        aiGeneration: true,
       },
       hasTopBar = true,
       hasEditingSidebar = true,
@@ -261,6 +260,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       runQuery,
       highlightedLineNumbers,
       placeholder,
+      extensions,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -354,6 +354,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 readOnly={readOnly}
                 placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
+                extensions={extensions}
                 onChange={this.onChange}
                 onRunQuery={runQuery}
                 onSelectionChange={setNativeEditorSelectedRange}

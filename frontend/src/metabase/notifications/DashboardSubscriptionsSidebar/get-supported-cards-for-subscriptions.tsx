@@ -23,6 +23,7 @@ const cardsFromDashboard = (dashboard?: Dashboard) => {
     dashboard_card_id: card.id,
     dashboard_id: dashboard.id,
     parameter_mappings: card.parameter_mappings,
+    download_perms: card.card.download_perms,
   }));
 };
 

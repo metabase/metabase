@@ -16,7 +16,7 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";

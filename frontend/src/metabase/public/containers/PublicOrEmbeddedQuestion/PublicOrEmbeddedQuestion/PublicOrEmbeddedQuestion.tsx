@@ -28,6 +28,7 @@ import type {
   ParameterId,
   ParameterValuesMap,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { PublicOrEmbeddedQuestionView } from "../PublicOrEmbeddedQuestionView";
 
@@ -36,7 +37,7 @@ export const PublicOrEmbeddedQuestion = ({
   location,
 }: {
   location: Location;
-  params: { uuid: string; token: string };
+  params: { uuid: string; token: EntityToken };
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);

@@ -27,6 +27,8 @@ import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
 import * as Urls from "metabase-enterprise/urls";
 import type { Tenant } from "metabase-types/api";
 
+import { TenantsListingEmptyState } from "../TenantsListingEmptyState";
+
 interface TenantsListingProps {
   tenants: Tenant[];
   isAdmin: boolean;
@@ -34,6 +36,7 @@ interface TenantsListingProps {
   searchInputValue: string;
   setSearchInputValue: (value: string) => void;
   status: ActiveStatus;
+  hasNoTenants: boolean;
 }
 
 export const TenantsListing = ({
@@ -43,17 +46,24 @@ export const TenantsListing = ({
   setSearchInputValue,
   status,
   children,
+  hasNoTenants,
 }: TenantsListingProps) => {
   const dispatch = useDispatch();
 
   const openNewTenantModal = () => {
-    dispatch(push(Urls.newTenant()));
+    const param = hasNoTenants ? "?onboarding=true" : "";
+
+    dispatch(push(Urls.newTenant() + param));
   };
 
   const filteredTenants = useMemo(() => {
     const filter = new RegExp(`\\b${regexpEscape(searchInputValue)}`, "i");
     return tenants.filter((g) => filter.test(g.name));
   }, [searchInputValue, tenants]);
+
+  if (hasNoTenants) {
+    return <TenantsListingEmptyState onCreateTenant={openNewTenantModal} />;
+  }
 
   return (
     <div>

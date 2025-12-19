@@ -75,6 +75,14 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def transforms-ns
+  "Namespace for transforms"
+  :transforms)
+
+(def snippets-ns
+  "Namespace for snippets"
+  :snippets)
+
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
@@ -504,6 +512,19 @@
   This is only used for displaying purposes, For insertion or updating  the name, use site's locale instead"
   [collection]
   (first (personal-collections-with-ui-details [collection])))
+
+(defenterprise maybe-localize-tenant-collection-names
+  "For tenant root collections, localize the name to the user's locale.
+
+  OSS version: returns collections unchanged."
+  metabase-enterprise.tenants.model
+  [collections]
+  collections)
+
+(defn maybe-localize-tenant-collection-name
+  "Single-collection version of [[maybe-localize-tenant-collection-names]]."
+  [collection]
+  (first (maybe-localize-tenant-collection-names [collection])))
 
 (def ^:private CollectionWithLocationAndPersonalOwnerID
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not

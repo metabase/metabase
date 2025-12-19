@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Modal } from "metabase/ui";

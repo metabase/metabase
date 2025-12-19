@@ -108,7 +108,7 @@ describe("NewSegmentPage", () => {
 
     expect(screen.getByTestId("new-segment-page")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("New segment")).toHaveValue("");
-    expect(screen.getByLabelText("Description")).toHaveValue("");
+    expect(screen.getByLabelText("Give it a description")).toHaveValue("");
     expect(
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
@@ -137,7 +137,7 @@ describe("NewSegmentPage", () => {
     setup();
 
     await userEvent.type(
-      screen.getByLabelText("Description"),
+      screen.getByLabelText("Give it a description"),
       "Test description",
     );
 

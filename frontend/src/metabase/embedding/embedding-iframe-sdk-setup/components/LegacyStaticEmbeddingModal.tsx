@@ -11,8 +11,8 @@ import type { Card, Dashboard, DashboardId } from "metabase-types/api";
 
 export type LegacyStaticEmbeddingModalProps = {
   experience: SdkIframeEmbedSetupExperience;
-  dashboardId?: DashboardId;
-  questionId?: string | number;
+  dashboardId?: DashboardId | null;
+  questionId?: string | number | null;
   parentInitialState: SdkIframeEmbedSetupModalInitialState | undefined;
 };
 

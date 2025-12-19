@@ -13,7 +13,7 @@ describe("useTranslateContent (EE with token, in static embedding)", () => {
       dictionary: [
         { locale: "es", msgid: "Hello World", msgstr: "Hola Mundo" },
       ],
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["content_translation"],
       tokenFeatures: { content_translation: true },
       staticallyEmbedded: true,
     });

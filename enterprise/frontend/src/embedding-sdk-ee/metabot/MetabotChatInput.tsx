@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { LegacyRef } from "react";
 import { t } from "ttag";
 
-import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import {
   Flex,
   Icon,
@@ -12,34 +11,16 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import {
-  useMetabotAgent,
-  useMetabotChatHandlers,
-} from "metabase-enterprise/metabot/hooks";
-import { cancelInflightAgentRequests } from "metabase-enterprise/metabot/state";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
 export function MetabotChatInput() {
   const metabot = useMetabotAgent();
-  const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
-  const dispatch = useSdkDispatch();
 
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`
     : t`Ask AI a question...`;
-
-  const cancelRequest = () => {
-    dispatch(cancelInflightAgentRequests());
-  };
-
-  const resetInput = () => {
-    handleResetInput();
-  };
-
-  const startNewConversation = () => {
-    metabot.resetConversation();
-  };
 
   return (
     <Flex
@@ -85,7 +66,7 @@ export function MetabotChatInput() {
           if (e.key === "Enter" && !isModifiedKeyPress) {
             e.preventDefault();
             e.stopPropagation();
-            handleSubmitInput(metabot.prompt);
+            metabot.submitInput(metabot.prompt, { focusInput: true });
           }
         }}
       />
@@ -93,7 +74,7 @@ export function MetabotChatInput() {
       <Flex align="center" justify="center" gap="xs">
         {metabot.isDoingScience && (
           <UnstyledButton
-            onClick={cancelRequest}
+            onClick={metabot.cancelRequest}
             className={cx(S.chatButton, S.stopGenerationButton)}
           >
             <Tooltip label={t`Stop generation`}>
@@ -104,7 +85,7 @@ export function MetabotChatInput() {
 
         {!metabot.isDoingScience && metabot.prompt.length > 0 && (
           <UnstyledButton
-            onClick={resetInput}
+            onClick={() => metabot.setPrompt("")}
             data-testid="metabot-close-chat"
             className={S.chatButton}
           >
@@ -126,7 +107,7 @@ export function MetabotChatInput() {
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="edit_document_outlined" size="1rem" />}
-              onClick={startNewConversation}
+              onClick={metabot.resetConversation}
             >
               {t`Start new chat`}
             </Menu.Item>

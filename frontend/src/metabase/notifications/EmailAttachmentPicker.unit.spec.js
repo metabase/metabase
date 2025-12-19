@@ -4,7 +4,11 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import EmailAttachmentPicker from "./EmailAttachmentPicker";
 
-function setup({ pulse = createPulse(), hasAttachments = false } = {}) {
+function setup({
+  pulse = createPulse(),
+  allowDownload = true,
+  hasAttachments = false,
+} = {}) {
   const setPulse = jest.fn();
 
   if (hasAttachments) {
@@ -22,6 +26,7 @@ function setup({ pulse = createPulse(), hasAttachments = false } = {}) {
       cards={pulse.cards}
       pulse={pulse}
       setPulse={setPulse}
+      allowDownload={allowDownload}
     />,
     { storeInitialState: state },
   );
@@ -36,6 +41,13 @@ describe("EmailAttachmentPicker", () => {
       const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
       expect(toggle).not.toBeChecked();
+    });
+
+    it("should render disabled toggle if no access", () => {
+      setup({ allowDownload: false });
+      const toggle = screen.getByLabelText("Attach results");
+
+      expect(toggle).toBeDisabled();
     });
 
     it("should have a clickable toggle that reveals attachment type and a checkbox per question", () => {

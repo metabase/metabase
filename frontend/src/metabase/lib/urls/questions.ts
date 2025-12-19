@@ -6,6 +6,7 @@ import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { CardId, Card as SavedCard } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { appendSlug, getEncodedUrlSearchParams } from "./utils";
 
@@ -150,7 +151,7 @@ export function publicQuestion({
   );
 }
 
-export function embedCard(token: string, type: string | null = null) {
+export function embedCard(token: EntityToken, type: string | null = null) {
   return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 

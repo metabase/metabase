@@ -4,6 +4,10 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.59.0
+
+- Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
+
 ## Metabase 0.58.0
 
 - Added a `:collate` feature for drivers that support collation settings on text fields

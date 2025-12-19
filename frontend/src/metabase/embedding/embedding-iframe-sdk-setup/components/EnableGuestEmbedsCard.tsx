@@ -22,7 +22,7 @@ export const EnableGuestEmbedsCard = () => {
 
   return (
     <EnableEmbeddingCard
-      embeddingType="Guest embeds"
+      embeddingType="guest embeds"
       isEnabled={isGuestEmbedsEnabled}
       termsAccepted={isGuestEmbedsTermsAccepted}
       settingsToUpdate={{
@@ -35,7 +35,7 @@ export const EnableGuestEmbedsCard = () => {
           "show-static-embed-terms": false,
         }),
       }}
-      errorMessage={t`Failed to enable Guest embeds`}
+      errorMessage={t`Failed to enable guest embeds`}
     />
   );
 };

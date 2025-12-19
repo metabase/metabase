@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import {
   Box,
   Divider,
@@ -19,7 +20,7 @@ import {
   getSyncStatusColor,
   getSyncStatusIcon,
 } from "metabase-enterprise/remote_sync/utils";
-import type { Collection, RemoteSyncEntity } from "metabase-types/api";
+import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { CollectionPath } from "./CollectionPath";
 import { EntityLink } from "./EntityLink";
@@ -33,40 +34,23 @@ const SYNC_STATUS_ORDER: RemoteSyncEntity["sync_status"][] = [
 
 interface AllChangesViewProps {
   entities: RemoteSyncEntity[];
-  collections: Collection[];
   title?: string;
 }
 
-export const AllChangesView = ({
-  entities,
-  collections,
-  title,
-}: AllChangesViewProps) => {
-  const { data: collectionTree = [] } = useListCollectionsTreeQuery();
-
-  // Fetch collection tree for shared-tenant-collections namespace
-  // This is needed to show changes in tenant collections that have is_remote_synced=true
-  const { data: tenantCollectionTree = [] } = useListCollectionsTreeQuery({
-    namespace: "shared-tenant-collection",
+export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
+  const isUsingTenants = useSetting("use-tenants");
+  const { data: collectionTree = [] } = useListCollectionsTreeQuery({
+    namespaces: [
+      "",
+      "analytics",
+      ...(isUsingTenants ? ["shared-tenant-collection"] : []),
+    ],
+    "include-library": true,
   });
 
   const collectionMap = useMemo(() => {
-    const map = new Map([
-      ...buildCollectionMap(collectionTree),
-      ...buildCollectionMap(tenantCollectionTree),
-    ]);
-
-    // Add all synced collections to the map, including those from namespaces.
-    // This ensures that collections from namespaces like "shared-tenant-collection"
-    // are available when building collection path segments.
-    collections.forEach((c) => {
-      if (typeof c.id === "number") {
-        map.set(c.id, c);
-      }
-    });
-
-    return map;
-  }, [collectionTree, tenantCollectionTree, collections]);
+    return buildCollectionMap(collectionTree);
+  }, [collectionTree]);
 
   const hasRemovals = useMemo(() => {
     return (

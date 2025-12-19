@@ -1,10 +1,12 @@
 import { Route } from "react-router";
 
 import {
+  setupCollectionByIdEndpoint,
   setupSchemaEndpoints,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { checkNotNull } from "metabase/lib/types";
 import type { Segment, Table } from "metabase-types/api";
 import {
@@ -28,7 +30,10 @@ const SINGLE_SCHEMA_DB = createMockDatabase({
 const TEST_COLLECTION = createMockCollection({
   id: 1,
   name: "Data",
-  effective_ancestors: [],
+  effective_ancestors: [
+    createMockCollection(ROOT_COLLECTION),
+    createMockCollection({ id: 2, name: "Library", type: "library" }),
+  ],
 });
 
 const TEST_TABLE = createMockTable({
@@ -55,6 +60,7 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
     table?: Table;
     segment?: Segment;
   } = {}) {
+    setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
     renderWithProviders(
       <Route
         path="/"
@@ -76,7 +82,7 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
     const collectionLink = screen.getByText("Data").closest("a");
     expect(collectionLink).toHaveAttribute(
       "href",
-      "/data-studio/library/collections/1",
+      "/data-studio/library?expandedId=1",
     );
 
     const tableLink = screen.getByText("Orders").closest("a");
@@ -108,6 +114,8 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
       collection,
     });
 
+    setupCollectionByIdEndpoint({ collections: [collection] });
+
     setup({ table: tableWithAncestors });
 
     await waitFor(() => {
@@ -119,14 +127,14 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
 
     expect(screen.getByText("Root").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/library/collections/3",
+      "/data-studio/library",
     );
     expect(screen.getByText("Analytics").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/library/collections/2",
+      "/data-studio/library?expandedId=2",
     );
 
-    const separators = screen.getAllByText("/");
+    const separators = screen.getAllByRole("img");
     expect(separators.length).toBeGreaterThan(0);
   });
 
@@ -136,6 +144,8 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
       name: "orders_table",
       display_name: "Customer Orders",
     });
+
+    setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
 
     setup({ table: tableWithDifferentNames, segment: undefined });
 
@@ -215,14 +225,14 @@ describe("DataModelSegmentBreadcrumbs", () => {
     setup({ segment: undefined });
 
     await waitFor(() => {
-      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeVisible();
     });
 
     expect(screen.queryByText("PUBLIC")).not.toBeInTheDocument();
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("New segment")).toBeInTheDocument();
 
-    const separators = screen.getAllByText("/");
+    const separators = screen.getAllByRole("img");
     expect(separators).toHaveLength(2);
   });
 });

@@ -1,5 +1,7 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
+  Collection,
+  CollectionId,
   ListTransformRunsResponse,
   PythonTransformTableAliases,
   TransformId,
@@ -9,6 +11,21 @@ import type {
 
 import { createTransform } from "./api";
 import { getTableId } from "./e2e-qa-databases-helpers";
+
+export function createTransformCollection({
+  name,
+  parent_id = null,
+}: {
+  name: string;
+  parent_id?: CollectionId | null;
+}): Cypress.Chainable<Cypress.Response<Collection>> {
+  cy.log(`Create a transform collection: ${name}`);
+  return cy.request("POST", "/api/collection", {
+    name,
+    parent_id,
+    namespace: "transforms",
+  });
+}
 
 export function visitTransform(transformId: TransformId) {
   cy.visit(`/data-studio/transforms/${transformId}`);
@@ -50,6 +67,7 @@ export function createMbqlTransform({
   databaseId,
   name,
   visitTransform,
+  collectionId,
 }: {
   sourceTable: string;
   targetTable: string;
@@ -58,6 +76,7 @@ export function createMbqlTransform({
   name: string;
   databaseId?: number;
   visitTransform?: boolean;
+  collectionId?: CollectionId | null;
 }) {
   return getTableId({ databaseId, name: sourceTable }).then((tableId) => {
     return createTransform(
@@ -81,6 +100,7 @@ export function createMbqlTransform({
           schema: targetSchema,
         },
         tag_ids: tagIds,
+        collection_id: collectionId,
       },
       { visitTransform },
     );

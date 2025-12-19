@@ -27,7 +27,7 @@ jest.mock("../analytics", () => ({
 const setupEnterprise = (opts?: SetupOpts) => {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
+    enterprisePlugins: "*", // we need the license and currently it's enabled at import time with setupEnterprisePlugins :/,
   });
 };
 

@@ -4,7 +4,7 @@ import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 
 async function setup(opts: SetupOpts = {}) {
-  return baseSetup({ hasEnterprisePlugins: true, ...opts });
+  return baseSetup({ enterprisePlugins: ["smtp-override"], ...opts });
 }
 
 describe("SMTPConnectionCard (EE with token)", () => {

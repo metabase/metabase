@@ -659,8 +659,11 @@ describe("Remote Sync", () => {
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
-          // Section should be visible
-          cy.findByText("Shared tenant collections to sync").should("exist");
+          // Main section should be visible
+          cy.findByText("Collections to sync").should("exist");
+
+          // Shared collections sub-section should be visible
+          cy.findByText("Shared collections").should("exist");
 
           // Should show the tenant collections
           cy.findByText("Tenant A Shared").should("exist");
@@ -678,18 +681,18 @@ describe("Remote Sync", () => {
         H.configureGit("read-write");
         cy.visit("/admin/settings/remote-sync");
 
-        // Section should NOT be visible
+        // Shared collections sub-section should NOT be visible
         cy.findByTestId("admin-layout-content")
-          .findByText("Shared tenant collections to sync")
+          .findByText("Shared collections")
           .should("not.exist");
       });
 
       it("should not show shared tenant collections section when remote sync is not enabled", () => {
         cy.visit("/admin/settings/remote-sync");
 
-        // Section should NOT be visible (remote sync not yet configured)
+        // Collections to sync section should NOT be visible (remote sync not yet configured)
         cy.findByTestId("admin-layout-content")
-          .findByText("Shared tenant collections to sync")
+          .findByText("Collections to sync")
           .should("not.exist");
       });
 
@@ -698,7 +701,7 @@ describe("Remote Sync", () => {
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
-          cy.findByText("Shared tenant collections to sync").should("exist");
+          cy.findByText("Shared collections").should("exist");
           cy.findByText("No shared tenant collections found").should("exist");
         });
       });

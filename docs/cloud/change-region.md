@@ -30,6 +30,7 @@ To change regions, go to your [Metabase Store page](https://store.metabase.com/)
 - US East (North Virginia)
 - Europe (Frankfurt)
 - Asia Pacific (Singapore)
+- Asia Pacific (Sydney)
 - South America (São Paulo)
 
 ## Add the relevant IP addresses to your whitelist

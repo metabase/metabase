@@ -1,0 +1,49 @@
+.root {
+  border-bottom: 1px solid var(--mb-color-border);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-brand-light);
+  }
+
+  &:focus {
+    outline: none;
+    background-color: var(--mb-color-brand-light);
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--mb-color-focus);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.active {
+  background-color: var(--mb-color-brand-light);
+
+  &:hover {
+    background-color: var(--mb-color-brand-light);
+  }
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.checkboxWrapper {
+  flex-shrink: 0;
+}
+
+.treeCell {
+  overflow: hidden;
+}
+
+.cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

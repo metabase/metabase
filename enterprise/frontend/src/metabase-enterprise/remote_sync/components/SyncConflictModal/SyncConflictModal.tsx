@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
 import { useGetBranchesQuery } from "metabase-enterprise/api";
-import type { Collection } from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
 
@@ -21,7 +20,6 @@ import {
 } from "./utils";
 
 interface UnsyncedWarningModalProps {
-  collections: Collection[];
   currentBranch: string;
   nextBranch?: string | null;
   onClose: VoidFunction;
@@ -29,7 +27,7 @@ interface UnsyncedWarningModalProps {
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
-  const { collections, onClose, currentBranch, nextBranch, variant } = props;
+  const { onClose, currentBranch, nextBranch, variant } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
   const { data: branchesData } = useGetBranchesQuery();
@@ -92,7 +90,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       withCloseButton={false}
     >
       <Box pt="md">
-        <ChangesLists collections={collections} />
+        <ChangesLists />
 
         <OutOfSyncOptions
           currentBranch={currentBranch}

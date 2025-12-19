@@ -1,8 +1,8 @@
 import { assoc, assocIn, chain, dissoc, merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import Actions from "metabase/entities/actions";
-import Questions from "metabase/entities/questions";
+import { Actions } from "metabase/entities/actions";
+import { Questions } from "metabase/entities/questions";
 import { combineReducers, handleActions } from "metabase/lib/redux";
 
 import {

@@ -8,9 +8,8 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -39,6 +38,7 @@ function getValidationSchema() {
     name: Yup.string().required(Errors.required),
     targetName: Yup.string().required(Errors.required),
     targetSchema: Yup.string().nullable().defined(),
+    collection_id: Yup.number().nullable().defined(),
     incremental: Yup.boolean().required(),
     // For native queries, use checkpointFilter (plain string)
     checkpointFilter: Yup.string().nullable(),
@@ -91,7 +91,6 @@ function CreateTransformForm({
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
-  const [sendToast] = useToast();
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
 
@@ -131,16 +130,9 @@ function CreateTransformForm({
       throw new Error("Database ID is required");
     }
     const request = getCreateRequest(source, values, databaseId);
-    try {
-      const transform = await createTransform(request).unwrap();
-      trackTransformCreated({ transformId: transform.id });
-      onCreate(transform);
-    } catch (error) {
-      sendToast({
-        message: getErrorMessage(error, t`Failed to create transform`),
-        icon: "warning",
-      });
-    }
+    const transform = await createTransform(request).unwrap();
+    trackTransformCreated({ transformId: transform.id });
+    onCreate(transform);
   };
 
   return (
@@ -165,12 +157,17 @@ function CreateTransformForm({
             />
           )}
           <TargetNameInput />
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Collection`}
+            type="transform-collections"
+          />
           <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
+            <Button onClick={onClose}>{t`Back`}</Button>
             <FormSubmitButton label={t`Save`} variant="filled" />
           </Group>
         </Stack>
@@ -186,6 +183,7 @@ function getInitialValues(
   return {
     name: "",
     targetSchema: schemas?.[0] || null,
+    collection_id: null,
     ...defaultValues,
     targetName: defaultValues.targetName
       ? defaultValues.targetName
@@ -206,6 +204,7 @@ function getCreateRequest(
     name,
     targetName,
     targetSchema,
+    collection_id,
     incremental,
     checkpointFilter,
     checkpointFilterUniqueKey,
@@ -258,5 +257,6 @@ function getCreateRequest(
     name,
     source: transformSource,
     target: transformTarget,
+    collection_id: collection_id ?? null,
   };
 }

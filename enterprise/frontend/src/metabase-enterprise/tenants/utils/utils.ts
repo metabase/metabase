@@ -10,8 +10,8 @@ export const isTenantGroup = (group: Pick<Group, "is_tenant_group">) => {
   return !!group.is_tenant_group;
 };
 
-export const isExternalUser = (user?: Pick<User, "tenant_id">) => {
-  return user?.tenant_id !== null;
+export const isExternalUser = (user?: Pick<User, "tenant_id">): boolean => {
+  return Boolean(user && user.tenant_id !== null);
 };
 
 export const isTenantCollection = (collection: Collection) =>

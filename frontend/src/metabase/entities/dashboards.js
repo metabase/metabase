@@ -27,7 +27,7 @@ const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 /**
  * @deprecated use "metabase/api" instead
  */
-const Dashboards = createEntity({
+export const Dashboards = createEntity({
   name: "dashboards",
   nameOne: "dashboard",
   path: "/api/dashboard",
@@ -184,5 +184,3 @@ const Dashboards = createEntity({
     return type && `collection=${type}`;
   },
 });
-
-export default Dashboards;

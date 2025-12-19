@@ -21,6 +21,7 @@ import type {
   Parameter,
   ParameterId,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { ParameterValueWidget } from "../ParameterValueWidget";
 
@@ -34,7 +35,7 @@ export type ParameterWidgetProps = PropsWithChildren<
       setValue: (value: any) => void;
       cardId?: CardId;
       dashboardId?: DashboardId;
-      token?: string | null;
+      token?: EntityToken | null;
 
       editingParameter: Parameter | null;
       commitImmediately: boolean;

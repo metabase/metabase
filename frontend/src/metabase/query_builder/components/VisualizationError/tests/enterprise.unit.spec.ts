@@ -5,7 +5,7 @@ import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
-  baseSetup({ hasEnterprisePlugins: true, ...opts });
+  baseSetup({ ...opts });
 }
 
 describe("VisualizationError (EE without token)", () => {

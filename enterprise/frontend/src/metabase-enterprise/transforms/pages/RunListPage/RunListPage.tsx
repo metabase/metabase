@@ -4,13 +4,14 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
-import { Box, Center, Stack } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
@@ -28,23 +29,14 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <>
+    <PageContainer data-testid="transforms-run-list" gap={0}>
       <PaneHeader
         breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-        px="3.5rem"
         py={0}
         showMetabotButton
       />
-      <Stack
-        px="3.5rem"
-        h="100%"
-        data-testid="transforms-run-list"
-        style={{ overflow: "hidden" }}
-      >
-        <Box>{t`A list of when each transform ran.`}</Box>
-        <RunListPageBody params={params} />
-      </Stack>
-    </>
+      <RunListPageBody params={params} />
+    </PageContainer>
   );
 }
 

@@ -568,6 +568,24 @@
       (update base-query :where #(into [:and] [% filters]))
       base-query)))
 
+(defn- flatten-ctes
+  "Flatten nested :with clauses into a single top-level :with.
+  PostgreSQL doesn't support nested CTEs, so we need to extract all nested :with clauses
+  and put them at the top level.
+
+  Takes a query map and returns {:ctes [...] :query query-without-with}"
+  [query]
+  (if-not (:with query)
+    {:ctes [] :query query}
+    (let [ctes (reduce
+                (fn [acc [cte-name cte-query]]
+                  (let [{:keys [ctes query]} (flatten-ctes cte-query)]
+                    (into acc (conj ctes [cte-name query]))))
+                []
+                (:with query))]
+      {:ctes ctes
+       :query (dissoc query :with)})))
+
 (defn- hybrid-select
   "For a given `col-name` return a :coalesce expression to reference it from the outer hybrid search query.
 
@@ -600,8 +618,14 @@
   ;; The purpose of this query is just to project the coalesced hybrid columns with standard names so the scorers know
   ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]). Likewise, the :search_index alias
   ;; allows us to re-use scoring expressions between the appdb and semantic backends without adjusting column names.
+  ;;
+  ;; We flatten the nested CTEs because PostgreSQL doesn't support nested WITH clauses.
+  ;; The hybrid-query contains nested :with clauses from semantic-search-query and keyword-search-query,
+  ;; which we extract and place at the top level.
   (let [hybrid-query (hybrid-search-query index embedding search-context)
-        full-query {:with [[:hybrid_results hybrid-query]]
+        {:keys [ctes query]} (flatten-ctes hybrid-query)
+        all-ctes (conj ctes [:hybrid_results query])
+        full-query {:with all-ctes
                     :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]

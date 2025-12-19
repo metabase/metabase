@@ -13,7 +13,7 @@ This setup:
 - Only works on localhost when developing your app (though your Metabase doesn't need to be running locally).
 - Works with both the Enterprise and Open Source editions of Metabase, both self-hosted and on Metabase Cloud.
 
-If you want to use the SDK in production, however, you'll also need to [set up JWT SSO authentication](./authentication.md), which requires a [Pro](https://store.metabase.com/checkout/embedding) or [Enterprise plan](https://www.metabase.com/pricing/). To enable JWT SSO when you're self-hosting Metabase, you'll need to run the Enterprise Edition Docker image or JAR, and [activate your license](../../installation-and-operation/activating-the-enterprise-edition.md).
+If you want to use the SDK in production, however, you'll also need to [set up JWT SSO authentication](../authentication.md), which requires a [Pro](https://store.metabase.com/checkout/embedding) or [Enterprise plan](https://www.metabase.com/pricing/). To enable JWT SSO when you're self-hosting Metabase, you'll need to run the Enterprise Edition Docker image or JAR, and [activate your license](../../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Prerequisites
 
@@ -77,5 +77,5 @@ Run your app and visit the page with the embedded dashboard.
 
 ## Next steps
 
-- Explore [theming to change the look and feel](./appearance.md).
-- Continue by [setting up JWT SSO in Metabase and your app](./authentication.md) to sign people in, manage permissions, and deploy your app in production.
+- Explore [theming to change the look and feel](../appearance.md).
+- Continue by [setting up JWT SSO in Metabase and your app](../authentication.md) to sign people in, manage permissions, and deploy your app in production.

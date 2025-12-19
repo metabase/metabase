@@ -22,13 +22,15 @@ const defaultProps = {
   onChange: jest.fn(),
   onSubmit: jest.fn(),
   onStop: jest.fn(),
-  suggestionModels: [
-    "table",
-    "database",
-    "card",
-    "dashboard",
-    "collection",
-  ] as SuggestionModel[],
+  suggestionConfig: {
+    suggestionModels: [
+      "table",
+      "database",
+      "card",
+      "dashboard",
+      "collection",
+    ] as SuggestionModel[],
+  },
 };
 
 const setup = (props = {}) => {

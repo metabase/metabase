@@ -1,8 +1,8 @@
 import type * as React from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
+import { Dashboards } from "metabase/entities/dashboards";
+import { Questions } from "metabase/entities/questions";
 import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {

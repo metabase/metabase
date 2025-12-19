@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
   setupGdriveGetFolderEndpoint,
@@ -28,7 +28,7 @@ interface SetupOpts {
   canUpload?: boolean;
   canManageSettings?: boolean;
   isHosted?: boolean;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
   enableGoogleSheets?: boolean;
   status?: GdrivePayload["status"];
@@ -42,7 +42,7 @@ export const setup = ({
   canUpload = true,
   canManageSettings = false,
   isHosted = false,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   tokenFeatures = {},
   enableGoogleSheets = false,
   status,
@@ -93,8 +93,10 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
   setupTokenStatusEndpoint({ valid: true });
 
@@ -119,7 +121,7 @@ export const setup = ({
 export const setupAdvancedPermissions = (opts: Partial<SetupOpts>) => {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["application_permissions"],
     tokenFeatures: { advanced_permissions: true },
   });
 };
@@ -128,8 +130,8 @@ export const setupHostedInstance = (opts: Partial<SetupOpts>) => {
   return setup({
     ...opts,
     isHosted: true,
-    hasEnterprisePlugins: true,
     tokenFeatures: { hosting: true, ...opts.tokenFeatures },
+    enterprisePlugins: ["upload_management"],
   });
 };
 

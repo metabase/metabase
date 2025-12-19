@@ -10,10 +10,7 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import {
-  getIsNotebookNativePreviewShown,
-  getUiControls,
-} from "metabase/query_builder/selectors";
+import { getUiControls } from "metabase/query_builder/selectors";
 import {
   Notebook,
   type NotebookProps,
@@ -84,24 +81,6 @@ export const NotebookContainer = ({
   };
 
   const screenSize = useNotebookScreenSize();
-  const isNotebookNativePreviewShown = useSelector(
-    getIsNotebookNativePreviewShown,
-  );
-
-  useEffect(() => {
-    if (screenSize === "small") {
-      dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
-    } else if (screenSize === "large") {
-      const currentSettingValue = isNotebookNativePreviewShown;
-
-      dispatch(
-        setUIControls({
-          isShowingNotebookNativePreview: currentSettingValue,
-        }),
-      );
-    }
-  }, [dispatch, isNotebookNativePreviewShown, screenSize]);
-
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
   const Handle = forwardRef<

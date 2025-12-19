@@ -6,6 +6,7 @@ import Button from "metabase/common/components/Button";
 import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { Box, Flex } from "metabase/ui";
 import type { CardId, DashboardId, Parameter } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import { SyncedParametersList } from "./SyncedParametersList";
@@ -16,7 +17,7 @@ interface ResponsiveParametersListProps {
     parametersList?: string;
   };
   cardId?: CardId;
-  token?: string | null;
+  token?: EntityToken | null;
   dashboardId?: DashboardId;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;

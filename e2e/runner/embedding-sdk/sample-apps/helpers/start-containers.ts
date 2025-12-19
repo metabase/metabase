@@ -34,8 +34,9 @@ export async function startContainers({
     await Promise.all(healthcheckPromises);
 
     shell(getLogsCommand(appName));
-  } catch {
+  } catch (err) {
     shell(getLogsCommand(appName));
     shell(dockerDownCommand, { cwd, env });
+    throw err;
   }
 }

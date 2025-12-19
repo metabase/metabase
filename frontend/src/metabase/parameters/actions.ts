@@ -10,6 +10,7 @@ import type {
   ParameterId,
   ParameterValues,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getParameterValuesCache } from "./selectors";
@@ -49,7 +50,7 @@ export const fetchParameterValues =
 
 export interface FetchCardParameterValuesOpts {
   cardId: CardId;
-  token?: string | null;
+  token?: EntityToken | null;
   parameter: Parameter;
   query?: string;
 }
@@ -73,7 +74,7 @@ export const fetchCardParameterValues =
 
 export interface FetchDashboardParameterValuesOpts {
   dashboardId: DashboardId;
-  token?: string | null;
+  token?: EntityToken | null;
   parameter: Parameter;
   parameters: Parameter[];
   query?: string;
@@ -122,7 +123,7 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
 
 interface CardParameterValuesRequest {
   cardId?: CardId;
-  token?: string | null;
+  token?: EntityToken | null;
   paramId: ParameterId;
   query?: string;
 }
@@ -140,7 +141,7 @@ const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
 
 interface DashboardParameterValuesRequest {
   dashId?: DashboardId;
-  token?: string | null;
+  token?: EntityToken | null;
   paramId: ParameterId;
   query?: string;
 }

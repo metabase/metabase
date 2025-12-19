@@ -4,11 +4,12 @@ import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { Series } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
   getDictionaryBasePath: null as string | null,
-  setEndpointsForStaticEmbedding: (_encodedToken: string) => {},
+  setEndpointsForStaticEmbedding: (_encodedToken: EntityToken) => {},
   ContentTranslationConfiguration: PluginPlaceholder,
   useTranslateContent: <
     T = string | null | undefined,

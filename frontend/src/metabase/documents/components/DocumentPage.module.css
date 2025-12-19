@@ -59,7 +59,9 @@
     }
 
     :global(.node-metabot),
-    :global(.node-cardEmbed) {
+    :global(.node-cardEmbed),
+    :global(.node-resizeNode),
+    :global(.node-flexContainer) {
       break-inside: avoid;
     }
 

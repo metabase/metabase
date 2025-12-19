@@ -514,6 +514,25 @@
                                          ["float(10)" :type/Float]
                                          ["datetime" :type/DateTime]
                                          ["year" :type/Integer]
+                                         ;; Iceberg table types https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+                                         ["string" :type/Text]
+                                         [:string :type/Text]
+                                         [:STRING :type/Text]
+                                         ["boolean" :type/Boolean]
+                                         ["int" :type/Integer]
+                                         ["long" :type/BigInteger]
+                                         ["double" :type/Float]
+                                         ["decimal(2, 10)" :type/Decimal]
+                                         ["binary" :type/*]
+                                         ["date" :type/Date]
+                                         ["time" nil]
+                                         ["timestamp" :type/DateTime]
+                                         ["timestamptz" :type/DateTimeWithTZ]
+
+                                         ;; MySQL federated table enum types
+                                         ["enum('A','B')" :type/Text]
+                                         ["enum('open','closed')" :type/Text]
+                                         ["enum('active','inactive')" :type/Text]
                                          ;; nonsense
                                          ["fadlsjfldskajfl" nil]]]
     (testing (format "database-type %s" (pr-str database-type))

@@ -73,3 +73,16 @@
 .stepCard.nextStepCard {
   border: 1px solid var(--mb-color-metabase-brand) !important;
 }
+
+.infoAlertWrapper {
+  align-items: flex-start;
+}
+
+.infoAlertIcon {
+  margin-right: var(--mantine-spacing-xs);
+}
+
+.infoAlertMessage {
+  white-space: pre;
+  color: var(--mb-color-text-primary);
+}

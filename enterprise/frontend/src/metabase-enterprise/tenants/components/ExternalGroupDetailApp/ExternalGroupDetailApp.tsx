@@ -5,5 +5,5 @@ import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp"
 export const ExternalGroupDetailApp = (props: {
   params: { groupId: number };
 }) => {
-  return <GroupDetailApp title={t`Tenant Groups`} {...props} />;
+  return <GroupDetailApp title={t`Tenant groups`} {...props} />;
 };

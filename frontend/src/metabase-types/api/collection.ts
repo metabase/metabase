@@ -19,6 +19,7 @@ import type { UserId, UserInfo } from "./user";
 export type CollectionNamespace =
   | null
   | "snippets"
+  | "transforms"
   | "tenant-specific"
   | "shared-tenant-collection";
 
@@ -86,7 +87,7 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
-  namespace: CollectionNamespace;
+  namespace: CollectionNamespace | null;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;

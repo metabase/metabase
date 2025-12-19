@@ -19,5 +19,4 @@ prompts:
     model: Metabot
   - id: U4V5PzzpaMasl1Kt9BvNy
     model: MetabotPrompt
-use_cases: []
 use_verified_content: false

@@ -2,8 +2,8 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
-import Databases from "metabase/entities/databases";
-import Snippets from "metabase/entities/snippets";
+import { Databases } from "metabase/entities/databases";
+import { Snippets } from "metabase/entities/snippets";
 import * as CardLib from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";

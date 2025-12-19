@@ -137,6 +137,33 @@ describe("DashboardSharingMenu", () => {
         expect(screen.getByText("Export tab as PDF")).toBeInTheDocument();
       });
     });
+
+    it("should be disabled if dashcards are still loading", async () => {
+      setupDashboardSharingMenu({
+        dashboardState: {
+          loadingDashCards: {
+            loadingIds: [],
+            loadingStatus: "running",
+            startTime: null,
+            endTime: null,
+          },
+        },
+      });
+      await openMenu();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).toBeDisabled();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).toHaveStyle({
+        cursor: "wait",
+      });
+    });
+
+    it("should be enabled if dashcards are done loading", async () => {
+      setupDashboardSharingMenu({});
+      await openMenu();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).toBeEnabled();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).not.toHaveStyle(
+        { cursor: "wait" },
+      );
+    });
   });
 
   describe("public links", () => {

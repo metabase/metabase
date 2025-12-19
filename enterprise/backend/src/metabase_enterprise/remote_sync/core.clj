@@ -66,8 +66,14 @@
     (doseq [collection sync-on
             ;; only publish event when this changed
             :when (not (:is_remote_synced collection))]
-      (events/publish-event! :event/collection-update {:object collection :user-id api/*current-user-id*}))
+      (events/publish-event! :event/collection-update
+                             ;; collection is the model originally loaded set the correct sync state
+                             {:object (assoc collection :is_remote_synced true)
+                              :user-id api/*current-user-id*}))
     (doseq [collection sync-off
             ;; only publish event when this changed
             :when (:is_remote_synced collection)]
-      (events/publish-event! :event/collection-update {:object collection :user-id api/*current-user-id*}))))
+      (events/publish-event! :event/collection-update
+                             ;; collection is the model originally loaded set the correct sync state
+                             {:object (assoc collection :is_remote_synced false)
+                              :user-id api/*current-user-id*}))))

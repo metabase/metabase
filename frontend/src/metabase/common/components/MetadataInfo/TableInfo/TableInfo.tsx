@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import type Table from "metabase-lib/v1/metadata/Table";
 

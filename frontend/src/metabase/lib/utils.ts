@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
+import type { EntityToken } from "metabase-types/api/entity";
 
 export function isEmpty(str: string | null) {
   if (str != null) {
@@ -163,7 +164,7 @@ export function versionIsLatest({
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
 
 // Extract resource id from signed JWT token used in Static Embedding
-export const extractResourceIdFromJwtToken = (jwtToken: string) => {
+export const extractResourceIdFromJwtToken = (jwtToken: EntityToken) => {
   try {
     const parts = jwtToken.split(".");
     const payloadPart = parts[1];

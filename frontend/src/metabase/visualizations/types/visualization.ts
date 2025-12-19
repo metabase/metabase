@@ -29,6 +29,7 @@ import type {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
@@ -143,7 +144,7 @@ export interface VisualizationProps {
   selectedTimelineEventIds?: TimelineEventId[];
   queryBuilderMode?: QueryBuilderMode;
   uuid?: string;
-  token?: string;
+  token?: EntityToken;
 
   gridSize?: VisualizationGridSize;
   width: number;
@@ -235,7 +236,7 @@ export type VisualizationPassThroughProps = {
 
   // Public & Embedded questions, needed for pin maps to generate the correct tile URL
   uuid?: string;
-  token?: string;
+  token?: EntityToken;
 
   /**
    * Extra buttons to be shown in the table footer (if the visualization is a table)

@@ -18,6 +18,7 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { DownloadsState, State } from "metabase-types/store";
 
 import { trackDownloadResults } from "./downloads-analytics";
@@ -31,7 +32,7 @@ export interface DownloadQueryResultsOpts {
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
   uuid?: string;
-  token?: string | null;
+  token?: EntityToken | null;
   documentUuid?: string;
   documentId?: number;
   params?: Record<string, unknown>;
@@ -255,7 +256,7 @@ const getPublicQuestionParams = (
 };
 
 const getEmbedDashcardParams = (
-  token: string,
+  token: EntityToken,
   cardId: number,
   dashcardId: DashCardId,
   type: string,
@@ -271,7 +272,7 @@ const getEmbedDashcardParams = (
 });
 
 const getEmbedQuestionParams = (
-  token: string,
+  token: EntityToken,
   type: string,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => {

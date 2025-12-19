@@ -7,12 +7,15 @@ import {
   useUpdateGlossaryMutation,
 } from "metabase/api";
 import { GlossaryTable } from "metabase/reference/glossary/GlossaryTable";
-import { Box, Card, Group, Stack, Text } from "metabase/ui";
+import { Box, Card } from "metabase/ui";
 import {
   trackDataStudioGlossaryTermCreated,
   trackDataStudioGlossaryTermDeleted,
   trackDataStudioGlossaryTermUpdated,
 } from "metabase-enterprise/data-studio/analytics";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
 import S from "./GlossaryPage.module.css";
 
@@ -23,10 +26,12 @@ export function GlossaryPage() {
   const [deleteGlossary] = useDeleteGlossaryMutation();
 
   return (
-    <Stack w="100%" h="100%" p="xl" bg="background-light">
-      <Group align="center" wrap="nowrap" justify="space-between">
-        <Text fw="bold" fz="1.5rem" component="h1">{t`Glossary`}</Text>
-      </Group>
+    <PageContainer gap={0}>
+      <PaneHeader
+        breadcrumbs={
+          <DataStudioBreadcrumbs role="heading">{t`Glossary`}</DataStudioBreadcrumbs>
+        }
+      />
       <Box w="100%" className={S.contentWrapper}>
         <Card px="lg" pb="sm" withBorder shadow="none">
           <GlossaryTable
@@ -46,6 +51,6 @@ export function GlossaryPage() {
           />
         </Card>
       </Box>
-    </Stack>
+    </PageContainer>
   );
 }

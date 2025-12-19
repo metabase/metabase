@@ -12,8 +12,8 @@ import {
   updateTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import Group from "metabase/entities/groups";
-import Tables from "metabase/entities/tables";
+import { Groups } from "metabase/entities/groups";
+import { Tables } from "metabase/entities/tables";
 import {
   combineReducers,
   createAction,
@@ -42,7 +42,7 @@ export const initializeDataPermissions = createThunkAction(
   () => async (dispatch) => {
     await Promise.all([
       dispatch(loadDataPermissions()),
-      dispatch(Group.actions.fetchList()),
+      dispatch(Groups.actions.fetchList()),
     ]);
   },
 );
@@ -80,7 +80,7 @@ export const initializeCollectionPermissions = createThunkAction(
   (namespace) => async (dispatch) => {
     await Promise.all([
       dispatch(loadCollectionPermissions(namespace)),
-      dispatch(Group.actions.fetchList()),
+      dispatch(Groups.actions.fetchList()),
     ]);
   },
 );
@@ -260,7 +260,7 @@ export const initializeTenantCollectionPermissions = createThunkAction(
   () => async (dispatch) => {
     await Promise.all([
       dispatch(loadTenantCollectionPermissions()),
-      dispatch(Group.actions.fetchList()),
+      dispatch(Groups.actions.fetchList()),
     ]);
   },
 );

@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupDatabaseEndpoints,
@@ -28,14 +28,14 @@ import { QuestionSettingsSidebar } from "../QuestionSettingsSidebar";
 export interface SetupOpts {
   card?: Card;
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   dbHasModelPersistence?: boolean;
 }
 
 export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
-  hasEnterprisePlugins,
+  enterprisePlugins,
   dbHasModelPersistence = true,
 }: SetupOpts) => {
   const currentUser = createMockUser();
@@ -72,8 +72,8 @@ export const setup = async ({
   const metadata = getMetadata(state);
   const question = checkNotNull(metadata.question(card.id));
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   const TestQuestionSettingsSidebar = () => (

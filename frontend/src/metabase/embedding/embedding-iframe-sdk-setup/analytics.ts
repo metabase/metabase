@@ -228,7 +228,7 @@ const buildEventDetailsPartsForSettings = (
 
     const value = settings[optionKey];
 
-    if (value === undefined) {
+    if (value === undefined || value === null) {
       continue;
     }
 

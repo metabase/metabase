@@ -674,10 +674,12 @@
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
 (defmulti visible-filter-clause
-  "Return a honey SQL query fragment that will limit another query to only selecting records visible to the supplied user
-  by filtering on a supplied column or honeysql expression, using a the map of permission type->minimum permission-level.
+  "Return a map with:
+   - :clause - honey SQL WHERE clause fragment to filter records visible to the user
+   - :with - optional vector of CTE definitions [[name query] ...] to be merged into the query
 
-  Defaults to returning a no-op false statement 0=1."
+  Uses the map of permission type->minimum permission-level for filtering.
+  Defaults to returning a no-op false statement {:clause [:= 0 1]}."
   {:arglists '([model column-or-exp user-info perm-type->perm-level])}
   dispatch-on-model)
 
@@ -768,7 +770,7 @@
 
 (defmethod visible-filter-clause :default
   [_m _column-or-expression _user-info _perm-type->perm-level]
-  [:= [:inline 0] [:inline 1]])
+  {:clause [:= [:inline 0] [:inline 1]]})
 
 ;;;; [[to-json]]
 

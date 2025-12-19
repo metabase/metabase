@@ -30,7 +30,7 @@ jobs:
       - name: Check if driver tests should run
         id: check-branch-and-files-changed
         run: |
-          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
+          IS_MASTER_OR_RELEASE="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}"
           echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
 
           if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
@@ -461,8 +461,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -823,8 +823,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||

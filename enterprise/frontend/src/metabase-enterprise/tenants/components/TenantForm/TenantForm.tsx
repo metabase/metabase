@@ -63,10 +63,11 @@ export const TenantForm = ({
         <Form disabled={!dirty} mt="sm">
           <FormTextInput
             name="name"
-            title={t`Display name`}
-            label={t`Display name`}
-            description={t`Visible to admins and people assigned to the tenant. You can change the name at any time.`}
+            title={t`Give this tenant a name`}
+            label={t`Give this tenant a name`}
+            description={t`This will be visible to users assigned to this tenant.`}
             mb="md"
+            placeholder="A wonderful tenant"
             onChange={(e) => {
               const value = e.target.value;
               setFieldValue("name", value);
@@ -81,15 +82,17 @@ export const TenantForm = ({
           />
           <FormTextInput
             name="slug"
-            title={t`Slug`}
-            label={t`Slug`}
-            description={t`A unique identifier for the tenant. Cannot be changed later.`}
+            title={t`Slug for this tenant`}
+            label={t`Slug for this tenant`}
+            description={t`This can’t be changed later, so choose wisely.`}
+            placeholder="permanent-tenant-identifier"
             disabled={!!initialValues.slug}
             mb="xl"
           />
           <LoginAttributesWidget
             name="attributes"
-            description={t`Default attributes to be applied to all users in this tenant.`}
+            title={t`Default attributes`}
+            description={t`Attributes to be applied to all users in this tenant.`}
           />
           <FormFooter>
             <FormErrorMessage inline />

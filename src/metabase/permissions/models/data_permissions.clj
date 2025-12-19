@@ -979,3 +979,9 @@
           (set-table-permission! group_id table perm_type perm_value))
         ;; These perms can be inserted raw, and don't require changes to existing perms in the DB
         (t2/insert! :model/DataPermissions simple-perms)))))
+
+(defenterprise download-perms-level
+  "Return the download permission for the query that the given user has. OSS returns :full"
+  metabase-enterprise.advanced-permissions.models.permissions.data-permissions
+  [_query _user-id]
+  :full)

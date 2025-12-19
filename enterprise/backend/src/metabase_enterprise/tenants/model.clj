@@ -1,10 +1,11 @@
 (ns metabase-enterprise.tenants.model
   (:require
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -85,3 +86,28 @@
                                                     :location
                                                     [:like (str "/" tenant-collection-id "/%")])]
               (conj descendant-ids tenant-collection-id))))))
+
+(defenterprise maybe-localize-tenant-collection-names
+  "EE implementation: localizes tenant root collection names."
+  :feature :tenants
+  [collections]
+  (let [tenant-collection-ids (keep (fn [c]
+                                      (when (= (:type c) "tenant-specific-root-collection")
+                                        (:id c)))
+                                    collections)
+        collection-id->tenant-name-and-id
+        (when (seq tenant-collection-ids)
+          (t2/select-fn->fn :tenant_collection_id (juxt :name :id)
+                            :model/Tenant
+                            :tenant_collection_id [:in tenant-collection-ids]))]
+    (mapv (fn [{ttype :type id :id :as coll}]
+            (cond-> coll
+              (= ttype "tenant-specific-root-collection")
+              (assoc :name (if-let [user-tenant-id (:tenant_id @api/*current-user*)]
+                             (let [[_tenant-name tenant-id] (collection-id->tenant-name-and-id id)]
+                               ;; this should never happen, but juuuuuust in case
+                               (api/check-403 (= user-tenant-id tenant-id))
+                               (tru "Our data"))
+                             (let [[tenant-name _tenant-id] (collection-id->tenant-name-and-id id)]
+                               (tru "Tenant collection: {0}" tenant-name))))))
+          collections)))

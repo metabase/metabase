@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -21,7 +21,7 @@ export interface SetupOpts {
   reportTimezone?: string;
 
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
   expressionMode?: Lib.ExpressionMode;
 }
@@ -30,7 +30,7 @@ export async function setup({
   enclosingFunction,
   reportTimezone = "America/Los_Angeles",
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
+  enterprisePlugins,
   tokenFeatures = {},
   expressionMode = "expression",
 }: SetupOpts) {
@@ -59,8 +59,8 @@ export async function setup({
     expressionMode,
   };
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(<HelpText {...props} />, {

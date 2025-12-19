@@ -91,6 +91,11 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("session-properties"),
         // Invalidate collection list to refresh is_remote_synced values
         listTag("collection"),
+        // Invalidate library collection to refresh is_remote_synced value
+        tag("library-collection"),
+        // Invalidate dirty state to refetch after settings change
+        tag("collection-dirty-entities"),
+        tag("collection-is-dirty"),
       ],
     }),
     getBranches: builder.query<GetBranchesResponse, void>({

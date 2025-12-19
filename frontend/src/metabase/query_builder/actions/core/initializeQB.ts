@@ -2,14 +2,13 @@ import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
 import { replace } from "react-router-redux";
 
-import Questions from "metabase/entities/questions";
-import Snippets from "metabase/entities/snippets";
+import { Questions } from "metabase/entities/questions";
+import { Snippets } from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getIsEditingInDashboard,
-  getIsNotebookNativePreviewShown,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -24,6 +23,7 @@ import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery"
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, SegmentId } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
@@ -120,7 +120,7 @@ async function fetchAndPrepareSavedQuestionCards(
     token,
   }: {
     cardId: string | number;
-    token?: string | null;
+    token?: EntityToken | null;
   },
   dispatch: Dispatch,
   getState: GetState,
@@ -180,7 +180,7 @@ export async function resolveCards({
   getState,
 }: {
   cardId?: string | number;
-  token?: string | null;
+  token?: EntityToken | null;
   deserializedCard?: Card;
   options: BlankQueryOptions;
   dispatch: Dispatch;
@@ -375,8 +375,6 @@ async function handleQBInit(
 
   const objectId = params?.objectId || queryParams?.objectId;
 
-  uiControls.isShowingNotebookNativePreview =
-    getIsNotebookNativePreviewShown(getState());
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
 

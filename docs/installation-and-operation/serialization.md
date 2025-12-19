@@ -298,7 +298,7 @@ This ID refers to the collection where the question was saved. In a real export,
 
 ### Entity IDs work with embedding
 
-Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Static Embedding](../embedding/static-embedding.md), [Modular embedding](../embedding/modular-embedding.md), [SDK](../embedding/sdk/introduction.md), and [Full app embedding](../embedding/full-app-embedding.md).
+Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Guest embedding](../embedding/guest-embedding.md), [Modular embedding](../embedding/modular-embedding.md), [SDK](../embedding/sdk/introduction.md), and [Full app embedding](../embedding/full-app-embedding.md).
 
 A high-level workflow for using Entity IDs when embedding Metabase in your app would look something like:
 

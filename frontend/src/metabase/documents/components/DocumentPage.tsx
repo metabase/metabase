@@ -59,12 +59,14 @@ import {
   setChildTargetId,
   setCurrentDocument,
   setHasUnsavedChanges,
+  setIsHistorySidebarOpen,
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import {
   getDraftCards,
   getHasUnsavedChanges,
+  getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
@@ -73,6 +75,7 @@ import { getListCommentsQuery } from "../utils/api";
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
+import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 
@@ -97,6 +100,7 @@ export const DocumentPage = ({
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const draftCards = useSelector(getDraftCards);
+  const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
   );
@@ -267,6 +271,10 @@ export const DocumentPage = ({
       ? deleteBookmark({ type: "document", id: documentId })
       : createBookmark({ type: "document", id: documentId });
   }, [isBookmarked, deleteBookmark, createBookmark, documentId]);
+
+  const handleShowHistory = useCallback(() => {
+    dispatch(setIsHistorySidebarOpen(true));
+  }, [dispatch]);
 
   const handleSave = useCallback(
     async (collectionId: RegularCollectionId | null = null) => {
@@ -455,6 +463,7 @@ export const DocumentPage = ({
               onMove={() => setCollectionPickerMode("move")}
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
+              onShowHistory={handleShowHistory}
               hasComments={hasComments}
             />
             <Editor
@@ -524,6 +533,14 @@ export const DocumentPage = ({
           onClose={() => forceUpdate()}
         />
       </Box>
+      {isHistorySidebarOpen && documentData && (
+        <Box className={styles.sidebar} data-testid="document-history-sidebar">
+          <DocumentRevisionHistorySidebar
+            document={documentData}
+            onClose={() => dispatch(setIsHistorySidebarOpen(false))}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

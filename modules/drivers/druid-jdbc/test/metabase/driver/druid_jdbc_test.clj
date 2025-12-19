@@ -3,11 +3,15 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [malli.error :as me]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timeseries-test.util :as tqpt]
@@ -549,6 +553,15 @@
                                             (constantly conj))
        (sort-by first)
        (take 5)))
+
+(deftest breakout-aggregation-unique-names-test
+  (testing "Breakouts must be unique from aggregation names (#10670)"
+    (tqpt/test-timeseries-drivers
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
+                    (lib/breakout $q (m/find-first (comp #{"count"} :name) (lib/breakoutable-columns $q)))
+                    (lib/aggregate $q (lib/count)))]
+        (is (seq (mt/rows (qp/process-query query))))))))
 
 (deftest ^:synchronized table-rows-sample-test
   (mt/test-driver

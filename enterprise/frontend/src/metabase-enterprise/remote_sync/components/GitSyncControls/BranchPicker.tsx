@@ -117,6 +117,8 @@ export const BranchPicker = ({
           py="1rem"
           size="compact-sm"
           variant="default"
+          justify="left"
+          flex={1}
           disabled={disabled || isLoading || isCreating}
           onClick={() => combobox.toggleDropdown()}
           leftSection={<Icon name="git_branch" c="text-medium" size={14} />}

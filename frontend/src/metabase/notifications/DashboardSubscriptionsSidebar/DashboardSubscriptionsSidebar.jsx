@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import Pulses from "metabase/entities/pulses";
+import { Pulses } from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
   cleanPulse,
@@ -20,7 +20,7 @@ import {
   AddEditSlackSidebar,
 } from "metabase/notifications/AddEditSidebar/AddEditSidebar";
 import { NewPulseSidebar } from "metabase/notifications/NewPulseSidebar";
-import PulsesListSidebar from "metabase/notifications/PulsesListSidebar";
+import { PulsesListSidebar } from "metabase/notifications/PulsesListSidebar";
 import {
   cancelEditingPulse,
   fetchPulseFormInput,
@@ -67,6 +67,7 @@ const cardsToPulseCards = (cards, pulseCards) => {
       pivot_results: pulseCard.pivot_results,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
+      download_perms: pulseCard.download_perms,
     };
   });
 };

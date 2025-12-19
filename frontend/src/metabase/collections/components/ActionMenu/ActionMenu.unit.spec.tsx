@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
-import Collections from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
+import { Collections } from "metabase/entities/collections";
+import { Dashboards } from "metabase/entities/dashboards";
+import { Questions } from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type {
   Collection,

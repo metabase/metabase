@@ -1,4 +1,4 @@
-import Fields from "metabase/entities/fields";
+import { Fields } from "metabase/entities/fields";
 
 import { fetchField } from "./metadata";
 
