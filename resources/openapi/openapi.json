@@ -36421,7 +36421,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "token" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "token" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "map where {:token -> <string>}"
           },
           "4XX" : {
             "description" : "Client error response"
