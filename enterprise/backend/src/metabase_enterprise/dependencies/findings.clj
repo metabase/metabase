@@ -66,7 +66,6 @@
   [type :- [:enum :card :transform :segment]
    batch-size :- :int]
   (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
-    (prn "upserting instances" type (count instances) (map :id instances))
     (lib-be/with-metadata-provider-cache
       (analyze-instances! instances))
     (count instances)))
