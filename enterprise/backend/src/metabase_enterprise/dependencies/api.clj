@@ -153,14 +153,12 @@
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
                :collection :collection_id :dashboard :dashboard_id
-               :document :document_id
-               :moderation_reviews]
+               :document :document_id]
    :snippet   [:name :description]
    :transform [:name :description :creator :table]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
-               :collection :collection_id
-               :moderation_reviews]
+               :collection :collection_id]
    :document  [:name :description :view_count
                :created_at :creator
                :collection :collection_id]
@@ -196,7 +194,7 @@
 ;; frontend/src/metabase-types/api/dependencies.ts
 ;; (See CardDependencyNodeData, DashboardDependencyNodeData, etc.)
 ;;
-;; Note: Some fields (like :creator, :collection, :moderation_reviews) are added via t2/hydrate,
+;; Note: Some fields (like :creator, :collection) are added via t2/hydrate,
 ;; and others (like :last-edit-info, :view_count) are computed/added separately.
 ;; This map only lists the base database columns to SELECT.
 (def ^:private entity-select-fields
@@ -230,7 +228,7 @@
   - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
     Uses collection/visible-collection-filter-clause for collection filtering and adds archived entity filtering.
     Native query snippets have additional restrictions for sandboxed users.
-  - Table: Uses mi/visible-filter-clause with appropriate permissions and filters by active/visibility_type.
+  - Table: Uses perms/visible-table-filter-select with appropriate permissions and filters by active/visibility_type.
     Follows search API conventions: active=true AND visibility_type=nil for non-archived tables.
     Note: archived_at is not checked separately as archived tables always have active=false."
   ([entity-type-field entity-id-field]
@@ -281,13 +279,13 @@
                         [:in entity-id-field {:select [:id]
                                               :from [table-name]
                                               :where [:and
-                                                      (mi/visible-filter-clause
-                                                       model
-                                                       id-column
-                                                       {:user-id       api/*current-user-id*
-                                                        :is-superuser? api/*is-superuser?*}
-                                                       {:perms/view-data      :unrestricted
-                                                        :perms/create-queries :query-builder})
+                                                      [:in id-column
+                                                       (perms/visible-table-filter-select
+                                                        :id
+                                                        {:user-id api/*current-user-id*
+                                                         :is-superuser? api/*is-superuser?*}
+                                                        {:perms/view-data :unrestricted
+                                                         :perms/create-queries :query-builder})]
                                                       (case include-archived-items
                                                         :exclude     [:and
                                                                       [:= active-column true]
@@ -307,13 +305,16 @@
                                                       [:in table-id-column
                                                        {:select [:metabase_table.id]
                                                         :from [:metabase_table]
-                                                        :where (mi/visible-filter-clause
-                                                                :model/Table
-                                                                :metabase_table.id
-                                                                {:user-id api/*current-user-id*
-                                                                 :is-superuser? api/*is-superuser?*}
-                                                                {:perms/view-data :unrestricted
-                                                                 :perms/create-queries :query-builder})}]
+                                                        ;; using this clause because we had to change the mi/visible-filter-clause
+                                                        ;; to allow returning CTE based filters
+                                                        ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
+                                                        :where [:in :metabase_table.id
+                                                                (perms/visible-table-filter-select
+                                                                 :id
+                                                                 {:user-id api/*current-user-id*
+                                                                  :is-superuser? api/*is-superuser?*}
+                                                                 {:perms/view-data :unrestricted
+                                                                  :perms/create-queries :query-builder})]}]
                                                       ;; Filter by archived status
                                                       (case include-archived-items
                                                         :exclude [:= archived-column false]
@@ -366,12 +367,12 @@
               (let [model (entity-model entity-type)
                     fields (entity-select-fields entity-type)]
                 (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
-                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal] :moderation_reviews)
+                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal])
                                                  (->> (map collection.root/hydrate-root-collection))
                                                  (revisions/with-last-edit-info :card))
                        (= entity-type :table) (t2/hydrate :fields :db)
                        (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields)
-                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
+                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal])
                                                       (->> (map collection.root/hydrate-root-collection))
                                                       (revisions/with-last-edit-info :dashboard))
                        (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])

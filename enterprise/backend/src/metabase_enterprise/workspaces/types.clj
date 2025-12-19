@@ -157,5 +157,5 @@
    [:category ::problem-category]
    [:problem ::problem-name]
    [:severity ::severity]
-   [:block-merge :boolean]
+   [:block_merge :boolean]
    [:data :map]])

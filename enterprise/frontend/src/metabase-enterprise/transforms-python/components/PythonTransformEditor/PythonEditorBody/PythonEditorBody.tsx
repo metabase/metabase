@@ -96,18 +96,14 @@ export function PythonEditorBody({
               </Tooltip>
             </>
           )}
-          {withDebugger && (
-            <Box p="md">
-              <RunButtonWithTooltip
-                disabled={!isRunnable}
-                isRunning={isRunning}
-                isDirty={isDirty}
-                onRun={onRun}
-                onCancel={onCancel}
-                getTooltip={() => t`Run Python script`}
-              />
-            </Box>
-          )}
+          <RunButtonWithTooltip
+            disabled={!isRunnable}
+            isRunning={isRunning}
+            isDirty={isDirty}
+            onRun={onRun}
+            onCancel={onCancel}
+            getTooltip={() => t`Run Python script`}
+          />
         </Stack>
         <SharedLibraryActions
           disabled={disabled}

@@ -169,11 +169,12 @@
   "Construct a problem map with type metadata from ws.t/problem-types.
    Splits the namespaced problem-type into :category and :problem keys."
   [problem-type data]
-  (let [{:keys [severity block-merge]} (get ws.t/problem-types problem-type)]
+  (let [{:keys [severity block-merge description]} (get ws.t/problem-types problem-type)]
     {:category    (keyword (namespace problem-type))
      :problem     (keyword (name problem-type))
      :severity    severity
-     :block-merge block-merge
+     :block_merge block-merge
+     :description description
      :data        data}))
 
 (defn- problems-for-output

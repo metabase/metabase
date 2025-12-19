@@ -8,9 +8,8 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -38,6 +37,7 @@ const DEFAULT_VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
+  collection_id: Yup.number().nullable().defined(),
   incremental: Yup.boolean().required(),
   // For native queries, use checkpointFilter (plain string)
   checkpointFilter: Yup.string().nullable(),
@@ -47,7 +47,9 @@ const DEFAULT_VALIDATION_SCHEMA = Yup.object({
   targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
 });
 
-export type NewTransformValues = Yup.InferType<typeof DEFAULT_VALIDATION_SCHEMA>;
+export type NewTransformValues = Yup.InferType<
+  typeof DEFAULT_VALIDATION_SCHEMA
+>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
@@ -117,7 +119,6 @@ function CreateTransformForm({
   validationSchemaExtension,
   handleSubmit,
 }: CreateTransformFormProps) {
-  const [sendToast] = useToast();
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
 
@@ -204,6 +205,11 @@ function CreateTransformForm({
             />
           )}
           <TargetNameInput />
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Collection`}
+            type="transform-collections"
+          />
           {showIncrementalSettings && (
             <IncrementalTransformSettings source={source} />
           )}
@@ -211,7 +217,7 @@ function CreateTransformForm({
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
+            <Button onClick={onClose}>{t`Back`}</Button>
             <FormSubmitButton label={t`Save`} variant="filled" />
           </Group>
         </Stack>
@@ -227,6 +233,7 @@ function getInitialValues(
   return {
     name: "",
     targetSchema: schemas?.[0] || null,
+    collection_id: null,
     ...defaultValues,
     targetName: defaultValues.targetName
       ? defaultValues.targetName
@@ -247,6 +254,7 @@ function getCreateRequest(
     name,
     targetName,
     targetSchema,
+    collection_id,
     incremental,
     checkpointFilter,
     checkpointFilterUniqueKey,
@@ -280,24 +288,25 @@ function getCreateRequest(
   // Build the target with incremental strategy if enabled
   const transformTarget: CreateTransformRequest["target"] = incremental
     ? {
-      type: "table-incremental",
-      name: targetName,
-      schema: targetSchema,
-      database: databaseId,
-      "target-incremental-strategy": {
-        type: targetStrategy,
-      },
-    }
+        type: "table-incremental",
+        name: targetName,
+        schema: targetSchema,
+        database: databaseId,
+        "target-incremental-strategy": {
+          type: targetStrategy,
+        },
+      }
     : {
-      type: "table",
-      name: targetName,
-      schema: targetSchema ?? null,
-      database: databaseId,
-    };
+        type: "table",
+        name: targetName,
+        schema: targetSchema ?? null,
+        database: databaseId,
+      };
 
   return {
     name,
     source: transformSource,
     target: transformTarget,
+    collection_id: collection_id ?? null,
   };
 }

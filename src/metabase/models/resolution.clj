@@ -55,7 +55,6 @@
     :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
     :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
     :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
-    :model/MetabotUseCase                    metabase-enterprise.metabot-v3.models.metabot-use-case
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.content-verification.models.moderation-review
@@ -111,7 +110,12 @@
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
-    :model/Workspace                         metabase-enterprise.workspaces.models.workspace})
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
+    :model/WorkspaceDependency               metabase-enterprise.workspaces.models.workspace-dependency
+    :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
+    :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
+    :model/WorkspaceOutput                   metabase-enterprise.workspaces.models.workspace-output
+    :model/WorkspaceTransform                metabase-enterprise.workspaces.models.workspace-transform})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

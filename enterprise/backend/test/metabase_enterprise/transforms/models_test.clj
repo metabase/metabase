@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.models.transform-tag :as transform-tag]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -184,7 +185,7 @@
                                                 :target {:type "table"
                                                          :schema "public"
                                                          :name "test_table_with_schema"
-                                                         :db_id db-id}}
+                                                         :database db-id}}
                    :model/Transform transform2 {:name "Transform with NULL schema"
                                                 :source {:type "query"
                                                          :query {:database db-id
@@ -194,7 +195,7 @@
                                                 :target {:type "table"
                                                          :schema nil
                                                          :name "test_table_null_schema"
-                                                         :db_id db-id}}]
+                                                         :database db-id}}]
 
       (testing "Hydrates table with non-NULL schema"
         (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
@@ -271,3 +272,15 @@
             (is (=? (assoc user2-data :id user2-id)
                     (:creator (second hydrated)))
                 "Second hydrated should match the second user's data")))))))
+
+(deftest check-allowed-content-transforms
+  (mt/with-premium-features #{:data-studio}
+    (mt/with-temp [:model/Collection transforms {:name "Test Transforms" :namespace collection/transforms-ns}
+                   :model/Collection regular-col {:name "Test Regular"}]
+      (mt/with-model-cleanup [:model/Transform :model/Card]
+        (testing "Can only add allowed content types"
+          (is (some? (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id transforms)))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Card can only go in Collections in the.*"
+                                (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)}))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Transform can only go in Collections in the :transforms namespace."
+                                (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))))))))))

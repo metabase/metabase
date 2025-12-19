@@ -18,7 +18,11 @@ const tokenFeatures = { tenants: true, audit_app: true };
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {
   describe("Tenant Collections Tab", () => {
     it("shows the tab when tenants are enabled", async () => {
-      setup({ tokenFeatures, settings: { "use-tenants": true } });
+      setup({
+        tokenFeatures,
+        enterprisePlugins: ["tenants", "audit_app"],
+        settings: { "use-tenants": true },
+      });
 
       expect(
         await screen.findByRole("radio", { name: "Tenant Collections" }),
@@ -26,7 +30,11 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
     });
 
     it("hides the tab when tenants are disabled", async () => {
-      setup({ tokenFeatures, settings: { "use-tenants": false } });
+      setup({
+        tokenFeatures,
+        enterprisePlugins: ["tenants", "audit_app"],
+        settings: { "use-tenants": false },
+      });
 
       expect(
         screen.queryByRole("radio", { name: "Tenant Collections" }),
@@ -38,6 +46,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
     it("should not be able get access to Our Analytics", async () => {
       await setup({
         tokenFeatures,
+        enterprisePlugins: ["tenants", "audit_app"],
         initialRoute: "/admin/permissions/collections/root",
         permissionGroups: defaultPermissionGroupsWithTenants,
         permissionsGraph: defaultPermissionsGraphWithTenants,
@@ -53,6 +62,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
     it("should not be able get access to normal collections", async () => {
       await setup({
         tokenFeatures,
+        enterprisePlugins: ["tenants", "audit_app"],
         initialRoute: "/admin/permissions/collections/2",
         permissionGroups: defaultPermissionGroupsWithTenants,
         permissionsGraph: defaultPermissionsGraphWithTenants,
@@ -95,7 +105,8 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["audit_app", "collections"],
       });
 
       await assertCollectionAccessForGroup("Administrators", "View");
@@ -113,7 +124,8 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["audit_app", "collections"],
       });
 
       await assertCollectionAccessForGroup("Administrators", "View");
@@ -137,7 +149,8 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["audit_app", "collections"],
       });
 
       // change all users users view to no access

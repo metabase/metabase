@@ -10,7 +10,8 @@ import {
 import { Tree } from "metabase/common/components/tree";
 import { findCollectionById } from "metabase/common/utils/collections";
 import CS from "metabase/css/core/index.css";
-import Collections, {
+import {
+  Collections,
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
@@ -88,7 +89,7 @@ function SavedEntityPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...buildCollectionTree(preparedCollections, modelFilter),
+      ...buildCollectionTree(preparedCollections, { modelFilter }),
     ];
   }, [collections, rootCollection, currentUser, type]);
 

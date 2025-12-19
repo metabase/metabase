@@ -274,7 +274,7 @@
                       [:= :router_database_id router-database-id]
                       [:= :router_database_id nil])]
         where-clause (if filter-by-data-access?
-                       [:and base-where (mi/visible-filter-clause :model/Database :id user-info permission-mapping)]
+                       [:and base-where (:clause (mi/visible-filter-clause :model/Database :id user-info permission-mapping))]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]
@@ -1285,16 +1285,18 @@
                           ;; a non-nil value means Table is hidden --
                           ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
                           (not include-hidden?) (conj [:= :visibility_type nil])
-                          (not include-workspace?) (conj [:not
+                          (not include-workspace?) (conj [:or
+                                                          [:= :schema nil]
+                                                          [:not
                                                           ;; TODO dislike coupling to a constant, at least until we have an e2e test
-                                                          [:like :schema "mb__isolation_%"]
+                                                           [:like :schema "mb__isolation_%"]
                                                           ;; TODO this might behave terribly without an index when there are lots of workspaces
-                                                          #_[:exists {:select [1]
-                                                                      :from   [[(t2/table-name :model/Workspace) :w]]
-                                                                      :where  [:and
-                                                                               [:= :w.database_id id]
-                                                                               [:= :w.schema :metabase_table.schema]
-                                                                               [:= :w.archived_at nil]]}]]))]
+                                                           #_[:exists {:select [1]
+                                                                       :from   [[(t2/table-name :model/Workspace) :w]]
+                                                                       :where  [:and
+                                                                                [:= :w.database_id id]
+                                                                                [:= :w.schema :metabase_table.schema]
+                                                                                [:= :w.archived_at nil]]}]]]))]
     (get-database id {:include-editable-data-model? include-editable-data-model?})
     (->> (t2/select-fn-set :schema :model/Table
                            :db_id id :active true
@@ -1407,7 +1409,8 @@
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [{:keys [id schema]} :- [:map
-                           [:id ms/PositiveInt]]
+                           [:id ms/PositiveInt]
+                           [:schema ms/NonBlankString]]
    {:keys [include_hidden include_editable_data_model]} :- [:map
                                                             [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
                                                             [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]

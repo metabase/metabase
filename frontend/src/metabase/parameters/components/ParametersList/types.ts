@@ -8,6 +8,7 @@ import type {
   Parameter,
   ParameterId,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import type { ParameterWidgetProps } from "../ParameterWidget";
 
@@ -19,7 +20,7 @@ export type ParametersListProps = {
 
     cardId?: CardId;
     dashboardId?: DashboardId;
-    token?: string | null;
+    token?: EntityToken | null;
     editingParameter: Parameter | null | undefined;
     linkedFilterParameters: Parameter[];
 

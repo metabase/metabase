@@ -147,7 +147,8 @@
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{config
+   :uses #{api-routes
+           config
            events
            models
            settings
@@ -168,7 +169,8 @@
 
   api-routes
   {:team "UX West"
-   :api  #{metabase.api-routes.core}
+   :api  #{metabase.api-routes.cmd
+           metabase.api-routes.core}
    :uses :any}
 
   app-db
@@ -531,6 +533,11 @@
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
+           ;; TODO (lbrdnk 2025/12/17): We should revisit addition of the following line. I've added it to make
+           ;; tests pass as we are using it directly with ee/workspaces module. I believe later, when workspaces
+           ;; are in better state quality wise, it should become part of the driver api and that should be used
+           ;; instead of calling directly into the normalize module.
+           metabase.driver.sql.normalize
            metabase.driver.sql.query-processor
            metabase.driver.sql.util
            metabase.driver.sync
@@ -702,6 +709,7 @@
            metabase.lib.binning.util
            metabase.lib.card
            metabase.lib.computed ; temporarily so that `qp.compile` can use it as lib memoization evolves
+           metabase.lib.convert  ; Only so [[metabase.queries.models.card]] can set dynamic vars.
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
@@ -916,6 +924,7 @@
   {:team "UX West"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
+           app-db
            audit-app
            events
            permissions
@@ -1379,7 +1388,6 @@
            metabase.sync.core
            metabase.sync.init
            metabase.sync.schedules
-           metabase.sync.sync-metadata.tables
            metabase.sync.task.sync-databases
            metabase.sync.util}
    :uses #{analyze
@@ -1622,6 +1630,7 @@
            lib
            models
            parameters
+           permissions
            premium-features
            query-processor
            request
@@ -2217,7 +2226,6 @@
    :uses #{api
            appearance
            auth-identity
-           channel
            embedding
            premium-features
            request
@@ -2283,6 +2291,7 @@
    :uses #{analytics
            api
            app-db
+           collections
            driver
            events
            lib
@@ -2328,23 +2337,19 @@
   enterprise/workspaces
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
-           metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
            app-db
            driver
-           enterprise/dependencies
-           enterprise/transforms
-           events
            lib
            lib-be
            models
            queries
            request
-           sync
            system
-           util}}}
+           util
+           enterprise/transforms}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

@@ -29,11 +29,12 @@ import {
   useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,
   useDeleteWorkspaceMutation,
+  useGetWorkspaceAllowedDatabasesQuery,
   useGetWorkspacesQuery,
   useUnarchiveWorkspaceMutation,
-  useGetWorkspaceAllowedDatabasesQuery,
 } from "metabase-enterprise/api/workspace";
 import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
+import { useRecentWorkspaceDatabaseId } from "metabase-enterprise/data-studio/workspaces/hooks/use-recent-workspace-database-id";
 import { TOOLTIP_OPEN_DELAY } from "metabase-enterprise/dependencies/components/DependencyGraph/constants";
 import type { Workspace, WorkspaceId } from "metabase-types/api/workspace";
 
@@ -80,6 +81,11 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     [allowedDatabasesData],
   );
 
+  const defaultDatabaseId = useRecentWorkspaceDatabaseId(
+    workspaces,
+    databaseOptions,
+  );
+
   const handleOpenWorkspace = useCallback(
     (workspaceId: number) => {
       dispatch(push(Urls.dataStudioWorkspace(workspaceId)));
@@ -103,7 +109,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
         const workspace = await createWorkspace({
           name,
           database_id: Number(databaseId),
-          upstream: {},
         }).unwrap();
         handleCloseCreateModal();
         handleOpenWorkspace(workspace.id);
@@ -261,6 +266,7 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
         onSubmit={handleCreateWorkspace}
         databaseOptions={databaseOptions}
         isSubmitting={isCreating}
+        defaultDatabaseId={defaultDatabaseId}
       />
     </Stack>
   );

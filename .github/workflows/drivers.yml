@@ -21,10 +21,29 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Check if driver tests should run (temporarily forced to yes they should)
+      - name: Fetch base branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
+        run: |
+          # Fetch the base branch to ensure its history is available for diffing
+          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+          # Only run this if it's a pull request and the base ref exists
+      - name: Check if driver tests should run
         id: check-branch-and-files-changed
         run: |
-          echo 'skip=false' >> $GITHUB_OUTPUT
+          IS_MASTER_OR_RELEASE="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}"
+          echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
+
+          if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Merging into master or a release branch. All driver tests will run."
+          else
+            echo "Checking for changes in relevant modules..."
+            if ./bin/mage can-skip-driver-tests "${{ github.event.pull_request.base.ref }}"; then
+              echo 'skip=true' >> $GITHUB_OUTPUT
+            else
+              echo 'skip=false' >> $GITHUB_OUTPUT
+            fi
+          fi
         shell: bash
 
   be-tests-athena-ee:
@@ -442,8 +461,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -804,8 +823,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||

@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionPermissionsGraphEndpoint,
   setupCollectionsEndpoints,
@@ -144,6 +144,7 @@ interface SetupOptions {
   permissionGroups?: GroupInfo[];
   tokenFeatures?: Partial<TokenFeatures>;
   settings?: Partial<Settings>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export function setup({
@@ -154,6 +155,7 @@ export function setup({
   permissionGroups = defaultPermissionGroups,
   tokenFeatures,
   settings = {},
+  enterprisePlugins = [],
 }: Partial<SetupOptions> = {}) {
   const initialState = createMockState({
     settings: mockSettings({
@@ -163,9 +165,9 @@ export function setup({
     }),
   });
 
-  if (tokenFeatures) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   setupCollectionsEndpoints({
     collections,

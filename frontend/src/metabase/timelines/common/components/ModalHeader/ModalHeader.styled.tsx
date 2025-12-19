@@ -19,11 +19,7 @@ export const HeaderLink = styled.div`
   }
 `;
 
-interface HeaderTitleProps {
-  tooltipMaxWidth?: string;
-}
-
-export const HeaderTitle = styled(Ellipsified)<HeaderTitleProps>`
+export const HeaderTitle = styled(Ellipsified)`
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;

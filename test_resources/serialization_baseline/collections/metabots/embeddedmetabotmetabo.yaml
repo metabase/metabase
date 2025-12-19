@@ -8,5 +8,4 @@ serdes/meta:
   model: Metabot
 collection_id: null
 prompts: []
-use_cases: []
 use_verified_content: false

@@ -21,6 +21,7 @@ export const DataModel = {
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
+    getFilterForm: getTablePickerFilter,
   },
   TableSection: {
     get: getTableSection,
@@ -258,6 +259,10 @@ function getTablePickerSearchInput() {
   return cy.findByPlaceholderText("Search tables");
 }
 
+function getTablePickerFilter() {
+  return cy.findByTestId("table-picker-filter");
+}
+
 function getTablePickerTables() {
   return cy.findAllByTestId("tree-item").filter('[data-type="table"]');
 }
@@ -482,7 +487,7 @@ function getSegmentEditorNameInput() {
 }
 
 function getSegmentEditorDescriptionInput() {
-  return getSegmentEditor().findByLabelText("Description");
+  return getSegmentEditor().findByLabelText("Give it a description");
 }
 
 function getSegmentEditorFilterPlaceholder() {

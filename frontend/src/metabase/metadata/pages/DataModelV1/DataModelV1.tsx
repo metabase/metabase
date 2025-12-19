@@ -96,7 +96,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
   }
 
   return (
-    <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
+    <Flex bg="bg-light" data-testid="data-model" h="100%">
       <Stack
         bg="bg-white"
         className={S.column}

@@ -16,7 +16,7 @@ import {
   getBrowseAllItemIndex,
 } from "./suggestionUtils";
 import type { SuggestionModel } from "./types";
-import { useEntitySearch } from "./useEntitySearch";
+import { type EntitySearchOptions, useEntitySearch } from "./useEntitySearch";
 
 interface UseEntitySuggestionsOptions {
   query: string;
@@ -30,6 +30,7 @@ interface UseEntitySuggestionsOptions {
   }) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];
+  searchOptions?: EntitySearchOptions;
   canFilterSearchModels: boolean;
   canBrowseAll: boolean;
   canCreateNewQuestion?: boolean;
@@ -65,6 +66,7 @@ export function useEntitySuggestions({
   onSelectEntity,
   enabled = true,
   searchModels,
+  searchOptions,
   canFilterSearchModels,
   canBrowseAll = false,
   canCreateNewQuestion = false,
@@ -182,6 +184,7 @@ export function useEntitySuggestions({
     enabled: enabled && !isInModelSelectionMode,
     shouldFetchRecents,
     searchModels: effectiveSearchModels,
+    searchOptions,
   });
 
   const menuItems = useMemo(() => {

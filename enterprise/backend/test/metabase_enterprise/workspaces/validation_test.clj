@@ -69,7 +69,8 @@
         (is (= [{:category    :unused
                  :problem     :not-run
                  :severity    :info
-                 :block-merge false
+                 :block_merge false
+                 :description "Output hasn't been created yet, but nothing depends on it"
                  :data        {:output    {:db_id (mt/id), :schema "public", :table "test_output_table"}
                                :transform {:type :workspace-transform, :id ref-id}}}]
                problems))))))
@@ -114,7 +115,8 @@
               (is (= [{:category    :external-downstream
                        :problem     :not-run
                        :severity    :warning
-                       :block-merge true
+                       :block_merge true
+                       :description "Output hasn't been created yet, external transforms depend on it"
                        :data        {:output    {:db_id (mt/id), :schema "public", :table "global_output_table"}
                                      :transform {:type :workspace-transform, :id ref-id}
                                      :dependents [{:type :external-transform

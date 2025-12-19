@@ -1,9 +1,13 @@
 import { useMemo } from "react";
+import { useLatest } from "react-use";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import { useSelector } from "metabase/lib/redux";
 import { ResponsiveParametersList } from "metabase/query_builder/components/ResponsiveParametersList";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { ParameterId } from "metabase-types/api";
 
 import SqlParametersListS from "./SqlParametersList.module.css";
@@ -24,6 +28,10 @@ export const SqlParametersList = () => {
     hiddenParameters,
   } = useSdkQuestionContext();
 
+  const metadata = useSelector(getMetadata);
+  // we cannot use `metadata` directly otherwise component will re-run on every metadata change
+  const metadataRef = useLatest(metadata);
+
   const isNativeQuestion = useMemo(() => {
     if (!question) {
       return false;
@@ -41,15 +49,26 @@ export const SqlParametersList = () => {
 
     const originalParameters = originalQuestion.card().parameters ?? [];
 
-    return question
-      .parameters()
-      .filter(
-        ({ id, slug }) =>
-          originalParameters.find(
-            (originalParameter) => originalParameter.id === id,
-          ) && !hiddenParameters?.includes(slug),
-      );
-  }, [question, originalQuestion, hiddenParameters]);
+    const uiParameters = getCardUiParameters(
+      question.card(),
+      metadataRef.current,
+      parameterValues,
+      question.parameters() || undefined,
+    );
+
+    return uiParameters.filter(
+      ({ id, slug }) =>
+        originalParameters.find(
+          (originalParameter) => originalParameter.id === id,
+        ) && !hiddenParameters?.includes(slug),
+    );
+  }, [
+    question,
+    originalQuestion,
+    metadataRef,
+    parameterValues,
+    hiddenParameters,
+  ]);
 
   if (!question || !isNativeQuestion || !parameters.length) {
     return null;

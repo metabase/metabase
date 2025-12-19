@@ -2,7 +2,7 @@
 import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react/*";
-import { userEvent, within } from "@storybook/test";
+import { expect, userEvent, within } from "@storybook/test";
 import { KBarProvider, VisualState, useKBar } from "kbar";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
@@ -132,6 +132,12 @@ export const Search = {
     );
 
     await canvas.findByRole("option", { name: "Results" });
+
+    // Wait for the result to all show up because "Results" will be
+    // present when the search query is still loading
+    await expect(
+      await canvas.findByText("Product breakdown"),
+    ).toBeInTheDocument();
 
     asyncCallback();
   },
