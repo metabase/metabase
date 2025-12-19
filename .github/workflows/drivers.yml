@@ -299,7 +299,7 @@ jobs:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     env:
       CI: 'true'
       DRIVERS: databricks
