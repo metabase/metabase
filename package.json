@@ -421,7 +421,7 @@
     "@reduxjs/toolkit": "2.5.0",
     "@rspack/core": "1.5.8",
     "@rspack/cli": "1.5.8",
-    "ajv": "^8.17.1"
+    "ajv-draft-04>ajv": "^8.17.1"
   },
   "scripts": {
     "mage": "./bin/mage",
