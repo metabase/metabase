@@ -101,6 +101,7 @@
 
 (t2/define-before-insert :model/WorkspaceTransform
   [instance]
+  ;; Ref id can not be added here due to mysql t2 bug
   (when-not (string? (not-empty (:ref_id instance)))
     (throw (ex-info "ref_id required for WorkspaceTransform insertion."
                     {:instance instance})))
