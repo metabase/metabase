@@ -96,7 +96,7 @@ export type MetabotSuggestedTransform = SuggestedTransform & {
 export type MetabotReactionsState = {
   navigateToPath: string | null;
   suggestedCodeEdits: Partial<
-    Record<MetabotCodeEdit["bufferId"], MetabotCodeEdit>
+    Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
   >;
   suggestedTransforms: MetabotSuggestedTransform[];
 };

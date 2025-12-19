@@ -66,7 +66,7 @@ describe("Native SQL generation", () => {
           expect(codeEditor).to.exist;
           expect(codeEditor.buffers).to.have.length(1);
           expect(codeEditor.buffers[0].source.language).to.eq("sql");
-          expect(codeEditor.buffers[0].source.databaseId).to.eq(1); // Sample Database
+          expect(codeEditor.buffers[0].source.database_id).to.eq(1); // Sample Database
         });
 
         // should auto-close input and show diff with accept/reject buttons
@@ -234,7 +234,7 @@ describe("Native SQL generation", () => {
 
 // Response helpers
 const mockCodeEditResponse = (sql: string) =>
-  `2:{"type":"code_edit","version":1,"value":{"bufferId":"qb","mode":"rewrite","value":"${sql}"}}
+  `2:{"type":"code_edit","version":1,"value":{"buffer_id":"qb","mode":"rewrite","value":"${sql}"}}
 d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
 
 const mockTextOnlyResponse = (text: string) =>
