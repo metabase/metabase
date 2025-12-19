@@ -36,12 +36,9 @@ const defaultSuggestionModels = [
 
 const getTitleText = () => {
   return _.sample([
-    t`Ask your data anything`,
-    t`What can I help you with?`,
-    t`Go ahead, ask anything`,
-    t`So, what do you want to know?`,
-    t`What's on your mind?`,
-    t`What should we explore?`,
+    t`What would you like to know?`,
+    t`What do you want to explore?`,
+    t`What are you looking to learn?`,
   ]);
 };
 
@@ -120,6 +117,7 @@ export const MetabotQueryBuilder = () => {
           }),
         ),
       );
+      setVisible(true);
     }
   };
 
@@ -187,7 +185,7 @@ export const MetabotQueryBuilder = () => {
                 value={prompt}
                 autoFocus
                 disabled={isDoingScience}
-                placeholder={t`Ask anything`}
+                placeholder={t`Ask about your data`}
                 onChange={setPrompt}
                 onSubmit={handleEditorSubmit}
                 onStop={cancelRequest}
