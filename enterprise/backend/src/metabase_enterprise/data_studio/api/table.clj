@@ -201,7 +201,12 @@
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
       (t2/update! :model/Table [:in table-ids] set-map)
-      (maybe-sync-unhidden-tables! existing-tables set-map))
+      (maybe-sync-unhidden-tables! existing-tables set-map)
+      ;; Publish update events for remote sync tracking
+      (let [updated-tables (t2/select :model/Table :id [:in table-ids])]
+        (doseq [table updated-tables]
+          (events/publish-event! :event/table-update {:object  table
+                                                      :user-id api/*current-user-id*}))))
     {}))
 
 (api.macros/defendpoint :post "/selection" :- ::bulk-table-selection-info
@@ -242,11 +247,19 @@
         upstream-ids      (all-upstream-table-ids where)
         update-where      (if (seq upstream-ids)
                             [:or where [:in :id upstream-ids]]
-                            where)]
+                            where)
+        ;; Get table IDs before update for event publishing
+        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id (:id target-collection)
                         :is_published  true}
                :where  update-where})
+    ;; Publish update events for remote sync tracking
+    (when (seq table-ids-to-update)
+      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+        (doseq [table updated-tables]
+          (events/publish-event! :event/table-update {:object  table
+                                                      :user-id api/*current-user-id*}))))
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables" :- :nil
@@ -259,11 +272,19 @@
         downstream-ids  (all-downstream-table-ids where)
         update-where    (if (seq downstream-ids)
                           [:or where [:in :id downstream-ids]]
-                          where)]
+                          where)
+        ;; Get table IDs before update for event publishing
+        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id nil
                         :is_published  false}
                :where  update-where})
+    ;; Publish update events for remote sync tracking
+    (when (seq table-ids-to-update)
+      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+        (doseq [table updated-tables]
+          (events/publish-event! :event/table-update {:object  table
+                                                      :user-id api/*current-user-id*}))))
     nil))
 
 (defn- sync-schema-async!
