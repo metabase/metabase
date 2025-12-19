@@ -2,7 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import {
   type KeyboardEvent,
-  useContext,
+  type MouseEvent,
   useEffect,
   useMemo,
   useRef,
@@ -16,14 +16,13 @@ import {
   type NumberFormatter,
   useNumberFormatter,
 } from "metabase/common/hooks/use-number-formatter";
-import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
-import { getUrl } from "metabase/metadata/pages/shared/utils";
+import * as Urls from "metabase/lib/urls";
 import { Box, Checkbox, Flex, Icon, Skeleton, Stack, rem } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import { TYPE_ICONS } from "../constants";
-import type { FlatItem, TreePath } from "../types";
+import { type FlatItem, type TreePath, isTableNode } from "../types";
 import { hasChildren } from "../utils";
 
 import S from "./Results.module.css";
@@ -85,7 +84,7 @@ export function TablePickerResults({
         return;
       }
       const index = latestItems.current.findIndex(
-        (item) => item.type === "table" && item.value?.tableId === path.tableId,
+        (item) => isTableNode(item) && item.value?.tableId === path.tableId,
       );
       if (index === -1) {
         return;
@@ -133,7 +132,7 @@ export function TablePickerResults({
     }
 
     const isShiftPressed = Boolean(options?.isShiftPressed);
-    const isTable = item.type === "table";
+    const isTable = isTableNode(item);
     const hasRangeAnchor =
       lastSelectedTableIndex.current != null && onRangeSelect != null;
     const isRangeSelection = isShiftPressed && isTable && hasRangeAnchor;
@@ -156,7 +155,6 @@ export function TablePickerResults({
       }
     }
 
-    // single checkbox toggle
     onItemToggle(item);
     lastSelectedTableIndex.current = isTable ? itemIndex : null;
   };
@@ -334,7 +332,7 @@ function isTableActive(
 ): boolean {
   return (
     selectedItemsCount === 0 &&
-    item.type === "table" &&
+    isTableNode(item) &&
     item.value?.tableId === path.tableId
   );
 }
@@ -366,7 +364,6 @@ const ResultsItem = ({
   ownerNameById,
 }: ResultsItemProps) => {
   const { selectedItemsCount } = useSelection();
-  const { baseUrl } = useContext(DataModelContext);
   const { value, label, type, isExpanded, isLoading, key, level, disabled } =
     item;
   const formatNumber = useNumberFormatter({ maximumFractionDigits: 0 });
@@ -376,7 +373,7 @@ const ResultsItem = ({
 
   const isActive = isItemActive(item, path, selectedItemsCount);
   const indent = level * INDENT_OFFSET;
-  const hasToggle = hasChildren(type);
+  const itemHasChildren = hasChildren(type);
 
   const handleItemSelect = (open?: boolean, event?: React.MouseEvent) => {
     if (disabled) {
@@ -385,7 +382,7 @@ const ResultsItem = ({
 
     // In multi-select mode, prevent navigation and allow toggling for items with children
     if (selectedItemsCount > 0) {
-      if (hasChildren(type)) {
+      if (itemHasChildren) {
         // Toggle expansion for items with children
         if (open !== undefined) {
           toggle?.(key, open);
@@ -403,7 +400,7 @@ const ResultsItem = ({
     // In single-select mode:
     // If the item is already active, toggle its expansion state
     // Otherwise, navigate to make it active
-    if (isActive && hasChildren(type)) {
+    if (isActive && itemHasChildren) {
       // Second click on active item: toggle expansion
       if (open !== undefined) {
         toggle?.(key, open);
@@ -421,12 +418,12 @@ const ResultsItem = ({
         toggle?.(key, open);
       }
 
-      // Only navigate in single-select mode
-      if (selectedItemsCount === 0 && value) {
+      if (value) {
         // Expand collapsed items when navigating to them
-        if (!isExpanded && hasChildren(type)) {
+        if (!isExpanded && itemHasChildren) {
           toggle?.(key, true);
         }
+
         onItemClick?.(value);
       }
     }
@@ -484,6 +481,17 @@ const ResultsItem = ({
     }
   };
 
+  // Dedicated toggle target: always toggles expansion without navigating
+  // regardless of whether the item is currently active.
+  const handleChevronClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (disabled || !itemHasChildren) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    toggle?.(key);
+  };
+
   return (
     <Flex
       component={Link}
@@ -505,11 +513,13 @@ const ResultsItem = ({
         transform: `translateY(${start}px)`,
         pointerEvents: disabled ? "none" : undefined,
       }}
-      to={getUrl(baseUrl, {
+      to={Urls.dataStudioData({
         databaseId: value?.databaseId,
         schemaName:
-          type === "schema" || type === "table" ? value?.schemaName : undefined,
-        tableId: type === "table" ? value?.tableId : undefined,
+          type === "schema" || isTableNode(item)
+            ? item.value?.schemaName
+            : undefined,
+        tableId: isTableNode(item) ? item.value?.tableId : undefined,
       })}
       data-testid="tree-item"
       data-type={type}
@@ -531,8 +541,15 @@ const ResultsItem = ({
       <Flex align="center" py="xs" w="100%" pl={indent} gap="sm">
         <Flex align="flex-start" gap="xs" className={S.content}>
           <Flex align="center" gap="xs">
-            <Box className={S.chevronSlot} w={INDENT_OFFSET}>
-              {hasToggle && (
+            <Box
+              className={cx(S.chevronSlot, {
+                [S.hasChildren]: itemHasChildren,
+              })}
+              w={INDENT_OFFSET}
+              aria-expanded={Boolean(isExpanded)}
+              onClick={handleChevronClick}
+            >
+              {itemHasChildren && (
                 <Icon
                   name="chevronright"
                   size={16}
@@ -553,7 +570,7 @@ const ResultsItem = ({
             <Box
               className={S.label}
               c={
-                type === "table" &&
+                isTableNode(item) &&
                 item.table &&
                 item.table.visibility_type != null &&
                 !isActive
@@ -568,7 +585,7 @@ const ResultsItem = ({
           )}
         </Flex>
 
-        {type === "table" && (
+        {isTableNode(item) && (
           <>
             <Box
               className={cx(S.column, S.ownerColumn)}
@@ -602,7 +619,7 @@ function getOwnerDisplay(
   item: FlatItem,
   ownerNameById: Map<UserId, string>,
 ): string {
-  if (item.type !== "table" || item.isLoading || !item.table) {
+  if (!isTableNode(item) || item.isLoading || !item.table) {
     return "";
   }
 
@@ -622,7 +639,7 @@ function getExpectedRowsDisplay(
   item: FlatItem,
   formatNumber: NumberFormatter,
 ): string | null {
-  if (item.type !== "table" || item.isLoading || !item.table) {
+  if (!isTableNode(item) || item.isLoading || !item.table) {
     return null;
   }
 
@@ -637,11 +654,11 @@ function getExpectedRowsDisplay(
 }
 
 function getPublishedDisplay(item: FlatItem): React.ReactNode {
-  if (item.type !== "table" || item.isLoading || !item.table) {
+  if (!isTableNode(item) || item.isLoading || !item.table) {
     return null;
   }
 
-  return item.table.published_as_model ? (
+  return item.table.is_published ? (
     <Icon name="verified_round" aria-label={t`Published`} />
   ) : null;
 }

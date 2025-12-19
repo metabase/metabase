@@ -17,6 +17,7 @@
   in new code going forward."
   ;; This whole namespace is in the process of deprecation so ignore deprecated vars in this namespace.
   {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}, :deprecated "0.57.0"}
+  (:refer-clojure :exclude [get-in])
   (:require
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -29,7 +30,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 (set! *warn-on-reflection* true)
 

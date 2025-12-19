@@ -54,14 +54,6 @@
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE %s"
                                         db-name (:schema table) (:name table) role-name)]))))
 
-(defmethod isolation/drop-isolated-tables! :snowflake
-  [database s+t-tuples]
-  (when (seq s+t-tuples)
-    (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-          db-name   (-> database :details :db)]
-      (doseq [[schema-name table-name] s+t-tuples]
-        (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS \"%s\".\"%s\".\"%s\"" db-name schema-name table-name)])))))
-
 (defmethod isolation/destroy-workspace-isolation! :snowflake
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)

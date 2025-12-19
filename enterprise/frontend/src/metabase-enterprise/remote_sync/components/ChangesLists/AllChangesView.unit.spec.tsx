@@ -31,6 +31,9 @@ const setup = ({
   const collections = [createMockCollection({ name: "Entity Collection" })];
 
   fetchMock.get("/api/collection/tree", collections);
+  fetchMock.get("/api/collection/tree?namespace=shared-tenant-collection", []);
+  fetchMock.get("path:/api/session/properties", {});
+
   renderWithProviders(
     <AllChangesView entities={entities} collections={collections} />,
   );
@@ -56,6 +59,100 @@ describe("AllChangesView", () => {
       expect(
         screen.queryByText(/that depend on the items/),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("namespaced collections", () => {
+    it("should display collections from namespaces like shared-tenant-collection", () => {
+      const namespacedCollection = createMockCollection({
+        id: 10,
+        name: "Tenant Collection",
+        namespace: "shared-tenant-collection",
+        effective_ancestors: [],
+      });
+      const entityInNamespacedCollection = createMockRemoteSyncEntity({
+        id: 20,
+        name: "Dashboard in Tenant Collection",
+        model: "dashboard",
+        collection_id: 10,
+        sync_status: "update",
+      });
+
+      fetchMock.get("/api/collection/tree", []);
+      fetchMock.get("/api/collection/tree?namespace=shared-tenant-collection", [
+        namespacedCollection,
+      ]);
+      fetchMock.get("path:/api/session/properties", {});
+
+      renderWithProviders(
+        <AllChangesView
+          entities={[entityInNamespacedCollection]}
+          collections={[namespacedCollection]}
+        />,
+      );
+
+      expect(screen.getByText("Tenant Collection")).toBeInTheDocument();
+      expect(
+        screen.getByText("Dashboard in Tenant Collection"),
+      ).toBeInTheDocument();
+    });
+
+    it("should display collection hierarchy for namespaced collections with ancestors", () => {
+      const parentCollection = createMockCollection({
+        id: 5,
+        name: "Parent Tenant Collection",
+        namespace: "shared-tenant-collection",
+      });
+      const childCollection = createMockCollection({
+        id: 10,
+        name: "Child Tenant Collection",
+        namespace: "shared-tenant-collection",
+        effective_ancestors: [
+          { id: 5, name: "Parent Tenant Collection" } as any,
+        ],
+      });
+      const entityInChildCollection = createMockRemoteSyncEntity({
+        id: 20,
+        name: "Item in Child Collection",
+        model: "card",
+        collection_id: 10,
+        sync_status: "create",
+      });
+
+      fetchMock.get("/api/collection/tree", []);
+      fetchMock.get("/api/collection/tree?namespace=shared-tenant-collection", [
+        parentCollection,
+        childCollection,
+      ]);
+      fetchMock.get("path:/api/session/properties", {});
+
+      renderWithProviders(
+        <AllChangesView
+          entities={[entityInChildCollection]}
+          collections={[parentCollection, childCollection]}
+        />,
+      );
+
+      expect(screen.getByText("Parent Tenant Collection")).toBeInTheDocument();
+      expect(screen.getByText("Child Tenant Collection")).toBeInTheDocument();
+      expect(screen.getByText("Item in Child Collection")).toBeInTheDocument();
+    });
+
+    it("should display regular items in collections", () => {
+      const entityInCollection = createMockRemoteSyncEntity({
+        id: 20,
+        name: "Regular Item",
+        model: "card",
+        collection_id: 1,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [entityInCollection],
+      });
+
+      expect(screen.getByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Regular Item")).toBeInTheDocument();
     });
   });
 });

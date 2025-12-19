@@ -75,7 +75,7 @@ describe("Collections plugin utils", () => {
     });
 
     it("should return the default icon for a regular question", () => {
-      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+      expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
     });
 
     describe("enterprise icons", () => {
@@ -91,6 +91,18 @@ describe("Collections plugin utils", () => {
         ).toEqual({ name: "official_collection", color: "saturated-yellow" });
       });
 
+      it("should return the correct icon for a remote synced collection", () => {
+        expect(
+          getIcon({ model: "collection", is_remote_synced: true }),
+        ).toEqual({ name: "synced_collection" });
+      });
+
+      it("should return the correct icon for a remote synced entity", () => {
+        expect(getIcon({ model: "dashboard", is_remote_synced: true })).toEqual(
+          { name: "dashboard" },
+        );
+      });
+
       it("official collection in search", () => {
         const collection = {
           id: 101,
@@ -103,7 +115,7 @@ describe("Collections plugin utils", () => {
       it("should return the correct icon for an official model", () => {
         expect(
           getIcon({ model: "dataset", moderated_status: "verified" }),
-        ).toEqual({ name: "model" });
+        ).toEqual({ name: "model_with_badge" });
       });
     });
   });

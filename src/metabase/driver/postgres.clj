@@ -588,6 +588,7 @@
   (let [[_ raw-value {base-type :base_type, database-type :database_type}] value]
     (when (some? raw-value)
       (condp #(isa? %2 %1) base-type
+        :type/PostgresBitString (h2x/cast :varbit raw-value)
         :type/IPAddress    (h2x/cast :inet raw-value)
         :type/PostgresEnum (if (quoted? database-type)
                              (h2x/cast database-type raw-value)
@@ -808,7 +809,7 @@
   {:array         :type/*
    :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
-   :bit           :type/*
+   :bit           :type/PostgresBitString
    :bool          :type/Boolean
    :boolean       :type/Boolean
    :box           :type/*
@@ -857,10 +858,10 @@
    :tsvector      :type/*
    :txid_snapshot :type/*
    :uuid          :type/UUID
-   :varbit        :type/*
+   :varbit        :type/PostgresBitString
    :varchar       :type/Text
    :xml           :type/Structured
-   (keyword "bit varying")                :type/*
+   (keyword "bit varying")                :type/PostgresBitString
    (keyword "character varying")          :type/Text
    (keyword "double precision")           :type/Float
    (keyword "time with time zone")        :type/Time
@@ -1007,6 +1008,15 @@
   (fn []
     (when-let [bytes (.getBytes rs i)]
       (str "\\x" (String. (Hex/encodeHex bytes))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BIT]
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; convert bit strings to strings, leave booleans as objects
+  (if (= "bit" (.getColumnTypeName rsmeta i))
+    (fn []
+      (.getString rs i))
+    (fn []
+      (.getObject rs i))))
 
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres

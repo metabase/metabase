@@ -4,7 +4,7 @@
   gap: var(--mantine-spacing-sm);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-sm);
-  cursor: pointer;
+  cursor: default;
   flex-wrap: nowrap;
 
   &:hover .menu {
@@ -16,9 +16,16 @@
   }
 }
 
-.name {
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
   flex: 1;
   min-width: 0;
+}
+
+.cursorPointer {
+  cursor: pointer;
 }
 
 .menu {

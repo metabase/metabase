@@ -17,8 +17,8 @@
    (com.google.auth.oauth2 ImpersonatedCredentials ServiceAccountCredentials)
    (com.google.cloud Identity Role)
    (com.google.cloud.bigquery Acl Acl$Role Acl$User
-                              BigQuery BigQuery$DatasetListOption BigQuery$DatasetOption BigQuery$IAMOption BigQueryOptions
-                              DatasetId DatasetInfo TableId)
+                              BigQuery BigQuery$DatasetListOption BigQuery$DatasetOption BigQuery$IAMOption BigQueryOptions BigQueryOptions$Builder
+                              Dataset DatasetId DatasetInfo TableId)
    (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
    (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
    (com.google.iam.admin.v1 CreateServiceAccountRequest ServiceAccount)
@@ -42,22 +42,24 @@
   "Create a BigQuery client from database details."
   ^BigQuery [details]
   (let [creds (.createScoped (service-account-credentials details)
-                             ["https://www.googleapis.com/auth/bigquery"])]
+                             (doto (java.util.ArrayList.)
+                               (.add "https://www.googleapis.com/auth/bigquery")))]
     (-> (BigQueryOptions/newBuilder)
-        (.setCredentials creds)
-        (.build)
+        ^BigQueryOptions$Builder (.setCredentials creds)
+        ^BigQueryOptions (.build)
         (.getService))))
 
 (defn- database-details->iam-client
   "Create an IAM Admin client from database details."
   ^IAMClient [details]
   (let [creds (.createScoped (service-account-credentials details)
-                             ["https://www.googleapis.com/auth/cloud-platform"])]
+                             (doto (java.util.ArrayList.)
+                               (.add "https://www.googleapis.com/auth/cloud-platform")))]
     (IAMClient/create
      (-> (IAMSettings/newBuilder)
          (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
                                     (getCredentials [_] creds)))
-         (.build)))))
+         ^IAMSettings (.build)))))
 
 (defn- workspace-service-account-id
   "Generate the service account ID for a workspace (max 30 chars, lowercase, alphanumeric + hyphens)."
@@ -144,11 +146,12 @@
   [details ^String project-id ^String service-account-email ^String role]
   (log/infof "Granting project role %s to %s" role service-account-email)
   (let [creds          (.createScoped (service-account-credentials details)
-                                      ["https://www.googleapis.com/auth/cloud-platform"])
+                                      (doto (java.util.ArrayList.)
+                                        (.add "https://www.googleapis.com/auth/cloud-platform")))
         settings       (-> (ProjectsSettings/newBuilder)
                            (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
                                                       (getCredentials [_] creds)))
-                           (.build))
+                           ^ProjectsSettings (.build))
         projects-client (ProjectsClient/create settings)
         resource       (format "projects/%s" project-id)
         member         (format "serviceAccount:%s" service-account-email)]
@@ -184,7 +187,8 @@
                                              interval-ms  1000}}]
   (log/info "Waiting for IAM impersonation to be ready...")
   (let [base-creds  (.createScoped (service-account-credentials details)
-                                   ["https://www.googleapis.com/auth/bigquery"])
+                                   (doto (java.util.ArrayList.)
+                                     (.add "https://www.googleapis.com/auth/bigquery")))
         project-id  (get-project-id details)]
     (loop [attempt 1]
       (log/debugf "Checking impersonation readiness (attempt %d/%d)" attempt max-attempts)
@@ -194,12 +198,13 @@
                                          base-creds
                                          target-sa-email
                                          nil  ;; delegates
-                                         (java.util.ArrayList. ["https://www.googleapis.com/auth/bigquery"])
+                                         (doto (java.util.ArrayList.)
+                                           (.add "https://www.googleapis.com/auth/bigquery"))
                                          3600)
                            client       (-> (BigQueryOptions/newBuilder)
-                                            (.setCredentials impersonated)
-                                            (.build)
-                                            (.getService))]
+                                            ^BigQueryOptions$Builder (.setCredentials impersonated)
+                                            ^BigQueryOptions (.build)
+                                            ^BigQuery (.getService))]
                        ;; Try a simple operation - list datasets (limited to 1)
                        (.listDatasets client project-id (into-array BigQuery$DatasetListOption []))
                        :ready)
@@ -222,7 +227,7 @@
 
           :else
           (do
-            (Thread/sleep interval-ms)
+            (Thread/sleep ^long interval-ms)
             (recur (inc attempt))))))))
 
 (defn- role-name->acl-role
@@ -246,7 +251,9 @@
   "Grant an ACL role on a dataset to a service account."
   [^BigQuery client ^DatasetId dataset-id ^String service-account-email ^String role-name]
   (log/debugf "Granting %s on dataset %s to %s" role-name dataset-id service-account-email)
-  (let [dataset     (.getDataset client dataset-id (into-array BigQuery$DatasetOption []))
+  (let [dataset     ^Dataset (.getDataset client dataset-id
+                                          ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                                          (into-array BigQuery$DatasetOption []))
         current-acl (into [] (.getAcl dataset))
         acl-role    (role-name->acl-role role-name)
         acl-user    (Acl$User. service-account-email)]
@@ -255,9 +262,11 @@
       (let [new-acl-entry   (Acl/of acl-user acl-role)
             updated-acl     (conj current-acl new-acl-entry)
             updated-dataset (-> (.toBuilder dataset)
-                                (.setAcl updated-acl)
+                                (.setAcl ^"clojure.lang.PersistentVector" updated-acl)
                                 (.build))]
-        (.update client updated-dataset (into-array BigQuery$DatasetOption []))))))
+        (.update client updated-dataset
+                 ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                 (into-array BigQuery$DatasetOption []))))))
 
 (defmethod isolation/init-workspace-database-isolation! :bigquery-cloud-sdk
   [database workspace]
@@ -288,11 +297,15 @@
         (wait-for-impersonation-ready! details ws-sa-email)
 
         ;; Create the isolated dataset if it doesn't exist (using main SA credentials, not impersonated)
-        (when-not (.getDataset client dataset-id (into-array BigQuery$DatasetOption []))
+        (when-not (.getDataset client dataset-id
+                               ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                               (into-array BigQuery$DatasetOption []))
           (let [dataset-info (-> (DatasetInfo/newBuilder dataset-id)
                                  (.setDescription (format "Metabase workspace isolation for workspace %s" (:id workspace)))
                                  (.build))]
-            (.create client dataset-info (into-array BigQuery$DatasetOption []))))
+            (.create client dataset-info
+                     ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                     (into-array BigQuery$DatasetOption []))))
 
         ;; Grant the workspace service account dataEditor role on the isolated dataset
         ;; dataEditor allows: create/update/delete tables, insert/update/delete data
@@ -312,7 +325,7 @@
   [^com.google.cloud.Policy policy ^Role role ^Identity identity]
   (let [bindings (.getBindings policy)
         identity-set (get bindings role)]
-    (and identity-set (.contains identity-set identity))))
+    (and identity-set (.contains ^java.util.Set identity-set identity))))
 
 (defn- grant-table-read-access!
   "Grant read access on a specific table to a service account using table-level IAM."
@@ -343,17 +356,3 @@
     (doseq [{:keys [schema name]} tables]
       (let [table-id (TableId/of project-id schema name)]
         (grant-table-read-access! client table-id ws-sa-email)))))
-
-(defmethod isolation/drop-isolated-tables! :bigquery-cloud-sdk
-  [database s+t-tuples]
-  (when (seq s+t-tuples)
-    (let [details    (:details database)
-          client     (database-details->client details)
-          project-id (get-project-id details)]
-      (doseq [[dataset-name table-name] s+t-tuples]
-        (let [table-id (TableId/of project-id dataset-name table-name)]
-          (log/debugf "Dropping isolated table: %s.%s" dataset-name table-name)
-          (try
-            (.delete client table-id)
-            (catch Exception e
-              (log/warnf e "Failed to delete table %s.%s (may not exist)" dataset-name table-name))))))))

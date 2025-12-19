@@ -812,7 +812,12 @@ function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
 }
 
 function assertQueryEditorDisabled() {
+  H.NativeEditor.get().click();
+  H.NativeEditor.get().should("not.be.focused");
   H.NativeEditor.get().should("have.attr", "contenteditable", "false");
+
+  H.NativeEditor.type("QWERTY", { focus: false });
+  cy.findByText("QWERTY").should("not.exist");
 }
 
 function enableSharingFor(actionName, { publicUrlAlias }) {

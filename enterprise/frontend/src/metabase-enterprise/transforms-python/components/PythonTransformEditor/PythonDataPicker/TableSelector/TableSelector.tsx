@@ -110,7 +110,7 @@ export function TableSelector({
       {isOpened && (
         <DataPickerModal
           title={t`Pick a table`}
-          value={getDataPickerValue(table) as TablePickerValue}
+          value={getDataPickerValue(table)}
           databaseId={database}
           onChange={handleChange}
           onClose={close}
@@ -127,12 +127,14 @@ export function TableSelector({
   );
 }
 
-function getDataPickerValue(table: Table | undefined) {
+function getDataPickerValue(
+  table: Table | undefined,
+): TablePickerValue | undefined {
   if (!table) {
-    return { model: "table", id: null };
+    return;
   }
   return {
-    model: "table" as const,
+    model: "table",
     id: table.id,
     name: table.display_name,
     db_id: table.db_id,

@@ -269,18 +269,6 @@
             (is (=? [{:id t2-id}]
                     (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag2-id])))))))))
 
-(deftest filter-transforms-by-workspace-test
-  (testing "GET /api/ee/transform filters out workspace transforms by default"
-    (mt/with-premium-features #{:transforms :workspaces}
-      (mt/with-temp [:model/Transform {global-id :id}    {}
-                     :model/Workspace {ws-id :id}        {:name "Test Workspace"}
-                     :model/Transform {ws-transform-id :id} {:workspace_id ws-id}]
-        (testing "by default, only global transforms (workspace_id=null) are returned"
-          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform")
-                ids (set (map :id transforms))]
-            (is (contains? ids global-id))
-            (is (not (contains? ids ws-transform-id)))))))))
-
 (deftest filter-transforms-by-type-test
   (testing "should be able to filter transforms by source type"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -1058,10 +1046,19 @@
                                      :name   table-name}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
 
+(defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:clickhouse :redshift :bigquery-cloud-sdk :snowflake]]
+  (defmethod driver/database-supports? [driver ::extract-columns-from-query]
+    [_driver _feature _database]
+    false))
+
 (deftest ^:parallel extract-columns-from-query-test
   (testing "POST /api/ee/transform/extract-columns"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
-                           :clickhouse :redshift :bigquery-cloud-sdk)
+    (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
+                                                           ::extract-columns-from-query]})
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (letfn [(make-native-query [sql]

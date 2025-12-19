@@ -57,6 +57,7 @@ export const CollectionCaption = ({
           isDisabled={!isEditable}
           data-testid="collection-name-heading"
           onChange={handleChangeName}
+          maxLength={100}
         />
       </CaptionTitleContainer>
       {(isEditable || hasDescription) && (
@@ -74,6 +75,7 @@ export const CollectionCaption = ({
           onChange={handleChangeDescription}
           data-testid="collection-description-in-caption"
           left={0}
+          maxLength={255}
         />
       )}
     </CaptionRoot>

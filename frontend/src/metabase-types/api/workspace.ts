@@ -30,9 +30,6 @@ export type WorkspaceItem = {
 export type CreateWorkspaceRequest = {
   name: string;
   database_id?: DatabaseId;
-  upstream: {
-    transforms?: TransformId[];
-  };
 };
 
 export type WorkspaceListResponse = {
@@ -58,7 +55,7 @@ export type ExternalTransform = {
   id: TransformId;
   name: string;
   source_type: Transform["source_type"];
-  checkout_disabled: string;
+  checkout_disabled: string | null;
 };
 
 export type ExternalTransformsResponse = {
@@ -297,4 +294,15 @@ export type WorkspaceTransformRunResponse = {
     name: string;
     schema?: string | null;
   };
+};
+
+export type WorkspaceAllowedDatabase = {
+  id: number;
+  name: string;
+  supported: boolean;
+  reason?: string;
+};
+
+export type WorkspaceAllowedDatabasesResponse = {
+  databases: WorkspaceAllowedDatabase[];
 };

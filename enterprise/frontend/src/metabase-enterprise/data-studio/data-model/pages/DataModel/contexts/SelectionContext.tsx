@@ -3,6 +3,7 @@ import {
   type ReactNode,
   type SetStateAction,
   createContext,
+  useCallback,
   useContext,
   useState,
 } from "react";
@@ -34,11 +35,11 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     new Set(),
   );
 
-  const resetSelection = () => {
+  const resetSelection = useCallback(() => {
     setSelectedTables(new Set());
     setSelectedSchemas(new Set());
     setSelectedDatabases(new Set());
-  };
+  }, []);
 
   const hasSelectedItems =
     selectedTables.size > 0 ||

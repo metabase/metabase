@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -19,12 +18,10 @@ import {
 } from "metabase/ui";
 import {
   useCreateWorkspaceMutation,
-  useCreateWorkspaceTransformMutation,
   useGetWorkspaceCheckoutQuery,
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
-import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
-import type { Transform, Workspace } from "metabase-types/api";
+import type { DatabaseId, Transform, Workspace } from "metabase-types/api";
 
 type EditTransformMenuProps = {
   transform: Transform;
@@ -38,20 +35,14 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
   const { data: workspacesData, isLoading: isLoadingWorkspaces } =
     useGetWorkspacesQuery();
-  const [createWorkspaceTransform, { isLoading: isAddingToWorkspace }] =
-    useCreateWorkspaceTransformMutation();
   const [createWorkspace, { isLoading: isCreatingWorkspace }] =
     useCreateWorkspaceMutation();
   const { data: checkoutData, isLoading: isWorkspaceCheckoutLoading } =
     useGetWorkspaceCheckoutQuery(transform.id);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [addedWorkspaceIds, setAddedWorkspaceIds] = useState<Set<number>>(
     () => new Set(),
   );
 
-  const { data: databasesData } = useListDatabasesQuery({
-    include_analytics: true,
-  });
   const workspaces = useMemo(
     () => workspacesData?.items ?? [],
     [workspacesData],
@@ -70,69 +61,55 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
   const matchingWorkspaces = useMemo(
     () =>
-      workspaces
-        .filter((workspace) => !existingWorkspaceIds.has(workspace.id))
-        .filter((workspace) => !workspace.archived),
+      workspaces.filter(
+        (workspace) =>
+          !existingWorkspaceIds.has(workspace.id) && !workspace.archived,
+      ),
     [workspaces, existingWorkspaceIds],
   );
 
-  const isBusy = isAddingToWorkspace || isCreatingWorkspace;
+  const isBusy =
+    isCreatingWorkspace || isLoadingWorkspaces || isWorkspaceCheckoutLoading;
   const emptyMessage =
     workspaces.length === 0 || sourceDatabaseId == null
       ? t`No workspaces yet`
       : t`No workspaces for this database yet`;
-  const databaseOptions = useMemo(
-    () =>
-      (databasesData?.data ?? []).map((db) => ({
-        value: String(db.id),
-        label: db.name,
-      })),
-    [databasesData],
-  );
-
-  const handleOpenCreateModal = () => {
-    setIsCreateModalOpen(true);
-  };
-
-  const handleCloseCreateModal = () => {
-    setIsCreateModalOpen(false);
-  };
 
   const handleWorkspaceSelect = async (workspace: Workspace) => {
-    try {
-      await createWorkspaceTransform({
-        id: workspace.id,
-        global_id: transform.id,
-        name: transform.name,
-        description: transform.description,
-        source: transform.source,
-        target: transform.target,
-        tag_ids: transform.tag_ids,
-      }).unwrap();
-      setAddedWorkspaceIds((prev) => new Set(prev).add(workspace.id));
-    } catch (error) {
-      sendErrorToast(t`Failed to add transform to the workspace`);
-    }
+    dispatch(
+      push(
+        `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
+      ),
+    );
   };
 
   const handleCreateWorkspace = async ({
     name,
     databaseId,
   }: {
-    name: string;
-    databaseId: string;
+    name?: string;
+    databaseId?: DatabaseId;
   }) => {
+    if (!databaseId) {
+      sendErrorToast(t`Failed to create workspace, no database id`);
+      return;
+    }
+
     try {
       const workspace = await createWorkspace({
-        name: name.trim() || t`New workspace`,
+        name: name?.trim() || t`New workspace`,
         database_id: Number(databaseId),
-        upstream: { transforms: [transform.id] },
       }).unwrap();
 
       setAddedWorkspaceIds((prev) => new Set(prev).add(workspace.id));
-      handleCloseCreateModal();
-      dispatch(push(`/data-studio/workspaces/${workspace.id}`));
+
+      dispatch(
+        push(
+          `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
+        ),
+      );
     } catch (error) {
+      console.error(error);
       sendErrorToast(t`Failed to create workspace`);
     }
   };
@@ -155,7 +132,9 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
         <Menu.Item
           disabled={isBusy}
           leftSection={<Icon name="add" />}
-          onClick={handleOpenCreateModal}
+          onClick={() => {
+            handleCreateWorkspace({ databaseId: sourceDatabaseId });
+          }}
         >
           <Stack gap={0} align="flex-start">
             <Text fw={600}>{t`New workspace`}</Text>
@@ -200,17 +179,6 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
           </ScrollArea.Autosize>
         )}
       </Menu.Dropdown>
-
-      <CreateWorkspaceModal
-        opened={isCreateModalOpen}
-        onClose={handleCloseCreateModal}
-        onSubmit={handleCreateWorkspace}
-        databaseOptions={databaseOptions}
-        isSubmitting={isBusy}
-        defaultDatabaseId={
-          sourceDatabaseId != null ? String(sourceDatabaseId) : null
-        }
-      />
     </Menu>
   );
 }

@@ -1,24 +1,25 @@
 ---
-title: Embedded analytics SDK - Using the SDK with Next.js
+title: Using the modular embedding SDK with Next.js
+summary: Set up the Modular embedding SDK with Next.js using App Router or Pages Router. Learn how to handle JWT authentication and server-side rendering.
 ---
 
-# Embedded analytics SDK - Using the SDK with Next.js
+# Using the modular embedding SDK with Next.js
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
 {% include youtube.html id='UfL8okz36d0' %}
 
-Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org/). The SDK is tested to work with Next.js 14, although it may work with other versions.
+Some notes on using the modular embedding SDK with [Next.js](https://nextjs.org/). The SDK is tested to work with Next.js 14, although it may work with other versions.
 
 See a [sample Next.js app that uses the SDK](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
 
 ## SDK components with Server Side Rendering (SSR) or React Server Components
 
-As of Embedded Analytics SDK v57, SDK components automatically skip server-side rendering (SSR) and render only on the client.
+As of modular embedding SDK v57, SDK components automatically skip server-side rendering (SSR) and render only on the client.
 
 ### Compatibility layer for Server Side Rendering (SSR) (DEPRECATED)
 
-As of Embedded Analytics SDK 57, the compatibility layer for server-side rendering (SSR) is deprecated and no longer required. If you use the compatibility layer, change your imports from `@metabase/embedding-sdk-react/next` to `@metabase/embedding-sdk-react`.
+As of modular embedding SDK 57, the compatibility layer for server-side rendering (SSR) is deprecated and no longer required. If you use the compatibility layer, change your imports from `@metabase/embedding-sdk-react/next` to `@metabase/embedding-sdk-react`.
 
 ## Handling authentication
 

@@ -1,10 +1,10 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.e2e-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.core :as workspaces]
+   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -17,13 +17,13 @@
 (defn- execute-workspace-transform!
   "Execute a transform within workspace isolation context. For testing purposes."
   [workspace ws-transform opts]
-  (workspaces/with-workspace-isolation workspace
+  (ws.isolation/with-workspace-isolation workspace
     (let [result (atom nil)]
       (t2/with-transaction [_tx]
         (let [transform (t2/insert-returning-instance!
                          :model/Transform
                          (select-keys ws-transform [:name :description :source :target]))]
-          (reset! result (transforms.i/execute! transform opts))
+          (reset! result (transforms.execute/execute! transform opts))
           ;; rather abort transaction
           (t2/delete! :model/Transform (:id transform))))
       @result)))

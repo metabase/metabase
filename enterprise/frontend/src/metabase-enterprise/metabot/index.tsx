@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -13,6 +14,7 @@ import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { MetabotChat } from "./components/MetabotChat";
+import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
@@ -68,6 +70,9 @@ export function initializePlugin() {
     PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
     PLUGIN_METABOT.MetabotDataStudioButton = MetabotDataStudioButton;
     PLUGIN_METABOT.MetabotDataStudioSidebar = MetabotDataStudioSidebar;
+    PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
+      useLazyMetabotGenerateContentQuery;
+    PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
     PLUGIN_METABOT.getAdminPaths = () => [
       {
@@ -98,5 +103,8 @@ export function initializePlugin() {
         </Route>
       </Route>
     );
+    PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
+      useLazyMetabotGenerateContentQuery;
+    PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   }
 }

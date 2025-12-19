@@ -36,6 +36,7 @@ type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 export type CollectionBrowserListColumns =
   | "type"
   | "name"
+  | "description"
   | "lastEditedBy"
   | "lastEditedAt"
   | "archive";
@@ -205,6 +206,8 @@ const CollectionBrowserWrapper = ({
 };
 
 export const CollectionBrowser = Object.assign(
-  withPublicComponentWrapper(CollectionBrowserWrapper),
+  withPublicComponentWrapper(CollectionBrowserWrapper, {
+    supportsGuestEmbed: false,
+  }),
   { schema: collectionBrowserPropsSchema },
 );

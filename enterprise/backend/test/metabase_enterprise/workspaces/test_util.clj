@@ -33,9 +33,10 @@
   [ws-or-id]
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
-    (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
-             :done?      #(not= :pending (:status %))
-             :timeout-ms 500})))
+    (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
+                 :done?      #(not= :pending (:status %))
+                 :timeout-ms 500})
+        (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
 
 (defn create-workspace-for-test!
   "Create a workspace for testing using proper initialization.
@@ -53,7 +54,7 @@
   [name]
   (create-workspace-for-test! {:name name}))
 
-(defn do-with-workspaces
+(defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
   Takes a sequence of props for workspace creation and a thunk that receives
   the created workspaces as a vector. Each workspace is cleaned up by its own
@@ -63,9 +64,9 @@
     (thunk [])
     (let [ws (create-workspace-for-test! (first props-list))]
       (try
-        (do-with-workspaces (rest props-list)
-                            (fn [rest-workspaces]
-                              (thunk (into [ws] rest-workspaces))))
+        (do-with-workspaces! (rest props-list)
+                             (fn [rest-workspaces]
+                               (thunk (into [ws] rest-workspaces))))
         (finally
           (when ws
             (try
@@ -74,8 +75,8 @@
                 ;; Workspace may already be deleted by the test
                 nil))))))))
 
-(defmacro with-workspaces
-  "Execute body with properly initialized workspaces that are cleaned up afterwards.
+(defmacro with-workspaces!
+  "Execute body with properly initialized workspaces that are cleaned up afterward.
 
   Creates each workspace using `ws.common/create-workspace!` and waits for it to
   be ready. After body execution (or on error), cleans up using `ws.model/delete!`
@@ -92,8 +93,7 @@
   (let [pairs      (partition 2 bindings)
         syms       (mapv first pairs)
         props-list (mapv second pairs)]
-    `(do-with-workspaces
+    `(do-with-workspaces!
       [~@props-list]
       (fn [[~@syms]]
         ~@body))))
-

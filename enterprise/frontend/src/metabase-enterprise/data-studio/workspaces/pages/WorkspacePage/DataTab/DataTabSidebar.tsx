@@ -38,6 +38,9 @@ export const DataTabSidebar = ({
         style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
         <Text fw={600}>{t`Data active in this workspace`}</Text>
+        {tables.outputs.length > 0 && (
+          <Text size="sm" fw={600} c="text-tertiary">{t`Output tables`}</Text>
+        )}
         <Stack gap={0}>
           {tables.outputs.map((table, index: number) => {
             const workspaceTransform = workspaceTransforms.find(
@@ -68,6 +71,9 @@ export const DataTabSidebar = ({
             );
           })}
         </Stack>
+        {tables.inputs.length > 0 && (
+          <Text size="sm" fw={600} c="text-tertiary">{t`Input tables`}</Text>
+        )}
         <Stack gap={0}>
           {tables.inputs.map((table, index) => (
             <TableListItem

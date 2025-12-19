@@ -21,29 +21,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Fetch base branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
-        run: |
-          # Fetch the base branch to ensure its history is available for diffing
-          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
-          # Only run this if it's a pull request and the base ref exists
-      - name: Check if driver tests should run
+      - name: Check if driver tests should run (temporarily forced to yes they should)
         id: check-branch-and-files-changed
         run: |
-          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
-          echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
-
-          if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "Merging into master or a release branch. All driver tests will run."
-          else
-            echo "Checking for changes in relevant modules..."
-            if ./bin/mage can-skip-driver-tests "${{ github.event.pull_request.base.ref }}"; then
-              echo 'skip=true' >> $GITHUB_OUTPUT
-            else
-              echo 'skip=false' >> $GITHUB_OUTPUT
-            fi
-          fi
+          echo 'skip=false' >> $GITHUB_OUTPUT
         shell: bash
 
   be-tests-athena-ee:
@@ -128,6 +109,7 @@ jobs:
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: ${{ matrix.job.test-args }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
@@ -199,6 +181,7 @@ jobs:
       with:
         junit-name: 'be-tests-clickhouse-ee'
         test-args: ${{ matrix.job.test-args }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
@@ -513,6 +496,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
+          logs-artifact-suffix: ${{ matrix.version.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
@@ -585,6 +569,7 @@ jobs:
       with:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
@@ -763,6 +748,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
+        logs-artifact-suffix: ${{ matrix.version.name }}
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -1019,6 +1005,7 @@ jobs:
         junit-name: 'be-tests-redshift-ee'
         test-args: >-
           ${{ matrix.job.test-args }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: ${{ !matrix.job.skip && !cancelled() && steps.test-driver.outputs.quarantine-skipped != 'true' }}
@@ -1089,6 +1076,7 @@ jobs:
       with:
         junit-name: 'be-tests-snowflake-ee'
         test-args: ${{ matrix.job.test-args }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
@@ -1227,6 +1215,7 @@ jobs:
       with:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
+        logs-artifact-suffix: ${{ matrix.version.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'

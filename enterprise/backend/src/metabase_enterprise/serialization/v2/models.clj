@@ -42,6 +42,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
+   "MetabotUseCase"
    "TimelineEvent"
    "TransformJobTransformTag"
    "TransformTransformTag"])
@@ -108,6 +109,7 @@
    "Session"
    "SupportAccessGrantLog"
    "TaskHistory"
+   "Tenant"
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
@@ -116,6 +118,4 @@
    "UserKeyValue"
    "UserParameterValue"
    "ViewLog"
-   "Workspace"
-   "WorkspaceMappingTable"
-   "WorkspaceMappingTransform"])
+   "Workspace"])

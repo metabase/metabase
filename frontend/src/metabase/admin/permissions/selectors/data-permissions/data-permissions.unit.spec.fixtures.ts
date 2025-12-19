@@ -1,3 +1,4 @@
+import { createMockGroup } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { DataPermission, DataPermissionValue } from "../../types";
@@ -123,18 +124,21 @@ export const normalizedMetadata = {
   databasesList: [2, 3],
 
   groups: {
-    "1": {
+    "1": createMockGroup({
       id: 1,
       name: "Group starting with full access",
-    },
-    "2": {
+      magic_group_type: null,
+    }),
+    "2": createMockGroup({
       id: 2,
       name: "Group starting with no access at all",
-    },
-    "3": {
+      magic_group_type: null,
+    }),
+    "3": createMockGroup({
       id: 3,
       name: "All Users",
-    },
+      magic_group_type: "all-internal-users",
+    }),
   },
   groups_list: { null: { list: [1, 2, 3] } },
   questions: {},

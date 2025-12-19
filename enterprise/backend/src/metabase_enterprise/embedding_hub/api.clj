@@ -6,6 +6,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.audit-app.core :as audit]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
@@ -59,8 +60,13 @@
    "configure-row-column-security" (has-configured-sandboxes?)
    "create-test-embed"             (embedding.settings/embedding-hub-test-embed-snippet-created)
    "embed-production"              (embedding.settings/embedding-hub-production-embed-snippet-created)
-   "secure-embeds"                 (has-configured-sso?)})
+   "secure-embeds"                 (has-configured-sso?)
+   "setup-tenants"                 (perms/use-tenants)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/checklist"
   "Get the embedding hub checklist status, indicating which setup steps have been completed."
   []

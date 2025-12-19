@@ -91,13 +91,13 @@
         (str/includes? msg "UNIQUE"))))
 
 (defn- run-workspace-setup!
-  "Background job: runs isolation, mirroring, grants. Updates status to :ready when done."
+  "Background job: runs isolation, grants. Updates status to :ready when done."
   [{ws-id :id :as workspace} database]
   (ws.log/track! ws-id :workspace-setup
     (let [{:keys [_database_details]} (ws.log/track! ws-id :database-isolation
                                         (-> (ws.isolation/ensure-database-isolation! workspace database)
                                            ;; it actually returns just those, this is more like a doc than behavior
-                                            (select-keys [:schema :database_details])
+                                            (select-keys [:schema :database_details]Z
                                             (u/prog1 (t2/update! :model/Workspace ws-id <>))))])
     (t2/update! :model/Workspace ws-id {:status :ready})))
 
@@ -143,75 +143,5 @@
                                   ;:creator_id creator-id
                                   :global_id global-id
                                   :workspace_id workspace-id))]
-      (ws.impl/sync-transform-dependencies! workspace transform)
+      (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
       transform)))
-
-(defn- mirror-table-to-delete-where
-  [database-id targets]
-  (let [s+t (mapv (fn [[schema name]]
-                    [:and
-                     [:= [:inline schema] :schema]
-                     [:= [:inline name] :name]])
-                  targets)]
-    (into [:and
-           [:= [:inline database-id] :db_id]
-           (into [:or] s+t)])))
-
-(defn remove-entities!
-  "Remove multiple entities from the workspace."
-  [workspace entities]
-  ;; count does not have to be 1
-  (assert (= 1 (count entities))
-          "Single kv")
-  (assert (= :transforms (-> entities keys first))
-          "For transforms")
-  (assert (every? pos-int? (:transforms entities))
-          "With seq of ids")
-
-  ;; drop transform, drop its target table, no checking of dependencies
-  (let [mirror-transforms-ids (set (:transforms entities))
-        mirror-transforms-data (t2/select :model/Transform :id [:in mirror-transforms-ids])
-        database (t2/select-one :model/Database :id (:database_id workspace))
-        targets (mapv (fn [{:keys [target]}]
-                        (assert (= "table" (:type target)))
-                        [(:schema target) (:name target)])
-                      mirror-transforms-data)
-        _ (assert (< 0 (count targets)))
-        tables-where-clause (mirror-table-to-delete-where (:database_id workspace) targets)
-        tables-data (t2/select :model/Table {:where tables-where-clause})
-        tables-ids (into #{} (map :id) tables-data)]
-    (assert (every? pos-int? tables-ids))
-    (when (seq targets)
-      (ws.isolation/drop-isolated-tables! database targets))
-    (when (seq tables-ids)
-      (t2/delete! :model/Table :id [:in tables-ids]))
-    (when (seq mirror-transforms-ids)
-      (t2/delete! :model/Transform :id [:in mirror-transforms-ids]))))
-
-#_:clj-kondo/ignore
-(comment
-  (defn- clean-up-ws!* [& [ws-id]]
-    ;; Pass nil to clean up all workspaces
-    (let [ws-clause (or ws-id [:not= nil])]
-      (t2/delete! :model/Collection :workspace_id ws-clause)
-      (t2/delete! :model/Transform :workspace_id ws-clause)
-      (doseq [[db_id schema] (t2/select-fn-set (juxt :db_id :schema) :model/Table :workspace_id [:not= nil])]
-        (t2/delete! :model/Table :schema schema)
-        (let [db        (t2/select-one :model/Database db_id)
-              driver    (metabase.driver.util/database->driver db)
-              make-spec (requiring-resolve 'metabase.driver.sql-jdbc.connection/connection-details->spec)
-              jdbc-spec (make-spec driver (:details db))]
-          (clojure.java.jdbc/execute! jdbc-spec [(str "DROP SCHEMA \"" schema "\" CASCADE")])))
-      (t2/delete! :model/Workspace :id ws-clause)))
-
-  (def upstream-id (t2/select-one-pk :model/Transform :workspace_id nil {:order-by [:id]}))
-  (def upstream-ids (t2/select-pks-vec :model/Transform :workspace_id nil {:order-by [:id]}))
-
-  ;; Ensure output table exists
-  (#'metabase-enterprise.transforms.execute/run-mbql-transform! (t2/select-one :model/Transform upstream-id))
-
-  (let [admin-id (t2/select-one-pk :model/User :is_superuser true {:order-by [:id]})]
-    (binding [api/*current-user-id* admin-id]
-      (create-workspace! admin-id {:name "Workplace Workspace", :upstream {:transforms upstream-ids #_[upstream-id]}})))
-
-  (clean-up-ws!*))

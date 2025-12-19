@@ -38,6 +38,7 @@
   can-disable-password-login?
   define-premium-feature
   development-mode?
+  enable-tenants?
   enable-advanced-permissions?
   enable-ai-entity-analysis?
   enable-ai-sql-fixer?
@@ -53,7 +54,6 @@
   enable-database-auth-providers?
   enable-database-routing?
   enable-dependencies?
-  enable-documents?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?

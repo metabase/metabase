@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Icon, Menu } from "metabase/ui";
@@ -20,9 +19,14 @@ type TransformType = "sql" | "python";
 interface Props {
   databaseId: DatabaseId;
   workspaceId: WorkspaceId;
+  disabled?: boolean;
 }
 
-export const AddTransformMenu = ({ databaseId, workspaceId }: Props) => {
+export const AddTransformMenu = ({
+  databaseId,
+  workspaceId,
+  disabled,
+}: Props) => {
   const { addUnsavedTransform } = useWorkspace();
 
   const getSource = (type: TransformType): TransformSource => {
@@ -43,7 +47,13 @@ export const AddTransformMenu = ({ databaseId, workspaceId }: Props) => {
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon size="2rem" p="0" ml="auto" aria-label={t`Add transform`}>
+          <ActionIcon
+            size="2rem"
+            p="0"
+            ml="auto"
+            aria-label={t`Add transform`}
+            disabled={disabled}
+          >
             <Icon name="add" size={16} aria-hidden tooltip={t`Add transform`} />
           </ActionIcon>
         </Menu.Target>

@@ -1,3 +1,5 @@
+import type { BaseQueryFn } from "@reduxjs/toolkit/query";
+import type { TypedUseLazyQuery } from "@reduxjs/toolkit/src/query/react/buildHooks";
 import type { ComponentType } from "react";
 import React from "react";
 
@@ -6,6 +8,8 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
+  MetabotGenerateContentRequest,
+  MetabotGenerateContentResponse,
   SearchModel,
   Timeline,
   TimelineEvent,
@@ -70,6 +74,12 @@ type PluginMetabotType = {
   MetabotAdminAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
+  useLazyMetabotGenerateContentQuery: TypedUseLazyQuery<
+    MetabotGenerateContentResponse,
+    MetabotGenerateContentRequest,
+    BaseQueryFn
+  >;
+  MetabotThinkingStyles: { [key: string]: string };
 };
 
 const getDefaultMetabotContextValue = (): MetabotContext => ({
@@ -125,6 +135,9 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   MetabotAdminAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,
+  useLazyMetabotGenerateContentQuery:
+    (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
+  MetabotThinkingStyles: {},
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 
