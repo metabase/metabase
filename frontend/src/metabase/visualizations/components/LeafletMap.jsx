@@ -288,9 +288,5 @@ function shouldRecalculateZoom(prevPoints, nextPoints) {
     return false;
   }
 
-  return (
-    !prevPoints ||
-    prevPoints?.length !== nextPoints?.length ||
-    !_.isEqual(_.last(nextPoints), _.last(prevPoints))
-  );
+  return !prevPoints || nextPoints !== prevPoints;
 }
