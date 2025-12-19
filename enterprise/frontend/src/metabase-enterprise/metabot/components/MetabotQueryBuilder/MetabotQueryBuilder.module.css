@@ -48,7 +48,9 @@
     0 0 0 1px var(--mb-color-border),
     0 4px 24px rgba(0, 0, 0, 0.08);
   min-height: 7rem;
-  transition: box-shadow 150ms ease;
+  transition:
+    box-shadow 150ms ease,
+    background 1s ease-in-out;
 
   &:focus-within {
     box-shadow:
@@ -59,6 +61,7 @@
 
 .inputContainerLoading {
   background: var(--mb-color-bg-light);
+  animation: pulse 5s ease-in-out 1s infinite;
 }
 
 .editorWrapper {
@@ -69,7 +72,8 @@
 
 .inputActions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: flex-end;
 }
 
 .sendButton {
@@ -121,5 +125,16 @@
 
   to {
     opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    background: var(--mb-color-bg-light);
+  }
+
+  50% {
+    background: var(--mb-color-bg-medium);
   }
 }
