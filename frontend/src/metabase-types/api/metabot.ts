@@ -25,7 +25,7 @@ export type MetabotCodeEditorBufferContext = {
   id: string;
   source: Record<string, unknown> & {
     language: "sql";
-    databaseId: number | null;
+    database_id: number | null;
   };
   cursor: { line: number; column: number };
   selection?: {
@@ -162,7 +162,7 @@ export type MetabotEntityInfo =
   | MetabotTransformInfo;
 
 export type MetabotCodeEdit = {
-  bufferId: string;
+  buffer_id: string;
   mode: "rewrite";
   value: string;
   active?: boolean;
