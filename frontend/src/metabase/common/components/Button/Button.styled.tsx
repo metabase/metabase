@@ -25,12 +25,12 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
   ${({ purple, theme }) =>
     purple &&
     css`
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
       background-color: var(--mb-color-filter);
       border: 1px solid var(--mb-color-filter);
 
       &:hover {
-        color: var(--mb-color-text-white);
+        color: var(--mb-color-text-primary-inverse);
         background-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
         border-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
       }
@@ -58,7 +58,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       color: var(--mb-color-brand);
 
       &:hover {
-        background-color: var(--mb-color-bg-light);
+        background-color: var(--mb-color-background-secondary);
       }
     `}
 `;

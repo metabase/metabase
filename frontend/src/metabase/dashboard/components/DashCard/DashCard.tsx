@@ -24,7 +24,6 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import {
@@ -257,7 +256,7 @@ function DashCardInner({
       const iconSize = 16;
       return {
         name: opts.icon,
-        color: opts.color ? color(opts.color) : undefined,
+        color: opts.color,
         tooltip: opts.tooltips?.belonging,
         size: iconSize,
 

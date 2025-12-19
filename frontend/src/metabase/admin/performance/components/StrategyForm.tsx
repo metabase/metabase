@@ -234,10 +234,10 @@ const StrategyFormBody = ({
           })}
         >
           {shouldShowName && (
-            <Box lh="1rem" pt="md" color="text-medium">
+            <Box lh="1rem" pt="md" color="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
-                  <FixedSizeIcon name="database" color="inherit" />
+                  <FixedSizeIcon name="database" c="inherit" />
                 )}
                 <Text fw="bold" py="1rem">
                   {targetName}
@@ -481,10 +481,10 @@ const StrategySelector = ({
       <FormRadioGroup
         label={
           <Stack gap="xs">
-            <Text lh="1rem" color="text-medium" id={headingId}>
+            <Text lh="1rem" color="text-secondary" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
-            <Text lh="1rem" fw="normal" size="sm" color="text-medium">
+            <Text lh="1rem" fw="normal" size="sm" color="text-secondary">
               {t`This determines how long cached results will be stored.`}
             </Text>
           </Stack>

@@ -1,5 +1,5 @@
 .CloseButton {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   text-decoration: none;
 
   &:hover {
@@ -23,7 +23,7 @@
 
 .defaultBackButton {
   cursor: pointer;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.83em;
   text-transform: uppercase;
   letter-spacing: 0.06em;

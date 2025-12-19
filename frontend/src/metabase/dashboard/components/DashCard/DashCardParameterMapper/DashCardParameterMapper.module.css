@@ -4,7 +4,7 @@
 }
 
 .TextCardDefault {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   margin: 0.5rem 0;
   align-items: baseline;
   line-height: 1.5rem;
@@ -21,16 +21,16 @@
 }
 
 .Header {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .TargetButton {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   cursor: pointer;
   border: 2px solid var(--mb-color-brand);
   border-radius: 8px;
   min-height: 30px;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 
   &.disabled {
     opacity: 0.4;
@@ -40,20 +40,20 @@
   &.mapped {
     border-color: var(--mb-color-brand);
     background-color: var(--mb-color-brand);
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 
   &.unauthed {
     pointer-events: none;
-    border-color: var(--mb-color-bg-light);
-    background-color: var(--mb-color-bg-light);
-    color: var(--mb-color-text-medium);
+    border-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background-secondary);
+    color: var(--mb-color-text-secondary);
   }
 
   &.invalid {
     border-color: var(--mb-color-error);
     background-color: var(--mb-color-error);
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 }
 
@@ -62,16 +62,16 @@
 }
 
 .CloseIconButton {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: transparent;
   border: none;
   padding: 0.25rem !important;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: color-mix(
       in srgb,
-      var(--mb-color-bg-white),
+      var(--mb-color-background-primary),
       transparent 80%
     );
   }

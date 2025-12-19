@@ -14,7 +14,7 @@ export function DatabaseReplicationPostgresInfo() {
   );
 
   return (
-    <Text size="md" c="text-medium">
+    <Text size="md" c="text-secondary">
       {jt`Note: You may need to ${link} in the source database. The process might also require a database restart.`}
     </Text>
   );

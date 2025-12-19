@@ -185,7 +185,7 @@ function ConnectionStringDescription({
           component="span"
         >
           <Group gap="xs" component="span">
-            <Icon name="warning_round_filled" c="var(--mb-color-danger)" />
+            <Icon name="warning_round_filled" c="danger" />
             {t`Couldn’t use this connection string.`}
           </Group>
         </Text>

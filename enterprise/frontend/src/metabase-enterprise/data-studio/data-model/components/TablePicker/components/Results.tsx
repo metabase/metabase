@@ -553,7 +553,7 @@ const ResultsItem = ({
                 <Icon
                   name="chevronright"
                   size={16}
-                  color="var(--mb-color-text-light)"
+                  c="text-disabled"
                   className={cx(S.chevron, {
                     [S.expanded]: isExpanded,
                   })}

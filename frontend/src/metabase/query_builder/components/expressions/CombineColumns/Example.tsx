@@ -14,10 +14,10 @@ export const Example = ({ columnsAndSeparators }: Props) => {
 
   return (
     <Stack gap="sm">
-      <Text color="text-medium" lh={1} fw="bold">{t`Example`}</Text>
+      <Text color="text-secondary" lh={1} fw="bold">{t`Example`}</Text>
 
       <Card
-        bg="bg-light"
+        bg="background-secondary"
         component={ScrollArea}
         p="sm"
         radius="xs"

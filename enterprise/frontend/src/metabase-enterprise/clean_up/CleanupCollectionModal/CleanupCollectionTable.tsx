@@ -106,10 +106,7 @@ export const CleanupCollectionTable = ({
             {/* Name */}
             <ItemCell data-testid="clean-up-table-collection">
               <Flex align="center" gap="sm">
-                <FixedSizeIcon
-                  name={getIcon(item).name}
-                  color="var(--mb-color-brand)"
-                />
+                <FixedSizeIcon name={getIcon(item).name} c="brand" />
                 <Ellipsified>{item.name}</Ellipsified>
               </Flex>
             </ItemCell>

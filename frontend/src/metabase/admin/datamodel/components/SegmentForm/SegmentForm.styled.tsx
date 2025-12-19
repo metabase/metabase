@@ -11,7 +11,7 @@ export const FormRoot = styled.form`
   width: 100%;
   height: 100%;
   overflow: auto;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 `;
 
 export const FormSection = styled.div`

@@ -110,7 +110,7 @@ export function PeriodsAgoMenuOption({
           <Text fw="bold">{name}</Text>
         </Group>
         {!!message && (
-          <Text size="xs" color="text-light" mt="xs">
+          <Text size="xs" color="text-disabled" mt="xs">
             {message}
           </Text>
         )}

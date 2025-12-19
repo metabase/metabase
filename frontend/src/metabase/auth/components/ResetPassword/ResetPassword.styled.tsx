@@ -8,7 +8,7 @@ export const InfoBody = styled.div`
 `;
 
 export const InfoTitle = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
@@ -17,7 +17,7 @@ export const InfoTitle = styled.div`
 `;
 
 export const InfoMessage = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   text-align: center;
   margin-bottom: 2.5rem;
 `;

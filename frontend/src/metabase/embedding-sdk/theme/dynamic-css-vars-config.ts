@@ -20,7 +20,7 @@ export const DYNAMIC_CSS_VARIABLES: DynamicCssVarConfig = {
   "--mb-color-background-hover": {
     dark: { source: "background", lighten: 0.5 },
   },
-  "--mb-color-bg-error": {
+  "--mb-color-background-error": {
     dark: { source: "negative", alpha: 0.1 },
   },
   "--mb-color-cartesian-grid-line": {

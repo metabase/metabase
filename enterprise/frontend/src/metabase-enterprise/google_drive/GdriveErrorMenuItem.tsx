@@ -15,7 +15,7 @@ export function GdriveErrorMenuItem({ error }: { error: any }) {
           <Icon name="warning" c="error" mt="xs" mr="sm" />
           <Box>
             <Text fw="bold">{t`Couldn't sync Google Sheets`}</Text>
-            <Text size="sm" c="text-medium" maw="16rem">
+            <Text size="sm" c="text-secondary" maw="16rem">
               {getErrorMessage(
                 error,
                 // eslint-disable-next-line no-literal-metabase-strings -- admin only ui

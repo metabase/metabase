@@ -7,7 +7,7 @@ import { Label, LabelContainer } from "../MetadataInfo.styled";
 function ColumnCount({ table }: { table: Table }) {
   const fieldCount = table.numFields();
   return (
-    <LabelContainer color="text-dark">
+    <LabelContainer color="text-primary">
       <Label>
         {ngettext(
           msgid`${fieldCount} column`,

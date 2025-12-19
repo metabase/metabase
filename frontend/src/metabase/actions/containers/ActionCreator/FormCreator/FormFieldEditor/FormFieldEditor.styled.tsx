@@ -6,7 +6,7 @@ import Radio from "metabase/common/components/Radio";
 import { darken } from "metabase/lib/colors";
 
 export const FormFieldContainer = styled.div`
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-spacing-sm);
   overflow: hidden;
@@ -44,20 +44,20 @@ export const Header = styled.div`
 `;
 
 export const Title = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
 `;
 
 export const Subtitle = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.85rem;
   font-weight: 700;
   margin-top: 1.2rem;
 `;
 
 export const PreviewContainer = styled(ContentContainer)`
-  background-color: var(--mb-color-bg-light);
-  border-top: 1px solid ${() => darken("bg-light", 0.1)};
+  background-color: var(--mb-color-background-secondary);
+  border-top: 1px solid ${() => darken("background-secondary", 0.1)};
   padding: 1rem 1rem 2rem 1rem;
 
   ${FormField.Root} {
@@ -65,7 +65,7 @@ export const PreviewContainer = styled(ContentContainer)`
   }
 
   ${FormField.Label} {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 `;
 

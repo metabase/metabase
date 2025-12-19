@@ -32,7 +32,7 @@ export const GettingStartedSection = ({
         gap="sm"
         onClick={toggle}
         component={UnstyledButton}
-        c="text-medium"
+        c="text-secondary"
         mb="sm"
         className={CS.cursorPointer}
       >

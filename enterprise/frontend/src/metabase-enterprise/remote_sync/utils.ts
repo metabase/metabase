@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import type {
   Collection,
@@ -42,18 +43,20 @@ export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {
   }
 };
 
-export const getSyncStatusColor = (status: RemoteSyncEntityStatus): string => {
+export const getSyncStatusColor = (
+  status: RemoteSyncEntityStatus,
+): ColorName => {
   switch (status) {
     case "create":
-      return "var(--mb-color-success)";
+      return "success";
     case "removed":
     case "delete":
-      return "var(--mb-color-danger)";
+      return "danger";
     case "update":
     case "touch":
-      return "var(--mb-color-saturated-blue)";
+      return "saturated-blue";
     default:
-      return "var(--mb-color-info)";
+      return "info";
   }
 };
 

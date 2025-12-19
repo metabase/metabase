@@ -11,7 +11,7 @@ export const BrowseContainer = styled.div`
   padding-top: 1rem;
   container-name: ItemsTableContainer;
   container-type: inline-size;
-  background-color: var(--mb-color-background-light);
+  background-color: var(--mb-color-background-secondary);
   min-height: 100%;
 `;
 

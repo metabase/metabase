@@ -126,7 +126,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                   p="sm"
                   gap="sm"
                   mb={group.items.length > 0 ? "0.75rem" : 0}
-                  bg="bg-light"
+                  bg="background-secondary"
                   bdrs="md"
                 >
                   <Icon name="synced_collection" size={16} c="text-secondary" />

@@ -105,7 +105,7 @@ const CenteredLayoutPreview = ({ children }: { children: React.ReactNode }) => (
   <Stack align="center" justify="center">
     <Flex
       m="40px"
-      bg="var(--mb-color-background)"
+      bg="background-primary"
       style={{
         border: "1px solid var(--mb-color-border)",
         borderRadius: "16px",

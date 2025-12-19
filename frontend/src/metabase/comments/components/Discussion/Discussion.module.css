@@ -49,7 +49,7 @@
 }
 
 .commentBulletDeleted {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   color: var(--mb-color-text-disabled);
 }
 
@@ -58,10 +58,10 @@
   border: none;
   outline: none;
   cursor: pointer;
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   padding: 0 0.5rem;
   border-radius: 1rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     background-color: var(--mb-color-background-hover);

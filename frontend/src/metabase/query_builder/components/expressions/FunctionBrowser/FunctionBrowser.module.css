@@ -1,5 +1,5 @@
 .wrapper {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border-left: 1px solid var(--mb-color-border);
   height: 100%;
   border-top-right-radius: var(--mantine-radius-md);
@@ -34,7 +34,7 @@
 }
 
 .structure {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   border-bottom: 1px solid var(--mb-color-border);
   font-size: 0.75rem;
   color: var(--mb-color-text-secondary);

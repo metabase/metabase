@@ -58,7 +58,7 @@ const SetupHeader = ({
           </Markdown>
         </Text>
       ) : (
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {t`Bring the power of Metabase to your Slack #channels.`}{" "}
           {t`Follow these steps to connect to Slack:`}
         </Text>

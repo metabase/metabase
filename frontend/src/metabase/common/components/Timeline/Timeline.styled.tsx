@@ -39,7 +39,7 @@ export const EventHeader = styled.div`
 `;
 
 export const Timestamp = styled.time`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.875em;
   padding-bottom: 0.5rem;
 `;

@@ -106,7 +106,7 @@ function UndoToast({
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={undo.pausedAt ? "bg-dark" : "brand"}
+          color={undo.pausedAt ? "background-tertiary-inverse" : "brand"}
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"
@@ -125,7 +125,7 @@ function UndoToast({
           {undo.icon && (
             <CardIcon
               name={undo.icon}
-              color={undo.iconColor ?? "var(--mb-color-text-secondary-inverse)"}
+              c={undo.iconColor ?? "text-secondary-inverse"}
             />
           )}
           {undo.renderChildren ? (
@@ -156,10 +156,7 @@ function UndoToast({
           )}
           {undo.canDismiss && (
             <DismissIcon
-              color={
-                undo.dismissIconColor ||
-                "var(--mb-color-text-secondary-inverse)"
-              }
+              color={undo.dismissIconColor || "text-secondary-inverse"}
               name="close"
               onClick={onDismiss}
             />

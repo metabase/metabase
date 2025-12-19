@@ -48,7 +48,7 @@ export const PermissionsSidebarContent = memo(
           ) : (
             <SidebarContentTitle>{title}</SidebarContentTitle>
           )}
-          {description && <Text color="text-dark">{description}</Text>}
+          {description && <Text color="text-primary">{description}</Text>}
           {entityViewFocus && onEntityChange && (
             <EntityViewSwitch
               value={entityViewFocus}

@@ -3,6 +3,6 @@
 }
 
 .title {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   line-height: 1rem;
 }

@@ -30,7 +30,7 @@ export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
   padding-bottom: 0;
   `
       : `
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   border-top: 1px solid var(--mb-color-border);
   padding-inline: 2.5rem;
   `}

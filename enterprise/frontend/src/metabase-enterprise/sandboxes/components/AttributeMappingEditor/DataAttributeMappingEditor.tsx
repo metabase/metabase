@@ -132,7 +132,6 @@ export const DataAttributeMappingEditor = ({
                   onClick={() =>
                     handleChange(removeEntry<ValueType>(entries, index))
                   }
-                  color={"text"}
                   data-testid="remove-mapping"
                 />
               </td>

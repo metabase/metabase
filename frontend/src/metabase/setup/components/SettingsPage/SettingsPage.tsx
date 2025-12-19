@@ -38,7 +38,7 @@ export const SettingsPage = (): JSX.Element => {
   const TOOLTIP_WIDTH = 220;
 
   const label = (
-    <Text size="sm" c="var(--mb-color-tooltip-text)">
+    <Text size="sm" c="tooltip-text">
       {tooltipText}
     </Text>
   );

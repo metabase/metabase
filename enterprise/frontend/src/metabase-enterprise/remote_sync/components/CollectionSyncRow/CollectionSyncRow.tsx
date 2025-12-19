@@ -34,7 +34,7 @@ export const CollectionSyncRow = ({
     >
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
-          <Icon name={icon.name} c={icon.color ?? "text-medium"} />
+          <Icon name={icon.name} c={icon.color ?? "text-secondary"} />
           <Text fw="medium">{collection.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">

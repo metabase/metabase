@@ -124,7 +124,7 @@ export const SelectEmbedResourceStep = () => {
 
     return (
       <Stack gap="md">
-        <Text c="text-medium" mb="md">
+        <Text c="text-secondary" mb="md">
           {getEmbedDescription(experience)}
         </Text>
 

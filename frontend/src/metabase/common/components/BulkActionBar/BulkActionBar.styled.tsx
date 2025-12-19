@@ -15,7 +15,7 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
 `;
 
 export const ToastCard = styled(Card)`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   padding: 0.75rem var(--mantine-spacing-md);
   display: flex;
   align-items: center;

@@ -142,7 +142,7 @@ export function UploadManagementTable() {
         </BulkActionBar>
       )}
       <SettingHeader id="upload-tables-list" title={t`Manage uploads`} />
-      <Text fw="bold" c="text-medium">
+      <Text fw="bold" c="text-secondary">
         {t`Uploaded tables`}
       </Text>
       <ClientSortableTable
@@ -204,7 +204,7 @@ const UploadTableRow = ({
             onClick={() => onTrash(item)}
             variant="subtle"
             className="Button Button--borderless"
-            color="text-medium"
+            color="text-secondary"
           >
             <Icon name="trash" />
           </Button>

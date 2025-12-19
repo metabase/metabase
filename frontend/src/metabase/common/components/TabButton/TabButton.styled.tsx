@@ -101,17 +101,17 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
     !props.disabled &&
     css`
       color: var(--mb-color-brand);
-      background-color: var(--mb-color-bg-medium);
+      background-color: var(--mb-color-background-tertiary);
     `}
   &:hover,:focus {
     ${(props) =>
       props.disabled
         ? css`
-            color: var(--mb-color-text-dark);
+            color: var(--mb-color-text-primary);
           `
         : css`
             color: var(--mb-color-brand);
-            background-color: var(--mb-color-bg-medium);
+            background-color: var(--mb-color-background-tertiary);
           `}
   }
 `;
@@ -124,7 +124,7 @@ export const MenuItem = styled.li`
   width: 100%;
   padding: 0.85em 1.45em;
   border-radius: 0.5em;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
   text-align: start;
   text-decoration: none;
@@ -133,6 +133,6 @@ export const MenuItem = styled.li`
   &:focus,
   :hover {
     color: var(--mb-color-brand);
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 `;

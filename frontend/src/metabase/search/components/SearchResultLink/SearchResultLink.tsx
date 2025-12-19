@@ -40,7 +40,7 @@ export const SearchResultLink = ({
         <ResultLink
           {...componentProps}
           span
-          c="text-medium"
+          c="text-secondary"
           size="sm"
           truncate
           ref={truncatedRef}

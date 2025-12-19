@@ -78,7 +78,7 @@ export const BugReportModal = ({
                   <Text size="lg" fw="bold">
                     {t`Include diagnostic information`}
                   </Text>
-                  <Text color="text-medium" w="80%">
+                  <Text color="text-secondary" w="80%">
                     {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
                     {c("{0} is the name of the application, usually 'Metabase'")
                       .t`This information helps ${applicationName} figure out what exactly caused the issue.`}
@@ -119,7 +119,7 @@ export const BugReportModal = ({
               <FormSubmitButton
                 variant="outline"
                 label={c("This is a verb, not a noun").t`Download`}
-                color="text-dark"
+                color="text-primary"
                 my="sm"
                 px="lg"
                 radius="md"

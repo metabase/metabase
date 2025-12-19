@@ -25,13 +25,13 @@ export const InfoIconContainer = styled.div`
 `;
 
 export const InfoMessage = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   text-align: center;
   margin-bottom: 1rem;
 `;
 
 export const InfoLink = styled(Link)`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   margin-top: 2.5rem;
 
   &:hover {

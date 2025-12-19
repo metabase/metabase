@@ -10,7 +10,7 @@ export const ToastRoot = styled.div`
 `;
 
 export const StyledIcon = styled(Icon)`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   margin-right: var(--mantine-spacing-sm);
 `;
 

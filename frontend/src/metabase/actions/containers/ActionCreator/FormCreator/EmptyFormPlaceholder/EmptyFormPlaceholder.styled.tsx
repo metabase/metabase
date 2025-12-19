@@ -20,7 +20,7 @@ export const ExplainerTitle = styled.h3`
 export const ExplainerText = styled.div`
   font-weight: 400;
   line-height: 1.5rem;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin: var(--mantine-spacing-sm) 0 0 0;
 `;
 
@@ -31,7 +31,7 @@ export const ExplainerList = styled.ul`
   li {
     font-weight: 400;
     line-height: 24px;
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
     margin: 0;
   }
 `;

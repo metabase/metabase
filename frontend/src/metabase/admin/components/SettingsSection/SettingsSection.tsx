@@ -30,7 +30,7 @@ export function SettingsSection({
           {(title || description) && (
             <Box mb="sm">
               {title && <Title order={2}>{title}</Title>}
-              {description && <Text c="text-medium">{description}</Text>}
+              {description && <Text c="text-secondary">{description}</Text>}
             </Box>
           )}
           {children}
@@ -56,7 +56,7 @@ export function SettingsPageWrapper({
         <Box>
           {title && <Title order={1}>{title}</Title>}
           {description && (
-            <Text c="text-medium" maw="40rem">
+            <Text c="text-secondary" maw="40rem">
               {description}
             </Text>
           )}

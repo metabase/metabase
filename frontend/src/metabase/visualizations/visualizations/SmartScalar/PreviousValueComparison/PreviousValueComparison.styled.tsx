@@ -9,7 +9,6 @@ export const VariationIcon = styled(Icon)`
   align-items: center;
   flex: 0 0 auto;
   margin-right: var(--mantine-spacing-sm);
-  color: ${(props) => props.color};
 `;
 
 export const VariationValue = styled(Ellipsified)`

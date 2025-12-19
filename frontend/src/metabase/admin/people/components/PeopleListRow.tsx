@@ -74,7 +74,7 @@ export const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <Flex component="td" align="center" gap="md" c="text-white">
+      <Flex component="td" align="center" gap="md" c="text-primary-inverse">
         <UserAvatar bg={userToColor(user)} user={user} />
         <Text fw="700">{getFullName(user) ?? "-"}</Text>
       </Flex>

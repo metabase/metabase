@@ -132,7 +132,9 @@ type PaneHeaderTabsProps = {
 
 export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
   const { pathname } = useSelector(getLocation);
-  const backgroundColor = withBackground ? "bg-secondary" : "transparent";
+  const backgroundColor = withBackground
+    ? "background-secondary"
+    : "transparent";
 
   return (
     <Group gap="sm">

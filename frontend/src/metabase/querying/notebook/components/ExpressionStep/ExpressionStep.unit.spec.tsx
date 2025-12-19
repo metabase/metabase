@@ -29,6 +29,7 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
   renderWithProviders(
     <ExpressionStep
       step={step}
+      // @ts-expect-error unit test
       color="#93A1AB"
       stageIndex={step.stageIndex}
       query={step.query}

@@ -62,7 +62,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
       align="stretch"
       fz="0.875rem"
       lh="1.25rem"
-      c="text-dark"
+      c="text-primary"
       style={{
         transform: `translateY(${virtualItem.start}px)`,
         ...styles?.row,

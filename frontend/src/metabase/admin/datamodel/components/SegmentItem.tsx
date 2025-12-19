@@ -19,13 +19,8 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
       <Box component="td" className={S.cell} p="sm">
         <Link to={Urls.dataModelSegment(segment.id)}>
           <Group display="inline-flex" gap="sm" wrap="nowrap">
-            <Box
-              color="text-medium"
-              component={Icon}
-              flex="0 0 auto"
-              name="segment"
-            />
-            <Box c="text-dark" fw="bold">
+            <Icon name="segment" c="text-secondary" flex="0 0 auto" />
+            <Box c="text-primary" fw="bold">
               {segment.name}
             </Box>
           </Group>

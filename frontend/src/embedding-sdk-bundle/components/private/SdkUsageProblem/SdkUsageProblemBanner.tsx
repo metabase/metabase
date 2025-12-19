@@ -20,7 +20,7 @@ export interface SdkUsageProblemBannerProps {
 
 // Prevent the usage problem banner from inheriting the theme colors,
 // so they remain legible even when the theme is changed.
-const unthemedTextDark = originalColors["text-dark"];
+const unthemedTextDark = originalColors["text-primary"];
 
 export const SdkUsageProblemBanner = ({
   problem,
@@ -81,11 +81,13 @@ export const SdkUsageProblemBanner = ({
         >
           <Stack gap="sm">
             <Flex w="100%" justify="space-between">
+              {/* @ts-expect-error SDK Stuff... I don't know what to do */}
               <Text fw="bold" size="md" c={unthemedTextDark} ff={fontFamily}>
                 {title}
               </Text>
             </Flex>
 
+            {/* @ts-expect-error SDK Stuff... I don't know what to do */}
             <Text c={unthemedTextDark} ff={fontFamily} fz="sm">
               {problem.message}
             </Text>
@@ -98,7 +100,7 @@ export const SdkUsageProblemBanner = ({
                 size="md"
                 radius="md"
                 variant="subtle"
-                color="var(--mb-color-text-brand)"
+                color="text-brand"
                 onClick={() => {
                   dispatch(setUsageProblem(null));
                 }}

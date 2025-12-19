@@ -245,7 +245,7 @@ export const moveParameter =
           message: (
             <Text
               className={cx(CS.flex, CS.flexFull, CS.flexNoShrink)}
-              c="text-white"
+              c="text-primary-inverse"
               w="8rem"
             >{t`Filter moved`}</Text>
           ),

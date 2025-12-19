@@ -126,7 +126,7 @@ export function DiscussionComment({
         <Tooltip label={TOOLTIP_DATE_FORMAT.format(commentDate)}>
           <Text
             size="xs"
-            c="text-medium"
+            c="text-secondary"
             lh={1.1}
             style={{ whiteSpace: "nowrap" }}
           >

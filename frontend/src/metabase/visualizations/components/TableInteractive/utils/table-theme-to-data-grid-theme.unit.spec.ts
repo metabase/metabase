@@ -41,7 +41,9 @@ describe("tableThemeToDataGridTheme", () => {
 
     const result = tableThemeToDataGridTheme(themeWithoutCellBg);
 
-    expect(result.cell?.backgroundColor).toBe("var(--mb-color-background)");
+    expect(result.cell?.backgroundColor).toBe(
+      "var(--mb-color-background-primary)",
+    );
   });
 
   it("prefers cell.backgroundColor over provided backgroundColor", () => {

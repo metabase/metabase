@@ -5,6 +5,7 @@ import {
   isSyncedCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { IconName, IconProps } from "metabase/ui";
@@ -22,7 +23,7 @@ export function getCollectionIcon(
   { tooltip = "default", isTenantUser = false } = {},
 ): {
   name: IconName;
-  color?: string;
+  color?: ColorName;
   tooltip?: string;
 } {
   if (collection.id === PERSONAL_COLLECTIONS.id) {

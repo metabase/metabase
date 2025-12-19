@@ -9,7 +9,7 @@ button.root {
   }
 
   &:hover .button {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 
   &.open,

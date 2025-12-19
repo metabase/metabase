@@ -36,7 +36,7 @@ const theme = {
     filter: "#7ABBF9",
     "text-primary": "#E3E7E4",
     "text-secondary": "#E3E7E4",
-    "text-tertiary": "#E3E7E4",
+    "text-disabled": "#E3E7E4",
     border: "#3B3F3F",
     background: "#151C20",
     "background-hover": "#4C4A48",
@@ -86,7 +86,7 @@ export const DatesRange = {
 export const DatesRangeSdk = {
   render: () => (
     <SdkVisualizationWrapper theme={theme}>
-      <Box bg="background">
+      <Box bg="background-primary">
         <DatePicker {...DatesRange.args} />
       </Box>
     </SdkVisualizationWrapper>

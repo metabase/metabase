@@ -59,7 +59,7 @@ export const RecipientPicker = ({
           valueRenderer={(value) => value.common_name ?? value.email}
           optionRenderer={(option) => (
             <div className={cx(CS.flex, CS.alignCenter)}>
-              <Text color="text-white">
+              <Text color="text-primary-inverse">
                 <UserAvatar user={option.value} />
               </Text>
               <span className={CS.ml1}>{option.value.common_name}</span>

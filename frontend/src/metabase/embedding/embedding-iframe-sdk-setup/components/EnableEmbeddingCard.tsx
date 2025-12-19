@@ -87,7 +87,7 @@ export const EnableEmbeddingCard = ({
   return (
     <Card p="md" mb="md" data-testid="enable-embedding-card">
       <Stack gap={0}>
-        <Text fz="md" c="text-dark">
+        <Text fz="md" c="text-primary">
           {title}
           {!termsAccepted && (
             <HoverCard position="bottom" withArrow>
@@ -95,7 +95,7 @@ export const EnableEmbeddingCard = ({
                 <Icon
                   name="info"
                   size={14}
-                  c="text-medium"
+                  c="text-secondary"
                   ml="sm"
                   style={{ verticalAlign: "middle" }}
                 />

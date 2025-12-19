@@ -36,7 +36,7 @@
 .json {
   max-height: 200px;
   width: 100%;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border: 1px solid var(--mb-color-border);
   border-radius: 4px;
 }

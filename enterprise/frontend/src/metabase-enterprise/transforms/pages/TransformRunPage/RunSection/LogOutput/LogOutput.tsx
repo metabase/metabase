@@ -56,7 +56,7 @@ export function LogOutput({ content }: LogOutputProps) {
       onScroll={handleScroll}
       mah="12rem"
       p="sm"
-      bg="bg-light"
+      bg="background-secondary"
       fz="xs"
       data-css-specificity-hack=""
       data-testid="log-output"

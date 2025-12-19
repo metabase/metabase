@@ -85,7 +85,7 @@ export const NotificationSchedule = ({
       ).t`${timezone}, your ${applicationName} timezone.`;
 
       return (
-        <Text c="var(--mb-color-text-secondary)">
+        <Text c="text-secondary">
           {`${actionText} ${scheduleDescription} ${timezoneLabel}`}
         </Text>
       );

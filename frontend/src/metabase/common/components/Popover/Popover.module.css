@@ -17,7 +17,7 @@
 .PopoverBody.PopoverBodyWithBackground {
   border: 1px solid var(--mb-color-border);
   box-shadow: 0 4px 10px var(--mb-color-shadow);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-radius: 6px;
   overflow: auto;
 }
@@ -57,7 +57,7 @@
   font-size: inherit;
   border: 1px solid var(--mb-color-border);
   box-shadow: 0 4px 10px var(--mb-color-shadow);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-radius: 6px;
   overflow: auto;
 }
@@ -123,7 +123,7 @@
 /* create a smaller inset arrow on the top */
 :global(.tether-element-attached-top) .PopoverBodyWithArrow::after {
   top: -18px;
-  border-bottom-color: var(--mb-color-bg-white);
+  border-bottom-color: var(--mb-color-background-primary);
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
@@ -135,7 +135,7 @@
 /* create a smaller inset arrow on the bottom */
 :global(.tether-element-attached-bottom) .PopoverBodyWithArrow::after {
   bottom: -18px;
-  border-top-color: var(--mb-color-bg-white);
+  border-top-color: var(--mb-color-background-primary);
 }
 
 /* if the tether element is attached right, move our arrows right */

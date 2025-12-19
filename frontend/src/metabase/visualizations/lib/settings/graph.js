@@ -597,7 +597,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     ],
   },
   "graph.other_category_color": {
-    default: color("text-light"),
+    default: color("text-disabled"),
   },
   "graph.other_category_aggregation_fn": {
     hidden: true,

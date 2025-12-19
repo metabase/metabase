@@ -44,7 +44,7 @@ export const CollectionHeaderButton = styled(
 
   &:hover {
     color: var(--mb-color-brand);
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-tertiary);
   }
 
   ${Button.Content} {

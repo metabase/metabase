@@ -3,18 +3,19 @@ import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 
 import DatasetMetadataStrengthIndicatorS from "./DatasetMetadataStrengthIndicator.module.css";
 
-function getIndicationColor(percentage: number, isHovered: boolean): string {
+function getIndicationColor(percentage: number, isHovered: boolean): ColorName {
   if (percentage <= 0.5) {
     return "danger";
   }
   if (!isHovered) {
-    return "text-medium";
+    return "text-secondary";
   }
   return percentage >= 0.9 ? "success" : "warning";
 }

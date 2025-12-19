@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 
 import Button from "metabase/common/components/Button";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
 
@@ -11,7 +12,7 @@ interface NotebookActionButtonProps {
   className?: string;
   icon?: IconName;
   title: string;
-  color: string;
+  color: ColorName;
   secondary?: boolean;
   large?: boolean;
   onClick: () => void;
@@ -46,7 +47,7 @@ export function NotebookActionButton({
       onClick={onClick}
       style={
         {
-          "--notebook-action-button-color": color,
+          "--notebook-action-button-color": `var(--mb-color-${color})`,
         } as CSSProperties
       }
       {...props}

@@ -17,7 +17,7 @@
   border-radius: 0.5rem;
   transition: border 0.3s linear;
   text-decoration: none;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 
   &:hover {
     border-color: var(--mb-color-brand);

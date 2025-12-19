@@ -152,7 +152,7 @@ function ColumnHeader({
             name={
               sortDirection === SortDirection.Asc ? "chevronup" : "chevrondown"
             }
-            color="var(--mb-color-text-medium)"
+            c="text-secondary"
             style={{ flexShrink: 0 }}
             size={8}
           />
