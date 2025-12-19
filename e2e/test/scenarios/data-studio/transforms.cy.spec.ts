@@ -2010,6 +2010,71 @@ LIMIT
       cy.findByTestId("python-library-header").should("be.visible");
     });
   });
+
+  describe("revision history", () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/revision/revert").as("revert");
+      cy.intercept("GET", "/api/revision*").as("revisionHistory");
+    });
+
+    it("should be able to view and revert transform revisions", () => {
+      cy.log("Create a transform with initial name");
+      createMbqlTransform({
+        name: "Revision Test Transform",
+        visitTransform: true,
+      });
+
+      cy.log("Make changes to create a revision");
+      H.DataStudio.Transforms.header()
+        .findByPlaceholderText("Name")
+        .clear()
+        .type("Updated Transform Name")
+        .blur();
+      cy.wait("@updateTransform");
+
+      cy.log("Make another change");
+      H.DataStudio.Transforms.header()
+        .findByPlaceholderText("Name")
+        .clear()
+        .type("Another Updated Name")
+        .blur();
+      cy.wait("@updateTransform");
+
+      cy.log("Open revision history");
+      H.DataStudio.Transforms.header().icon("ellipsis").click();
+      H.popover().findByText("History").click();
+
+      cy.wait("@revisionHistory");
+
+      cy.log("Verify revision history sidebar is open");
+      cy.findByTestId("transform-history-list").should("be.visible");
+
+      cy.log("Verify revision entries are displayed");
+      cy.findByTestId("transform-history-list")
+        .findByText(/created this/)
+        .should("be.visible");
+
+      cy.log("Revert to an earlier revision");
+      cy.intercept("GET", "/api/ee/transform/*").as("transformReload");
+      cy.findByTestId("transform-history-list")
+        .findByText(/created this/)
+        .parent()
+        .within(() => {
+          cy.findByTestId("question-revert-button").click();
+        });
+      cy.wait(["@revert", "@transformReload"]);
+
+      cy.log("Verify transform was reverted");
+      H.DataStudio.Transforms.header()
+        .findByPlaceholderText("Name")
+        .should("have.value", "Revision Test Transform");
+
+      cy.log("Verify revert entry appears in history");
+      cy.findByTestId("transform-history-list")
+        .findByText(/reverted to an earlier version/)
+        .should("be.visible");
+    });
+  });
 });
 
 describe("scenarios > admin > transforms > databases without :schemas", () => {
