@@ -87,9 +87,11 @@
    :metabase_field       {:model-type           "Field"
                           :model-label          "field"
                           :table-join           :metabase_table
+                          :extra-columns        [:table_id :table_name]
                           :collection-id-source :via-table}
    :segment              {:model-type           "Segment"
                           :model-label          "segment"
+                          :extra-columns        [:table_id :table_name]
                           :table-join           :metabase_table
                           :collection-id-source :via-table}})
 
@@ -99,7 +101,7 @@
   "Build HoneySQL select clause for a model based on its config.
    Generates the standard set of columns needed for dirty-state queries."
   [table-key {:keys [model-label has-description has-authority-level has-updated-at
-                     collection-id-source extra-columns]
+                     collection-id-source table-join extra-columns]
               :or   {has-description      true
                      has-authority-level  false
                      has-updated-at       true
@@ -124,6 +126,8 @@
       ;; Extra columns (display, query_type) - nil if not present
       [(if (extra-set :display) (col :display) [nil :display])]
       [(if (extra-set :query_type) (col :query_type) [nil :query_type])]
+      [(if (extra-set :table_id) (col :table_id) [[:cast nil :int] :table_id])]
+      [(if (extra-set :table_name) [:metabase_table.name :table_name] [nil :table_name])]
       ;; Description
       [(if has-description (col :description) [nil :description])]
       ;; Updated at, model label, and sync status

@@ -19,11 +19,25 @@ import {
   getCollectionPathSegments,
   getSyncStatusColor,
   getSyncStatusIcon,
+  isTableChildModel,
 } from "metabase-enterprise/remote_sync/utils";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { CollectionPath } from "./CollectionPath";
 import { EntityLink } from "./EntityLink";
+
+/** A table entity with its nested children (fields and segments) */
+type TableWithChildren = {
+  table: RemoteSyncEntity;
+  children: RemoteSyncEntity[];
+};
+
+/** A virtual table group for orphan children (when the table itself isn't dirty) */
+type OrphanTableGroup = {
+  tableId: number;
+  tableName: string;
+  children: RemoteSyncEntity[];
+};
 
 const SYNC_STATUS_ORDER: RemoteSyncEntity["sync_status"][] = [
   "create",
@@ -63,16 +77,58 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const groupedData = useMemo(() => {
     const byCollection = _.groupBy(entities, (e) => e.collection_id || 0);
 
+    const sortByStatus = (items: RemoteSyncEntity[]) =>
+      items.sort((a, b) => {
+        const statusOrderA = SYNC_STATUS_ORDER.indexOf(a.sync_status);
+        const statusOrderB = SYNC_STATUS_ORDER.indexOf(b.sync_status);
+        if (statusOrderA !== statusOrderB) {
+          return statusOrderA - statusOrderB;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
     return Object.entries(byCollection)
       .map(([collectionId, items]) => {
         const collectionEntity = items.find(
           (item) =>
             item.model === "collection" && item.id === Number(collectionId),
         );
-        const nonCollectionItems = items.filter(
+
+        // Separate tables, table children, and other items
+        const tables = items.filter((item) => item.model === "table");
+        const tableChildren = items.filter((item) =>
+          isTableChildModel(item.model),
+        );
+        const otherItems = items.filter(
           (item) =>
+            item.model !== "table" &&
+            !isTableChildModel(item.model) &&
             !(item.model === "collection" && item.id === Number(collectionId)),
         );
+
+        // Group table children by their parent table_id
+        const childrenByTableId = _.groupBy(
+          tableChildren,
+          (e) => e.table_id || 0,
+        );
+
+        // Create table items with their nested children
+        const tablesWithChildren: TableWithChildren[] = tables.map((table) => ({
+          table,
+          children: sortByStatus(childrenByTableId[table.id] || []),
+        }));
+
+        // Find orphan children (children whose parent table is not in the dirty set)
+        const tableIds = new Set(tables.map((t) => t.id));
+        const orphanTableGroups: OrphanTableGroup[] = Object.entries(
+          childrenByTableId,
+        )
+          .filter(([tableId]) => !tableIds.has(Number(tableId)))
+          .map(([tableId, children]) => ({
+            tableId: Number(tableId),
+            tableName: children[0]?.table_name ?? t`Unknown table`,
+            children: sortByStatus(children),
+          }));
 
         return {
           pathSegments: getCollectionPathSegments(
@@ -81,14 +137,13 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
           ),
           collectionId: Number(collectionId) || undefined,
           collectionEntity,
-          items: nonCollectionItems.sort((a, b) => {
-            const statusOrderA = SYNC_STATUS_ORDER.indexOf(a.sync_status);
-            const statusOrderB = SYNC_STATUS_ORDER.indexOf(b.sync_status);
-            if (statusOrderA !== statusOrderB) {
-              return statusOrderA - statusOrderB;
-            }
-            return a.name.localeCompare(b.name);
-          }),
+          tablesWithChildren: tablesWithChildren.sort((a, b) =>
+            a.table.name.localeCompare(b.table.name),
+          ),
+          orphanTableGroups: orphanTableGroups.sort((a, b) =>
+            a.tableName.localeCompare(b.tableName),
+          ),
+          items: sortByStatus(otherItems),
         };
       })
       .sort((a, b) =>
@@ -118,50 +173,119 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
         }}
       >
         <Stack gap={0}>
-          {groupedData.map((group, groupIndex) => (
-            <Fragment key={group.collectionId}>
-              {groupIndex > 0 && <Divider />}
-              <Box p="md">
-                <Group
-                  p="sm"
-                  gap="sm"
-                  mb={group.items.length > 0 ? "0.75rem" : 0}
-                  bg="background-secondary"
-                  bdrs="md"
-                >
-                  <Icon name="synced_collection" size={16} c="text-secondary" />
-                  <CollectionPath segments={group.pathSegments} />
-                  {group.collectionEntity && (
-                    <Icon
-                      name={getSyncStatusIcon(
-                        group.collectionEntity.sync_status,
-                      )}
-                      size={16}
-                      c={getSyncStatusColor(group.collectionEntity.sync_status)}
-                      ml="auto"
-                    />
-                  )}
-                </Group>
-                {group.items.length > 0 && (
-                  <Stack
-                    gap="0.75rem"
-                    ml="md"
-                    pl="xs"
-                    style={{
-                      borderLeft: "2px solid var(--mb-color-border)",
-                    }}
+          {groupedData.map((group, groupIndex) => {
+            const hasItems =
+              group.items.length > 0 ||
+              group.tablesWithChildren.length > 0 ||
+              group.orphanTableGroups.length > 0;
+
+            return (
+              <Fragment key={group.collectionId}>
+                {groupIndex > 0 && <Divider />}
+                <Box p="md">
+                  <Group
+                    p="sm"
+                    gap="sm"
+                    mb={hasItems ? "0.75rem" : 0}
+                    bg="bg-light"
+                    bdrs="md"
                   >
-                    {group.items.map((entity) => (
-                      <EntityLink
-                        key={`${entity.model}-${entity.id}`}
-                        entity={entity}
+                    <Icon
+                      name="synced_collection"
+                      size={16}
+                      c="text-secondary"
+                    />
+                    <CollectionPath segments={group.pathSegments} />
+                    {group.collectionEntity && (
+                      <Icon
+                        name={getSyncStatusIcon(
+                          group.collectionEntity.sync_status,
+                        )}
+                        size={16}
+                        c={getSyncStatusColor(
+                          group.collectionEntity.sync_status,
+                        )}
+                        ml="auto"
                       />
-                    ))}
-                  </Stack>
-                )}
-              </Box>
-            </Fragment>
-          ))}
+                    )}
+                  </Group>
+                  {hasItems && (
+                    <Stack
+                      gap="0.75rem"
+                      ml="md"
+                      pl="xs"
+                      style={{
+                        borderLeft: "2px solid var(--mb-color-border)",
+                      }}
+                    >
+                      {/* Render tables with their children */}
+                      {group.tablesWithChildren.map(({ table, children }) => (
+                        <Box key={`table-${table.id}`}>
+                          <EntityLink entity={table} />
+                          {children.length > 0 && (
+                            <Stack
+                              gap="0.75rem"
+                              ml="md"
+                              pl="xs"
+                              mt="0.75rem"
+                              style={{
+                                borderLeft:
+                                  "2px solid var(--mb-color-border-light)",
+                              }}
+                            >
+                              {children.map((child) => (
+                                <EntityLink
+                                  key={`${child.model}-${child.id}`}
+                                  entity={child}
+                                />
+                              ))}
+                            </Stack>
+                          )}
+                        </Box>
+                      ))}
+
+                      {/* Render orphan table groups (children without their parent table in dirty set) */}
+                      {group.orphanTableGroups.map((orphanGroup) => (
+                        <Box key={`orphan-table-${orphanGroup.tableId}`}>
+                          <Group gap="sm" wrap="nowrap" px="sm">
+                            <Icon name="table" size={16} c="text-secondary" />
+                            <Text size="sm" c="text-secondary">
+                              {orphanGroup.tableName}
+                            </Text>
+                          </Group>
+                          <Stack
+                            gap="0.75rem"
+                            ml="md"
+                            pl="xs"
+                            mt="0.75rem"
+                            style={{
+                              borderLeft:
+                                "2px solid var(--mb-color-border-light)",
+                            }}
+                          >
+                            {orphanGroup.children.map((child) => (
+                              <EntityLink
+                                key={`${child.model}-${child.id}`}
+                                entity={child}
+                              />
+                            ))}
+                          </Stack>
+                        </Box>
+                      ))}
+
+                      {/* Render other non-table items */}
+                      {group.items.map((entity) => (
+                        <EntityLink
+                          key={`${entity.model}-${entity.id}`}
+                          entity={entity}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </Fragment>
+            );
+          })}
         </Stack>
       </Paper>
       {hasRemovals && (
