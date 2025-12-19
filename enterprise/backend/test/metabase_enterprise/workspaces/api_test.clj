@@ -974,6 +974,43 @@
                   :status :failure}]
                 (t2/select :model/WorkspaceLog :workspace_id ws-id {:order-by [[:started_at :desc]]})))))))
 
+;;; ---------------------------------------- Uninitialized Workspace Tests ----------------------------------------
+
+(deftest uninitialized-workspace-lifecycle-test
+  (testing "Workspace can be created without database_id (uses provisional default)"
+    (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                   {:name "uninitialized-lifecycle"})]
+      ;; database_id is set to provisional default, but status is uninitialized
+      (is (=? {:status "uninitialized" :database_id pos-int?} ws))
+      (testing "can be archived and deleted"
+        (is (some? (:archived_at (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/archive")))))
+        (is (= {:ok true} (mt/user-http-request :crowberto :delete 200 (ws-url ws-id))))
+        (is (nil? (t2/select-one :model/Workspace :id ws-id)))))))
+
+(deftest initialize-uninitialized-workspace-test
+  (testing "via adding transform"
+    (let [ws (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                   {:name "init-via-transform"})]
+      (is (= "uninitialized" (:status ws)))
+      (let [transform (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform")
+                                            {:name   "New Transform"
+                                             :source {:type  "query"
+                                                      :query (mt/mbql-query venues)}
+                                             :target {:type     "table"
+                                                      :database (mt/id)
+                                                      :schema   "public"
+                                                      :name     "init_transform_output"}})]
+        (is (some? (:ref_id transform)))
+        (let [ws (ws.tu/ws-ready ws)]
+          (is (=? {:status      :ready
+                   :database_id (mt/id)}
+                  ws))))))
+  (testing "PUT database_id fails on already initialized workspace"
+    (ws.tu/with-workspaces! [workspace {:name "already-initialized"}]
+      (is (= "Can only set database_id on uninitialized workspace"
+             (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
+                                   {:database_id (mt/id)}))))))
+
 ;;; ---------------------------------------- Workspace Transform CRUD Tests ----------------------------------------
 
 (deftest get-workspace-transforms-test

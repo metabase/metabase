@@ -42,7 +42,8 @@
   workspace)
 
 (defn ws-ready
-  "Poll until workspace status becomes :ready or timeout."
+  "Poll until workspace status becomes :ready or timeout.
+   Note: uninitialized workspaces will never become ready without adding a transform."
   [ws-or-id]
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
