@@ -48,6 +48,7 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -173,7 +174,20 @@
   (get-in drill-thru [:pivots pivot-type]))
 
 (defn- breakouts->filters [query stage-number {:keys [column value] :as _dimension}]
-  (let [resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
+  ;; The dimension's column comes from the final stage of the query (where the user clicked),
+  ;; but we need to create a filter at the top-level stage. We must:
+  ;; 1. Use top-level-column to trace the column back through stages
+  ;; 2. Use matching-filterable-column to get the proper column metadata with fk-field-id
+  ;;    for implicit joins (e.g., Products.Category via Orders.product_id)
+  ;; Without step 2, we'd create a filter referencing the table directly without the join.
+  ;; See issue #67228.
+  (let [top-level-col   (lib.underlying/top-level-column query column)
+        filterable-col  (or (lib.drill-thru.common/matching-filterable-column query
+                                                                              stage-number
+                                                                              (lib.ref/ref top-level-col)
+                                                                              top-level-col)
+                            top-level-col)
+        resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number filterable-col)]
     (-> query
         (lib.breakout/remove-existing-breakouts-for-column stage-number column)
         (lib.filter/filter stage-number (lib.filter/= resolved-column value)))))

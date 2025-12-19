@@ -291,9 +291,10 @@
      {:custom-query (-> base-case
                         :custom-query
                         (lib.drill-thru.tu/append-filter-stage "count"))
+      ;; The filter should use the field ID, not the string name. The fix in #67228 ensures
+      ;; we use matching-filterable-column to get proper column metadata for filters.
       :expected-query (-> base-case
                           :expected-query
-                          (assoc-in [:stages 0 :filters 0 2 2] "CREATED_AT")
                           (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))})))
 
 (deftest ^:parallel returns-pivot-drill-boolean-column-test
