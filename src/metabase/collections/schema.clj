@@ -16,14 +16,16 @@
 (mr/def ::CardType [:enum "model" "question" "metric"])
 
 (mr/def ::CollectionItemModel [:enum
-                               :card
-                               :dataset
-                               :metric
-                               :dashboard
-                               :snippet
-                               :collection
-                               :indexed-entity
-                               :document])
+                               "card"
+                               "dataset"
+                               "metric"
+                               "dashboard"
+                               "snippet"
+                               "collection"
+                               "indexed-entity"
+                               "indexed-entity"
+                               "document"
+                               "table"])
 
 (mr/def ::Collection
   [:map
