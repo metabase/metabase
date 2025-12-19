@@ -211,7 +211,13 @@ jobs:
           DOCKER_BUILDKIT: 0
         run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts ${{ matrix.test_suite }}
 
-      - name: Log Docker disk usage
+      - name: Log Docker disk usage 1
+        run: docker system df
+
+      - name: Prune build cache
+        run: docker builder prune -af
+
+      - name: Log Docker disk usage 2
         run: docker system df
 
       - name: Log free disk space 6
