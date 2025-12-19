@@ -175,7 +175,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti db-type-name
-  "Return the type name of a column. The default implementation fetches this information from rsmeta."
+  "Return the type name of a column given the rsmeta and the column-index. The default implementation fetches this information from rsmeta."
   {:added "0.59.0" :arglists '([driver ^java.sql.ResultSetMetaData rsmeta column-index])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
