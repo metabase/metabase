@@ -24,7 +24,7 @@ function setup(
     agentIds: MetabotAgentId[];
   } | void,
 ) {
-  const { agentIds = ["omnibot", "inline_sql"] } = options || {};
+  const { agentIds = ["omnibot", "sql"] } = options || {};
 
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -68,6 +68,7 @@ const input: Input = {
   context: {
     user_is_viewing: [],
     current_time_with_timezone: "",
+    capabilities: [],
   },
 };
 

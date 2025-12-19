@@ -1,6 +1,7 @@
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
+  MetabotCodeEdit,
   MetabotHistory,
   MetabotTodoItem,
   MetabotTransformInfo,
@@ -94,6 +95,9 @@ export type MetabotSuggestedTransform = SuggestedTransform & {
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  suggestedCodeEdits: Partial<
+    Record<MetabotCodeEdit["bufferId"], MetabotCodeEdit>
+  >;
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
@@ -113,7 +117,7 @@ export interface MetabotConverstationState {
   };
 }
 
-export const fixedMetabotAgentIds = ["omnibot", "inline_sql"] as const;
+export const fixedMetabotAgentIds = ["omnibot", "sql"] as const;
 type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;

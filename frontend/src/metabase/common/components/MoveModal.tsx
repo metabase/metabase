@@ -20,6 +20,7 @@ import {
   type CollectionPickerValueItem,
   getCollectionType,
 } from "metabase/common/components/Pickers/CollectionPicker";
+import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionId,
@@ -98,15 +99,8 @@ export const MoveModal = ({
     movingCollectionNamespace,
   );
   const shouldDisableItem = (item: CollectionPickerItem): boolean => {
-    if (movingCollectionId) {
-      if (
-        item.id === movingCollectionId ||
-        (item.effective_location ?? item?.location)
-          ?.split("/")
-          .includes(String(movingCollectionId))
-      ) {
-        return true;
-      }
+    if (isItemInCollectionOrItsDescendants(item, movingCollectionId)) {
+      return true;
     }
 
     if (entityType && item.model === "collection") {

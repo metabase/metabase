@@ -2,7 +2,7 @@
 
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -136,7 +136,9 @@ export function setupDashboardSharingMenu({
   });
 
   if (isEnterprise) {
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("audit_app");
+    setupEnterpriseOnlyPlugin("application_permissions");
+    setupEnterpriseOnlyPlugin("collections");
   }
 
   renderWithProviders(
@@ -191,7 +193,9 @@ export function setupQuestionSharingMenu({
   setupWebhookChannelsEndpoint();
 
   if (isEnterprise) {
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("audit_app");
+    setupEnterpriseOnlyPlugin("application_permissions");
+    setupEnterpriseOnlyPlugin("collections");
   }
 
   renderWithProviders(

@@ -12,7 +12,14 @@ export type TreeNode = {
   target?: Transform["target"];
   children?: TreeNode[];
   transformId?: number;
+  collectionId?: number;
 };
+
+export function isCollectionNode(
+  node: TreeNode,
+): node is TreeNode & { collectionId: number } {
+  return node.nodeType === "folder" && typeof node.collectionId === "number";
+}
 
 export function getCollectionNodeId(collectionId: number): string {
   return `collection-${collectionId}`;
