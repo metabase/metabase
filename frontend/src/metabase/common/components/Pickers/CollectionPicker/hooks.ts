@@ -203,7 +203,7 @@ export const useRootCollectionPickerItems = (
     const userTenantCollectionId = currentUser?.tenant_collection_id;
     if (shouldShowTenantCollections && userTenantCollectionId) {
       collectionItems.push({
-        name: t`My Tenant Collection`,
+        name: t`Our data`,
         id: userTenantCollectionId,
         here: ["collection", "card", "dashboard"],
         description: null,
