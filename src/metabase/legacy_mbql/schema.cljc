@@ -15,7 +15,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
-   [medley.core :as m]
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.legacy-mbql.schema.macros :refer [defclause defclause* one-of]]
    [metabase.lib.hierarchy :as lib.hierarchy]
