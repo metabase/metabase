@@ -140,14 +140,19 @@
         escaped  (escape-analysis by-model nodes)]
     (if (seq escaped)
       (log-escape-report! escaped)
-      (let [models         (model-set opts)
-            coll-set       (get by-model "Collection")
-            by-model       (select-keys by-model models)
-            extract-by-ids (fn [[model ids]]
-                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                    :where          [:in :id ids]})))
-            extract-all    (fn [model]
-                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
+      (let [models          (model-set opts)
+            coll-set        (get by-model "Collection")
+            ;; When targets are specified, also include data model entities found via descendants
+            ;; (e.g. published tables and their fields/segments). These are extracted by ID, not all.
+            targeted-data-model (when (seq targets)
+                                  (select-keys by-model serdes.models/data-model-in-collection))
+            by-model            (merge (select-keys by-model models)
+                                       targeted-data-model)
+            extract-by-ids  (fn [[model ids]]
+                              (serdes/extract-all model (merge opts {:collection-set coll-set
+                                                                     :where          [:in :id ids]})))
+            extract-all     (fn [model]
+                              (serdes/extract-all model (assoc opts :collection-set coll-set)))]
         (eduction cat
                   [(if (seq targets)
                      (eduction (map extract-by-ids) cat by-model)

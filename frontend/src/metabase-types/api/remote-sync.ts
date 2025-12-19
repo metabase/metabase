@@ -9,7 +9,10 @@ export type RemoteSyncEntityModel =
   | "dashboard"
   | "collection"
   | "document"
-  | "snippet";
+  | "snippet"
+  | "table"
+  | "field"
+  | "segment";
 
 export type RemoteSyncEntityStatus =
   | "create"
@@ -30,6 +33,10 @@ export type RemoteSyncEntity = {
   query_type?: string;
   sync_status: RemoteSyncEntityStatus;
   authority_level?: string | null;
+  /** Parent table ID for field and segment models */
+  table_id?: number;
+  /** Parent table name for field and segment models */
+  table_name?: string;
 };
 
 export type RemoteSyncChangesResponse = {
