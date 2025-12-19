@@ -168,3 +168,28 @@
     false :type/Integer  :type/Number    :type/String   :type/Text
     false :type/DateTime :type/Temporal  :type/String   :type/Text
     false :type/String   :type/Text      :type/DateTime :type/Temporal))
+
+(deftest ^:parallel effective-type-fallback-test
+  (are [expected predicate column] (= expected (predicate column))
+    true lib.types.isa/date-or-datetime? {:base-type :type/DateTime}
+    true lib.types.isa/date-or-datetime? {:effective-type :type/DateTime :base-type :type/String}
+
+    true lib.types.isa/date-or-datetime? {:base-type :type/Date}
+    true lib.types.isa/date-or-datetime? {:effective-type :type/Date :base-type :type/String}
+
+    false lib.types.isa/date-or-datetime? {:base-type :type/String}
+    false lib.types.isa/date-or-datetime? {:effective-type :type/Location :base-type :type/String}
+
+    true lib.types.isa/date-without-time? {:base-type :type/Date}
+    true lib.types.isa/date-or-datetime? {:effective-type :type/Date :base-type :type/String}
+
+    false lib.types.isa/date-without-time? {:base-type :type/String}
+    false lib.types.isa/date-without-time? {:base-type :type/DateTime}
+    false lib.types.isa/date-without-time? {:effective-type :type/String :base-type :type/String}
+    false lib.types.isa/date-without-time? {:effective-type :type/DateTime :base-type :type/String}
+
+    true lib.types.isa/time? {:base-type :type/Time}
+    true lib.types.isa/time? {:effective-type :type/Time :base-type :type/String}
+
+    false lib.types.isa/time? {:base-type :type/String}
+    false lib.types.isa/time? {:effective-type :type/String :base-type :type/String}))
