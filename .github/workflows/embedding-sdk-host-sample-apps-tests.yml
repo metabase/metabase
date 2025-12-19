@@ -187,6 +187,12 @@ jobs:
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite != 'shoppy-e2e' }}
         run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts ${{ matrix.test_suite }}
 
+      - name: Prune build cache
+        run: docker builder prune -af
+
+      - name: Log free disk space
+        run: df -h /
+
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
