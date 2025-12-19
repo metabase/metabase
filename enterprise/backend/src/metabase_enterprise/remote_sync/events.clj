@@ -93,136 +93,114 @@
 
 ;; Model change tracking event handlers
 
-;; Card events
-(derive ::card-change-event :metabase/event)
-(derive :event/card-create ::card-change-event)
-(derive :event/card-update ::card-change-event)
-(derive :event/card-delete ::card-change-event)
+(defmacro ^:private defmodel-change-handler
+  "Defines event derivations and handler for a standard model change event.
 
-(methodical/defmethod events/publish-event! ::card-change-event
-  [topic event]
-  (let [{:keys [object user-id]} event
-        in-remote-synced? (model-in-remote-synced-collection? object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id object))
-        status (if (:archived object)
-                 "delete"
-                 (case topic
-                   :event/card-create "create"
-                   :event/card-update "update"
-                   :event/card-delete "delete"))]
-    (cond
-      ;; Card is in a remote-synced collection - create or update entry
-      in-remote-synced?
-      (do
-        (log/infof "Creating remote sync object entry for card %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Card" (:id object) status user-id))
+   Usage:
+     (defmodel-change-handler card
+       {:model-type   \"Card\"
+        :event-prefix :event/card
+        :log-name     \"card\"})
 
-      ;; Card was tracked but moved out of remote-synced collection - mark as removed
-      (and existing-entry (not in-remote-synced?))
-      (do
-        (log/infof "Card %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-or-update-remote-sync-object-entry! "Card" (:id object) "removed" user-id)))))
+   Configuration options:
+   - :model-type   - String for RemoteSyncObject model_type (e.g. \"Card\")
+   - :event-prefix - Keyword prefix for events (e.g. :event/card)
+   - :log-name     - String for log messages (e.g. \"card\")
+   - :archived-key - Key to check for archived status (default :archived)
+   - :in-sync-pred - Predicate fn (default model-in-remote-synced-collection?)"
+  [event-group {:keys [model-type event-prefix log-name archived-key in-sync-pred]
+                :or   {archived-key :archived
+                       in-sync-pred `model-in-remote-synced-collection?}}]
+  (let [parent-kw  (keyword (str *ns*) (str (name event-group) "-change-event"))
+        create-kw  (keyword (namespace event-prefix) (str (name event-prefix) "-create"))
+        update-kw  (keyword (namespace event-prefix) (str (name event-prefix) "-update"))
+        delete-kw  (keyword (namespace event-prefix) (str (name event-prefix) "-delete"))]
+    `(do
+       (derive ~parent-kw :metabase/event)
+       (derive ~create-kw ~parent-kw)
+       (derive ~update-kw ~parent-kw)
+       (derive ~delete-kw ~parent-kw)
 
-;; Dashboard events
-(derive ::dashboard-change-event :metabase/event)
-(derive :event/dashboard-create ::dashboard-change-event)
-(derive :event/dashboard-update ::dashboard-change-event)
-(derive :event/dashboard-delete ::dashboard-change-event)
+       (methodical/defmethod events/publish-event! ~parent-kw
+         [topic# event#]
+         (let [{:keys [~'object ~'user-id]} event#
+               in-remote-synced?# (~in-sync-pred ~'object)
+               existing-entry# (t2/select-one :model/RemoteSyncObject
+                                              :model_type ~model-type
+                                              :model_id (:id ~'object))
+               status# (if (get ~'object ~archived-key)
+                         "delete"
+                         (case topic#
+                           ~create-kw "create"
+                           ~update-kw "update"
+                           ~delete-kw "delete"))]
+           (cond
+             in-remote-synced?#
+             (do
+               (log/infof "Creating remote sync object entry for %s %s (status: %s)"
+                          ~log-name (:id ~'object) status#)
+               (create-or-update-remote-sync-object-entry!
+                ~model-type (:id ~'object) status# ~'user-id))
 
-(methodical/defmethod events/publish-event! ::dashboard-change-event
-  [topic event]
-  (let [{:keys [object user-id]} event
-        in-remote-synced? (model-in-remote-synced-collection? object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id object))
-        status (if (:archived object)
-                 "delete"
-                 (case topic
-                   :event/dashboard-create "create"
-                   :event/dashboard-update "update"
-                   :event/dashboard-delete "delete"))]
-    (cond
-      ;; Dashboard is in a remote-synced collection - create or update entry
-      in-remote-synced?
-      (do
-        (log/infof "Creating remote sync object entry for dashboard %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Dashboard" (:id object) status user-id))
+             (and existing-entry# (not in-remote-synced?#))
+             (do
+               (log/infof "%s %s moved out of remote-synced collection, marking as removed"
+                          ~log-name (:id ~'object))
+               (create-or-update-remote-sync-object-entry!
+                ~model-type (:id ~'object) "removed" ~'user-id))))))))
 
-      ;; Dashboard was tracked but moved out of remote-synced collection - mark as removed
-      (and existing-entry (not in-remote-synced?))
-      (do
-        (log/infof "Dashboard %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-or-update-remote-sync-object-entry! "Dashboard" (:id object) "removed" user-id)))))
+;; Standard model change handlers
 
-;; Document events
-(derive ::document-change-event :metabase/event)
-(derive :event/document-create ::document-change-event)
-(derive :event/document-update ::document-change-event)
-(derive :event/document-delete ::document-change-event)
+(defmodel-change-handler card
+  {:model-type   "Card"
+   :event-prefix :event/card
+   :log-name     "card"})
 
-(methodical/defmethod events/publish-event! ::document-change-event
-  [topic event]
-  (let [{:keys [object user-id]} event
-        in-remote-synced? (model-in-remote-synced-collection? object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id object))
-        status (if (:archived object)
-                 "delete"
-                 (case topic
-                   :event/document-create "create"
-                   :event/document-update "update"
-                   :event/document-delete "delete"))]
-    (cond
-      ;; Document is in a remote-synced collection - create or update entry
-      in-remote-synced?
-      (do
-        (log/infof "Creating remote sync object entry for document %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Document" (:id object) status user-id))
+(defmodel-change-handler dashboard
+  {:model-type   "Dashboard"
+   :event-prefix :event/dashboard
+   :log-name     "dashboard"})
 
-      ;; Document was tracked but moved out of remote-synced collection - mark as removed
-      (and existing-entry (not in-remote-synced?))
-      (do
-        (log/infof "Document %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-or-update-remote-sync-object-entry! "Document" (:id object) "removed" user-id)))))
+(defmodel-change-handler document
+  {:model-type   "Document"
+   :event-prefix :event/document
+   :log-name     "document"})
 
-;; Native query snippet events
-(derive ::snippet-change-event :metabase/event)
-(derive :event/snippet-create ::snippet-change-event)
-(derive :event/snippet-update ::snippet-change-event)
-(derive :event/snippet-delete ::snippet-change-event)
-
-(methodical/defmethod events/publish-event! ::snippet-change-event
-  [topic event]
-  (let [{:keys [object user-id]} event
-        in-remote-synced? (model-in-remote-synced-collection? object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id object))
-        status (if (:archived object)
-                 "delete"
-                 (case topic
-                   :event/snippet-create "create"
-                   :event/snippet-update "update"
-                   :event/snippet-delete "delete"))]
-    (cond
-      ;; Snippet is in a remote-synced collection - create or update entry
-      in-remote-synced?
-      (do
-        (log/infof "Creating remote sync object entry for snippet %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "NativeQuerySnippet" (:id object) status user-id))
-
-      ;; Snippet was tracked but moved out of remote-synced collection - mark as removed
-      (and existing-entry (not in-remote-synced?))
-      (do
-        (log/infof "Snippet %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-or-update-remote-sync-object-entry! "NativeQuerySnippet" (:id object) "removed" user-id)))))
+(defmodel-change-handler snippet
+  {:model-type   "NativeQuerySnippet"
+   :event-prefix :event/snippet
+   :log-name     "snippet"})
 
 ;; Collection create/update events - derive from common parent for shared handling
 (derive ::collection-change-event :metabase/event)
 (derive :event/collection-create ::collection-change-event)
 (derive :event/collection-update ::collection-change-event)
 
+(defn- track-published-tables-in-collection!
+  "When a collection becomes remote-synced, find all published tables in it
+   and create 'create' entries for them in RemoteSyncObject (if not already tracked)."
+  [collection-id user-id]
+  (let [published-tables (t2/select :model/Table
+                                    :collection_id collection-id
+                                    :is_published true)]
+    (doseq [table published-tables]
+      (let [existing (t2/select-one :model/RemoteSyncObject
+                                    :model_type "Table"
+                                    :model_id (:id table))]
+        ;; Only create entry if not already tracked or was marked as removed/synced
+        (when (or (nil? existing)
+                  (contains? #{"removed" "synced"} (:status existing)))
+          (log/infof "Creating remote sync object entry for published table %s in newly remote-synced collection %s"
+                     (:id table) collection-id)
+          (create-or-update-remote-sync-object-entry! "Table" (:id table) "create" user-id))))))
+
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object user-id]} event
         is-remote-synced? (collections/remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id object))
+        was-remote-synced? (and existing-entry
+                                (not (contains? #{"removed"} (:status existing-entry))))
         status (if (:archived object)
                  "delete"
                  (case topic
@@ -233,7 +211,10 @@
       is-remote-synced?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status user-id))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status user-id)
+        ;; If collection just became remote-synced, track all published tables in it
+        (when (not was-remote-synced?)
+          (track-published-tables-in-collection! (:id object) user-id)))
 
       ;; Collection was remote-synced but type changed - mark as removed
       (and existing-entry (not is-remote-synced?))
@@ -241,31 +222,25 @@
         (log/infof "Collection %s type changed from remote-synced, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" user-id)))))
 
-;; Timeline events
-(derive ::timeline-change-event :metabase/event)
-(derive :event/timeline-create ::timeline-change-event)
-(derive :event/timeline-update ::timeline-change-event)
-(derive :event/timeline-delete ::timeline-change-event)
+(defmodel-change-handler timeline
+  {:model-type   "Timeline"
+   :event-prefix :event/timeline
+   :log-name     "timeline"})
 
-(methodical/defmethod events/publish-event! ::timeline-change-event
-  [topic event]
-  (let [{:keys [object user-id]} event
-        in-remote-synced? (model-in-remote-synced-collection? object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Timeline" :model_id (:id object))
-        status (if (:archived object)
-                 "delete"
-                 (case topic
-                   :event/timeline-create "create"
-                   :event/timeline-update "update"
-                   :event/timeline-delete "delete"))]
-    (cond
-      in-remote-synced?
-      (do
-        (log/infof "Creating remote sync object entry for timeline %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Timeline" (:id object) status user-id))
+;; Table events - only track published tables in remote-synced collections
 
-      ;; Timeline was tracked but moved out of remote-synced collection - mark as removed
-      (and existing-entry (not in-remote-synced?))
-      (do
-        (log/infof "Timeline %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-or-update-remote-sync-object-entry! "Timeline" (:id object) "removed" user-id)))))
+(defn- published-table-in-remote-synced-collection?
+  "Check if a table is published AND in a remote-synced collection.
+   Tables are only considered part of remote sync when they are both published
+   and their collection_id points to a remote-synced collection."
+  [{:keys [is_published collection_id]}]
+  (boolean
+   (and is_published
+        (collections/remote-synced-collection? collection_id))))
+
+(defmodel-change-handler table
+  {:model-type   "Table"
+   :event-prefix :event/table
+   :log-name     "table"
+   :archived-key :archived_at
+   :in-sync-pred published-table-in-remote-synced-collection?})

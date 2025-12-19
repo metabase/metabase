@@ -886,3 +886,166 @@
       (let [hard-delete-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id doc))]
         (is (= "delete" (:status hard-delete-entry)))
         (is (not (nil? hard-delete-entry)))))))
+
+;;; Table Event Tests
+
+(deftest published-table-in-remote-synced-collection-helper-test
+  (testing "published-table-in-remote-synced-collection? returns true for published tables in remote-synced collections"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}]
+      (is (true? (#'lib.events/published-table-in-remote-synced-collection?
+                  {:is_published true :collection_id (:id remote-sync-collection)})))))
+  (testing "published-table-in-remote-synced-collection? returns false when not published"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}]
+      (is (false? (#'lib.events/published-table-in-remote-synced-collection?
+                   {:is_published false :collection_id (:id remote-sync-collection)})))))
+  (testing "published-table-in-remote-synced-collection? returns false when collection is not remote-synced"
+    (mt/with-temp [:model/Collection normal-collection {:name "Normal"}]
+      (is (false? (#'lib.events/published-table-in-remote-synced-collection?
+                   {:is_published true :collection_id (:id normal-collection)})))))
+  (testing "published-table-in-remote-synced-collection? returns false when collection_id is nil"
+    (is (false? (#'lib.events/published-table-in-remote-synced-collection?
+                 {:is_published true :collection_id nil})))))
+
+(deftest table-update-event-creates-entry-for-published-table-test
+  (testing "table-update event creates remote sync object entry for published table in remote-synced collection"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Table table {:name "Test Table"
+                                       :is_published true
+                                       :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/table-update
+                             {:object table :user-id (mt/user->id :rasta)})
+      (let [entries (t2/select :model/RemoteSyncObject)]
+        (is (= 1 (count entries)))
+        (is (=? {:model_type "Table"
+                 :model_id (:id table)
+                 :status "update"}
+                (first entries)))))))
+
+(deftest table-update-event-no-entry-for-unpublished-table-test
+  (testing "table-update event doesn't create entry for unpublished table"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Table table {:name "Test Table"
+                                       :is_published false
+                                       :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/table-update
+                             {:object table :user-id (mt/user->id :rasta)})
+      (let [entries (t2/select :model/RemoteSyncObject)]
+        (is (= 0 (count entries)))))))
+
+(deftest table-update-event-no-entry-for-normal-collection-test
+  (testing "table-update event doesn't create entry for table in non-remote-synced collection"
+    (mt/with-temp [:model/Collection normal-collection {:name "Normal"}
+                   :model/Table table {:name "Test Table"
+                                       :is_published true
+                                       :collection_id (:id normal-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/table-update
+                             {:object table :user-id (mt/user->id :rasta)})
+      (let [entries (t2/select :model/RemoteSyncObject)]
+        (is (= 0 (count entries)))))))
+
+(deftest table-update-archived-sets-delete-test
+  (testing "table-update event with archived_at sets delete status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Table table {:name "Test Table"
+                                       :is_published true
+                                       :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/table-update
+                             {:object (assoc table :archived_at (t/offset-date-time))
+                              :user-id (mt/user->id :rasta)})
+      (let [entries (t2/select :model/RemoteSyncObject)]
+        (is (= 1 (count entries)))
+        (is (=? {:model_type "Table"
+                 :model_id (:id table)
+                 :status "delete"}
+                (first entries)))))))
+
+(deftest table-unpublished-marks-as-removed-test
+  (testing "table that becomes unpublished is marked as removed"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Table table {:name "Test Table"
+                                       :is_published true
+                                       :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      ;; First, create an entry with status "synced" directly
+      (t2/insert! :model/RemoteSyncObject {:model_type "Table"
+                                           :model_id (:id table)
+                                           :status "synced"
+                                           :status_changed_at (t/offset-date-time)})
+      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))]
+        (is (= "synced" (:status initial-entry)))
+        ;; Now unpublish the table
+        (events/publish-event! :event/table-update
+                               {:object (assoc table :is_published false)
+                                :user-id (mt/user->id :rasta)})
+        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))]
+          (is (= "removed" (:status update-entry))))))))
+
+(deftest table-moved-to-normal-collection-marks-as-removed-test
+  (testing "table moved to non-remote-synced collection is marked as removed"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Collection normal-collection {:name "Normal"}
+                   :model/Table table {:name "Test Table"
+                                       :is_published true
+                                       :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      ;; First, create an entry with status "synced" directly
+      (t2/insert! :model/RemoteSyncObject {:model_type "Table"
+                                           :model_id (:id table)
+                                           :status "synced"
+                                           :status_changed_at (t/offset-date-time)})
+      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))]
+        (is (= "synced" (:status initial-entry)))
+        ;; Now move to normal collection
+        (events/publish-event! :event/table-update
+                               {:object (assoc table :collection_id (:id normal-collection))
+                                :user-id (mt/user->id :rasta)})
+        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))]
+          (is (= "removed" (:status update-entry))))))))
+
+(deftest table-event-derivation-test
+  (testing "table events properly derive from :metabase/event"
+    (is (isa? ::lib.events/table-change-event :metabase/event))
+    (is (isa? :event/table-create ::lib.events/table-change-event))
+    (is (isa? :event/table-update ::lib.events/table-change-event))
+    (is (isa? :event/table-delete ::lib.events/table-change-event))))
+
+(deftest collection-becomes-remote-synced-tracks-existing-tables-test
+  (testing "when collection becomes remote-synced, existing published tables are tracked with 'create' status"
+    (mt/with-temp [:model/Collection collection {:name "Soon Remote-Sync"}
+                   :model/Table table {:name "Test Table"
+                                       :is_published true
+                                       :collection_id (:id collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      ;; Collection is not yet remote-synced, fire update event
+      (events/publish-event! :event/collection-update
+                             {:object collection :user-id (mt/user->id :rasta)})
+      (is (= 0 (count (t2/select :model/RemoteSyncObject))))
+      ;; Now make collection remote-synced
+      (events/publish-event! :event/collection-update
+                             {:object (assoc collection :is_remote_synced true)
+                              :user-id (mt/user->id :rasta)})
+      (let [table-entries (t2/select :model/RemoteSyncObject :model_type "Table")
+            collection-entries (t2/select :model/RemoteSyncObject :model_type "Collection")]
+        ;; Should have both collection and table entries
+        (is (= 1 (count collection-entries)))
+        (is (= 1 (count table-entries)))
+        (is (=? {:model_type "Table"
+                 :model_id (:id table)
+                 :status "create"}
+                (first table-entries))))))
+  (testing "unpublished tables are not tracked when collection becomes remote-synced"
+    (mt/with-temp [:model/Collection collection {:name "Soon Remote-Sync"}
+                   :model/Table table {:name "Test Table"
+                                       :is_published false
+                                       :collection_id (:id collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      ;; Make collection remote-synced
+      (events/publish-event! :event/collection-update
+                             {:object (assoc collection :is_remote_synced true)
+                              :user-id (mt/user->id :rasta)})
+      (let [table-entries (t2/select :model/RemoteSyncObject :model_type "Table")]
+        (is (= 0 (count table-entries)))))))

@@ -185,6 +185,17 @@
    [:user-id  pos-int?]
    [:object [:fn #(t2/instance-of? :model/Table %)]]])
 
+;; table write events
+
+(mr/def ::table
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/Table %)]]])
+
+(mr/def :event/table-create ::table)
+(mr/def :event/table-update ::table)
+(mr/def :event/table-delete ::table)
+
 (mr/def ::permission-failure
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
