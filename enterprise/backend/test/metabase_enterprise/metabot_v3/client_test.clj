@@ -113,15 +113,17 @@
 (deftest example-generation-payload-unknown-field-types-test
   (let [mp (mt/metadata-provider)
         metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id
-                                                              :entity-id])]
+                                                              :entity-id])
+        original-collection-id (t2/select-one-fn :collection_id :model/Metabot :entity_id metabot-eid)]
     ;; Ensure internal metabot is set to the root collection for generating prompts
     (t2/update! :model/Metabot :entity_id metabot-eid {:collection_id nil})
-    (mt/with-temp [:model/Card c {:type :metric
-                                  :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                     (lib/aggregate
-                                                      (lib/count (lib.metadata/field mp (mt/id :orders :total)))))
-                                  ;; Set large view count to ensure metric is picked in `generate-sample-prompts`.
-                                  :view_count 1000}]
+    (try
+      (mt/with-temp [:model/Card c {:type :metric
+                                    :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                       (lib/aggregate
+                                                        (lib/count (lib.metadata/field mp (mt/id :orders :total)))))
+                                    ;; Set large view count to ensure metric is picked in `generate-sample-prompts`.
+                                    :view_count 1000}])
       ;; Add column with type/* to metric result_metadata
       (t2/update! :model/Card :id (:id c)
                   {:result_metadata (conj (:result_metadata (t2/select-one :model/Card :id (:id c)))
@@ -141,4 +143,6 @@
                      (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
                      :not-thrown))
                  (catch Exception e
-                   e))))))))
+                   e)))))
+      (finally
+        (t2/update! :model/Metabot :entity_id metabot-eid {:collection_id original-collection-id})))))
