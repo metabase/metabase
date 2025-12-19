@@ -19014,189 +19014,6 @@
         "tags" : [ "/api/dataset" ]
       }
     },
-    "/api/dev/prototype/{type}/" : {
-      "get" : {
-        "description" : "Gets all records of the given type.\n  Any parameters passed will be used for equals filters",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/dev/prototype/{type}/",
-        "tags" : [ "/api/dev/prototype" ]
-      },
-      "post" : {
-        "description" : "Create a new record.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/dev/prototype/{type}/",
-        "tags" : [ "/api/dev/prototype" ]
-      }
-    },
-    "/api/dev/prototype/{type}/all" : {
-      "delete" : {
-        "description" : "Deletes all records of this type. Helpful for resetting to a clean state.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "DELETE /api/dev/prototype/{type}/all",
-        "tags" : [ "/api/dev/prototype" ]
-      }
-    },
-    "/api/dev/prototype/{type}/{id}" : {
-      "delete" : {
-        "description" : "Deletes an existing record.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        }, {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "DELETE /api/dev/prototype/{type}/{id}",
-        "tags" : [ "/api/dev/prototype" ]
-      },
-      "get" : {
-        "description" : "Returns an existing record",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        }, {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/dev/prototype/{type}/{id}",
-        "tags" : [ "/api/dev/prototype" ]
-      },
-      "put" : {
-        "description" : "Updates an existing record.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        }, {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "PUT /api/dev/prototype/{type}/{id}",
-        "tags" : [ "/api/dev/prototype" ]
-      }
-    },
     "/api/document/" : {
       "get" : {
         "description" : "Gets existing `Documents`.",
@@ -26521,6 +26338,78 @@
         "tags" : [ "/api/ee/transform" ]
       }
     },
+    "/api/ee/transform/{id}/merge-history" : {
+      "get" : {
+        "description" : "Get merge history for a transform. Returns all merge events that affected this transform,\n   ordered by created_at descending (newest first).",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "properties" : {
+                      "commit_message" : {
+                        "type" : "string"
+                      },
+                      "created_at" : { },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "merging_user_id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "workspace_id" : {
+                        "oneOf" : [ {
+                          "description" : "value must be an integer greater than zero.",
+                          "minimum" : 1,
+                          "type" : "integer"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "workspace_merge_id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "workspace_name" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "id", "workspace_merge_id", "commit_message", "workspace_id", "workspace_name", "merging_user_id", "created_at" ],
+                    "type" : "object"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "sequence of map where {:id -> <value must be an integer greater than zero.>, :workspace_merge_id -> <value must be an integer greater than zero.>, :commit_message -> <string>, :workspace_id -> <nullable value must be an integer greater than zero.>, :workspace_name -> <string>, :merging_user_id -> <value must be an integer greater than zero.>, :created_at -> <anything>}"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/transform/{id}/merge-history",
+        "tags" : [ "/api/ee/transform" ]
+      }
+    },
     "/api/ee/transform/{id}/run" : {
       "post" : {
         "description" : "Run a transform.",
@@ -28127,7 +28016,7 @@
     },
     "/api/ee/workspace/{ws-id}/merge" : {
       "post" : {
-        "description" : "This will:\n   1. Update original transforms with workspace versions\n   2. Delete the workspace and clean up isolated resources\n   Returns a report of merged entities, or error in errors key.",
+        "description" : "This will:\n   1. Update original transforms with workspace versions\n   2. Delete the workspace and clean up isolated resources\n   Returns a report of merged entities, or error in errors key.\n\n   Request body may include:\n   - commit-message: A description of what changes are being merged (optional, will be required in future)",
         "parameters" : [ {
           "in" : "path",
           "name" : "ws-id",
@@ -28136,6 +28025,21 @@
             "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "commit-message" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
         "responses" : {
           "2XX" : {
             "content" : {
@@ -28502,7 +28406,7 @@
     },
     "/api/ee/workspace/{ws-id}/transform/{tx-id}/merge" : {
       "post" : {
-        "description" : "Merge single transform from workspace back to the core. If workspace transform is archived\n  the corresponding core transform is deleted.",
+        "description" : "Merge single transform from workspace back to the core. If workspace transform is archived\n  the corresponding core transform is deleted.\n\n   Request body may include:\n   - commit-message: A description of what changes are being merged (optional, will be required in future)",
         "parameters" : [ {
           "in" : "path",
           "name" : "ws-id",
@@ -28518,6 +28422,21 @@
             "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "commit-message" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
         "responses" : {
           "2XX" : {
             "content" : {
