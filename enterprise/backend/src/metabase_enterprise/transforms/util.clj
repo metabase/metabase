@@ -435,10 +435,14 @@
 
 ;;; ------------------------------------------------- Source Table Resolution -----------------------------------------
 
+(def ^:private ^:const batch-lookup-chunk-size
+  "Maximum number of table refs to query at once to avoid SQL query size limits."
+  100)
+
 (defn batch-lookup-table-ids
   "Batch lookup table IDs from ref maps. Returns {[db_id schema name] -> table_id}.
   Queries the exact conjunction of each [database_id, schema, table] triple rather than
-  a Cartesian product of all values."
+  a Cartesian product of all values. Uses chunking to avoid query size limits."
   [refs]
   (when (seq refs)
     (let [unique-refs (distinct (map (juxt :database_id :schema :table) refs))
@@ -448,16 +452,22 @@
                          (if (some? schema)
                            [:= :schema schema]
                            [:is :schema nil])
-                         [:= :name table-name]])]
-      (t2/select-fn->fn (juxt :db_id :schema :name) :id [:model/Table :id :db_id :schema :name]
-                        {:where (if (= 1 (count unique-refs))
-                                  (ref->clause (first unique-refs))
-                                  (into [:or] (map ref->clause unique-refs)))}))))
+                         [:= :name table-name]])
+          fetch-batch (fn [batch]
+                        (t2/select-fn->fn (juxt :db_id :schema :name) :id
+                                          [:model/Table :id :db_id :schema :name]
+                                          {:where (into [:or] (map ref->clause batch))}))]
+      (into {} (mapcat fetch-batch) (partition-all batch-lookup-chunk-size unique-refs)))))
 
 (defn- source-table-ref->key
   "Convert a source table ref map to a lookup key [db_id schema name]."
   [{:keys [database_id schema table]}]
   [database_id schema table])
+
+(defn- missing-table-id?
+  "Returns true if `v` is a source table ref map that needs table_id lookup."
+  [v]
+  (and (map? v) (nil? (:table_id v))))
 
 (defn normalize-source-tables
   "Normalize source-tables to consistent map format {:database_id :schema :table :table_id}.
@@ -476,7 +486,7 @@
                                              :id [:in int-table-ids]))
         missing-ids      (when (seq int-table-ids)
                            (remove int-id->metadata int-table-ids))
-        refs-needing-id  (filter #(and (map? %) (nil? (:table_id %))) (vals source-tables))
+        refs-needing-id  (filter missing-table-id? (vals source-tables))
         ref-lookup       (or (batch-lookup-table-ids refs-needing-id) {})]
     (when (seq missing-ids)
       (throw (ex-info (str "Tables not found for ids: " (str/join ", " (sort missing-ids)))
@@ -493,7 +503,7 @@
   For execute time - all entries must resolve to valid table IDs.
   Handles both integer IDs (old format) and map refs (new format)."
   [source-tables]
-  (let [needs-lookup (filter #(and (map? %) (nil? (:table_id %))) (vals source-tables))
+  (let [needs-lookup (filter missing-table-id? (vals source-tables))
         lookup       (or (batch-lookup-table-ids needs-lookup) {})
         resolved     (u/for-map [[alias v] source-tables]
                        [alias (if (int? v)
