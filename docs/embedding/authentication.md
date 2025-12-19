@@ -7,21 +7,23 @@ redirect_from:
 
 # Modular embedding - authentication
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding" sdk=true %}
 
-For using the SDK in production, you'll need to set up authentication with SSO.
+For using modular embedding with SSO in production, you'll need to set up authentication.
 
 If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
+You can set up SSO with JWT or SAML.
+
 ## Setting up JWT SSO
 
-To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./sdk/quickstart.md))
+To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing/).
 
 Here's a high-level overview:
 
 1. [Enable JWT SSO in your Metabase](#1-enable-jwt-sso-in-your-metabase)
 2. [Add a new endpoint to your backend to handle authentication](#2-add-a-new-endpoint-to-your-backend-to-handle-authentication)
-3. [Wire the SDK in your frontend to your new endpoint](#3-wire-the-sdk-in-your-frontend-to-your-new-endpoint)
+3. [Wire your frontend to your new endpoint](#3-wire-your-frontend-to-your-new-endpoint)
 
 ### 1. Enable JWT SSO in your Metabase
 
@@ -72,9 +74,9 @@ Here's an example of an Express.js endpoint that handles both:
 {% include_file "{{ dirname }}/snippets/authentication/express-server-interactive-and-sdk.ts" %}
 ```
 
-### 3. Wire the SDK in your frontend to your new endpoint
+### 3. Wire your frontend to your new endpoint
 
-Update the SDK config in your frontend code to point your backend's authentication endpoint.
+Update the config in your frontend code to point to your backend's authentication endpoint.
 
 ```js
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-base.tsx" snippet="example" %}
@@ -100,11 +102,11 @@ You can customize how the SDK fetches the request token by specifying the `fetch
 
 The response should be in the form of `{ jwt: "{JWT_TOKEN}" }`
 
-## Authenticating with SAML SSO
+## Setting up SAML SSO
 
 {% include plans-blockquote.html feature="SAML authentication" sdk=true %}
 
-To use SAML single sign-on with the modular embedding SDK, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../people-and-groups/authenticating-with-saml.md).
+To use SAML single sign-on with modular embedding, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../people-and-groups/authenticating-with-saml.md).
 
 Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `preferredAuthMethod` in your `MetabaseAuthConfig` to `"saml"`:
 
@@ -112,13 +114,13 @@ Once SAML is configured in Metabase and your IdP, you can configure the SDK to u
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
 ```
 
-Using SAML authentication with the modular embedding SDK will typically involve redirecting people to a popup with your Identity Provider's login page for authentication. After successful authentication, the person will be redirected back to the embedded content.
+Using SAML authentication with modular embedding will typically involve redirecting people to a popup with your Identity Provider's login page for authentication. After successful authentication, the person will be redirected back to the embedded content.
 
-Due to the nature of redirects and popups involved in the SAML flow, SAML authentication with the SDK may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing auth flows in your target environments.
+Due to the nature of redirects and popups involved in the SAML flow, SAML authentication may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing auth flows in your target environments.
 
-Unlike JWT authentication, you won't be able to implement a custom `fetchRequestToken` function on your backend when pairing SAML with the SDK.
+Unlike JWT authentication, you won't be able to implement a custom `fetchRequestToken` function on your backend when pairing SAML with modular embedding.
 
-## If both SAML and JWT are enabled, the SDK will default to SAML
+## If both SAML and JWT are enabled, modular embedding will default to SAML
 
 You can override this default behavior to prefer the JWT authentication method by setting `preferredAuthMethod="jwt"` in your authentication config:
 
@@ -142,9 +144,9 @@ This hook can only be used within components wrapped by `MetabaseProvider`.
 
 ## Authenticating locally with API keys
 
-> The modular embedding SDK only supports JWT authentication in production. Authentication with API keys is only supported for local development and evaluation purposes.
+> Modular embedding only supports JWT authentication in production. Authentication with API keys is only supported for local development and evaluation purposes.
 
-For developing locally to try out the SDK, you can authenticate using an API key.
+For developing locally to try out modular embedding, you can authenticate using an API key.
 
 First, create an [API key](../people-and-groups/api-keys.md).
 
@@ -158,11 +160,11 @@ Then you can then use the API key to authenticate with Metabase in your applicat
 
 Each end-user _must_ have their own Metabase account.
 
-The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the SDK, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they're not supposed to see.
+The problem with having end-users share a Metabase account is that, even if you filter data on the client side via modular embedding, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they're not supposed to see.
 
 If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
 
-In addition to this, we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of modular embedding involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Upgrade guide for JWT SSO setups on SDK version 54 or below
 
