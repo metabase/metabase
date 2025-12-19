@@ -5,11 +5,7 @@ import { t } from "ttag";
 import LoadingAndGenericErrorWrapper from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { Group, Icon, Loader, Stack, Tooltip } from "metabase/ui";
 import { useGetWorkspaceLogQuery } from "metabase-enterprise/api";
-import type {
-  WorkspaceId,
-  WorkspaceLogStatus,
-  WorkspaceTask,
-} from "metabase-types/api";
+import type { WorkspaceId, WorkspaceLogStatus } from "metabase-types/api";
 
 interface SetupTabProps {
   workspaceId: WorkspaceId;
@@ -56,7 +52,7 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
             </Tooltip>
 
             <span>
-              {translateTask(log.task)}
+              {log.description}
               {log.status === "started" && "…"}
             </span>
           </Group>
@@ -97,24 +93,4 @@ function LogIcon({ status }: { status: WorkspaceLogStatus | null }) {
       return <Icon name="chevronright" />;
     })
     .exhaustive();
-}
-
-function translateTask(task: WorkspaceTask | string) {
-  if (task === "workspace-setup") {
-    return t`Setting up the workspace`;
-  }
-
-  if (task === "database-isolation") {
-    return t`Provisioning database isolation`;
-  }
-
-  if (task === "mirror-entities") {
-    return t`Mirroring entities`;
-  }
-
-  if (task === "grant-read-access") {
-    return t`Granting permissions`;
-  }
-
-  return task;
 }

@@ -98,14 +98,8 @@
                                         (-> (ws.isolation/ensure-database-isolation! workspace database)
                                            ;; it actually returns just those, this is more like a doc than behavior
                                             (select-keys [:schema :database_details])
-                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))
-          ;; TODO get graph analysis here
-          {:keys [inputs]}           {}]
-      (when-let [table-ids (seq (keep #(when (= :table (:type %)) (:id %)) inputs))]
-        (ws.log/track! ws-id :grant-read-access
-          (let [input-tables (t2/select :model/Table :id [:in table-ids])]
-            (ws.isolation/grant-read-access-to-tables! database workspace input-tables)))))
-    (t2/update! :model/Workspace ws-id {:status :ready})))
+                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))]
+      (t2/update! :model/Workspace ws-id {:status :ready}))))
 
 (defn- create-workspace-with-unique-name!
   "Create a workspace with status=updating, then kick off async setup."
