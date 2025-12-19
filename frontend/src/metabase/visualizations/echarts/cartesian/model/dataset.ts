@@ -129,6 +129,29 @@ const aggregateColumnValuesForDatum = (
 };
 
 /**
+ * Normalizes a dimension value for use as a Map key.
+ * This ensures that values that represent the same logical value are treated as equal.
+ * For example, two Date objects representing the same timestamp should map to the same key.
+ *
+ * @param {RowValue} value - The dimension value to normalize.
+ * @returns {RowValue} The normalized value suitable for use as a Map key.
+ */
+const normalizeDimensionValueForGrouping = (value: RowValue): RowValue => {
+  // Convert Date objects to their timestamp value to ensure that dates
+  // representing the same moment are treated as equal (fixes metabase#65304)
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  // For other object types, convert to JSON string for comparison
+  if (value !== null && typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return value;
+};
+
+/**
  * Accepts merged raw cards and raw datasets, groups and joins the metric columns on the dimension column
  * of each card.
  *
@@ -164,14 +187,15 @@ export const getJoinedCardsDataset = (
 
     for (const row of rows) {
       const dimensionValue = row[dimensionIndex];
+      const normalizedKey = normalizeDimensionValueForGrouping(dimensionValue);
 
-      // Get the existing datum by the dimension value if exists
-      const datum = groupedData.get(dimensionValue) ?? {
+      // Get the existing datum by the normalized key if exists
+      const datum = groupedData.get(normalizedKey) ?? {
         [X_AXIS_DATA_KEY]: dimensionValue,
       };
 
-      if (!groupedData.has(dimensionValue)) {
-        groupedData.set(dimensionValue, datum);
+      if (!groupedData.has(normalizedKey)) {
+        groupedData.set(normalizedKey, datum);
       }
 
       aggregateColumnValuesForDatum(
