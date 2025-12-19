@@ -1,5 +1,6 @@
 (ns metabase-enterprise.upload-management.api
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -29,6 +30,9 @@
   (as-> (t2/select :model/Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
         ;; See https://github.com/metabase/metabase/issues/41023
     (concat tables (attached-dwh-tables))
+    ;; Deduplicate by table ID in case attached DWH tables are also upload tables.
+    ;; See https://github.com/metabase/metabase/issues/60625
+    (m/distinct-by :id tables)
     (map #(update % :schema str) tables)
     (filterv mi/can-read? tables)))
 
