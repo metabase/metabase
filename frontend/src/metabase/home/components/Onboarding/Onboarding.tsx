@@ -18,10 +18,7 @@ import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
-import {
-  getDocsUrl,
-  getIsPaidPlan,
-} from "metabase/selectors/settings";
+import { getDocsUrl, getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getApplicationName,

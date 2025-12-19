@@ -4,9 +4,9 @@ import { useAsync } from "react-use";
 import _ from "underscore";
 
 import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
-import Databases from "metabase/entities/databases";
-import Groups from "metabase/entities/groups";
 import { useSetting } from "metabase/common/hooks";
+import { Databases } from "metabase/entities/databases";
+import { Groups } from "metabase/entities/groups";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PermissionsApi } from "metabase/services";
