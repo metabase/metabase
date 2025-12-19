@@ -806,6 +806,18 @@
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (str (t/zone-id t))))
 
+(defmethod sql.qp/inline-value [:mysql LocalDate]
+  [_ t]
+  ;; MySQL doesn't support the `date` keyword prefix in date literals
+  ;; See https://github.com/metabase/metabase/issues/46680
+  (format "'%s'" (u.date/format t)))
+
+(defmethod sql.qp/inline-value [:mysql LocalDateTime]
+  [_ t]
+  ;; MySQL doesn't support the `timestamp` keyword prefix in timestamp literals
+  ;; See https://github.com/metabase/metabase/issues/46680
+  (format "'%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type

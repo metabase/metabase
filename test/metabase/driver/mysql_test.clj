@@ -977,3 +977,17 @@
               ;; Clean up: Reset partial_revokes to OFF before exiting
               (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
+
+(deftest ^:parallel inline-value-test
+  (testing "MySQL should not use `date` and `timestamp` keywords in inline values (#46680)"
+    (mt/test-driver :mysql
+      (let [local-date (t/local-date 2024 8 13)
+            local-datetime (t/local-date-time 2024 8 13 12 30)]
+        (testing "LocalDate inline value should not have 'date' keyword"
+          (let [inline-val (sql.qp/inline-value :mysql local-date)]
+            (is (= "'2024-08-13'" inline-val)
+                (format "Expected '2024-08-13', got %s" inline-val))))
+        (testing "LocalDateTime inline value should not have 'timestamp' keyword"
+          (let [inline-val (sql.qp/inline-value :mysql local-datetime)]
+            (is (= "'2024-08-13 12:30:00.000'" inline-val)
+                (format "Expected '2024-08-13 12:30:00.000', got %s" inline-val))))))))
