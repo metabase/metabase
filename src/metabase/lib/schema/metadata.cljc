@@ -685,8 +685,7 @@
    [:id         ::lib.schema.id/measure]
    [:name       ::lib.schema.common/non-blank-string]
    [:table-id   ::lib.schema.id/table]
-   ;; the MBQL snippet defining this Measure; this may still be in legacy
-   ;; format. Contains an aggregation expression.
+   ;; the MBQL snippet defining this Measure, contains an aggregation expression.
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 

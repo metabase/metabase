@@ -230,7 +230,7 @@
 
 (lib.hierarchy/derive :segment ::ref)
 
-(mbql-clause/define-tuple-mbql-clause :measure :- :type/Number
+(mbql-clause/define-tuple-mbql-clause :measure :- ::expression/type.unknown
   #_measure-id [:schema [:ref ::id/measure]])
 
 (lib.hierarchy/derive :measure ::ref)
