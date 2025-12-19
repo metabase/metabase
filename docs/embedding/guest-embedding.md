@@ -7,11 +7,11 @@ summary: Embed questions, dashboards, and documents without requiring SSO.
 
 {% include shared/in-page-promo-embedding-workshop.html %}
 
-Guest embeds are a way to embed basic Metabase components in your app without requiring you to create an account for each person in your Metabase. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
+Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
 
 Even though you're not using SSO, guest embeds are still secure: Metabase will only load the embed if the request has a JWT signed with the secret shared between your app and your Metabase. The JWT also includes a reference to the resource to load (like the ID of the embedded item), and any values for parameters.
 
-You can, however, restrict data in guest embeds for specific people or groups by [locking parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
+To restrict data in guest embeds for specific people or groups, use [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
 
 ## Turning on guest embedding in Metabase
 
@@ -24,20 +24,20 @@ You can, however, restrict data in guest embeds for specific people or groups by
 
 To create a guest embed:
 
-1. Go to the item that you want to embed in your website.
-2. Click on the **sharing icon**.
+1. Go to the item that you want to embed in your website. You can also open a command palette with Ctrl/Cmd+K and type "New embed".
+2. Click the **sharing icon**.
 3. Select **Embed**.
 4. Under **Authentication**, select **Guest**.
 5. Optional: [customize the appearance of the embed](./appearance.md)
-6. Optional: Add parameters to the embed.
+6. Optional: [Add parameters to the embed](./components.md).
 7. Click **Publish**.
-8. Get the code and add it to your app.
+8. Get the code snippet that the wizard generates and add it to your app.
 
 ![Guest embed settings](./images/guest-embed-settings.png)
 
-## Setting up guest embeds
+## Notes on the code the wizard generates
 
-Guest embeds use web components and JWT tokens for authentication. Here's how to set them up:
+You can edit the code (see [components](./components.md) and [appearance](./appearance.md). But here's an overview of the code the wizard generates, and where to put it.
 
 ### Client-side code
 
@@ -48,12 +48,12 @@ Add the embed script and configuration to your HTML:
 <script>
   window.metabaseConfig = {
     isGuest: true,
-    instanceUrl: "YOUR_METABASE_URL"
+    instanceUrl: "YOUR_METABASE_URL",
   };
 </script>
 ```
 
-Then add the web component for the item you want to embed:
+Then add the component for the item you want to embed:
 
 ```html
 <!-- For dashboards -->
@@ -65,12 +65,10 @@ Then add the web component for the item you want to embed:
 ></metabase-dashboard>
 
 <!-- For questions -->
-<metabase-question
-  token="YOUR_JWT_TOKEN"
-></metabase-question>
+<metabase-question token="YOUR_JWT_TOKEN"></metabase-question>
 ```
 
-> Never hardcode JWT tokens directly in your HTML. Always fetch the token from your backend and pass it to the web component programmatically.
+> Never hardcode JWT tokens directly in your HTML. Always fetch the token from your backend and pass the token to the web component programmatically.
 
 ### Server-side code
 
@@ -84,22 +82,25 @@ const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
 const payload = {
   resource: { dashboard: 10 }, // or { question: 5 } for questions
   params: {},
-  exp: Math.round(Date.now() / 1000) + 10 * 60 // 10 minute expiration
+  exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
 };
 
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-Replace `YOUR_METABASE_SECRET_KEY` with your [guest embedding secret key](#regenerating-the-guest-embedding-secret-key).
+Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-guest-embedding-secret-key).
 
-### Web component attributes
+### Component attributes
+You can set different attributes to enable/disable UI. Here are some example attributes:
 
-| Attribute | Description |
-|-----------|-------------|
-| `token` | Required. The signed JWT token from your server. |
-| `with-title` | Show or hide the title. Values: `"true"` or `"false"`. |
-| `with-downloads` | Enable or disable downloads. Values: `"true"` or `"false"`. |
+| Attribute            | Description                                                          |
+| -------------------- | -------------------------------------------------------------------- |
+| `token`              | Required. The signed JWT token from your server.                     |
+| `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.               |
+| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.          |
 | `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'` |
+
+Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options that embeds that use SSO. See more on [components and their attributes](./components.md).
 
 ## Editing parameters on an embedded question or dashboard
 
@@ -114,29 +115,10 @@ If you change the [parameters](./static-embedding-parameters.md) of your embedde
 You can find a list of all guest embeds of questions and dashboards from **Admin settings** > **Embedding** > **Guest embeds**.
 
 1. Visit the embeddable question or dashboard.
-2. Click on the **sharing icon** (square with an arrow pointing to the top right).
+2. Click the **sharing icon** (square with an arrow pointing to the top right).
 3. Select **Embed**.
 4. Select **Guest embedding**
 5. Click **Unpublish**.
-
-## Customizing the appearance of guest embeds
-
-See [Customizing appearance of guest embeds](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed)
-
-## Auto-refreshing the results of an embedded dashboard
-
-> Auto-refreshing is only available for dashboards, not questions.
-
-To refresh the results of a dashboard at a specific cadence, use the `refresh` attribute on the web component. For example, to refresh every 60 seconds:
-
-```html
-<metabase-dashboard
-  token="YOUR_JWT_TOKEN"
-  refresh="60"
-></metabase-dashboard>
-```
-
-For the full list of appearance options, see [customizing the appearance of a guest embed](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed).
 
 ## Removing the "Powered by Metabase" banner
 
@@ -144,7 +126,7 @@ For the full list of appearance options, see [customizing the appearance of a gu
 
 The banner appears on guest embeds created with Metabase's open-source version. To remove the banner, you'll need to upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 
-## Regenerating the guest embedding secret key
+## Regenerating the embedding secret key
 
 Your embedding secret key is used to sign JWTs for all of your embeds.
 
@@ -152,10 +134,6 @@ Your embedding secret key is used to sign JWTs for all of your embeds.
 2. Under **Regenerate secret key**, click **Regenerate key**.
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
-
-## Resizing dashboards to fit their content
-
-The `<metabase-dashboard>` web component automatically resizes to fit its content. No additional configuration is needed.
 
 ## Custom destinations on dashboards in guest embeds
 

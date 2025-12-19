@@ -31,6 +31,8 @@ To render a dashboard:
 - `drills` (default is true) - lets you drill through the dashboard
 - `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
 - `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md).
+- `refresh` - auto-refreshes the dashbaord. `refresh="60"` will refresh the dashboard every 60 seconds.
+- `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
 
 If you surround your attribute value with double quotes, make sure to use single quotes:
 
@@ -41,8 +43,6 @@ If you surround your attribute value with double quotes, make sure to use single
 ></metabase-dashboard>
 ```
 
-- `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
-
 If you surround your attribute value with double quotes, make sure to use single quotes:
 
 ```html
@@ -51,6 +51,10 @@ If you surround your attribute value with double quotes, make sure to use single
   hidden-parameters="['productId']"
 ></metabase-dashboard>
 ```
+
+## Resizing dashboards to fit their content
+
+The `<metabase-dashboard>` web component automatically resizes to fit its content. No additional configuration is needed.
 
 ## Question
 
