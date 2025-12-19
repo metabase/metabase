@@ -3987,8 +3987,7 @@
             "type" : "string"
           },
           "options" : {
-            "type" : "object",
-            "additionalProperties" : { },
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options",
             "description" : "optional map to be appended to filter clause"
           },
           "dimension" : {
@@ -4002,6 +4001,10 @@
           }
         },
         "required" : [ "type", "name", "display-name", "dimension", "widget-type" ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options" : {
+        "type" : "object",
+        "additionalProperties" : { }
       },
       "metabase.legacy-mbql.schema..TemplateTag.RawValue" : {
         "description" : "Things required by all template tag types.",
@@ -4354,10 +4357,14 @@
       },
       "metabase.legacy-mbql.schema.Aggregation" : {
         "description" : "Schema for anything that is a valid `:aggregation` clause.",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
+        "allOf" : [ {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
+          } ]
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
+          "description" : "Normalization should automatically unwrap :aggregation-options with an empty options map"
         } ]
       },
       "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
@@ -4541,6 +4548,12 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.datetime"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.today"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.coalesce"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
         } ]
       },
       "metabase.legacy-mbql.schema.DatetimeOptions" : {
@@ -4661,12 +4674,18 @@
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpression"
         }, {
+          "type" : "number"
+        }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpression"
+        }, {
+          "type" : "string"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.BooleanExpression"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+          "type" : "boolean"
         }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+        }, { }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
