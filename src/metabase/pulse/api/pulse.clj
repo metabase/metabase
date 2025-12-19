@@ -442,7 +442,8 @@
                                          [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]]
+                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]
+   request]
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions
    (remove (fn [{:keys [id display]}]
@@ -453,7 +454,9 @@
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
   (notification/with-default-options {:notification/sync? true}
-    (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
+    (pulse.send/send-pulse! (-> body
+                                (assoc :creator_id api/*current-user-id*)
+                                (assoc :creation_context (get-in request [:headers "x-metabase-client"])))))
   {:ok true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
