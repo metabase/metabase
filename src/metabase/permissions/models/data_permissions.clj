@@ -29,33 +29,18 @@
 
 (mu/defn- with-cluster-lock-fn
   [m :- [:map
-         [:group-id ms/PositiveInt]
          [:db-id ms/PositiveInt]
          [:perm-type :string]]
    f :- fn?]
-  (cluster-lock/with-cluster-lock (keyword "data-permissions" (str/join "-"
-                                                                        [(:group-id m)
-                                                                         (:db-id m)
-                                                                         (:perm-type m)]))
+  (cluster-lock/with-cluster-lock (keyword "data-permissions-" (str/join "-"
+                                                                         [(:db-id m)
+                                                                          (:perm-type m)]))
     (f)))
 
 (defmacro with-cluster-lock
-  "Takes a map with `group-id`, `db-id`, and `perm-type`, obtains a cluster lock for that combo, and executes the body"
+  "Takes a map with `db-id` and `perm-type`, obtains a cluster lock for that combo, and executes the body"
   [m & body]
   `(with-cluster-lock-fn ~m (fn [] ~@body)))
-
-(mu/defn- with-cluster-locks-fn
-  [cluster-locks f]
-  (if (empty? cluster-locks)
-    (f)
-    (with-cluster-lock (first cluster-locks)
-      (with-cluster-locks-fn (rest cluster-locks) f))))
-
-(defmacro with-cluster-locks
-  "Same as `with-cluster-lock`, but takes a sequence of cluster-locks, each of which has a `group-id`, `db-id`, and
-  `perm-type`."
-  [ms & body]
-  `(with-cluster-locks-fn (sort-by :group-id ~ms) (fn [] ~@body)))
 
 (t2/deftransforms :model/DataPermissions
   {:perm_type  mi/transform-keyword
@@ -652,8 +637,7 @@
    perm-type   :- ::permissions.schema/data-permission-type
    value       :- :keyword]
   (with-cluster-lock {:db-id     (u/the-id db-or-id)
-                      :perm-type (u/qualified-name perm-type)
-                      :group-id  (u/the-id group-or-id)}
+                      :perm-type (u/qualified-name perm-type)}
     (let [{:keys [to-insert to-delete]} (build-database-permission group-or-id db-or-id perm-type value)]
       (when (seq to-delete)
         (batch-delete-permissions! (map :id to-delete)))
@@ -918,8 +902,7 @@
         db-id (if (map? table-or-id)
                 (:db_id table-or-id)
                 (t2/select-one-fn :db_id :model/Table table-or-id))]
-    (with-cluster-lock {:group-id (u/the-id group-or-id)
-                        :perm-type (u/qualified-name perm-type)
+    (with-cluster-lock {:perm-type (u/qualified-name perm-type)
                         :db-id db-id}
       (set-table-permissions-internal! group-or-id perm-type table-perms))))
 
@@ -973,13 +956,8 @@
                   table-or-id
                   (t2/select-one [:model/Table :id :db_id :schema] :id table-or-id))
           db-id (:db_id table)
-          group-ids (map u/the-id groups-or-ids)
-          cluster-locks (mapv (fn [group-id]
-                                {:group-id group-id
-                                 :db-id db-id
-                                 :perm-type (u/qualified-name perm-type)})
-                              group-ids)]
-      (with-cluster-locks cluster-locks
+          group-ids (map u/the-id groups-or-ids)]
+      (with-cluster-lock {:db-id db-id :perm-type (u/qualified-name perm-type)}
         (let [schema-name            (:schema table)
               db-level-perms         (t2/select :model/DataPermissions
                                                 {:where
