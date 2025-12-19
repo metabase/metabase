@@ -15,7 +15,7 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("measures queries", () => {
-    it("should be able to create a measure with an aggregation without columns", () => {
+    it("should create a measure with an aggregation without columns", () => {
       cy.log("create a new measure");
       H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
       MeasureEditor.getNameInput().type(MEASURE_NAME);
@@ -28,6 +28,23 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyMeasureInQueryBuilder({
         tableId: ORDERS_ID,
         scalarValue: "18,760",
+      });
+    });
+
+    it("should create a measure with with a column from the main data source", () => {
+      cy.log("create a new measure");
+      H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
+      MeasureEditor.getNameInput().type(MEASURE_NAME);
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Sum of ...").click();
+      H.popover().findByText("Total").click();
+      MeasureEditor.getSaveButton().click();
+      H.undoToast().should("contain.text", "Measure created");
+
+      cy.log("verify measure works in query builder");
+      verifyMeasureInQueryBuilder({
+        tableId: ORDERS_ID,
+        scalarValue: "1,510,621.68",
       });
     });
   });
