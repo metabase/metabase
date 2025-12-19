@@ -96,10 +96,8 @@ function CreateTransformForm({
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
-    try {
-      const transform = await createTransform(databaseId, source, values);
-      onCreate(transform);
-    } catch (err) {}
+    const transform = await createTransform(databaseId, source, values);
+    onCreate(transform);
   };
 
   return (
