@@ -7,6 +7,7 @@ import {
   useGetTableQueryMetadataQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -18,8 +19,11 @@ import {
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Stack, rem } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Stack, rem } from "metabase/ui";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { hasLibraryCollection } from "metabase-enterprise/data-studio/common/utils";
 
 import { trackMetadataChange } from "../../analytics";
@@ -55,6 +59,7 @@ function DataModelContent({ params }: Props) {
     hasOnlyOneTableSelected,
     selectedTables,
     hasSelectedMoreThanOneTable,
+    resetSelection,
   } = useSelection();
   const parsedParams = parseRouteParams(params);
   const {
@@ -162,14 +167,18 @@ function DataModelContent({ params }: Props) {
       h="100%"
       style={{ overflow: "auto" }}
     >
-      <Stack
-        className={S.column}
-        flex={COLUMN_CONFIG.nav.flex}
-        gap={0}
-        h="100%"
+      <PageContainer
         maw={COLUMN_CONFIG.nav.max}
         miw={COLUMN_CONFIG.nav.min}
+        flex={COLUMN_CONFIG.nav.flex}
+        className={S.column}
+        gap={0}
       >
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>{t`Data structure`}</DataStudioBreadcrumbs>
+          }
+        />
         <RouterTablePicker
           databaseId={databaseId}
           schemaName={schemaName}
@@ -177,7 +186,7 @@ function DataModelContent({ params }: Props) {
           params={params}
           setOnUpdateCallback={setOnUpdateCallback}
         />
-      </Stack>
+      </PageContainer>
 
       <>
         {databaseId != null &&
@@ -218,7 +227,37 @@ function DataModelContent({ params }: Props) {
             justify={error ? "center" : undefined}
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
+            gap={0}
+            px="lg"
+            pos="relative"
           >
+            <Group
+              justify="space-between"
+              w="100%"
+              data-testid="table-section-header"
+              pos="sticky"
+              top={0}
+              py="lg"
+              bg="bg-light"
+              className={S.header}
+            >
+              <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
+              <Button
+                component={ForwardRefLink}
+                to={Urls.dataStudioData({
+                  databaseId: table?.db_id,
+                  schemaName: table?.schema,
+                })}
+                leftSection={<Icon name="close" c="text-medium" />}
+                variant="subtle"
+                p="sm"
+                size="compact-sm"
+                onClick={() => {
+                  closePreview();
+                  resetSelection();
+                }}
+              />
+            </Group>
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {table && (
                 <TableSection
@@ -249,10 +288,37 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.field.max}
             miw={COLUMN_CONFIG.field.min}
             ref={scrollToPanel}
+            gap={0}
+            px="lg"
+            pos="relative"
           >
+            <Group
+              justify="space-between"
+              w="100%"
+              data-testid="field-section-header"
+              pos="sticky"
+              top={0}
+              py="lg"
+              bg="bg-light"
+              className={S.header}
+            >
+              <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
+              <Button
+                component={ForwardRefLink}
+                to={Urls.dataStudioData({
+                  databaseId: table?.db_id,
+                  schemaName: table?.schema,
+                  tableId: table?.id,
+                })}
+                leftSection={<Icon name="close" c="text-medium" />}
+                variant="subtle"
+                size="compact-sm"
+                onClick={closePreview}
+              />
+            </Group>
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {field && table && databaseId != null && (
-                <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
+                <>
                   <FieldSection
                     /**
                      * Make sure internal component state is reset when changing fields.
@@ -269,7 +335,7 @@ function DataModelContent({ params }: Props) {
                     onFieldValuesClick={openFieldValuesModal}
                     onPreviewClick={togglePreview}
                   />
-                </Box>
+                </>
               )}
             </LoadingAndErrorWrapper>
 

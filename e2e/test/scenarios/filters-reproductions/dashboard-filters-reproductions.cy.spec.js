@@ -5388,7 +5388,10 @@ describe("issue 46372", () => {
       H.selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Title");
       H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
 
-      H.main().findByText("Auto-connected").should("be.visible");
+      H.main()
+        .findByText("Auto-connected")
+        .scrollIntoView()
+        .should("be.visible");
       H.main()
         .findByText("Auto-connected")
         .parent()

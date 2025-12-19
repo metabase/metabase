@@ -1689,16 +1689,14 @@ describe("scenarios > admin > datamodel", () => {
           });
 
           cy.log("show error when strategy not chosen after toggling");
-          FieldSection.getCoercionToggle()
-            .parent()
-            .click({ scrollBehavior: "center" });
+          FieldSection.getCoercionToggle().parent().click();
           clickAway();
           FieldSection.get()
             .findByText("To enable casting, please select a data type")
             .should("be.visible");
 
           cy.log("enable casting");
-          FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
+          FieldSection.getCoercionInput().click();
           H.popover().findByText("UNIX nanoseconds → Datetime").click();
           cy.wait("@updateField");
           verifyAndCloseToast("Casting enabled for Rating");
@@ -1723,22 +1721,18 @@ describe("scenarios > admin > datamodel", () => {
           });
 
           cy.log("change casting");
-          FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
+          FieldSection.getCoercionInput().click();
           H.popover().findByText("UNIX seconds → Datetime").click();
           cy.wait("@updateField");
           verifyAndCloseToast("Casting updated for Rating");
 
           cy.log("disable casting");
-          FieldSection.getCoercionToggle()
-            .parent()
-            .click({ scrollBehavior: "center" });
+          FieldSection.getCoercionToggle().parent().click();
           cy.wait("@updateField");
           verifyAndCloseToast("Casting disabled for Rating");
 
           cy.log("enable casting");
-          FieldSection.getCoercionToggle()
-            .parent()
-            .click({ scrollBehavior: "center" });
+          FieldSection.getCoercionToggle().parent().click();
           H.popover().findByText("UNIX seconds → Datetime").click();
           cy.wait("@updateField");
           verifyAndCloseToast("Casting enabled for Rating");
@@ -1860,7 +1854,7 @@ describe("scenarios > admin > datamodel", () => {
             .should("have.value", "People → ID")
             .click();
           H.popover().within(() => {
-            cy.findByText("Reviews → ID").should("be.visible");
+            cy.findByText("Reviews → ID").scrollIntoView().should("be.visible");
             cy.findByText("Products → ID").click();
           });
           cy.wait("@updateField");
@@ -3066,9 +3060,7 @@ describe("scenarios > admin > datamodel", () => {
             .then((element) => {
               H.assertIsEllipsified(element[0]);
             });
-          FieldSection.get()
-            .findByTestId("name-prefix")
-            .realHover({ scrollBehavior: "center" });
+          FieldSection.get().findByTestId("name-prefix").realHover();
           H.tooltip().should("be.visible").and("have.text", longPrefix);
 
           // hide tooltip
@@ -3080,7 +3072,7 @@ describe("scenarios > admin > datamodel", () => {
             .scrollIntoView({ offset: { left: 0, top: -400 } })
             .findByTestId("name-prefix")
             .should("have.text", `${longPrefix}:`)
-            .realHover({ scrollBehavior: "center" });
+            .realHover();
           H.tooltip().should("be.visible").and("have.text", longPrefix);
         });
       });
@@ -3667,10 +3659,7 @@ describe("scenarios > admin > datamodel", () => {
       H.popover().findByText("Custom mapping").click();
       verifyAndCloseToast("Display values of Quantity updated");
       H.modal().within(() => {
-        cy.findByDisplayValue("0")
-          .clear()
-          .type("XYZ", { scrollBehavior: "center" })
-          .blur();
+        cy.findByDisplayValue("0").clear().type("XYZ").blur();
         cy.button("Save").click();
       });
       verifyToastAndUndo("Display values of Quantity updated");
@@ -3715,9 +3704,7 @@ describe("scenarios > admin > datamodel", () => {
       FieldSection.getMultiplyByNumberInput().should("have.value", "");
 
       cy.log("mini bar chart (ChartSettingToggle)");
-      FieldSection.getMiniBarChartToggle()
-        .parent()
-        .click({ scrollBehavior: "center" });
+      FieldSection.getMiniBarChartToggle().parent().click();
       verifyToastAndUndo("Formatting of Quantity updated");
       FieldSection.getMiniBarChartToggle().should("not.be.checked");
     });

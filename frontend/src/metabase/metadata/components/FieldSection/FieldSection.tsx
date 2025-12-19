@@ -5,7 +5,7 @@ import { useUpdateFieldMutation } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Group, Stack, Text } from "metabase/ui";
+import { Group, Stack, type StackProps, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -37,7 +37,8 @@ const FieldSectionBase = ({
   onFieldValuesClick,
   onPreviewClick,
   onTrackMetadataChange,
-}: FieldSectionBaseProps) => {
+  ...stackProps
+}: FieldSectionBaseProps & StackProps) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -89,8 +90,8 @@ const FieldSectionBase = ({
   };
 
   return (
-    <Stack data-testid="field-section" gap={0} pb="lg">
-      <Stack gap="md" pb="md" pt="lg" px="lg">
+    <Stack data-testid="field-section" gap={0} pb="lg" {...stackProps}>
+      <Stack gap="md" pb="md">
         <NameDescriptionInput
           description={field.description ?? ""}
           descriptionPlaceholder={t`Give this field a description`}
@@ -139,7 +140,7 @@ const FieldSectionBase = ({
         </Group>
       </Stack>
 
-      <Stack gap="xl" px="lg">
+      <Stack gap="xl">
         <DataSection
           field={field}
           onTrackMetadataChange={onTrackMetadataChange}

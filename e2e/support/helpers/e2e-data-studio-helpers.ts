@@ -78,6 +78,8 @@ export const DataStudio = {
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}`),
+    visitFieldsPage: (tableId: TableId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/fields`),
     visitSegmentsPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/segments`),
     visitSegmentPage: (tableId: TableId, segmentId: SegmentId) =>
