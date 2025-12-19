@@ -121,7 +121,9 @@
      result)))
 
 ;; TODO save graph with invalidation hooks
-(defn- get-or-calculate-graph [{ws-id :id :as _workspace}]
+(defn get-or-calculate-graph
+  "Return the graph. Going to be cached in the future."
+  [{ws-id :id :as _workspace}]
   (ws.dag/path-induced-subgraph ws-id (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform :id ref_id})
                                                         [:model/WorkspaceTransform :ref_id]
                                                         :workspace_id ws-id)))

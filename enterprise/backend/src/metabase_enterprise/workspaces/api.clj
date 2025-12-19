@@ -427,11 +427,8 @@
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
-  (api/check-404 (t2/select-one :model/Workspace :id ws-id))
-
-  (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
-                                    [:model/WorkspaceTransform :ref_id] :workspace_id ws-id)
-        {:keys [inputs entities dependencies]} (ws.dag/path-induced-subgraph ws-id changeset)
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+        {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph workspace)
         ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
         ;;      It could be cheaper to build it as we go.
         inverted (reduce
@@ -474,10 +471,8 @@
    See `metabase-enterprise.workspaces.types/problem-types` for the full list."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
-                                    [:model/WorkspaceTransform :ref_id] :workspace_id id)
-        graph     (ws.dag/path-induced-subgraph id changeset)]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+        graph     (ws.impl/get-or-calculate-graph workspace)]
     (ws.validation/find-downstream-problems id graph)))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
