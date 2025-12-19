@@ -98,6 +98,8 @@ export const MetabotQueryBuilder = () => {
       return setHasError(true);
     }
 
+    setVisible(true);
+
     // as a fallback, if we receive no new query, we'll take the user
     // to an empty notebook query and show the chat sidebar as it's
     // highly likely the chat contains a response asking for clarification
@@ -128,14 +130,16 @@ export const MetabotQueryBuilder = () => {
   const { router, routes } = useRouter();
   const currentRoute = routes.at(-1);
   useEffect(
-    () =>
-      router.setRouteLeaveHook(currentRoute, (nextLocation) => {
-        if (nextLocation?.pathname.startsWith("/question")) {
-          setVisible(true);
+    function cancelRequestOnRouteLeave() {
+      return router.setRouteLeaveHook(currentRoute, (nextLocation) => {
+        if (!nextLocation?.pathname.startsWith("/question")) {
+          cancelRequest();
+          resetConversation(); // clear any parital response and reset profile
         }
         return true;
-      }),
-    [router, currentRoute, setVisible],
+      });
+    },
+    [router, currentRoute, cancelRequest, resetConversation],
   );
 
   return (
