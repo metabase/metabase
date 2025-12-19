@@ -44,9 +44,7 @@
    ;; legacy search so it performs the same on MySQL
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
    ;; to different namespaces via parameters.
-   [:or (perms/audit-namespace-clause :collection.namespace nil)
-    [:= :collection.namespace "tenant-specific"]
-    [:= :collection.namespace "shared-tenant-collection"]]])
+   (perms/namespace-clause :collection.namespace nil true)])
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause and optional CTEs for table permission filtering.
