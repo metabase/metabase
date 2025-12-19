@@ -2,20 +2,15 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import { isSyncedCollection } from "metabase/collections/utils";
 import { useToast } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Loader, Tooltip } from "metabase/ui";
-import {
-  useGetRemoteSyncChangesQuery,
-  useImportChangesMutation,
-} from "metabase-enterprise/api";
+import { useImportChangesMutation } from "metabase-enterprise/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
-import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../../constants";
+import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
+import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
 import { type SyncError, parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
@@ -26,11 +21,14 @@ import {
 
 import { BranchPicker } from "./BranchPicker";
 
-export const GitSyncControls = () => {
-  const isAdmin = useSelector(getUserIsAdmin);
-  const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
-  const { value: currentBranch } = useAdminSetting(BRANCH_KEY);
-  const { value: syncType } = useAdminSetting(TYPE_KEY);
+interface GitSyncControlsProps {
+  fullWidth?: boolean;
+}
+
+export const GitSyncControls = ({
+  fullWidth = false,
+}: GitSyncControlsProps) => {
+  const { isVisible, currentBranch } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -42,20 +40,13 @@ export const GitSyncControls = () => {
   const [showPushModal, setShowPushModal] = useState(false);
   const [sendToast] = useToast();
 
-  const { data: dirtyData, refetch: refetchDirty } =
-    useGetRemoteSyncChangesQuery(undefined, {
-      skip: !isRemoteSyncEnabled,
-      refetchOnFocus: true,
-    });
+  const { isDirty, refetch: refetchDirty } = useRemoteSyncDirtyState();
 
   // Fetch collections to filter synced ones for the push modal
-  const { data: collections = [] } = useListCollectionsTreeQuery(
-    {
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-    },
-    { skip: !isRemoteSyncEnabled },
-  );
+  const { data: collections = [] } = useListCollectionsTreeQuery({
+    "exclude-other-user-collections": true,
+    "exclude-archived": true,
+  });
 
   const syncedCollections = useMemo(() => {
     const synced = collections.filter(isSyncedCollection);
@@ -63,7 +54,6 @@ export const GitSyncControls = () => {
   }, [collections]);
 
   const isSwitchingBranch = !!nextBranch;
-  const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
   const isLoading = isSyncTaskRunning || isSwitchingBranch || isImporting;
 
   const changeBranch = useCallback(
@@ -161,19 +151,17 @@ export const GitSyncControls = () => {
     setNextBranch(null);
   }, []);
 
-  // Don't render if remote sync is not enabled, user is not admin, or not in read-write mode
-  if (
-    !isRemoteSyncEnabled ||
-    !isAdmin ||
-    !currentBranch ||
-    syncType !== "read-write"
-  ) {
+  if (!isVisible || !currentBranch) {
     return null;
   }
 
   return (
     <>
-      <Button.Group data-testid="git-sync-controls" mr="2rem">
+      <Button.Group
+        data-testid="git-sync-controls"
+        mr={fullWidth ? undefined : "2rem"}
+        w={fullWidth ? "100%" : "13.5rem"}
+      >
         <BranchPicker
           isLoading={isLoading}
           value={currentBranch}
