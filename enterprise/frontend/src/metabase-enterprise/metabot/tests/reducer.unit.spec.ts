@@ -1,4 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
+import { createDraft } from "immer";
 
 import {
   type MetabotState,
@@ -6,10 +7,15 @@ import {
   activateSuggestedTransform,
   addSuggestedTransform,
   deactivateSuggestedTransform,
-  getMetabotInitialState,
   metabotReducer,
 } from "metabase-enterprise/metabot/state";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
+
+import {
+  createConversation,
+  getMetabotInitialState,
+  getRequestConversation,
+} from "../state/reducer-utils";
 
 const createMockSuggestedTransform = (
   overrides: Partial<MetabotSuggestedTransform>,
@@ -56,6 +62,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
+            suggestedCodeEdits: {},
             suggestedTransforms: [existingTransform],
           },
         });
@@ -102,6 +109,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
+            suggestedCodeEdits: {},
             suggestedTransforms: [transform1, transform2, transform3],
           },
         });
@@ -137,6 +145,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
+            suggestedCodeEdits: {},
             suggestedTransforms: [newTransform],
           },
         });
@@ -176,6 +185,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
+            suggestedCodeEdits: {},
             suggestedTransforms: [transform1, transform2, transform3],
           },
         });
@@ -208,6 +218,7 @@ describe("metabot reducer", () => {
         const store = createTestStore({
           reactions: {
             navigateToPath: null,
+            suggestedCodeEdits: {},
             suggestedTransforms: [newTransform],
           },
         });
@@ -221,6 +232,48 @@ describe("metabot reducer", () => {
           }),
         ]);
       });
+    });
+  });
+
+  describe("getRequestConversation", () => {
+    it("should return undefined if no matching convo", () => {
+      const state = createDraft(getMetabotInitialState());
+      const action = {
+        meta: {
+          arg: { agentId: "test_1" as const, conversation_id: "some-id" },
+        },
+      };
+
+      expect(getRequestConversation(state, action)).toBeUndefined();
+    });
+
+    it("should return undefined if the conversation's conversation_id doesn't match the value in the store", () => {
+      const state = createDraft(getMetabotInitialState());
+      state.conversations.test_1 = createDraft(
+        createConversation("test_1", { conversationId: "stored-id" }),
+      );
+      const action = {
+        meta: {
+          arg: { agentId: "test_1" as const, conversation_id: "different-id" },
+        },
+      };
+
+      expect(getRequestConversation(state, action)).toBeUndefined();
+    });
+
+    it("should return conversation if agentId and request conversation_id match", () => {
+      const state = createDraft(getMetabotInitialState());
+      const convo = createDraft(
+        createConversation("test_1", { conversationId: "matching-id" }),
+      );
+      state.conversations.test_1 = convo;
+      const action = {
+        meta: {
+          arg: { agentId: "test_1" as const, conversation_id: "matching-id" },
+        },
+      };
+
+      expect(getRequestConversation(state, action)).toBe(convo);
     });
   });
 });

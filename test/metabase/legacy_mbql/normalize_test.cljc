@@ -777,9 +777,12 @@
 
 (deftest ^:parallel canonicalize-aggregations-test-11
   (normalize-tests
-   "subclauses of `:aggregation-options` should get canonicalized correctly"
+   "subclauses of `:aggregation-options` should get canonicalized correctly; unwrap :aggregation-options with empty options"
    {{:query {:aggregation [[:aggregation-options [:sum 10] {}]]}}
-    {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {}]]}}}))
+    {:query {:aggregation [[:sum [:field 10 nil]]]}}
+
+    {:query {:aggregation [[:aggregation-options [:sum 10] nil]]}}
+    {:query {:aggregation [[:sum [:field 10 nil]]]}}}))
 
 (deftest ^:parallel canonicalize-aggregations-test-12
   (normalize-tests
