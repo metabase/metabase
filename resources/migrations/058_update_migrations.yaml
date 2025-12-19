@@ -2244,6 +2244,7 @@ databaseChangeLog:
       id: v58.2025-11-27T10:00:00
       author: christruter
       comment: Add collection_id column to transform table
+      validCheckSum: ANY
       changes:
         - sql:
             sql: select 1;
@@ -2254,6 +2255,7 @@ databaseChangeLog:
       id: v58.2025-11-27T10:00:01
       author: christruter
       comment: Add index on transform.collection_id
+      validCheckSum: ANY
       changes:
         - sql:
             sql: select 1;
@@ -2264,6 +2266,7 @@ databaseChangeLog:
       id: v58.2025-11-27T10:00:02
       author: christruter
       comment: Add foreign key constraint from transform.collection_id to collection
+      validCheckSum: ANY
       changes:
         - sql:
             sql: select 1;
@@ -2288,6 +2291,13 @@ databaseChangeLog:
       id: v58.2025-12-03T17:08:36
       author: nvoxland
       comment: Add collection_id column to transform table
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_transform
+                columnName: stale
       changes:
         - addColumn:
             tableName: transform
@@ -2301,6 +2311,12 @@ databaseChangeLog:
       id: v58.2025-12-03T17:08:37
       author: nvoxland
       comment: Add index on transform.collection_id
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_transform_collection_id
       changes:
         - createIndex:
             tableName: transform
@@ -2313,6 +2329,12 @@ databaseChangeLog:
       id: v58.2025-12-03T17:08:38
       author: nvoxland
       comment: Add fk_transform_collection_id
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_transform_collection_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
