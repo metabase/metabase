@@ -1,6 +1,7 @@
 import { render, screen } from "__support__/ui";
 
-import ChartWithLegend, {
+import {
+  ChartWithLegend,
   HIDE_HORIZONTAL_LEGEND_THRESHOLD,
   HIDE_SECONDARY_INFO_THRESHOLD,
 } from "./ChartWithLegend";
