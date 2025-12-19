@@ -573,10 +573,13 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.findByText(/created this segment/i)
           .scrollIntoView()
           .should("be.visible");
-        cy.findByText(/made multiple changes/i)
+        cy.findByText(/changed the filter definition/i)
           .scrollIntoView()
           .should("be.visible");
         cy.findByText(/updated the description/i)
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText(/renamed the segment/i)
           .scrollIntoView()
           .should("be.visible");
       });
