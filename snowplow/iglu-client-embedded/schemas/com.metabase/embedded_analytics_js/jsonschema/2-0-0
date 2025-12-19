@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "embedded_analytics_js",
     "format": "jsonschema",
-    "version": "1-0-1"
+    "version": "2-0-0"
   },
   "type": "object",
   "properties": {
@@ -23,7 +23,10 @@
       "properties": {
         "auth_method": {
           "description": "Authentication method used for the modular embedding.",
-          "type": "string",
+          "type": [
+            "string",
+            "null"
+          ],
           "enum": [
             "session",
             "api_key",
@@ -324,5 +327,6 @@
   "required": [
     "event",
     "global"
-  ]
+  ],
+  "additionalProperties": true
 }
