@@ -3,10 +3,6 @@ inputs:
   node-version:
     description: "The version of Node.js to use, overriding .nvmrc"
     required: false
-  apply-patches:
-    description: "Whether to patch frontend dependencies with patch-package."
-    required: true
-    default: "true"
 runs:
   using: "composite"
   steps:
@@ -16,10 +12,9 @@ runs:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10
+    - name: Install Yarn v4
+      run: npm install -g yarn@4.9.1
+      shell: bash
 
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys
@@ -33,12 +28,12 @@ runs:
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
-    - name: Get pnpm store directory
-      id: pnpm-cache
+    - name: Get Yarn cache directory
+      id: yarn-cache
       run: |
-        PNPM_STORE_DIR=$(pnpm store path)
-        echo "Pnpm store directory: $PNPM_STORE_DIR"
-        echo "dir=$PNPM_STORE_DIR" >> $GITHUB_OUTPUT
+        YARN_CACHE_DIR=$(yarn config get cacheFolder)
+        echo "Yarn cache directory: $YARN_CACHE_DIR"
+        echo "dir=$YARN_CACHE_DIR" >> $GITHUB_OUTPUT
       shell: bash
 
     # TEMPORARILY DISABLED: Testing if cache causes Next.js host app CI failures
@@ -47,17 +42,11 @@ runs:
     #   id: node-modules-cache
     #   with:
     #     path: |
-    #       ${{ steps.pnpm-cache.outputs.dir }}
+    #       ${{ steps.yarn-cache.outputs.dir }}
     #       node_modules
     #     key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
-    # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
-    # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
-    # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
+    # Yarn v4 applies patches automatically during install
     - name: Clean install
-      run: pnpm install --frozen-lockfile --prefer-offline
-      shell: bash
-    - name: Patch frontend dependencies
-      if: inputs.apply-patches == 'true'
-      run: pnpm patch-package
+      run: yarn install --immutable
       shell: bash

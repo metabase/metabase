@@ -2,7 +2,6 @@
 
 /**
  * Generates a license disclaimer file for all npm dependencies.
- * Replacement for `yarn licenses generate-disclaimer` for pnpm.
  *
  * Usage: node bin/generate-license-disclaimer.js
  * Output: resources/license-frontend-third-party.txt
@@ -36,7 +35,7 @@ const LICENSE_FILE_NAMES = [
 ];
 
 function getLicensesJson() {
-  const output = execSync("pnpm licenses list --json", {
+  const output = execSync("yarn licenses list --json", {
     encoding: "utf-8",
     maxBuffer: 50 * 1024 * 1024,
   });
@@ -75,7 +74,7 @@ function getRepoUrl(pkg) {
   return pkg.homepage || null;
 }
 
-console.log("Fetching licenses from pnpm...");
+console.log("Fetching licenses from Yarn...");
 const licensesData = getLicensesJson();
 
 const output = generateDisclaimerText(licensesData, pkg => ({

@@ -59,6 +59,17 @@ check_yarn_classic() {
     return 1
 }
 
+check_yarn_version() {
+    local version=$1
+    if [ -n "$version" ]; then
+        local major_version=$(echo "$version" | cut -d. -f1)
+        if [ "$major_version" -ge 4 ]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # =============================================================================
 # Java
 # =============================================================================

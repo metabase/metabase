@@ -120,7 +120,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
-        run: pnpm build-embedding-sdk-package
+        run: yarn build-embedding-sdk-package
 
       - name: Prepare JDK 21
         uses: actions/setup-java@v4

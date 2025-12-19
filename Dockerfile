@@ -23,8 +23,8 @@ COPY . .
 # version is pulled from git, but git doesn't trust the directory due to different owners
 RUN git config --global --add safe.directory /home/node
 
-# install frontend dependencies
-RUN npm install -g pnpm@10 && pnpm install --frozen-lockfile
+# install frontend dependencies using Yarn v4
+RUN npm install -g yarn@4.9.1 && yarn install --immutable
 
 RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
 

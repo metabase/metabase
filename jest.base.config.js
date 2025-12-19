@@ -1,29 +1,38 @@
 // @ts-check
 
 const esmPackages = [
+  "bail",
   "ccount",
-  "character-entities-html4",
+  "character-entities.*",
   "comma-separated-tokens",
   "csv-parse",
   "csv-stringify",
   "d3-.*",
   "d3",
+  "decode-named-character-reference",
   "delaunator",
   "devlop",
   "echarts",
+  "escape-string-regexp",
+  "extend",
   "fetch-mock",
   "hast.*",
   "html-void-elements",
   "internmap",
   "is-absolute-url",
+  "is-plain-obj",
   "jose",
   "mdast-util-.*",
+  "micromark.*",
   "property-information",
+  "react-markdown",
   "rehype-.*",
   "remark-.*",
   "robust-predicates",
   "space-separated-tokens",
   "stringify-entities",
+  "trim-lines",
+  "trough",
   "unified",
   "unist-.*",
   "vfile.*",
@@ -35,15 +44,40 @@ const esmPackages = [
 /** @type {import('jest').Config} */
 const baseConfig = {
   moduleNameMapper: {
-    "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
+    // Static file mocks - MUST come before path aliases to intercept .css imports
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
-    "react-markdown":
-      "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
+
+    // Explicit path mappings for Yarn PnP compatibility
+    // These replace modulePaths resolution which doesn't work reliably with PnP
+    // Note: Need both bare imports (^pkg$) and path imports (^pkg/(.*)$)
+    "^metabase-enterprise$":
+      "<rootDir>/enterprise/frontend/src/metabase-enterprise/index",
+    "^metabase-enterprise/(.*)$":
+      "<rootDir>/enterprise/frontend/src/metabase-enterprise/$1",
+    "^embedding/(.*)$": "<rootDir>/enterprise/frontend/src/embedding/$1",
+    "^embedding-sdk-ee/(.*)$":
+      "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/$1",
+    "^metabase-lib$": "<rootDir>/frontend/src/metabase-lib/index",
+    "^metabase-lib/(.*)$": "<rootDir>/frontend/src/metabase-lib/$1",
+    "^metabase-types/(.*)$": "<rootDir>/frontend/src/metabase-types/$1",
+    "^metabase-shared/(.*)$": "<rootDir>/frontend/src/metabase-shared/$1",
+    "^metabase/(.*)$": "<rootDir>/frontend/src/metabase/$1",
+    "^embedding-sdk-shared/(.*)$":
+      "<rootDir>/frontend/src/embedding-sdk-shared/$1",
+    "^embedding-sdk-bundle/(.*)$":
+      "<rootDir>/frontend/src/embedding-sdk-bundle/$1",
+    "^__support__/(.*)$": "<rootDir>/frontend/test/__support__/$1",
+
+    // Build configs
+    "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
+
+    // ClojureScript output
+    "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
+
     /**
      * SDK components import root SDK folder (`embedding-sdk`) that contains the ee plugins.
      * This isn't a problem in the core app because we seem to not import to entry file directly
@@ -65,9 +99,12 @@ const baseConfig = {
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
-    // Updated pattern to handle pnpm's nested node_modules structure
-    // pnpm paths look like: node_modules/.pnpm/fetch-mock@12.5.3/node_modules/fetch-mock/
-    `/node_modules/(?!(.pnpm/.+/node_modules/)?(${esmPackages.join("|")})/)`,
+    // ESM packages need to be transformed by Jest
+    // Single pattern that works for both node_modules and Yarn PnP:
+    // - node_modules/package-name/ (traditional)
+    // - .yarn/cache/package-name-npm-*.zip/node_modules/package-name/ (PnP cache)
+    // - .yarn/__virtual__/package-name-virtual-*/... (PnP virtual)
+    `node_modules/(?!(${esmPackages.join("|")})/)`,
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",

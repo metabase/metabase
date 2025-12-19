@@ -165,3 +165,9 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
+
+# Yarn PnP (not using zero-installs)
+.pnp.*
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz

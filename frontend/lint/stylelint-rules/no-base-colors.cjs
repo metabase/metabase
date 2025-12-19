@@ -1,4 +1,4 @@
-import stylelint from "stylelint";
+const stylelint = require("stylelint");
 
 const ruleName = "metabase/no-base-colors";
 const messages = stylelint.utils.ruleMessages(ruleName, {
@@ -56,4 +56,4 @@ const ruleFunction = (primary, secondaryOptions, context) => {
 ruleFunction.ruleName = ruleName;
 ruleFunction.messages = messages;
 
-export default stylelint.createPlugin(ruleName, ruleFunction);
+module.exports = stylelint.createPlugin(ruleName, ruleFunction);

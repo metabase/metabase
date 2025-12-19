@@ -28,22 +28,22 @@
                      :oss "oss")]
     (u/step (format "Build frontend with MB_EDITION=%s" mb-edition)
       (when-not (env/env :ci)
-        (u/step "Run 'pnpm install' to download JavaScript dependencies"
-          (u/sh {:dir u/project-root-directory} "pnpm" "install")))
+        (u/step "Run 'yarn install' to download JavaScript dependencies"
+          (u/sh {:dir u/project-root-directory} "yarn" "install")))
       (u/step "Build frontend"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "pnpm" "build-release"))
+              "yarn" "build-release"))
       (u/step "Build static viz"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "pnpm" "build-release:static-viz"))
+              "yarn" "build-release:static-viz"))
       (u/announce "Frontend built successfully."))))
 
 (defn- build-licenses!
@@ -67,7 +67,7 @@
 
     (u/step "Generate frontend license disclaimer"
       (u/sh {:dir u/project-root-directory}
-            "pnpm" "generate-license-disclaimer"))))
+            "yarn" "generate-license-disclaimer"))))
 
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}

@@ -50,10 +50,10 @@ You can install the Embedded analytics SDK for React via npm. Make sure to use t
 npm install @metabase/embedding-sdk-react@56-stable
 ```
 
-or with pnpm:
+or with yarn:
 
 ```bash
-pnpm add @metabase/embedding-sdk-react@56-stable
+yarn add @metabase/embedding-sdk-react@56-stable
 ```
 
 ### Resolving `@types/react` version mismatches
@@ -72,14 +72,12 @@ To enforce a single `@types/react` version across all dependencies, add an `over
 }
 ```
 
-#### pnpm set @types/react version
+#### yarn set @types/react version
 
 ```json
 {
-  "pnpm": {
-    "overrides": {
-      "@types/react": "..."
-    }
+  "resolutions": {
+    "@types/react": "..."
   }
 }
 ```

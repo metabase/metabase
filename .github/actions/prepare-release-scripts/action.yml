@@ -1,12 +1,12 @@
 name: Prepare Release Scripts
-description: Set up pnpm and build release scripts
+description: Set up yarn and build release scripts
 
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@v4
-      with:
-        version: 10
+    - name: Install Yarn v4
+      run: npm install -g yarn@4.9.1
+      shell: bash
     - name: Build release scripts
       shell: bash
-      run: cd ${{ github.workspace }}/release && pnpm install --frozen-lockfile && pnpm build
+      run: cd ${{ github.workspace }}/release && yarn install --immutable && yarn build

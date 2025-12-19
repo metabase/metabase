@@ -82,41 +82,36 @@ jobs:
 
       # Frontend preparation and caches
       # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.
-      # It then (3) runs `pnpm install --frozen-lockfile --prefer-offline` which ensures the local cache is fully populated.
-      # IMPORTANT: Caching node_modules after patches are already applied will break any PR that attempts to either:
-      #   - upgrade a patched library
-      #   - change a patch
-      # Hence why we explicitly exclude patches from the cache (controlled by the `apply-patches` action input).
+      # It then (3) runs `yarn install --immutable` which ensures the local cache is fully populated.
+      # Yarn v4 applies patches automatically during install.
       - name: Install front-end dependencies
         uses: ./.github/actions/prepare-frontend
-        with:
-          apply-patches: "false"
 
-      - name: Get pnpm store directory
-        id: pnpm-cache-dir
+      - name: Get yarn cache directory
+        id: yarn-cache-dir
         run: |
-          PNPM_STORE_DIR=$(pnpm store path)
-          echo "pnpm store directory: $PNPM_STORE_DIR"
-          echo "dir=$PNPM_STORE_DIR" >> $GITHUB_OUTPUT
+          YARN_CACHE_DIR=$(yarn config get cacheFolder)
+          echo "Yarn cache directory: $YARN_CACHE_DIR"
+          echo "dir=$YARN_CACHE_DIR" >> $GITHUB_OUTPUT
 
       - name: Ensure that Cypress executable is ready
         run: |
-          pnpm cypress install
-          pnpm cypress cache path
-          pnpm cypress cache list
-          pnpm cypress verify
+          yarn cypress install
+          yarn cypress cache path
+          yarn cypress cache list
+          yarn cypress verify
         shell: bash
 
       # Run Prettier to populate its cache (stored in node_modules/.cache/prettier)
       # so it gets saved as part of the node_modules cache below
       - name: Run Prettier to populate cache
-        run: pnpm lint-prettier-pure
+        run: yarn lint-prettier-pure
 
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
         with:
           path: |
-            ${{ steps.pnpm-cache-dir.outputs.dir }}
+            ${{ steps.yarn-cache-dir.outputs.dir }}
             node_modules
           key: ${{ env.NODE_CACHE_KEY }}
 
@@ -128,10 +123,10 @@ jobs:
 
       # ESLint cache (requires both backend and frontend)
       - name: Compile CLJS
-        run: pnpm build-pure:cljs
+        run: yarn build-pure:cljs
 
       - name: Run ESLint to populate cache
-        run: pnpm lint-eslint-pure
+        run: yarn lint-eslint-pure
 
       - name: Update eslint cache
         uses: ./.github/actions/update-cache

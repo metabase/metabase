@@ -81,18 +81,18 @@ main() {
         issues+=("Node.js: not installed (need >= 22)")
     fi
 
-    # pnpm
-    pnpm_version=$(get_pnpm_version)
-    if [ -n "$pnpm_version" ]; then
-        if check_pnpm_version "$pnpm_version"; then
-            print_found "pnpm $pnpm_version (meets requirement: >= 9)"
+    # yarn
+    yarn_version=$(get_yarn_version)
+    if [ -n "$yarn_version" ]; then
+        if check_yarn_version "$yarn_version"; then
+            print_found "yarn $yarn_version (meets requirement: >= 4)"
         else
-            print_warning "pnpm $pnpm_version (required: >= 9)"
-            issues+=("pnpm: version $pnpm_version is not >= 9")
+            print_warning "yarn $yarn_version (required: >= 4)"
+            issues+=("yarn: version $yarn_version is not >= 4")
         fi
     else
-        print_not_found "pnpm (required: >= 9)"
-        issues+=("pnpm: not installed (need pnpm >= 9)")
+        print_not_found "yarn (required: >= 4)"
+        issues+=("yarn: not installed (need yarn >= 4)")
     fi
 
     # Java
@@ -155,7 +155,7 @@ main() {
 
     echo -e "  ${BOLD}Required Tools:${NC}"
     echo "    - Node.js >= 22 (currently specified in .nvmrc)"
-    echo "    - pnpm >= 9"
+    echo "    - yarn >= 4"
     echo "    - Java 21 with Eclipse Temurin distribution (for Clojure backend)"
     if [ -n "$required_clojure_version" ]; then
         echo "    - Clojure CLI (for Clojure $required_clojure_version specified in deps.edn)"
