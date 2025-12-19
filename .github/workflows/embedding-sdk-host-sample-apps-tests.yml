@@ -111,7 +111,6 @@ jobs:
       CYPRESS_CI: true
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
-      DOCKER_BUILDKIT: 0
     permissions:
       id-token: write
 
