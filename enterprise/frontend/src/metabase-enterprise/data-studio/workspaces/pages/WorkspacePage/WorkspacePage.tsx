@@ -796,6 +796,9 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           onClose={() => setIsMergeModalOpen(false)}
           onSubmit={handleMergeWorkspace}
           isLoading={isMerging}
+          workspaceId={id}
+          workspaceName={workspace?.name ?? ""}
+          workspaceTransforms={workspaceTransforms}
         />
       )}
     </Stack>
