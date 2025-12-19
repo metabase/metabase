@@ -111,6 +111,7 @@ jobs:
       CYPRESS_CI: true
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
+      DOCKER_BUILDKIT: 0
     permissions:
       id-token: write
 
@@ -186,6 +187,9 @@ jobs:
       - name: Prepare and launch Sample Apps for other test suites
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite != 'shoppy-e2e' }}
         run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts ${{ matrix.test_suite }}
+
+      - name: Prune build cache
+        run: docker builder prune -af
 
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
