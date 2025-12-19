@@ -786,11 +786,7 @@ describe("tenant users", () => {
       cy.visit(`/auth/sso?return_to=/question/notebook&jwt=${key}`),
     );
 
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, "Products").click();
-    });
+    H.popover().findByText("Products").click();
     cy.button("Visualize").click();
 
     cy.get("[data-column-id=CATEGORY]")
@@ -806,11 +802,7 @@ describe("tenant users", () => {
       cy.visit(`/auth/sso?return_to=/question/notebook&jwt=${key}`),
     );
 
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, "Products").click();
-    });
+    H.popover().findByText("Products").click();
     cy.button("Visualize").click();
 
     cy.get("[data-column-id=CATEGORY]")
