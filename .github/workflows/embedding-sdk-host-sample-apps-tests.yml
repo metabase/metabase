@@ -221,7 +221,7 @@ jobs:
         run: docker system df
 
       - name: Docker prune images
-        run: docker image prune
+        run: docker image prune -a
 
       - name: Log Docker disk usage 3
         run: docker system df
