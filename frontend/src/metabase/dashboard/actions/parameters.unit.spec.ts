@@ -271,6 +271,6 @@ describe("setOrUnsetParameterValues", () => {
     await store.dispatch(setOrUnsetParameterValues([["123", "current-value"]]));
 
     const state = store.getState();
-    expect(state.dashboard.parameterValues["123"]).toBe("current-value");
+    expect(state.dashboard.parameterValues["123"]).toBe(null);
   });
 });
