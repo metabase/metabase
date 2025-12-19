@@ -13,7 +13,7 @@ import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
+import { Box, Flex, Loader } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
@@ -53,12 +53,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
   if (!dashboard) {
-    return (
-      <Stack justify="center" align="center" gap="sm" mt="xl">
-        <Loader size="lg" />
-        <Text c="text-light" size="xl">{t`Loading…`}</Text>
-      </Stack>
-    );
+    return <Loader size="lg" label={t`Loading…`} />;
   }
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);

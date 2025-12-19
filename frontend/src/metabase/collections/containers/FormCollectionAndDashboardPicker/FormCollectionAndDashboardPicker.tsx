@@ -21,9 +21,9 @@ import {
 } from "metabase/common/components/Pickers/CollectionPicker";
 import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
-import Dashboard from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -46,7 +46,7 @@ function ItemName({
     return (
       <Flex align="center" gap="sm">
         <Icon name="dashboard" c="brand" />
-        <Dashboard.Name id={dashboardId} />
+        <Dashboards.Name id={dashboardId} />
       </Flex>
     );
   }
@@ -81,10 +81,10 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   zIndex?: number;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
   /**
-   * The type of item being saved. When set to a non-collection model,
-   * namespace root collections (like tenant root) will be disabled.
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
    */
-  savingModel?: "collection" | "dashboard" | "question" | "model";
+  savingModel?: "collection" | null;
 }
 
 export function FormCollectionAndDashboardPicker({
@@ -134,7 +134,7 @@ export function FormCollectionAndDashboardPicker({
 
   const selectedItem = useSelector(
     (state) =>
-      Dashboard.selectors.getObject(state, {
+      Dashboards.selectors.getObject(state, {
         entityId: dashboardIdInput.value,
       }) ||
       Collections.selectors.getObject(state, {

@@ -34,16 +34,15 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   formatQuery: true,
   variables: false,
   promptInput: false,
-  aiGeneration: false,
 };
 
 type QueryEditorBodyProps = {
   question: Question;
   proposedQuestion: Question | undefined;
   modalSnippet?:
-  | NativeQuerySnippet
-  | Partial<Omit<NativeQuerySnippet, "id">>
-  | null;
+    | NativeQuerySnippet
+    | Partial<Omit<NativeQuerySnippet, "id">>
+    | null;
   nativeEditorSelectedText?: string | null;
   readOnly?: boolean;
   canChangeDatabase?: boolean;
@@ -101,11 +100,15 @@ export function QueryEditorBody({
   onAcceptProposed,
   onRejectProposed,
   editorHeight: editorHeightOverride,
-  topBarInnerContent
+  topBarInnerContent,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
-  const editorHeight = useInitialEditorHeight(isNative, readOnly, editorHeightOverride);
+  const editorHeight = useInitialEditorHeight(
+    isNative,
+    readOnly,
+    editorHeightOverride,
+  );
 
   const dataPickerOptions = useMemo(
     () => ({ shouldDisableItem, shouldDisableDatabase, shouldShowLibrary }),
@@ -204,14 +207,17 @@ function getHeaderHeight(isNative: boolean) {
   return HEADER_HEIGHT;
 }
 
-function useInitialEditorHeight(isNative: boolean, readOnly?: boolean, editorHeightOverride?: number) {
+function useInitialEditorHeight(
+  isNative: boolean,
+  readOnly?: boolean,
+  editorHeightOverride?: number,
+) {
   const { height: windowHeight } = useWindowSize();
   const headerHeight = getHeaderHeight(isNative);
   const availableHeight = windowHeight - headerHeight;
 
   if (editorHeightOverride) {
     return Math.min(0.8 * (windowHeight - headerHeight), editorHeightOverride);
-
   }
 
   if (readOnly) {
@@ -225,5 +231,8 @@ function useInitialEditorHeight(isNative: boolean, readOnly?: boolean, editorHei
     PREVIEW_MAX_INITIAL_HEIGHT,
   );
 
-  return Math.min(availableHeight - previewInitialHeight, DEFAULT_EDITOR_HEIGHT);
+  return Math.min(
+    availableHeight - previewInitialHeight,
+    DEFAULT_EDITOR_HEIGHT,
+  );
 }

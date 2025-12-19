@@ -69,7 +69,8 @@
 (mr/def ::export-format
   "Schema for valid export formats for downloading query results."
   (into [:enum {:decode/json keyword
-                :api/regex   export-formats-regex}]
+               ;; :api/regex   export-formats-regex
+                }]
         export-formats))
 
 (mr/def ::result-metadata.column

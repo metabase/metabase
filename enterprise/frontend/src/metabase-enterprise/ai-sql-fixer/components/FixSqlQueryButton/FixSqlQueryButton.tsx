@@ -14,7 +14,7 @@ export function FixSqlQueryButton({
   rawSql,
   errorMessage,
 }: FixSqlQueryButtonProps) {
-  const { submitInput } = useMetabotAgent();
+  const { submitInput } = useMetabotAgent("omnibot");
 
   const handleClick = () => {
     trackQueryFixClicked();

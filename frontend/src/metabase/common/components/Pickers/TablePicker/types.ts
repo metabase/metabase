@@ -23,6 +23,7 @@ export type TableItem = {
   name: string;
   model: "table";
   database_id?: DatabaseId;
+  is_published?: boolean;
 };
 
 export type TablePickerValue = {

@@ -39,6 +39,7 @@
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
   disable-perms-cache
+  download-perms-level
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
@@ -67,6 +68,7 @@
   PermissionMapping
   visible-database-filter-select
   visible-table-filter-select
+  visible-table-filter-with-cte
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
   audit-namespace-clause

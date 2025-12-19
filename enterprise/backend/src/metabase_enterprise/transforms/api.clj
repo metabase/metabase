@@ -144,7 +144,8 @@
             [:source ::transforms.schema/transform-source]
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
   (check-feature-enabled! body)
@@ -152,7 +153,19 @@
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
-  (create-transform! body))
+  (let [transform (t2/with-transaction [_]
+                    (let [tag-ids (:tag_ids body)
+                          transform (t2/insert-returning-instance!
+                                     :model/Transform
+                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id])
+                                            :creator_id api/*current-user-id*))]
+                      ;; Add tag associations if provided
+                      (when (seq tag-ids)
+                        (transform.model/update-transform-tags! (:id transform) tag-ids))
+                      ;; Return with hydrated tag_ids
+                      (t2/hydrate transform :transform_tag_ids :creator)))]
+    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
+    transform))
 
 (defn get-transform
   "Get a specific transform."
@@ -261,7 +274,8 @@
             [:source {:optional true} ::transforms.schema/transform-source]
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (update-transform! id body))
 

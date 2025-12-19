@@ -13,12 +13,17 @@ import type {
 import { buildCollectionTree } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
 import type { DataPermissionValue } from "metabase/admin/permissions/types";
-import Collections, {
+import {
+  Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import Group from "metabase/entities/groups";
-import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
+import { Groups } from "metabase/entities/groups";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/lib/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
@@ -155,7 +160,7 @@ const getTenantCollectionPermission = (
 export const getTenantCollectionsPermissionEditor = createSelector(
   getTenantCollectionsPermissions,
   getTenantCollectionEntity,
-  Group.selectors.getList,
+  Groups.selectors.getList,
   (permissions, collection, groups): CollectionPermissionEditorType => {
     if (!permissions || collection == null) {
       return null;
@@ -171,7 +176,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
 
         const defaultGroup = _.find(
           groups,
-          PLUGIN_TENANTS.isExternalUsersGroup,
+          isTenantGroup ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
         );
 
         const defaultGroupPermission = defaultGroup

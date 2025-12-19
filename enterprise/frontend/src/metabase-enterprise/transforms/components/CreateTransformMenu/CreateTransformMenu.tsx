@@ -10,6 +10,7 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
 import { trackTransformCreate } from "../../analytics";
+import { CreateTransformCollectionModal } from "../CreateTransformCollectionModal";
 
 import { shouldDisableItem } from "./utils";
 
@@ -17,6 +18,10 @@ export const CreateTransformMenu = () => {
   const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
+  const [
+    isCollectionModalOpened,
+    { open: openCollectionModal, close: closeCollectionModal },
+  ] = useDisclosure();
 
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
@@ -71,13 +76,20 @@ export const CreateTransformMenu = () => {
                 </Menu.Item>
               )}
               <Menu.Item
-                leftSection={<Icon name="folder" />}
+                leftSection={<Icon name="insight" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "saved-question" });
                   openPicker();
                 }}
               >
                 {t`Copy of a saved question`}
+              </Menu.Item>
+              <Menu.Divider />
+              <Menu.Item
+                leftSection={<Icon name="folder" />}
+                onClick={openCollectionModal}
+              >
+                {t`New collection`}
               </Menu.Item>
             </>
           )}
@@ -97,6 +109,10 @@ export const CreateTransformMenu = () => {
           }}
           onClose={closePicker}
         />
+      )}
+
+      {isCollectionModalOpened && (
+        <CreateTransformCollectionModal onClose={closeCollectionModal} />
       )}
     </>
   );
