@@ -338,6 +338,22 @@ jobs:
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: Databricks (Multi-Catalog) Part 1
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :partition/total 2
+              :partition/index 0
+          - name: Databricks (Multi-Catalog) Part 2
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :partition/total 2
+              :partition/index 1
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -349,17 +365,16 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks (Multi-Catalog)
+    name: ${{ matrix.job.name }}
     steps:
     - uses: actions/checkout@v4
-    - name: Test Databricks driver with multi-catalog
+    - name: Test ${{ matrix.job.name }}
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-          :exclude-tags [:mb/transforms-python-test]
+        test-args: ${{ matrix.job.test-args }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
