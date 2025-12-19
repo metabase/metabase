@@ -51,11 +51,9 @@ import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/
 import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
-import {
-  type MetabotState,
-  metabotActions,
-} from "metabase-enterprise/metabot/state/reducer";
-import { getMetabot } from "metabase-enterprise/metabot/state/selectors";
+import type { MetabotStoreState } from "metabase-enterprise/metabot/state";
+import { metabotActions } from "metabase-enterprise/metabot/state/reducer";
+import { getMetabotState } from "metabase-enterprise/metabot/state/selectors";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type {
   DraftTransformSource,
@@ -86,7 +84,7 @@ type WorkspacePageProps = {
 };
 
 type MetabotConversationSnapshot = Pick<
-  MetabotState,
+  MetabotStoreState,
   | "messages"
   | "history"
   | "state"
@@ -199,7 +197,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   const [updateWorkspace] = useUpdateWorkspaceMutation();
 
   // Metabot
-  const metabotState = useSelector(getMetabot as any) as MetabotState;
+  const metabotState = useSelector(getMetabotState);
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
   const {
