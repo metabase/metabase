@@ -11,7 +11,6 @@
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
-   [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.api.common :as api]
@@ -781,9 +780,19 @@
    {:keys [commit-message]
     :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
-  (let [ws           (api/check-404 (t2/select-one [:model/Workspace :id :name] :id ws-id))
-        ws-transform (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
-        {:keys [error] :as result} (ws.merge/merge-transform! ws-transform ws nil api/*current-user-id* commit-message)]
+  (let [ws              (api/check-404 (t2/select-one [:model/Workspace :id :name] :id ws-id))
+        ws-transform    (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
+        ws-merge-id     (t2/insert-returning-pk!
+                         :model/WorkspaceMerge
+                         {:workspace_id   (:id ws)
+                          :workspace_name (:name ws)
+                          :commit_message commit-message
+                          :creator_id     api/*current-user-id*})
+        {:keys [error] :as result} (ws.merge/merge-transform! {:ws-transform       ws-transform
+                                                               :workspace          ws
+                                                               :workspace-merge-id ws-merge-id
+                                                               :merging-user-id    api/*current-user-id*
+                                                               :commit-message     commit-message})]
     (if error
       (throw (ex-info "Failed to merge transform."
                       (-> result

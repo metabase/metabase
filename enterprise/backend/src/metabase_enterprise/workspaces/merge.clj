@@ -29,25 +29,19 @@
   "Make the given transform in the Changeset public, i.e. create or update the relevant model/Transform entities.
    This should also clear it out from the Changset, as it no longer has any changes.
 
-   Creates a WorkspaceMerge and WorkspaceMergeTransform history record.
-   - workspace: The workspace map (must have :id and :name keys)
-   - workspace-merge-id: ID of parent WorkspaceMerge (nil to create a new one for single-transform merges)
-   - merging-user-id: user performing the merge
-   - commit-message: description of the merge"
-  [{:keys [global_id ref_id archived_at] :as ws-transform} workspace workspace-merge-id merging-user-id commit-message]
+   Creates a WorkspaceMergeTransform history record.
+   - :ws-transform - The workspace transform to merge
+   - :workspace - The workspace map (must have :id and :name keys)
+   - :workspace-merge-id - ID of parent WorkspaceMerge (caller must create this)
+   - :merging-user-id - user performing the merge
+   - :commit-message - description of the merge"
+  [{:keys [ws-transform workspace workspace-merge-id merging-user-id commit-message]}]
   ;; Problems this may run into:
   ;; It will recalculate and validate the dag greedily as it inserts each items, and this might fail of temporary conflicts.
   ;; Some of these conflicts could be solved by ordering things smartly, but in the general case (e.g. reversing a
   ;; chain) this will not be possible - we would need to defer all validation and calculation, which is a bit scary.
   ;; Let's just focus on the happy path for now though, as this is a fundamental problem and unrelated to the design.
-
-  (let [ws-merge-id    (or workspace-merge-id
-                           (t2/insert-returning-pk!
-                            :model/WorkspaceMerge
-                            {:workspace_id   (:id workspace)
-                             :workspace_name (:name workspace)
-                             :commit_message commit-message
-                             :creator_id     merging-user-id}))
+  (let [{:keys [global_id ref_id archived_at]} ws-transform
         {:keys [error] :as result}
         (cond (and global_id archived_at)
               (merge
@@ -84,7 +78,7 @@
       (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
       (create-merge-transform-history!
        (:op result)
-       {:workspace_merge_id ws-merge-id
+       {:workspace_merge_id workspace-merge-id
         :workspace_id       (:id workspace)
         :workspace_name     (:name workspace)
         :transform_id       (:global_id result)
@@ -114,7 +108,11 @@
                         :creator_id     merging-user-id})
           result     (reduce
                       (fn [acc ws-transform]
-                        (let [{:keys [error] :as result} (merge-transform! ws-transform workspace ws-merge-id merging-user-id commit-message)]
+                        (let [{:keys [error] :as result} (merge-transform! {:ws-transform      ws-transform
+                                                                            :workspace         workspace
+                                                                            :workspace-merge-id ws-merge-id
+                                                                            :merging-user-id   merging-user-id
+                                                                            :commit-message    commit-message})]
                           (if error
                             (reduced (-> acc
                                          (update :errors conj result)
