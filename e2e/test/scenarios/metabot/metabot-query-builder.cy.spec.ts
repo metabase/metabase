@@ -33,7 +33,7 @@ describe("Metabot Query Builder", () => {
 
       // visiting /question/ask should redirect to an empty notebook query
       cy.visit("/question/ask");
-      cy.url().should("include", "/question/notebook");
+      cy.url().should("include", "/question#");
     });
   });
 

@@ -5,7 +5,7 @@ const isMac = Cypress.platform === "darwin";
 const metaKey = isMac ? "Meta" : "Control";
 
 const toggleInlineSQLPrompt = () =>
-  H.NativeEditor.get().realPress([metaKey, "Shift", "i"]);
+  H.NativeEditor.get().realPress(["Shift", metaKey, "i"]);
 
 const inlinePrompt = () => cy.findByTestId("metabot-inline-sql-prompt");
 const inlinePromptInput = () =>
