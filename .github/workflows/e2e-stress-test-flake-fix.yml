@@ -57,18 +57,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
+        # using heredoc (EOF) to safely handle special characters (parentheses, quotes) in inputs
         run: |
-          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `test_type` (inferred): ${{ needs.determine-test-type.outputs.type }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
-          echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
-          echo '- `enable_network_throttling`: "${{ inputs.enable_network_throttling }}"' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          **Inputs:**
+
+          - `branch`: ${{ github.ref_name }}
+          - `spec`: ${{ inputs.spec }}
+          - `test_type` (inferred): ${{ needs.determine-test-type.outputs.type }}
+          - `burn_in`: ${{ inputs.burn_in }}
+          - `grep`: "${{ inputs.grep }}"
+          - `qa_db`: "${{ inputs.qa_db }}"
+          - `enable_network_throttling`: "${{ inputs.enable_network_throttling }}"
+
+          triggered by: @${{ github.event.sender.login }}
+          EOF
 
   stress-test-flake-fix:
     needs: [determine-test-type]
@@ -129,6 +132,8 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js start
 
       - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js snapshot \
             --env grepTags="${{inputs.qa_db && '' || '-@external'}}"
