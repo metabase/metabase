@@ -12,11 +12,10 @@ const _NotebookCell = ({ className, color, ...props }: FlexProps) => {
     <Flex
       className={cx(S.NotebookCell, className)}
       p={props.p ?? rem("14px")}
-      c={color}
       {...props}
       style={
         {
-          "--notebook-cell-color": color,
+          "--notebook-cell-color": `var(--mb-color-${color})`,
         } as CSSProperties
       }
     />
@@ -81,7 +80,7 @@ export const NotebookCellItem = forwardRef<
       )}
       style={
         {
-          "--notebook-cell-item-container-color": color,
+          "--notebook-cell-item-container-color": `var(--mb-color-${color})`,
         } as CSSProperties
       }
       {...restProps}
@@ -102,7 +101,7 @@ export const NotebookCellItem = forwardRef<
           {
             padding: CONTAINER_PADDING,
             ...containerStyle,
-            "--notebook-cell-item-content-container-color": color,
+            "--notebook-cell-item-content-container-color": `var(--mb-color-${color})`,
           } as CSSProperties
         }
       >
@@ -123,7 +122,7 @@ export const NotebookCellItem = forwardRef<
             {
               padding: CONTAINER_PADDING,
               ...rightContainerStyle,
-              "--notebook-cell-item-content-container-color": color,
+              "--notebook-cell-item-content-container-color": `var(--mb-color-${color})`,
             } as CSSProperties
           }
         >

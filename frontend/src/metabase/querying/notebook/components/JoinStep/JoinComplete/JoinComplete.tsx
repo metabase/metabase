@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Flex, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -22,7 +23,7 @@ interface JoinCompleteProps {
   stageIndex: number;
   join: Lib.Join;
   joinPosition: number;
-  color: string;
+  color: ColorName;
   isReadOnly: boolean;
   onJoinChange: (newJoin: Lib.Join) => void;
   onQueryChange: (newQuery: Lib.Query) => void;
