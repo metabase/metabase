@@ -115,6 +115,7 @@
     :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
     :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
     :model/WorkspaceOutput                   metabase-enterprise.workspaces.models.workspace-output
+    :model/WorkspaceOutputExternal           metabase-enterprise.workspaces.models.workspace-output-external
     :model/WorkspaceTransform                metabase-enterprise.workspaces.models.workspace-transform})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
