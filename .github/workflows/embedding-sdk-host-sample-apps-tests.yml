@@ -190,6 +190,9 @@ jobs:
       - name: Prune build cache
         run: docker builder prune -af
 
+      - name: Log free disk space
+        run: df -h /
+
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
