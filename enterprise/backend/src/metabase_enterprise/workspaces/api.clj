@@ -239,10 +239,9 @@
 (defn- first-supported-database-id
   "Return the ID of the first database that supports workspaces, or nil if none."
   []
-  (some->> (t2/select :model/Database {:order-by [:name]})
-           (filter #(driver.u/supports? (:engine %) :workspace %))
-           first
-           :id))
+  (:id
+   (u/seek #(driver.u/supports? (:engine %) :workspace %)
+           (t2/select :model/Database {:order-by [:name]}))))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace
@@ -257,14 +256,14 @@
     (check-transforms-enabled! database_id))
 
   ;; If no database_id provided, use first supported DB as provisional default (uninitialized workspace)
-  (let [provisional (not database_id)
-        database-id (or database_id
-                        (api/check-400 (first-supported-database-id)
-                                       (tru "No supported databases configured. Please add a database that supports workspaces.")))]
+  (let [provisional? (not database_id)
+        database-id  (or database_id
+                         (api/check-400 (first-supported-database-id)
+                                        (tru "No supported databases configured. Please add a database that supports workspaces.")))]
     (ws->response (ws.common/create-workspace! api/*current-user-id*
                                                (assoc body
                                                       :database_id database-id
-                                                      :provisional provisional)))))
+                                                      :provisional? provisional?)))))
 
 (defn- db-unsupported-reason [db]
   (when (not (driver.u/supports? (:engine db) :workspace db))
@@ -310,8 +309,8 @@
    {:keys [name database_id]} :- [:map {:closed true}
                                   [:name {:optional true} [:string {:min 1}]]
                                   [:database_id {:optional true} ::ws.t/appdb-id]]]
-  (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
-                    (api/check-400 (nil? (:archived_at <>)) "Cannot update an archived workspace"))
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+        _         (api/check-400 (nil? (:archived_at workspace)) "Cannot update an archived workspace")
         data      (cond-> {}
                     database_id (-> (u/prog1
                                       (api/check-400 (= :uninitialized (:status workspace))
@@ -319,9 +318,12 @@
                                       (check-transforms-enabled! database_id))
                                     (assoc :database_id database_id))
                     name        (assoc :name name))]
-    (t2/update! :model/Workspace id data)
-    (-> (t2/select-one :model/Workspace :id id)
-        ws->response)))
+    (ws->response
+     (if (seq data)
+       (do
+         (t2/update! :model/Workspace id data)
+         (t2/select-one :model/Workspace :id id))
+       workspace))))
 
 (api.macros/defendpoint :post "/:id/archive" :- Workspace
   "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities."

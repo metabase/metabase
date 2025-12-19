@@ -107,6 +107,9 @@
    Updates database_id (if different from provisional), sets schema, creates isolation resources async,
    and transitions to :pending status. Returns the updated workspace with schema set."
   [workspace database-id]
+  ;; TODO (Sanya 2025-12-19) -- this can race really badly, we ought to add some locking here.
+  ;; But our existing cluster-wide locking can only take non-parametrized keys and does not delete entries, so with
+  ;; ids unbounded it's not very suitable.
   (let [database (t2/select-one :model/Database :id database-id)
         schema   (ws.u/isolation-namespace-name workspace)]
     (t2/update! :model/Workspace (:id workspace) {:database_id database-id
@@ -139,10 +142,10 @@
    workspace and kicks off async setup."
   [creator-id {ws-name-maybe :name
                db-id         :database_id
-               provisional   :provisional}]
+               provisional?  :provisional?}]
   (let [ws-name (or ws-name-maybe (str (random-uuid)))
         ws      (create-uninitialized-workspace! creator-id db-id ws-name 5)]
-    (if provisional
+    (if provisional?
       ws
       (initialize-workspace! ws db-id))))
 
@@ -155,8 +158,7 @@
   (let [workspace (if (= :uninitialized (:status workspace))
                     (let [target-db-id (get-in body [:target :database])]
                       (api/check-400 target-db-id "Transform must have a target database")
-                      (u/prog1 (initialize-workspace! workspace target-db-id)
-                        (assert (= :pending (:status <>)))))
+                      (initialize-workspace! workspace target-db-id))
                     workspace)]
     (t2/with-transaction [_]
       (let [workspace-id    (:id workspace)
