@@ -1438,7 +1438,7 @@
 (deftest enabled-test
   (let [url "ee/workspace/enabled"]
     (testing "Requires admin"
-      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 200 url)))
+      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 url)))
       (is (= {:supported true} (mt/user-http-request :crowberto :get 200 url))))
     (mt/with-temp [:model/Database {db-1 :id} {:name "Y", :engine "postgres"}
                    ;; For some reason, using a real but unsupported value like "databricks" is returning support :-C
