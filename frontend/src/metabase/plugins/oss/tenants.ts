@@ -1,6 +1,7 @@
 import type React from "react";
 
 import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker/types";
+import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type {
   Collection,
   CollectionId,
@@ -36,7 +37,10 @@ const getDefaultPluginTenants = () => ({
   ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
     null as React.ReactElement | null,
   TenantGroupHintIcon: PluginPlaceholder,
-  MainNavSharedCollections: PluginPlaceholder,
+  MainNavSharedCollections: PluginPlaceholder as React.ComponentType<{
+    canCreateSharedCollection: boolean;
+    sharedTenantCollections: Collection[] | undefined;
+  }>,
   TenantCollectionItemList: (_props: CollectionItemListProps) =>
     null as React.ReactElement | null,
   TenantSpecificCollectionsItemList: (_props: CollectionItemListProps) =>
@@ -62,11 +66,22 @@ const getDefaultPluginTenants = () => ({
     path: CollectionId[];
     can_write: boolean;
   } | null,
+  getFlattenedCollectionsForNavbar: () => [],
+  useTenantMainNavbarData: () => ({
+    canCreateSharedCollection: false,
+    showExternalCollectionsSection: false,
+    sharedTenantCollections: [],
+  }),
 });
 
 export const PLUGIN_TENANTS: {
   isEnabled: boolean;
   userStrategyRoute: React.ReactElement | null;
+  useTenantMainNavbarData: () => {
+    canCreateSharedCollection: boolean;
+    showExternalCollectionsSection: boolean;
+    sharedTenantCollections: Collection[] | undefined;
+  };
   tenantsRoutes: React.ReactElement | null;
   EditUserStrategySettingsButton: React.ComponentType;
   FormTenantWidget: (props: any) => React.ReactElement | null;
@@ -80,7 +95,10 @@ export const PLUGIN_TENANTS: {
     user: User;
   }) => React.ReactElement | null;
   TenantGroupHintIcon: React.ComponentType;
-  MainNavSharedCollections: React.ComponentType;
+  MainNavSharedCollections: React.ComponentType<{
+    canCreateSharedCollection: boolean;
+    sharedTenantCollections: Collection[] | undefined;
+  }>;
   TenantCollectionItemList: (
     props: CollectionItemListProps,
   ) => React.ReactElement | null;
@@ -107,6 +125,11 @@ export const PLUGIN_TENANTS: {
     path: CollectionId[];
     can_write: boolean;
   } | null;
+  getFlattenedCollectionsForNavbar: (args: {
+    currentUser: User | null;
+    sharedTenantCollections: Collection[] | undefined;
+    regularCollections: CollectionTreeItem[];
+  }) => CollectionTreeItem[];
 } = getDefaultPluginTenants();
 
 /**

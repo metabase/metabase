@@ -23,6 +23,7 @@ import Collections, {
 import Databases from "metabase/entities/databases";
 import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getUser,
   getUserCanWriteToCollections,
@@ -109,6 +110,12 @@ function MainNavbarContainer({
     "exclude-archived": true,
     "include-library": true,
   });
+
+  const {
+    canCreateSharedCollection,
+    showExternalCollectionsSection,
+    sharedTenantCollections,
+  } = PLUGIN_TENANTS.useTenantMainNavbarData();
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -204,6 +211,9 @@ function MainNavbarContainer({
         handleCreateNewCollection={onCreateNewCollection}
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
+        sharedTenantCollections={sharedTenantCollections}
+        canCreateSharedCollection={canCreateSharedCollection}
+        showExternalCollectionsSection={showExternalCollectionsSection}
       />
 
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}

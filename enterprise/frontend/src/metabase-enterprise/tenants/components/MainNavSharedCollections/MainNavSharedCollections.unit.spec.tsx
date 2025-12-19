@@ -40,9 +40,15 @@ const setup = ({
     }),
   });
 
-  renderWithProviders(<MainNavSharedCollections />, {
-    storeInitialState: createMockState({ settings, currentUser }),
-  });
+  renderWithProviders(
+    <MainNavSharedCollections
+      canCreateSharedCollection={canWriteToSharedCollectionRoot}
+      sharedTenantCollections={tenantCollections}
+    />,
+    {
+      storeInitialState: createMockState({ settings, currentUser }),
+    },
+  );
 };
 
 describe("MainNavSharedCollections > create shared tenant collection button", () => {
@@ -131,9 +137,15 @@ describe("MainNavSharedCollections > section visibility", () => {
       return 404;
     });
 
-    renderWithProviders(<MainNavSharedCollections />, {
-      storeInitialState: createMockState({ settings, currentUser }),
-    });
+    renderWithProviders(
+      <MainNavSharedCollections
+        canCreateSharedCollection={false}
+        sharedTenantCollections={[]}
+      />,
+      {
+        storeInitialState: createMockState({ settings, currentUser }),
+      },
+    );
 
     expect(screen.queryByText("External collections")).not.toBeInTheDocument();
   });
