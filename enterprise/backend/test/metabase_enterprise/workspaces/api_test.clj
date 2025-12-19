@@ -13,6 +13,7 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
@@ -775,7 +776,7 @@
               ;; get the tables
               tables-result (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/table"))]
           (testing "/tables returns expected results"
-            (is (=? {:inputs  [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
+            (is (=? {:inputs  [{:db_id (mt/id), :schema "public", :table "orders", :table_id int?}]
                      :outputs [{:db_id (mt/id)
                                 :global {:schema "public", :table orig-name}
                                 :isolated {:transform_id ref-id}}]}
@@ -808,7 +809,8 @@
                                              :schema (-> ws-transform :target :schema)
                                              :name (-> ws-transform :target :name))]
           (testing "/table returns expected results"
-            (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
+            ;; Schema is normalized to driver's default schema ("public" for Postgres) when stored
+            (is (=? {:inputs [{:db_id (mt/id), :schema "public", :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
                        :global   {:schema   orig-schema
@@ -822,7 +824,7 @@
           (testing "and after we run the transform, id for isolated table appears"
             (is (=? {:status "succeeded"}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "transform" ref-id "run"))))
-            (is (=? {:inputs [{:db_id (mt/id), :schema nil, :table "orders", :table_id int?}]
+            (is (=? {:inputs [{:db_id (mt/id), :schema "public", :table "orders", :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
                        :global   {:schema   orig-schema
@@ -1430,13 +1432,14 @@
 
         ;; Cheeky dag test, that really belongs in dag-test
         ;; TODO move to dag-test
+        ;; Schemas are normalized to driver's default (case varies by driver)
         (is (=? {:dependencies {{:id (:ref_id tx), :node-type :workspace-transform}
-                                [{:id {:db (mt/id) :schema nil, :table "venues", :id int?}, :node-type :table}]},
+                                [{:id {:db (mt/id) :schema string?, :table string?, :id int?}, :node-type :table}]},
                  :entities     [{:id (:ref_id tx), :node-type :workspace-transform}],
-                 :inputs       [{:db (mt/id), :id int?, :schema nil, :table "venues"}],
+                 :inputs       [{:db (mt/id), :id int?, :schema string?, :table string?}],
                  :outputs      [{:db     (mt/id),
                                  :id     nil,
-                                 :schema nil,
+                                 :schema string?,
                                  :table  #"test_table_.*"}]}
                 (ws.dag/path-induced-subgraph (:id ws) [{:entity-type :transform, :id (:ref_id tx)}])))
 
@@ -1444,13 +1447,14 @@
           ;; TODO not sure what we want to pass for "data", maybe leave it out for now?
           ;;      i guess stuff like "name" is useful for transforms...
           ;; TODO fix dependents count for inputs
-          (is (= {:nodes [{:type "input-table", :id (str (mt/id) "--venues"), :data {:db (mt/id), :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
-                          {:type "workspace-transform", :id (:ref_id tx), :data {:ref_id (:ref_id tx), :name "Transform in WS1"}, :dependents_count {}}],
-                  :edges [{:from_entity_type "input-table"
-                           :from_entity_id   (str (mt/id) "--venues")
-                           :to_entity_type   "workspace-transform"
-                           :to_entity_id     (:ref_id tx)}]}
-                 (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph")))))))))
+          ;; Schema/table names vary by driver (H2 uppercase, Postgres lowercase)
+          (is (=? {:nodes [{:type "input-table", :id string?, :data {:db (mt/id), :schema string?, :table string?, :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
+                           {:type "workspace-transform", :id (:ref_id tx), :data {:ref_id (:ref_id tx), :name "Transform in WS1"}, :dependents_count {}}],
+                   :edges [{:from_entity_type "input-table"
+                            :from_entity_id   string?
+                            :to_entity_type   "workspace-transform"
+                            :to_entity_id     (:ref_id tx)}]}
+                  (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph")))))))))
 
 ;; TODO having trouble with test setup, but manually verified this stuff is working in dev environment :-(
 ;; This should be tested using a non-trivial graph:
@@ -1467,14 +1471,16 @@
       (mt/with-temp [:model/WorkspaceTransform tx-1 {:name "A Tx in WS1", :workspace_id (:id ws)}
                      :model/Transform          tx-2 {:name "An external Tx"}
                      :model/WorkspaceTransform tx-3 {:name "Another Tx in WS1", :workspace_id (:id ws)}]
-        (let [driver      (t2/select-one-fn :engine [:model/Database :engine] (:database_id ws))
-              tx-1-output (:name (:target tx-1))
-              tx-2-output (sql.normalize/normalize-name driver (:name (:target tx-2)))
-              tx-1-input  (str (mt/id) "--venues")
+        (let [driver         (t2/select-one-fn :engine [:model/Database :engine] (:database_id ws))
+              default-schema (driver.sql/default-schema driver)
+              tx-1-output    (:name (:target tx-1))
+              tx-2-output    (sql.normalize/normalize-name driver (:name (:target tx-2)))
+              venues-table   (sql.normalize/normalize-name driver "venues")
+              tx-1-input     (str (mt/id) "-" default-schema "-" venues-table)
               ;; Reference for an input table we shouldn't actually have (it should be shadowed by t2)
-              tx-3-input  (str (mt/id) "--" tx-2-output)
-              t1-ref      (:ref_id tx-1)
-              t3-ref      (:ref_id tx-3)]
+              tx-3-input     (str (mt/id) "-" default-schema "-" tx-2-output)
+              t1-ref         (:ref_id tx-1)
+              t3-ref         (:ref_id tx-3)]
 
           ;; Resubmit transform to trigger analysis
           (mt/user-http-request :crowberto :put 200 (ws-url (:id ws) "transform" t1-ref)
@@ -1512,11 +1518,11 @@
 
           ;; TODO investigate why the enclosed transform is not being included, could be bad setup
           (testing "returns enclosed external transform too"
-            (is (= {:nodes #{{:type "input-table", :id tx-1-input, :data {:db (mt/id), :schema nil, :table "venues", :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
+            (is (= {:nodes #{{:type "input-table", :id tx-1-input, :data {:db (mt/id), :schema default-schema, :table venues-table, :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
                              {:type "workspace-transform", :id t1-ref, :data {:ref_id t1-ref, :name "A Tx in WS1"}, :dependents_count {} #_{:external-transform 1}}
                              #_{:type "external-transform", :id (:id tx-2), :data {:id (:id tx-1), :name "An external Tx"}, :dependents_count {:workspace-transform 1}}
                              ;; We won't have this input table when we fix finding the enclosed global transform.
-                             {:type "input-table", :id tx-3-input, :data {:db (mt/id), :schema nil, :table tx-2-output, :id nil}, :dependents_count {:workspace-transform 1}}
+                             {:type "input-table", :id tx-3-input, :data {:db (mt/id), :schema default-schema, :table tx-2-output, :id nil}, :dependents_count {:workspace-transform 1}}
                              {:type "workspace-transform", :id t3-ref, :data {:ref_id t3-ref, :name "Another Tx in WS1"}, :dependents_count {}}},
                     :edges #{{:from_entity_type "input-table"
                               :from_entity_id   tx-1-input
