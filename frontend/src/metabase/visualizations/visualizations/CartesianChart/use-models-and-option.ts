@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -60,38 +60,45 @@ export function useModelsAndOption(
     ? timelineEvents.length !== 0
     : false;
 
-  const chartModel = useMemo(() => {
-    let getModel;
+  const { chartModel, modelError } = useMemo(() => {
+    try {
+      let getModel;
 
-    settings["graph.x_axis.title_text"] = tc(
-      settings["graph.x_axis.title_text"],
-    );
-    settings["graph.y_axis.title_text"] = tc(
-      settings["graph.y_axis.title_text"],
-    );
-
-    getModel = getCartesianChartModel;
-    if (card.display === "waterfall") {
-      getModel = getWaterfallChartModel;
-    } else if (card.display === "scatter") {
-      getModel = getScatterPlotModel;
-    }
-
-    const model = getModel(
-      seriesToRender,
-      settings,
-      Array.from(hiddenSeries),
-      renderingContext,
-      showWarning,
-      gridSize,
-    );
-
-    if (model.dimensionModel.column) {
-      model.dimensionModel.column.display_name = tc(
-        model.dimensionModel.column.display_name,
+      settings["graph.x_axis.title_text"] = tc(
+        settings["graph.x_axis.title_text"],
       );
+      settings["graph.y_axis.title_text"] = tc(
+        settings["graph.y_axis.title_text"],
+      );
+
+      getModel = getCartesianChartModel;
+      if (card.display === "waterfall") {
+        getModel = getWaterfallChartModel;
+      } else if (card.display === "scatter") {
+        getModel = getScatterPlotModel;
+      }
+
+      const model = getModel(
+        seriesToRender,
+        settings,
+        Array.from(hiddenSeries),
+        renderingContext,
+        showWarning,
+        gridSize,
+      );
+
+      if (model.dimensionModel.column) {
+        model.dimensionModel.column.display_name = tc(
+          model.dimensionModel.column.display_name,
+        );
+      }
+
+      return { chartModel: model, modelError: null };
+    } catch (error) {
+      // Return the error to be thrown after rendering completes
+      // This prevents React from logging it during render
+      return { chartModel: null as any, modelError: error as Error };
     }
-    return model;
   }, [
     card.display,
     seriesToRender,
@@ -102,6 +109,13 @@ export function useModelsAndOption(
     gridSize,
     tc,
   ]);
+
+  // Throw the error after rendering to avoid React logging it during render
+  useEffect(() => {
+    if (modelError) {
+      throw modelError;
+    }
+  }, [modelError]);
 
   const chartMeasurements = useMemo(
     () =>
