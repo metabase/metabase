@@ -3,7 +3,7 @@
   z-index: 4;
 }
 
-.AppBarRoot[data-with-border='true'] {
+.AppBarRoot[data-with-border="true"] {
   border-bottom: 1px solid var(--mb-color-border);
 }
 
