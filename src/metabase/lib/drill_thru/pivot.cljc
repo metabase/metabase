@@ -173,9 +173,11 @@
   (get-in drill-thru [:pivots pivot-type]))
 
 (defn- breakouts->filters [query stage-number {:keys [column value] :as _dimension}]
-  (let [resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
+  (let [col-for-stage   (or (lib.underlying/top-level-column query column)
+                            column)
+        resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number col-for-stage)]
     (-> query
-        (lib.breakout/remove-existing-breakouts-for-column stage-number column)
+        (lib.breakout/remove-existing-breakouts-for-column stage-number col-for-stage)
         (lib.filter/filter stage-number (lib.filter/= resolved-column value)))))
 
 ;; Pivot drills are in play when clicking an aggregation cell. Pivoting is applied by:
