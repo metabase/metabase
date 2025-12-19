@@ -138,19 +138,47 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     it("should create a measure with with a column from the main data source", () => {
-      cy.log("create a new measure");
-      H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
-      MeasureEditor.getNameInput().type(MEASURE_NAME);
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Sum of ...").click();
-      H.popover().findByText("Total").click();
-      MeasureEditor.getSaveButton().click();
-      H.undoToast().should("contain.text", "Measure created");
-
-      cy.log("verify measure works in query builder");
-      verifyMeasureInQueryBuilder({
+      verifyNewMeasure({
         tableId: ORDERS_ID,
         scalarValue: "1,510,621.68",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().within(() => {
+            cy.findByText("Sum of ...").click();
+            cy.findByText("Total").click();
+          });
+        },
+      });
+    });
+
+    it("should create a measure with a column from an implicit join", () => {
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "55.69",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().within(() => {
+            cy.findByText("Average of ...").click();
+            cy.findByText("Product").click();
+            cy.findByText("Price").click();
+          });
+        },
+      });
+    });
+
+    it("should create a measure with a custom aggregation expression", () => {
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "18,867",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type(
+            "DistinctIf([Product → ID], [ID] > 1) + DistinctIf([ID], [Product → ID] > 1)",
+          );
+          H.CustomExpressionEditor.nameInput().type("Custom");
+          H.popover().button("Done").click();
+        },
       });
     });
   });
