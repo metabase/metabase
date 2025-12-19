@@ -113,16 +113,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          docker-images: true
-          swap-storage: true
+#      - name: Free Disk Space (Ubuntu)
+#        uses: jlumbroso/free-disk-space@main
+#        with:
+#          tool-cache: false
+#          android: true
+#          dotnet: true
+#          haskell: true
+#          large-packages: false
+#          docker-images: true
+#          swap-storage: true
 
       # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
       - name: Set up Docker Compose
