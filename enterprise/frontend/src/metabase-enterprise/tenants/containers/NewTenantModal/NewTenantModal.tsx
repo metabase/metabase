@@ -1,3 +1,5 @@
+import type { Location } from "history";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -10,12 +12,19 @@ import { TenantForm } from "../../components/TenantForm";
 
 interface NewUserModalProps {
   onClose: () => void;
+  location?: Location;
 }
 
-export const NewTenantModal = ({ onClose }: NewUserModalProps) => {
+export const NewTenantModal = ({ onClose, location }: NewUserModalProps) => {
   const dispatch = useDispatch();
 
   const [createTenant] = useCreateTenantMutation();
+
+  const isOnboarding = useMemo(() => {
+    const searchParams = new URLSearchParams(location?.search);
+
+    return searchParams.get("onboarding") === "true";
+  }, [location?.search]);
 
   const handleSubmit = async (vals: Partial<Tenant>) => {
     await createTenant({
@@ -28,10 +37,15 @@ export const NewTenantModal = ({ onClose }: NewUserModalProps) => {
   };
 
   return (
-    <Modal opened title={t`New tenant`} padding="xl" onClose={onClose}>
+    <Modal
+      opened
+      title={isOnboarding ? t`Set up your first tenant` : t`New tenant`}
+      padding="xl"
+      onClose={onClose}
+    >
       <TenantForm
         initialValues={{}}
-        submitText={t`Create`}
+        submitText={t`Create tenant`}
         onCancel={onClose}
         onSubmit={handleSubmit}
       />

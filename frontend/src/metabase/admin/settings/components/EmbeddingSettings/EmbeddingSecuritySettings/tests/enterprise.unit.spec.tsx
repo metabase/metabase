@@ -20,10 +20,10 @@ const setup = async ({
       }),
     showSdkEmbedTerms,
     isEmbeddingSdkEnabled,
-    hasEnterprisePlugins: isEmbeddingSdkEnabled,
     tokenFeatures: {
       embedding_sdk: isEmbeddingSdkEnabled,
     },
+    enterprisePlugins: isEmbeddingSdkEnabled ? ["embedding-sdk"] : [],
   });
 
   expect(await screen.findByText("Security")).toBeInTheDocument();

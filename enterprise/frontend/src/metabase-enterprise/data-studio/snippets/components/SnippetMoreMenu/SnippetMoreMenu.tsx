@@ -68,7 +68,7 @@ function SnippetMenu({ onOpenModal }: SnippetMenuProps) {
   return (
     <Menu>
       <Menu.Target>
-        <ActionIcon>
+        <ActionIcon size="sm">
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>

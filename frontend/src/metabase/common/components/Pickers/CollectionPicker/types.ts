@@ -87,10 +87,10 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
   showRootCollection?: boolean;
   showLibrary?: boolean;
   /**
-   * The type of item being saved. When set to a non-collection model,
-   * namespace root collections (like tenant root) will be disabled.
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
    */
-  savingModel?: "collection" | "dashboard" | "question" | "model";
+  savingModel?: "collection" | null;
   /**
    * Restricts the picker to only show collections in a specific namespace.
    * - When set to "shared-tenant-collection", only the tenant root is shown.

@@ -6,6 +6,7 @@ import {
   getDisabledReasonForSavingModel,
   getNamespaceForItem,
   getStateFromIdPath,
+  isItemInCollectionOrItsDescendants,
   isNamespaceRoot,
   shouldDisableItemForSavingModel,
 } from "./utils";
@@ -404,16 +405,9 @@ describe("shouldDisableItemForSavingModel", () => {
     location: "/tenant/",
   };
 
-  it("should return true for tenant root when saving a dashboard", () => {
-    expect(shouldDisableItemForSavingModel(tenantRoot, "dashboard")).toBe(true);
-  });
-
-  it("should return true for tenant root when saving a question", () => {
-    expect(shouldDisableItemForSavingModel(tenantRoot, "question")).toBe(true);
-  });
-
-  it("should return true for tenant root when saving a model", () => {
-    expect(shouldDisableItemForSavingModel(tenantRoot, "model")).toBe(true);
+  it("should return true for tenant root when savingModel is not 'collection'", () => {
+    expect(shouldDisableItemForSavingModel(tenantRoot, undefined)).toBe(true);
+    expect(shouldDisableItemForSavingModel(tenantRoot, null)).toBe(true);
   });
 
   it("should return false for tenant root when saving a collection", () => {
@@ -422,11 +416,11 @@ describe("shouldDisableItemForSavingModel", () => {
     );
   });
 
-  it("should return false for regular collections when saving any item type", () => {
-    expect(
-      shouldDisableItemForSavingModel(regularCollection, "dashboard"),
-    ).toBe(false);
-    expect(shouldDisableItemForSavingModel(regularCollection, "question")).toBe(
+  it("should return false for regular collections regardless of savingModel", () => {
+    expect(shouldDisableItemForSavingModel(regularCollection, undefined)).toBe(
+      false,
+    );
+    expect(shouldDisableItemForSavingModel(regularCollection, null)).toBe(
       false,
     );
     expect(
@@ -434,18 +428,11 @@ describe("shouldDisableItemForSavingModel", () => {
     ).toBe(false);
   });
 
-  it("should return false for tenant sub-collections when saving any item type", () => {
+  it("should return false for tenant sub-collections regardless of savingModel", () => {
     expect(
-      shouldDisableItemForSavingModel(tenantSubCollection, "dashboard"),
+      shouldDisableItemForSavingModel(tenantSubCollection, undefined),
     ).toBe(false);
-    expect(
-      shouldDisableItemForSavingModel(tenantSubCollection, "question"),
-    ).toBe(false);
-  });
-
-  it("should return false when savingModel is not specified", () => {
-    expect(shouldDisableItemForSavingModel(tenantRoot, undefined)).toBe(false);
-    expect(shouldDisableItemForSavingModel(regularCollection, undefined)).toBe(
+    expect(shouldDisableItemForSavingModel(tenantSubCollection, null)).toBe(
       false,
     );
   });
@@ -466,8 +453,8 @@ describe("getDisabledReasonForSavingModel", () => {
     location: "/",
   };
 
-  it("should return reason for disabled tenant root", () => {
-    const reason = getDisabledReasonForSavingModel(tenantRoot, "dashboard");
+  it("should return reason for disabled tenant root when savingModel is not 'collection'", () => {
+    const reason = getDisabledReasonForSavingModel(tenantRoot, undefined);
 
     expect(reason).toBeDefined();
     expect(reason).toContain("tenant root collection");
@@ -475,13 +462,10 @@ describe("getDisabledReasonForSavingModel", () => {
 
   it("should return undefined for enabled items", () => {
     expect(
-      getDisabledReasonForSavingModel(regularCollection, "dashboard"),
+      getDisabledReasonForSavingModel(regularCollection, undefined),
     ).toBeUndefined();
     expect(
       getDisabledReasonForSavingModel(tenantRoot, "collection"),
-    ).toBeUndefined();
-    expect(
-      getDisabledReasonForSavingModel(tenantRoot, undefined),
     ).toBeUndefined();
   });
 });
@@ -540,5 +524,85 @@ describe("getNamespaceForItem", () => {
     };
 
     expect(getNamespaceForItem(item)).toBeUndefined();
+  });
+});
+
+describe("isItemInCollectionOrItsDescendants", () => {
+  it("returns false when collectionId is undefined", () => {
+    const item = {
+      id: 1,
+      effective_location: "/2/3",
+      location: "/2/3",
+      model: "collection" as const,
+      name: "Test",
+    };
+    expect(isItemInCollectionOrItsDescendants(item, undefined)).toBe(false);
+  });
+
+  it("returns true when item.id matches collectionId", () => {
+    const item = {
+      id: 5,
+      effective_location: "/2/3",
+      location: "/2/3",
+      model: "collection" as const,
+      name: "Test",
+    };
+    expect(isItemInCollectionOrItsDescendants(item, 5)).toBe(true);
+  });
+
+  it("returns false when item.id does not match and is not a descendant", () => {
+    const item = {
+      id: 10,
+      effective_location: "/2/3",
+      location: "/2/3",
+      model: "collection" as const,
+      name: "Test",
+    };
+    expect(isItemInCollectionOrItsDescendants(item, 5)).toBe(false);
+  });
+
+  it("returns true when item is a descendant (collectionId in effective_location)", () => {
+    const item = {
+      id: 10,
+      effective_location: "/2/5/8",
+      location: "/2/5/8",
+      model: "collection" as const,
+      name: "Test",
+    };
+    expect(isItemInCollectionOrItsDescendants(item, 5)).toBe(true);
+  });
+
+  it("returns true when item is a nested descendant", () => {
+    const item = {
+      id: 20,
+      effective_location: "/1/2/3/4/5",
+      location: "/1/2/3/4/5",
+      model: "collection" as const,
+      name: "Test",
+    };
+    expect(isItemInCollectionOrItsDescendants(item, 3)).toBe(true);
+  });
+
+  it("uses location as fallback when effective_location is undefined", () => {
+    const item = {
+      id: 10,
+      effective_location: undefined,
+      location: "/2/5/8",
+      model: "collection" as const,
+      name: "Test",
+    };
+    expect(isItemInCollectionOrItsDescendants(item, 5)).toBe(true);
+  });
+
+  it("does not match partial IDs in location path", () => {
+    const item = {
+      id: 100,
+      effective_location: "/12/123/1234",
+      model: "collection" as const,
+      name: "Test",
+    };
+    expect(isItemInCollectionOrItsDescendants(item, 1)).toBe(false);
+    expect(isItemInCollectionOrItsDescendants(item, 12)).toBe(true);
+    expect(isItemInCollectionOrItsDescendants(item, 123)).toBe(true);
   });
 });

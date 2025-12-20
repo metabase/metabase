@@ -26,6 +26,7 @@ const setup = ({
   onMove = jest.fn(),
   onToggleBookmark = jest.fn(),
   onArchive = jest.fn(),
+  onShowHistory = jest.fn(),
   onToggleComments = jest.fn(),
 } = {}) => {
   const props = {
@@ -40,6 +41,7 @@ const setup = ({
     onMove,
     onToggleBookmark,
     onArchive,
+    onShowHistory,
     onToggleComments,
   };
 
