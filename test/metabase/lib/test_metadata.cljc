@@ -2966,6 +2966,7 @@
                                   :nested-queries
                                   :now
                                   :regex
+                                  :regex/lookaheads-and-lookbehinds
                                   :right-join
                                   :standard-deviation-aggregations
                                   :temporal-extract}

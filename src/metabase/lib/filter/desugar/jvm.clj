@@ -3,11 +3,47 @@
   (:require
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.regex :as u.regex]))
 
 ;;;; Following regex definitions are incompatible with Safari browser. Code is unused on FE.
 
-;;; TODO (Cam 8/18/25) -- we should rewrite these with [[metabase.util.regex]] to make them actually readable
+(def ^:private optional-www
+  "Optional `www.` prefix (ignored)"
+  [:optional-possessive #"www\."])
+
+(def ^:private domain-char              #"[^@\.:/?#]")
+(def ^:private one-or-more-domain-chars [:one-or-more domain-char])
+
+(def ^:private url-prefix
+  [:or
+   ;; ^[^@]*@ → Matches email-style: user@domain.com
+   #"^[^@]*@"
+   ;; ^[^/]*/+ → Matches protocols: https://domain.com
+   #"^[^/]*/+"
+   ;; ^ → Matches bare domains: domain.com
+   #"^"])
+
+(def ^:private subdomains-lazy
+  "Match subdomains (lazy)."
+  [:zero-or-more-non-greedy
+   [:non-capturing-group
+    one-or-more-domain-chars
+    #"\."]])
+
+(def ^:private main-domain
+  "The main domain name (excluding special chars: `@.:/?#`)"
+  one-or-more-domain-chars)
+
+(def ^:private top-level-domain
+  [:or
+   ;; First alternative: .co.uk style (compound TLD with 1-3 char middle part)
+   [:and [:range domain-char 1 3] #"\." one-or-more-domain-chars]
+   ;; Second alternative: .com style (simple TLD)
+   one-or-more-domain-chars])
+
+(def ^:private start-of-port-or-path
+  [:or #"[:/?#]" #"$"])
 
 (def host-regex
   "Extracts the \"host\" from a URL or an email. By host we mean the main domain name and the TLD, eg. `metabase.com`,
@@ -16,36 +52,16 @@
 
   For an email, this is generally the part after the @, but it will skip any subdomains:
 
-    someone@email.mycompany.net -> mycompany.net
-
-  Referencing the indexes below:
-
-  1.  Positive lookbehind: Just past one of:
-
-  2. `@`  from an email or URL userinfo@ prefix
-
-  3. `//` from a URL scheme
-
-  4. `.` from a previous subdomain segment
-
-  5. Start of string
-
-  6. Negative lookahead: don't capture `www` as part of the domain
-
-  7. Main domain segment
-
-  8. Ending in a dot
-
-  9.  Optional short final segment (eg. `co` in `.co.uk`)
-
-  10. Top-level domain
-
-  11. Optional `:port`, `/path`, `?query` or `#hash`
-
-  12. Anchor to the end"
-
-  ;;1   2 3  4  5 6        7          8 9                     10         11           12
-  #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+\.(?:[^@\.:/?#]{1,3}\.)?[^@\.:/?#]+(?=[:/?#].*$|$)")
+    someone@email.mycompany.net -> mycompany.net"
+  (u.regex/rx
+   url-prefix
+   optional-www
+   subdomains-lazy
+   [:capturing-group
+    main-domain
+    #"\."
+    top-level-domain]
+   start-of-port-or-path))
 
 (def domain-regex
   "Deliberately no ^ at the start; there might be several subdomains before this spot. By \"short tail\" below, I mean a
@@ -56,39 +72,15 @@
     \"subdomain.aol.com\" -> \"subdomain\"
 
   , oops. But there's a load of these, not a short list we can include here, so it's either preprocess the (huge)
-  master list from Mozilla or accept that this regex is a bit best-effort. Referencing the indexes below:
-
-  1.  Positive lookbehind: Just past one of:
-
-  2. `@` from an email or URL userinfo@ prefix
-
-  3. `//` from a URL scheme
-
-  4. `.` from a previous subdomain segment
-
-  5. Start of string
-
-  6. Negative lookahead: don't capture `www` as the domain
-
-  7. One domain segment
-
-  8. Positive lookahead: Either:
-
-  9. Short final segment (eg. `.co.uk`)
-
-  10. Top-level domain
-
-  11. Optional `:port`, `/path`, `?query` or `#hash`
-
-  12. Anchor to end Or:
-
-  13. Top-level domain
-
-  14. Optional `:port`, `/path`, `?query` or `#hash`
-
-  15. Anchor to end"
-  ;;1   2 3  4  5 6        7          (8   9                10         11          12|  13         14           15)
-  #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+(?=\.[^@\.:/?#]{1,3}\.[^@\.:/?#]+(?:[:/?#].*)?$|\.[^@\.:/?#]+(?:[:/?#].*)?$)")
+  master list from Mozilla or accept that this regex is a bit best-effort."
+  (u.regex/rx
+   url-prefix
+   optional-www
+   subdomains-lazy
+   [:capturing-group main-domain]
+   #"\."
+   top-level-domain
+   start-of-port-or-path))
 
 (def subdomain-regex
   "This grabs the first segment that isn't `www`, AND excludes the main domain name. See [[domain-regex]] for more
@@ -136,7 +128,11 @@
   - `google.com/abc`
 
   - `google.com/abc?hjfds`"
-  #"(?<=\.[^/]{1,10})/[^#?]*")
+  (u.regex/rx
+   #"\."
+   [:range #"[^/:?#]" 1 10]
+   [:capturing-group
+    #"/[^#?]*"]))
 
 (mu/defn desugar-host-and-domain :- ::lib.schema.mbql-clause/clause
   "Unwrap host and domain."
