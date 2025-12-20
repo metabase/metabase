@@ -13,8 +13,8 @@ import { MetabotPurchasePage } from "./components/MetabotAdmin/MetabotPurchasePa
 import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAdminAppBarButton } from "./components/MetabotAdminAppBarButton";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
+import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
-import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { getMetabotVisible, metabotReducer } from "./state";
 
@@ -49,11 +49,11 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
 
-  PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
   PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
   PLUGIN_METABOT.MetabotAdminAppBarButton = MetabotAdminAppBarButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
+  PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
 } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
   PLUGIN_METABOT.getAdminPaths = () => [
     {

@@ -496,6 +496,7 @@ export const SmartLinkComponent = memo(
           href={entityUrl || "#"}
           target="_blank"
           rel="noreferrer"
+          tabIndex={-1}
           onMouseUp={(e) => {
             // Stop tiptap from opening this link twice
             e.stopPropagation();

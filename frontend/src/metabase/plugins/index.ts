@@ -1,5 +1,6 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import type { TagDescription } from "@reduxjs/toolkit/query";
+import type { Extension } from "@uiw/react-codemirror";
 import React, {
   type ComponentType,
   type Context,
@@ -78,6 +79,7 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
+  DatasetQuery,
   DependencyEntry,
   Document,
   Group,
@@ -764,6 +766,16 @@ type PluginMetabotType = {
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
   MetabotAdminAppBarButton: ComponentType;
+  useInlineSQLPrompt: (
+    question: Question,
+    bufferId: string,
+  ) => {
+    portalElement: React.ReactPortal | null;
+    extensions: Extension[];
+    proposedQuestion: Question | undefined;
+    handleAcceptProposed?: (datasetQuery: DatasetQuery) => void;
+    handleRejectProposed?: () => void;
+  } | void;
 };
 
 export const PLUGIN_METABOT: PluginMetabotType = {
@@ -788,6 +800,7 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
   MetabotAdminAppBarButton: PluginPlaceholder,
+  useInlineSQLPrompt: () => {},
 };
 
 type DashCardMenuItemGetter = (
