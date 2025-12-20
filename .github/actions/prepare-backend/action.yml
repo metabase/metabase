@@ -36,11 +36,3 @@ runs:
           ~/.m2
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
-    - name: Generate OpenAPI spec and TypeScript types
-      shell: bash
-      run: |
-        if command -v node &> /dev/null && [[ "$(node -v | cut -d. -f1 | tr -d 'v')" -ge 22 ]]; then
-          yarn generate-openapi && yarn types:generate
-        else
-          echo "Skipping OpenAPI generation (Node.js 22+ not available)"
-        fi
