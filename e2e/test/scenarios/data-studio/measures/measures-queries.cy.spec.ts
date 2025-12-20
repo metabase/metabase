@@ -92,6 +92,50 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
     });
+
+    it("should create a measure based on another measure with an identity expression", () => {
+      H.createMeasure({
+        name: "TotalMeasure",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      });
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "18,760",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type("[TotalMeasure]");
+          H.CustomExpressionEditor.nameInput().type("Custom");
+          H.popover().button("Done").click();
+        },
+      });
+    });
+
+    it("should create a measure based on another measure with an identity expression", () => {
+      H.createMeasure({
+        name: "TotalMeasure",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      });
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "18,760",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type("[TotalMeasure]");
+          H.CustomExpressionEditor.nameInput().type("Custom");
+          H.popover().button("Done").click();
+        },
+      });
+    });
   });
 });
 
