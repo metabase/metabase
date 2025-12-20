@@ -111,32 +111,38 @@
                       "Exception data should not contain :headers in response"))))))))))
 
 (deftest example-generation-payload-unknown-field-types-test
-  (let [mp (mt/metadata-provider)]
-    (mt/with-temp [:model/Card c {:type :metric
-                                  :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                     (lib/aggregate
-                                                      (lib/count (lib.metadata/field mp (mt/id :orders :total)))))
-                                  ;; Set large view count to ensure metric is picked in `generate-sample-prompts`.
-                                  :view_count 1000}]
-      ;; Add column with type/* to metric result_metadata
-      (t2/update! :model/Card :id (:id c)
-                  {:result_metadata (conj (:result_metadata (t2/select-one :model/Card :id (:id c)))
-                                          {:database_type "point"
-                                           :base_type :type/*
-                                           :effective_type :type/*
-                                           :name "dummy"})})
-      (testing "No exception is thrown when type/* column is present it result_metadata"
-        (is (= :not-thrown
-               (try
-                 ;; Override calls to ai service as we are interested in no exception being thrown
-                 ;; prior to those calls.
-                 (with-redefs [metabot-v3.client/post! (constantly {:status 200
-                                                                    :body {:table_questions []
-                                                                           :metric_questions []}})]
-                   (let [metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id
-                                                                               :entity-id])
-                         metabot-id (t2/select-one-fn :id :model/Metabot :entity_id metabot-eid)]
-                     (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
-                     :not-thrown))
-                 (catch Exception e
-                   e))))))))
+  (let [mp (mt/metadata-provider)
+        metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id
+                                                              :entity-id])
+        original-collection-id (t2/select-one-fn :collection_id :model/Metabot :entity_id metabot-eid)]
+    ;; Ensure internal metabot is set to the root collection for generating prompts
+    (t2/update! :model/Metabot :entity_id metabot-eid {:collection_id nil})
+    (try
+      (mt/with-temp [:model/Card c {:type :metric
+                                    :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                       (lib/aggregate
+                                                        (lib/count (lib.metadata/field mp (mt/id :orders :total)))))
+                                    ;; Set large view count to ensure metric is picked in `generate-sample-prompts`.
+                                    :view_count 1000}]
+        ;; Add column with type/* to metric result_metadata
+        (t2/update! :model/Card :id (:id c)
+                    {:result_metadata (conj (:result_metadata (t2/select-one :model/Card :id (:id c)))
+                                            {:database_type "point"
+                                             :base_type :type/*
+                                             :effective_type :type/*
+                                             :name "dummy"})})
+        (testing "No exception is thrown when type/* column is present it result_metadata"
+          (is (= :not-thrown
+                 (try
+                   ;; Override calls to ai service as we are interested in no exception being thrown
+                   ;; prior to those calls.
+                   (with-redefs [metabot-v3.client/post! (constantly {:status 200
+                                                                      :body {:table_questions []
+                                                                             :metric_questions []}})]
+                     (let [metabot-id (t2/select-one-fn :id :model/Metabot :entity_id metabot-eid)]
+                       (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
+                       :not-thrown))
+                   (catch Exception e
+                     e))))))
+      (finally
+        (t2/update! :model/Metabot :entity_id metabot-eid {:collection_id original-collection-id})))))
