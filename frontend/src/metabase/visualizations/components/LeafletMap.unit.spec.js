@@ -51,7 +51,7 @@ describe("LeafletMap", () => {
   });
 
   describe("zoom preservation on component update", () => {
-    it("should not recalculate zoom when points do not change", () => {
+    it("should not recalculate zoom if points did not change", () => {
       const initialProps = createProps();
       const ref = createRef();
       const { rerender } = render(<LeafletMap ref={ref} {...initialProps} />);
@@ -60,8 +60,7 @@ describe("LeafletMap", () => {
       const setZoomSpy = jest.spyOn(mapInstance, "setZoom");
       const setViewSpy = jest.spyOn(mapInstance, "setView");
 
-      // Update points reference but keep the same points
-      const updatedProps = createProps({ points: [...initialProps.points] });
+      const updatedProps = createProps({ points: initialProps.points });
       rerender(<LeafletMap ref={ref} {...updatedProps} />);
 
       expect(setZoomSpy).not.toHaveBeenCalled();
