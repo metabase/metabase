@@ -25,7 +25,7 @@ import {
 
 import { computeChange } from "../lib/numeric";
 
-export default class FunnelNormal extends Component {
+export class FunnelNormal extends Component {
   render() {
     const {
       className,

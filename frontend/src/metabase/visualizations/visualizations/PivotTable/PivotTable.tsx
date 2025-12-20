@@ -603,7 +603,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
   },
 );
 
-const PivotTable = ExplicitSize<
+const PivotTableView = ExplicitSize<
   VisualizationProps & {
     className?: string;
   }
@@ -612,19 +612,21 @@ const PivotTable = ExplicitSize<
   refreshMode: "debounceLeading",
 })(PivotTableInner);
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(connect(mapStateToProps)(PivotTable), {
-  getUiName: () => t`Pivot Table`,
-  identifier: "pivot",
-  iconName: "pivot_table",
-  minSize: getMinSize("pivot"),
-  defaultSize: getDefaultSize("pivot"),
-  canSavePng: false,
-  isSensible,
-  checkRenderable,
-  settings,
-  columnSettings,
-  isLiveResizable: () => false,
-});
+export const PivotTable = Object.assign(
+  connect(mapStateToProps)(PivotTableView),
+  {
+    getUiName: () => t`Pivot Table`,
+    identifier: "pivot",
+    iconName: "pivot_table",
+    minSize: getMinSize("pivot"),
+    defaultSize: getDefaultSize("pivot"),
+    canSavePng: false,
+    isSensible,
+    checkRenderable,
+    settings,
+    columnSettings,
+    isLiveResizable: () => false,
+  },
+);
 
-export { PivotTable };
+export { PivotTableView };

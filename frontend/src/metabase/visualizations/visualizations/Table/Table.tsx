@@ -67,7 +67,7 @@ interface TableState {
   question: Question | null;
 }
 
-class Table extends Component<TableProps, TableState> {
+export class Table extends Component<TableProps, TableState> {
   static getUiName = () => t`Table`;
   static identifier = "table";
   static iconName = "table2";
@@ -557,6 +557,3 @@ class Table extends Component<TableProps, TableState> {
     );
   }
 }
-
-// eslint-disable-next-line import/no-default-export
-export default Table;

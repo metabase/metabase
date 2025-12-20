@@ -58,7 +58,7 @@ const degrees = (radians) => (radians * 180) / Math.PI;
 
 const segmentIsValid = (s) => !isNaN(s.min) && !isNaN(s.max);
 
-export default class Gauge extends Component {
+export class Gauge extends Component {
   static getUiName = () => t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";

@@ -5,7 +5,7 @@ import { Component } from "react";
 import LegendS from "./Legend.module.css";
 import LegendItem from "./LegendItem";
 
-export default class LegendHorizontal extends Component {
+export class LegendHorizontal extends Component {
   constructor(props) {
     super(props);
 

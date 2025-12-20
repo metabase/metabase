@@ -420,5 +420,4 @@ RowChartVisualization.hasEmptyState = true;
 
 RowChartVisualization.getUiName = () => t`Row`;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default RowChartVisualization;
+export { RowChartVisualization as RowChart };

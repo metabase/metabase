@@ -5,7 +5,7 @@ import CS from "metabase/css/core/index.css";
 
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
-export default class ChartSettingColorsPicker extends Component {
+export class ChartSettingColorsPicker extends Component {
   render() {
     const { value, onChange, seriesValues, seriesTitles } = this.props;
     return (

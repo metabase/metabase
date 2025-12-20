@@ -16,7 +16,7 @@ const DEFAULT_GRID_SIZE = 100;
 export const HIDE_HORIZONTAL_LEGEND_THRESHOLD = 180;
 export const HIDE_SECONDARY_INFO_THRESHOLD = 260;
 
-class ChartWithLegend extends Component {
+class ChartWithLegendInner extends Component {
   static defaultProps = {
     aspectRatio: 1,
     style: {},
@@ -154,13 +154,15 @@ class ChartWithLegend extends Component {
   }
 }
 
-const ChartWithLegendRefWrapper = forwardRef(
+const ChartWithLegendRefWrapperInner = forwardRef(
   function _ChartWithLegendRefWrapper(props, ref) {
-    return <ChartWithLegend {...props} forwardedRef={ref} />;
+    return <ChartWithLegendInner {...props} forwardedRef={ref} />;
   },
 );
 
-export default ExplicitSize({
+export const ChartWithLegendRefWrapper = ExplicitSize({
   wrapped: true,
   refreshMode: "debounceLeading",
-})(ChartWithLegendRefWrapper);
+})(ChartWithLegendRefWrapperInner);
+
+export { ChartWithLegendInner as ChartWithLegend };

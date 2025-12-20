@@ -13,7 +13,7 @@ import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations/index";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 
 import { getColumnName, getRowValuesByColumns } from "../../lib/mode";
 

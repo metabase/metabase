@@ -4,7 +4,7 @@ import { useSet } from "react-use";
 
 import { isNotNull } from "metabase/lib/types";
 import { extractRemappings } from "metabase/visualizations";
-import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
+import { ChartWithLegend } from "metabase/visualizations/components/ChartWithLegend";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";

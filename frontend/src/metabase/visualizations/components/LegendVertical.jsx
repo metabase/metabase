@@ -10,7 +10,7 @@ import { Popover } from "metabase/ui";
 import LegendS from "./Legend.module.css";
 import LegendItem from "./LegendItem";
 
-export default class LegendVertical extends Component {
+export class LegendVertical extends Component {
   static propTypes = {};
   static defaultProps = {};
 

@@ -6,9 +6,9 @@ import CS from "metabase/css/core/index.css";
 import { color } from "metabase/ui/utils/colors";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
-import CardRenderer from "./CardRenderer";
+import { CardRenderer } from "./CardRenderer";
 
-const LeafletChoropleth = ({
+export const LeafletChoropleth = ({
   series = [],
   geoJson,
   minimalBounds = computeMinimalBounds(geoJson.features || [geoJson]),
@@ -90,5 +90,3 @@ const LeafletChoropleth = ({
     onRenderError={onRenderError}
   />
 );
-
-export default LeafletChoropleth;

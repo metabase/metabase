@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/lib/formatting";
-import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
+import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail";
 import {
   columnSettings,
   tableColumnSettings,
@@ -50,4 +50,9 @@ const ObjectDetailProperties = {
   isSensible: () => true,
 };
 
-export default Object.assign(ObjectDetail, ObjectDetailProperties);
+const ObjectDetailWithProperties = Object.assign(
+  ObjectDetail,
+  ObjectDetailProperties,
+);
+
+export { ObjectDetailWithProperties as ObjectDetail };

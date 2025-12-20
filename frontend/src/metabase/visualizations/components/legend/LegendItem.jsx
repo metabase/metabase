@@ -84,4 +84,6 @@ const LegendItem = ({
 
 LegendItem.propTypes = propTypes;
 
-export default memo(LegendItem);
+const LegendItemMemo = memo(LegendItem);
+
+export { LegendItemMemo as LegendItem };

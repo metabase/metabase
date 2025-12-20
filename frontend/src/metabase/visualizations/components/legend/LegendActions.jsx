@@ -6,10 +6,8 @@ const propTypes = {
   children: PropTypes.node,
 };
 
-const LegendActions = ({ children }) => {
+export const LegendActions = ({ children }) => {
   return <LegendActionsRoot>{children}</LegendActionsRoot>;
 };
 
 LegendActions.propTypes = propTypes;
-
-export default LegendActions;
