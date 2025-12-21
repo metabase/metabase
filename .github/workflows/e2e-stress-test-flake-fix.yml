@@ -97,7 +97,7 @@ jobs:
 
       - run: |
           echo ${{ inputs.qa_db }}
-          echo ${{inputs.qa_db && '' || '-@external'}}
+          echo ${{inputs.qa_db == 'true' && 'foo' || '-@external'}}
 
       # - name: Prepare Docker containers
       #   uses: ./.github/actions/e2e-prepare-containers
