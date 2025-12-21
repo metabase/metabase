@@ -95,62 +95,66 @@ jobs:
           # Important because we need previous commits hashes to find and download the uberjar!
           fetch-depth: 20
 
-      - name: Prepare Docker containers
-        uses: ./.github/actions/e2e-prepare-containers
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          maildev: true
-          openldap: true
-          snowplow: true
-          postgres: ${{ inputs.qa_db }}
-          mysql: ${{ inputs.qa_db }}
-          mongo: ${{ inputs.qa_db }}
+      - run: |
+          echo ${{ inputs.qa_db }}
+          echo ${{inputs.qa_db && '' || '-@external'}}
 
-      - name: Download Metabase ${{ matrix.edition }} uberjar
-        uses: ./.github/actions/e2e-download-uberjar
-        with:
-          edition: "ee"
+      # - name: Prepare Docker containers
+      #   uses: ./.github/actions/e2e-prepare-containers
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      #     maildev: true
+      #     openldap: true
+      #     snowplow: true
+      #     postgres: ${{ inputs.qa_db }}
+      #     mysql: ${{ inputs.qa_db }}
+      #     mongo: ${{ inputs.qa_db }}
 
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
+      # - name: Download Metabase ${{ matrix.edition }} uberjar
+      #   uses: ./.github/actions/e2e-download-uberjar
+      #   with:
+      #     edition: "ee"
 
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
+      # - name: Prepare front-end environment
+      #   uses: ./.github/actions/prepare-frontend
 
-      - name: Build Embedding SDK package
-        if: ${{ needs.determine-test-type.outputs.type == 'component' }}
-        run: yarn build-embedding-sdk-package
+      # - name: Prepare back-end environment
+      #   uses: ./.github/actions/prepare-backend
 
-      - name: Prepare Cypress environment
-        id: cypress-prep
-        uses: ./.github/actions/prepare-cypress
-      - name: Run Metabase
-        run: node e2e/runner/run_cypress_ci.js start
+      # - name: Build Embedding SDK package
+      #   if: ${{ needs.determine-test-type.outputs.type == 'component' }}
+      #   run: yarn build-embedding-sdk-package
 
-      - name: Generate database snapshots
-        run: |
-          node e2e/runner/run_cypress_ci.js snapshot \
-            --env grepTags="${{inputs.qa_db && '' || '-@external'}}"
+      # - name: Prepare Cypress environment
+      #   id: cypress-prep
+      #   uses: ./.github/actions/prepare-cypress
+      # - name: Run Metabase
+      #   run: node e2e/runner/run_cypress_ci.js start
 
-      # For all options and fine-grained control, take a look at the documentation
-      # https://github.com/cypress-io/cypress/tree/develop/npm/grep
-      - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
-        env:
-          GREP: ${{ github.event.inputs.grep }}
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: |
-          node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
-          --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }} \
-          --config-file e2e/support/cypress-stress-test.config.js
+      # - name: Generate database snapshots
+      #   run: |
+      #     node e2e/runner/run_cypress_ci.js snapshot \
+      #       --env grepTags="${{inputs.qa_db && '' || '-@external'}}"
 
-      - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: cypress-failed-tests-recording
-          path: |
-            ./cypress
-            ./logs/test.log
-          if-no-files-found: ignore
+      # # For all options and fine-grained control, take a look at the documentation
+      # # https://github.com/cypress-io/cypress/tree/develop/npm/grep
+      # - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
+      #   env:
+      #     GREP: ${{ github.event.inputs.grep }}
+      #     CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+      #   run: |
+      #     node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
+      #     --spec '${{ github.event.inputs.spec }}' \
+      #     --env burn=${{ github.event.inputs.burn_in }} \
+      #     --config-file e2e/support/cypress-stress-test.config.js
+
+      # - name: Upload Cypress Artifacts upon failure
+      #   uses: actions/upload-artifact@v4
+      #   if: failure()
+      #   with:
+      #     name: cypress-failed-tests-recording
+      #     path: |
+      #       ./cypress
+      #       ./logs/test.log
+      #     if-no-files-found: ignore
