@@ -631,7 +631,6 @@
            normalized))
     (is (mr/validate ::mbql.s/Aggregations normalized))))
 
-
 (deftest ^:parallel is-null-not-null-arbitrary-expressions-test
   (testing "is-null and not-null should allow arbitrary expressions"
     (doseq [clause [:is-null
