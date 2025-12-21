@@ -96,10 +96,10 @@ jobs:
           fetch-depth: 20
 
       - name: Test
-        if: inputs.qa_db
+        if: inputs.qa_db == false
         run: echo "foo"
       - name: Test
-        if: inputs.qa_db == 'true'
+        if: inputs.qa_db == 'false'
         run: echo "bar"
 
       # - name: Prepare Docker containers
