@@ -229,6 +229,11 @@
         (:guard preds) (assoc :predicate (:guard preds))
         (:len preds) (assoc :length (:len preds))))
 
+    ;; (:or ...) pattern
+    (and (list? pattern) (= (first pattern) :or) (>= (count pattern) 2))
+    {:type :or
+     :clauses (rest pattern)}
+
     ;; Vector pattern
     (vector? pattern)
     (let [[main-parts rest-parts] (vec (split-with (complement #{'&}) pattern))
@@ -253,6 +258,8 @@
     :else
     (throw (ex-info "Invalid pattern" {:pattern pattern}))))
 
+(declare process-clauses)
+
 (defn- process-pattern [pattern value bindings conditions return]
   (let [{:keys [parts rest-part predicate] :as parsed} (parse-pattern pattern)]
     (case (:type parsed)
@@ -270,6 +277,9 @@
       :map (let [s (if (symbol? value) value (gensym "map"))]
              (vswap! bindings conj [s `(metabase.lib.util.match.impl/map! ~value)])
              (run! (fn [[k v]] (process-pattern v (list `get s k) bindings conditions false)) (:map parsed)))
+      :or (let [or-clauses (:clauses parsed)
+                new-body (process-clauses (mapv vector (:clauses parsed) (repeat (count or-clauses) @return)) value nil)]
+            (vreset! return new-body))
       :guard (let [s (:symbol parsed)
                    s (if (= s '_) (gensym "_") s)
                    ;; Treat symbol, keyword, or set predicates as functions to be called, and thus transform them
@@ -416,7 +426,9 @@
   - keyword - must match exactly
   - set - must be one of the set items
   - (sym :guard pred :len size) - bind with predicate check. The predicate should either be a symbol denoting a function, keyword, set, or an invocation snippet (but not a lambda). Can optionally check for collection length.
-  - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements."
+  - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements.
+  - map - binds associative values inside a map against other patterns.
+  - (:or clause1 clause2 ...) - special syntax for grouping several alternative conditions that share the same returned value."
   {:style/indent :defn}
   [value & clauses]
   (match-lite* value clauses false))
