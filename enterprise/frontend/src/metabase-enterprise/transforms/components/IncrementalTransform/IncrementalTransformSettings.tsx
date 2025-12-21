@@ -5,32 +5,38 @@ import { t } from "ttag";
 import { FormSelect, FormSwitch } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Alert, Stack } from "metabase/ui";
+import { Alert, Box, Divider, Group, Stack, Text } from "metabase/ui";
 import { useLazyCheckQueryComplexityQuery } from "metabase-enterprise/api";
-import {
-  KeysetColumnSelect,
-  PythonKeysetColumnSelect,
-} from "metabase-enterprise/transforms/components/IncrementalTransform/KeysetColumnSelect";
-import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/IncrementalTransform/NativeQueryColumnSelect";
+import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
 import {
   CHECKPOINT_TEMPLATE_TAG,
   SOURCE_STRATEGY_OPTIONS,
   TARGET_STRATEGY_OPTIONS,
 } from "metabase-enterprise/transforms/constants";
-import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { TransformSource } from "metabase-types/api";
 
+import {
+  KeysetColumnSelect,
+  PythonKeysetColumnSelect,
+} from "./KeysetColumnSelect";
+import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
+import type { IncrementalSettingsFormValues } from "./form";
+
+type IncrementalTransformSettingsProps = {
+  source: TransformSource;
+  checkOnMount?: boolean;
+  variant?: "embedded" | "standalone";
+};
+
 export const IncrementalTransformSettings = ({
   source,
   checkOnMount,
-}: {
-  source: TransformSource;
-  checkOnMount?: boolean;
-}) => {
+  variant = "embedded",
+}: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
-  const { values } = useFormikContext<NewTransformValues>();
+  const { values } = useFormikContext<IncrementalSettingsFormValues>();
   // Convert DatasetQuery to Lib.Query via Question
   const libQuery = useMemo(() => {
     if (source.type !== "query") {
@@ -118,79 +124,133 @@ export const IncrementalTransformSettings = ({
     hasCheckpointTag,
   ]);
 
-  return (
-    <>
-      <FormSwitch
-        disabled={isMultiTablePythonTransform}
-        name="incremental"
-        label={
-          isMultiTablePythonTransform
-            ? t`Incremental transforms are only supported for single data source transforms.`
-            : t`Incremental?`
+  const renderIncrementalSwitch = () => (
+    <FormSwitch
+      disabled={isMultiTablePythonTransform}
+      name="incremental"
+      size="sm"
+      label={
+        isMultiTablePythonTransform
+          ? t`Incremental transforms are only supported for single data source transforms.`
+          : t`Only process new and changed data`
+      }
+      onChange={async (e) => {
+        if (
+          e.target.checked &&
+          transformType === "native" &&
+          !hasCheckpointTag &&
+          query
+        ) {
+          const complexity = await checkQueryComplexity(
+            Lib.rawNativeQuery(query),
+            true,
+          ).unwrap();
+          setShowComplexityWarning(complexity?.is_simple === false);
         }
-        onChange={async (e) => {
-          if (
-            e.target.checked &&
-            transformType === "native" &&
-            !hasCheckpointTag &&
-            query
-          ) {
-            const complexity = await checkQueryComplexity(
-              Lib.rawNativeQuery(query),
-              true,
-            ).unwrap();
-            setShowComplexityWarning(complexity?.is_simple === false);
-          }
-        }}
-      />
+      }}
+      wrapperProps={{
+        "data-testid": "incremental-switch",
+      }}
+    />
+  );
+
+  const complexityWarningAlert = showComplexityWarning && (
+    <Alert variant="info" icon="info">
+      <Stack gap="xs">
+        <span>
+          {t`This query is too complex to allow automatic checkpoint column selection. You may need to explicitely add a conditional filter in your query, for example:`}
+        </span>
+        <code>{`[[ WHERE id > {{${CHECKPOINT_TEMPLATE_TAG}}} ]]`}</code>
+        <span>
+          {t`Reason: `}
+          <strong>{complexity?.reason}</strong>
+        </span>
+      </Stack>
+    </Alert>
+  );
+
+  const label = t`Incremental transformation`;
+  const description = t`If you don't need to reprocess everything, incremental transforms can be faster.`;
+  if (variant === "standalone") {
+    return (
+      <TitleSection label={label} description={description}>
+        <Group p="lg">{renderIncrementalSwitch()}</Group>
+        {values?.incremental && (
+          <>
+            {complexityWarningAlert && (
+              <>
+                <Divider />
+                <Group p="lg">{complexityWarningAlert}</Group>
+              </>
+            )}
+            <Divider />
+            <Group p="lg">
+              <SourceStrategyFields
+                source={source}
+                query={query}
+                type={transformType}
+              />
+            </Group>
+            <TargetStrategyFields variant={variant} />
+          </>
+        )}
+      </TitleSection>
+    );
+  }
+
+  return (
+    <Group gap="lg">
+      <Box>
+        <Text fw="bold">{label}</Text>
+        <Text size="sm" c="text-secondary" mb="sm">
+          {description}
+        </Text>
+        {renderIncrementalSwitch()}
+      </Box>
       {values?.incremental && (
         <>
-          {showComplexityWarning && (
-            <Alert variant="info" icon="info">
-              <Stack gap="xs">
-                <span>
-                  {t`This query is too complex to allow automatic checkpoint column selection. You may need to explicitely add a conditional filter in your query, for example:`}
-                </span>
-                <code>{`[[ WHERE id > {{${CHECKPOINT_TEMPLATE_TAG}}} ]]`}</code>
-                <span>
-                  {t`Reason: `}
-                  <strong>{complexity?.reason}</strong>
-                </span>
-              </Stack>
-            </Alert>
-          )}
+          {complexityWarningAlert}
           <SourceStrategyFields
             source={source}
             query={query}
             type={transformType}
           />
-          <TargetStrategyFields />
+          <TargetStrategyFields variant={variant} />
         </>
       )}
-    </>
+    </Group>
   );
 };
 
-function TargetStrategyFields() {
-  const { values } = useFormikContext<NewTransformValues>();
+function TargetStrategyFields({
+  variant,
+}: {
+  variant: "embedded" | "standalone";
+}) {
+  const content = TARGET_STRATEGY_OPTIONS.length > 1 && (
+    <Stack>
+      <FormSelect
+        name="targetStrategy"
+        label={t`Target Strategy`}
+        description={t`How to update the target table`}
+        data={TARGET_STRATEGY_OPTIONS}
+      />
+      {/* Append strategy has no additional fields */}
+      {/* Future strategies like "merge" could add fields here */}
+    </Stack>
+  );
 
-  if (!values.incremental) {
-    return null;
+  if (variant === "embedded") {
+    return content;
   }
 
   return (
-    <>
-      {TARGET_STRATEGY_OPTIONS.length > 1 && (
-        <FormSelect
-          name="targetStrategy"
-          label={t`Target Strategy`}
-          description={t`How to update the target table`}
-          data={TARGET_STRATEGY_OPTIONS}
-        />
-      )}
-      {/* Append strategy has no additional fields */}
-      {/* Future strategies like "merge" could add fields here */}
-    </>
+    content && (
+      <>
+        <Divider />
+        <Group p="lg">{content}</Group>
+      </>
+    )
   );
 }
 
@@ -205,11 +265,7 @@ function SourceStrategyFields({
   query,
   type,
 }: SourceStrategyFieldsProps) {
-  const { values } = useFormikContext<NewTransformValues>();
-  if (!values.incremental) {
-    return null;
-  }
-
+  const { values } = useFormikContext<IncrementalSettingsFormValues>();
   return (
     <>
       {SOURCE_STRATEGY_OPTIONS.length > 1 && (
@@ -225,27 +281,30 @@ function SourceStrategyFields({
           {type === "query" && query && (
             <KeysetColumnSelect
               name="checkpointFilterUniqueKey"
-              label={t`Source Filter Field`}
-              placeholder={t`Select a field to filter on`}
-              description={t`Which field from the source to use in the incremental filter`}
+              label={t`Field to check for new values`}
+              placeholder={t`Pick a field`}
+              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              descriptionProps={{ c: "text-secondary", mb: "xs" }}
               query={query}
             />
           )}
           {type === "native" && query && (
             <NativeQueryColumnSelect
               name="checkpointFilter"
-              label={t`Source Filter Field`}
-              placeholder={t`e.g. id, created_at`}
-              description={t`Column to use in the incremental filter`}
+              label={t`Column to check for new values`}
+              placeholder={t`Pick a column`}
+              description={t`Pick the column that we should scan to determine which records are new or changed`}
+              descriptionProps={{ c: "text-secondary", mb: "xs" }}
               query={query}
             />
           )}
           {type === "python" && "source-tables" in source && (
             <PythonKeysetColumnSelect
               name="checkpointFilterUniqueKey"
-              label={t`Source Filter Field`}
-              placeholder={t`Select a field to filter on`}
-              description={t`Which field from the source to use in the incremental filter`}
+              label={t`Field to check for new values`}
+              placeholder={t`Pick a field`}
+              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              descriptionProps={{ c: "text-secondary", mb: "xs" }}
               sourceTables={source["source-tables"]}
             />
           )}
