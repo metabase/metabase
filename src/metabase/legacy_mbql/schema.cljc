@@ -433,12 +433,22 @@
 ;; wouldn't it
 ;;
 ;; As of 0.42.0 `:aggregation` references can have an optional options map.
+(mr/def ::AggregationRefOptions
+  [:map
+   {:decode/normalize (fn [m]
+                        (when-let [m (lib.schema.ref/normalize-aggregation-ref-options m)]
+                          (not-empty (dissoc m :lib/uuid))))}
+   [:name           {:optional true} ::lib.schema.common/non-blank-string]
+   [:display-name   {:optional true} ::lib.schema.common/non-blank-string]
+   [:base-type      {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]])
+
 (defclause* aggregation
   [:and
    (helpers/clause
     :aggregation
     "aggregation-clause-index" :int
-    "options"                  [:optional :map])
+    "options"                  [:optional [:ref ::AggregationRefOptions]])
    [:fn
     {:error/message    ":aggregation should not have empty opts"
      :decode/normalize (fn [x]
@@ -548,6 +558,7 @@
                        (is-clause? numeric-functions x)  :numeric-expression
                        (is-clause? datetime-functions x) :datetime-expression
                        (is-clause? aggregations x)       :aggregation
+                       (is-clause? :aggregation x)       :aggregation-ref
                        (string? x)                       :string
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
@@ -558,6 +569,7 @@
    [:numeric-expression   [:ref ::NumericExpression]]
    [:datetime-expression  [:ref ::DatetimeExpression]]
    [:aggregation          [:ref ::Aggregation]]
+   [:aggregation-ref      [:ref ::aggregation]]
    [:string               :string]
    [:string-expression    [:ref ::StringExpression]]
    [:value                [:ref ::value]]
