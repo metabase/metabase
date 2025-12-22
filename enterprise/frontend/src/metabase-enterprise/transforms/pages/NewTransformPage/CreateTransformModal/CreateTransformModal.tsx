@@ -8,8 +8,10 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -70,6 +72,7 @@ type CreateTransformModalProps = {
   showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
   handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
+  targetDescription?: string;
 };
 
 export function CreateTransformModal({
@@ -81,6 +84,7 @@ export function CreateTransformModal({
   showIncrementalSettings = true,
   validationSchemaExtension,
   handleSubmit,
+  targetDescription,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -93,6 +97,7 @@ export function CreateTransformModal({
         showIncrementalSettings={showIncrementalSettings}
         validationSchemaExtension={validationSchemaExtension}
         handleSubmit={handleSubmit}
+        targetDescription={targetDescription}
       />
     </Modal>
   );
@@ -107,6 +112,7 @@ type CreateTransformFormProps = {
   showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
   handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
+  targetDescription?: string;
 };
 
 function CreateTransformForm({
@@ -118,12 +124,15 @@ function CreateTransformForm({
   showIncrementalSettings = true,
   validationSchemaExtension,
   handleSubmit,
+  targetDescription,
 }: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
 
   const shouldFetchSchemas = schemasProp === undefined;
   const showSchemaField = schemasProp !== null;
+
+  const [sendToast] = useToast();
 
   const {
     data: database,
@@ -204,7 +213,7 @@ function CreateTransformForm({
               data={schemas}
             />
           )}
-          <TargetNameInput />
+          <TargetNameInput description={targetDescription} />
           <FormCollectionPicker
             name="collection_id"
             title={t`Collection`}

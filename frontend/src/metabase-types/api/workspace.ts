@@ -42,11 +42,9 @@ export type WorkspaceListResponse = {
 
 export type WorkspaceTransformItem = {
   ref_id: string;
-  name: string;
-  source_type: string;
-  stale: boolean;
   global_id: TransformId | null;
-  target_stale: boolean;
+  name: string;
+  source_type: Transform["source_type"] | null;
 };
 
 export type WorkspaceTransformsResponse = {
@@ -72,13 +70,13 @@ export type WorkspaceOutputTableRef = {
 };
 
 export type WorkspaceTransform = Omit<Transform, "id"> & {
+  // Local identifier used by the UI; equal to `ref_id`
   id: string;
   ref_id: string;
-  workspace_id: number;
-  stale: boolean;
+  workspace_id: WorkspaceId;
   global_id: TransformId | null;
   target_stale: boolean;
-  target_isolated: WorkspaceOutputTableRef;
+  archived_at: string | null;
   last_run_at: string | null;
 };
 
@@ -106,18 +104,21 @@ export type WorkspaceCheckoutResponse = {
   transforms: WorkspaceCheckoutItem[];
 };
 
+export type WorkspaceMergeTransformResult = {
+  op: "create" | "delete" | "update" | "noop";
+  global_id: TransformId | null;
+  ref_id: string;
+  message?: string;
+};
+
 export type WorkspaceMergeResponse = {
-  promoted: WorkspaceTransformItem[];
-  errors?: (WorkspaceTransformItem & { error: string })[];
+  merged?: WorkspaceMergeTransformResult[];
+  errors?: WorkspaceMergeTransformResult[];
   workspace: WorkspaceItem;
   archived_at: string | null;
 };
 
-export type WorkspaceTransformMergeResponse = {
-  // I have no idea atm how are we going to use this
-  workspace: WorkspaceItem;
-  archived_at: string | null;
-};
+export type WorkspaceTransformMergeResponse = WorkspaceMergeTransformResult;
 
 export type ValidateTableNameRequest = {
   id: WorkspaceId;

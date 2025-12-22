@@ -7,10 +7,18 @@ import * as Yup from "yup";
 import { useListDatabaseSchemasQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
   useValidateTableNameMutation,
@@ -368,7 +376,7 @@ export const TransformTab = ({
           </Group>
         </Group>
 
-        <Group>
+        <Group align="flex-end" justify="space-between" w="100%">
           {isSaved &&
             (isRunStatusLoading ? (
               <Group gap="sm">
@@ -381,30 +389,35 @@ export const TransformTab = ({
                 neverRunMessage={t`This transform hasn't been run before.`}
               />
             ))}
-          {output && (
-            <Tooltip label={t`View transform output`}>
-              <Box
-                style={{
-                  marginLeft: "auto",
-                  alignSelf: "flex-end",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  cursor: "pointer",
-                }}
-                onClick={() =>
-                  onResultsClick?.({
-                    tableId: output.table_id,
-                    name: output.table_name,
-                    schema: output.schema,
-                    transformId: wsTransform.id,
-                  })
-                }
-              >
-                <Icon name="table2" mr="xs" c="brand" />
-                <Text c="brand">{t`Results`}</Text>
-              </Box>
-            </Tooltip>
-          )}
+          <Group gap="xs" align="center">
+            {output && (
+              <Tooltip label={t`View transform output`}>
+                <Flex
+                  align="center"
+                  style={{
+                    alignSelf: "flex-end",
+                    cursor: "pointer",
+                  }}
+                  onClick={() =>
+                    onResultsClick?.({
+                      tableId: output.table_id,
+                      name: output.table_name,
+                      schema: output.schema,
+                      transformId: wsTransform.id,
+                    })
+                  }
+                >
+                  <Icon name="table2" mr="xs" c="brand" />
+                  <Text c="brand">{t`Results`}</Text>
+                </Flex>
+              </Tooltip>
+            )}
+            {isSaved && (
+              <Text size="xs" c="text-secondary">
+                {t`Runs in this workspace write results to an isolated workspace table, not the original target.`}
+              </Text>
+            )}
+          </Group>
         </Group>
       </Stack>
 
@@ -437,6 +450,7 @@ export const TransformTab = ({
           showIncrementalSettings={true}
           validationSchemaExtension={validationSchemaExtension}
           handleSubmit={handleSave}
+          targetDescription={t`This is the main table this transform owns. Runs from this workspace write to an isolated workspace copy, so the original table isn't changed until you merge the workspace.`}
         />
       )}
     </Stack>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -17,10 +17,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
-import {
-  useUpdateWorkspaceTransformMutation,
-} from "metabase-enterprise/api";
+import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import { useUpdateWorkspaceTransformMutation } from "metabase-enterprise/api";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type {
@@ -47,6 +45,11 @@ export function UpdateTargetModal({
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
+      <Box mb="md">
+        <Text size="sm" c="text-secondary">
+          {t`When you change the target in a workspace, runs from this workspace write to an isolated workspace table. The original table isn't changed until you merge the workspace.`}
+        </Text>
+      </Box>
       <UpdateTargetForm
         transform={transform}
         onUpdate={onUpdate}
