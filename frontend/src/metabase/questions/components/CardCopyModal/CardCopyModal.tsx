@@ -15,7 +15,8 @@ type CardCopyModalProps = {
 
 export function CardCopyModal({ card, onCopy, onClose }: CardCopyModalProps) {
   const [createCard] = useCreateCardMutation();
-  const initialCollectionId = useGetDefaultCollectionId();
+  const { defaultCollectionId: initialCollectionId } =
+    useGetDefaultCollectionId();
 
   const cardRef = useLatest(card);
   const initialValues = useMemo(

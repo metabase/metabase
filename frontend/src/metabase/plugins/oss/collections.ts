@@ -19,9 +19,14 @@ import type {
 // Types
 export type ItemWithCollection = { collection: CollectionEssentials };
 
+type GetCollectionIdResult = {
+  defaultCollectionId: CollectionId | null;
+  isLoading: boolean;
+};
+
 type GetCollectionIdType = (
   sourceCollectionId?: CollectionId | null,
-) => CollectionId | null;
+) => GetCollectionIdResult;
 
 export type CollectionAuthorityLevelDisplayProps = {
   collection: Collection;

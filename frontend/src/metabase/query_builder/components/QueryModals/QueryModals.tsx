@@ -70,7 +70,8 @@ export function QueryModals({
   const dispatch = useDispatch();
   const [sendToast] = useToast();
 
-  const initialCollectionId = useGetDefaultCollectionId();
+  const { defaultCollectionId: initialCollectionId } =
+    useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
   const handleSaveAndClose = useCallback(

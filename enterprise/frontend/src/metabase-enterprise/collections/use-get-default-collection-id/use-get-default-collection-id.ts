@@ -1,5 +1,8 @@
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { _useGetDefaultCollectionId as useOSSGetDefaultCollectionId } from "metabase/collections/hooks";
+import {
+  type UseGetDefaultCollectionIdResult,
+  _useGetDefaultCollectionId as useOSSGetDefaultCollectionId,
+} from "metabase/collections/hooks";
 import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 import { isInstanceAnalyticsCollection } from "metabase-enterprise/collections/utils";
 import type { CollectionId } from "metabase-types/api";
@@ -10,30 +13,39 @@ import type { CollectionId } from "metabase-types/api";
  */
 export const useGetDefaultCollectionId = (
   sourceCollectionId?: CollectionId | null,
-): CollectionId | null => {
-  const { data: auditInfo } = useGetAuditInfoQuery(
-    sourceCollectionId ? undefined : skipToken,
-  );
+): UseGetDefaultCollectionIdResult => {
+  const { data: auditInfo, isLoading: isAuditInfoLoading } =
+    useGetAuditInfoQuery(sourceCollectionId ? undefined : skipToken);
 
-  const { data: collectionInfo } = useGetCollectionQuery(
-    sourceCollectionId ? { id: sourceCollectionId } : skipToken,
-  );
+  const { data: collectionInfo, isLoading: isCollectionInfoLoading } =
+    useGetCollectionQuery(
+      sourceCollectionId ? { id: sourceCollectionId } : skipToken,
+    );
 
-  const { data: customReportsCollectionInfo } = useGetCollectionQuery(
+  const {
+    data: customReportsCollectionInfo,
+    isLoading: isCustomReportsCollectionInfoLoading,
+  } = useGetCollectionQuery(
     auditInfo?.custom_reports ? { id: auditInfo?.custom_reports } : skipToken,
   );
 
   const isIAcollection = isInstanceAnalyticsCollection(collectionInfo);
 
-  const initialCollectionId = useOSSGetDefaultCollectionId(sourceCollectionId);
+  const { defaultCollectionId: initialCollectionId } =
+    useOSSGetDefaultCollectionId(sourceCollectionId);
+
+  const isLoading =
+    isAuditInfoLoading ||
+    isCollectionInfoLoading ||
+    isCustomReportsCollectionInfoLoading;
 
   if (
     isIAcollection &&
     auditInfo?.custom_reports &&
     customReportsCollectionInfo?.can_write
   ) {
-    return auditInfo.custom_reports;
+    return { defaultCollectionId: auditInfo.custom_reports, isLoading };
   }
 
-  return initialCollectionId;
+  return { defaultCollectionId: initialCollectionId, isLoading };
 };

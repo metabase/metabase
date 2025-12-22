@@ -36,7 +36,7 @@ const EntityCopyModal = ({
     typeof entityObject?.getPlainObject === "function"
       ? entityObject.getPlainObject()
       : entityObject;
-  const defaultCollectionId = useGetDefaultCollectionId(
+  const { defaultCollectionId } = useGetDefaultCollectionId(
     resolvedObject?.collection?.id,
   );
 

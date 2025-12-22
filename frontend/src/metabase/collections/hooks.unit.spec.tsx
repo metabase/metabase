@@ -12,7 +12,7 @@ const TestComponent = ({
 }: {
   collectionId: CollectionId | null;
 }) => {
-  const defaultCollectionId = useGetDefaultCollectionId(collectionId);
+  const { defaultCollectionId } = useGetDefaultCollectionId(collectionId);
 
   return <div>id: {JSON.stringify(defaultCollectionId)}</div>;
 };

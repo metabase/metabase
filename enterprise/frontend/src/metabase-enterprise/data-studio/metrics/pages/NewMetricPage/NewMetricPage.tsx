@@ -51,7 +51,7 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
   const initialCollectionId = Urls.extractCollectionId(
     location.query.collectionId,
   );
-  const defaultCollectionId = useGetDefaultCollectionId();
+  const { defaultCollectionId } = useGetDefaultCollectionId();
   const dispatch = useDispatch();
 
   const query = useMemo(

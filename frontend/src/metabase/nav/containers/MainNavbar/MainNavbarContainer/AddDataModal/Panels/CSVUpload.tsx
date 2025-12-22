@@ -45,7 +45,8 @@ export const CSVUpload = ({
   onCloseAddDataModal: () => void;
 }) => {
   const dispatch = useDispatch();
-  const initialCollectionId = useGetDefaultCollectionId() ?? "root";
+  const { defaultCollectionId } = useGetDefaultCollectionId();
+  const initialCollectionId = defaultCollectionId ?? "root";
 
   const [uploadState, setUploadState] = useState<UploadState>({
     file: null,
