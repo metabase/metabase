@@ -1,6 +1,7 @@
 import type { AnchorHTMLAttributes, ComponentPropsWithRef } from "react";
 import { useMemo } from "react";
 import type ReactMarkdown from "react-markdown";
+import { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { ColorName } from "metabase/lib/colors/types";
@@ -13,7 +14,12 @@ const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
   <a {...props} target="_blank" rel="noopener noreferrer" />
 );
 
-const passAllUrls = (url: string) => url;
+function urlTransform(url: string): string {
+  if (url.startsWith("metabase://")) {
+    return url;
+  }
+  return defaultUrlTransform(url);
+}
 
 export interface MarkdownProps
   extends ComponentPropsWithRef<typeof ReactMarkdown> {
@@ -54,7 +60,7 @@ const Markdown = ({
       className={className}
       dark={dark}
       remarkPlugins={REMARK_PLUGINS}
-      urlTransform={passAllUrls}
+      urlTransform={urlTransform}
       unstyleLinks={unstyleLinks}
       c={c}
       components={customizedComponents}
