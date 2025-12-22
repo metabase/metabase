@@ -1,5 +1,5 @@
 (ns metabase-enterprise.workspaces.driver.clickhouse
-  "Postgres-specific implementations for workspace isolation."
+  "ClickHouse-specific implementations for workspace isolation."
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.isolation :as isolation]
@@ -40,12 +40,15 @@
 
 (defmethod isolation/destroy-workspace-isolation! :clickhouse
   [database workspace]
-  (let [db-name  (ws.u/isolation-namespace-name workspace)
-        username (ws.u/isolation-user-name workspace)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
-        (doseq [sql [;; DROP DATABASE cascades to all tables within it
-                     (format "DROP DATABASE IF EXISTS `%s`" db-name)
-                     (format "DROP USER IF EXISTS `%s`" username)]]
-          (.addBatch ^java.sql.Statement stmt ^String sql))
-        (.executeBatch ^java.sql.Statement stmt)))))
+  (let [db-name      (ws.u/isolation-namespace-name workspace)
+        username     (ws.u/isolation-user-name workspace)
+        workspace-id (:id workspace)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      ;; Drop database - cascades to all tables within it
+      (isolation/try-execute! conn
+                              (format "DROP DATABASE IF EXISTS `%s`" db-name)
+                              workspace-id "drop database")
+      ;; Drop user
+      (isolation/try-execute! conn
+                              (format "DROP USER IF EXISTS `%s`" username)
+                              workspace-id "drop user"))))

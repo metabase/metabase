@@ -1,7 +1,23 @@
 (ns metabase-enterprise.workspaces.isolation
   (:require
+   [clojure.java.jdbc :as jdbc]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]))
+   [metabase.driver.util :as driver.u]
+   [metabase.util.log :as log]))
+
+;;;; Helpers for driver implementations
+
+(defn try-execute!
+  "Execute a SQL statement, logging and swallowing any exceptions.
+   Returns true if successful, false if failed.
+   Use this for best-effort cleanup where failures should not block the overall operation."
+  [conn sql workspace-id description]
+  (try
+    (jdbc/execute! conn [sql])
+    true
+    (catch Exception e
+      (log/warnf e "Failed to %s for workspace %s: %s" description workspace-id sql)
+      false)))
 
 ;;;; Driver multimethods
 ;; Implementations are in metabase-enterprise.workspaces.driver.{postgres,h2}

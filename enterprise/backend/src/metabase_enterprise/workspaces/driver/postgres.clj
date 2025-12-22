@@ -51,13 +51,19 @@
 
 (defmethod isolation/destroy-workspace-isolation! :postgres
   [database workspace]
-  (let [schema-name (:schema workspace)
-        username    (-> workspace :database_details :user)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)]
-                      (user-exists? t-conn username)
-                      (into [(format "DROP OWNED BY \"%s\"" username)
-                             (format "DROP USER IF EXISTS \"%s\"" username)]))]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+  (let [schema-name  (:schema workspace)
+        username     (-> workspace :database_details :user)
+        workspace-id (:id workspace)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      ;; Drop schema - this is usually the most important part
+      (isolation/try-execute! conn
+                              (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                              workspace-id "drop schema")
+      ;; Drop owned objects and user - may fail if admin lacks permissions
+      (when (user-exists? conn username)
+        (isolation/try-execute! conn
+                                (format "DROP OWNED BY \"%s\"" username)
+                                workspace-id "drop owned objects")
+        (isolation/try-execute! conn
+                                (format "DROP USER IF EXISTS \"%s\"" username)
+                                workspace-id "drop user")))))
