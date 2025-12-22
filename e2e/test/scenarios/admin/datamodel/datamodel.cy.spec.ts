@@ -1736,7 +1736,9 @@ describe("scenarios > admin > datamodel", () => {
           verifyAndCloseToast("Casting disabled for Rating");
 
           cy.log("enable casting");
-          FieldSection.getCoercionToggle().parent().click();
+          FieldSection.getCoercionToggle()
+            .parent()
+            .click({ scrollBehavior: "center" });
           H.popover().findByText("UNIX seconds → Datetime").click();
           cy.wait("@updateField");
           verifyAndCloseToast("Casting enabled for Rating");

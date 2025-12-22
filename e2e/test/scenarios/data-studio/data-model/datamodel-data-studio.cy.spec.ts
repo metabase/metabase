@@ -1783,7 +1783,7 @@ describe("scenarios > data studio > datamodel", () => {
           verifyAndCloseToast("Casting enabled for Rating");
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           verifyTablePreview({
             column: "Rating",
             values: [
@@ -2114,7 +2114,7 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("verify preview");
           TableSection.clickField("Tax");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           verifyTablePreview({
             column: "Tax ($)",
             values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
@@ -2808,7 +2808,7 @@ describe("scenarios > data studio > datamodel", () => {
           );
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           verifyObjectDetailPreview({
             rowNumber: 2,
             row: ["Product ID", "Awesome Concrete Shoes"],
