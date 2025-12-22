@@ -363,6 +363,7 @@
         (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :details {}}
                        :model/Transform {query-main-id :id}
                        {:name   "Query on main DB"
+                        :source_type :native
                         :source {:type  "query"
                                  :query {:database (mt/id)
                                          :type     "native"
@@ -372,6 +373,7 @@
                                  :name (str "test_qm_" (u/generate-nano-id))}}
                        :model/Transform {python-main-id :id}
                        {:name   "Python on main DB"
+                        :source_type :python
                         :source {:type          "python"
                                  :body          "print('hello')"
                                  :source-tables {}}
@@ -380,6 +382,7 @@
                                  :database (mt/id)}}
                        :model/Transform {query-other-id :id}
                        {:name   "Query on other DB"
+                        :source_type :native
                         :source {:type  "query"
                                  :query {:database other-db-id
                                          :type     "native"
@@ -390,7 +393,7 @@
           (testing "filter by main database and query type"
             (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
                                                 :database_id (mt/id)
-                                                :type ["query"])]
+                                                :type ["native"])]
               (is (some #(= query-main-id (:id %)) results))
               (is (not (some #(= python-main-id (:id %)) results)))
               (is (not (some #(= query-other-id (:id %)) results)))))
