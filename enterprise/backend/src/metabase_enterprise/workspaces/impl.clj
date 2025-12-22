@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -53,7 +54,7 @@
         (let [database (t2/select-one :model/Database :id (:database_id workspace))
               tables   (mapv external-input->table ungranted-inputs)]
           (try
-            (ws.isolation/grant-read-access-to-tables! database workspace tables)
+            (ws.isolation/grant-read-access-to-tables! (driver.u/database->driver database) database workspace tables)
             ;; Mark inputs as granted after successful grant
             (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted-inputs)]}
                         {:access_granted true})

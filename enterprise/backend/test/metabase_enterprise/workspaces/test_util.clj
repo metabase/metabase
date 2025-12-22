@@ -4,6 +4,7 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
+   [metabase.driver.util :as driver.u]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -36,7 +37,8 @@
   [workspace]
   (try
     (when (:database_details workspace)
-      (ws.isolation/destroy-workspace-isolation! (t2/select-one :model/Database (:database_id workspace)) workspace))
+      (let [database (t2/select-one :model/Database (:database_id workspace))]
+        (ws.isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)))
     (catch Exception e
       (log/warn e "Failed to destroy isolation" {:workspace workspace})))
   workspace)

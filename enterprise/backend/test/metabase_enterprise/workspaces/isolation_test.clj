@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]))
 
 (ws.tu/ws-fixtures!)
@@ -113,9 +114,40 @@
             (is (every? true? (vals resources)))))
 
         (testing "destroy removes all isolation resources"
-          (isolation/destroy-workspace-isolation! database workspace)
+          (isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)
           (let [resources (workspace-isolation-resources-exist? database workspace)]
             (is (every? false? (vals resources)))))
 
         (testing "destroy is idempotent"
-          (isolation/destroy-workspace-isolation! database workspace))))))
+          (isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace))))))
+
+;;; check-isolation-permissions tests
+
+(deftest check-isolation-permissions-success-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns nil when connection has all required permissions"
+      (let [database   (mt/db)
+            test-table {:schema (mt/format-name "public")
+                        :name   (mt/format-name "orders")}]
+        (is (nil? (isolation/check-isolation-permissions
+                   (driver/the-driver (:engine database))
+                   database
+                   test-table)))))))
+
+(deftest check-isolation-permissions-no-artifacts-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "leaves no artifacts after check due to transaction rollback"
+      (let [database       (mt/db)
+            test-workspace {:id   "00000000-0000-0000-0000-000000000000"
+                            :name "_mb_perm_check_"}
+            test-table     {:schema (mt/format-name "public")
+                            :name   (mt/format-name "orders")}]
+        ;; Run the check
+        (isolation/check-isolation-permissions
+         (driver/the-driver (:engine database))
+         database
+         test-table)
+        ;; Verify no artifacts remain - the test workspace should not have any resources
+        (let [resources (workspace-isolation-resources-exist? database test-workspace)]
+          (is (every? false? (vals resources))
+              "No isolation resources should exist after permission check"))))))

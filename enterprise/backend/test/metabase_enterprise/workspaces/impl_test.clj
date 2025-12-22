@@ -23,7 +23,7 @@
           grant-calls (atom [])]
       ;; Set up mock BEFORE calling add-to-changeset! since it calls sync-transform-dependencies! internally
       (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
-                                  (fn [_database _workspace tables]
+                                  (fn [_driver _database _workspace tables]
                                     (swap! grant-calls conj (set (map :name tables))))]
         (testing "Transform A depends on ORDERS"
           (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
