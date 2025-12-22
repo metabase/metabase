@@ -12,17 +12,12 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept(
-      "PUT",
-      "/api/setting/notebook-native-preview-shown",
-      cy.spy().as("updatePreviewStateSpy"),
-    );
   });
 
   it("should not show empty sidebar when no data source is selected", () => {
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     H.openReviewsTable({ mode: "notebook", limit: 1 });
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
     cy.wait("@nativeDataset");
 
     cy.findByTestId("app-bar").findByLabelText("New").click();
@@ -43,14 +38,14 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
 
     H.openReviewsTable({ mode: "notebook", limit: queryLimit });
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
     cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
     cy.log("Refreshing the page does not persist the sidebar state");
     cy.reload();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
     cy.wait("@nativeDataset");
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
@@ -71,7 +66,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       .and("not.contain", queryLimit);
 
     cy.log("It should be possible to close the sidebar");
-    cy.findByLabelText("Hide SQL").click();
+    closeSidebar();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
@@ -94,7 +89,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       cy.location("pathname").should("eq", "/question/notebook");
 
       cy.log("Opening a preview sidebar should completely cover the notebook");
-      cy.findByLabelText("View SQL").click();
+      openSidebar();
       cy.location("pathname").should("eq", "/question/notebook");
 
       cy.log(
@@ -138,7 +133,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     H.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.wait("@metadata");
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
     cy.wait(["@nativeDataset", "@sessionProperties"]);
 
     cy.log(
@@ -165,7 +160,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signInAsAdmin();
     H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
     H.openNotebook();
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
       .then(($sidebar) => {
@@ -180,7 +175,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     H.openNotebook();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
       .then(($sidebar) => {
@@ -267,7 +262,7 @@ describe(
       });
 
       cy.log("Simple question");
-      cy.findByLabelText("View native query").click();
+      openSidebar("native");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
@@ -296,7 +291,7 @@ describe(
 
       cy.log("The generated query should be valid (metabase#38181)");
       H.openNotebook();
-      cy.findByLabelText("View native query").click();
+      openSidebar("native");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
@@ -351,7 +346,7 @@ describe(
           "Small Marble Shoes",
         );
         H.openNotebook();
-        cy.findByLabelText("View native query").click();
+        openSidebar("native");
 
         cy.findByTestId("native-query-preview-sidebar").within(() => {
           cy.findByText("Native query for this question").should("exist");
@@ -401,7 +396,7 @@ describe("scenarios > notebook > native query preview sidebar tracking events", 
       event: "notebook_native_preview_shown",
     });
 
-    cy.findByLabelText("Hide SQL").click();
+    closeSidebar();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
     H.expectUnstructuredSnowplowEvent({
@@ -457,4 +452,14 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
       cb(initialSidebarWidth, sidebarWidth);
     });
   });
+}
+
+function openSidebar(variant: "sql" | "native" = "sql") {
+  const label = variant === "sql" ? "View SQL" : "View native query";
+  cy.findByLabelText(label).should("be.visible").click();
+}
+
+function closeSidebar(variant: "sql" | "native" = "sql") {
+  const label = variant === "sql" ? "Hide SQL" : "Hide native query";
+  cy.findByLabelText(label).should("be.visible").click();
 }

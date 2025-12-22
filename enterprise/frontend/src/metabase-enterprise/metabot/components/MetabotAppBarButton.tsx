@@ -14,7 +14,7 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotAgent("omnibot");
 
   const handleClick = () => {
     if (!metabot.visible) {
