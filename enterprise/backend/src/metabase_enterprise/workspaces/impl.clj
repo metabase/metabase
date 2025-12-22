@@ -149,12 +149,12 @@
    (let [ref-id (:ref_id transform)
          external-id (:id transform)
          result (ws.isolation/with-workspace-isolation workspace (ws.execute/run-transform-with-remapping transform remapping))]
+     (when ref-id ;; update last run time even if that was a failure
+       (t2/update! :model/WorkspaceTransform ref-id {:last_run_at (:end_time result)}))
      (when (= :succeeded (:status result))
        (if ref-id
          ;; Workspace transform
-         (do
-           (t2/update! :model/WorkspaceTransform ref-id {:last_run_at (:end_time result)})
-           (backfill-isolated-table-id! ref-id))
+         (backfill-isolated-table-id! ref-id)
          ;; External transform (enclosed in workspace)
          (backfill-external-isolated-table-id! external-id)))
      result)))
