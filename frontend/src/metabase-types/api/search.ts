@@ -129,7 +129,7 @@ export type SearchRequest = {
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   ids?: SearchResultId[];
-  filter_items_in_personal_collection?: "only" | "exclude" | "all";
+  filter_items_in_personal_collection?: "only" | "exclude";
   context?: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;

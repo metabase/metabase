@@ -21,7 +21,7 @@ export type LastEditedAtFilterProps = string | null;
 export type VerifiedFilterProps = true | null;
 export type NativeQueryFilterProps = true | null;
 export type SearchTrashedItemsFilterProps = true | undefined;
-export type PersonalCollectionFilterProps = "all" | undefined;
+export type PersonalCollectionFilterProps = "only" | undefined;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;

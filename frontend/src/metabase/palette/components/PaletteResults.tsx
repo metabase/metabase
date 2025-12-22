@@ -62,7 +62,7 @@ const FullSearchCTA = ({
           ...locationQuery,
           q: searchTerm,
           filter_items_in_personal_collection: promptOtherUsersSearch
-            ? "all"
+            ? "only"
             : locationQuery.filter_items_in_personal_collection,
         },
       }}
