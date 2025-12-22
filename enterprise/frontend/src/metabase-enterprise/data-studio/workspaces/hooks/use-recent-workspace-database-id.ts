@@ -1,18 +1,15 @@
 import { useMemo } from "react";
 
 import { useGetWorkspaceQuery } from "metabase-enterprise/api/workspace";
-import type { Workspace } from "metabase-types/api/workspace";
-
-type DatabaseOption = {
-  value: string;
-  label: string;
-  disabled?: boolean;
-};
+import type {
+  Workspace,
+  WorkspaceAllowedDatabase,
+} from "metabase-types/api/workspace";
 
 export function useRecentWorkspaceDatabaseId(
   workspaces: Workspace[],
-  databaseOptions: DatabaseOption[],
-): string | null {
+  allowedDatabases?: WorkspaceAllowedDatabase[],
+): number | undefined {
   const recentWorkspaceId = useMemo(() => {
     const recentWorkspace = workspaces.find((w) => !w.archived);
     return recentWorkspace?.id ?? null;
@@ -24,10 +21,10 @@ export function useRecentWorkspaceDatabaseId(
   );
 
   if (recentWorkspaceData?.database_id) {
-    return String(recentWorkspaceData.database_id);
+    return recentWorkspaceData.database_id;
   }
 
   // fallback to first enabled database if no workspaces exist
-  const firstEnabledDb = databaseOptions.find((db) => !db.disabled);
-  return firstEnabledDb?.value ?? null;
+  const firstEnabledDb = allowedDatabases?.find((db) => db.supported);
+  return firstEnabledDb?.id;
 }

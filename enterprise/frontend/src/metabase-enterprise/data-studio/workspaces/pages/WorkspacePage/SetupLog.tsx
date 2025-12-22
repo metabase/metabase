@@ -21,7 +21,11 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
     skip: !shouldPoll,
   });
   useEffect(() => {
-    if (data?.status === "ready" || data?.status === "archived") {
+    if (
+      data?.status === "ready" ||
+      data?.status === "archived" ||
+      data?.status === "uninitialized"
+    ) {
       setShouldPoll(false);
     }
   }, [data?.status]);

@@ -248,7 +248,11 @@ export type WorkspaceProblem =
 export type WorkspaceLogEntryId = number;
 
 // Status used in workspace log responses (different from archived boolean on Workspace)
-export type WorkspaceSetupStatus = "pending" | "ready" | "archived";
+export type WorkspaceSetupStatus =
+  | "pending"
+  | "ready"
+  | "archived"
+  | "uninitialized";
 
 export type WorkspaceLogStatus = "started" | "success" | "failure";
 

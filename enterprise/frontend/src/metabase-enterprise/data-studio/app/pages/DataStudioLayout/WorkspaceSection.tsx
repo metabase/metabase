@@ -33,7 +33,6 @@ import {
   useGetWorkspacesQuery,
   useUnarchiveWorkspaceMutation,
 } from "metabase-enterprise/api/workspace";
-import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
 import { useRecentWorkspaceDatabaseId } from "metabase-enterprise/data-studio/workspaces/hooks/use-recent-workspace-database-id";
 import { TOOLTIP_OPEN_DELAY } from "metabase-enterprise/dependencies/components/DependencyGraph/constants";
 import type { Workspace, WorkspaceId } from "metabase-types/api/workspace";
@@ -47,13 +46,11 @@ type WorkspacesSectionProps = {
 function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
   const dispatch = useDispatch();
   const [isWorkspacesExpanded, setIsWorkspacesExpanded] = useState(true);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { pathname } = useSelector(getLocation);
   const { data: workspacesData, isLoading } = useGetWorkspacesQuery();
   const { data: allowedDatabasesData, isLoading: isLoadingDatabases } =
     useGetWorkspaceAllowedDatabasesQuery();
-  const [createWorkspace, { isLoading: isCreating }] =
-    useCreateWorkspaceMutation();
+  const [createWorkspace] = useCreateWorkspaceMutation();
 
   const workspaces = useMemo(
     () =>
@@ -71,19 +68,9 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     [workspacesData],
   );
 
-  const databaseOptions = useMemo(
-    () =>
-      (allowedDatabasesData?.databases ?? []).map((db) => ({
-        value: String(db.id),
-        label: db.name,
-        disabled: !db.supported,
-      })),
-    [allowedDatabasesData],
-  );
-
   const defaultDatabaseId = useRecentWorkspaceDatabaseId(
     workspaces,
-    databaseOptions,
+    allowedDatabasesData?.databases,
   );
 
   const handleOpenWorkspace = useCallback(
@@ -93,35 +80,32 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     [dispatch],
   );
 
-  const handleOpenCreateModal = useCallback(() => {
-    setIsCreateModalOpen(true);
-  }, []);
-
-  const handleCloseCreateModal = useCallback(() => {
-    setIsCreateModalOpen(false);
-  }, []);
-
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleCreateWorkspace = useCallback(
-    async ({ name, databaseId }: { name: string; databaseId: string }) => {
+    async ({
+      name,
+      databaseId,
+    }: {
+      name: string;
+      databaseId: number | null;
+    }) => {
+      if (!databaseId) {
+        sendErrorToast(t`No available databases`);
+        return;
+      }
+
       try {
         const workspace = await createWorkspace({
           name,
-          database_id: Number(databaseId),
+          database_id: databaseId,
         }).unwrap();
-        handleCloseCreateModal();
         handleOpenWorkspace(workspace.id);
       } catch (error) {
         sendErrorToast(t`Failed to create workspace`);
       }
     },
-    [
-      createWorkspace,
-      handleCloseCreateModal,
-      handleOpenWorkspace,
-      sendErrorToast,
-    ],
+    [createWorkspace, handleOpenWorkspace, sendErrorToast],
   );
 
   const [archiveWorkspace] = useArchiveWorkspaceMutation();
@@ -213,7 +197,12 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
         <>
           <UnstyledButton
             className={S.newWorkspaceButton}
-            onClick={handleOpenCreateModal}
+            onClick={() => {
+              handleCreateWorkspace({
+                name: "New workspace",
+                databaseId: defaultDatabaseId,
+              });
+            }}
             disabled={isLoadingDatabases}
             p="0.5rem"
             bdrs="md"
@@ -259,15 +248,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
           </Stack>
         </>
       )}
-
-      <CreateWorkspaceModal
-        opened={isCreateModalOpen}
-        onClose={handleCloseCreateModal}
-        onSubmit={handleCreateWorkspace}
-        databaseOptions={databaseOptions}
-        isSubmitting={isCreating}
-        defaultDatabaseId={defaultDatabaseId}
-      />
     </Stack>
   );
 }
