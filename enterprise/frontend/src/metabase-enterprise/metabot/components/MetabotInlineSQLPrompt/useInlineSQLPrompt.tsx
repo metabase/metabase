@@ -165,7 +165,7 @@ export function useInlineSQLPrompt(
       createPromptInputExtension(setPortalTarget),
       keymap.of([
         {
-          key: "Mod-;",
+          key: `Mod-Shift-i`,
           run: (view) => {
             resetInputRef.current();
             view.dispatch({ effects: toggleEffect.of({ view }) });

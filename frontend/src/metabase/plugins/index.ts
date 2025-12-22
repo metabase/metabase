@@ -762,6 +762,11 @@ type PluginMetabotType = {
   getAdminRoutes: () => React.ReactElement;
   getMetabotRoutes: () => React.ReactElement | null;
   MetabotAdminPage: ComponentType;
+  getMetabotQueryBuilderRoute: () => React.ReactElement | null;
+  getNewMenuItemAIExploration: (
+    hasDataAccess: boolean,
+    collectionId?: CollectionId,
+  ) => React.ReactElement | undefined;
   getMetabotVisible: (state: State, agentId: string) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
@@ -796,6 +801,8 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null,
   MetabotAdminPage: () => `placeholder`,
+  getMetabotQueryBuilderRoute: () => null,
+  getNewMenuItemAIExploration: () => undefined,
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,

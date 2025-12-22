@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
+import { PLUGIN_DOCUMENTS, PLUGIN_METABOT } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon, Menu } from "metabase/ui";
@@ -40,6 +40,14 @@ const NewItemMenuView = ({
 
   const menuItems = useMemo(() => {
     const items = [];
+
+    const aiExplorationItem = PLUGIN_METABOT.getNewMenuItemAIExploration(
+      hasDataAccess,
+      collectionId,
+    );
+    if (aiExplorationItem) {
+      items.push(aiExplorationItem);
+    }
 
     if (hasDataAccess) {
       items.push(
