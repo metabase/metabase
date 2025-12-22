@@ -5,6 +5,7 @@ import { useLatest, useMount } from "react-use";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { overrideRequestsForPublicOrStaticEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
@@ -59,6 +60,7 @@ export const PublicOrEmbeddedQuestion = ({
     if (uuid) {
       overrideRequestsForPublicOrStaticEmbeds("public");
     } else if (token) {
+      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
       overrideRequestsForPublicOrStaticEmbeds("static");
     }
 
