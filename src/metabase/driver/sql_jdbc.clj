@@ -71,9 +71,10 @@
   [driver _feature _db]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
+;; wuuut
 (defmethod driver/database-supports? [:sql-jdbc :workspace]
   [_driver _feature _db]
-  true)
+  false)
 
 (defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
 
