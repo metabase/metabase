@@ -9,6 +9,7 @@ import type {
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/filters/types";
+import type { DateFormattingSettings } from "metabase-types/api/settings";
 
 import { EXCLUDE_OPERATOR_OPTIONS, EXCLUDE_UNIT_OPTIONS } from "./constants";
 import type {
@@ -46,12 +47,15 @@ export function findExcludeUnitOption(
 
 export function getExcludeValueOptionGroups(
   unit: DatePickerExtractionUnit,
+  formattingOptions: DateFormattingSettings | undefined,
 ): ExcludeValueOption[][] {
+  const DEFAULT_TIME_STYLE = "h A";
+  const format = formattingOptions?.time_style ?? DEFAULT_TIME_STYLE;
   switch (unit) {
     case "hour-of-day":
       return [
-        _.range(0, 12).map(getExcludeHourOption),
-        _.range(12, 24).map(getExcludeHourOption),
+        _.range(0, 12).map((value) => getExcludeHourOption(value, format)),
+        _.range(12, 24).map((value) => getExcludeHourOption(value, format)),
       ];
     case "day-of-week":
       return [_.range(1, 8).map(getExcludeDayOption)];
@@ -65,9 +69,12 @@ export function getExcludeValueOptionGroups(
   }
 }
 
-function getExcludeHourOption(hour: number): ExcludeValueOption {
-  const date = dayjs().hour(hour);
-  return { value: hour, label: date.format("h A") };
+function getExcludeHourOption(
+  hour: number,
+  format: string,
+): ExcludeValueOption {
+  const date = dayjs().hour(hour).minute(0).second(0).millisecond(0);
+  return { value: hour, label: date.format(format) };
 }
 
 function getExcludeDayOption(day: number): ExcludeValueOption {

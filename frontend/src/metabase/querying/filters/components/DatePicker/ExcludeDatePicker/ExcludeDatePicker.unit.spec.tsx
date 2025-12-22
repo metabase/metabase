@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
@@ -11,6 +12,7 @@ import type {
   DatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/filters/types";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type { DatePickerSubmitButtonProps } from "../types";
 
@@ -20,15 +22,26 @@ interface SetupOpts {
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerExtractionUnit[];
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  timeStyle?: string;
 }
 
 function setup({
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
   renderSubmitButton,
+  timeStyle,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
+  const storeInitialState = createMockState({
+    settings: mockSettings({
+      "custom-formatting": {
+        "type/Temporal": {
+          time_style: timeStyle ?? "h A",
+        },
+      },
+    }),
+  });
 
   renderWithProviders(
     <ExcludeDatePicker
@@ -38,6 +51,7 @@ function setup({
       onChange={onChange}
       onBack={onBack}
     />,
+    { storeInitialState },
   );
 
   return { onChange, onBack };
@@ -191,6 +205,50 @@ describe("ExcludeDatePicker", () => {
     expect(renderSubmitButton).toHaveBeenLastCalledWith({
       value: { ...defaultValue, values: [17] },
       isDisabled: false,
+    });
+  });
+
+  describe("time format settings", () => {
+    it("should display hours in 12-hour format by default", async () => {
+      setup();
+
+      await userEvent.click(screen.getByText("Hours of the day…"));
+
+      expect(screen.getByLabelText("12 AM")).toBeInTheDocument();
+      expect(screen.getByLabelText("1 AM")).toBeInTheDocument();
+      expect(screen.getByLabelText("11 AM")).toBeInTheDocument();
+      expect(screen.getByLabelText("12 PM")).toBeInTheDocument();
+      expect(screen.getByLabelText("1 PM")).toBeInTheDocument();
+      expect(screen.getByLabelText("11 PM")).toBeInTheDocument();
+    });
+
+    it("should display hours in 24-hour format when setting is HH:mm", async () => {
+      setup({ timeStyle: "HH:mm" });
+
+      await userEvent.click(screen.getByText("Hours of the day…"));
+
+      expect(screen.getByLabelText("00:00")).toBeInTheDocument();
+      expect(screen.getByLabelText("01:00")).toBeInTheDocument();
+      expect(screen.getByLabelText("12:00")).toBeInTheDocument();
+      expect(screen.getByLabelText("17:00")).toBeInTheDocument();
+      expect(screen.getByLabelText("23:00")).toBeInTheDocument();
+    });
+
+    it("should exclude hours correctly with 24-hour format", async () => {
+      const { onChange } = setup({ timeStyle: "HH:mm" });
+
+      await userEvent.click(screen.getByText("Hours of the day…"));
+      await userEvent.click(screen.getByLabelText("00:00"));
+      await userEvent.click(screen.getByLabelText("09:00"));
+      await userEvent.click(screen.getByLabelText("17:00"));
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "exclude",
+        operator: "!=",
+        unit: "hour-of-day",
+        values: [0, 9, 17],
+      });
     });
   });
 });
