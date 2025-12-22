@@ -202,7 +202,7 @@ export function formatValueRaw(
         return options.collapseNewlines ? removeNewLines(value) : value;
       }
       const number = parseNumber(value);
-      if (number != null && value.trim() === "" + number) {
+      if (number != null) {
         return formatNumber(number, options);
       }
     }
