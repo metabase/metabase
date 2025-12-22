@@ -125,8 +125,8 @@
 
 (mu/defmethod mi/visible-filter-clause :model/Database
   [_model column-or-exp user-info permission-mapping]
-  [:in column-or-exp
-   (perms/visible-database-filter-select user-info permission-mapping)])
+  {:clause [:in column-or-exp
+            (perms/visible-database-filter-select user-info permission-mapping)]})
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
