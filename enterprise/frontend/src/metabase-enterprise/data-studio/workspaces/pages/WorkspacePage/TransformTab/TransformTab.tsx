@@ -412,11 +412,6 @@ export const TransformTab = ({
                 </Flex>
               </Tooltip>
             )}
-            {isSaved && (
-              <Text size="xs" c="text-secondary">
-                {t`Runs in this workspace write results to an isolated workspace table, not the original target.`}
-              </Text>
-            )}
           </Group>
         </Group>
       </Stack>
