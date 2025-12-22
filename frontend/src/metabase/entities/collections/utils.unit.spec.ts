@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import {
   createMockCollection,
@@ -317,7 +317,7 @@ describe("entities > collections > utils", () => {
             audit_app: true,
           }),
         });
-        setupEnterprisePlugins();
+        setupEnterpriseOnlyPlugin("collections");
       });
 
       it("returns correct icon for official collections", () => {
@@ -402,7 +402,7 @@ describe("entities > collections > utils", () => {
             audit_app: true,
           }),
         });
-        setupEnterprisePlugins();
+        setupEnterpriseOnlyPlugin("collections");
       });
 
       testCasesEE.forEach((testCase) => {

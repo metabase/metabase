@@ -196,14 +196,6 @@ export const HandleEditorDrop = Extension.create({
             }
 
             const { state } = view;
-            const resolvedPos = state.doc.resolve(state.selection.from);
-            const isTopLevelParagraph =
-              resolvedPos.parent.type.name === "paragraph" &&
-              resolvedPos.depth === 1;
-
-            if (!isTopLevelParagraph) {
-              return slice;
-            }
 
             const transformedContent = slice.content.content.map((node) => {
               return state.schema.nodes.resizeNode.create({}, [node]);

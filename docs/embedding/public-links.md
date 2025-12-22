@@ -37,7 +37,7 @@ To share a dashboard via a public link, admins can click on the **Sharing** butt
 
 ![Sharing a dashboard](./images/dashboard-sharing.png)
 
-To embed a dashboard, see [static embedding](./static-embedding.md).
+To embed a dashboard, see [guest embedding](./guest-embedding.md).
 
 ## Create a public link for a document
 
@@ -100,7 +100,7 @@ To apply appearance or filter settings to your public embed, you can add paramet
 
 Note that it's possible to find the public link URL behind a public embed. If someone gets access to the public link URL, they can remove the parameters from the URL to view the original question or dashboard (that is, without any appearance or filter settings).
 
-If you'd like to create a secure embed that prevents people from changing filter names or values, check out [static embedding](./static-embedding.md).
+If you'd like to create a secure embed that prevents people from changing filter names or values, check out [guest embedding](./guest-embedding.md).
 
 ## Appearance parameters
 
