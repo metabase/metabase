@@ -192,8 +192,8 @@ export const useCommandPaletteBasicActions = ({
     }
 
     actions.push({
-      id: "report-issue",
-      name: t`Report an issue`,
+      id: "download-diagnostics",
+      name: t`Download diagnostics`,
       section: "basic",
       icon: "bug",
       keywords: "bug, issue, problem, error, diagnostic",
