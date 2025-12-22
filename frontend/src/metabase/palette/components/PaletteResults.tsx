@@ -47,6 +47,10 @@ const FullSearchCTA = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
+  if (!searchResults.total && !showOtherUsersCollections) {
+    return null;
+  }
+
   const promptOtherUsersSearch =
     !searchResults.total && showOtherUsersCollections;
 
