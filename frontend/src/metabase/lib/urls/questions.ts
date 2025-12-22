@@ -105,7 +105,7 @@ export function serializedQuestion(card: Card, opts = {}) {
 }
 
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook" | "query";
+  mode?: "view" | "notebook" | "query" | "ask";
   creationType?: string;
   objectId?: number | string;
 };
@@ -116,6 +116,10 @@ export function newQuestion({
   objectId,
   ...options
 }: NewQuestionUrlBuilderParams) {
+  if (mode === "ask") {
+    return `/question/ask`;
+  }
+
   const question = Question.create(options);
   const url = ML_Urls.getUrl(question, {
     creationType,

@@ -14,7 +14,9 @@ import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAdminAppBarButton } from "./components/MetabotAdminAppBarButton";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
+import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
+import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { getMetabotVisible, metabotReducer } from "./state";
 
@@ -54,6 +56,11 @@ if (hasPremiumFeature("metabot_v3")) {
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
   PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
+
+  PLUGIN_METABOT.getMetabotQueryBuilderRoute = () => (
+    <Route path="ask" component={MetabotQueryBuilder} />
+  );
+  PLUGIN_METABOT.getNewMenuItemAIExploration = getNewMenuItemAIExploration;
 } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
   PLUGIN_METABOT.getAdminPaths = () => [
     {
