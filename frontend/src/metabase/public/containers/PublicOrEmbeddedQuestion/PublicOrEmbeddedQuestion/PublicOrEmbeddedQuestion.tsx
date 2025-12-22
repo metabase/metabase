@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
+import { overrideRequestsForGuestOrPublicEmbeds } from "embedding-sdk-bundle/lib/override-requests-for-guest-or-public-embeds";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
@@ -10,13 +11,7 @@ import { setErrorPage } from "metabase/redux/app";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import {
-  EmbedApi,
-  PublicApi,
-  maybeUsePivotEndpoint,
-  setEmbedQuestionEndpoints,
-  setPublicQuestionEndpoints,
-} from "metabase/services";
+import { EmbedApi, PublicApi, maybeUsePivotEndpoint } from "metabase/services";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -60,11 +55,7 @@ export const PublicOrEmbeddedQuestion = ({
   const canWhitelabel = useSelector(getCanWhitelabel);
 
   useMount(async () => {
-    if (uuid) {
-      setPublicQuestionEndpoints(uuid);
-    } else if (token) {
-      setEmbedQuestionEndpoints(token);
-    }
+    overrideRequestsForGuestOrPublicEmbeds(uuid ? "public" : "static");
 
     try {
       let card;

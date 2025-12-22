@@ -3,7 +3,16 @@ import {
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import { getEmbedBase, internalBase } from "metabase/services";
+import { getEmbedBase, internalBase, publicBase } from "metabase/services";
+
+type EmbedType = "guest" | "static" | "public";
+
+const getBaseUrlByEmbedType = (embedType: EmbedType): string =>
+  ({
+    guest: getEmbedBase(),
+    static: getEmbedBase(),
+    public: publicBase,
+  })[embedType];
 
 const getIgnoreOverridePatterns = () => [
   sessionPropertiesPath,
@@ -31,35 +40,35 @@ const URL_PATTERNS = {
  */
 const EMBED_URL_TRANSFORMATIONS: Record<
   string,
-  {
+  (data: { embedType: EmbedType }) => {
     url: string;
     method: "GET" | "POST";
   }
 > = {
-  [URL_PATTERNS.CARD_QUERY]: {
-    url: `${getEmbedBase()}/card/:token/query`,
+  [URL_PATTERNS.CARD_QUERY]: ({ embedType }) => ({
+    url: `${getBaseUrlByEmbedType(embedType)}/card/:token/query`,
     method: "GET",
-  },
-  [URL_PATTERNS.CARD_PIVOT_QUERY]: {
-    url: `${getEmbedBase()}/pivot/card/:token/query`,
+  }),
+  [URL_PATTERNS.CARD_PIVOT_QUERY]: ({ embedType }) => ({
+    url: `${getBaseUrlByEmbedType(embedType)}/pivot/card/:token/query`,
     method: "GET",
-  },
-  [URL_PATTERNS.CARD_PARAMETER_VALUES]: {
-    url: `${getEmbedBase()}/card/:token/params/:paramId/values`,
+  }),
+  [URL_PATTERNS.CARD_PARAMETER_VALUES]: ({ embedType }) => ({
+    url: `${getBaseUrlByEmbedType(embedType)}/card/:token/params/:paramId/values`,
     method: "GET",
-  },
-  [URL_PATTERNS.CARD_PARAMETER_SEARCH]: {
-    url: `${getEmbedBase()}/card/:token/params/:paramId/search/:query`,
+  }),
+  [URL_PATTERNS.CARD_PARAMETER_SEARCH]: ({ embedType }) => ({
+    url: `${getBaseUrlByEmbedType(embedType)}/card/:token/params/:paramId/search/:query`,
     method: "GET",
-  },
-  [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: {
-    url: `${getEmbedBase()}/dashboard/:token/params/:paramId/values`,
+  }),
+  [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: ({ embedType }) => ({
+    url: `${getBaseUrlByEmbedType(embedType)}/dashboard/:token/params/:paramId/values`,
     method: "GET",
-  },
-  [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: {
-    url: `${getEmbedBase()}/dashboard/:token/params/:paramId/search/:query`,
+  }),
+  [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: ({ embedType }) => ({
+    url: `${getBaseUrlByEmbedType(embedType)}/dashboard/:token/params/:paramId/search/:query`,
     method: "GET",
-  },
+  }),
 } as const;
 
 type RequestData = {
@@ -107,9 +116,10 @@ function findMatchingPattern(url: string): string | null {
  */
 function getRequestTransformation({
   method,
+  embedType,
   url,
   options,
-}: RequestData): RequestData | null {
+}: RequestData & { embedType: EmbedType }): RequestData | null {
   const matchedPattern = findMatchingPattern(url);
 
   if (
@@ -126,7 +136,9 @@ function getRequestTransformation({
   }
 
   // Apply the transformation for this pattern
-  const transformation = EMBED_URL_TRANSFORMATIONS[matchedPattern];
+  const transformation = EMBED_URL_TRANSFORMATIONS[matchedPattern]({
+    embedType,
+  });
   if (!transformation) {
     return { method, url, options };
   }
@@ -143,10 +155,19 @@ function getRequestTransformation({
 /**
  * Replaces the standard API base path with the embed API base path.
  */
-function replaceWithEmbedBase(url: string): string {
-  if (url.includes(internalBase) && !url.includes(getEmbedBase())) {
-    return url.replace(internalBase, getEmbedBase());
+function replaceWithEmbedBase({
+  embedType,
+  url,
+}: {
+  embedType: EmbedType;
+  url: string;
+}): string {
+  const baseUrl = getBaseUrlByEmbedType(embedType);
+
+  if (url.includes(internalBase) && !url.includes(baseUrl)) {
+    return url.replace(internalBase, baseUrl);
   }
+
   return url;
 }
 
@@ -154,10 +175,17 @@ function replaceWithEmbedBase(url: string): string {
  * Registers a request interceptor that transforms standard API requests
  * into guest embeds API requests.
  */
-export const overrideRequestsForGuestEmbeds = () => {
+export const overrideRequestsForGuestOrPublicEmbeds = (
+  embedType: EmbedType,
+) => {
   PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
     async ({ method, url, options }) => {
-      const transformation = getRequestTransformation({ method, url, options });
+      const transformation = getRequestTransformation({
+        method,
+        embedType,
+        url,
+        options,
+      });
 
       if (!transformation) {
         return { method, url, options };
@@ -174,7 +202,7 @@ export const overrideRequestsForGuestEmbeds = () => {
 
       return {
         method: transformation.method,
-        url: replaceWithEmbedBase(transformation.url),
+        url: replaceWithEmbedBase({ embedType, url: transformation.url }),
         options: transformation.options,
       };
     };
