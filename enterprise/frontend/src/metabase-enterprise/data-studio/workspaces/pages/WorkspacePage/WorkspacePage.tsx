@@ -78,8 +78,8 @@ import {
 type WorkspacePageProps = {
   params: {
     workspaceId: string;
-    transformId?: string;
   };
+  transformId?: string;
 };
 
 type MetabotConversationSnapshot = Pick<
@@ -124,7 +124,10 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   const { data: allDbTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
-  const { data: workspaceTransforms = [] } = useGetWorkspaceTransformsQuery(id);
+  const {
+    data: workspaceTransforms = [],
+    isLoading: isLoadingWorkspaceTransforms,
+  } = useGetWorkspaceTransformsQuery(id);
   const { data: externalTransforms, isLoading: isLoadingExternalTransforms } =
     useGetExternalTransformsQuery(id);
   const availableTransforms = useMemo(
@@ -136,15 +139,25 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     // Initialize transform tab if redirected from transform page.
     if (transformId) {
       (async () => {
-        if (isLoadingExternalTransforms) {
+        if (isLoadingExternalTransforms || isLoadingWorkspaceTransforms) {
           return;
         }
 
-        const transform = availableTransforms.find(
-          (transform) => transform.id === Number(transformId),
+        const transform = [...availableTransforms, ...workspaceTransforms].find(
+          (transform) => {
+            if ("global_id" in transform) {
+              return transform.global_id === Number(transformId);
+            }
+            return transform.id === Number(transformId);
+          },
         );
         if (transform) {
-          const { data } = await fetchTransform(transform.id, true);
+          const { data } = await fetchTransform(
+            "global_id" in transform && transform.global_id !== null
+              ? transform.global_id
+              : transform.id,
+            true,
+          );
           if (data) {
             addOpenedTransform(data);
             setActiveTransform(data);
@@ -165,6 +178,8 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     id,
     isLoadingExternalTransforms,
     sendErrorToast,
+    isLoadingWorkspaceTransforms,
+    workspaceTransforms,
   ]);
 
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();

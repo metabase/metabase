@@ -45,7 +45,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     [workspacesData],
   );
 
-  const matchingWorkspaceIds = useMemo(() => {
+  const matchingWorkspaces = useMemo(() => {
     const allMatchingWorkspaceIds =
       workspaces
         ?.filter((item) => item.database_id === sourceDatabaseId)
@@ -54,17 +54,23 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     // Workspaces which already include this transform.
     const checkedWorkspaceIds =
       checkoutData?.transforms?.map((item) => item.workspace?.id) ?? [];
-    return new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]);
-  }, [checkoutData?.transforms, workspaces, sourceDatabaseId]);
 
-  const matchingWorkspaces = useMemo(
-    () =>
-      workspaces.filter(
-        (workspace) =>
-          matchingWorkspaceIds.has(workspace.id) && !workspace.archived,
-      ),
-    [workspaces, matchingWorkspaceIds],
-  );
+    return Array.from(
+      new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]),
+    )
+      .map((id) => {
+        const workspace = workspaces.find((ws) => ws.id === id);
+        if (!workspace) {
+          return null;
+        }
+        return {
+          id,
+          isChecked: checkedWorkspaceIds.includes(id),
+          name: workspace.name,
+        };
+      })
+      .filter((workspace) => !!workspace);
+  }, [checkoutData?.transforms, workspaces, sourceDatabaseId]);
 
   const isBusy =
     isCreatingWorkspace || isLoadingWorkspaces || isWorkspaceCheckoutLoading;
@@ -73,7 +79,10 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
       ? t`No workspaces yet`
       : t`No workspaces for this database yet`;
 
-  const handleWorkspaceSelect = async (workspace: Workspace) => {
+  const handleWorkspaceSelect = async (workspace: {
+    id: number;
+    name?: string;
+  }) => {
     dispatch(
       push(
         `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
@@ -157,17 +166,22 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
               {matchingWorkspaces.map((workspace) => (
                 <Menu.Item
                   key={workspace.id}
-                  leftSection={<Icon name="sparkles" />}
+                  leftSection={
+                    <Icon
+                      name="sparkles"
+                      c={workspace.isChecked ? "brand" : "text-dark"}
+                    />
+                  }
                   onClick={() => handleWorkspaceSelect(workspace)}
                   disabled={isBusy}
                 >
                   <Stack gap={2} align="flex-start">
                     <Text fw={600}>{workspace.name}</Text>
-                    {workspace.created_at && (
+                    {/* {workspace.created_at && (
                       <Text size="sm" c="text-light">
                         {formatWorkspaceDate(workspace.created_at)}
                       </Text>
-                    )}
+                    )} */}
                   </Stack>
                 </Menu.Item>
               ))}
