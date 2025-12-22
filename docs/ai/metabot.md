@@ -94,7 +94,7 @@ If you don't specify a specific table in a natural language question, Metabot wi
 
 When you get an error in a SQL query, you can click the **Have Metabot fix it** button, and Metabot will try to correct the query. You can also ask Metabot to fix your SQL in the chat.
 
-## Inline SQL editing with Metabot
+## Inline SQL editing
 
 ![Using inline SQL editing](./images/inline-sql.png)
 
