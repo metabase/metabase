@@ -127,10 +127,8 @@
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (throw (ex-info "Simulated cleanup failure" {:test true})))]
-        ;; Archive should still succeed
         (let [response (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))]
           (is (= {:ok true} response)))
-        ;; Workspace should be archived
         (is (some? (t2/select-one-fn :archived_at :model/Workspace :id (:id workspace)))
             "Workspace should have archived_at set despite cleanup failure")))))
 
