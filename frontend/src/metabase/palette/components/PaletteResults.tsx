@@ -72,7 +72,7 @@ const FullSearchCTA = ({
       <Group align="center" gap={rem(4)}>
         <span>
           {promptOtherUsersSearch
-            ? t`Search other users' personal collections`
+            ? t`Search all personal collections`
             : t`View and filter all ${searchResults.total} results`}
         </span>
         <Icon name="chevronright" size={12} />
