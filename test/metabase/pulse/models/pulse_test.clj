@@ -53,7 +53,7 @@
    :skip_if_empty       false
    :archived            false
    :parameters          []
-   :creation_context    nil})
+   :disable_links       nil})
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"

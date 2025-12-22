@@ -326,8 +326,8 @@
       (assoc :card (first (:cards notification)))
       (dissoc :cards)
       ;; TODO (Kelvin 2025-12-19) Remove this once we support alerts on modular embedding,
-      ;; as we only currently have `creation_context` column on Subscriptions.
-      (dissoc :creation_context)))
+      ;; as we only currently have `disable_links` column on Subscriptions.
+      (dissoc :disable_links)))
 
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
@@ -545,7 +545,7 @@
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential :map]]]
-                [:creation_context    {:optional true} [:maybe ms/NonBlankString]]]]
+                [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
     (u/prog1 (retrieve-pulse pulse-id)
