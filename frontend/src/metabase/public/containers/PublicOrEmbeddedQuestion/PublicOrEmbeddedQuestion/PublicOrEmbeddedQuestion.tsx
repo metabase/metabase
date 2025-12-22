@@ -3,10 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import {
-  overrideRequestsForPublicEmbeds,
-  overrideRequestsForStaticEmbeds,
-} from "metabase/embedding/lib/override-requests-for-embeds";
+import { overrideRequestsForPublicOrStaticEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
@@ -60,9 +57,9 @@ export const PublicOrEmbeddedQuestion = ({
 
   useMount(async () => {
     if (uuid) {
-      overrideRequestsForPublicEmbeds("question");
+      overrideRequestsForPublicOrStaticEmbeds("public");
     } else if (token) {
-      overrideRequestsForStaticEmbeds("question");
+      overrideRequestsForPublicOrStaticEmbeds("static");
     }
 
     try {
