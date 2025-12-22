@@ -92,6 +92,7 @@ export function MeasureAggregationPicker({
             clauseIndex={index}
             operators={operators}
             allowCustomExpressions
+            allowMetrics={false}
             onQueryChange={handleQueryChange}
             onClose={onClose}
             readOnly={readOnly}
