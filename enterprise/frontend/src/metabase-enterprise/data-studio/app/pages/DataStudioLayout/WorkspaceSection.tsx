@@ -359,12 +359,23 @@ function WorkspaceItem({
           </Menu.Target>
           <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             {workspace.archived ? (
-              <Menu.Item
-                leftSection={<Icon name="revert" />}
-                onClick={handleUnarchive}
-              >
-                {t`Restore`}
-              </Menu.Item>
+              <>
+                <Menu.Item
+                  leftSection={<Icon name="revert" />}
+                  onClick={handleUnarchive}
+                >
+                  {t`Restore`}
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  c="error"
+                  leftSection={<Icon name="trash" />}
+                  onClick={handleDelete}
+                  color="danger"
+                >
+                  {t`Delete`}
+                </Menu.Item>
+              </>
             ) : (
               <Menu.Item
                 leftSection={<Icon name="archive" />}
@@ -373,15 +384,6 @@ function WorkspaceItem({
                 {t`Archive`}
               </Menu.Item>
             )}
-            <Menu.Divider />
-            <Menu.Item
-              c="error"
-              leftSection={<Icon name="trash" />}
-              onClick={handleDelete}
-              color="danger"
-            >
-              {t`Delete`}
-            </Menu.Item>
           </Menu.Dropdown>
         </Menu>
       </Flex>
