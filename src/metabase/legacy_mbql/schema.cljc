@@ -681,7 +681,7 @@
   more (rest [:ref ::Addable]))
 
 (defclause -
-  x    [:ref ::NumericExpressionArg]
+  x    [:ref ::Addable]
   y    [:ref ::Addable]
   more (rest [:ref ::Addable]))
 
