@@ -19,12 +19,21 @@ type Options = {
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
 };
 
 export function resolver(options: Options): Resolver {
-  const { query, stageIndex, expressionMode, availableColumns } = options;
+  const {
+    query,
+    stageIndex,
+    expressionMode,
+    availableColumns,
+    availableMetrics,
+  } = options;
 
-  const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
+  const metrics = _.memoize(
+    () => availableMetrics ?? Lib.availableMetrics(query, stageIndex),
+  );
   const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
   const measures = _.memoize(() => Lib.availableMeasures(query, stageIndex));
 

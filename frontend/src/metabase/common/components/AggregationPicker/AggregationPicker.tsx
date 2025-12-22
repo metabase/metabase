@@ -90,6 +90,7 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   allowCustomExpressions = false,
+  allowMetrics = true,
   onClose,
   onQueryChange,
   onBack,
@@ -148,11 +149,20 @@ export function AggregationPicker({
     [query, stageIndex, clause, clauseIndex, onQueryChange],
   );
 
+  const availableColumns = useMemo(
+    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
+    [query, stageIndex, clauseIndex],
+  );
+
+  const availableMetrics = useMemo(
+    () => (allowMetrics ? Lib.availableMetrics(query, stageIndex) : []),
+    [query, stageIndex, allowMetrics],
+  );
+
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
     const measures = Lib.availableMeasures(query, stageIndex);
-    const metrics = Lib.availableMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const supportsCustomExpressions = database?.hasFeature(
@@ -183,11 +193,11 @@ export function AggregationPicker({
       });
     }
 
-    if (metrics.length > 0) {
+    if (availableMetrics.length > 0) {
       sections.push({
         key: "metrics",
         name: t`Metrics`,
-        items: metrics.map((metric) =>
+        items: availableMetrics.map((metric) =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
         icon: "metric",
@@ -223,12 +233,8 @@ export function AggregationPicker({
     operators,
     allowCustomExpressions,
     isSearching,
+    availableMetrics,
   ]);
-
-  const availableColumns = useMemo(
-    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
-    [query, stageIndex, clauseIndex],
-  );
 
   const checkIsItemSelected = useCallback(
     (item: Item) => "selected" in item && item.selected,
@@ -350,6 +356,7 @@ export function AggregationPicker({
         query={query}
         stageIndex={stageIndex}
         availableColumns={availableColumns}
+        availableMetrics={availableMetrics}
         name={displayInfo?.displayName}
         clause={clause}
         withName

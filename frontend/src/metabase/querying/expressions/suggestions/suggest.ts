@@ -10,6 +10,7 @@ export type SuggestOptions = {
   metadata: Metadata;
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
 };
 
 import { suggestAggregations } from "./aggregations";
