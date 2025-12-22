@@ -197,6 +197,10 @@ export function formatValueRaw(
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
     if (isNumber(column)) {
+      if (remapped !== undefined) {
+        // Value was remapped - treat as string, don't parse it!
+        return options.collapseNewlines ? removeNewLines(value) : value;
+      }
       const number = parseNumber(value);
       if (number != null && value.trim() === "" + number) {
         return formatNumber(number, options);
