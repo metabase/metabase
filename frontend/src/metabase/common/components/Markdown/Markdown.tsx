@@ -1,4 +1,5 @@
-import type { ComponentPropsWithRef } from "react";
+import type { AnchorHTMLAttributes, ComponentPropsWithRef } from "react";
+import { useMemo } from "react";
 import type ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -7,6 +8,10 @@ import type { ColorName } from "metabase/lib/colors/types";
 import { MarkdownRoot } from "./Markdown.styled";
 
 const REMARK_PLUGINS = [remarkGfm];
+
+const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
+  <a {...props} target="_blank" rel="noopener noreferrer" />
+);
 
 export interface MarkdownProps
   extends ComponentPropsWithRef<typeof ReactMarkdown> {
@@ -27,6 +32,7 @@ const Markdown = ({
   disallowHeading = false,
   unstyleLinks = false,
   c,
+  components,
   ...rest
 }: MarkdownProps): JSX.Element => {
   const additionalOptions = {
@@ -36,14 +42,19 @@ const Markdown = ({
     }),
   };
 
+  const customizedComponents = useMemo(
+    () => ({ a: MarkdownLink, ...components }),
+    [components],
+  );
+
   return (
     <MarkdownRoot
       className={className}
       dark={dark}
       remarkPlugins={REMARK_PLUGINS}
-      linkTarget={"_blank"}
       unstyleLinks={unstyleLinks}
       c={c}
+      components={customizedComponents}
       {...additionalOptions}
       {...rest}
     >
