@@ -114,7 +114,8 @@ export const DataStudio = {
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
       DataStudio.Library.allTableItems().contains(name),
-    result: (name: string) => libraryPage().findByText(name).closest("tr"),
+    result: (name: string) =>
+      libraryPage().findByText(name).closest('[role="row"]'),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
