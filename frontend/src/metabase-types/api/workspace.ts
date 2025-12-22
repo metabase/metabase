@@ -13,7 +13,7 @@ export type WorkspaceId = number;
 export type Workspace = {
   id: WorkspaceId;
   name: string;
-  archived: boolean;
+  archived?: boolean;
   archived_at?: string | null;
   status?: WorkspaceSetupStatus;
   collection_id?: CollectionId | null;
@@ -25,6 +25,8 @@ export type Workspace = {
 export type WorkspaceItem = {
   id: WorkspaceId;
   name: string;
+  database_id: DatabaseId;
+  archived?: boolean;
 };
 
 export type CreateWorkspaceRequest = {
@@ -33,7 +35,7 @@ export type CreateWorkspaceRequest = {
 };
 
 export type WorkspaceListResponse = {
-  items: Workspace[];
+  items: WorkspaceItem[];
   limit: number | null;
   offset: number | null;
 };

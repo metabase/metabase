@@ -96,6 +96,7 @@
 (def ^:private WorkspaceListing
   [:map {:closed true}
    [:id ::ws.t/appdb-id]
+   [:database_id ::ws.t/appdb-id]
    [:name :string]
    [:archived :boolean]])
 
@@ -106,7 +107,7 @@
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (t2/select [:model/Workspace :id :name [[:not= nil :archived_at] :archived]]
+  {:items  (t2/select [:model/Workspace :id :name :database_id [[:not= nil :archived_at] :archived]]
                       (cond-> {:order-by [[:created_at :desc]]}
                         (request/limit) (sql.helpers/limit (request/limit))
                         (request/offset) (sql.helpers/offset (request/offset))))
