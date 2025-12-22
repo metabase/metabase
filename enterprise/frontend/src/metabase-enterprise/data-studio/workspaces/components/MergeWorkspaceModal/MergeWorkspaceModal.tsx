@@ -108,7 +108,13 @@ function computeDiffStats(
   return { additions, deletions };
 }
 
-const OverviewPanel = () => {
+const OverviewPanel = ({
+  commitMessageLength = 0,
+  hasCommitMessageError,
+}: {
+  commitMessageLength?: number;
+  hasCommitMessageError: boolean;
+}) => {
   return (
     <Box p="xl" h="100%" style={{ overflowY: "auto" }}>
       <Stack>
@@ -118,7 +124,7 @@ const OverviewPanel = () => {
             {t`The commit message will be used to display the history of transform changes.`}
           </Text>
         </Box>
-        <Stack mt="md" gap="sm">
+        <Stack mt="md" gap="xs">
           <FormTextarea
             data-autofocus
             label={t`Commit message`}
@@ -127,6 +133,11 @@ const OverviewPanel = () => {
             minRows={4}
             required
           />
+          {!hasCommitMessageError && (
+            <Text size="xs" c="text-tertiary">
+              {commitMessageLength}/{MAX_COMMIT_MESSAGE_LENGTH}
+            </Text>
+          )}
         </Stack>
       </Stack>
     </Box>
@@ -283,9 +294,7 @@ const TransformListItem = ({
     >
       <Flex align="center" gap="sm" style={{ overflow: "hidden" }}>
         <Icon name="code_block" size={14} c="text-medium" />
-        <Text size="sm" truncate>
-          {transform.name}
-        </Text>
+        <Text truncate>{transform.name}</Text>
       </Flex>
       {stats && (stats.additions > 0 || stats.deletions > 0) && (
         <Flex gap="xs" fz="xs" style={{ flexShrink: 0 }}>
@@ -386,7 +395,7 @@ export const ReviewChangesModal = ({
                   onClick={() => setSelectedTransformId("overview")}
                 >
                   <Icon name="document" size={14} c="text-medium" />
-                  <Text size="sm">{t`Overview`}</Text>
+                  <Text>{t`Overview`}</Text>
                 </Flex>
                 <Text
                   px="md"
@@ -411,7 +420,10 @@ export const ReviewChangesModal = ({
               </Box>
               <Box flex={1} miw={0} style={{ overflow: "auto" }}>
                 {selectedTransformId === "overview" ? (
-                  <OverviewPanel />
+                  <OverviewPanel
+                    commitMessageLength={values.commit_message?.length}
+                    hasCommitMessageError={!!errors.commit_message}
+                  />
                 ) : selectedTransform ? (
                   <DiffView
                     key={selectedTransform.ref_id}
@@ -426,14 +438,11 @@ export const ReviewChangesModal = ({
               </Box>
             </Flex>
             <Flex
-              justify="space-between"
+              justify="flex-end"
               align="center"
               p="md"
               style={{ borderTop: "1px solid var(--mb-color-border)" }}
             >
-              <Text size="xs" c="text-tertiary">
-                {values.commit_message?.length ?? 0}/{MAX_COMMIT_MESSAGE_LENGTH}
-              </Text>
               <FormSubmitButton
                 disabled={
                   !values.commit_message?.trim() ||
