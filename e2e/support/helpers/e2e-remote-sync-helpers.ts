@@ -1,5 +1,5 @@
 import type { MatcherOptions } from "@testing-library/cypress";
-import yamljs from "yamljs";
+import yaml from "js-yaml";
 
 import type { Collection } from "metabase-types/api";
 
@@ -125,13 +125,13 @@ export const updateRemoteQuestion = (
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
     cy.readFile(fullPath).then((str) => {
-      const doc = yamljs.parse(str);
+      const doc = yaml.load(str);
 
       assertionsFn?.(doc);
 
       const updatedDoc = updateFn(doc);
 
-      cy.writeFile(fullPath, yamljs.stringify(updatedDoc));
+      cy.writeFile(fullPath, yaml.dump(updatedDoc));
       cy.exec(`git -C ${LOCAL_GIT_PATH} commit -am '${commitMessage}'`);
     });
   });
