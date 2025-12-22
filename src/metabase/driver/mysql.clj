@@ -1170,3 +1170,22 @@
 (defmethod driver.sql/default-schema :mysql
   [_]
   nil)
+
+;; Override db-type-name to handle tinyint(1) as boolean
+;; During sync, tinyint(1) is mapped to BIT (boolean) unless tinyInt1isBit=false is set
+;; We need to do the same during query execution to ensure type consistency
+(defmethod sql-jdbc.execute/db-type-name :mysql
+  [_driver ^ResultSetMetaData rsmeta column-index]
+  (let [db (try
+             (driver-api/database (driver-api/metadata-provider))
+             (catch Throwable _ nil))
+        tiny-int-1-is-bit? (not (some-> db :details :additional-options (str/includes? "tinyInt1isBit=false")))
+        db-type-name (.getColumnTypeName rsmeta column-index)
+        precision    (try
+                       (.getPrecision rsmeta column-index)
+                       (catch Throwable _ nil))]
+    (if (and (= "TINYINT" db-type-name)
+             (= precision 1)
+             tiny-int-1-is-bit?)
+      "BIT"
+      db-type-name)))
