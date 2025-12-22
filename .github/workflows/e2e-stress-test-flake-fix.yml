@@ -128,10 +128,16 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
-      - name: Generate database snapshots
+      - name: Generate default database snapshot
+        if: inputs.qa_db == false # true boolean, do not use string here!
         run: |
           node e2e/runner/run_cypress_ci.js snapshot \
-            --env grepTags="${{inputs.qa_db && '' || '-@external'}}"
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
+
+      - name: Generate all database snapshots
+        if: inputs.qa_db
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep

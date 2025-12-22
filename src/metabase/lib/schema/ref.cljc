@@ -204,12 +204,19 @@
 
 (lib.hierarchy/derive :expression ::ref)
 
+(defn normalize-aggregation-ref-options
+  "Normalize an `:aggregation` ref options map."
+  [m]
+  (when (map? m)
+    (normalize-field-options-map m)))
+
 (mr/def ::aggregation-options
   [:merge
+   {:decode/normalize normalize-aggregation-ref-options}
    ::common/options
    [:map
-    [:name {:optional true} ::common/non-blank-string]
-    [:display-name {:optional true} ::common/non-blank-string]
+    [:name            {:optional true} ::common/non-blank-string]
+    [:display-name    {:optional true} ::common/non-blank-string]
     [:lib/source-name {:optional true} ::common/non-blank-string]]])
 
 (mbql-clause/define-mbql-clause :aggregation

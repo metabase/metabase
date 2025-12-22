@@ -85,7 +85,7 @@ describe("formatDateTimeRangeWithUnit", () => {
 });
 
 describe("formatDateTimeForParameter", () => {
-  const value = "2020-01-01T00:00:00+05:00";
+  const value = "2020-01-01T06:00:00+05:00";
 
   it("should format year", () => {
     expect(formatDateTimeForParameter(value, "year")).toBe(
@@ -111,12 +111,14 @@ describe("formatDateTimeForParameter", () => {
     expect(formatDateTimeForParameter(value, "day")).toBe("2020-01-01");
   });
 
-  it("should format hour as a day", () => {
-    expect(formatDateTimeForParameter(value, "hour")).toBe("2020-01-01");
+  it("should format hour", () => {
+    expect(formatDateTimeForParameter(value, "hour")).toBe("2020-01-01T06:00");
   });
 
   it("should format minute", () => {
-    expect(formatDateTimeForParameter(value, "minute")).toBe("2020-01-01");
+    expect(formatDateTimeForParameter(value, "minute")).toBe(
+      "2020-01-01T06:00",
+    );
   });
 
   it("should format quarter-of-year as a day", () => {
