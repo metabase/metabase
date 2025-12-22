@@ -98,9 +98,7 @@ When you get an error in a SQL query, you can click the **Have Metabot fix it** 
 
 ![Using inline SQL editing](./images/inline-sql.png)
 
-Inline SQL editing lets you ask Metabot to work with SQL directly in the editor, without using the [chat sidebar](#the-metabot-chat-sidebar). Use it when you already have a query open and want to make quick, targeted changes, or when you want to generate a new query in place and review the result before applying it.
-
-How to use inline SQL editing:
+You can ask Metabot to generate or edit code in the SQL editor, without using the [chat sidebar](#the-metabot-chat-sidebar):
 
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
 2. Press Cmd+; on Mac or Ctrl+; on Windows.
