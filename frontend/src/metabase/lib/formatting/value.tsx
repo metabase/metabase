@@ -198,7 +198,7 @@ export function formatValueRaw(
   } else if (typeof value === "string") {
     if (isNumber(column)) {
       const number = parseNumber(value);
-      if (number != null) {
+      if (number != null && value.trim() === "" + number) {
         return formatNumber(number, options);
       }
     }
