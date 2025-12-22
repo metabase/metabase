@@ -14,7 +14,9 @@
   "Sets up test fixtures for workspace tests. Must be called at the top level of test namespaces."
   []
   (use-fixtures :once (fn [tests]
-                        (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+                        ;; E.g. app-db.yml tests perorm driver tests. Workspaces are not supported on mysql.
+                        ;; Following disj suppresses those runs destined for failure.
+                        (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table) :mysql)
                           (mt/with-premium-features [:workspaces :dependencies :transforms]
                             (search.tu/with-index-disabled
                               (tests))))))

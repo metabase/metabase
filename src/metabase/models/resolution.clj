@@ -113,8 +113,13 @@
     :model/Workspace                         metabase-enterprise.workspaces.models.workspace
     :model/WorkspaceDependency               metabase-enterprise.workspaces.models.workspace-dependency
     :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
+    :model/WorkspaceInputExternal            metabase-enterprise.workspaces.models.workspace-input-external
     :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
+    :model/WorkspaceMerge                    metabase-enterprise.workspaces.models.workspace-merge
+    :model/WorkspaceMergeTransform           metabase-enterprise.workspaces.models.workspace-merge-transform
     :model/WorkspaceOutput                   metabase-enterprise.workspaces.models.workspace-output
+    :model/WorkspaceOutputExternal           metabase-enterprise.workspaces.models.workspace-output-external
+
     :model/WorkspaceTransform                metabase-enterprise.workspaces.models.workspace-transform})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

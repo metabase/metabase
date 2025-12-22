@@ -5,6 +5,7 @@
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
+   [metabase-enterprise.workspaces.models.workspace-transform :as ws.tx]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
@@ -174,6 +175,7 @@
                              (assoc (select-keys body [:name :description :source :target])
                                     ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
                                     ;;:creator_id creator-id
+                                    :ref_id (ws.tx/generate-ref-id)
                                     :global_id global-id
                                     :workspace_id workspace-id))]
         (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
