@@ -8,6 +8,7 @@ import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFil
 import { LastEditedAtFilter } from "metabase/search/components/filters/LastEditedAtFilter";
 import { LastEditedByFilter } from "metabase/search/components/filters/LastEditedByFilter";
 import { NativeQueryFilter } from "metabase/search/components/filters/NativeQueryFilter";
+import { PersonalCollectionsFilter } from "metabase/search/components/filters/PersonalCollectionsFilter";
 import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { SearchFilterKeys } from "metabase/search/constants";
@@ -34,6 +35,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
+    [SearchFilterKeys.PersonalCollections]: PersonalCollectionsFilter,
   };
 
   const onOutputChange = (key: FilterTypeKeys, val?: SearchQueryParamValue) => {
@@ -92,6 +94,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
+      {getFilter(SearchFilterKeys.PersonalCollections)}
     </Stack>
   );
 };
