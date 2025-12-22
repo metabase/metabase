@@ -10,6 +10,7 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
@@ -95,13 +96,15 @@
 (defn- run-workspace-setup!
   "Background job: runs isolation, grants. Updates status to :ready when done."
   [{ws-id :id :as workspace} database]
-  (ws.log/track! ws-id :workspace-setup
-    (let [{:keys [_database_details]} (ws.log/track! ws-id :database-isolation
-                                        (-> (ws.isolation/ensure-database-isolation! workspace database)
-                                            ;; it actually returns just those, this is more like a doc than behavior
-                                            (select-keys [:schema :database_details])
-                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))]
-      (t2/update! :model/Workspace ws-id {:status :ready}))))
+  (try
+    (ws.log/track! ws-id :workspace-setup
+      (let [isolation-details (ws.log/track! ws-id :database-isolation
+                                (ws.isolation/ensure-database-isolation! workspace database))]
+        (t2/update! :model/Workspace ws-id (merge (select-keys isolation-details [:schema :database_details])
+                                                  {:status :ready}))))
+    (catch Exception e
+      (log/error e "Failed to setup workspace")
+      (throw e))))
 
 (defn initialize-workspace!
   "Initialize an uninitialized workspace with the given database_id.

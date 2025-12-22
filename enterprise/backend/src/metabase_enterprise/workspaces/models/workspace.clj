@@ -59,7 +59,7 @@
   [workspace]
   ;; Only destroy isolation if workspace was initialized (not uninitialized status)
   (when (not= :uninitialized (:status workspace))
-    (let [database (t2/select-one :model/Database :id (:database_id workspace))]
+    (when-let [database (t2/select-one :model/Database :id (:database_id workspace))]
       (ws.isolation/destroy-workspace-isolation! database workspace)
       (t2/update! :model/WorkspaceInput {:workspace_id (:id workspace)}
                   {:access_granted false})))

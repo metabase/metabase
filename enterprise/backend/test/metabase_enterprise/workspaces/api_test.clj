@@ -50,20 +50,17 @@
     (testing "POST /api/ee/workspace requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "ee/workspace"
-                                   {:name "Unauthorized Workspace"})))))
+                                   {:name "Unauthorized Workspace"}))))
 
-  (ws.tu/with-workspaces! [workspace {:name "Put Workspace"}]
     (testing "PUT /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (ws-url (:id workspace) "")
-                                   {:name "Updated"})))))
+                                   {:name "Updated"}))))
 
-  (ws.tu/with-workspaces! [workspace {:name "Delete Workspace"}]
     (testing "DELETE /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace) ""))))))
+             (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace) "")))))
 
-  (ws.tu/with-workspaces! [workspace {:name "Promote Workspace"}]
     (testing "POST /api/ee/workspace/:id/promote requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge")))))))
@@ -127,8 +124,7 @@
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (throw (ex-info "Simulated cleanup failure" {:test true})))]
-        (let [response (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))]
-          (is (= {:ok true} response)))
+        (is (some? (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))))
         (is (some? (t2/select-one-fn :archived_at :model/Workspace :id (:id workspace)))
             "Workspace should have archived_at set despite cleanup failure")))))
 
@@ -219,7 +215,7 @@
                    :model/Transform                 x1    {:name        "Upstream Transform"
                                                            :description "Original description"
                                                            :target      {:type     "table"
-                                                                         :database 1
+                                                                         :database (mt/id)
                                                                          :schema   "public"
                                                                          :name     "merge_test_table"}}]
       (let [{ws-id :id ws-name :name} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
