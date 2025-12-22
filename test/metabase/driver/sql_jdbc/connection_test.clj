@@ -653,7 +653,7 @@
 
 (deftest with-swapped-connection-details-test
   (testing "Swap connection details temporarily"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db    (mt/db)
             db-id (u/the-id db)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
@@ -672,7 +672,7 @@
 
 (deftest different-swap-details-get-separate-pools-test
   (testing "Different swap details for the same database get separate pools, identical details share pools"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db    (mt/db)
             db-id (u/the-id db)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
@@ -696,7 +696,7 @@
 
 (deftest with-swapped-connection-details-nested-test
   (testing "Nested swaps for the same database throw an exception"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db    (mt/db)
             db-id (u/the-id db)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
@@ -710,7 +710,7 @@
                    (sql-jdbc.conn/db->pooled-connection-spec db)))))))))
 
   (testing "Different databases can have concurrent swaps"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db-1    (mt/db)
             db-1-id (u/the-id db-1)]
         ;; We can only test this with one db in most test setups, but the code path works
@@ -720,7 +720,7 @@
 
 (deftest invalidate-pool-clears-both-canonical-and-swapped-test
   (testing "invalidate-pool-for-db! clears both canonical and swapped pools"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db    (mt/db)
             db-id (u/the-id db)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
@@ -742,7 +742,7 @@
 
 (deftest swapped-pool-recreated-when-expired-test
   (testing "Swapped pools are recreated when password expires"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db           (mt/db)
             db-id        (u/the-id db)
             swap-details {:test-swap true}
@@ -775,7 +775,7 @@
 
 (deftest swapped-pool-recreated-when-tunnel-closed-test
   (testing "Swapped pools are recreated when SSH tunnel is closed"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db           (mt/db)
             db-id        (u/the-id db)
             swap-details {:test-swap true}
@@ -810,7 +810,7 @@
 
 (deftest swapped-pool-reused-when-valid-test
   (testing "Valid swapped pools are reused without recreation"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db           (mt/db)
             db-id        (u/the-id db)
             create-count (atom 0)]
