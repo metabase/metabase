@@ -121,9 +121,9 @@
         (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
         (is @called? "destroy-workspace-isolation! should be called when archiving")))))
 
-(deftest ^:parallel archive-workspace-succeeds-when-cleanup-fails-test
+(deftest archive-workspace-succeeds-when-cleanup-fails-test
   (testing "POST /api/ee/workspace/:id/archive succeeds even when destroy-workspace-isolation! fails"
-    (let [workspace (ws.tu/create-ready-ws! "Archive Cleanup Fail Test")]
+    (ws.tu/with-workspaces! [workspace {:name "Archive Cleanup Fail Test"}]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (throw (ex-info "Simulated cleanup failure" {:test true})))]
