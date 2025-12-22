@@ -55,6 +55,3 @@ runs:
       if: inputs.apply-patches == 'true'
       run: yarn patch-package
       shell: bash
-    - name: Generate OpenAPI TypeScript types
-      run: yarn types:generate
-      shell: bash
