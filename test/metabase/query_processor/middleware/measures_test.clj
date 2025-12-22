@@ -361,3 +361,92 @@
           direct-query (lib/filter direct-query (lib/> direct-col 100))]
       (is (= (mt/rows (qp/process-query direct-query))
              (mt/rows (qp/process-query measure-query)))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    Measures with Metric References (disallowed)                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private test-metric-card
+  "A metric card for testing metric references in measures."
+  {:lib/type      :metadata/card
+   :id            100
+   :type          :metric
+   :name          "Test Metric"
+   :database-id   (meta/id)
+   :table-id      (meta/id :products)
+   :dataset-query (basic-count-measure-query)})
+
+(defn- mp-with-metric
+  "Create a metadata provider that includes the test metric."
+  []
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:cards [test-metric-card]}))
+
+(deftest ^:parallel measure-with-metric-reference-error-test
+  (testing "Measure containing a metric reference fails with descriptive error at query time"
+    (let [metric-mp (mp-with-metric)
+          mp (lib.tu/mock-metadata-provider
+              metric-mp
+              {:measures [{:lib/type   :metadata/measure
+                           :id         1
+                           :name       "Bad Measure"
+                           :table-id   (meta/id :products)
+                           :definition (-> (lib/query metric-mp (meta/table-metadata :products))
+                                           (lib/aggregate (lib.metadata/metric metric-mp 100)))}]})
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib.metadata/measure mp 1)))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"[Mm]easures cannot reference metrics"
+           (adjust query))))))
+
+(deftest ^:parallel measure-with-nested-metric-in-expression-error-test
+  (testing "Measure with metric nested in arithmetic expression fails"
+    (let [metric-mp (mp-with-metric)
+          mp (lib.tu/mock-metadata-provider
+              metric-mp
+              {:measures [{:lib/type   :metadata/measure
+                           :id         1
+                           :name       "Bad Measure"
+                           :table-id   (meta/id :products)
+                           ;; Metric nested in: (metric + count) * 2
+                           :definition (-> (lib/query metric-mp (meta/table-metadata :products))
+                                           (lib/aggregate
+                                            (lib/* (lib/+ (lib.metadata/metric metric-mp 100)
+                                                          (lib/count))
+                                                   2)))}]})
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib.metadata/measure mp 1)))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"[Mm]easures cannot reference metrics"
+           (adjust query))))))
+
+(deftest ^:parallel nested-measure-with-metric-reference-error-test
+  (testing "Nested measure containing metric reference fails (A → B where B uses metric)"
+    (let [metric-mp (mp-with-metric)
+          ;; First create inner measure that references the metric
+          inner-mp (lib.tu/mock-metadata-provider
+                    metric-mp
+                    {:measures [{:lib/type   :metadata/measure
+                                 :id         2
+                                 :name       "Inner Measure with Metric"
+                                 :table-id   (meta/id :products)
+                                 :definition (-> (lib/query metric-mp (meta/table-metadata :products))
+                                                 (lib/aggregate (lib.metadata/metric metric-mp 100)))}]})
+          ;; Then create outer measure that references the inner measure
+          mp (lib.tu/mock-metadata-provider
+              inner-mp
+              {:measures [{:lib/type   :metadata/measure
+                           :id         1
+                           :name       "Outer Measure"
+                           :table-id   (meta/id :products)
+                           :definition (-> (lib/query inner-mp (meta/table-metadata :products))
+                                           (lib/aggregate (lib/+ (lib.metadata/measure inner-mp 2) 1)))}]})
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib.metadata/measure mp 1)))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"[Mm]easures cannot reference metrics"
+           (adjust query))))))

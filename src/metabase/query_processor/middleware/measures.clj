@@ -35,6 +35,36 @@
        nil))
     (not-empty (persistent! ids))))
 
+(defn- contains-metric-reference?
+  "Check if the given query or clause contains any `:metric` references.
+  Returns true if found, false otherwise."
+  [query-or-clause]
+  (let [found? (volatile! false)
+        check-clause (fn [x]
+                       (when (lib.util/clause-of-type? x :metric)
+                         (vreset! found? true))
+                       nil)]
+    (if (map? query-or-clause)
+      ;; Full query - walk all clauses in all stages
+      (lib.walk/walk-clauses
+       query-or-clause
+       (fn [_query _path-type _stage-or-join-path clause]
+         (check-clause clause)))
+      ;; Single clause - walk directly
+      (lib.walk/walk-clause query-or-clause check-clause))
+    @found?))
+
+(defn- check-no-metric-references!
+  "Throw an exception if the measure definition contains any `:metric` references.
+  Measures cannot reference metrics."
+  [{:keys [id name definition]}]
+  (when (contains-metric-reference? definition)
+    (throw (ex-info (tru "Measures cannot reference metrics. Measure \"{0}\" (ID {1}) contains a metric reference."
+                         name id)
+                    {:type qp.error-type/invalid-query
+                     :measure-id id
+                     :measure-name name}))))
+
 (mu/defn- fetch-measures :- [:map-of pos-int? :map]
   "Fetch measure metadata for the given IDs."
   [query       :- ::lib.schema/query
@@ -43,10 +73,11 @@
                  (map (juxt :id identity))
                  (lib.metadata/bulk-metadata-or-throw query :metadata/measure measure-ids))
     (doseq [id measure-ids]
-      (or (get <> id)
-          (throw (ex-info (tru "Measure {0} does not exist or belongs to a different Database."
-                               id)
-                          {:type qp.error-type/invalid-query, :id id}))))))
+      (if-let [measure (get <> id)]
+        (check-no-metric-references! measure)
+        (throw (ex-info (tru "Measure {0} does not exist or belongs to a different Database."
+                             id)
+                        {:type qp.error-type/invalid-query, :id id}))))))
 
 (defn- measure-aggregation
   "Extract the aggregation clause from a measure's definition.

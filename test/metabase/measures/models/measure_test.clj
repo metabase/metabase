@@ -78,4 +78,66 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure measure-1-id {:definition (measure-definition-referencing measure-2-id)}))))))
+           (t2/update! :model/Measure measure-1-id {:definition (measure-definition-referencing measure-2-id)})))))
+
+;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
+
+  (defn- metric-query
+    "Create a metric-style dataset query (a query with a single aggregation)."
+    []
+    (measure-definition (lib/count)))
+
+  (deftest insert-measure-with-metric-reference-test
+    (testing "Inserting a measure that references a metric should fail"
+      (mt/with-temp [:model/Card {metric-id :id} {:name "Test Metric"
+                                                  :type :metric
+                                                  :database_id (mt/id)
+                                                  :table_id (mt/id :venues)
+                                                  :dataset_query (metric-query)}]
+        (let [mp (mt/metadata-provider)]
+          (is (thrown-with-msg?
+               Exception
+               #"[Mm]easures cannot reference metrics"
+               (t2/insert! :model/Measure
+                           {:name "Bad Measure"
+                            :table_id (mt/id :venues)
+                            :creator_id (mt/user->id :rasta)
+                            :definition (measure-definition (lib.metadata/metric mp metric-id))})))))))
+
+  (deftest insert-measure-with-nested-metric-reference-test
+    (testing "Inserting a measure with metric nested in arithmetic expression should fail"
+      (mt/with-temp [:model/Card {metric-id :id} {:name "Test Metric"
+                                                  :type :metric
+                                                  :database_id (mt/id)
+                                                  :table_id (mt/id :venues)
+                                                  :dataset_query (metric-query)}]
+        (let [mp (mt/metadata-provider)]
+          (is (thrown-with-msg?
+               Exception
+               #"[Mm]easures cannot reference metrics"
+               (t2/insert! :model/Measure
+                           {:name "Bad Measure"
+                            :table_id (mt/id :venues)
+                            :creator_id (mt/user->id :rasta)
+                          ;; Metric nested in an arithmetic expression: metric + 1
+                            :definition (measure-definition
+                                         (lib/+ (lib.metadata/metric mp metric-id)
+                                                1))})))))))
+
+  (deftest update-measure-with-metric-reference-test
+    (testing "Updating a measure to reference a metric should fail"
+      (mt/with-temp [:model/Measure {measure-id :id} {:name "Good Measure"
+                                                      :table_id (mt/id :venues)
+                                                      :creator_id (mt/user->id :rasta)
+                                                      :definition (measure-definition (lib/count))}
+                     :model/Card {metric-id :id} {:name "Test Metric"
+                                                  :type :metric
+                                                  :database_id (mt/id)
+                                                  :table_id (mt/id :venues)
+                                                  :dataset_query (metric-query)}]
+        (let [mp (mt/metadata-provider)]
+          (is (thrown-with-msg?
+               Exception
+               #"[Mm]easures cannot reference metrics"
+               (t2/update! :model/Measure measure-id
+                           {:definition (measure-definition (lib.metadata/metric mp metric-id))}))))))))
