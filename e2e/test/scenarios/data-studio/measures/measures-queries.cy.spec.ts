@@ -136,6 +136,27 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
     });
+
+    it("should not be possible to create a measure that references itself", () => {
+      cy.log("create a new measure");
+      H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
+
+      MeasureEditor.getNameInput().type(MEASURE_NAME);
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Count of rows").click();
+
+      MeasureEditor.getSaveButton().click();
+      H.undoToast().should("contain.text", "Measure created");
+
+      MeasureEditor.get().findByText("Count").click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.clear().type("[Table Measure]").blur();
+
+      H.popover().button("Update").click();
+      MeasureEditor.getSaveButton().click();
+
+      H.undoToast().should("contain.text", "Failed to update measure");
+    });
   });
 });
 
