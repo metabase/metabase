@@ -1153,7 +1153,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify preview");
         TableSection.clickField("New tax");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "New tax",
           values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
@@ -1188,7 +1188,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify preview");
         TableSection.clickField("New tax");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         cy.wait("@dataset");
         PreviewSection.get()
           .findByText("Sorry, you don’t have permission to see that.")
@@ -1228,7 +1228,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify preview");
         TableSection.clickField("Total");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "Total",
           description: "New description",
@@ -1258,7 +1258,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify preview");
         TableSection.clickField("Total");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "Total",
           values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
@@ -1548,7 +1548,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify preview");
         TableSection.clickField("New tax");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "New tax",
           values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
@@ -1586,7 +1586,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify preview");
         TableSection.clickField("New total");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         cy.wait("@dataset");
         PreviewSection.get()
           .findByText("Sorry, you don’t have permission to see that.")
@@ -1627,7 +1627,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify preview");
         TableSection.clickField("Total");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "Total",
           description: "New description",
@@ -1658,7 +1658,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify preview");
         TableSection.clickField("Total");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "Total",
           values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
@@ -1691,7 +1691,7 @@ describe("scenarios > data studio > datamodel", () => {
         verifyAndCloseToast("Name of Product ID updated");
 
         cy.log("verify preview");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "Remapped Product ID",
           values: ["14", "123", "105", "94", "132"],
@@ -1830,7 +1830,7 @@ describe("scenarios > data studio > datamodel", () => {
           verifyAndCloseToast("Casting enabled for Rating");
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           // ideally we should change the formatting to show smaller values and assert those
           // but we can't set formatting on a coerced field (metabase#60483)
           verifyTablePreview({
@@ -1904,7 +1904,7 @@ describe("scenarios > data studio > datamodel", () => {
           );
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           cy.wait("@dataset");
           PreviewSection.get()
             .findAllByTestId("cell-data")
@@ -1938,7 +1938,7 @@ describe("scenarios > data studio > datamodel", () => {
           verifyAndCloseToast("Semantic type of Quantity updated");
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           cy.wait("@dataset");
           PreviewSection.get()
             .findAllByTestId("cell-data")
@@ -2046,7 +2046,7 @@ describe("scenarios > data studio > datamodel", () => {
           );
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           cy.wait("@dataset");
           PreviewSection.get()
             .findByText("Sorry, you don’t have permission to see that.")
@@ -2306,7 +2306,7 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("verify preview");
           TableSection.clickField("Tax");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           verifyTablePreview({
             column: "Tax",
             values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
@@ -2351,7 +2351,7 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("verify preview");
           TableSection.clickField("Tax");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           PreviewSection.get()
             .findByText("This field is hidden")
             .should("exist");
@@ -2385,7 +2385,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
 
           TableSection.clickField("Tax");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           PreviewSection.get().within(() => {
             cy.findByText("Filtering").click();
 
@@ -2424,7 +2424,7 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("verify preview");
           TableSection.clickField("Tax");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           PreviewSection.get()
             .findByText("This field is hidden")
             .should("exist");
@@ -2498,7 +2498,7 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("verify preview");
           TableSection.clickField("Quantity");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
           PreviewSection.get().within(() => {
             cy.findByPlaceholderText("Enter a number").should("be.visible");
@@ -2529,7 +2529,7 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("verify preview");
           TableSection.clickField("Quantity");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
           PreviewSection.get().within(() => {
             cy.findByPlaceholderText("Min").should("be.visible");
@@ -2564,7 +2564,7 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("verify preview");
           TableSection.clickField("Quantity");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
           PreviewSection.get().within(() => {
             cy.findByPlaceholderText("Search the list").should("be.visible");
@@ -2641,7 +2641,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           verifyTablePreview({
             column: "Product ID",
             values: ["14", "123", "105", "94", "132"],
@@ -2883,7 +2883,7 @@ describe("scenarios > data studio > datamodel", () => {
           );
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           verifyTablePreview({
             column: "Rating",
             values: [
@@ -3032,7 +3032,7 @@ describe("scenarios > data studio > datamodel", () => {
           );
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           verifyTablePreview({
             column: "User ID",
             values: [
@@ -3093,7 +3093,7 @@ describe("scenarios > data studio > datamodel", () => {
           FieldSection.getRawName().should("exist").and("have.text", "json.a");
 
           cy.log("verify preview");
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
           verifyTablePreview({
             column: "Json → A",
             values: ["10", "10"],
@@ -3147,7 +3147,7 @@ describe("scenarios > data studio > datamodel", () => {
           TableSection.clickField("Json → A");
 
           TableSection.getFieldNameInput("Json → A").clear().type("A").blur();
-          FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+          FieldSection.getPreviewButton().click();
 
           FieldSection.getNameInput().should("have.value", "A");
           FieldSection.get()
@@ -3249,7 +3249,7 @@ describe("scenarios > data studio > datamodel", () => {
         verifyAndCloseToast("Formatting of Quantity updated");
 
         cy.log("verify preview");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "Quantity",
           values: ["200%", "300%", "200%", "600%", "500%"],
@@ -3319,7 +3319,7 @@ describe("scenarios > data studio > datamodel", () => {
         verifyAndCloseToast("Formatting of Quantity updated");
 
         cy.log("verify preview");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         verifyTablePreview({
           column: "Quantity",
           values: ["about 2", "about 3", "about 2", "about 6", "about 5"],
@@ -3377,7 +3377,7 @@ describe("scenarios > data studio > datamodel", () => {
 
         PreviewSection.get().should("not.exist");
 
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         PreviewSection.get().scrollIntoView().should("be.visible");
 
         cy.realPress("Escape");
@@ -3392,7 +3392,7 @@ describe("scenarios > data studio > datamodel", () => {
           fieldId: ORDERS.PRODUCT_ID,
         });
 
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         PreviewSection.get().scrollIntoView().should("be.visible");
 
         TableSection.getSyncOptionsButton().click();
@@ -3418,7 +3418,7 @@ describe("scenarios > data studio > datamodel", () => {
           fieldId: ORDERS.PRODUCT_ID,
         });
 
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         PreviewSection.get().scrollIntoView().should("be.visible");
 
         FieldSection.getSemanticTypeInput().click();
@@ -3437,7 +3437,7 @@ describe("scenarios > data studio > datamodel", () => {
           fieldId: ORDERS.PRODUCT_ID,
         });
 
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
         PreviewSection.get().scrollIntoView().should("be.visible");
 
         H.openCommandPalette();
@@ -3465,7 +3465,7 @@ describe("scenarios > data studio > datamodel", () => {
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
         TableSection.clickField("Name");
-        FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+        FieldSection.getPreviewButton().click();
 
         PreviewSection.get()
           .scrollIntoView()
@@ -3484,7 +3484,7 @@ describe("scenarios > data studio > datamodel", () => {
         fieldId: ORDERS.PRODUCT_ID,
       });
 
-      FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+      FieldSection.getPreviewButton().click();
       PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
 
       PreviewSection.get()
@@ -3528,7 +3528,7 @@ describe("scenarios > data studio > datamodel", () => {
       H.popover().findByText("Copper").click();
       cy.wait("@updateTable");
 
-      FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+      FieldSection.getPreviewButton().click();
       PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
       PreviewSection.get()
         .findByPlaceholderText("Enter an ID")
@@ -3703,7 +3703,7 @@ describe("scenarios > data studio > datamodel", () => {
       cy.log("preview section");
 
       cy.log("table preview");
-      FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+      FieldSection.getPreviewButton().click();
       PreviewSection.get()
         .scrollIntoView()
         .findByText("Something went wrong")

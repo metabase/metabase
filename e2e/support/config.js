@@ -167,7 +167,6 @@ const defaultConfig = {
   // enable video recording in run mode
   video: true,
   videoCompression: true,
-  scrollBehavior: "center",
 };
 
 const mainConfig = {

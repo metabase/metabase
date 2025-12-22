@@ -279,10 +279,7 @@ describe("issues 55617, 55618", () => {
       cy.findByText("Orders → ID").should("be.visible");
       cy.findByText("People → ID").should("be.visible");
       cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID")
-        .scrollIntoView()
-        .should("be.visible")
-        .click();
+      cy.findByText("Reviews → ID").should("be.visible").click();
     });
     cy.findAllByPlaceholderText("Select a target")
       .eq(0)
@@ -351,10 +348,7 @@ describe("issues 55617, 55618", () => {
       cy.findByText("Orders → ID").should("be.visible");
       cy.findByText("People → ID").should("be.visible");
       cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID")
-        .scrollIntoView()
-        .should("be.visible")
-        .click();
+      cy.findByText("Reviews → ID").should("be.visible").click();
     });
     cy.findAllByPlaceholderText("Select a target")
       .eq(0)
