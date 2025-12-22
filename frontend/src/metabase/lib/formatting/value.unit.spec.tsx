@@ -115,7 +115,7 @@ describe("formatValue", () => {
   });
 
   describe("remapped column", () => {
-    it("should apply formatting settings", () => {
+    it("should correctly parse string with initial digit", () => {
       const column = createMockColumn({
         base_type: "type/Float",
         remapped_to_column: createMockColumn({
@@ -129,6 +129,29 @@ describe("formatValue", () => {
       } as any);
       setup(1, { column, scale: 100 });
       expect(screen.getByText("1j")).toBeInTheDocument();
+
+      setup(2, { column, scale: 100 });
+      expect(screen.getByText("200")).toBeInTheDocument();
+    });
+  });
+
+  describe("remapped column", () => {
+    it("should correctly parse string with big integer", () => {
+      const column = createMockColumn({
+        base_type: "type/Float",
+        remapped_to_column: createMockColumn({
+          base_type: "type/Text",
+        }),
+        remapping: new Map([
+          [1, "4000000000000000000"], // bigger than 9,007,199,254,740,991 to trigger BigInt branch
+          [2, "2"],
+          [3, "Three"],
+        ]),
+      } as any);
+      setup(1, { column, scale: 100 });
+      expect(
+        screen.getByText("400,000,000,000,000,000,000"),
+      ).toBeInTheDocument();
 
       setup(2, { column, scale: 100 });
       expect(screen.getByText("200")).toBeInTheDocument();
