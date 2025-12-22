@@ -422,7 +422,7 @@ describe("issue 51020", () => {
       dropTemporaryTable();
     });
 
-    it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL (metabase#51020)", () => {
+    it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL (metabase#51020) 2", () => {
       cy.log(
         "check when primary key parameter is populated with click behavior",
       );
