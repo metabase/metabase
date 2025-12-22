@@ -10,6 +10,7 @@ import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
@@ -74,6 +75,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canAccessTransforms = useSelector(
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
+  const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
 
   const currentTab = getCurrentTab(pathname);
 
@@ -90,12 +92,20 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
         />
+        {isNavbarOpened && (
+          <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls fullWidth />
+        )}
         <DataStudioTab
           label={t`Library`}
           icon="repository"
           to={Urls.dataStudioLibrary()}
           isSelected={currentTab === "library"}
           showLabel={isNavbarOpened}
+          rightSection={
+            hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+            ) : null
+          }
         />
 
         {canAccessDataModel && (
@@ -180,6 +190,7 @@ type DataStudioTabProps = {
   to: string;
   isSelected?: boolean;
   showLabel: boolean;
+  rightSection?: ReactNode;
 };
 
 const TOOLTIP_OPEN_DELAY = 1000;
@@ -190,6 +201,7 @@ function DataStudioTab({
   to,
   isSelected,
   showLabel,
+  rightSection,
 }: DataStudioTabProps) {
   return (
     <Tooltip
@@ -208,6 +220,14 @@ function DataStudioTab({
       >
         <FixedSizeIcon name={icon} display="block" className={S.icon} />
         {showLabel && <Text lh="sm">{label}</Text>}
+        {rightSection && (
+          <Box
+            className={showLabel ? undefined : S.badgeOverlay}
+            ml={showLabel ? "auto" : undefined}
+          >
+            {rightSection}
+          </Box>
+        )}
       </Box>
     </Tooltip>
   );

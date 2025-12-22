@@ -137,7 +137,7 @@
                (some? query)  (sql.helpers/where query))))
 
 (defn- maybe-fix-name
-  "With Tenants enabled, we refer to the `all-internal-users` group as \"All Internal Users\", but
+  "With Tenants enabled, we refer to the `all-internal-users` group as \"All internal users\", but
    if Tenants is disabled we should call it \"All Users\".
 
   Actually changing the name brings a whole host of problems, and we very rarely actually present the names of
@@ -147,7 +147,7 @@
   (update group :name (fn [n]
                         (if (and (= magic_group_type perms/all-users-magic-group-type)
                                  using-tenants?)
-                          "All Internal Users"
+                          "All internal users"
                           n))))
 
 (defn- maybe-fix-names

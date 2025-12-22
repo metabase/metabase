@@ -19,7 +19,11 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
-import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/lib/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
@@ -172,7 +176,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
 
         const defaultGroup = _.find(
           groups,
-          PLUGIN_TENANTS.isExternalUsersGroup,
+          isTenantGroup ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
         );
 
         const defaultGroupPermission = defaultGroup

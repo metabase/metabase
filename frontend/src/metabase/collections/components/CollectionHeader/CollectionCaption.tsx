@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
@@ -31,7 +32,8 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const isEditable = isEditableCollection(collection);
+  const currentUser = useSelector(getCurrentUser);
+  const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(

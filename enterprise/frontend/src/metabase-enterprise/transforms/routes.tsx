@@ -19,7 +19,7 @@ import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
-import { TransformTargetPage } from "./pages/TransformTargetPage";
+import { TransformSettingsPage } from "./pages/TransformSettingsPage";
 import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
 
 export function getDataStudioTransformRoutes() {
@@ -42,7 +42,7 @@ export function getDataStudioTransformRoutes() {
         <Route path=":transformId" component={TransformQueryPage} />
         <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />
-        <Route path=":transformId/target" component={TransformTargetPage} />
+        <Route path=":transformId/settings" component={TransformSettingsPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
             path=":transformId/dependencies"

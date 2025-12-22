@@ -4,7 +4,6 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
-    hasEnterprisePlugins: true,
     tokenFeatures: { embedding_sdk: opts.isEmbeddingSdkEnabled },
     ...opts,
   });
@@ -14,6 +13,11 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     await setup({
       isEmbeddingSdkEnabled: true,
       showSdkEmbedTerms: false,
+      enterprisePlugins: [
+        "embedding-sdk",
+        "embedding_iframe_sdk",
+        "embedding_iframe_sdk_setup",
+      ],
     });
     expect(
       screen.getByText(
@@ -36,7 +40,16 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
 
   describe("Version pinning", () => {
     it("should offer users version pinning when they have a cloud instance", async () => {
-      await setup({ isHosted: true });
+      await setup({
+        isEmbeddingSdkEnabled: true,
+        showSdkEmbedTerms: false,
+        isHosted: true,
+        enterprisePlugins: [
+          "embedding-sdk",
+          "embedding_iframe_sdk",
+          "embedding_iframe_sdk_setup",
+        ],
+      });
 
       expect(screen.getByText("Version pinning")).toBeInTheDocument();
       expect(

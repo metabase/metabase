@@ -993,3 +993,36 @@ describe("Object Detail > public", () => {
     });
   });
 });
+
+describe("issue 66957", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("filter header should not hide when opening object details (metabase#66957)", () => {
+    H.tableInteractive().findByText("Quantity").click();
+    H.popover().findByText("Filter by this column").click();
+    H.popover().within(() => {
+      cy.findByText("2").click();
+      cy.button("Add filter").click();
+    });
+
+    H.openObjectDetail(5);
+
+    H.queryBuilderFiltersPanel()
+      .should("be.visible")
+      .findByText("Quantity is equal to 2")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("3").click();
+      cy.button("Update filter").click();
+    });
+
+    H.queryBuilderFiltersPanel()
+      .findByText("Quantity is equal to 2 selections")
+      .should("be.visible");
+  });
+});

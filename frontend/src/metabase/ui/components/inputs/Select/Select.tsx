@@ -5,9 +5,11 @@ import type {
 } from "@mantine/core";
 import { Select as MantineSelect } from "@mantine/core";
 import { type Ref, forwardRef } from "react";
-export * from "./SelectItem";
 
 import type { IconName } from "../../icons";
+
+export type { DataAttributes, InputDescriptionProps } from "@mantine/core";
+export * from "./SelectItem";
 
 export type SelectOption<Value = string | null> = ComboboxItem & {
   value: Value;
