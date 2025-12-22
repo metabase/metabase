@@ -161,7 +161,7 @@
 (defn add-to-changeset!
   "Add the given transform to the workspace changeset.
    If workspace is uninitialized, initializes it with the transform's target database."
-  [_creator-id workspace entity-type global-id body]
+  [creator-id workspace entity-type global-id body]
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
   (let [workspace (if (= :uninitialized (:status workspace))
@@ -176,9 +176,8 @@
             transform       (t2/insert-returning-instance!
                              :model/WorkspaceTransform
                              (assoc (select-keys body [:name :description :source :target])
-                                    ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
-                                    ;;:creator_id creator-id
                                     :ref_id (ws.tx/generate-ref-id)
+                                    :creator_id creator-id
                                     :global_id global-id
                                     :workspace_id workspace-id))]
         (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))

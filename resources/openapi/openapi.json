@@ -19014,6 +19014,189 @@
         "tags" : [ "/api/dataset" ]
       }
     },
+    "/api/dev/prototype/{type}/" : {
+      "get" : {
+        "description" : "Gets all records of the given type.\n  Any parameters passed will be used for equals filters",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/dev/prototype/{type}/",
+        "tags" : [ "/api/dev/prototype" ]
+      },
+      "post" : {
+        "description" : "Create a new record.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/dev/prototype/{type}/",
+        "tags" : [ "/api/dev/prototype" ]
+      }
+    },
+    "/api/dev/prototype/{type}/all" : {
+      "delete" : {
+        "description" : "Deletes all records of this type. Helpful for resetting to a clean state.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/dev/prototype/{type}/all",
+        "tags" : [ "/api/dev/prototype" ]
+      }
+    },
+    "/api/dev/prototype/{type}/{id}" : {
+      "delete" : {
+        "description" : "Deletes an existing record.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        }, {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/dev/prototype/{type}/{id}",
+        "tags" : [ "/api/dev/prototype" ]
+      },
+      "get" : {
+        "description" : "Returns an existing record",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        }, {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/dev/prototype/{type}/{id}",
+        "tags" : [ "/api/dev/prototype" ]
+      },
+      "put" : {
+        "description" : "Updates an existing record.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        }, {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/dev/prototype/{type}/{id}",
+        "tags" : [ "/api/dev/prototype" ]
+      }
+    },
     "/api/document/" : {
       "get" : {
         "description" : "Gets existing `Documents`.",
@@ -26717,6 +26900,9 @@
                           "archived" : {
                             "type" : "boolean"
                           },
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
                           "id" : {
                             "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                           },
@@ -26724,7 +26910,7 @@
                             "type" : "string"
                           }
                         },
-                        "required" : [ "id", "name", "archived" ],
+                        "required" : [ "id", "database_id", "name", "archived" ],
                         "type" : "object"
                       },
                       "type" : "array"
@@ -26749,7 +26935,7 @@
                 }
               }
             },
-            "description" : "map where {:items -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :name -> <string>, :archived -> <boolean>} with no other keys>, :limit -> <nullable integer>, :offset -> <nullable integer>} with no other keys"
+            "description" : "map where {:items -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :database_id -> <value must be an integer greater than zero.>, :name -> <string>, :archived -> <boolean>} with no other keys>, :limit -> <nullable integer>, :offset -> <nullable integer>} with no other keys"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -27415,6 +27601,13 @@
                       "items" : {
                         "additionalProperties" : false,
                         "properties" : {
+                          "creator_id" : {
+                            "oneOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "global_id" : {
                             "oneOf" : [ {
                               "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
@@ -27436,7 +27629,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "ref_id", "global_id", "name", "source_type" ],
+                        "required" : [ "ref_id", "global_id", "name", "source_type", "creator_id" ],
                         "type" : "object"
                       },
                       "type" : "array"
@@ -27447,7 +27640,7 @@
                 }
               }
             },
-            "description" : "map where {:transforms -> <sequence of map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :source_type -> <nullable keyword>} with no other keys>}"
+            "description" : "map where {:transforms -> <sequence of map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :source_type -> <nullable keyword>, :creator_id -> <nullable value must be an integer greater than zero.>} with no other keys>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -27502,6 +27695,13 @@
                   "properties" : {
                     "archived_at" : { },
                     "created_at" : { },
+                    "creator_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -27539,12 +27739,12 @@
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     }
                   },
-                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
                   "type" : "object"
                 }
               }
             },
-            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -27621,6 +27821,13 @@
                   "properties" : {
                     "archived_at" : { },
                     "created_at" : { },
+                    "creator_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -27658,12 +27865,12 @@
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     }
                   },
-                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
                   "type" : "object"
                 }
               }
             },
-            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -28349,6 +28556,13 @@
                   "properties" : {
                     "archived_at" : { },
                     "created_at" : { },
+                    "creator_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -28386,12 +28600,12 @@
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     }
                   },
-                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
                   "type" : "object"
                 }
               }
             },
-            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
           },
           "4XX" : {
             "description" : "Client error response"

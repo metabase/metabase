@@ -246,6 +246,49 @@
                   (t2/select-one :model/WorkspaceMergeTransform
                                  :transform_id (:id x1)))))))))
 
+(deftest merge-sets-transform-creator-from-workspace-transform-test
+  (testing "POST /api/ee/workspace/:id/merge sets transform creator_id from workspace_transform creator"
+    (mt/with-temp [:model/User user-a {:first_name "UserA" :last_name "Test" :email "user-a@test.com" :is_superuser true}
+                   :model/User user-b {:first_name "UserB" :last_name "Test" :email "user-b@test.com" :is_superuser true}
+                   :model/User user-c {:first_name "UserC" :last_name "Test" :email "user-c@test.com" :is_superuser true}]
+      ;; mt/with-temp with users will trigger their cleanup and those tables fail with their fks to core_user
+      (mt/with-model-cleanup [:model/WorkspaceMerge :model/ApiKey]
+        ;; User A creates the workspace
+        (let [{ws-id :id ws-name :name} (ws.tu/ws-ready
+                                         (mt/user-http-request user-a :post 200 "ee/workspace"
+                                                               {:name        (mt/random-name)
+                                                                :database_id (mt/id)}))
+              ;; User B creates a new workspace transform (not a checkout of existing)
+              {ws-tx-ref-id :ref_id}    (mt/user-http-request user-b :post 200 (ws-url ws-id "/transform")
+                                                              {:name   "Transform created by User B"
+                                                               :source {:type     :query
+                                                                        :database (mt/id)
+                                                                        :query    (mt/native-query {:query "SELECT count(*) from orders"})}
+                                                               :target {:type   "table"
+                                                                        :schema "public"
+                                                                        :name   "creator_test_table"}})]
+
+          (testing "workspace transform has User B as creator"
+            (is (= (:id user-b)
+                   (t2/select-one-fn :creator_id :model/WorkspaceTransform :ref_id ws-tx-ref-id))))
+
+          ;; NOTE: it's user-c merging the workspace
+          (let [res              (mt/user-http-request user-c :post 200 (ws-url ws-id "/merge")
+                                                       {:commit-message "Test creator attribution"})
+                new-transform-id (-> res :merged :transforms first :global_id)]
+
+            (testing "merge succeeded"
+              (is (empty? (:errors res)))
+              (is (some? new-transform-id)))
+
+            (testing "newly created Transform has User B (ws transform creator) as creator, not User C (merger)"
+              (is (= (:id user-b)
+                     (t2/select-one-fn :creator_id :model/Transform :id new-transform-id))))
+
+            (testing "merge history still records User C as the merging user"
+              (is (=? {:creator_id (:id user-c)}
+                      (t2/select-one :model/WorkspaceMerge :workspace_name ws-name))))))))))
+
 (deftest merge-workspace-transaction-failure-test
   (testing "transactions"
     (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
