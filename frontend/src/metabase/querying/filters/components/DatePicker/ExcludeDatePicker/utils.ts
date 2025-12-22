@@ -18,6 +18,8 @@ import type {
   ExcludeValueOption,
 } from "./types";
 
+const DEFAULT_TIME_STYLE = "h A";
+
 export function getExcludeUnitOptions(
   availableOperators: DatePickerOperator[],
   availableUnits: DatePickerUnit[],
@@ -49,7 +51,6 @@ export function getExcludeValueOptionGroups(
   unit: DatePickerExtractionUnit,
   formattingOptions: DateFormattingSettings | undefined,
 ): ExcludeValueOption[][] {
-  const DEFAULT_TIME_STYLE = "h A";
   const format = formattingOptions?.time_style ?? DEFAULT_TIME_STYLE;
   switch (unit) {
     case "hour-of-day":
