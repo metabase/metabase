@@ -13,6 +13,8 @@ const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
   <a {...props} target="_blank" rel="noopener noreferrer" />
 );
 
+const passAllUrls = (url: string) => url;
+
 export interface MarkdownProps
   extends ComponentPropsWithRef<typeof ReactMarkdown> {
   className?: string;
@@ -52,6 +54,7 @@ const Markdown = ({
       className={className}
       dark={dark}
       remarkPlugins={REMARK_PLUGINS}
+      urlTransform={passAllUrls}
       unstyleLinks={unstyleLinks}
       c={c}
       components={customizedComponents}
