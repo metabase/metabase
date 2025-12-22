@@ -6,10 +6,8 @@ import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useSetting } from "metabase/common/hooks/use-setting/use-setting";
-import { useSelector } from "metabase/lib/redux/hooks";
+import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { trackSearchClick } from "metabase/search/analytics";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Flex,
   Group,
@@ -43,10 +41,7 @@ const FullSearchCTA = ({
   searchTerm: string;
   onClick: () => void;
 }) => {
-  const activeUsersCount = useSetting("active-users-count");
-  const isAdmin = useSelector(getUserIsAdmin);
-  const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
-  const showOtherUsersCollections = isAdmin && areThereOtherUsers;
+  const showOtherUsersCollections = useShowOtherUsersCollections();
   if (!searchResults.total && !showOtherUsersCollections) {
     return null;
   }
