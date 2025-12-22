@@ -147,7 +147,7 @@
                 (testing "Execution throws with informative error message"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"Table not found:.*nonexistent_table"
+                       #"Tables not found:.*nonexistent_table"
                        (transforms-python.execute/execute-python-transform! transform {:run-method :manual}))))))))))))
 
 (deftest python-transform-unresolved-source-table-no-schema-test
@@ -167,5 +167,5 @@
                                                        :target (assoc target :database (mt/id))}]
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"Table not found: missing_table"
+                   #"Tables not found: missing_table"
                    (transforms-python.execute/execute-python-transform! transform {:run-method :manual}))))))))))
