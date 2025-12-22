@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { UnifiedDataPickerModal } from "metabase/common/components/Pickers/DataPicker";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
@@ -8,6 +9,10 @@ import {
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase/documents/components/Editor/shared/MenuComponents";
+import type {
+  SuggestionPickerModalType,
+  SuggestionPickerViewMode,
+} from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Divider, Text } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
@@ -20,7 +25,8 @@ interface EntitySearchSectionProps {
   onFooterClick: () => void;
   query: string;
   searchResults: SearchResult[];
-  modal: "question-picker" | null;
+  modal: SuggestionPickerModalType;
+  viewMode: SuggestionPickerViewMode;
   onModalSelect: (item: QuestionPickerValueItem) => void;
   onModalClose: () => void;
   onItemHover: (index: number) => void;
@@ -38,6 +44,7 @@ export function EntitySearchSection({
   query,
   searchResults,
   modal,
+  viewMode,
   onModalSelect,
   onModalClose,
   onItemHover,
@@ -106,10 +113,18 @@ export function EntitySearchSection({
             onMouseEnter={() => onItemHover(browseAllItemIndex)}
           />
 
-          {modal === "question-picker" && (
+          {modal === "question-picker" && viewMode !== "linkTo" && (
             <QuestionPickerModal
               onChange={onModalSelect}
               onClose={onModalClose}
+            />
+          )}
+
+          {modal === "question-picker" && viewMode === "linkTo" && (
+            <UnifiedDataPickerModal
+              onSelect={onModalSelect}
+              onClose={onModalClose}
+              title={t`Choose an entity to link`}
             />
           )}
         </>

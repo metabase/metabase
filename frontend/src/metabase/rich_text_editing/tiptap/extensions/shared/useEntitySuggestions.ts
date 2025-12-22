@@ -15,7 +15,7 @@ import {
   entityToUrlableModel,
   getBrowseAllItemIndex,
 } from "./suggestionUtils";
-import type { SuggestionModel } from "./types";
+import type { SuggestionModel, SuggestionPickerModalType } from "./types";
 import { type EntitySearchOptions, useEntitySearch } from "./useEntitySearch";
 
 interface UseEntitySuggestionsOptions {
@@ -42,7 +42,7 @@ interface UseEntitySuggestionsResult {
   isLoading: boolean;
   searchResults: SearchResult[];
   selectedIndex: number;
-  modal: "question-picker" | null;
+  modal: SuggestionPickerModalType;
   totalItems: number;
   selectedSearchModelName?: string;
   handlers: {
@@ -73,7 +73,7 @@ export function useEntitySuggestions({
   onTriggerCreateNewQuestion,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [modal, setModal] = useState<"question-picker" | null>(null);
+  const [modal, setModal] = useState<SuggestionPickerModalType>(null);
   const [selectedSearchModel, setSelectedSearchModel] =
     useState<SuggestionModel | null>(null);
 
