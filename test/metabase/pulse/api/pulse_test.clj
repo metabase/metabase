@@ -54,7 +54,7 @@
    (select-keys
     pulse
     [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
-     :skip_if_empty :dashboard_id :parameters])
+     :skip_if_empty :dashboard_id :parameters :disable_links])
    {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -164,7 +164,8 @@
    :archived            false
    :dashboard_id        nil
    :entity_id           true
-   :parameters          []})
+   :parameters          []
+   :disable_links       false})
 
 (def ^:private daily-email-channel
   {:enabled       true

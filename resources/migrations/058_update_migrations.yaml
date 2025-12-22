@@ -1247,6 +1247,7 @@ databaseChangeLog:
                   name: disable_links
                   type: ${boolean.type}
                   remarks: "Whether to disable email subscription links"
+                  defaultValueBoolean: false
                   constraints:
                     nullable: true
       rollback:
