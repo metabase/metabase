@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import { useSetting } from "metabase/common/hooks/use-setting/use-setting";
+import { useSelector } from "metabase/lib/redux/hooks";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { DropdownSidebarFilter } from "metabase/search/components/DropdownSidebarFilter";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
@@ -18,6 +20,7 @@ import type {
   SearchQueryParamValue,
   URLSearchFilterQueryParams,
 } from "metabase/search/types";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 
 type SearchSidebarProps = {
@@ -80,6 +83,11 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     return null;
   };
 
+  const activeUsersCount = useSetting("active-users-count");
+  const isAdmin = useSelector(getUserIsAdmin);
+  const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
+  const showOtherUsersCollections = isAdmin && areThereOtherUsers;
+
   return (
     <Stack gap="lg">
       {getFilter(SearchFilterKeys.Type)}
@@ -94,7 +102,8 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
-      {getFilter(SearchFilterKeys.PersonalCollections)}
+      {showOtherUsersCollections &&
+        getFilter(SearchFilterKeys.PersonalCollections)}
     </Stack>
   );
 };
