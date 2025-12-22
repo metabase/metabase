@@ -89,8 +89,8 @@
                                              :git/url "https://github.com/eerohele/pp"}
   ;; TODO: replace back to normal artifact
   io.github.metabase/macaw                  {:mvn/version "0.2.29"}             ; Parse native SQL queries
-  io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
+  io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
