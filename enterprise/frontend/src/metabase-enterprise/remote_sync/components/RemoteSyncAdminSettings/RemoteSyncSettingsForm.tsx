@@ -61,7 +61,7 @@ import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
 import { PullChangesButton } from "./PullChangesButton";
 
-type RemoteSyncSettingsFormProps = {
+export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
   onSaveSuccess?: VoidFunction;
   variant?: "admin" | "settings-modal";
