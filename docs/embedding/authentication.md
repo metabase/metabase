@@ -46,19 +46,19 @@ Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that uses your 
 This example code for Node.js sets up an endpoint using Express:
 
 ```js
-{% include_file "{{ dirname }}/snippets/authentication/express-server.ts" %}
+{% include_file "{{ dirname }}/sdk/snippets/authentication/express-server.ts" %}
 ```
 
 Example using Next.js App Router:
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/next-js/app-router-authentication-api-route.ts" %}
+{% include_file "{{ dirname }}/sdk/snippets/next-js/app-router-authentication-api-route.ts" %}
 ```
 
 Example using Next.js Pages Router:
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/next-js/pages-router-authentication-api-route.ts" %}
+{% include_file "{{ dirname }}/sdk/snippets/next-js/pages-router-authentication-api-route.ts" %}
 ```
 
 #### Handling full app and SDK embeds with the same endpoint
@@ -71,7 +71,7 @@ If you have an existing backend endpoint configured for full app embedding and w
 Here's an example of an Express.js endpoint that handles both:
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/authentication/express-server-interactive-and-sdk.ts" %}
+{% include_file "{{ dirname }}/sdk/snippets/authentication/express-server-interactive-and-sdk.ts" %}
 ```
 
 ### 3. Wire your frontend to your new endpoint
@@ -79,7 +79,7 @@ Here's an example of an Express.js endpoint that handles both:
 Update the config in your frontend code to point to your backend's authentication endpoint.
 
 ```js
-{% include_file "{{ dirname }}/snippets/authentication/auth-config-base.tsx" snippet="example" %}
+{% include_file "{{ dirname }}/sdk/snippets/authentication/auth-config-base.tsx" snippet="example" %}
 ```
 
 (Optional) If you use headers instead of cookies to authenticate calls from your frontend to your backend, you'll need to use a [custom fetch function](#customizing-jwt-authentication).
@@ -89,7 +89,7 @@ Update the config in your frontend code to point to your backend's authenticatio
 You can add some middleware in your backend to handle cross-domain requests.
 
 ```js
-{% include_file "{{ dirname }}/snippets/authentication/express-server-cors.ts" snippet="example" %}
+{% include_file "{{ dirname }}/sdk/snippets/authentication/express-server-cors.ts" snippet="example" %}
 ```
 
 ## Customizing JWT authentication
@@ -97,7 +97,7 @@ You can add some middleware in your backend to handle cross-domain requests.
 You can customize how the SDK fetches the request token by specifying the `fetchRequestToken` function with the `defineMetabaseAuthConfig` function:
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/authentication/auth-config-jwt.tsx" snippet="example" %}
+{% include_file "{{ dirname }}/sdk/snippets/authentication/auth-config-jwt.tsx" snippet="example" %}
 ```
 
 The response should be in the form of `{ jwt: "{JWT_TOKEN}" }`
@@ -111,7 +111,7 @@ To use SAML single sign-on with modular embedding, you'll need to set up SAML in
 Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `preferredAuthMethod` in your `MetabaseAuthConfig` to `"saml"`:
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
+{% include_file "{{ dirname }}/sdk/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
 ```
 
 Using SAML authentication with modular embedding will typically involve redirecting people to a popup with your Identity Provider's login page for authentication. After successful authentication, the person will be redirected back to the embedded content.
@@ -139,7 +139,7 @@ You can query the Metabase authentication status using the `useMetabaseAuthStatu
 This hook can only be used within components wrapped by `MetabaseProvider`.
 
 ```jsx
-{% include_file "{{ dirname }}/snippets/authentication/get-auth-status.tsx" snippet="example" %}
+{% include_file "{{ dirname }}/sdk/snippets/authentication/get-auth-status.tsx" snippet="example" %}
 ```
 
 ## Authenticating locally with API keys
@@ -153,7 +153,7 @@ First, create an [API key](../people-and-groups/api-keys.md).
 Then you can then use the API key to authenticate with Metabase in your application. All you need to do is include your API key in the config object using the key: `apiKey`.
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/authentication/auth-config-api-key.tsx" %}
+{% include_file "{{ dirname }}/sdk/snippets/authentication/auth-config-api-key.tsx" %}
 ```
 
 ## Security warning: each end-user _must_ have their own Metabase account
