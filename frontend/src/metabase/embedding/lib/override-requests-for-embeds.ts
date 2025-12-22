@@ -217,12 +217,8 @@ const overrideRequests = async ({
   };
 };
 
-/**
- * Registers a request interceptor that transforms standard API requests
- * into guest embeds API requests.
- */
-export const overrideRequestsForGuestEmbeds = () => {
-  const baseUrl = getEmbedBase();
+const setupRemappingUrls = (embedType: EmbedType) => {
+  const baseUrl = getBaseUrlByEmbedType(embedType);
 
   PLUGIN_API.getRemappedDashboardParameterValueUrl = (
     _dashboardId: DashboardId | undefined,
@@ -235,6 +231,14 @@ export const overrideRequestsForGuestEmbeds = () => {
     parameterId: ParameterId,
   ) =>
     `${baseUrl}/card/:entityIdentifier/params/${encodeURIComponent(parameterId)}/remapping`;
+};
+
+/**
+ * Registers a request interceptor that transforms standard API requests
+ * into guest embeds API requests.
+ */
+export const overrideRequestsForGuestEmbeds = () => {
+  setupRemappingUrls("guest");
 
   PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
     (data) =>
@@ -251,19 +255,7 @@ export const overrideRequestsForGuestEmbeds = () => {
 export const overrideRequestsForPublicOrStaticEmbeds = (
   embedType: EmbedType,
 ) => {
-  const baseUrl = getBaseUrlByEmbedType(embedType);
-
-  PLUGIN_API.getRemappedDashboardParameterValueUrl = (
-    _dashboardId: DashboardId | undefined,
-    parameterId: ParameterId,
-  ) =>
-    `${baseUrl}/dashboard/:entityIdentifier/params/${encodeURIComponent(parameterId)}/remapping`;
-
-  PLUGIN_API.getRemappedCardParameterValueUrl = (
-    _cardId: CardId | string | undefined,
-    parameterId: ParameterId,
-  ) =>
-    `${baseUrl}/card/:entityIdentifier/params/${encodeURIComponent(parameterId)}/remapping`;
+  setupRemappingUrls(embedType);
 
   PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds = (data) =>
     overrideRequests({
