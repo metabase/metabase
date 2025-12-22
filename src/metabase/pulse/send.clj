@@ -1,7 +1,6 @@
 (ns metabase.pulse.send
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
-   [metabase.embedding.util :as embed.util]
    [metabase.models.interface :as mi]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.util.cron :as u.cron]
@@ -68,7 +67,7 @@
                               :dashboard_id                     (:id dashboard)
                               :parameters                       (:parameters pulse)
                               :skip_if_empty                    (:skip_if_empty pulse)
-                              :disable_links                    (embed.util/modular-embedding-context? (:creation_context pulse))
+                              :disable_links                    (:disable_links pulse)
                               :dashboard_subscription_dashcards (map
                                                                  #(merge {:card_id (:id %)
                                                                           :dashboard_card_id (:dashboard_card_id %)}

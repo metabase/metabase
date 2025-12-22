@@ -18,6 +18,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.embedding.util :as embed.util]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -456,7 +457,7 @@
   (notification/with-default-options {:notification/sync? true}
     (pulse.send/send-pulse! (-> body
                                 (assoc :creator_id api/*current-user-id*)
-                                (assoc :creation_context (get-in request [:headers "x-metabase-client"])))))
+                                (assoc :disable_links (embed.util/modular-embedding-context? (get-in request [:headers "x-metabase-client"]))))))
   {:ok true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
