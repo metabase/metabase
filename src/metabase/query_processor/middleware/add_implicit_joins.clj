@@ -125,10 +125,14 @@
                                       [:field (opts :guard (every-pred :source-field (complement :join-alias))) (id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
-                            not-empty)]
-    (into []
-          (distinct)
-          (fk-field-infos->joins metadata-providerable fk-field-infos))))
+                            not-empty)
+        joins          (into []
+                             (distinct)
+                             (fk-field-infos->joins metadata-providerable fk-field-infos))
+        unique-name-fn (lib/non-truncating-unique-name-generator)]
+    (mapv (fn [join]
+            (update join :alias unique-name-fn))
+          joins)))
 
 (mu/defn- visible-joins :- [:sequential ::lib.schema.join/join]
   "Set of all joins that are visible in the current level of the query or in a nested source query."
