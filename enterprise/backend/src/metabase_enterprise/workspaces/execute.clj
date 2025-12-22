@@ -99,23 +99,22 @@
 
    The warehouse DB changes (actual table data) DO persist in the isolated schema."
   [{:keys [source target] :as transform} remapping]
-  (try
-    (t2/with-transaction [_conn]
-      (let [s-type          (transforms/transform-source-type source)
-            table-mapping   (:tables remapping no-mapping)
-            target-fallback (:target-fallback remapping no-mapping)
-            field-mapping   (:fields remapping no-mapping)
-            new-xf          (-> (select-keys transform [:name :description])
-                                (assoc :creator_id api/*current-user-id*
-                                       :source (remap-source table-mapping field-mapping s-type source)
-                                       :target (remap-target table-mapping target-fallback target)))
-            _               (assert (:target new-xf) "Target mapping must not be nil")
-            temp-xf         (t2/insert-returning-instance! :model/Transform new-xf)]
+  (t2/with-transaction [_conn]
+    (let [s-type          (transforms/transform-source-type source)
+          table-mapping   (:tables remapping no-mapping)
+          target-fallback (:target-fallback remapping no-mapping)
+          field-mapping   (:fields remapping no-mapping)
+          new-xf          (-> (select-keys transform [:name :description])
+                              (assoc :creator_id api/*current-user-id*
+                                     :source (remap-source table-mapping field-mapping s-type source)
+                                     :target (remap-target table-mapping target-fallback target)))
+          _               (assert (:target new-xf) "Target mapping must not be nil")
+          temp-xf         (t2/insert-returning-instance! :model/Transform new-xf)]
+      (try
         (transforms.execute/execute! temp-xf {:run-method :manual})
-        (u/prog1 (execution-results temp-xf)
-          (t2/delete! :model/Transform (:id temp-xf)))
-        #_;; this just deletes also writes to :model/Table and actual output table too
-          (throw (ex-info "rollback tx!" {::results (execution-results temp-xf)}))))
-    (catch Exception e
-      (or (::results (ex-data e))
-          (throw e)))))
+        (catch Exception _e
+          ;; Execution failed - the TransformRun record has been updated with failure status and message
+          nil))
+      ;; Return execution results whether succeeded or failed
+      (u/prog1 (execution-results temp-xf)
+        (t2/delete! :model/Transform (:id temp-xf))))))

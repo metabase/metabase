@@ -4435,6 +4435,31 @@ databaseChangeLog:
             baseTableName: workspace_transform
             constraintName: fk_workspace_transform_creator_id
 
+  - changeSet:
+      id: v58.2025-12-23T10:00:00
+      author: piranha
+      comment: Add last_run_message column to workspace_transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_transform
+                columnName: last_run_message
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: last_run_message
+                  type: ${text.type}
+                  remarks: Message from the last transform run (success or failure message)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: last_run_message
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

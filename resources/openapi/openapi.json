@@ -27717,6 +27717,13 @@
                       } ]
                     },
                     "last_run_at" : { },
+                    "last_run_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "name" : {
                       "type" : "string"
                     },
@@ -27739,12 +27746,12 @@
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     }
                   },
-                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at", "last_run_message" ],
                   "type" : "object"
                 }
               }
             },
-            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>, :last_run_message -> <nullable string>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -27843,6 +27850,13 @@
                       } ]
                     },
                     "last_run_at" : { },
+                    "last_run_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "name" : {
                       "type" : "string"
                     },
@@ -27865,12 +27879,12 @@
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     }
                   },
-                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at", "last_run_message" ],
                   "type" : "object"
                 }
               }
             },
-            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>, :last_run_message -> <nullable string>}"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -28578,6 +28592,13 @@
                       } ]
                     },
                     "last_run_at" : { },
+                    "last_run_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "name" : {
                       "type" : "string"
                     },
@@ -28600,12 +28621,12 @@
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     }
                   },
-                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at" ],
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at", "last_run_message" ],
                   "type" : "object"
                 }
               }
             },
-            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>}"
+            "description" : "map where {:ref_id -> <string with length >= 1>, :global_id -> <nullable value must be an integer greater than zero.>, :name -> <string>, :description -> <nullable string>, :source -> <map>, :target -> <map>, :target_stale -> <boolean>, :workspace_id -> <value must be an integer greater than zero.>, :creator_id -> <nullable value must be an integer greater than zero.>, :archived_at -> <anything>, :created_at -> <anything>, :updated_at -> <anything>, :last_run_at -> <anything>, :last_run_message -> <nullable string>}"
           },
           "4XX" : {
             "description" : "Client error response"
