@@ -19,7 +19,16 @@ import {
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Button, Flex, Group, Icon, Stack, rem } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  ScrollArea,
+  Stack,
+  rem,
+} from "metabase/ui";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
@@ -140,7 +149,7 @@ function DataModelContent({ params }: Props) {
   );
 
   const scrollToPanel = useCallback((el: HTMLDivElement | null) => {
-    el?.scrollIntoView({ behavior: "smooth" });
+    el?.scrollIntoView({ behavior: "smooth", inline: "end" });
   }, []);
 
   if (databasesData?.data?.length === 0) {
@@ -227,19 +236,17 @@ function DataModelContent({ params }: Props) {
             justify={error ? "center" : undefined}
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
+            ref={scrollToPanel}
             gap={0}
-            px="lg"
-            pos="relative"
           >
             <Group
               justify="space-between"
               w="100%"
               data-testid="table-section-header"
-              pos="sticky"
-              top={0}
               py="lg"
               bg="bg-light"
               className={S.header}
+              px="lg"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
               <Button
@@ -258,22 +265,24 @@ function DataModelContent({ params }: Props) {
                 }}
               />
             </Group>
-            <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              {table && (
-                <TableSection
-                  /**
-                   * Make sure internal component state is reset when changing tables.
-                   * This is to avoid state mix-up with optimistic updates.
-                   */
-                  key={table.id}
-                  table={table}
-                  activeFieldId={fieldId}
-                  activeTab={activeTab}
-                  hasLibrary={hasLibrary}
-                  onSyncOptionsClick={openSyncModal}
-                />
-              )}
-            </LoadingAndErrorWrapper>
+            <ScrollArea flex={1} px="lg" type="hover">
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                {table && (
+                  <TableSection
+                    /**
+                     * Make sure internal component state is reset when changing tables.
+                     * This is to avoid state mix-up with optimistic updates.
+                     */
+                    key={table.id}
+                    table={table}
+                    activeFieldId={fieldId}
+                    activeTab={activeTab}
+                    hasLibrary={hasLibrary}
+                    onSyncOptionsClick={openSyncModal}
+                  />
+                )}
+              </LoadingAndErrorWrapper>
+            </ScrollArea>
           </Stack>
         )}
 
@@ -289,16 +298,12 @@ function DataModelContent({ params }: Props) {
             miw={COLUMN_CONFIG.field.min}
             ref={scrollToPanel}
             gap={0}
-            px="lg"
-            pos="relative"
           >
             <Group
               justify="space-between"
               w="100%"
               data-testid="field-section-header"
-              pos="sticky"
-              top={0}
-              py="lg"
+              p="lg"
               bg="bg-light"
               className={S.header}
             >
@@ -316,32 +321,34 @@ function DataModelContent({ params }: Props) {
                 onClick={closePreview}
               />
             </Group>
-            <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              {field && table && databaseId != null && (
-                <>
-                  <FieldSection
-                    /**
-                     * Make sure internal component state is reset when changing fields.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={getRawTableFieldId(field)}
-                    field={field}
-                    parent={parentField}
-                    table={table}
-                    getFieldHref={(fieldId) =>
-                      Urls.dataStudioData({ ...parsedParams, fieldId })
-                    }
-                    onTrackMetadataChange={trackMetadataChange}
-                    onFieldValuesClick={openFieldValuesModal}
-                    onPreviewClick={togglePreview}
-                  />
-                </>
-              )}
-            </LoadingAndErrorWrapper>
+            <ScrollArea flex={1} px="lg" type="hover">
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                {field && table && databaseId != null && (
+                  <>
+                    <FieldSection
+                      /**
+                       * Make sure internal component state is reset when changing fields.
+                       * This is to avoid state mix-up with optimistic updates.
+                       */
+                      key={getRawTableFieldId(field)}
+                      field={field}
+                      parent={parentField}
+                      table={table}
+                      getFieldHref={(fieldId) =>
+                        Urls.dataStudioData({ ...parsedParams, fieldId })
+                      }
+                      onTrackMetadataChange={trackMetadataChange}
+                      onFieldValuesClick={openFieldValuesModal}
+                      onPreviewClick={togglePreview}
+                    />
+                  </>
+                )}
+              </LoadingAndErrorWrapper>
 
-            {!isLoading && !error && !field && (
-              <LoadingAndErrorWrapper error={t`Not found.`} />
-            )}
+              {!isLoading && !error && !field && (
+                <LoadingAndErrorWrapper error={t`Not found.`} />
+              )}
+            </ScrollArea>
           </Stack>
         )}
 
