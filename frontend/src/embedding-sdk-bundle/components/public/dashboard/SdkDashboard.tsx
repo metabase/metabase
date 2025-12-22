@@ -50,6 +50,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
 import { useSelector } from "metabase/lib/redux";
@@ -386,59 +387,64 @@ const SdkDashboardInner = ({
       }}
       autoScrollToDashcardId={autoScrollToDashcardId}
     >
-      {match({ finalRenderMode, isGuestEmbed })
-        .with({ finalRenderMode: "question" }, () => (
-          <SdkDashboardStyledWrapperWithRef className={className} style={style}>
-            <SdkAdHocQuestion
-              // `adhocQuestionUrl` would have value if renderMode is "question"
-              questionPath={adhocQuestionUrl!}
-              onNavigateBack={onNavigateBackToDashboard}
-              {...drillThroughQuestionProps}
-              onVisualizationChange={onVisualizationChange}
+      <EmbeddingEntityContextProvider uuid={null} token={token}>
+        {match({ finalRenderMode, isGuestEmbed })
+          .with({ finalRenderMode: "question" }, () => (
+            <SdkDashboardStyledWrapperWithRef
+              className={className}
+              style={style}
             >
-              {AdHocQuestionView && <AdHocQuestionView />}
-            </SdkAdHocQuestion>
-          </SdkDashboardStyledWrapperWithRef>
-        ))
-        .with({ finalRenderMode: "dashboard" }, () => (
-          <SdkDashboardProvider
-            plugins={plugins}
-            onEditQuestion={onEditQuestion}
-          >
-            {children ?? (
-              <SdkDashboardStyledWrapperWithRef
-                className={className}
-                style={style}
+              <SdkAdHocQuestion
+                // `adhocQuestionUrl` would have value if renderMode is "question"
+                questionPath={adhocQuestionUrl!}
+                onNavigateBack={onNavigateBackToDashboard}
+                {...drillThroughQuestionProps}
+                onVisualizationChange={onVisualizationChange}
               >
-                <Dashboard className={EmbedFrameS.EmbedFrame} />
-              </SdkDashboardStyledWrapperWithRef>
-            )}
-          </SdkDashboardProvider>
-        ))
-        .with({ finalRenderMode: "queryBuilder" }, ({ isGuestEmbed }) =>
-          isGuestEmbed ? (
-            <SdkDashboardStyledWrapper className={className} style={style}>
-              <SdkError
-                message={t`You can't save questions in Guest Embed mode`}
+                {AdHocQuestionView && <AdHocQuestionView />}
+              </SdkAdHocQuestion>
+            </SdkDashboardStyledWrapperWithRef>
+          ))
+          .with({ finalRenderMode: "dashboard" }, () => (
+            <SdkDashboardProvider
+              plugins={plugins}
+              onEditQuestion={onEditQuestion}
+            >
+              {children ?? (
+                <SdkDashboardStyledWrapperWithRef
+                  className={className}
+                  style={style}
+                >
+                  <Dashboard className={EmbedFrameS.EmbedFrame} />
+                </SdkDashboardStyledWrapperWithRef>
+              )}
+            </SdkDashboardProvider>
+          ))
+          .with({ finalRenderMode: "queryBuilder" }, ({ isGuestEmbed }) =>
+            isGuestEmbed ? (
+              <SdkDashboardStyledWrapper className={className} style={style}>
+                <SdkError
+                  message={t`You can't save questions in Guest Embed mode`}
+                />
+              </SdkDashboardStyledWrapper>
+            ) : (
+              <DashboardQueryBuilder
+                onCreate={(question) => {
+                  setNewDashboardQuestionId(question.id);
+                  setRenderMode("dashboard");
+                  dashboardContextProviderRef.current?.refetchDashboard();
+                }}
+                onNavigateBack={() => {
+                  setRenderMode("dashboard");
+                }}
+                dataPickerProps={dataPickerProps}
+                onVisualizationChange={onVisualizationChange}
               />
-            </SdkDashboardStyledWrapper>
-          ) : (
-            <DashboardQueryBuilder
-              onCreate={(question) => {
-                setNewDashboardQuestionId(question.id);
-                setRenderMode("dashboard");
-                dashboardContextProviderRef.current?.refetchDashboard();
-              }}
-              onNavigateBack={() => {
-                setRenderMode("dashboard");
-              }}
-              dataPickerProps={dataPickerProps}
-              onVisualizationChange={onVisualizationChange}
-            />
-          ),
-        )
-        .exhaustive()}
-      {modalContent}
+            ),
+          )
+          .exhaustive()}
+        {modalContent}
+      </EmbeddingEntityContextProvider>
     </DashboardContextProvider>
   );
 };

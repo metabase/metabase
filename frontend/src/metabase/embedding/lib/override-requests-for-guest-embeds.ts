@@ -1,8 +1,10 @@
 import { sessionPropertiesPath } from "metabase/api";
 import {
+  PLUGIN_API,
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
+import type { OnBeforeRequestHandlerData } from "metabase/plugins/oss/api";
 import { getEmbedBase, internalBase, publicBase } from "metabase/services";
 
 type EmbedType = "guest" | "static" | "public";
@@ -54,19 +56,19 @@ const EMBED_URL_TRANSFORMATIONS: Record<
     method: "GET",
   }),
   [URL_PATTERNS.CARD_PARAMETER_VALUES]: ({ embedType }) => ({
-    url: `${getBaseUrlByEmbedType(embedType)}/card/:token/params/:paramId/values`,
+    url: `${getBaseUrlByEmbedType(embedType)}/card/:entityIdentifier/params/:paramId/values`,
     method: "GET",
   }),
   [URL_PATTERNS.CARD_PARAMETER_SEARCH]: ({ embedType }) => ({
-    url: `${getBaseUrlByEmbedType(embedType)}/card/:token/params/:paramId/search/:query`,
+    url: `${getBaseUrlByEmbedType(embedType)}/card/:entityIdentifier/params/:paramId/search/:query`,
     method: "GET",
   }),
   [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: ({ embedType }) => ({
-    url: `${getBaseUrlByEmbedType(embedType)}/dashboard/:token/params/:paramId/values`,
+    url: `${getBaseUrlByEmbedType(embedType)}/dashboard/:entityIdentifier/params/:paramId/values`,
     method: "GET",
   }),
   [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: ({ embedType }) => ({
-    url: `${getBaseUrlByEmbedType(embedType)}/dashboard/:token/params/:paramId/search/:query`,
+    url: `${getBaseUrlByEmbedType(embedType)}/dashboard/:entityIdentifier/params/:paramId/search/:query`,
     method: "GET",
   }),
 } as const;
@@ -171,39 +173,74 @@ function replaceWithEmbedBase({
   return url;
 }
 
+const overrideRequests = async ({
+  embedType,
+  method,
+  url,
+  options,
+}: OnBeforeRequestHandlerData & {
+  embedType: EmbedType;
+}) => {
+  const transformation = getRequestTransformation({
+    method,
+    embedType,
+    url,
+    options,
+  });
+
+  if (!transformation) {
+    return { method, url, options };
+  }
+
+  if (!options.headers) {
+    options.headers = {};
+  }
+
+  /**
+   * Set header to indicate that this request is for guest embed.
+   */
+  options.headers["x-metabase-guest-embed"] = "true";
+
+  return {
+    method: transformation.method,
+    url: replaceWithEmbedBase({ embedType, url: transformation.url }),
+    options: transformation.options,
+  };
+};
+
 /**
  * Registers a request interceptor that transforms standard API requests
  * into guest embeds API requests.
  */
-export const overrideRequestsForGuestOrPublicEmbeds = (
-  embedType: EmbedType,
-) => {
+export const overrideRequestsForGuestEmbeds = () => {
   PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
-    async ({ method, url, options }) => {
-      const transformation = getRequestTransformation({
-        method,
-        embedType,
-        url,
-        options,
+    (data) =>
+      overrideRequests({
+        ...data,
+        embedType: "guest",
       });
+};
 
-      if (!transformation) {
-        return { method, url, options };
-      }
+/**
+ * Registers a request interceptor that transforms standard API requests
+ * into public embeds API requests.
+ */
+export const overrideRequestsForPublicEmbeds = () => {
+  PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds = (data) =>
+    overrideRequests({
+      ...data,
+      embedType: "public",
+    });
+};
 
-      if (!options.headers) {
-        options.headers = {};
-      }
-
-      /**
-       * Set header to indicate that this request is for guest embed.
-       */
-      options.headers["x-metabase-guest-embed"] = "true";
-
-      return {
-        method: transformation.method,
-        url: replaceWithEmbedBase({ embedType, url: transformation.url }),
-        options: transformation.options,
-      };
-    };
+/**
+ * Registers a request interceptor that transforms standard API requests
+ * into static embeds API requests.
+ */
+export const overrideRequestsForStaticEmbeds = () => {
+  PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds = (data) =>
+    overrideRequests({
+      ...data,
+      embedType: "static",
+    });
 };

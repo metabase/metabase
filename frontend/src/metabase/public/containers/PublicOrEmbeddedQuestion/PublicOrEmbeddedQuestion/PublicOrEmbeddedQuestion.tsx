@@ -2,7 +2,11 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
-import { overrideRequestsForGuestOrPublicEmbeds } from "embedding-sdk-bundle/lib/override-requests-for-guest-or-public-embeds";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import {
+  overrideRequestsForPublicEmbeds,
+  overrideRequestsForStaticEmbeds,
+} from "metabase/embedding/lib/override-requests-for-guest-embeds";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
@@ -55,7 +59,11 @@ export const PublicOrEmbeddedQuestion = ({
   const canWhitelabel = useSelector(getCanWhitelabel);
 
   useMount(async () => {
-    overrideRequestsForGuestOrPublicEmbeds(uuid ? "public" : "static");
+    if (uuid) {
+      overrideRequestsForPublicEmbeds();
+    } else if (token) {
+      overrideRequestsForStaticEmbeds();
+    }
 
     try {
       let card;
@@ -180,24 +188,26 @@ export const PublicOrEmbeddedQuestion = ({
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <PublicOrEmbeddedQuestionView
-        initialized={initialized}
-        card={card}
-        metadata={metadata}
-        result={result}
-        uuid={uuid}
-        token={token}
-        getParameters={getParameters}
-        parameterValues={parameterValues}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        bordered={bordered}
-        hide_parameters={hide_parameters}
-        theme={theme}
-        titled={titled}
-        setCard={setCard}
-        downloadsEnabled={downloadsEnabled}
-      />
+      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
+        <PublicOrEmbeddedQuestionView
+          initialized={initialized}
+          card={card}
+          metadata={metadata}
+          result={result}
+          uuid={uuid}
+          token={token}
+          getParameters={getParameters}
+          parameterValues={parameterValues}
+          setParameterValue={setParameterValue}
+          setParameterValueToDefault={setParameterValueToDefault}
+          bordered={bordered}
+          hide_parameters={hide_parameters}
+          theme={theme}
+          titled={titled}
+          setCard={setCard}
+          downloadsEnabled={downloadsEnabled}
+        />
+      </EmbeddingEntityContextProvider>
     </LocaleProvider>
   );
 };

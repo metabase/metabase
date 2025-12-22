@@ -1,13 +1,20 @@
 import type { WithRouterProps } from "react-router";
 import { useMount } from "react-use";
 
-import { overrideRequestsForGuestOrPublicEmbeds } from "embedding-sdk-bundle/lib/override-requests-for-guest-or-public-embeds";
+import {
+  overrideRequestsForPublicEmbeds,
+  overrideRequestsForStaticEmbeds,
+} from "metabase/embedding/lib/override-requests-for-guest-embeds";
 
 export const usePublicDashboardEndpoints = (props: WithRouterProps) => {
   const { uuid, token } = props.params;
 
   useMount(() => {
-    overrideRequestsForGuestOrPublicEmbeds(uuid ? "public" : "static");
+    if (uuid) {
+      overrideRequestsForPublicEmbeds();
+    } else if (token) {
+      overrideRequestsForStaticEmbeds();
+    }
   });
 
   const dashboardId = uuid || token;

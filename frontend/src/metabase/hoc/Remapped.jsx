@@ -35,7 +35,6 @@ export default (ComposedComponent) =>
             field: this.props.column,
             cardId: this.props.cardId,
             dashboardId: this.props.dashboardId,
-            token: this.props.token,
           });
         }
       }
@@ -46,8 +45,7 @@ export default (ComposedComponent) =>
             this.props.column?.id !== nextProps.column.id ||
             this.props.parameter?.id !== nextProps.parameter?.id ||
             this.props.cardId !== nextProps.cardId ||
-            this.props.dashboardId !== nextProps.dashboardId ||
-            this.props.token !== nextProps.token)
+            this.props.dashboardId !== nextProps.dashboardId)
         ) {
           this.props.fetchRemapping({
             parameter: nextProps.parameter,
@@ -55,7 +53,6 @@ export default (ComposedComponent) =>
             field: this.props.column,
             cardId: nextProps.cardId,
             dashboardId: nextProps.dashboardId,
-            token: nextProps.token,
           });
         }
       }

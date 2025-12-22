@@ -6,6 +6,7 @@ import { useDashboardLocationSync } from "metabase/dashboard/containers/Dashboar
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { isActionDashCard, isQuestionCard } from "metabase/dashboard/utils";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
@@ -30,7 +31,9 @@ const PublicOrEmbeddedDashboardPageInner = ({
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const dispatch = useDispatch();
 
-  const { location } = props;
+  const { location, params } = props;
+  const { uuid, token } = params;
+
   const parameterQueryParams = props.location.query;
 
   const { dashboardId } = usePublicDashboardEndpoints(props);
@@ -54,35 +57,42 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <DashboardContextProvider
-        dashboardId={dashboardId}
-        hideParameters={hide_parameters}
-        theme={theme}
-        background={background}
-        bordered={bordered}
-        downloadsEnabled={downloadsEnabled}
-        titled={titled}
-        parameterQueryParams={parameterQueryParams}
-        cardTitled={true}
-        withFooter={true}
-        getClickActionMode={({ question }) => new Mode(question, PublicMode)}
-        navigateToNewCardFromDashboard={null}
-        onError={(error) => {
-          dispatch(setErrorPage(error));
-        }}
-        isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
-        dashcardMenu={({ dashcard, result }) =>
-          downloadsEnabled?.results &&
-          isQuestionCard(dashcard.card) &&
-          !!result?.data &&
-          !result?.error && (
-            <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
-          )
-        }
-        dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
-      >
-        <PublicOrEmbeddedDashboardPageInner {...props} />
-      </DashboardContextProvider>
+      <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
+        <DashboardContextProvider
+          dashboardId={dashboardId}
+          uuid={uuid}
+          token={token}
+          hideParameters={hide_parameters}
+          theme={theme}
+          background={background}
+          bordered={bordered}
+          downloadsEnabled={downloadsEnabled}
+          titled={titled}
+          parameterQueryParams={parameterQueryParams}
+          cardTitled={true}
+          withFooter={true}
+          getClickActionMode={({ question }) => new Mode(question, PublicMode)}
+          navigateToNewCardFromDashboard={null}
+          onError={(error) => {
+            dispatch(setErrorPage(error));
+          }}
+          isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
+          dashcardMenu={({ dashcard, result }) =>
+            downloadsEnabled?.results &&
+            isQuestionCard(dashcard.card) &&
+            !!result?.data &&
+            !result?.error && (
+              <PublicOrEmbeddedDashCardMenu
+                result={result}
+                dashcard={dashcard}
+              />
+            )
+          }
+          dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+        >
+          <PublicOrEmbeddedDashboardPageInner {...props} />
+        </DashboardContextProvider>
+      </EmbeddingEntityContextProvider>
     </LocaleProvider>
   );
 };

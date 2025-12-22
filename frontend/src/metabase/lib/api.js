@@ -6,7 +6,7 @@ import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
 import { IFRAMED_IN_SELF } from "metabase/lib/iframe";
 import { delay } from "metabase/lib/promise";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
@@ -388,7 +388,10 @@ export class Api extends EventEmitter {
      * Handlers are executed in order and each handler uses the data returned by a previous handler.
      * @type {import('metabase/plugins').OnBeforeRequestHandler[]}
      */
-    const handlers = [];
+    const handlers = [
+      PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+      PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
+    ];
 
     if (isEmbeddingSdk()) {
       handlers.push(
