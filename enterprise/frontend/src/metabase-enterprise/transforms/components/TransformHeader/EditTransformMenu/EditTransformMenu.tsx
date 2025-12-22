@@ -39,33 +39,31 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     useCreateWorkspaceMutation();
   const { data: checkoutData, isLoading: isWorkspaceCheckoutLoading } =
     useGetWorkspaceCheckoutQuery(transform.id);
-  const [addedWorkspaceIds, setAddedWorkspaceIds] = useState<Set<number>>(
-    () => new Set(),
-  );
 
   const workspaces = useMemo(
     () => workspacesData?.items ?? [],
     [workspacesData],
   );
 
-  const existingWorkspaceIds = useMemo(() => {
-    const ids = new Set<number>();
-    checkoutData?.transforms?.forEach((item) => {
-      if (item.workspace?.id != null) {
-        ids.add(item.workspace.id);
-      }
-    });
-    addedWorkspaceIds.forEach((id) => ids.add(id));
-    return ids;
-  }, [checkoutData, addedWorkspaceIds]);
+  const matchingWorkspaceIds = useMemo(() => {
+    const allMatchingWorkspaceIds =
+      workspaces
+        ?.filter((item) => item.database_id === sourceDatabaseId)
+        ?.map((item) => item.id) ?? [];
+
+    // Workspaces which already include this transform.
+    const checkedWorkspaceIds =
+      checkoutData?.transforms?.map((item) => item.workspace?.id) ?? [];
+    return new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]);
+  }, [checkoutData?.transforms, workspaces, sourceDatabaseId]);
 
   const matchingWorkspaces = useMemo(
     () =>
       workspaces.filter(
         (workspace) =>
-          !existingWorkspaceIds.has(workspace.id) && !workspace.archived,
+          matchingWorkspaceIds.has(workspace.id) && !workspace.archived,
       ),
-    [workspaces, existingWorkspaceIds],
+    [workspaces, matchingWorkspaceIds],
   );
 
   const isBusy =
@@ -100,8 +98,6 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
         name: name?.trim() || t`New workspace`,
         database_id: Number(databaseId),
       }).unwrap();
-
-      setAddedWorkspaceIds((prev) => new Set(prev).add(workspace.id));
 
       dispatch(
         push(
