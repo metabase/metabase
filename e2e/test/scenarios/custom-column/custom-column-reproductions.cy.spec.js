@@ -2451,7 +2451,7 @@ describe("issue 61010", () => {
 
     H.CustomExpressionEditor.clear().type("[New count]");
     H.popover()
-      .findByText("Unknown Aggregation or Metric: New count")
+      .findByText("Unknown Aggregation, Measure or Metric: New count")
       .should("be.visible");
   });
 });
