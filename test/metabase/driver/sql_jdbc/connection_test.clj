@@ -680,16 +680,16 @@
               pool-b   (atom nil)
               pool-a-2 (atom nil)]
           (testing "User A swaps with their credentials"
-            (driver/with-swapped-connection-details db-id {:user "user-a" :password "pass-a"}
+            (driver/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
               (reset! pool-a-1 (sql-jdbc.conn/db->pooled-connection-spec db))
               (is (= 1 (count-swapped-pools-for-db db-id)) "First swap creates one pool")))
           (testing "User B swaps with different credentials"
-            (driver/with-swapped-connection-details db-id {:user "user-b" :password "pass-b"}
+            (driver/with-swapped-connection-details db-id {:user "user-b" :password "pass-b" :log-level 99}
               (reset! pool-b (sql-jdbc.conn/db->pooled-connection-spec db))
               (is (= 2 (count-swapped-pools-for-db db-id)) "Different swap details create a second pool")
               (is (not (identical? @pool-a-1 @pool-b)) "Different swap details return different pool instances")))
           (testing "User A returns - should reuse their original pool (still in cache due to TTL)"
-            (driver/with-swapped-connection-details db-id {:user "user-a" :password "pass-a"}
+            (driver/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
               (reset! pool-a-2 (sql-jdbc.conn/db->pooled-connection-spec db))
               (is (= 2 (count-swapped-pools-for-db db-id)) "Identical swap details reuse existing pool")
               (is (identical? @pool-a-1 @pool-a-2) "Identical swap details return the same pool instance"))))))))
