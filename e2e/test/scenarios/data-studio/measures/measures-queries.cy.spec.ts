@@ -43,7 +43,7 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should create a measure with with a column from the main data source using offset", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "1,510,621.68",
+        rowValues: ["April 2022", "May 2022", "52.76"],
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -67,6 +67,23 @@ describe("scenarios > data studio > measures > queries", () => {
             cy.findByText("Price").click();
           });
         },
+      });
+    });
+
+    it("should create a measure with a column from an implicit join using offset", () => {
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        rowValues: ["April 2022", "May 2022", "49.54"],
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type(
+            "Offset(Average([Product -> Price]), -1)",
+          );
+          H.CustomExpressionEditor.nameInput().type("Offset Measure");
+          H.popover().button("Done").click();
+        },
+        addBreakout: true,
       });
     });
 
@@ -180,9 +197,11 @@ function verifyNewMeasure({
   scalarValue,
   createQuery,
   addBreakout,
+  rowValues,
 }: {
   tableId: TableId;
-  scalarValue: string;
+  scalarValue?: string;
+  rowValues?: string[];
   createQuery: () => void;
   addBreakout?: boolean;
 }) {
@@ -207,8 +226,25 @@ function verifyNewMeasure({
   }
 
   H.visualize();
-  H.queryBuilderMain()
-    .findByTestId("scalar-value")
-    .should("have.text", scalarValue);
-  H.assertQueryBuilderRowCount(1);
+
+  if (scalarValue) {
+    H.queryBuilderMain()
+      .findByTestId("scalar-value")
+      .should("have.text", scalarValue);
+    H.assertQueryBuilderRowCount(1);
+  }
+
+  if (rowValues) {
+    cy.findByTestId("view-footer").within(() => {
+      cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
+    });
+    rowValues.forEach((value, index) => {
+      // Custom implemtation that allows for empty cells
+      H.tableInteractiveBody()
+        .findAllByTestId("cell-data")
+        .should("have.length.gt", rowValues.length)
+        .eq(index)
+        .should("have.text", value);
+    });
+  }
 }
