@@ -15,7 +15,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Radio, Stack, rem } from "metabase/ui";
+import { Button, Center, Loader, Radio, Stack, rem } from "metabase/ui";
 
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
@@ -41,7 +41,16 @@ export const SaveQuestionForm = ({
     values,
     targetCollection,
     saveToDashboard,
+    isLoading,
   } = useSaveQuestionContext();
+
+  if (isLoading) {
+    return (
+      <Center>
+        <Loader />
+      </Center>
+    );
+  }
 
   const nameInputPlaceholder = getPlaceholder(question.type());
   const isDashboardQuestion = !!question.dashboardId();

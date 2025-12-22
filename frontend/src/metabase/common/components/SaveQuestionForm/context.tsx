@@ -37,6 +37,7 @@ type SaveQuestionContextType = {
   multiStep: boolean;
   targetCollection?: CollectionId;
   saveToDashboard?: DashboardId;
+  isLoading: boolean;
 };
 
 export const SaveQuestionContext =
@@ -140,7 +141,7 @@ export const SaveQuestionProvider = ({
     (isValidLastSelectedCollection ? lastSelectedCollection?.id : undefined) ??
     defaultCollectionId;
 
-  const initialValues: FormValues = useMemo(
+  const initialValues = useMemo(
     () =>
       getInitialValues(
         originalQuestion,
@@ -202,6 +203,7 @@ export const SaveQuestionProvider = ({
             multiStep,
             targetCollection,
             saveToDashboard,
+            isLoading,
           }}
         >
           {children}
