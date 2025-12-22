@@ -168,7 +168,7 @@ jobs:
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: cypress-recording-${{ inputs.name }}-${{ inputs.edition }}
           path: |
@@ -178,10 +178,11 @@ jobs:
 
       - name: Upload Failed Tests
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
+        if-no-files-found: ignore
 
       - name: Extract chunk-specific changed timings
         id: extract-timings
