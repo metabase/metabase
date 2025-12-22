@@ -11,6 +11,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- user-exists?
+  "Check if a PostgreSQL user exists. Uses pg_user which also works in Redshift."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
 (defmethod isolation/grant-read-access-to-tables! :postgres
   [database workspace tables]
   (let [username (-> workspace :database_details :user)
@@ -32,22 +37,24 @@
         read-user   {:user     (ws.u/isolation-user-name workspace)
                      :password (ws.u/random-isolated-password)}]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE SCHEMA \"%s\"" schema-name)
-                     (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
-                     ;; grant schema access (CREATE to create tables, USAGE to access them)
-                     (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
-                     ;; grant all privileges on future tables created in this schema (by admin)
-                     (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))]]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+      ;; Create user if not exists, otherwise update password
+      ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
+      (let [user-sql (if (user-exists? t-conn (:user read-user))
+                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
+                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user)))]
+        (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
+                       (format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
+                       user-sql
+                       ;; grant schema access (CREATE to create tables, USAGE to access them)
+                       ;; GRANT is idempotent in PostgreSQL
+                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
+                       ;; grant all privileges on future tables created in this schema (by admin)
+                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))]]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))
     {:schema           schema-name
      :database_details read-user}))
-
-(defn- user-exists?
-  "Check if a PostgreSQL user exists. Uses pg_user which also works in Redshift."
-  [conn username]
-  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
 
 (defmethod isolation/destroy-workspace-isolation! :postgres
   [database workspace]
