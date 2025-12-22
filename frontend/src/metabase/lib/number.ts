@@ -3,6 +3,10 @@ const INTEGER_REGEX = /^[+-]?\d+$/;
 export type NumberValue = number | bigint;
 
 export function parseNumber(value: string): NumberValue | null {
+  if (!Number.isFinite(Number(value))) {
+    return null;
+  }
+
   const number = parseFloat(value);
   if (!Number.isFinite(number)) {
     return null;
