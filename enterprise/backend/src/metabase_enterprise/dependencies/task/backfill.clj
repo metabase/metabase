@@ -19,6 +19,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -86,11 +87,14 @@
 
 (defn- backfill-entity!
   [model-kw id target-version]
-  (t2/with-transaction [_]
-    (if-let [event (custom-backfill-events model-kw)]
-      (custom-backfill-entity! model-kw event id target-version)
-      (t2/update! model-kw id :dependency_analysis_version [:< target-version]
-                  {:dependency_analysis_version target-version}))))
+  (log/debug "Backfilling " (name model-kw) id)
+  (u/prog1
+    (t2/with-transaction [_]
+      (if-let [event (custom-backfill-events model-kw)]
+        (custom-backfill-entity! model-kw event id target-version)
+        (t2/update! model-kw id :dependency_analysis_version [:< target-version]
+                    {:dependency_analysis_version target-version})))
+    (log/debug "Backfilled " (name model-kw) id)))
 
 (defn- backfill-entity-batch!
   [model-kw batch-size]
