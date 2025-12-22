@@ -114,6 +114,27 @@ describe("formatValue", () => {
     });
   });
 
+  describe("remapped column", () => {
+    it("should apply formatting settings", () => {
+      const column = createMockColumn({
+        base_type: "type/Float",
+        remapped_to_column: createMockColumn({
+          base_type: "type/Text",
+        }),
+        remapping: new Map([
+          [1, "1j"],
+          [2, "2"],
+          [3, "Three"],
+        ]),
+      } as any);
+      setup(1, { column, scale: 100 });
+      expect(screen.getByText("1j")).toBeInTheDocument();
+
+      setup(2, { column, scale: 100 });
+      expect(screen.getByText("200")).toBeInTheDocument();
+    });
+  });
+
   describe("collapseNewlines", () => {
     it("should collapse newlines in plain text when collapseNewlines is true", () => {
       const result = formatValue("Line 1\nLine 2\nLine 3", {

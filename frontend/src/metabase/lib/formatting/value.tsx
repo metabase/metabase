@@ -39,6 +39,14 @@ const MARKDOWN_RENDERERS = {
   ),
 };
 
+function isNumeric(x: string): boolean {
+  // This works by coercing x to a number (with +), then comparing them equal.
+  // If x is not a number, then +x will return NaN, which is not equal to NaN.
+  // example: isNumeric("1") => true
+  // example: isNumeric("1j") => false
+  return +x === +x;
+}
+
 export function formatValue(value: unknown, _options: OptionsType = {}) {
   let { prefix, suffix, ...options } = _options;
   // avoid rendering <ExternalLink> if we have click_behavior set
@@ -197,13 +205,12 @@ export function formatValueRaw(
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
     if (isNumber(column)) {
-      if (remapped !== undefined) {
-        // Value was remapped - treat as string, don't parse it!
-        return options.collapseNewlines ? removeNewLines(value) : value;
-      }
-      const number = parseNumber(value);
-      if (number != null) {
-        return formatNumber(number, options);
+      // check if the string contains a number only
+      if (isNumeric(value)) {
+        const number = parseNumber(value);
+        if (number != null) {
+          return formatNumber(number, options);
+        }
       }
     }
     if (options.view_as === "image") {
