@@ -13,7 +13,6 @@ import { setup } from "./setup";
 const setupEnterprise = (opts: SetupOpts) => {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
   });
 };
 
