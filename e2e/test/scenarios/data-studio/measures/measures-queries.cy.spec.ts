@@ -40,6 +40,21 @@ describe("scenarios > data studio > measures > queries", () => {
       });
     });
 
+    it("should create a measure with with a column from the main data source using offset", () => {
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "1,510,621.68",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type("Offset(Sum([Total]), -1)");
+          H.CustomExpressionEditor.nameInput().type("Offset Measure");
+          H.popover().button("Done").click();
+        },
+        addBreakout: true,
+      });
+    });
+
     it("should create a measure with a column from an implicit join", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
@@ -164,10 +179,12 @@ function verifyNewMeasure({
   tableId,
   scalarValue,
   createQuery,
+  addBreakout,
 }: {
   tableId: TableId;
   scalarValue: string;
   createQuery: () => void;
+  addBreakout?: boolean;
 }) {
   cy.log("create a new measure");
   H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
@@ -181,6 +198,14 @@ function verifyNewMeasure({
   H.summarize({ mode: "notebook" });
   H.popover().findByText("Measures").click();
   H.popover().findByText(MEASURE_NAME).click();
+
+  if (addBreakout) {
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("Created At").click();
+  }
+
   H.visualize();
   H.queryBuilderMain()
     .findByTestId("scalar-value")
