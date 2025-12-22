@@ -23,12 +23,12 @@ const getDefaultPluginApi = () => ({
     ): Promise<OnBeforeRequestHandlerData | void> => {},
   },
   getRemappedCardParameterValueUrl: (
-    cardId: CardId | string,
+    cardId: CardId | string | undefined,
     parameterId: ParameterId,
   ) =>
     `/api/card/${cardId}/params/${encodeURIComponent(parameterId)}/remapping`,
   getRemappedDashboardParameterValueUrl: (
-    dashboardId: DashboardId,
+    dashboardId: DashboardId | undefined,
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
