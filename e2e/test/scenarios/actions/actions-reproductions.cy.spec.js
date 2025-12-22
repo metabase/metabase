@@ -381,6 +381,12 @@ describe("issue 51020", () => {
         .click();
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
+        /**
+         * Without this wait, typing speed causes flakiness: fast typing switches to search tab
+         * before picker content loads, so no folder is selected and "Everywhere" toggle doesn't appear.
+         * Slow typing allows content to load first, selecting a folder, making the toggle appear.
+         */
+        cy.findByTestId("single-picker-view").should("be.visible");
         cy.get('[type="search"]').type("foo");
         cy.findByText("Everywhere").click();
         cy.findByText("Foo").click();
