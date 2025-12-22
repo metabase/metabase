@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
+   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -23,7 +24,7 @@
   ;; Only destroy isolation if workspace was initialized (not uninitialized status)
   (when (not= :uninitialized (:status workspace))
     (let [database (t2/select-one :model/Database :id (:database_id workspace))]
-      (ws.isolation/destroy-workspace-isolation! database workspace)
+      (ws.isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)
       ;; Mark all inputs as un-granted since the user was dropped
       (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
                   {:access_granted false})))
@@ -53,7 +54,7 @@
   ;; Only destroy isolation if workspace was initialized (not uninitialized status)
   (when (not= :uninitialized (:status workspace))
     (let [database (t2/select-one :model/Database :id (:database_id workspace))]
-      (ws.isolation/destroy-workspace-isolation! database workspace)
+      (ws.isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)
       (t2/update! :model/WorkspaceInput {:workspace_id (:id workspace)}
                   {:access_granted false})))
   (t2/delete! :model/Workspace (:id workspace)))

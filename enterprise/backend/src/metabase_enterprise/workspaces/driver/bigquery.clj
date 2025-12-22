@@ -269,7 +269,7 @@
                  (into-array BigQuery$DatasetOption []))))))
 
 (defmethod isolation/init-workspace-database-isolation! :bigquery-cloud-sdk
-  [database workspace]
+  [_driver database workspace]
   (let [details      (:details database)
         client       (database-details->client details)
         iam-client   (database-details->iam-client details)
@@ -343,16 +343,48 @@
         (.setIamPolicy client table-id updated-policy (into-array BigQuery$IAMOption []))))))
 
 (defmethod isolation/grant-read-access-to-tables! :bigquery-cloud-sdk
-  [database ws-sa-email tables]
-  ;; For BigQuery, the 'username' argument is actually the workspace service account email
-  ;; (from :impersonate-service-account in database_details)
-  (let [details    (:details database)
-        client     (database-details->client details)
-        project-id (get-project-id details)]
-
+  [_driver database workspace tables]
+  (let [details     (:details database)
+        client      (database-details->client details)
+        project-id  (get-project-id details)
+        ws-sa-email (-> workspace :database_details :user)]
     (log/debugf "Granting read access to %d tables for %s" (count tables) ws-sa-email)
-
     ;; Grant dataViewer at table level for each table - proper isolation
     (doseq [{:keys [schema name]} tables]
       (let [table-id (TableId/of project-id schema name)]
         (grant-table-read-access! client table-id ws-sa-email)))))
+
+(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+
+(defmethod isolation/check-isolation-permissions :bigquery-cloud-sdk
+  [driver database test-table]
+  ;; BigQuery uses GCP IAM APIs instead of SQL, so we can't use transaction rollback.
+  ;; We run the actual init/grant/destroy operations and clean up immediately.
+  (let [test-workspace {:id   perm-check-workspace-id
+                        :name "_mb_perm_check_"}]
+    (try
+      (let [init-result (try
+                          (isolation/init-workspace-database-isolation! driver database test-workspace)
+                          (catch Exception e
+                            (throw (ex-info (format "Failed to initialize workspace isolation: %s" (ex-message e))
+                                            {:step :init} e))))
+            workspace-with-details (merge test-workspace init-result)]
+        (when test-table
+          (try
+            (isolation/grant-read-access-to-tables! driver database workspace-with-details [test-table])
+            (catch Exception e
+              (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
+                                      (:schema test-table) (:name test-table) (ex-message e))
+                              {:step :grant :table test-table} e)))))
+        (try
+          (isolation/destroy-workspace-isolation! driver database workspace-with-details)
+          (catch Exception e
+            (throw (ex-info (format "Failed to destroy workspace isolation: %s" (ex-message e))
+                            {:step :destroy} e)))))
+      nil
+      (catch Exception e
+        (ex-message e))
+      (finally
+        (try
+          (isolation/destroy-workspace-isolation! driver database test-workspace)
+          (catch Exception _ nil))))))

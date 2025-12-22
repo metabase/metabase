@@ -8,4 +8,5 @@
    [metabase-enterprise.workspaces.driver.postgres]
    [metabase-enterprise.workspaces.driver.redshift]
    [metabase-enterprise.workspaces.driver.snowflake]
+   [metabase-enterprise.workspaces.driver.sql-jdbc]
    [metabase-enterprise.workspaces.driver.sqlserver]))
