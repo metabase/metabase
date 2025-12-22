@@ -6,7 +6,7 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import {
   overrideRequestsForPublicEmbeds,
   overrideRequestsForStaticEmbeds,
-} from "metabase/embedding/lib/override-requests-for-guest-embeds";
+} from "metabase/embedding/lib/override-requests-for-embeds";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
@@ -60,9 +60,9 @@ export const PublicOrEmbeddedQuestion = ({
 
   useMount(async () => {
     if (uuid) {
-      overrideRequestsForPublicEmbeds();
+      overrideRequestsForPublicEmbeds("question");
     } else if (token) {
-      overrideRequestsForStaticEmbeds();
+      overrideRequestsForStaticEmbeds("question");
     }
 
     try {

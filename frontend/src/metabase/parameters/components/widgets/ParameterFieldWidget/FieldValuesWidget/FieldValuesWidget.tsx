@@ -738,7 +738,9 @@ function RemappedValue({
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped
       ? {
-          dashboard_id: entityIdentifier ?? dashboardId,
+          ...(entityIdentifier
+            ? { entityIdentifier }
+            : { dashboard_id: dashboardId }),
           parameter_id: parameter.id,
           value,
         }
@@ -748,7 +750,7 @@ function RemappedValue({
   const { data: cardData } = useGetRemappedCardParameterValueQuery(
     cardId != null && value != null && isRemapped
       ? {
-          card_id: entityIdentifier ?? cardId,
+          ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
           parameter_id: parameter.id,
           value,
         }
