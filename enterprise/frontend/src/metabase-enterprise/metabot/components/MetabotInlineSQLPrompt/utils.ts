@@ -37,7 +37,7 @@ export function extractMetabotBufferContext(
     id: bufferId,
     source: {
       language: "sql",
-      databaseId,
+      database_id: databaseId,
     },
     cursor: {
       line: cursorLine.number,
