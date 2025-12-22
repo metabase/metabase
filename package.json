@@ -47,9 +47,9 @@
     "@tiptap/react": "^3.2.0",
     "@tiptap/starter-kit": "^3.2.0",
     "@tiptap/suggestion": "^3.2.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/react-router": "3.0.27",
     "@types/redux-auth-wrapper": "^2.0.16",
-    "@types/yamljs": "^0.2.34",
     "@uiw/react-codemirror": "^4.23.6",
     "@visx/axis": "^3.10.1",
     "@visx/clip-path": "^3.3.0",
@@ -90,6 +90,7 @@
     "inflection": "^1.7.1",
     "inquirer-toggle": "^1.0.1",
     "js-cookie": "^2.1.2",
+    "js-yaml": "^4.1.1",
     "json5": "2.2.2",
     "jspdf": "3.0.2",
     "kbar": "^0.1.0-beta.45",
@@ -145,7 +146,6 @@
     "ttag": "1.7.21",
     "typescript": "^5.9.2",
     "underscore": "~1.13.3",
-    "yamljs": "^0.3.0",
     "yup": "^0.32.11"
   },
   "devDependencies": {
