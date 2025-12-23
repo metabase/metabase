@@ -48,8 +48,7 @@
 (s/def ::merge-map (spell/keys :req-un [::merge]))
 
 (s/def ::container-style-type #{"grid" "component"})
-(s/def ::container-style-array (s/cat :type ::container-style-type :value string?))
-(s/def ::container-style (s/or :string string? :array ::container-style-array))
+(s/def ::container-style (s/cat :type ::container-style-type :value string?))
 (s/def ::fields (s/coll-of ::connection-property))
 (s/def ::group-map (spell/keys :req-un [::container-style ::fields]))
 (s/def ::group-property (spell/keys :req-un [::group]))

@@ -1,8 +1,6 @@
 import { Box } from "metabase/ui";
 import type { ContainerStyle } from "metabase-types/api";
 
-import S from "./container-styles.module.css";
-
 function GridContainer({
   children,
   gridTemplateColumns,
@@ -38,22 +36,14 @@ function createGridContainer(gridTemplateColumns: string) {
 }
 
 export function getContainer(containerStyle: ContainerStyle) {
-  if (Array.isArray(containerStyle)) {
-    const [type, value] = containerStyle;
+  const [type, value] = containerStyle;
 
-    if (type === "grid") {
-      return createGridContainer(value);
-    }
-
-    if (type === "component") {
-      // Look up component by name
-      return containers[value] ?? Box;
-    }
+  if (type === "grid") {
+    return createGridContainer(value);
   }
 
-  // Handle string format (backwards compatibility)
-  if (typeof containerStyle === "string") {
-    return containers[containerStyle] ?? Box;
+  if (type === "component") {
+    return containers[value] ?? Box;
   }
 
   return Box;
@@ -67,5 +57,9 @@ const containers: Record<
 };
 
 export function Backdrop({ children }: { children: React.ReactNode }) {
-  return <div className={S.backdrop}>{children}</div>;
+  return (
+    <Box p="lg" bg="background-light" bdrs="md">
+      {children}
+    </Box>
+  );
 }

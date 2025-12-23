@@ -1,12 +1,11 @@
 import { useFormikContext } from "formik";
-import { type JSX, useMemo } from "react";
+import type { JSX } from "react";
 import { match } from "ts-pattern";
 
 import type {
   DatabaseFormConfig,
   FormLocation,
 } from "metabase/databases/types";
-import { getVisibleFields } from "metabase/databases/utils/schema";
 import { Box } from "metabase/ui";
 import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
@@ -44,12 +43,8 @@ export const DatabaseFormBody = ({
   showSampleDatabase = false,
   location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, setValues } = useFormikContext<DatabaseData>();
+  const { setValues } = useFormikContext<DatabaseData>();
   const hasConnectionError = useHasConnectionError();
-
-  const fields = useMemo(() => {
-    return engine ? getVisibleFields(engine, values, isAdvanced) : [];
-  }, [engine, values, isAdvanced]);
 
   const px = match(location)
     .with("setup", () => "sm")
@@ -91,10 +86,11 @@ export const DatabaseFormBody = ({
         />
       )}
       <DatabaseFormBodyDetails
-        fields={fields}
+        fields={engine?.["details-fields"] ?? []}
         autofocusFieldName={autofocusFieldName}
         engineKey={engineKey}
         engine={engine}
+        isAdvanced={isAdvanced}
       />
       {isAdvanced && hasConnectionError && <DatabaseFormError />}
     </Box>
