@@ -1,5 +1,4 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { ReactNode } from "react";
 
 import { Card, Group, Icon, ThemeProvider } from "metabase/ui";
 
@@ -7,7 +6,7 @@ import { Table } from "..";
 
 import data from "./data.json";
 
-const columns: ColumnDef<Record<string, any>, ReactNode>[] = [
+const columns: ColumnDef<Record<string, any>>[] = [
   {
     accessorKey: "name",
     header: "Name",

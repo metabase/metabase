@@ -15,11 +15,13 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.util Map Set)
@@ -68,25 +70,30 @@
            (take batch-size))
           (t2/reducible-select [model-kw :id] :dependency_analysis_version [:< target-version]))))
 
-(defn- backfill-card!
-  [id target-version]
-  ;; We don't want to change the card at all, we just want to update the dependency data and
-  ;; mark the card as processed for this dependency analysis version.
-  (let [update-count (t2/update! :model/Card id :dependency_analysis_version [:< target-version]
+(def ^:private custom-backfill-events
+  {:model/Card :event/card-dependency-backfill
+   :model/Dashboard :event/dashboard-dependency-backfill})
+
+(defn- custom-backfill-entity!
+  [model-kw event id target-version]
+  ;; We don't want to change the entity at all, we just want to update the dependency data and
+  ;; mark the entity as processed for this dependency analysis version.
+  (let [update-count (t2/update! model-kw id :dependency_analysis_version [:< target-version]
                                  {:dependency_analysis_version target-version})]
-    (when-let [card (and (pos? update-count)
-                         (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-dependency-backfill {:object card}))
+    (when-let [entity (and (pos? update-count)
+                           (t2/select-one model-kw id))]
+      (events/publish-event! event {:object entity}))
     update-count))
 
 (defn- backfill-entity!
   [model-kw id target-version]
   (log/debug "Backfilling " (name model-kw) id)
-  (u/prog1 (t2/with-transaction [_]
-             (case model-kw
-               :model/Card (backfill-card! id target-version)
-               (t2/update! model-kw id :dependency_analysis_version [:< target-version]
-                           {:dependency_analysis_version target-version})))
+  (u/prog1
+    (t2/with-transaction [_]
+      (if-let [event (custom-backfill-events model-kw)]
+        (custom-backfill-entity! model-kw event id target-version)
+        (t2/update! model-kw id :dependency_analysis_version [:< target-version]
+                    {:dependency_analysis_version target-version})))
     (log/debug "Backfilled " (name model-kw) id)))
 
 (defn- backfill-entity-batch!
@@ -183,5 +190,15 @@
 
 (defmethod task/init! ::DependencyBackfill [_]
   (if (pos? (deps.settings/dependency-backfill-batch-size))
-    (schedule-next-run! (rand-int (* (deps.settings/dependency-backfill-variance-minutes) 60)))
+    (schedule-next-run! (if config/is-test?
+                          0
+                          (rand-int (* (deps.settings/dependency-backfill-variance-minutes) 60))))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))
+
+(derive ::backfill :metabase/event)
+(derive :event/serdes-load ::backfill)
+(derive :event/set-premium-embedding-token ::backfill)
+(methodical/defmethod events/publish-event! ::backfill
+  [_ _]
+  (when (premium-features/has-feature? :dependencies)
+    (backfill-dependencies!)))

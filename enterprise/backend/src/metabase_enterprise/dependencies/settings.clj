@@ -25,3 +25,27 @@
   :default    30
   :setter     :none
   :export?    false)
+
+(defsetting dependency-entity-check-batch-size
+  "Batch size."
+  :visibility :internal
+  :type       :integer
+  :default    500
+  :setter     :none
+  :export?    false)
+
+(defsetting dependency-entity-check-delay-minutes
+  "Backfill delay in minutes."
+  :visibility :internal
+  :type       :integer
+  :default    60
+  :setter     :none
+  :export?    false)
+
+(defsetting dependency-entity-check-variance-minutes
+  "Backfill variance (?) whatever that means."
+  :visibility :internal
+  :type       :integer
+  :default    30
+  :setter     :none
+  :export?    false)

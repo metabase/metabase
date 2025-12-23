@@ -6,7 +6,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 
 import { DependencyGraph } from "../../components/DependencyGraph";
-import { isSameNode } from "../../components/DependencyGraph/utils";
+import { isSameNode } from "../../utils";
 
 import { parseDependencyEntry } from "./utils";
 

@@ -31,3 +31,7 @@
   "Toucan transform spec for the Sandbox `attribute_remappings` column."
   {:in  (comp mi/json-in normalize-attribute-remappings)
    :out (comp normalize-attribute-remappings mi/json-out-without-keywordization)})
+
+(mr/def ::sandbox
+  [:map
+   [:id ::lib.schema.id/sandbox]])

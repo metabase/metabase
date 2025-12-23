@@ -2,14 +2,21 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
+
+(comment
+  metabase-enterprise.dependencies.events/keep-me)
 
 (deftest dashboard-update-sets-correct-dependencies
   (mt/with-test-user :rasta
@@ -461,3 +468,356 @@
                   (is (= models.dependency/current-dependency-analysis-version
                          (t2/select-one-fn :dependency_analysis_version :model/Segment :id segment-id)))
                   (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))))))))
+
+(deftest ^:sequential card-update-works-with-no-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          products (lib.metadata/table mp products-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                       :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id child-card-id
+                                            :to_entity_type :card
+                                            :to_entity_id parent-card-id}]
+          (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*})
+          (is (= #{parent-card-id child-card-id}
+                 (t2/select-fn-set :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :card
+                                   :analyzed_entity_id [:in [parent-card-id child-card-id]]))))))))
+
+(deftest ^:sequential card-update-updates-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          orders-id (mt/id :orders)
+          products (lib.metadata/table mp products-id)
+          orders (lib.metadata/table mp orders-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                       :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                       :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id child-card-id
+                                            :to_entity_type :card
+                                            :to_entity_id parent-card-id}]
+          (lib-be/with-metadata-provider-cache
+            (deps.findings/upsert-analysis! parent-card)
+            (deps.findings/upsert-analysis! child-card)
+            (deps.findings/upsert-analysis! other-card))
+          (is (= #{{:analyzed_entity_id parent-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                   {:analyzed_entity_id child-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                   {:analyzed_entity_id other-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]]))))
+          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+            (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
+          (is (= #{{:analyzed_entity_id parent-card-id
+                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                   {:analyzed_entity_id child-card-id
+                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                   {:analyzed_entity_id other-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]])))))))))
+
+(deftest ^:sequential card-update-stops-on-transforms-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          orders-id (mt/id :orders)
+          products (lib.metadata/table mp products-id)
+          orders (lib.metadata/table mp orders-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                       :model/Transform {transform-id :id :as transform} {:source {:type :query
+                                                                                   :query (lib/query mp products)}
+                                                                          :name "transform_sample"
+                                                                          :target {:schema "public"
+                                                                                   :name "sample"
+                                                                                   :type :table}}
+                       :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp orders)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id child-card-id
+                                            :to_entity_type :transform
+                                            :to_entity_id transform-id}
+                       :model/Dependency _ {:from_entity_type :transform
+                                            :from_entity_id transform-id
+                                            :to_entity_type :card
+                                            :to_entity_id parent-card-id}]
+          (lib-be/with-metadata-provider-cache
+            (deps.findings/upsert-analysis! parent-card)
+            (deps.findings/upsert-analysis! transform)
+            (deps.findings/upsert-analysis! child-card))
+          (is (= #{{:analyzed_entity_id parent-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                   {:analyzed_entity_id child-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [parent-card-id child-card-id]]))))
+          (is (= #{{:analyzed_entity_id transform-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :transform
+                                  :analyzed_entity_id [:in [transform-id]]))))
+          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+            (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
+          (is (= #{{:analyzed_entity_id parent-card-id
+                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                   {:analyzed_entity_id child-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [parent-card-id child-card-id]]))))
+          (is (= #{{:analyzed_entity_id transform-id
+                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :transform
+                                  :analyzed_entity_id [:in [transform-id]])))))))))
+
+(deftest ^:sequential transform-update-works-with-no-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          products (lib.metadata/table mp products-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                       :model/Transform {transform-id :id :as transform} {:source {:type :query
+                                                                                   :query (lib/query mp products)}
+                                                                          :name "transform_sample"
+                                                                          :target {:schema "public"
+                                                                                   :name "sample"
+                                                                                   :type :table}}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id card-id
+                                            :to_entity_type :transform
+                                            :to_entity_id transform-id}]
+          (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
+          (is (= nil
+                 (t2/select-fn-set :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :card
+                                   :analyzed_entity_id card-id)))
+          (is (= #{transform-id}
+                 (t2/select-fn-set :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :transform
+                                   :analyzed_entity_id transform-id))))))))
+
+(deftest ^:sequential transform-update-updates-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          orders-id (mt/id :orders)
+          products (lib.metadata/table mp products-id)
+          orders (lib.metadata/table mp orders-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+                       :model/Transform {transform-id :id :as transform} {:source {:type :query
+                                                                                   :query (lib/query mp products)}
+                                                                          :name "transform_sample"
+                                                                          :target {:schema "public"
+                                                                                   :name "sample"
+                                                                                   :type :table}}
+                       :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id card-id
+                                            :to_entity_type :transform
+                                            :to_entity_id transform-id}]
+          (lib-be/with-metadata-provider-cache
+            (deps.findings/upsert-analysis! card)
+            (deps.findings/upsert-analysis! transform)
+            (deps.findings/upsert-analysis! other-card))
+          (is (= #{{:analyzed_entity_id card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                   {:analyzed_entity_id other-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [card-id other-card-id]]))))
+          (is (= #{{:analyzed_entity_id transform-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :transform
+                                  :analyzed_entity_id [:in [transform-id]]))))
+          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+            (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*}))
+          (is (= #{{:analyzed_entity_id card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                   {:analyzed_entity_id other-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [card-id other-card-id]]))))
+          (is (= #{{:analyzed_entity_id transform-id
+                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :transform
+                                  :analyzed_entity_id [:in [transform-id]])))))))))
+
+(deftest ^:sequential transform-run-works-with-no-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          products (lib.metadata/table mp products-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                       :model/Transform {transform-id :id} {:source {:type :query
+                                                                     :query (lib/query mp products)}
+                                                            :name "transform_sample"
+                                                            :target {:schema "public"
+                                                                     :name "sample"
+                                                                     :type :table}}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id card-id
+                                            :to_entity_type :transform
+                                            :to_entity_id transform-id}]
+          (events/publish-event! :event/transform-run-complete
+                                 {:object {:db-id (mt/id)
+                                           :output-schema "public"
+                                           :output-table "sample"
+                                           :transform-id transform-id}
+                                  :user-id api/*current-user-id*})
+          (is (= card-id
+                 (t2/select-one-fn :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :card
+                                   :analyzed_entity_id card-id))))))))
+
+(deftest ^:sequential transform-run-updates-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          orders-id (mt/id :orders)
+          products (lib.metadata/table mp products-id)
+          orders (lib.metadata/table mp orders-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+                       :model/Transform {transform-id :id :as transform} {:source {:type :query
+                                                                                   :query (lib/query mp products)}
+                                                                          :name "transform_sample"
+                                                                          :target {:schema "public"
+                                                                                   :name "sample"
+                                                                                   :type :table}}
+                       :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id card-id
+                                            :to_entity_type :transform
+                                            :to_entity_id transform-id}]
+          (lib-be/with-metadata-provider-cache
+            (deps.findings/upsert-analysis! card)
+            (deps.findings/upsert-analysis! transform)
+            (deps.findings/upsert-analysis! other-card))
+          (is (= #{{:analyzed_entity_id card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                   {:analyzed_entity_id other-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [card-id other-card-id]]))))
+          (is (= #{{:analyzed_entity_id transform-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :transform
+                                  :analyzed_entity_id [:in [transform-id]]))))
+          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+            (events/publish-event! :event/transform-run-complete
+                                   {:object {:db-id (mt/id)
+                                             :output-schema "public"
+                                             :output-table "sample"
+                                             :transform-id transform-id}
+                                    :user-id api/*current-user-id*}))
+          (is (= #{{:analyzed_entity_id card-id
+                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                   {:analyzed_entity_id other-card-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [card-id other-card-id]]))))
+          (is (= #{{:analyzed_entity_id transform-id
+                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :transform
+                                  :analyzed_entity_id [:in [transform-id]])))))))))
+
+(deftest ^:sequential segment-update-works-with-no-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          products (lib.metadata/table mp products-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                    :definition {:filter [:> [:field price-field-id nil] 50]}}
+                       :model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id card-id
+                                            :to_entity_type :segment
+                                            :to_entity_id segment-id}]
+          (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
+          (is (= card-id
+                 (t2/select-one-fn :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :card
+                                   :analyzed_entity_id card-id)))
+          (is (= segment-id
+                 (t2/select-one-fn :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :segment
+                                   :analyzed_entity_id segment-id))))))))
+
+(deftest ^:sequential segment-update-updates-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          products (lib.metadata/table mp products-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                    :definition {:filter [:> [:field price-field-id nil] 50]}}
+                       :model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id card-id
+                                            :to_entity_type :segment
+                                            :to_entity_id segment-id}]
+          (lib-be/with-metadata-provider-cache
+            (deps.findings/upsert-analysis! segment)
+            (deps.findings/upsert-analysis! card))
+          (is (= {:analyzed_entity_id card-id
+                  :analysis_version models.analysis-finding/*current-analysis-version*}
+                 (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                :analyzed_entity_type :card
+                                :analyzed_entity_id card-id)))
+          (is (= {:analyzed_entity_id segment-id
+                  :analysis_version models.analysis-finding/*current-analysis-version*}
+                 (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                :analyzed_entity_type :segment
+                                :analyzed_entity_id segment-id)))
+          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+            (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*}))
+          (is (= {:analyzed_entity_id card-id
+                  :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                 (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                :analyzed_entity_type :card
+                                :analyzed_entity_id card-id)))
+          (is (= {:analyzed_entity_id segment-id
+                  :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                 (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                :analyzed_entity_type :segment
+                                :analyzed_entity_id segment-id))))))))

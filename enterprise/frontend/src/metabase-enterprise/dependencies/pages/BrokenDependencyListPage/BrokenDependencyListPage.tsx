@@ -1,0 +1,88 @@
+import { useDebouncedValue } from "@mantine/hooks";
+import { useState } from "react";
+import { t } from "ttag";
+
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import {
+  useGetDependencyGraphStatusQuery,
+  useListBrokenGraphNodesQuery,
+} from "metabase-enterprise/api";
+import type {
+  DependencyEntry,
+  DependencyGroupType,
+  DependencyNode,
+} from "metabase-types/api";
+
+import { DependencyList } from "../../components/DependencyList";
+import type { DependencyFilterOptions } from "../../types";
+import { getCardTypes, getDependencyTypes, getSearchQuery } from "../../utils";
+
+const EMPTY_NODES: DependencyNode[] = [];
+
+export const AVAILABLE_GROUP_TYPES: DependencyGroupType[] = [
+  "question",
+  "model",
+  "metric",
+  "segment",
+  "transform",
+];
+
+export function BrokenDependencyListPage() {
+  const [searchValue, setSearchValue] = useState("");
+  const [searchQuery] = useDebouncedValue(
+    getSearchQuery(searchValue),
+    SEARCH_DEBOUNCE_DURATION,
+  );
+  const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>({
+    groupTypes: [],
+  });
+  const [selectedEntry, setSelectedEntry] = useState<DependencyEntry | null>(
+    null,
+  );
+
+  const groupTypes =
+    filterOptions.groupTypes.length > 0
+      ? filterOptions.groupTypes
+      : AVAILABLE_GROUP_TYPES;
+
+  const {
+    data: status,
+    isLoading: isLoadingStatus,
+    isFetching: isFetchingStatus,
+    error: statusError,
+  } = useGetDependencyGraphStatusQuery();
+
+  const {
+    data: nodes = EMPTY_NODES,
+    isFetching: isFetchingList,
+    isLoading: isLoadingList,
+    error: listError,
+  } = useListBrokenGraphNodesQuery({
+    query: searchQuery,
+    types: getDependencyTypes(groupTypes),
+    card_types: getCardTypes(groupTypes),
+  });
+
+  const isLoading = isLoadingStatus || isLoadingList;
+  const isFetching = isFetchingStatus || isFetchingList;
+  const error = listError ?? statusError;
+
+  return (
+    <DependencyList
+      nodes={nodes}
+      selectedEntry={selectedEntry}
+      searchValue={searchValue}
+      filterOptions={filterOptions}
+      availableGroupTypes={AVAILABLE_GROUP_TYPES}
+      notFoundMessage={t`No broken entities found`}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      error={error}
+      withErrorsColumn={true}
+      withDependentsCountColumn={status?.dependencies_analyzed}
+      onSelect={setSelectedEntry}
+      onSearchValueChange={setSearchValue}
+      onFilterOptionsChange={setFilterOptions}
+    />
+  );
+}

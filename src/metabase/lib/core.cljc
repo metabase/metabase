@@ -376,6 +376,7 @@
   fully-parameterized-query?
   has-template-tag-variables?
   has-write-permission
+  match-and-normalize-tag-name
   native-extras
   native-query
   raw-native-query
@@ -492,7 +493,12 @@
   unique-name-generator
   unique-name-generator-with-options]
  [lib.validate
-  find-bad-refs]
+  duplicate-column
+  find-bad-refs
+  missing-column
+  missing-table-alias
+  syntax-error
+  validation-error]
  [metabase.lib.walk.util
   all-field-ids
   all-implicitly-joined-field-ids

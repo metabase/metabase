@@ -1,6 +1,7 @@
 import type { Edge, Node } from "@xyflow/react";
 
 import type {
+  DependencyGraphStatus,
   DependencyGroupType,
   DependencyId,
   DependencyNode,
@@ -10,16 +11,6 @@ import type {
 export type NodeId = string;
 export type EdgeId = string;
 export type NodeType = Node<DependencyNode>;
-
-export type NodeTypeInfo = {
-  label: string;
-  color: string;
-};
-
-export type NodeLink = {
-  label: string;
-  url: string;
-};
 
 export type GraphData = {
   nodes: NodeType[];
@@ -33,6 +24,7 @@ export type GraphSelection = {
 };
 
 export type GraphContextType = {
+  status: DependencyGraphStatus | null;
   selection: GraphSelection | null;
   setSelection: (selection: GraphSelection | null) => void;
 };

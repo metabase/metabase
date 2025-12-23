@@ -60,7 +60,7 @@ describe("getNodeIcon", () => {
       node: createMockSnippetDependencyNode(),
       expectedIcon: "sql",
     },
-  ])("should get the node icon", ({ node, expectedIcon }) => {
+  ])("should get the $node.type node icon", ({ node, expectedIcon }) => {
     expect(getNodeIcon(node)).toBe(expectedIcon);
   });
 });
@@ -119,7 +119,7 @@ describe("getNodeLink", () => {
       }),
       expectedLink: {
         label: "View metadata",
-        url: "/admin/datamodel/database/2/schema/2:not%20public/table/1",
+        url: "/data-studio/data/database/2/schema/2:not%20public/table/1",
       },
     },
     {
@@ -128,10 +128,10 @@ describe("getNodeLink", () => {
       }),
       expectedLink: {
         label: "View this segment",
-        url: "/admin/datamodel/segment/1",
+        url: "/data-studio/library/segments/1",
       },
     },
-  ])("should get the node link", ({ node, expectedLink }) => {
+  ])("should get the $node.type node link", ({ node, expectedLink }) => {
     expect(getNodeLink(node)).toEqual(expectedLink);
   });
 });

@@ -10,7 +10,7 @@ import {
   getNodeLabel,
   getNodeLocationInfo,
   getNodeViewCount,
-} from "../utils";
+} from "../../../utils";
 
 import { FILTER_OPTIONS } from "./constants";
 import type {
@@ -113,13 +113,13 @@ const COMPARATORS: Record<SortColumn, SortCallback> = {
     return label1.localeCompare(label2);
   },
   location: (node1, node2) => {
-    const parts1 = getNodeLocationInfo(node1) ?? [];
-    const parts2 = getNodeLocationInfo(node2) ?? [];
-    const minParts = parts1.length < parts2.length ? parts1 : parts2;
-    const result = minParts
-      .map((_link, i) => parts1[i].label.localeCompare(parts2[i].label))
+    const links1 = getNodeLocationInfo(node1)?.links ?? [];
+    const links2 = getNodeLocationInfo(node2)?.links ?? [];
+    const minLinks = links1.length < links2.length ? links1 : links2;
+    const result = minLinks
+      .map((_link, i) => links1[i].label.localeCompare(links2[i].label))
       .find((result) => result !== 0);
-    return result ?? parts1.length - parts2.length;
+    return result ?? links1.length - links2.length;
   },
   "view-count": (node1, node2) => {
     const count1 = getNodeViewCount(node1) ?? 0;

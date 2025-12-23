@@ -29,20 +29,20 @@
 ;; Template Tags: Variables
 
 (def ^:private variable-tag-regex
-  #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
+  #"\s*([A-Za-z0-9_\.]+)\s*")
 
 (defn- normalize-variable-tag
   "Matches and normalizes a variable tag like {{my_var}}.
    Returns normalized-name or nil if not a variable tag."
-  [full-tag]
-  (when-let [[_ content] (re-matches variable-tag-regex full-tag)]
+  [tag-name]
+  (when-let [[_ content] (re-matches variable-tag-regex tag-name)]
     content))
 
 ;; Template Tags: Snippets
 
 (def ^:private snippet-tag-regex
   ;; any spaces, snippet:, any spaces, name, any trailing spaces
-  #"\{\{\s*(snippet:\s*[^}]*[^}\s])\s*\}\}")
+  #"\s*(snippet:\s*[^}]*[^}\s])\s*")
 
 (defn- tag-name->snippet-name [tag-name]
   (when (str/starts-with? tag-name "snippet:")
@@ -51,15 +51,15 @@
 (defn- normalize-snippet-tag
   "Normalizes a snippet tag like {{snippet: foo}}. E.g., 'snippet:  foo ' -> 'snippet: foo'.
    Returns normalized string or nil if not a snippet tag."
-  [full-tag]
-  (when-let [[_ content] (re-matches snippet-tag-regex full-tag)]
+  [tag-name]
+  (when-let [[_ content] (re-matches snippet-tag-regex tag-name)]
     (let [snippet-name (tag-name->snippet-name content)]
       (str "snippet: " snippet-name))))
 
 ;; Template Tags: Cards
 
 (def ^:private card-tag-regex
-  #"\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}")
+  #"\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*")
 
 (defn- tag-name->card-id [tag-name]
   (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
@@ -69,12 +69,12 @@
   "Matches and normalizes a card tag like {{#123}} or {{#123-slug}}.
    Normalizes '#123-slug' -> '#123'.
    Returns normalized-name or nil if not a card tag."
-  [full-tag]
-  (when-let [[_ content _card-id _slug] (re-matches card-tag-regex full-tag)]
+  [tag-name]
+  (when-let [[_ content _card-id _slug] (re-matches card-tag-regex tag-name)]
     ;; TODO: see tech debt issue #39378 and `native-test/card-tag-test`
     content))
 
-(def ^:private match-and-normalize-tag-name
+(def ^{:arglists '([tag-name])} match-and-normalize-tag-name
   "Matches a full tag string against tag normalizer functions and returns
    normalized-name or nil if no match."
   (some-fn normalize-variable-tag
@@ -109,8 +109,7 @@
         [_ :guard string?] (recur found more)
 
         [{:type ::lib.parse/param, :name tag-name}]
-        (let [full-tag        (str "{{" tag-name "}}")
-              normalized-name (match-and-normalize-tag-name full-tag)]
+        (let [normalized-name (match-and-normalize-tag-name tag-name)]
           (recur (cond-> found
                    (and normalized-name (not (found normalized-name)))
                    (assoc normalized-name (fresh-tag normalized-name)))

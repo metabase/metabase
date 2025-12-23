@@ -12,16 +12,32 @@ import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
 export type DependencyId = number;
-export type DependencyType =
-  | "card"
-  | "table"
-  | "transform"
-  | "snippet"
-  | "dashboard"
-  | "document"
-  | "sandbox"
-  | "segment";
-export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
+
+export const DEPENDENCY_TYPES = [
+  "card",
+  "table",
+  "transform",
+  "snippet",
+  "dashboard",
+  "document",
+  "sandbox",
+  "segment",
+] as const;
+export type DependencyType = (typeof DEPENDENCY_TYPES)[number];
+
+export const DEPENDENCY_GROUP_TYPES = [
+  "question",
+  "model",
+  "metric",
+  "table",
+  "transform",
+  "snippet",
+  "dashboard",
+  "document",
+  "sandbox",
+  "segment",
+] as const;
+export type DependencyGroupType = (typeof DEPENDENCY_GROUP_TYPES)[number];
 
 export type DependencyEntry = {
   id: DependencyId;
@@ -34,6 +50,7 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
+  errors?: DependencyError[] | null;
   dependents_count?: DependentsCount | null;
 };
 
@@ -44,7 +61,7 @@ export type TableDependencyNodeData = Pick<
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table"
+  "name" | "description" | "table" | "creator" | "created_at"
 >;
 
 export type CardDependencyNodeData = Pick<
@@ -64,13 +81,18 @@ export type CardDependencyNodeData = Pick<
   | "creator"
   | "created_at"
   | "last-edit-info"
-> & {
-  view_count?: number | null;
-};
+  | "view_count"
+>;
 
 export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
-  "name" | "description"
+  | "name"
+  | "description"
+  | "creator_id"
+  | "creator"
+  | "created_at"
+  | "collection_id"
+  | "collection"
 >;
 
 export type DashboardDependencyNodeData = Pick<
@@ -83,16 +105,18 @@ export type DashboardDependencyNodeData = Pick<
   | "collection_id"
   | "collection"
   | "moderation_reviews"
-> & {
-  view_count?: number | null;
-};
+  | "view_count"
+>;
 
 export type DocumentDependencyNodeData = Pick<
   Document,
-  "name" | "created_at" | "creator" | "collection_id" | "collection"
-> & {
-  view_count?: number | null;
-};
+  | "name"
+  | "created_at"
+  | "creator"
+  | "collection_id"
+  | "collection"
+  | "view_count"
+>;
 
 export type SandboxDependencyNodeData = {
   table_id: TableId;
@@ -156,6 +180,47 @@ export type DependencyNode =
   | SandboxDependencyNode
   | SegmentDependencyNode;
 
+export const DEPENDENCY_ERROR_TYPES = [
+  "validate/missing-column",
+  "validate/missing-table-alias",
+  "validate/duplicate-column",
+  "validate/syntax-error",
+  "validate/validation-error",
+] as const;
+export type DependencyErrorType = (typeof DEPENDENCY_ERROR_TYPES)[number];
+
+type BaseDependencyError<TType extends DependencyErrorType> = {
+  type: TType;
+};
+
+export type MissingColumnDependencyError =
+  BaseDependencyError<"validate/missing-column"> & {
+    name: string;
+  };
+
+export type MissingTableAliasDependencyError =
+  BaseDependencyError<"validate/missing-table-alias"> & {
+    name: string;
+  };
+
+export type DuplicateColumnDependencyError =
+  BaseDependencyError<"validate/duplicate-column"> & {
+    name: string;
+  };
+
+export type SyntaxErrorDependencyError =
+  BaseDependencyError<"validate/syntax-error">;
+
+export type ValidationErrorDependencyError =
+  BaseDependencyError<"validate/validation-error">;
+
+export type DependencyError =
+  | MissingColumnDependencyError
+  | MissingTableAliasDependencyError
+  | DuplicateColumnDependencyError
+  | SyntaxErrorDependencyError
+  | ValidationErrorDependencyError;
+
 export type DependencyEdge = {
   from_entity_id: DependencyId;
   from_entity_type: DependencyType;
@@ -166,6 +231,10 @@ export type DependencyEdge = {
 export type DependencyGraph = {
   nodes: DependencyNode[];
   edges: DependencyEdge[];
+};
+
+export type DependencyGraphStatus = {
+  dependencies_analyzed: boolean;
 };
 
 export type GetDependencyGraphRequest = {
@@ -195,3 +264,15 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
+
+export type ListBrokenGraphNodesRequest = {
+  types?: DependencyType[];
+  card_types?: CardType[];
+  query?: string;
+};
+
+export type ListUnreferencedGraphNodesRequest = {
+  types?: DependencyType[];
+  card_types?: CardType[];
+  query?: string;
+};

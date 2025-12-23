@@ -61,7 +61,13 @@
   "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
   [:map
    [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
+   [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:dashboard_id       {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
+   [:document_id        {:optional true} [:maybe ::lib.schema.id/document]]
    [:dataset_query      {:optional true} [:maybe ::query]]
+   [:description        {:optional true} [:maybe :string]]
+   [:name               {:optional true} [:maybe :string]]
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
    [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:type               {:optional true} [:maybe ::lib.schema.metadata/card.type]]

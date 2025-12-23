@@ -627,10 +627,10 @@ function createSnippetWithDependentQuestionsAndTransforms() {
         query:
           'SELECT * FROM "Schema A"."Animals" WHERE {{snippet:ScoreSnippet}}',
         "template-tags": {
-          "snippet:ScoreSnippet": {
+          "snippet: ScoreSnippet": {
             id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-            name: "snippet:ScoreSnippet",
-            "display-name": "snippet:ScoreSnippet",
+            name: "snippet: ScoreSnippet",
+            "display-name": "snippet: ScoreSnippet",
             type: "snippet",
             "snippet-id": snippet.id,
             "snippet-name": snippet.name,
@@ -650,10 +650,10 @@ function createSnippetWithDependentQuestionsAndTransforms() {
             query:
               'SELECT * FROM "Schema A"."Animals" WHERE {{snippet:ScoreSnippet}}',
             "template-tags": {
-              "snippet:ScoreSnippet": {
+              "snippet: ScoreSnippet": {
                 id: "4b77cc1f-ea70-4ef6-84db-58432fce6929",
-                name: "snippet:ScoreSnippet",
-                "display-name": "snippet:ScoreSnippet",
+                name: "snippet: ScoreSnippet",
+                "display-name": "snippet: ScoreSnippet",
                 type: "snippet",
                 "snippet-id": snippet.id,
                 "snippet-name": snippet.name,

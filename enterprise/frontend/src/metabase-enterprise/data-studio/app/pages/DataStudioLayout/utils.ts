@@ -6,6 +6,7 @@ type TabName =
   | "transforms"
   | "jobs"
   | "runs"
+  | "tasks"
   | "dependencies"
   | "glossary";
 
@@ -15,6 +16,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "glossary";
     case pathname.startsWith(Urls.transformJobList()):
       return "jobs";
+    case pathname.startsWith(Urls.dataStudioTasks()):
+      return "tasks";
     case pathname.startsWith(Urls.dependencyGraph()):
       return "dependencies";
     case pathname.startsWith(Urls.dataStudioLibrary()):

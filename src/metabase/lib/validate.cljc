@@ -1,20 +1,48 @@
 (ns metabase.lib.validate
   "Checks and validation for queries."
-  (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.lib.field.resolution :as lib.field.resolution]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [not-empty]]))
+   [metabase.util.malli :as mu]))
 
-(mu/defn find-bad-refs :- [:maybe [:sequential ::lib.schema.mbql-clause/clause]]
+(mu/defn missing-column :- [:ref ::lib.schema.validate/missing-column]
+  "Create a missing-column lib validation error"
+  [col-name :- :string]
+  {:type :validate/missing-column
+   :name col-name})
+
+(mu/defn missing-table-alias :- [:ref ::lib.schema.validate/missing-table-alias]
+  "Create a missing-table-alias lib validation error"
+  [alias-name :- :string]
+  {:type :validate/missing-table-alias
+   :name alias-name})
+
+(mu/defn duplicate-column :- [:ref ::lib.schema.validate/duplicate-column]
+  "Create a duplicate-column lib validation error"
+  [col-name :- :string]
+  {:type :validate/duplicate-column
+   :name col-name})
+
+(mu/defn syntax-error :- [:ref ::lib.schema.validate/syntax-error]
+  "Create a syntax-error lib validation error"
+  []
+  {:type :validate/syntax-error})
+
+(mu/defn validation-error :- [:ref ::lib.schema.validate/validation-error]
+  "Create a validation-error lib validation error"
+  [message :- :string]
+  {:type :validate/validation-error
+   :message message})
+
+(mu/defn find-bad-refs :- [:set [:ref ::lib.schema.validate/error]]
   "Returns a list of bad `:field` refs on this query.
 
   Returns nil if all refs on the query are sound, that is if they can be resolved to a column from some source."
   [query :- ::lib.schema/query]
-  (let [bad-fields (volatile! [])]
+  (let [bad-fields (volatile! #{})]
     (lib.walk/walk-clauses
      query
      (fn [query path-type path clause]
@@ -27,9 +55,10 @@
            (when (or (not column)
                      (::lib.field.resolution/fallback-metadata? column)
                      (not (:active column true)))
-             (vswap! bad-fields conj clause))))
+             (vswap! bad-fields conj (missing-column
+                                      (lib.metadata.calculation/column-name query (second path) column))))))
        nil))
-    (not-empty @bad-fields)))
+    @bad-fields))
 
 (comment
   (require '[metabase.lib.core :as lib])

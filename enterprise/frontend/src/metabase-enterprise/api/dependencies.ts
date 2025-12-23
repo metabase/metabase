@@ -4,13 +4,17 @@ import type {
   CheckSnippetDependenciesRequest,
   CheckTransformDependenciesRequest,
   DependencyGraph,
+  DependencyGraphStatus,
   DependencyNode,
   GetDependencyGraphRequest,
+  ListBrokenGraphNodesRequest,
   ListNodeDependentsRequest,
+  ListUnreferencedGraphNodesRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import {
+  provideDependencyGraphStatusTags,
   provideDependencyGraphTags,
   provideDependencyNodeListTags,
 } from "./tags";
@@ -28,6 +32,13 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (graph) => (graph ? provideDependencyGraphTags(graph) : []),
     }),
+    getDependencyGraphStatus: builder.query<DependencyGraphStatus, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/status",
+      }),
+      providesTags: () => provideDependencyGraphStatusTags(),
+    }),
     listNodeDependents: builder.query<
       DependencyNode[],
       ListNodeDependentsRequest
@@ -35,6 +46,30 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       query: (params) => ({
         method: "GET",
         url: "/api/ee/dependencies/graph/dependents",
+        params,
+      }),
+      providesTags: (nodes) =>
+        nodes ? provideDependencyNodeListTags(nodes) : [],
+    }),
+    listBrokenGraphNodes: builder.query<
+      DependencyNode[],
+      ListBrokenGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/broken",
+        params,
+      }),
+      providesTags: (nodes) =>
+        nodes ? provideDependencyNodeListTags(nodes) : [],
+    }),
+    listUnreferencedGraphNodes: builder.query<
+      DependencyNode[],
+      ListUnreferencedGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/unreferenced",
         params,
       }),
       providesTags: (nodes) =>
@@ -75,7 +110,10 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetDependencyGraphQuery,
+  useGetDependencyGraphStatusQuery,
   useListNodeDependentsQuery,
+  useListBrokenGraphNodesQuery,
+  useListUnreferencedGraphNodesQuery,
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,

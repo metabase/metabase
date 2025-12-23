@@ -10,6 +10,7 @@ type EntityCreationInfoProps = {
   creator?: UserInfo | null;
   lastEditedAt?: string | null;
   lastEditor?: LastEditInfo | null;
+  withTitle?: boolean;
 };
 
 export function EntityCreationInfo({
@@ -17,6 +18,7 @@ export function EntityCreationInfo({
   creator,
   lastEditedAt,
   lastEditor,
+  withTitle = true,
 }: EntityCreationInfoProps) {
   const hasCreatedInfo = createdAt != null && creator != null;
   const hasEditedInfo = lastEditedAt != null && lastEditor != null;
@@ -27,9 +29,13 @@ export function EntityCreationInfo({
 
   return (
     <Stack gap="sm" lh="1rem">
-      <Title order={6}>{t`Creator and last editor`}</Title>
+      {withTitle && <Title order={6}>{t`Creator and last editor`}</Title>}
       {createdAt != null && creator != null && (
-        <Group gap="sm" wrap="nowrap">
+        <Group
+          gap="sm"
+          wrap="nowrap"
+          data-testid="entity-creation-info-created"
+        >
           <FixedSizeIcon name="ai" />
           <Box>
             {c(
@@ -41,7 +47,7 @@ export function EntityCreationInfo({
         </Group>
       )}
       {lastEditedAt != null && lastEditor != null && (
-        <Group gap="sm" wrap="nowrap">
+        <Group gap="sm" wrap="nowrap" data-testid="entity-creation-info-edited">
           <FixedSizeIcon name="pencil" />
           <Box>
             {c(
