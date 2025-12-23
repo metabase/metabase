@@ -115,6 +115,14 @@
                                    source-field-name)
                   :fk-join-alias source-field-join-alias)))
 
+(defn- rename-join [{join-alias :alias, :as join} new-alias]
+  (-> join
+      (assoc :alias new-alias)
+      (update :conditions lib.walk/walk-clauses* (fn [clause]
+                                                   (lib.util.match/match-one clause
+                                                     [:field (_opts :guard #(= (:join-alias %) join-alias)) _id-or-name]
+                                                     (lib/update-options &match assoc :join-alias new-alias))))))
+
 (mu/defn- implicitly-joined-fields->joins :- [:sequential ::join]
   "Create implicit join maps for a set of `field-clauses-with-source-field`."
   [metadata-providerable           :- ::lib.schema.metadata/metadata-providerable
@@ -130,8 +138,11 @@
                              (distinct)
                              (fk-field-infos->joins metadata-providerable fk-field-infos))
         unique-name-fn (lib/non-truncating-unique-name-generator)]
-    (mapv (fn [join]
-            (update join :alias unique-name-fn))
+    (mapv (fn [{join-alias :alias, :as join}]
+            (let [deduplicated-alias (unique-name-fn join-alias)]
+              (cond-> join
+                (not= join-alias deduplicated-alias)
+                (rename-join deduplicated-alias))))
           joins)))
 
 (mu/defn- visible-joins :- [:sequential ::lib.schema.join/join]

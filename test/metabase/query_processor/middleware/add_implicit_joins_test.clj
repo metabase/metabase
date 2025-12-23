@@ -1162,6 +1162,14 @@
           query       (lib/query mp (lib.metadata/card mp 1))]
       (is (=? {:stages [{:joins [{:alias "B"}
                                  {:alias "C"}]}
-                        {:joins [{:alias "D__via__D_ID"}
-                                 {:alias "D__via__D_ID_2"}]}]}
+                        {:joins [{:alias      "D__via__D_ID"
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} "B__D_ID"]
+                                                [:field {:join-alias "D__via__D_ID"} 40]]]}
+                                 {:alias      "D__via__D_ID_2"
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} "C__D_ID"]
+                                                [:field {:join-alias "D__via__D_ID_2"} 40]]]}]}]}
               (qp.preprocess/preprocess query))))))
