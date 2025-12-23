@@ -78,6 +78,7 @@ export type WorkspaceTransform = Omit<Transform, "id"> & {
   target_stale: boolean;
   archived_at: string | null;
   last_run_at: string | null;
+  last_run_message: string | null;
 };
 
 export type TransformUpstreamMapping = {

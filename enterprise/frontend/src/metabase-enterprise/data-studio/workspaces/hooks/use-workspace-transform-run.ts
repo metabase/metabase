@@ -68,11 +68,13 @@ export function useWorkspaceTransformRun({
       { skip: !transform.ref_id },
     );
 
-  // Get the latest last_run_at from fetched data or prop
   const lastRunAt =
     fetchedWorkspaceTransform?.last_run_at ?? transform.last_run_at;
+  const lastRunMessage =
+    fetchedWorkspaceTransform?.last_run_message ?? transform.last_run_message;
 
-  // Run object for RunStatus - shows last run result if available, otherwise last_run_at
+  const lastRunStatus = lastRunMessage ? "failed" : "succeeded";
+
   const statusRun: TransformRun | null = useMemo(
     () =>
       lastRunResult
@@ -87,14 +89,14 @@ export function useWorkspaceTransformRun({
         : lastRunAt
           ? {
               id: -1,
-              status: "succeeded",
+              status: lastRunStatus,
               start_time: lastRunAt,
               end_time: lastRunAt,
-              message: null,
+              message: lastRunMessage,
               run_method: "manual",
             }
           : null,
-    [lastRunResult, lastRunAt],
+    [lastRunResult, lastRunAt, lastRunMessage, lastRunStatus],
   );
 
   const output = useMemo(() => {
