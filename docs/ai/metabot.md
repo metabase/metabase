@@ -103,7 +103,7 @@ You can ask Metabot to generate or edit code in the SQL editor, without using th
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
 2. Press Cmd+; on Mac or Ctrl+; on Windows.
 3. Describe the SQL you want to generate or modify.
-4. Accept or reject the generated code.
+4. Review the generated code and accept or reject it.
 
 ## Navigating after Metabot creates a chart
 
