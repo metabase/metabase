@@ -34,23 +34,24 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation       true
-                              :describe-fields                true
-                              :describe-fks                   true
-                              :rename                         true
-                              :atomic-renames                 true
-                              :expression-literals            true
-                              :identifiers-with-spaces        false
-                              :uuid-type                      false
-                              :nested-field-columns           false
-                              :test/jvm-timezone-setting      false
-                              :database-routing               true
-                              :metadata/table-existence-check true
-                              :transforms/python              true
-                              :transforms/table               true
-                              :describe-default-expr          false
-                              :describe-is-generated          false
-                              :describe-is-nullable           false}]
+(doseq [[feature supported?] {:atomic-renames                   true
+                              :connection-impersonation         true
+                              :database-routing                 true
+                              :describe-default-expr            false
+                              :describe-fields                  true
+                              :describe-fks                     true
+                              :describe-is-generated            false
+                              :describe-is-nullable             false
+                              :expression-literals              true
+                              :identifiers-with-spaces          false
+                              :metadata/table-existence-check   true
+                              :nested-field-columns             false
+                              :regex/lookaheads-and-lookbehinds false
+                              :rename                           true
+                              :test/jvm-timezone-setting        false
+                              :transforms/python                true
+                              :transforms/table                 true
+                              :uuid-type                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
