@@ -11,7 +11,6 @@ import {
 } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
-import { getParameterDefaultValue } from "metabase/dashboard/actions/utils";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
@@ -812,7 +811,10 @@ export const SET_PARAMETER_VALUE_TO_DEFAULT =
 export const setParameterValueToDefault = createThunkAction(
   SET_PARAMETER_VALUE_TO_DEFAULT,
   (parameterId: ParameterId) => (dispatch, getState) => {
-    const defaultValue = getParameterDefaultValue(parameterId, getState());
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+    const defaultValue = parameter?.default;
     if (defaultValue) {
       dispatch(setParameterValue(parameterId, defaultValue));
     }
@@ -993,20 +995,21 @@ export const setOrUnsetParameterValues =
     );
     parameterIdValuePairs
       .map(([id, value]) => {
+        let valueToSet = value;
+
         if (areAllSet) {
+          // unsetting value from parameter custom click behavior (Update a dashboard filter)
           const parameter = getParameters(getState()).find(
             ({ id: itemId }) => id === itemId,
           );
 
-          const valueToSet =
+          valueToSet =
             parameter?.default && parameter?.required
               ? parameter.default || null
               : null;
-
-          return setParameterValue(id, valueToSet);
         }
 
-        return setParameterValue(id, value);
+        return setParameterValue(id, valueToSet);
       })
       .forEach(dispatch);
   };

@@ -1,22 +1,15 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getParameters } from "metabase/dashboard/selectors";
 import { getIframeDomainName } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import type {
   DashCardId,
   Dashboard,
   DashboardId,
   DashboardTabId,
-  ParameterId,
   QuestionDashboardCard,
-  RowValue,
 } from "metabase-types/api";
-import type {
-  State,
-  StoreDashboard,
-  StoreDashcard,
-} from "metabase-types/store";
+import type { StoreDashboard, StoreDashcard } from "metabase-types/store";
 
 import { trackIFrameDashcardsSaved } from "../analytics";
 import { isActionDashCard, isIFrameDashCard } from "../utils";
@@ -109,12 +102,4 @@ export const trackAddedIFrameDashcards = (dashboard: Dashboard) => {
   } catch {
     console.error("Could not track added iframe dashcards", dashboard);
   }
-};
-
-export const getParameterDefaultValue = (
-  parameterId: ParameterId,
-  state: State,
-): RowValue | undefined => {
-  const parameter = getParameters(state).find(({ id }) => id === parameterId);
-  return parameter?.default;
 };
