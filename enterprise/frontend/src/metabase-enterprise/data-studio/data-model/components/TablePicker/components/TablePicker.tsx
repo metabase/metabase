@@ -71,7 +71,7 @@ export function TablePicker({
       className={className}
       style={{ overflow: "hidden" }}
     >
-      <Group gap="sm" p="lg" pb="md">
+      <Group gap="sm">
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
@@ -136,7 +136,7 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      <Box mih={0} flex="1 1 auto" px="lg" pb="lg">
+      <Box mih={0} flex="1 1 auto">
         <Card withBorder p={0} h="100%">
           {deferredQuery === "" && filtersCount === 0 ? (
             <Tree
