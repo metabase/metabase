@@ -206,7 +206,10 @@ describe("bulk table operations", () => {
 
         cy.log("publish and check publish state column");
 
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Accounts")
+          .find('input[type="checkbox"]')
+          .scrollIntoView()
+          .check();
         TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         cy.findByRole("button", { name: /Publish/ }).click();
         H.modal().findByText("Publish these tables").click();
