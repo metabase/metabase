@@ -334,7 +334,6 @@ const SdkDashboardInner = ({
     <DashboardContextProvider
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
-      token={token}
       isGuestEmbed={isGuestEmbed}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={

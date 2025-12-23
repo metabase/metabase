@@ -62,8 +62,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       <EmbeddingEntityContextProvider uuid={uuid} token={token}>
         <DashboardContextProvider
           dashboardId={dashboardId}
-          uuid={uuid}
-          token={token}
           hideParameters={hide_parameters}
           theme={theme}
           background={background}

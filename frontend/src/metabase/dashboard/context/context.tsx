@@ -13,6 +13,7 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
 import type {
   Dashboard,
@@ -20,7 +21,7 @@ import type {
   DashboardId,
   ParameterValuesMap,
 } from "metabase-types/api";
-import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -52,8 +53,6 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  uuid?: EntityUuid | null;
-  token?: EntityToken | null;
   parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
@@ -120,7 +119,6 @@ const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
       dashboardId,
-      token,
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
@@ -186,6 +184,8 @@ const DashboardContextProviderInner = forwardRef(
     const previousDashboardId = usePrevious(dashboardId);
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
+
+    const { token } = useEmbeddingEntityContext();
 
     const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
@@ -400,7 +400,6 @@ const DashboardContextProviderInner = forwardRef(
       <DashboardContext.Provider
         value={{
           dashboardId,
-          token,
           dashboard: dashboardWithFilteredCards,
           parameterQueryParams,
           onLoad,
