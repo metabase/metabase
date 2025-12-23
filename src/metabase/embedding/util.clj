@@ -19,3 +19,9 @@
   [request]
   (or (has-react-sdk-header? request)
       (has-embedded-analytics-js-header? request)))
+
+(defn modular-embedding-context?
+  "Check if the client is in modular embedding context"
+  [client]
+  (or (= client embedding-sdk-client)
+      (= client embedded-analytics-js-client)))
