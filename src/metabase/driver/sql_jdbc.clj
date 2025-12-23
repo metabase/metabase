@@ -168,6 +168,50 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+(defmulti create-index-sql
+  "Implementing method to produce the SQL (string) that will create the secondary index."
+  {:added "0.58.0", :arglists '([driver schema table-name index-name column-names & opts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-index-sql :default
+  [driver schema table-name index-name column-names & _]
+  (with-quoting driver
+    (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
+                           (map keyword)
+                           column-names)]
+      (first (sql/format {:create-index [(keyword index-name) index-spec]}
+                         :quoted true
+                         :dialect (sql.qp/quote-style driver))))))
+
+(defmethod driver/create-index! :sql-jdbc
+  [driver database-id schema table-name index-name column-names & _]
+  (let [sql (create-index-sql driver schema table-name index-name column-names)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))
+    nil))
+
+(defmulti drop-index-sql
+  "Implementing method to produce the SQL (string) that will drop the index."
+  {:added "0.58.0" :arglists '([driver schema table-name index-name])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-index-sql :default
+  [driver schema _table-name index-name]
+  (first (sql/format {:drop-index [(keyword (if schema
+                                              (str (name schema) "." (name index-name))
+                                              (name index-name)))]}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
+(defmethod driver/drop-index! :sql-jdbc
+  [driver database-id schema table-name index-name & _]
+  (let [sql (drop-index-sql driver schema table-name index-name)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))
+    nil))
+
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
   (let [table-name (keyword table-name)

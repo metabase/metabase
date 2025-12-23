@@ -48,6 +48,7 @@
                               :metadata/table-existence-check true
                               :transforms/python              true
                               :transforms/table               true
+                              :transforms/index-ddl           false
                               :describe-default-expr          false
                               :describe-is-generated          false
                               :describe-is-nullable           false}]
