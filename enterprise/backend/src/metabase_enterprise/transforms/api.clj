@@ -54,7 +54,9 @@
   Should update FE to fully use table-ref"
   [transform]
   (if (transforms.util/python-transform? transform)
-    (update-in transform [:source :source-tables] #(if (map? %) (:table_id %) %))
+    (update-in transform [:source :source-tables]
+               (fn [source-tables]
+                 (update-vals source-tables #(if (int? %) % (:table_id %)))))
     transform))
 
 (comment
