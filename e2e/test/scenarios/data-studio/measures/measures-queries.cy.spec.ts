@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { TableId } from "metabase-types/api";
 
@@ -213,6 +214,91 @@ describe("scenarios > data studio > measures > queries", () => {
         .findByText("Unknown Aggregation, Measure or Metric: OrdersCount")
         .should("be.visible");
       H.popover().button("Done").should("be.disabled");
+    });
+
+    it("should be possible to create measures with filters like CountIf", () => {
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "18,758",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type("CountIf([Total] > 10)");
+          H.CustomExpressionEditor.nameInput().type("Custom");
+          H.popover().button("Done").click();
+        },
+      });
+    });
+
+    it("should be possible to create measures with filters like CountIf based on segments", () => {
+      H.createSegment({
+        name: "LargeTotal",
+        table_id: ORDERS_ID,
+        definition: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.TOTAL, null], 10],
+          },
+        },
+      });
+
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "18,758",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type("CountIf([LargeTotal])");
+          H.CustomExpressionEditor.nameInput().type("Custom");
+          H.popover().button("Done").click();
+        },
+      });
+    });
+
+    it("should be possible to create measures with filters like based on segments that are nested", () => {
+      H.createSegment({
+        name: "LargeTotal",
+        table_id: ORDERS_ID,
+        definition: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.TOTAL, null], 10],
+          },
+        },
+      }).then(({ body: segment }) => {
+        H.createSegment({
+          name: "NestedSegment",
+          table_id: ORDERS_ID,
+          definition: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              filter: [
+                "or",
+                ["<", ["field", ORDERS.TOTAL, null], 5],
+                ["segment", segment.id],
+              ],
+            },
+          },
+        });
+      });
+
+      verifyNewMeasure({
+        tableId: ORDERS_ID,
+        scalarValue: "18,759",
+        createQuery: () => {
+          MeasureEditor.getAggregationPlaceholder().click();
+          H.popover().findByText("Custom Expression").click();
+          H.CustomExpressionEditor.type("CountIf([NestedSegment])");
+          H.CustomExpressionEditor.nameInput().type("Custom");
+          H.popover().button("Done").click();
+        },
+      });
     });
   });
 });
