@@ -22,6 +22,7 @@ const isApiKeyGroupMember = (member: Member) =>
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) &&
   !PLUGIN_TENANTS.isExternalUsersGroup(group) &&
+  !PLUGIN_TENANTS.isTenantGroup(group) &&
   PLUGIN_GROUP_MANAGERS.UserTypeCell;
 
 interface GroupMembersTableProps {
