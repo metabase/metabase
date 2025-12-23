@@ -110,12 +110,14 @@
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
-  ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?]
+  ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?
+                                   with-segments?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
-                                   with-queryable-dimensions?      true}}]
+                                   with-queryable-dimensions?      true
+                                   with-segments?                  false}}]
    (let [id (:id card)
-         query-needed? (or with-default-temporal-breakout? with-queryable-dimensions?)
+         query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
          metric-query (when query-needed?
                         (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
          breakouts (when query-needed?
@@ -152,7 +154,12 @@
                                                 (map #(metabot-v3.tools.u/->result-column
                                                        metric-query % (col-index %) field-id-prefix)))
                                           (->> (lib/filterable-columns base-query)
-                                               field-values-fn)))))))
+                                               field-values-fn)))
+
+       with-segments?
+       (assoc :segments (if-let [segments (lib/available-segments metric-query)]
+                          (mapv convert-segment segments)
+                          []))))))
 
 (defn- convert-metric
   ([db-metric metadata-provider]

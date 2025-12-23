@@ -303,6 +303,7 @@
    ::basic-metric
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
     [:queryable_dimensions {:optional true} ::columns]
+    [:segments {:optional true} [:sequential ::segment]]
     [:verified {:optional true} :boolean]]])
 
 (mr/def ::measure
@@ -629,12 +630,14 @@
     [:metric_id                                                      :int]
     [:with_default_temporal_breakout {:optional true, :default true} :boolean]
     [:with_field_values              {:optional true, :default true} :boolean]
-    [:with_queryable_dimensions      {:optional true, :default true} :boolean]]
+    [:with_queryable_dimensions      {:optional true, :default true} :boolean]
+    [:with_segments                  {:optional true, :default false} :boolean]]
    [:map {:encode/tool-api-request
           #(set/rename-keys % {:metric_id                      :metric-id
                                :with_default_temporal_breakout :with-default-temporal-breakout?
                                :with_field_values              :with-field-values?
-                               :with_queryable_dimensions      :with-queryable-dimensions?})}]])
+                               :with_queryable_dimensions      :with-queryable-dimensions?
+                               :with_segments                  :with-segments?})}]])
 
 (mr/def ::get-metric-details-result
   [:or
