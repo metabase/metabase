@@ -323,6 +323,7 @@ describe("ParameterFieldWidget", () => {
         fieldSettings: numericFieldSettings,
       });
 
+      // need to wait for the settings to load
       expect(await screen.findByText("1,000")).toBeInTheDocument();
       expect(screen.getByText("2,000")).toBeInTheDocument();
       expect(screen.getByText("3,000")).toBeInTheDocument();
@@ -338,11 +339,11 @@ describe("ParameterFieldWidget", () => {
         },
       });
 
+      // need to wait for the settings to load
       expect(await screen.findByText("1000")).toBeInTheDocument();
       expect(screen.getByText("2000")).toBeInTheDocument();
       expect(screen.getByText("3000")).toBeInTheDocument();
 
-      // Should NOT have the comma-formatted version
       expect(screen.queryByText("1,000")).not.toBeInTheDocument();
     });
   });
