@@ -35,7 +35,7 @@ export const PermissionsTableCell = styled.td`
   box-sizing: border-box;
   min-height: 40px;
   overflow: hidden;
-  background: ${({ theme }) => theme.fn.themeColor("bg-white")};
+  background: var(--mb-color-bg-white);
 
   &:first-of-type {
     max-width: 300px;
@@ -44,7 +44,7 @@ export const PermissionsTableCell = styled.td`
     position: sticky;
     padding-left: 0;
     padding-right: 1.5rem;
-    background: ${({ theme }) => theme.fn.themeColor("bg-white")};
+    background: var(--mb-color-bg-white);
 
     &:after {
       position: absolute;
