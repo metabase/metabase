@@ -1,5 +1,6 @@
 import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
+import { memo } from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -11,7 +12,9 @@ import { getColumnStyle } from "../utils";
 
 import S from "./TreeTableRow.module.css";
 
-export function TreeTableRow<TData extends TreeNodeData>({
+export const TreeTableRow = memo(function TreeTableRow<
+  TData extends TreeNodeData,
+>({
   row,
   rowIndex,
   virtualItem,
@@ -160,4 +163,4 @@ export function TreeTableRow<TData extends TreeNodeData>({
       })}
     </Flex>
   );
-}
+});

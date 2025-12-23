@@ -1,6 +1,7 @@
 import type { ExpandedState, OnChangeFn, Row } from "@tanstack/react-table";
 import {
   type MouseEvent,
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -291,18 +292,20 @@ export function TablePickerTreeTable({
       {
         id: "name",
         header: t`Name`,
-        cell: ({ row }) => (
-          <EntityNameCell
-            icon={TYPE_ICONS[row.original.type]}
-            name={row.original.name}
-          />
-        ),
+        cell: memo(function NameCell({ row }) {
+          return (
+            <EntityNameCell
+              icon={TYPE_ICONS[row.original.type]}
+              name={row.original.name}
+            />
+          );
+        }),
       },
       {
         id: "owner",
         header: t`Owner`,
         width: 140,
-        cell: ({ row }) => {
+        cell: memo(function OwnerCell({ row }) {
           if (row.original.type !== "table" || !row.original.table) {
             return null;
           }
@@ -311,13 +314,13 @@ export function TablePickerTreeTable({
             return ownerNameById.get(ownerId);
           }
           return row.original.table.owner_email ?? null;
-        },
+        }),
       },
       {
         id: "rows",
         header: t`Rows`,
         width: "auto",
-        cell: ({ row }) => {
+        cell: memo(function RowsCell({ row }) {
           if (row.original.type !== "table" || !row.original.table) {
             return null;
           }
@@ -327,13 +330,13 @@ export function TablePickerTreeTable({
               {formatNumber(rowCount)}
             </Box>
           ) : null;
-        },
+        }),
       },
       {
         id: "published",
         header: t`Published`,
         width: "auto",
-        cell: ({ row }) => {
+        cell: memo(function PublishedCell({ row }) {
           if (row.original.type !== "table" || !row.original.table) {
             return null;
           }
@@ -346,7 +349,7 @@ export function TablePickerTreeTable({
               />
             </Box>
           ) : null;
-        },
+        }),
       },
     ],
     [ownerNameById, formatNumber],
