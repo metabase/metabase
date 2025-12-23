@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
@@ -19,6 +20,7 @@ import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-br
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
+import S from "./PieChart.module.css";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./use-chart-events";
 
@@ -182,7 +184,7 @@ export function PieChart(props: VisualizationProps) {
       legendColors={legendColors}
       showLegend={showLegend}
       onHoverChange={onHoverChange}
-      className={props.className}
+      className={cx(props.className, S.PieChartContainer)}
       gridSize={props.gridSize}
       hovered={props.hovered}
       isDashboard={isDashboard}

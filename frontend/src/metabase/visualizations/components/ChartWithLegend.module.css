@@ -31,11 +31,6 @@
 .ChartWithLegend .Chart {
   flex-shrink: 0;
   position: relative;
-
-  svg {
-    margin-left: 50%;
-    translate: -50% 0;
-  }
 }
 
 /* SMALL */
