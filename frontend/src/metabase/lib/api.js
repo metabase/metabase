@@ -388,10 +388,7 @@ export class Api extends EventEmitter {
      * Handlers are executed in order and each handler uses the data returned by a previous handler.
      * @type {import('metabase/plugins').OnBeforeRequestHandler[]}
      */
-    const handlers = [
-      PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
-      PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
-    ];
+    const handlers = [];
 
     if (isEmbeddingSdk()) {
       handlers.push(
@@ -400,6 +397,13 @@ export class Api extends EventEmitter {
             .getOrRefreshSessionHandler,
           PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
             .overrideRequestsForGuestEmbeds,
+        ],
+      );
+    } else {
+      handlers.push(
+        ...[
+          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
         ],
       );
     }
