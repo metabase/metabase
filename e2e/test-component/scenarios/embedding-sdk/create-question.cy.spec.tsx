@@ -12,7 +12,6 @@ import {
   createQuestion,
   entityPickerModal,
   entityPickerModalTab,
-  miniPicker,
   modal,
   popover,
 } from "e2e/support/helpers";
