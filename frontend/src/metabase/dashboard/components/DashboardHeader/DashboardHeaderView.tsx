@@ -100,7 +100,7 @@ export function DashboardHeaderView({
   }, [isLastEditInfoVisible]);
 
   return (
-    <div>
+    <div className={S.DashboardHeader}>
       {isEditing && <EditBar title={editingTitle} buttons={editingButtons} />}
       {editWarning && (
         <Flex className={cx(CS.wrapper, S.EditWarning)}>

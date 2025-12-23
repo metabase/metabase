@@ -8,21 +8,23 @@
   align-items: center;
   border-left: 1px solid transparent;
 
-  @container dashboard-header-container (max-width: 40rem) {
+  @container dashboard-header (max-width: 40rem) {
     flex-direction: column;
     align-items: baseline;
   }
 }
 
-.HeaderContainer {
+.DashboardHeader {
   container-type: inline-size;
-  container-name: dashboard-header-container;
+  container-name: dashboard-header;
+}
 
+.HeaderContainer {
   &.isFixedWidth.offsetSidebar {
     margin-right: var(--sidebar-width);
   }
 
-  @container dashboard-header-container (max-width: 40rem) {
+  @container dashboard-header (max-width: 40rem) {
     margin-right: 0;
   }
 }
@@ -31,11 +33,11 @@
   align-items: center;
   color: var(--mb-color-text-dark);
 
-  @container dashboard-header-container (min-width: 40rem) {
+  @container dashboard-header (min-width: 40rem) {
     margin-left: auto;
   }
 
-  @container dashboard-header-container (max-width: 40rem) {
+  @container dashboard-header (max-width: 40rem) {
     width: 100%;
     margin-bottom: 6px;
     padding-top: 0.375rem;
@@ -49,7 +51,7 @@
   align-items: center;
   gap: 0.5rem;
 
-  @container dashboard-header-container (max-width: 40rem) {
+  @container dashboard-header (max-width: 40rem) {
     width: 100%;
     justify-content: space-between;
   }
@@ -58,7 +60,7 @@
 .HeaderLastEditInfoLabel {
   transition: opacity 400ms ease;
 
-  @container dashboard-header-container (max-width: 40rem) {
+  @container dashboard-header (max-width: 40rem) {
     margin-top: 4px;
   }
 }
@@ -96,7 +98,7 @@
     }
   }
 
-  @container dashboard-header-container (max-width: 40rem) {
+  @container dashboard-header (max-width: 40rem) {
     padding-top: 0;
     padding-left: 1rem;
     padding-right: 1rem;
@@ -120,7 +122,7 @@
 }
 
 .HeaderRow {
-  @container dashboard-header-container (max-width: 40rem) {
+  @container dashboard-header (max-width: 40rem) {
     padding-left: 0;
     padding-right: 0;
   }
@@ -131,7 +133,7 @@
   align-items: center;
   justify-items: apart;
 
-  @container dashboard-header-container (max-width: 40rem) {
+  @container dashboard-header (max-width: 40rem) {
     flex-direction: column;
     align-items: baseline;
   }
