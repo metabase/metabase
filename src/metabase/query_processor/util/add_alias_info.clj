@@ -211,10 +211,9 @@
    field-ref #(-> %
                   (assoc ::source-table (source-table query path col)
                          ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col)
-                                                              (if (or (:fk-field-id col) (:lib/original-fk-field-id col))
-                                                                (do
-                                                                  (tap> "USING FIX")
-                                                                  ((some-fn :lib/original-name :name) col))
+                                                              (if (and (= 1 (count (:stages query)))
+                                                                       (or (:fk-field-id col) (:lib/original-fk-field-id col)))
+                                                                ((some-fn :lib/original-name :name) col)
                                                                 (:lib/source-column-alias col))))
                   (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
@@ -231,7 +230,6 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage.mbql]
-  (tap> "add-source-aliases")
   (lib.util.match/replace stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
     (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins])))
@@ -402,7 +400,6 @@
   [query     :- ::lib.schema/query
    join-path :- ::lib.walk/path
    join      :- ::lib.schema.join/join]
-  (tap> "add-alias-info-to-join-conditions")
   (let [parent-stage-path (lib.walk/join-parent-stage-path join-path)
         update-other-ref  (fn [field-ref]
                             (let [col (resolve-field-ref query parent-stage-path field-ref)]
