@@ -191,6 +191,16 @@
            :base-type :type/Float,
            :effective-type :type/Float,
            :semantic-type :Semantic/*}]))
+      (testing "Selecting a union of custom fields"
+        (check-result-metadata
+         driver mp
+         "select 1 as TOTAL union select 2"
+         [{:name "TOTAL",
+           :lib/desired-column-alias "TOTAL",
+           :display-name "Total",
+           :base-type :type/*,
+           :effective-type :type/*,
+           :semantic-type :Semantic/*}]))
       (testing "Selecting a union with different types"
         (check-result-metadata
          driver mp
