@@ -122,6 +122,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     show: showDisableConfirmation,
     modalContent: disableConfirmationModal,
   } = useConfirmation();
+  const isModalVariant = variant === "settings-modal";
 
   const handleSubmit = useCallback(
     async (values: RemoteSyncConfigurationSettings) => {
@@ -143,8 +144,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
           await updateRemoteSyncSettings(settings).unwrap();
 
           trackRemoteSyncSettingsChanged({
-            triggeredFrom:
-              variant === "settings-modal" ? "data-studio" : "admin-settings",
+            triggeredFrom: isModalVariant ? "data-studio" : "admin-settings",
           });
 
           if (
@@ -195,7 +195,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     [
       settingValues,
       updateRemoteSyncSettings,
-      variant,
+      isModalVariant,
       sendToast,
       onSaveSuccess,
       showChangeBranchConfirmation,
@@ -290,7 +290,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
         {({ dirty, values }) => (
           <Form disabled={!dirty}>
             <Stack gap="xl" maw="52rem">
-              {variant !== "settings-modal" && !isRemoteSyncEnabled && (
+              {!isModalVariant && !isRemoteSyncEnabled && (
                 <Text c="text-medium" size="sm">
                   {jt`Need help setting this up? Check out our ${(
                     <ExternalLink key="link" href={docsUrl}>
@@ -301,7 +301,10 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
               )}
 
               {/* Section 1: Git settings */}
-              <RemoteSyncSettingsSection title={t`Git settings`}>
+              <RemoteSyncSettingsSection
+                title={t`Git settings`}
+                variant={variant}
+              >
                 <FormTextInput
                   name={URL_KEY}
                   label={t`Repository URL`}
@@ -323,7 +326,10 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
               </RemoteSyncSettingsSection>
 
               {/* Section 2: Sync mode for this instance */}
-              <RemoteSyncSettingsSection title={t`Sync mode for this instance`}>
+              <RemoteSyncSettingsSection
+                title={t`Sync mode for this instance`}
+                variant={variant}
+              >
                 <FormRadioGroup name={TYPE_KEY}>
                   <Stack>
                     <Tooltip
@@ -367,7 +373,10 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
 
               {/* Section 3: Branch to sync with (read-only only) */}
               {values?.[TYPE_KEY] === "read-only" && (
-                <RemoteSyncSettingsSection title={t`Branch to sync with`}>
+                <RemoteSyncSettingsSection
+                  title={t`Branch to sync with`}
+                  variant={variant}
+                >
                   <Flex align="flex-end" gap="md">
                     <Box style={{ flex: 1 }}>
                       <FormTextInput
@@ -400,8 +409,9 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
               {/* Section 4: Collections to sync */}
               {isRemoteSyncEnabled && (
                 <RemoteSyncSettingsSection
-                  title={t`Collections to sync`}
                   description={t`Choose which collections to sync with git.`}
+                  title={t`Collections to sync`}
+                  variant={variant}
                 >
                   <Stack gap="lg">
                     <TopLevelCollectionsList />
@@ -418,12 +428,11 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
               )}
 
               {/* Read-write mode info */}
-              {variant === "settings-modal" &&
-                values?.[TYPE_KEY] === "read-write" && (
-                  <Text c="text-medium" size="sm">
-                    {t`In read-write mode, the Library collection will be enabled for syncing.`}
-                  </Text>
-                )}
+              {isModalVariant && values?.[TYPE_KEY] === "read-write" && (
+                <Text c="text-medium" size="sm">
+                  {t`In read-write mode, the Library collection will be enabled for syncing.`}
+                </Text>
+              )}
 
               {/* Footer Actions - Outside Sections */}
               <Flex justify="space-between" align="center">
@@ -481,18 +490,19 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
 const RemoteSyncSettingsSection = ({
   children,
   title,
+  variant,
   ...props
 }: ComponentProps<typeof SettingsSection> & {
   title: string;
+  variant: RemoteSyncSettingsFormProps["variant"];
 }) => {
   return (
     <SettingsSection
       {...props}
-      title={
-        <Text fz="lg" component="span">
-          {title}
-        </Text>
-      }
+      title={title}
+      titleProps={{
+        order: variant === "settings-modal" ? 3 : 2,
+      }}
     >
       {children}
     </SettingsSection>
