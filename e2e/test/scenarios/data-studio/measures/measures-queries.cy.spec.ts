@@ -1,6 +1,5 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { MeasureEditor } = H.DataModel;
@@ -17,19 +16,18 @@ describe("scenarios > data studio > measures > queries", () => {
 
   describe("measures queries", () => {
     it("should create a measure with an aggregation without columns", () => {
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Count of rows").click();
         },
       });
+      useMeasure();
       verifyScalarValue("18,760");
     });
 
     it("should create a measure with with a column from the main data source", () => {
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().within(() => {
@@ -38,12 +36,12 @@ describe("scenarios > data studio > measures > queries", () => {
           });
         },
       });
+      useMeasure();
       verifyScalarValue("1,510,621.68");
     });
 
     it("should create a measure with with a column from the main data source using offset", () => {
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -51,14 +49,15 @@ describe("scenarios > data studio > measures > queries", () => {
           H.CustomExpressionEditor.nameInput().type("Offset Measure");
           H.popover().button("Done").click();
         },
-        addBreakout: true,
+      });
+      useMeasure(() => {
+        breakout("Created At");
       });
       verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
     });
 
     it("should create a measure with a column from an implicit join", () => {
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().within(() => {
@@ -68,12 +67,12 @@ describe("scenarios > data studio > measures > queries", () => {
           });
         },
       });
+      useMeasure();
       verifyScalarValue("55.69");
     });
 
     it("should create a measure with a column from an implicit join using offset", () => {
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -83,14 +82,15 @@ describe("scenarios > data studio > measures > queries", () => {
           H.CustomExpressionEditor.nameInput().type("Offset Measure");
           H.popover().button("Done").click();
         },
-        addBreakout: true,
+      });
+      useMeasure(() => {
+        breakout("Created At");
       });
       verifyRowValues([["April 2022"], ["May 2022", "49.54"]]);
     });
 
     it("should create a measure with a custom aggregation expression", () => {
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -101,6 +101,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      useMeasure();
       verifyScalarValue("18,867");
     });
 
@@ -113,8 +114,7 @@ describe("scenarios > data studio > measures > queries", () => {
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -123,6 +123,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      useMeasure();
       verifyScalarValue("13,005");
     });
 
@@ -135,8 +136,7 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       });
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -145,6 +145,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      useMeasure();
       verifyScalarValue("1,510,621.68");
     });
 
@@ -157,8 +158,7 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       });
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -167,7 +167,8 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      verifyScalarValue("1,510,621.68");
+      useMeasure();
+      verifyScalarValue("1,510,621");
     });
 
     it("should create a measure based on another measure with an identity expression", () => {
@@ -179,8 +180,7 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       });
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -189,6 +189,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      useMeasure();
       verifyScalarValue("1,510,621.68");
     });
 
@@ -239,8 +240,7 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     it("should be possible to create measures with filters like CountIf", () => {
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -249,6 +249,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      useMeasure();
       verifyScalarValue("18,758");
     });
 
@@ -266,8 +267,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -276,6 +276,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      useMeasure();
       verifyScalarValue("18,758");
     });
 
@@ -310,8 +311,7 @@ describe("scenarios > data studio > measures > queries", () => {
         });
       });
 
-      verifyNewMeasure({
-        tableId: ORDERS_ID,
+      buildNewMeasure({
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -320,6 +320,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      useMeasure();
       verifyScalarValue("18,759");
     });
 
@@ -333,48 +334,36 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      H.openTable({ table: ORDERS_ID, mode: "notebook" });
-      H.summarize({ mode: "notebook" });
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type(`Offset([${MEASURE_NAME}], -1)`);
-      H.CustomExpressionEditor.nameInput().type("Offset Measure");
-      H.popover().button("Done").click();
+      useMeasure(() => {
+        H.getNotebookStep("summarize").findByText("Table Measure").click();
+        H.CustomExpressionEditor.clear().type(`Offset([${MEASURE_NAME}], -1)`);
+        H.popover().button("Update").click();
 
-      breakout("Created At");
+        breakout("Created At");
+      });
 
-      H.visualize();
-
-      switchToData();
       verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
     });
   });
 });
 
-function verifyNewMeasure({
-  tableId,
-  createQuery,
-  addBreakout,
-}: {
-  tableId: TableId;
-  createQuery: () => void;
-  addBreakout?: boolean;
-}) {
+function buildNewMeasure({ createQuery }: { createQuery: () => void }) {
   cy.log("create a new measure");
   H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
   MeasureEditor.getNameInput().type(MEASURE_NAME);
   createQuery();
   MeasureEditor.getSaveButton().click();
   H.undoToast().should("contain.text", "Measure created");
+}
 
+function useMeasure(beforeVisualize?: () => void) {
   cy.log("verify the measure works in query builder");
-  H.openTable({ table: tableId, mode: "notebook" });
+  H.openTable({ table: ORDERS_ID, mode: "notebook" });
   H.summarize({ mode: "notebook" });
   H.popover().findByText("Measures").click();
   H.popover().findByText(MEASURE_NAME).click();
 
-  if (addBreakout) {
-    breakout("Created At");
-  }
+  beforeVisualize?.();
 
   H.visualize();
 }
@@ -400,6 +389,7 @@ function verifyScalarValue(scalarValue: string) {
 }
 
 function verifyRowValues(rowValues: string[][]) {
+  switchToData();
   // Custom implemtation that allows for empty cells
   rowValues.flat().forEach((value, index) => {
     H.tableInteractiveBody()
