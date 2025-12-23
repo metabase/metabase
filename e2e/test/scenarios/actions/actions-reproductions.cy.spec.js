@@ -389,7 +389,9 @@ describe("issue 51020", () => {
       cy.button("Save").click();
       H.modal()
         .findByLabelText("Name")
-        .type("{backspace}{backspace}{backspace}Model 51020");
+        .should("have.value", "Foo")
+        .clear()
+        .type("Model 51020");
       H.modal().button("Save").click();
       cy.wait("@createCard");
       cy.wait("@getCard");
@@ -415,7 +417,7 @@ describe("issue 51020", () => {
       dropTemporaryTable();
     });
 
-    it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL (metabase#51020)", () => {
+    it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL x(metabase#51020)", () => {
       cy.log(
         "check when primary key parameter is populated with click behavior",
       );
