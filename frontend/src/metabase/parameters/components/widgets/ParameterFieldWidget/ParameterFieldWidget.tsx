@@ -116,7 +116,7 @@ export function ParameterFieldWidget({
               formatOptions={{
                 ...(operator &&
                   getFilterArgumentFormatOptions(operator, index)),
-                ...fields[0]?.settings,
+                ...fields?.[0]?.settings,
               }}
               color="brand"
               minWidth={300}
