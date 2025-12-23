@@ -44,7 +44,7 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should create a measure with with a column from the main data source using offset", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        rowValues: ["April 2022", "May 2022", "52.76"],
+        rowValues: [["April 2022"], ["May 2022", "52.76"]],
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -74,7 +74,7 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should create a measure with a column from an implicit join using offset", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        rowValues: ["April 2022", "May 2022", "49.54"],
+        rowValues: [["April 2022"], ["May 2022", "49.54"]],
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -322,6 +322,31 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
     });
+
+    it("should be possible to offset a measure in a query", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      });
+
+      H.openTable({ table: ORDERS_ID, mode: "notebook" });
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type(`Offset([${MEASURE_NAME}], -1)`);
+      H.CustomExpressionEditor.nameInput().type("Offset Measure");
+      H.popover().button("Done").click();
+
+      breakout("Created At");
+
+      H.visualize();
+
+      switchToData();
+      verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
+    });
   });
 });
 
@@ -334,7 +359,7 @@ function verifyNewMeasure({
 }: {
   tableId: TableId;
   scalarValue?: string;
-  rowValues?: string[];
+  rowValues?: string[][];
   createQuery: () => void;
   addBreakout?: boolean;
 }) {
@@ -352,10 +377,7 @@ function verifyNewMeasure({
   H.popover().findByText(MEASURE_NAME).click();
 
   if (addBreakout) {
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    H.popover().findByText("Created At").click();
+    breakout("Created At");
   }
 
   H.visualize();
@@ -368,16 +390,31 @@ function verifyNewMeasure({
   }
 
   if (rowValues) {
-    cy.findByTestId("view-footer").within(() => {
-      cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
-    });
-    rowValues.forEach((value, index) => {
-      // Custom implemtation that allows for empty cells
-      H.tableInteractiveBody()
-        .findAllByTestId("cell-data")
-        .should("have.length.gt", rowValues.length)
-        .eq(index)
-        .should("have.text", value);
-    });
+    switchToData();
+    verifyRowValues(rowValues);
   }
+}
+
+function breakout(columnName = "Created At") {
+  H.getNotebookStep("summarize")
+    .findByText("Pick a column to group by")
+    .click();
+  H.popover().findByText(columnName).click();
+}
+
+function switchToData() {
+  cy.findByTestId("view-footer").within(() => {
+    cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
+  });
+}
+
+function verifyRowValues(rowValues: string[][]) {
+  // Custom implemtation that allows for empty cells
+  rowValues.flat().forEach((value, index) => {
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .should("have.length.gt", rowValues.length)
+      .eq(index)
+      .should("have.text", value);
+  });
 }
