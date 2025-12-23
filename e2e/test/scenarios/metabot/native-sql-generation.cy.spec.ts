@@ -4,8 +4,11 @@ const { H } = cy;
 const isMac = Cypress.platform === "darwin";
 const metaKey = isMac ? "Meta" : "Control";
 
-const toggleInlineSQLPrompt = () =>
-  H.NativeEditor.get().realPress([metaKey, ";"]);
+const toggleInlineSQLPrompt = () => {
+  H.NativeEditor.get().focus();
+  cy.wait(250);
+  H.NativeEditor.get().realPress([metaKey, "Shift", "I"]);
+};
 
 const inlinePrompt = () => cy.findByTestId("metabot-inline-sql-prompt");
 const inlinePromptInput = () =>
@@ -166,14 +169,12 @@ describe("Native SQL generation", () => {
 
         // change the selected database, should close the input
         rejectButton().click();
-        H.NativeEditor.focus();
         toggleInlineSQLPrompt();
         inlinePrompt().should("be.visible");
         H.NativeEditor.selectDataSource("QA Postgres12");
         inlinePrompt().should("not.exist");
 
         // open again, send a prompt, req.body.history should be empty
-        H.NativeEditor.focus();
         toggleInlineSQLPrompt();
         inlinePromptInput().type("select something");
         H.mockMetabotResponse({
@@ -193,7 +194,6 @@ describe("Native SQL generation", () => {
         cy.visit("/");
         H.startNewNativeQuestion();
         H.NativeEditor.get().should("be.visible");
-        H.NativeEditor.focus();
         toggleInlineSQLPrompt();
         inlinePromptInput().type("new prompt");
         H.mockMetabotResponse({
