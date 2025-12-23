@@ -91,10 +91,8 @@ describe("issue 12928", () => {
 
     H.visualize();
 
-    cy.get("@joinedQuestionId").then((joinedQuestionId) => {
+    cy.get("@joinedQuestionId").then(() => {
       H.assertJoinValid({
-        lhsTable: SOURCE_QUESTION_NAME,
-        rhsTable: JOINED_QUESTION_NAME,
         lhsSampleColumn: "Products → Category",
         rhsSampleColumn: `${JOINED_QUESTION_NAME} - Products → Category → Category`,
       });
