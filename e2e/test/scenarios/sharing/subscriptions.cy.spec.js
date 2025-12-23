@@ -796,6 +796,25 @@ describe("scenarios > dashboard > subscriptions", () => {
           .should("not.exist");
       });
     });
+
+    describe("modular embedding", () => {
+      it("should not include links to Metabase", () => {
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+        H.openSharingMenu();
+        H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
+        cy.findByRole("button", { name: "Agree and enable" }).click();
+        cy.findByLabelText("Metabase account (SSO)").click();
+        cy.findByLabelText("Allow subscriptions").check().should("be.checked");
+        H.getIframeBody().within(() => {
+          cy.button("Subscriptions").click();
+          H.sendEmailAndVisitIt();
+        });
+
+        cy.log("Checks that links should not work");
+        cy.findAllByRole("link").should("not.exist");
+      });
+    });
   });
 });
 
