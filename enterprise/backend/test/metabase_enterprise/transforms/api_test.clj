@@ -11,6 +11,7 @@
                                                      with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -359,50 +360,47 @@
   (testing "should be able to combine database_id and type filters"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms :transforms-python}
-        (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :details {}}
-                       :model/Transform {query-main-id :id}
-                       {:name   "Query on main DB"
-                        :source_type :native
-                        :source {:type  "query"
-                                 :query {:database (mt/id)
-                                         :type     "native"
-                                         :native   {:query         "SELECT 1"
-                                                    :template-tags {}}}}
-                        :target {:type "table"
-                                 :name (str "test_qm_" (u/generate-nano-id))}}
-                       :model/Transform {python-main-id :id}
-                       {:name   "Python on main DB"
-                        :source_type :python
-                        :source {:type          "python"
-                                 :body          "print('hello')"
-                                 :source-tables {}}
-                        :target {:type     "table"
-                                 :name     (str "test_pm_" (u/generate-nano-id))
-                                 :database (mt/id)}}
-                       :model/Transform {query-other-id :id}
-                       {:name   "Query on other DB"
-                        :source_type :native
-                        :source {:type  "query"
-                                 :query {:database other-db-id
-                                         :type     "native"
-                                         :native   {:query         "SELECT 2"
-                                                    :template-tags {}}}}
-                        :target {:type "table"
-                                 :name (str "test_qo_" (u/generate-nano-id))}}]
-          (testing "filter by main database and query type"
-            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
-                                                :database_id (mt/id)
-                                                :type ["native"])]
-              (is (some #(= query-main-id (:id %)) results))
-              (is (not (some #(= python-main-id (:id %)) results)))
-              (is (not (some #(= query-other-id (:id %)) results)))))
-          (testing "filter by main database and python type"
-            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
-                                                :database_id (mt/id)
-                                                :type ["python"])]
-              (is (some #(= python-main-id (:id %)) results))
-              (is (not (some #(= query-main-id (:id %)) results)))
-              (is (not (some #(= query-other-id (:id %)) results))))))))))
+        (let [nq (lib/native-query (mt/metadata-provider) "select 1")]
+          (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :details {}}
+                         :model/Transform {query-main-id :id}
+                         {:name   "Query on main DB"
+                          :source_type :native
+                          :source {:type  "query"
+                                   :query nq}
+                          :target {:type "table"
+                                   :name (str "test_qm_" (u/generate-nano-id))}}
+                         :model/Transform {python-main-id :id}
+                         {:name   "Python on main DB"
+                          :source_type :python
+                          :source {:type          "python"
+                                   :body          "print('hello')"
+                                   :source-tables {}}
+                          :target {:type     "table"
+                                   :name     (str "test_pm_" (u/generate-nano-id))
+                                   :database (mt/id)}}
+                         :model/Transform {query-other-id :id}
+                         {:name   "Query on other DB"
+                          :source_type :native
+                          :source {:type  "query"
+                                   :query (lib/native-query
+                                           (lib.metadata.jvm/application-database-metadata-provider other-db-id)
+                                           "select 2")}
+                          :target {:type "table"
+                                   :name (str "test_qo_" (u/generate-nano-id))}}]
+            (testing "filter by main database and query type"
+              (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                  :database_id (mt/id)
+                                                  :type ["native"])]
+                (is (some #(= query-main-id (:id %)) results))
+                (is (not (some #(= python-main-id (:id %)) results)))
+                (is (not (some #(= query-other-id (:id %)) results)))))
+            (testing "filter by main database and python type"
+              (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                  :database_id (mt/id)
+                                                  :type ["python"])]
+                (is (some #(= python-main-id (:id %)) results))
+                (is (not (some #(= query-main-id (:id %)) results)))
+                (is (not (some #(= query-other-id (:id %)) results)))))))))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
