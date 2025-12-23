@@ -1,13 +1,16 @@
 import { Box } from "metabase/ui";
-import type { ContainerStyle } from "metabase-types/api";
+import { isContainerStyle } from "metabase-types/api";
 
 export function CustomContainer({
   children,
   containerStyle,
 }: {
   children: React.ReactNode;
-  containerStyle: ContainerStyle;
+  containerStyle: unknown;
 }) {
+  if (!isContainerStyle(containerStyle)) {
+    return <Box>{children}</Box>;
+  }
   const [type, value] = containerStyle;
 
   if (type === "grid") {
