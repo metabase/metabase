@@ -49,7 +49,7 @@ describe("GitSettingsModal", () => {
       // Modal subtitle displays
       expect(
         screen.getByText(
-          "Keep your Library and transforms safely backed up in git.",
+          "Keep your Library and transforms safely backed up in Git.",
         ),
       ).toBeInTheDocument();
     });
