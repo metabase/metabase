@@ -28133,6 +28133,13 @@
           "schema" : {
             "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
           }
+        }, {
+          "in" : "query",
+          "name" : "database-id",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
         } ],
         "responses" : {
           "2XX" : {

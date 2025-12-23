@@ -397,9 +397,10 @@
 (api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential ExternalTransform]]]
   "Get transforms that are external to the workspace, i.e. no matching workspace_transform row exists."
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
-   _query-params]
+   {:keys [database-id]} :- [:map [:database-id {:optional true} ::ws.t/appdb-id]]]
   (api/check-superuser)
-  (let [db-id      (:database_id (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id)))
+  (let [db-id      (or database-id
+                       (:database_id (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id))))
         ;; TODO (chris 2025/12/11) use target_db_id once it's there, and skip :target
         transforms (t2/select [:model/Transform :id :name :source_type :source :target]
                               {:left-join [[:workspace_transform :wt]
