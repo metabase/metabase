@@ -2,4 +2,4 @@
  :deps
  {com.clickhouse/clickhouse-jdbc {:mvn/version "0.8.4"
                                   :exclusions [org.apache.commons/commons-lang3]}
-  org.lz4/lz4-java {:mvn/version "1.8.1"}}}
+  org.lz4/lz4-java {:mvn/version "1.8.0"}}}
