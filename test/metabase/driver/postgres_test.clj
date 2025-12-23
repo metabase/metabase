@@ -1049,7 +1049,7 @@
                      (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
                              (qp/process-query query))))))))))))))
 
-(deftest ^:parallel filtering-on-enum-from-source-bad-effective-type-test
+(deftest filtering-on-enum-from-source-bad-effective-type-test
   (mt/test-driver
     :postgres
     (do-with-enums-db!
