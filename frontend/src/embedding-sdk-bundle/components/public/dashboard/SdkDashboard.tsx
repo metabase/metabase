@@ -331,62 +331,62 @@ const SdkDashboardInner = ({
   }
 
   return (
-    <DashboardContextProvider
-      ref={dashboardContextProviderRef}
-      dashboardId={dashboardId}
-      isGuestEmbed={isGuestEmbed}
-      parameterQueryParams={initialParameters}
-      navigateToNewCardFromDashboard={
-        navigateToNewCardFromDashboard !== undefined
-          ? navigateToNewCardFromDashboard
-          : onNavigateToNewCardFromDashboard
-      }
-      onNewQuestion={() => {
-        if (isDashboardDirty) {
-          show({
-            title: t`Save your changes?`,
-            message: t`You’ll need to save your changes before leaving to create a new question.`,
-            confirmButtonText: t`Save changes`,
-            onConfirm: async () => {
-              /**
-               * Dispatch the same actions as in the DashboardLeaveConfirmationModal.
-               * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
-               */
-              setRenderMode("queryBuilder");
-              dispatch(dismissAllUndo());
-              await dispatch(updateDashboardAndCards());
-              // After saving the dashboard, it will exit the editing mode.
-              dispatch(setEditingDashboard(dashboard));
-            },
-            confirmButtonProps: {
-              color: "brand",
-            },
-          });
-        } else {
-          setRenderMode("queryBuilder");
+    <EmbeddingEntityContextProvider uuid={null} token={token}>
+      <DashboardContextProvider
+        ref={dashboardContextProviderRef}
+        dashboardId={dashboardId}
+        isGuestEmbed={isGuestEmbed}
+        parameterQueryParams={initialParameters}
+        navigateToNewCardFromDashboard={
+          navigateToNewCardFromDashboard !== undefined
+            ? navigateToNewCardFromDashboard
+            : onNavigateToNewCardFromDashboard
         }
-      }}
-      downloadsEnabled={displayOptions.downloadsEnabled}
-      withSubscriptions={displayOptions.withSubscriptions}
-      background={displayOptions.background}
-      bordered={displayOptions.bordered}
-      hideParameters={displayOptions.hideParameters}
-      titled={displayOptions.titled}
-      cardTitled={displayOptions.cardTitled}
-      theme={displayOptions.theme}
-      onLoad={handleLoad}
-      onLoadWithoutCards={handleLoadWithoutCards}
-      onError={(error) => dispatch(setErrorPage(error))}
-      getClickActionMode={getClickActionMode}
-      dashcardMenu={finalDashcardMenu}
-      dashboardActions={dashboardActions}
-      onAddQuestion={(dashboard) => {
-        dispatch(setEditingDashboard(dashboard));
-        dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
-      }}
-      autoScrollToDashcardId={autoScrollToDashcardId}
-    >
-      <EmbeddingEntityContextProvider uuid={null} token={token}>
+        onNewQuestion={() => {
+          if (isDashboardDirty) {
+            show({
+              title: t`Save your changes?`,
+              message: t`You’ll need to save your changes before leaving to create a new question.`,
+              confirmButtonText: t`Save changes`,
+              onConfirm: async () => {
+                /**
+                 * Dispatch the same actions as in the DashboardLeaveConfirmationModal.
+                 * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
+                 */
+                setRenderMode("queryBuilder");
+                dispatch(dismissAllUndo());
+                await dispatch(updateDashboardAndCards());
+                // After saving the dashboard, it will exit the editing mode.
+                dispatch(setEditingDashboard(dashboard));
+              },
+              confirmButtonProps: {
+                color: "brand",
+              },
+            });
+          } else {
+            setRenderMode("queryBuilder");
+          }
+        }}
+        downloadsEnabled={displayOptions.downloadsEnabled}
+        withSubscriptions={displayOptions.withSubscriptions}
+        background={displayOptions.background}
+        bordered={displayOptions.bordered}
+        hideParameters={displayOptions.hideParameters}
+        titled={displayOptions.titled}
+        cardTitled={displayOptions.cardTitled}
+        theme={displayOptions.theme}
+        onLoad={handleLoad}
+        onLoadWithoutCards={handleLoadWithoutCards}
+        onError={(error) => dispatch(setErrorPage(error))}
+        getClickActionMode={getClickActionMode}
+        dashcardMenu={finalDashcardMenu}
+        dashboardActions={dashboardActions}
+        onAddQuestion={(dashboard) => {
+          dispatch(setEditingDashboard(dashboard));
+          dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
+        }}
+        autoScrollToDashcardId={autoScrollToDashcardId}
+      >
         {match({ finalRenderMode, isGuestEmbed })
           .with({ finalRenderMode: "question" }, () => (
             <SdkDashboardStyledWrapperWithRef
@@ -443,8 +443,8 @@ const SdkDashboardInner = ({
           )
           .exhaustive()}
         {modalContent}
-      </EmbeddingEntityContextProvider>
-    </DashboardContextProvider>
+      </DashboardContextProvider>
+    </EmbeddingEntityContextProvider>
   );
 };
 
