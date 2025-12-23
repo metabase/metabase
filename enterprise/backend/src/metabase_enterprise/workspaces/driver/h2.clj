@@ -11,10 +11,14 @@
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 (set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :workspace] [_driver _feature _db] true)
 
 (defn- replace-credentials
   "Replace USER and PASSWORD in an H2 connection string."

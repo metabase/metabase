@@ -9,9 +9,13 @@
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 (set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmethod driver/database-supports? [:sqlserver :workspace] [_driver _feature _db] true)
 
 (defn- isolation-login-name
   "Generate login name for workspace isolation."
