@@ -1,9 +1,10 @@
 import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
@@ -21,7 +22,7 @@ import {
   useGetWorkspaceCheckoutQuery,
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
-import type { DatabaseId, Transform, Workspace } from "metabase-types/api";
+import type { DatabaseId, Transform } from "metabase-types/api";
 
 type EditTransformMenuProps = {
   transform: Transform;
@@ -83,19 +84,13 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     id: number;
     name?: string;
   }) => {
-    dispatch(
-      push(
-        `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
-      ),
-    );
+    dispatch(push(Urls.dataStudioWorkspace(workspace.id, transform.id)));
   };
 
   const handleCreateWorkspace = async ({
-    name,
     databaseId,
   }: {
-    name?: string;
-    databaseId?: DatabaseId;
+    databaseId?: DatabaseId | null;
   }) => {
     if (!databaseId) {
       sendErrorToast(t`Failed to create workspace, no database id`);
@@ -104,15 +99,10 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
     try {
       const workspace = await createWorkspace({
-        name: name?.trim() || t`New workspace`,
         database_id: Number(databaseId),
       }).unwrap();
 
-      dispatch(
-        push(
-          `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
-        ),
-      );
+      dispatch(push(Urls.dataStudioWorkspace(workspace.id, transform.id)));
     } catch (error) {
       console.error(error);
       sendErrorToast(t`Failed to create workspace`);

@@ -13,9 +13,9 @@ export type WorkspaceId = number;
 export type Workspace = {
   id: WorkspaceId;
   name: string;
+  status: WorkspaceSetupStatus;
   archived?: boolean;
   archived_at?: string | null;
-  status?: WorkspaceSetupStatus;
   collection_id?: CollectionId | null;
   database_id?: DatabaseId | null;
   created_at?: string;
@@ -27,11 +27,6 @@ export type WorkspaceItem = {
   name: string;
   database_id: DatabaseId;
   archived?: boolean;
-};
-
-export type CreateWorkspaceRequest = {
-  name: string;
-  database_id?: DatabaseId;
 };
 
 export type WorkspaceListResponse = {
@@ -56,6 +51,11 @@ export type ExternalTransform = {
   name: string;
   source_type: Transform["source_type"];
   checkout_disabled: string | null;
+};
+
+export type ExternalTransformsRequest = {
+  workspaceId: WorkspaceId;
+  databaseId?: DatabaseId | null;
 };
 
 export type ExternalTransformsResponse = {
@@ -248,7 +248,11 @@ export type WorkspaceProblem =
 export type WorkspaceLogEntryId = number;
 
 // Status used in workspace log responses (different from archived boolean on Workspace)
-export type WorkspaceSetupStatus = "pending" | "ready" | "archived";
+export type WorkspaceSetupStatus =
+  | "pending"
+  | "ready"
+  | "archived"
+  | "uninitialized";
 
 export type WorkspaceLogStatus = "started" | "success" | "failure";
 

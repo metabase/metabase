@@ -17,6 +17,8 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -835,16 +837,24 @@
 
 (deftest tables-endpoint-test
   (let [mp          (mt/metadata-provider)
-        query       (lib/native-query mp "select * from orders limit 10;")
-        orig-schema "public"]
-    (with-transform-cleanup! [orig-name "ws_tables_test"]
+        ;; Following needed for driver specific sql.
+        orders-meta (lib.metadata/table mp (mt/id :orders))
+        sql-str (-> (lib/query mp orders-meta)
+                    (lib/limit 10)
+                    (qp.compile/compile)
+                    :query)
+        query       (lib/native-query mp sql-str)
+        orig-schema (or (:schema orders-meta) "public")
+        orig-name (:name orders-meta)
+        target-schema "public"]
+    (with-transform-cleanup! [target-name "ws_tables_test"]
       (mt/with-temp [:model/Transform x1 {:name   "My X1"
                                           :source {:type  "query"
                                                    :query query}
                                           :target {:type     "table"
                                                    :database (mt/id)
-                                                   :schema   "public"
-                                                   :name     orig-name}}]
+                                                   :schema   target-schema
+                                                   :name     target-name}}]
         ;; create the global table
         (transforms.execute/execute! x1 {:run-method :manual})
         (let [workspace    (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
@@ -861,11 +871,11 @@
                                              :name (-> ws-transform :target :name))]
           (testing "/table returns expected results"
             ;; Schema is normalized to driver's default schema ("public" for Postgres) when stored
-            (is (=? {:inputs [{:db_id (mt/id), :schema "public", :table "orders", :table_id int?}]
+            (is (=? {:inputs [{:db_id (mt/id), :schema orig-schema, :table orig-name, :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
-                       :global   {:schema   orig-schema
-                                  :table    orig-name
+                       :global   {:schema   target-schema
+                                  :table    target-name
                                   :table_id orig-id}
                        :isolated {:transform_id ref-id
                                   :schema       (:schema workspace)
@@ -875,16 +885,16 @@
           (testing "and after we run the transform, id for isolated table appears"
             (is (=? {:status "succeeded"}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "transform" ref-id "run"))))
-            (is (=? {:inputs [{:db_id (mt/id), :schema "public", :table "orders", :table_id int?}]
+            (is (=? {:inputs [{:db_id (mt/id), :schema orig-schema, :table orig-name, :table_id int?}]
                      :outputs
                      [{:db_id    (mt/id)
-                       :global   {:schema   orig-schema
-                                  :table    orig-name
+                       :global   {:schema   target-schema
+                                  :table    target-name
                                   :table_id orig-id}
                        :isolated {:transform_id ref-id
                                   :schema       (:schema workspace)
                                   ;; maybe this is a bit too specific, but gives me a peace of mind for now
-                                  :table        (ws.u/isolated-table-name orig-schema orig-name)
+                                  :table        (ws.u/isolated-table-name target-schema target-name)
                                   :table_id     int?}}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))))))))))
 

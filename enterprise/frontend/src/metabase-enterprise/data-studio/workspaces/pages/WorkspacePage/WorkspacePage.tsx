@@ -74,6 +74,7 @@ import {
   type WorkspaceTab,
   useWorkspace,
 } from "./WorkspaceProvider";
+import { isWorkspaceUninitialized } from "../../utils";
 
 type WorkspacePageProps = {
   params: {
@@ -129,7 +130,10 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     isLoading: isLoadingWorkspaceTransforms,
   } = useGetWorkspaceTransformsQuery(id);
   const { data: externalTransforms, isLoading: isLoadingExternalTransforms } =
-    useGetExternalTransformsQuery(id);
+    useGetExternalTransformsQuery(
+      { workspaceId: id, databaseId: workspace?.database_id ?? null },
+      { skip: !id || !workspace?.database_id },
+    );
   const availableTransforms = useMemo(
     () => externalTransforms ?? [],
     [externalTransforms],
@@ -161,6 +165,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           if (data) {
             addOpenedTransform(data);
             setActiveTransform(data);
+            setTab(transformId);
           }
         } else {
           sendErrorToast(t`Transform ${transformId} not found`);
@@ -277,7 +282,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   useEffect(() => {
     // Sync UI tabs with active tab changes from workspace.
     if (activeTab) {
-      setTab(activeTab.id);
+      setTab((prevTab) => (prevTab === "setup" ? prevTab : activeTab.id));
     }
   }, [id, activeTab, setTab]);
 
@@ -671,10 +676,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
               }}
             >
               <Tabs.Panel value="setup" h="100%" p="md">
-                <SetupTab
-                  databaseName={sourceDb?.name}
-                  workspaceId={workspace.id}
-                />
+                <SetupTab databaseId={sourceDb?.id} workspace={workspace} />
               </Tabs.Panel>
 
               {isMetabotAvailable && (
@@ -719,9 +721,16 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                     workspaceTransforms={workspaceTransforms}
                     isDisabled={isArchived}
                     onChange={handleTransformChange}
-                    onOpenTransform={(transformId) =>
-                      setTab(String(transformId))
-                    }
+                    onOpenTransform={(transform) => {
+                      // After adding first transform to a workspace,
+                      // show 'Setup' tab with initialization status log.
+                      if (isWorkspaceUninitialized(workspace)) {
+                        setActiveTransform(transform);
+                        return setTab("setup");
+                      }
+                      setActiveTransform(transform);
+                      setTab(String(transform.id));
+                    }}
                     onResultsClick={handleTableSelect}
                   />
                 )}
@@ -760,6 +769,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                 workspaceTransforms={allTransforms}
                 onTransformClick={(transform) => {
                   addOpenedTransform(transform);
+                  setTab(String(transform.id));
                   if (activeTable) {
                     setActiveTable(undefined);
                   }

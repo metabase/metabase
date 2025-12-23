@@ -2,6 +2,7 @@ import type {
   CreateWorkspaceRequest,
   CreateWorkspaceTransformRequest,
   CreateWorkspaceTransformResponse,
+  ExternalTransformsRequest,
   ExternalTransformsResponse,
   TransformDownstreamMapping,
   TransformId,
@@ -58,14 +59,25 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       providesTags: (workspace) =>
         workspace ? provideWorkspaceTags(workspace) : [],
     }),
-    createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
-      query: (body) => ({
+    createWorkspace: builder.mutation<Workspace, void>({
+      query: () => ({
         method: "POST",
         url: "/api/ee/workspace",
-        body,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("workspace"), listTag("transform")]),
+    }),
+    updateWorkspace: builder.mutation<
+      Workspace,
+      { id: WorkspaceId; name?: string; database_id?: number }
+    >({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace/${id}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("workspace", id)]),
     }),
     createWorkspaceTransform: builder.mutation<
       CreateWorkspaceTransformResponse,
@@ -178,18 +190,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
-    updateWorkspace: builder.mutation<
-      Workspace,
-      { id: WorkspaceId; name?: string; database_id?: number }
-    >({
-      query: ({ id, ...body }) => ({
-        method: "PUT",
-        url: `/api/ee/workspace/${id}`,
-        body,
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("workspace", id)]),
-    }),
     getWorkspaceTables: builder.query<WorkspaceTablesResponse, WorkspaceId>({
       query: (id) => ({
         method: "GET",
@@ -225,13 +225,14 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
     }),
     getExternalTransforms: builder.query<
       ExternalTransformsResponse["transforms"],
-      WorkspaceId
+      ExternalTransformsRequest
     >({
-      query: (id) => ({
+      query: ({ workspaceId, databaseId }) => ({
         method: "GET",
-        url: `/api/ee/workspace/${id}/external/transform`,
+        url: `/api/ee/workspace/${workspaceId}/external/transform`,
+        params: { database_id: databaseId },
       }),
-      providesTags: (_, __, id) => [
+      providesTags: (_, __, { workspaceId: id }) => [
         listTag("external-transforms"),
         idTag("external-transforms", id),
       ],
