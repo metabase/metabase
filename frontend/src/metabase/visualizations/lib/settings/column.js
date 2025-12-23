@@ -442,19 +442,23 @@ const COMMON_COLUMN_SETTINGS = {
 };
 
 export function getSettingDefinitionsForColumn(series, column) {
+  const effectiveColumn = column.remapped_to_column ?? column;
   const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"
-      ? visualization.columnSettings(column)
+      ? visualization.columnSettings(effectiveColumn)
       : visualization.columnSettings || {};
 
-  if (isDate(column) || (column.unit && column.unit !== "default")) {
+  if (
+    isDate(effectiveColumn) ||
+    (effectiveColumn.unit && effectiveColumn.unit !== "default")
+  ) {
     return {
       ...extraColumnSettings,
       ...DATE_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
     };
-  } else if (isNumber(column) && !isCoordinate(column)) {
+  } else if (isNumber(effectiveColumn) && !isCoordinate(effectiveColumn)) {
     return {
       ...extraColumnSettings,
       ...NUMBER_COLUMN_SETTINGS,

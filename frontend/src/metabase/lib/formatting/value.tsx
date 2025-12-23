@@ -144,7 +144,7 @@ export function formatValueRaw(
 
   const remapped = getRemappedValue(value as string | number, options);
   if (remapped !== undefined && options.view_as !== "link") {
-    value = remapped;
+    return remapped;
   }
 
   if (value == null) {
