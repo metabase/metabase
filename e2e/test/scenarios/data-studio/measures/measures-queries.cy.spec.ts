@@ -345,6 +345,46 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
     });
   });
+
+  describe("follow up stages", () => {
+    it("should be possible to use results of a measure in follow up stages", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      });
+
+      useMeasure(() => {
+        breakout("Created At");
+
+        H.getNotebookStep("summarize").button("Filter").click();
+        H.popover().within(() => {
+          cy.findByText(MEASURE_NAME).click();
+          cy.findByPlaceholderText("Min").type("100");
+          cy.button("Add filter").click();
+        });
+
+        H.getNotebookStep("summarize").button("Custom column").click();
+        H.enterCustomColumnDetails({
+          formula: `floor([${MEASURE_NAME}] * 2)`,
+          name: "Double measure",
+          clickDone: true,
+        });
+
+        H.getNotebookStep("filter", { stage: 1 })
+          .findByText("Summarize")
+          .click();
+        H.popover().within(() => {
+          cy.findByText("Minimum of ...").click();
+          cy.findByText("Double measure").click();
+        });
+      });
+      verifyScalarValue("2,531");
+    });
+  });
 });
 
 function buildNewMeasure({ createQuery }: { createQuery: () => void }) {
