@@ -1,5 +1,4 @@
 import type { EChartsCoreOption } from "echarts/core";
-import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import type {
@@ -7,6 +6,7 @@ import type {
   DataKey,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { validateSeriesCount } from "metabase/visualizations/lib/settings/validation";
 import type {
   ComputedVisualizationSettings,
   HoveredObject,
@@ -55,14 +55,8 @@ export const getGridSizeAdjustedSettings = (
   return newSettings;
 };
 
-export const MAX_SERIES = 100;
-
 export const validateChartModel = (chartModel: BaseCartesianChartModel) => {
-  if (chartModel.seriesModels.length > MAX_SERIES) {
-    throw new Error(
-      t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
-    );
-  }
+  validateSeriesCount(chartModel.seriesModels.length);
 };
 
 export const getHoveredSeriesDataKey = (
