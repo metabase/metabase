@@ -269,7 +269,7 @@
   []
   (:id
    (u/seek #(driver.u/supports? (:engine %) :workspace %)
-           (t2/select :model/Database :is_sample false {:order-by [:id]}))))
+           (t2/select :model/Database :is_audit false :is_sample false {:order-by [:name]}))))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace
@@ -319,8 +319,7 @@
   "Get a list of databases to show in the workspace picker, along with whether they're supported."
   [_url-params
    _query-params]
-  {:databases (->> (t2/select :model/Database {:where [:not [:= :is_audit true]]
-                                               :order-by [:name]})
+  {:databases (->> (t2/select :model/Database :is_audit false :is_sample false {:order-by [:name]})
                    ;; Omit those we don't even support
                    (filter #(driver.u/supports? (:engine %) :workspace %))
                    (mapv (fn [db]
