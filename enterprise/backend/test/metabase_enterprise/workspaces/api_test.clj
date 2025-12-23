@@ -13,6 +13,7 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.audit-app.core :as audit]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
@@ -1611,4 +1612,8 @@
       (testing "Listing"
         (is (= {:databases [{:id db-1, :name "Y", :supported true}]}
                (-> (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
-                   (update :databases #(filter (comp #{db-1 db-2} :id) %)))))))))
+                   (update :databases #(filter (comp #{db-1 db-2} :id) %))))))
+      (testing "Audit not returned"
+        (is (nil?
+             (m/find-first (comp #{audit/audit-db-id} :id)
+                           (:databases (mt/user-http-request :crowberto :get 200 "ee/workspace/database")))))))))
