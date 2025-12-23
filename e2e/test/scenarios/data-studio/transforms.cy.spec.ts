@@ -235,7 +235,7 @@ describe("scenarios > admin > transforms", () => {
         });
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a database")
+          .findByText("Writable Postgres12")
           .click();
 
         cy.log("Unsupported databases should be disabled");
