@@ -81,9 +81,18 @@ export type EngineKey = (typeof engineKeys)[number];
 export type ContainerStyleType = "grid" | "component";
 export type ContainerStyle = [ContainerStyleType, string];
 
+export function isContainerStyle(value: unknown): value is ContainerStyle {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    (value[0] === "grid" || value[0] === "component") &&
+    typeof value[1] === "string"
+  );
+}
+
 export interface DatabaseFieldGroup {
   type: "group";
-  "container-style": ContainerStyle;
+  "container-style": unknown;
   fields: EngineField[];
 }
 
