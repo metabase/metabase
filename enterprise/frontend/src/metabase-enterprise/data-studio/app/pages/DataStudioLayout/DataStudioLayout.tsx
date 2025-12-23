@@ -255,7 +255,12 @@ function DataStudioNavbarToggle({
 }: DataStudioNavbarToggleProps) {
   return (
     <Flex justify="space-between" mb={2}>
-      <Tooltip label={getSidebarTooltipLabel(isNavbarOpened)}>
+      <Tooltip
+        label={getSidebarTooltipLabel(isNavbarOpened)}
+        withArrow
+        offset={-12}
+        openDelay={1000}
+      >
         <UnstyledButton
           className={cx(S.toggle, {
             [S.hoverButton]: !isNavbarOpened,
@@ -274,7 +279,12 @@ function DataStudioNavbarToggle({
         </UnstyledButton>
       </Tooltip>
       {isNavbarOpened && (
-        <Tooltip label={getSidebarTooltipLabel(isNavbarOpened)}>
+        <Tooltip
+          label={getSidebarTooltipLabel(isNavbarOpened)}
+          withArrow
+          offset={-12}
+          openDelay={1000}
+        >
           <UnstyledButton
             className={S.toggle}
             p="0.5rem"
