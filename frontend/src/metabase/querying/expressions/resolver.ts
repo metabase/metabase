@@ -97,7 +97,7 @@ export function resolver(options: Options): Resolver {
     if (!dimension) {
       if (expressionMode === "aggregation") {
         throw new CompileError(
-          t`Unknown column, Aggregation or Metric: ${name}`,
+          t`Unknown column, Aggregation, Measure or Metric: ${name}`,
           node,
         );
       }
