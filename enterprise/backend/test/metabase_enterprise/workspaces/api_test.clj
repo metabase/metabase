@@ -1370,7 +1370,7 @@
                          :model/WorkspaceTransform _            {:global_id    xf2-id
                                                                  :workspace_id (:id ws2)}]
             (testing "excludes irrelevant transforms, and indicates which remaining transforms cannot be checked out."
-              (let [transforms (:transforms (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" (:id ws1) "/external/transform")))
+              (let [transforms (:transforms (mt/user-http-request :crowberto :get 200 (ws-url (:id ws1) "/external/transform")))
                     test-ids   #{xf1-id xf2-id xf3-id xf4-id xf5-id xf6-id xf7-id}
                     ;; Filter out cruft from dev, leaky tests, etc
                     ids        (into #{} (comp (map :id) (filter test-ids)) transforms)]
@@ -1385,7 +1385,13 @@
                           xf4-id "mbql"
                           xf5-id nil #_native-is-supported
                           xf6-id "card-reference"}
-                         (u/index-by :id :checkout_disabled transforms))))))))))))
+                         (u/index-by :id :checkout_disabled transforms))))))
+            (testing "passing database-id shows transforms from that database"
+              (is (= [xf7-id]
+                     (map :id
+                          (:transforms
+                           (mt/user-http-request :crowberto :get 200
+                                                 (ws-url (:id ws1) (str "/external/transform?database-id=" db-2))))))))))))))
 
 ;;; ---------------------------------------- Table ID Fallback Tests ----------------------------------------
 ;; These tests verify that when WorkspaceOutput rows have null table IDs (e.g., because sync

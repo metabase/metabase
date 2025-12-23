@@ -377,7 +377,7 @@
    (fn [_]
      (default-timestamped
       {:name   (str "Test Transform " (u/generate-nano-id))
-       :ref_id ((requiring-resolve 'metabase-enterprise.workspaces.models.workspace-transform/generate-ref-id))
+       :ref_id ((requiring-resolve 'metabase-enterprise.workspaces.util/generate-ref-id))
        :source {:type  "query"
                 :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
        :target {:type "table"
