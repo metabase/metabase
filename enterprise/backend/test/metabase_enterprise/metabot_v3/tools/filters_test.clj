@@ -717,3 +717,116 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot-v3.tools.filters/query-datasource
                              {:model-id model-id}))))))
+
+(defn- pmbql-measure-definition
+  "Create an MBQL5 measure definition with a sum aggregation."
+  [table-id field-id]
+  (let [mp (mt/metadata-provider)
+        table (lib.metadata/table mp table-id)
+        query (lib/query mp table)
+        field (lib.metadata/field mp field-id)]
+    (lib/aggregate query (lib/sum field))))
+
+(defn- pmbql-segment-definition
+  "Create an MBQL5 segment definition with a filter."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)
+        table (lib.metadata/table mp table-id)
+        query (lib/query mp table)
+        field (lib.metadata/field mp field-id)]
+    (lib/filter query (lib/> field value))))
+
+(deftest query-metric-with-segment-filter-test
+  (let [mp (mt/metadata-provider)
+        created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
+        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
+                         (lib/breakout (lib/with-temporal-bucket created-at-meta :month)))
+        legacy-metric-query (lib.convert/->legacy-MBQL metric-query)
+        segment-def (pmbql-segment-definition (mt/id :orders) (mt/id :orders :total) 50)]
+    (mt/with-temp [:model/Card {metric-id :id} {:dataset_query legacy-metric-query
+                                                :database_id (mt/id)
+                                                :name "Total Orders"
+                                                :type :metric}
+                   :model/Segment {segment-id :id} {:name       "Large Orders"
+                                                    :table_id   (mt/id :orders)
+                                                    :definition segment-def}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "query-metric with segment filter applies the segment"
+          (let [result (metabot-v3.tools.filters/query-metric
+                        {:metric-id metric-id
+                         :filters [{:segment-id segment-id}]
+                         :group-by []})
+                query (get-in result [:structured-output :query])
+                filters (get-in query [:stages 0 :filters])]
+            (is (some? (:structured-output result)))
+            (is (= :query (get-in result [:structured-output :type])))
+            ;; Check that a segment filter is present
+            (is (some #(and (vector? %) (= :segment (first %))) filters))))))))
+
+(deftest query-datasource-with-measure-aggregation-test
+  (let [measure-def (pmbql-measure-definition (mt/id :orders) (mt/id :orders :total))]
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
+                                                    :table_id   (mt/id :orders)
+                                                    :definition measure-def}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "query-datasource with measure aggregation"
+          (let [result (metabot-v3.tools.filters/query-datasource
+                        {:table-id (mt/id :orders)
+                         :aggregations [{:measure-id measure-id}]})
+                query (get-in result [:structured-output :query])
+                aggregations (get-in query [:stages 0 :aggregation])]
+            (is (some? (:structured-output result)))
+            (is (= :query (get-in result [:structured-output :type])))
+            ;; Check that a measure aggregation is present
+            (is (some #(and (vector? %) (= :measure (first %))) aggregations))))
+
+        (testing "query-datasource with measure aggregation and sort order"
+          (let [result (metabot-v3.tools.filters/query-datasource
+                        {:table-id (mt/id :orders)
+                         :aggregations [{:measure-id measure-id
+                                         :sort-order :desc}]})
+                query (get-in result [:structured-output :query])
+                order-by (get-in query [:stages 0 :order-by])]
+            (is (some? order-by))
+            (is (some #(= :desc (first %)) order-by))))))))
+
+(deftest query-datasource-with-segment-filter-test
+  (let [segment-def (pmbql-segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
+    (mt/with-temp [:model/Segment {segment-id :id} {:name       "High Value Orders"
+                                                    :table_id   (mt/id :orders)
+                                                    :definition segment-def}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "query-datasource with segment filter"
+          (let [result (metabot-v3.tools.filters/query-datasource
+                        {:table-id (mt/id :orders)
+                         :filters [{:segment-id segment-id}]})
+                query (get-in result [:structured-output :query])
+                filters (get-in query [:stages 0 :filters])]
+            (is (some? (:structured-output result)))
+            (is (= :query (get-in result [:structured-output :type])))
+            ;; Check that a segment filter is present
+            (is (some #(and (vector? %) (= :segment (first %))) filters))))))))
+
+(deftest query-datasource-with-measures-and-segments-test
+  (let [measure-def (pmbql-measure-definition (mt/id :orders) (mt/id :orders :total))
+        segment-def (pmbql-segment-definition (mt/id :orders) (mt/id :orders :discount) 0)]
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
+                                                    :table_id   (mt/id :orders)
+                                                    :definition measure-def}
+                   :model/Segment {segment-id :id} {:name       "Discounted Orders"
+                                                    :table_id   (mt/id :orders)
+                                                    :definition segment-def}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "query-datasource with both measure aggregation and segment filter"
+          (let [result (metabot-v3.tools.filters/query-datasource
+                        {:table-id (mt/id :orders)
+                         :aggregations [{:measure-id measure-id}]
+                         :filters [{:segment-id segment-id}]})
+                query (get-in result [:structured-output :query])
+                aggregations (get-in query [:stages 0 :aggregation])
+                filters (get-in query [:stages 0 :filters])]
+            (is (some? (:structured-output result)))
+            ;; Check that both measure and segment are present
+            (is (some #(and (vector? %) (= :measure (first %))) aggregations))
+            (is (some #(and (vector? %) (= :segment (first %))) filters))))))))
