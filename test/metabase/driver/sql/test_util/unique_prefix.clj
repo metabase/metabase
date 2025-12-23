@@ -74,25 +74,25 @@
 
   For new-format names (with hour): checks if more than [[old-dataset-hours-threshold]] hours old.
   For old-format names (date only): checks if more than 1 day old for backwards compatibility.
-  If the date/time is invalid, we count it as old so it will get deleted anyway."
+  If the date/time is invalid, we return false (not old) to be safe - we only want to delete
+  datasets that match our known format."
   [dataset-name]
   ;; Try new format first: YYYY_MM_DD_HH_<uuid>_...
   (if-let [[_ year month day hour] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_(\d{2})_.*$" dataset-name)]
     (let [dataset-date-time (try
                               (t/local-date-time (parse-long year) (parse-long month) (parse-long day) (parse-long hour) 0)
-                              (catch Throwable _
-                                nil))]
+                              (catch Throwable _ nil))]
       (if-not dataset-date-time
-        true
+        false
         (t/before? dataset-date-time (u.date/add (utc-date-time) :hour (- old-dataset-hours-threshold)))))
+    ;; TODO (bryan 12-23-25) Remove old-format checks when this has been running for a few days.
     ;; Fall back to old format: YYYY_MM_DD_<uuid>_...
     (when-let [[_ year month day] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_.*$" dataset-name)]
       (let [dataset-date (try
                            (t/local-date (parse-long year) (parse-long month) (parse-long day))
-                           (catch Throwable _
-                             nil))]
+                           (catch Throwable _ nil))]
         (if-not dataset-date
-          true
+          false
           (t/before? dataset-date (u.date/add (utc-date) :day -1)))))))
 
 (deftest ^:parallel old-dataset-name?-test
@@ -105,18 +105,18 @@
         "2023_01_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
         "2022_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
         ;; 2 days ago is old
-        (str two-days-ago "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
-        ;; if the date is invalid we should just treat it as old and delete it.
-        "2022_00_00_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-        "2022_13_01_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-        "2022_02_31_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
+        (str two-days-ago "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"))
       (are [s] (not (old-dataset-name? s))
         "2050_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
         "v4_test-data"
         ;; yesterday is not old (must be MORE than 1 day)
         (str yesterday "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
         ;; today is not old
-        (str today "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"))))
+        (str today "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
+        ;; invalid dates are not old - only delete datasets matching our known format
+        "2022_00_00_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+        "2022_13_01_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+        "2022_02_31_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")))
   (testing "new-format names (with hour) - more than 3 hours old"
     (are [s] (old-dataset-name? s)
       ;; Ancient dates are old
@@ -125,9 +125,7 @@
       ;; 4 hours ago is old
       (str (unique-prefix* (u.date/add (utc-date-time) :hour -4)) "test-data")
       ;; 3 hours ago by hour is old (due to hour truncation, could be up to 3:59 hours old)
-      (str (unique-prefix* (u.date/add (utc-date-time) :hour -3)) "test-data")
-      ;; invalid hour should be treated as old
-      "2023_02_01_25_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -3)) "test-data"))
     (are [s] (not (old-dataset-name? s))
       ;; Current time is not old
       (str (unique-prefix*) "test-data")
@@ -136,4 +134,6 @@
       ;; 2 hours ago is not old
       (str (unique-prefix* (u.date/add (utc-date-time) :hour -2)) "test-data")
       ;; Future dates are not old
-      "2050_02_17_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")))
+      "2050_02_17_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
+      ;; invalid hour is not old - only delete datasets matching our known format
+      "2023_02_01_25_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")))
