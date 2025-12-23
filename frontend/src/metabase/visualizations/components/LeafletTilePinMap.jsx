@@ -59,7 +59,8 @@ export default class LeafletTilePinMap extends LeafletMap {
     const lonFieldParam = JSON.stringify(longitudeField.field_ref);
 
     const { dashboard, dashcard } = this.props;
-    const { uuid, token } = this.context;
+    // EmbeddingEntityContext is only available under embedding environment
+    const { uuid, token } = this.context ?? {};
 
     return getTileUrl({
       cardId: id,
