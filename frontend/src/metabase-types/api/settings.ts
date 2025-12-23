@@ -86,18 +86,17 @@ export interface FieldGroupConfig {
   "container-style": ContainerStyle;
 }
 
-export interface EngineFieldGroup {
+export interface DatabaseFieldGroup {
   type: "group";
-  id: string;
   "container-style": ContainerStyle;
   fields: EngineField[];
 }
 
-export type EngineFieldOrGroup = EngineField | EngineFieldGroup;
+export type DatabaseFieldOrGroup = EngineField | DatabaseFieldGroup;
 
 export interface Engine {
   "driver-name": string;
-  "details-fields"?: EngineFieldOrGroup[];
+  "details-fields"?: DatabaseFieldOrGroup[];
   source: EngineSource;
   "superseded-by": string | null;
   "extra-info": {
@@ -105,7 +104,6 @@ export interface Engine {
       text: string;
     };
     providers?: DatabaseProvider[];
-    "field-groups"?: FieldGroupConfig[];
   } | null;
 }
 

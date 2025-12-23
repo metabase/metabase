@@ -42,20 +42,21 @@ export const DatabaseDetailField = ({
     ...getFieldProps(field, override, type),
   };
 
-  if (field.name === "host" && engineKey === "postgres") {
-    return (
-      <DatabaseHostnameWithProviderField
-        {...props}
-        {...getInputProps(field)}
-        nullable
-        providers={engine?.["extra-info"]?.providers}
-      />
-    );
-  }
   if (typeof type === "function") {
     const Component = type;
     return <Component {...props} />;
   }
+
+  // if (field.name === "host" && engineKey === "postgres") {
+  //   return (
+  //     <DatabaseHostnameWithProviderField
+  //       {...props}
+  //       {...getInputProps(field)}
+  //       nullable
+  //       providers={engine?.["extra-info"]?.providers}
+  //     />
+  //   );
+  // }
 
   switch (type) {
     case "password":

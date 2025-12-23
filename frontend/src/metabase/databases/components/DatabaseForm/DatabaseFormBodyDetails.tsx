@@ -1,31 +1,27 @@
+import { useFormikContext } from "formik";
+
 import type {
+  DatabaseData,
+  DatabaseFieldOrGroup,
   Engine,
   EngineField,
-  EngineFieldGroup,
-  EngineFieldOrGroup,
   EngineKey,
 } from "metabase-types/api";
 
+import {
+  isDatabaseFieldGroup,
+  isFieldVisibleAndDefined,
+} from "../../utils/schema";
 import { DatabaseDetailField } from "../DatabaseDetailField";
 
 import { getContainer } from "./container-styles";
 
 interface DatabaseFormBodyDetailsProps {
-  fields: EngineFieldOrGroup[];
+  fields: DatabaseFieldOrGroup[];
   autofocusFieldName?: string;
   engineKey: EngineKey | undefined;
   engine: Engine | undefined;
-}
-
-function isEngineFieldGroup(
-  field: EngineFieldOrGroup,
-): field is EngineFieldGroup {
-  return (
-    typeof field === "object" &&
-    field !== null &&
-    "type" in field &&
-    field.type === "group"
-  );
+  isAdvanced: boolean;
 }
 
 export function DatabaseFormBodyDetails({
@@ -33,8 +29,14 @@ export function DatabaseFormBodyDetails({
   autofocusFieldName,
   engineKey,
   engine,
+  isAdvanced,
 }: DatabaseFormBodyDetailsProps) {
+  const { values } = useFormikContext<DatabaseData>();
   function renderField(engineField: EngineField) {
+    if (!isFieldVisibleAndDefined(engineField, isAdvanced, values.details)) {
+      return null;
+    }
+
     return (
       <DatabaseDetailField
         key={engineField.name}
@@ -48,7 +50,7 @@ export function DatabaseFormBodyDetails({
   }
 
   return fields.map((field) => {
-    if (isEngineFieldGroup(field)) {
+    if (isDatabaseFieldGroup(field)) {
       const Container = getContainer(field["container-style"]);
       const key = field.fields.map((field) => field.name).join("-");
       return <Container key={key}>{field.fields.map(renderField)}</Container>;
