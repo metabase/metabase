@@ -149,6 +149,7 @@ export function TablePicker({
               query={deferredQuery}
               params={params}
               filters={filters}
+              onChange={onChange}
             />
           )}
         </Card>

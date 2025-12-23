@@ -382,6 +382,31 @@ export function TablePickerTreeTable({
     [expandedState, handleExpandedChange],
   );
 
+  const selectedRowId = useMemo(() => {
+    if (selectedItemsCount > 0) {
+      return null;
+    }
+    if (path.tableId != null) {
+      return `table:${path.tableId}`;
+    }
+    if (path.schemaName != null && path.databaseId != null) {
+      return `schema:${path.databaseId}:${path.schemaName}`;
+    }
+    if (path.databaseId != null) {
+      return `db:${path.databaseId}`;
+    }
+    return null;
+  }, [path, selectedItemsCount]);
+
+  const handleRowActivate = useCallback(
+    (row: Row<TablePickerTreeNode>) => {
+      if (!row.original.isDisabled) {
+        onChange?.(nodeToTreePath(row.original));
+      }
+    },
+    [onChange],
+  );
+
   const instance = useTreeTableInstance({
     data: treeData,
     columns,
@@ -391,6 +416,8 @@ export function TablePickerTreeTable({
     expanded: expandedState,
     onExpandedChange: handleExpandedStateChange,
     enableRowSelection: false,
+    selectedRowId,
+    onRowActivate: handleRowActivate,
   });
 
   instanceRef.current = instance;
@@ -441,12 +468,16 @@ export function TablePickerTreeTable({
         return;
       }
 
-      if (isActive && hasChildren) {
-        onToggle(row.original.nodeKey);
-      } else {
-        if (!row.getIsExpanded() && hasChildren) {
-          onToggle(row.original.nodeKey, true);
+      if (hasChildren) {
+        if (isActive) {
+          onToggle(row.original.nodeKey);
+        } else {
+          if (!row.getIsExpanded()) {
+            onToggle(row.original.nodeKey, true);
+          }
+          onChange?.(nodeToTreePath(row.original));
         }
+      } else {
         onChange?.(nodeToTreePath(row.original));
       }
     },
@@ -457,6 +488,15 @@ export function TablePickerTreeTable({
     (row: Row<TablePickerTreeNode>) => ({
       "data-testid": "tree-item",
       "data-type": row.original.type,
+      ...(row.original.databaseId != null && {
+        "data-database-id": row.original.databaseId,
+      }),
+      ...(row.original.schemaName != null && {
+        "data-schema-name": row.original.schemaName,
+      }),
+      ...(row.original.tableId != null && {
+        "data-table-id": row.original.tableId,
+      }),
     }),
     [],
   );

@@ -24,6 +24,7 @@ export const TreeTableRow = memo(function TreeTableRow<
   showExpandButtons,
   indentWidth,
   activeRowId,
+  selectedRowId,
   measureElement,
   onRowClick,
   onRowDoubleClick,
@@ -35,7 +36,9 @@ export const TreeTableRow = memo(function TreeTableRow<
   styles,
   rowProps,
 }: TreeTableRowProps<TData>) {
-  const isActive = activeRowId === row.id;
+  const isKeyboardFocused = activeRowId === row.id;
+  const isSelected = selectedRowId === row.id;
+  const isActive = isKeyboardFocused || isSelected;
   const indent = row.depth * indentWidth;
   const visibleCells = row.getVisibleCells();
 
@@ -51,7 +54,7 @@ export const TreeTableRow = memo(function TreeTableRow<
     <Flex
       {...rowProps}
       role="row"
-      tabIndex={isDisabled ? -1 : isActive ? 0 : -1}
+      tabIndex={isDisabled ? -1 : isKeyboardFocused ? 0 : -1}
       data-index={virtualItem.index}
       ref={measureElement}
       className={cx(S.root, classNames?.row, {
@@ -73,7 +76,7 @@ export const TreeTableRow = memo(function TreeTableRow<
         ...styles?.row,
       }}
       aria-expanded={row.getCanExpand() ? row.getIsExpanded() : undefined}
-      aria-selected={selectionState !== "none"}
+      aria-selected={isSelected}
       aria-level={row.depth + 1}
       onClick={(e) => onRowClick?.(row, e)}
       onDoubleClick={(e) => onRowDoubleClick?.(row, e)}

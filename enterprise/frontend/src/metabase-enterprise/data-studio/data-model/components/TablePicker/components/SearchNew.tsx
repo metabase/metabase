@@ -16,6 +16,7 @@ import type {
   RootNode,
   SchemaNode,
   TableNode,
+  TreePath,
 } from "../types";
 import { rootNode, toKey } from "../utils";
 
@@ -25,6 +26,7 @@ interface SearchNewProps {
   query: string;
   params: RouteParams;
   filters: FilterState;
+  onChange?: (path: TreePath) => void;
 }
 
 function buildResultTree(tables: Table[]): RootNode {
@@ -88,7 +90,12 @@ function buildResultTree(tables: Table[]): RootNode {
   return root;
 }
 
-export function SearchNew({ query, params, filters }: SearchNewProps) {
+export function SearchNew({
+  query,
+  params,
+  filters,
+  onChange,
+}: SearchNewProps) {
   const { resetSelection } = useSelection();
   const routeParams = parseRouteParams(params);
   const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
@@ -161,6 +168,7 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
       path={routeParams}
       isExpanded={isExpanded}
       onToggle={toggle}
+      onChange={onChange}
     />
   );
 }
