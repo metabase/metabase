@@ -28,7 +28,6 @@ import {
   getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
-  getUserIsAdmin,
 } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -45,7 +44,6 @@ type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
   return {
     currentUser: getUser(state),
-    isAdmin: getUserIsAdmin(state),
     hasDataAccess: databases.length > 0,
     bookmarks: getOrderedBookmarks(state),
   };
@@ -57,7 +55,6 @@ const mapDispatchToProps = {
 };
 
 interface Props extends MainNavbarProps {
-  isAdmin: boolean;
   currentUser: User;
   databases: Database[];
   selectedItems: SelectedItem[];
@@ -77,7 +74,6 @@ interface DatabaseProps {
 
 function MainNavbarContainer({
   bookmarks,
-  isAdmin,
   selectedItems,
   isOpen,
   currentUser,
@@ -204,7 +200,6 @@ function MainNavbarContainer({
       <MainNavbarView
         {...props}
         bookmarks={bookmarks}
-        isAdmin={isAdmin}
         isOpen={isOpen}
         collections={collectionTree}
         selectedItems={selectedItems}
