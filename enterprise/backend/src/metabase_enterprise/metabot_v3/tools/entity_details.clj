@@ -217,14 +217,13 @@
                          :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
-                                                     (lib/available-metrics table-query)))))
-           (cond->
-            with-measures? (assoc :measures (if-let [measures (lib/available-measures table-query)]
-                                              (mapv convert-measure measures)
-                                              []))
-            with-segments? (assoc :segments (if-let [segments (lib/available-segments table-query)]
-                                              (mapv convert-segment segments)
-                                              []))))))))
+                                                     (lib/available-metrics table-query))))
+                         :measures (when with-measures?
+                                     (not-empty (mapv convert-measure
+                                                      (lib/available-measures table-query))))
+                         :segments (when with-segments?
+                                     (not-empty (mapv convert-segment
+                                                      (lib/available-segments table-query))))))))))
 
 (defn related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
@@ -312,14 +311,13 @@
           :related_tables related-tables
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
-                                      (lib/available-metrics card-query)))))
-         (cond->
-          with-measures? (assoc :measures (if-let [measures (lib/available-measures card-query)]
-                                            (mapv convert-measure measures)
-                                            []))
-          with-segments? (assoc :segments (if-let [segments (lib/available-segments card-query)]
-                                            (mapv convert-segment segments)
-                                            [])))))))
+                                      (lib/available-metrics card-query))))
+          :measures (when with-measures?
+                      (not-empty (mapv convert-measure
+                                       (lib/available-measures card-query))))
+          :segments (when with-segments?
+                      (not-empty (mapv convert-segment
+                                       (lib/available-segments card-query)))))))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
