@@ -1,10 +1,11 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -44,6 +45,19 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
     key: "isNavbarOpened",
   });
   const isNavbarOpened = _isNavbarOpened !== false;
+
+  useEffect(() => {
+    function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
+      if (e.key === "." && (e.ctrlKey || e.metaKey)) {
+        setIsNavbarOpened(!isNavbarOpened);
+      }
+    }
+
+    window.addEventListener("keydown", handleSidebarKeyboardShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
+    };
+  }, [isNavbarOpened, setIsNavbarOpened]);
 
   return isLoading ? (
     <Center h="100%">
@@ -224,6 +238,12 @@ function DataStudioTab({
   );
 }
 
+const getSidebarTooltipLabel = (isNavbarOpened: boolean) => {
+  const message = isNavbarOpened ? t`Close sidebar` : t`Open sidebar`;
+  const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+  return `${message} ${shortcut}`;
+};
+
 type DataStudioNavbarToggleProps = {
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
@@ -235,31 +255,35 @@ function DataStudioNavbarToggle({
 }: DataStudioNavbarToggleProps) {
   return (
     <Flex justify="space-between" mb={2}>
-      <UnstyledButton
-        className={cx(S.toggle, {
-          [S.hoverButton]: !isNavbarOpened,
-          [S.disablePointer]: isNavbarOpened,
-        })}
-        p="0.5rem"
-        bdrs="md"
-        onClick={() => !isNavbarOpened && onNavbarToggle(true)}
-      >
-        <img src={DataStudioLogo} className={cx(S.hideOnHover, S.logo)} />
-        <FixedSizeIcon
-          name="sidebar_open"
-          className={S.showOnHover}
-          c="text-secondary"
-        />
-      </UnstyledButton>
-      {isNavbarOpened && (
+      <Tooltip label={getSidebarTooltipLabel(isNavbarOpened)}>
         <UnstyledButton
-          className={S.toggle}
+          className={cx(S.toggle, {
+            [S.hoverButton]: !isNavbarOpened,
+            [S.disablePointer]: isNavbarOpened,
+          })}
           p="0.5rem"
           bdrs="md"
-          onClick={() => onNavbarToggle(false)}
+          onClick={() => !isNavbarOpened && onNavbarToggle(true)}
         >
-          <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
+          <img src={DataStudioLogo} className={cx(S.hideOnHover, S.logo)} />
+          <FixedSizeIcon
+            name="sidebar_open"
+            className={S.showOnHover}
+            c="text-secondary"
+          />
         </UnstyledButton>
+      </Tooltip>
+      {isNavbarOpened && (
+        <Tooltip label={getSidebarTooltipLabel(isNavbarOpened)}>
+          <UnstyledButton
+            className={S.toggle}
+            p="0.5rem"
+            bdrs="md"
+            onClick={() => onNavbarToggle(false)}
+          >
+            <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
+          </UnstyledButton>
+        </Tooltip>
       )}
     </Flex>
   );
