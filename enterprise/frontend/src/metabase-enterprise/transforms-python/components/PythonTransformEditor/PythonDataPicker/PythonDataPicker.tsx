@@ -24,6 +24,7 @@ import { TableSelector } from "./TableSelector";
 import type { TableSelection } from "./types";
 import {
   getInitialTableSelections,
+  getTableIdsFromAliases,
   isConcreteTableId,
   selectionsToTableAliases,
   slugify,
@@ -77,7 +78,10 @@ export function PythonDataPicker({
     selections: TableSelection[],
   ) => {
     if (database) {
-      const tableAliases = selectionsToTableAliases(selections);
+      const tableAliases = selectionsToTableAliases(
+        selections,
+        tablesData ?? [],
+      );
       onChange(database, tableAliases, tablesData ?? []);
     }
   };
@@ -266,7 +270,7 @@ function SelectionInput({
       <TableSelector
         database={database}
         table={table}
-        selectedTableIds={Object.values(tables)}
+        selectedTableIds={getTableIdsFromAliases(tables)}
         onChange={handleTableChange}
         onRemove={onRemove}
         availableTables={availableTables}

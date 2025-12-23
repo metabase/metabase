@@ -6,7 +6,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { PythonTransformTableAliases } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  PythonTransformTableAliases,
+} from "metabase-types/api";
 
 import { KeysetColumnSelect } from "./KeysetColumnSelect";
 
@@ -29,11 +32,14 @@ export function PythonKeysetColumnSelect({
 }: PythonKeysetColumnSelectProps) {
   const metadata = useSelector(getMetadata);
 
-  // Get the first (and should be only) table ID
+  // Get the first (and should be only) table ID from the source table refs
   // Incremental transforms are only supported for single-table Python transforms
-  const tableId = useMemo(() => {
-    const tableIds = Object.values(sourceTables);
-    return tableIds.length === 1 ? tableIds[0] : null;
+  const tableId = useMemo((): ConcreteTableId | null => {
+    const refs = Object.values(sourceTables);
+    if (refs.length === 1 && refs[0].table_id) {
+      return refs[0].table_id;
+    }
+    return null;
   }, [sourceTables]);
 
   // Fetch metadata for the table

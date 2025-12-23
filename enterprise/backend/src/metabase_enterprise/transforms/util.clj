@@ -522,6 +522,60 @@
                       {:unresolved unresolved})))
     resolved))
 
+(defn resolve-source-tables-for-api
+  "Resolve source-tables to full table-ref format for API responses.
+  Always returns {:database_id :schema :table :table_id :display_name} for each entry.
+  Unlike [[normalize-source-tables]], doesn't throw for missing tables - returns nil for table_id.
+  Handles both integer IDs (old format) and map refs (new format)."
+  [source-tables]
+  (when (seq source-tables)
+    (let [int-table-ids    (into #{} (filter int?) (vals source-tables))
+          refs-needing-id  (filter missing-table-id? (vals source-tables))
+          ;; Batch lookup for integer IDs
+          int-id->table    (when (seq int-table-ids)
+                             (t2/select-pk->fn identity
+                                               [:model/Table :id :db_id :schema :name :display_name]
+                                               :id [:in int-table-ids]))
+          ;; Batch lookup for refs without table_id
+          ref-lookup       (or (batch-lookup-table-ids refs-needing-id) {})
+          ;; Collect all table_ids we have to fetch display_names
+          all-table-ids    (into #{}
+                                 (comp (filter map?)
+                                       (keep :table_id))
+                                 (vals source-tables))
+          table-id->info   (when (seq all-table-ids)
+                             (t2/select-pk->fn (fn [{:keys [display_name]}]
+                                                 {:display_name display_name})
+                                               [:model/Table :id :display_name]
+                                               :id [:in all-table-ids]))]
+      (update-vals
+       source-tables
+       (fn [v]
+         (cond
+           ;; Integer table ID - convert to full ref
+           (int? v)
+           (if-let [{:keys [db_id schema name display_name]} (int-id->table v)]
+             {:database_id  db_id
+              :schema       schema
+              :table        name
+              :table_id     v
+              :display_name display_name}
+             ;; Table was deleted - return minimal ref
+             {:table_id v})
+
+           ;; Map ref with table_id - add display_name if missing
+           (:table_id v)
+           (if-let [{:keys [display_name]} (table-id->info (:table_id v))]
+             (assoc v :display_name display_name)
+             v)
+
+           ;; Map ref without table_id - try to resolve
+           :else
+           (let [table-id (ref-lookup (source-table-ref->key v))]
+             (cond-> (assoc v :table_id table-id)
+               (and table-id (table-id->info table-id))
+               (assoc :display_name (:display_name (table-id->info table-id)))))))))))
+
 (defn- matching-timestamp?
   [job field-path {:keys [start end]}]
   (when-let [field-instant (->instant (get-in job field-path))]

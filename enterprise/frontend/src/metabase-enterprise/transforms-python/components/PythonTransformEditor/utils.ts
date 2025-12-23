@@ -1,7 +1,7 @@
 import type {
   PythonTransformTableAliases,
+  SourceTableRef,
   Table,
-  TableId,
 } from "metabase-types/api";
 
 export function updateTransformSignature(
@@ -19,12 +19,18 @@ export function updateTransformSignature(
       ? `def transform(\n${tableAliases.map((alias) => `    ${alias}`).join(",\n")},\n):`
       : signatureOneLine;
 
-  function getTableName(tableId: TableId) {
-    const table = tableInfo.find((t) => t.id === tableId);
-    if (!table) {
-      return undefined;
+  function getTableName(ref: SourceTableRef) {
+    // First try to get the full name from tableInfo using table_id
+    if (ref.table_id) {
+      const table = tableInfo.find((t) => t.id === ref.table_id);
+      if (table) {
+        return [table.db?.name, table.schema, table.name]
+          .filter(Boolean)
+          .join(".");
+      }
     }
-    return [table.db?.name, table.schema, table.name].filter(Boolean).join(".");
+    // Fall back to the ref's own info
+    return [ref.schema, ref.table].filter(Boolean).join(".");
   }
 
   if (transformRegex.test(script)) {
@@ -46,8 +52,8 @@ export function updateTransformSignature(
       const newArgsSection = tableAliases
         .map((alias) => {
           const padding = " ".repeat(maxAliasLength - alias.length);
-          const tableId = tables[alias];
-          const tableName = getTableName(tableId);
+          const ref = tables[alias];
+          const tableName = getTableName(ref);
           return `        ${alias}:${padding} DataFrame containing the data from the "${tableName}" table`;
         })
         .join("\n");
@@ -118,8 +124,8 @@ ${newSignature}
 ${tableAliases
   .map((alias) => {
     const padding = " ".repeat(maxAliasLength - alias.length);
-    const tableId = tables[alias];
-    const tableName = getTableName(tableId);
+    const ref = tables[alias];
+    const tableName = getTableName(ref);
     if (alias === tableName) {
       return `        ${alias}:${padding} DataFrame containing the data from the corresponding table`;
     }
