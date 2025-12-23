@@ -10,12 +10,14 @@ export type SuggestOptions = {
   metadata: Metadata;
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
 };
 
 import { suggestAggregations } from "./aggregations";
 import { suggestFields } from "./fields";
 import { suggestFunctions } from "./functions";
 import { suggestLiterals } from "./literals";
+import { suggestMeasures } from "./measures";
 import { suggestMetrics } from "./metrics";
 import { suggestSegments } from "./segments";
 
@@ -30,6 +32,7 @@ export function suggestions(options: SuggestOptions) {
       suggestAggregations(options),
       suggestFields(options),
       suggestMetrics(options),
+      suggestMeasures(options),
       suggestSegments(options),
     ].filter(isNotNull),
   });

@@ -104,7 +104,7 @@ describe("scenarios > data studio > measures > queries", () => {
       });
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "18,760",
+        scalarValue: "1,510,621.68",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -126,7 +126,7 @@ describe("scenarios > data studio > measures > queries", () => {
       });
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "18,760",
+        scalarValue: "1,510,621.68",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();

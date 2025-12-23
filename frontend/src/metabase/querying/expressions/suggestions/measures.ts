@@ -11,32 +11,28 @@ export type Options = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
-  availableMetrics?: Lib.MetricMetadata[];
 };
 
-export function suggestMetrics({
+export function suggestMeasures({
   expressionMode,
   query,
   stageIndex,
-  availableMetrics,
 }: Options) {
-  const metrics = (
-    availableMetrics ?? Lib.availableMetrics(query, stageIndex)
-  )?.map((metric) => {
+  const measures = Lib.availableMeasures(query, stageIndex)?.map((metric) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
     return {
-      type: "metric",
+      type: "measure",
       displayLabel: displayInfo.longDisplayName,
       label: formatIdentifier(displayInfo.longDisplayName),
-      icon: "metric" as const,
+      icon: "sum" as const,
     };
   });
 
-  if (expressionMode !== "aggregation" || metrics.length === 0) {
+  if (expressionMode !== "aggregation" || measures.length === 0) {
     return null;
   }
 
-  const matcher = fuzzyMatcher(metrics);
+  const matcher = fuzzyMatcher(measures);
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
@@ -51,7 +47,7 @@ export function suggestMetrics({
       return {
         from: token.start,
         to: token.end,
-        options: metrics,
+        options: measures,
         filter: false,
       };
     }

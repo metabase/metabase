@@ -36,6 +36,7 @@ export type ExpressionWidgetProps = {
   header?: ReactNode;
   initialExpressionClause?: DefinedClauseName | null;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   readOnly?: boolean;
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
@@ -54,6 +55,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     reportTimezone,
     header,
     availableColumns,
+    availableMetrics,
     onChangeClause,
     onClose,
     initialExpressionClause,
@@ -199,6 +201,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}
         availableColumns={availableColumns}
+        availableMetrics={availableMetrics}
         reportTimezone={reportTimezone}
         shortcuts={shortcuts}
         error={error}
