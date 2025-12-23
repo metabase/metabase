@@ -4,8 +4,11 @@ const { H } = cy;
 const isMac = Cypress.platform === "darwin";
 const metaKey = isMac ? "Meta" : "Control";
 
-const toggleInlineSQLPrompt = () =>
-  H.NativeEditor.get().realPress([metaKey, ";"]);
+const toggleInlineSQLPrompt = () => {
+  H.NativeEditor.get().focus();
+  cy.wait(250);
+  H.NativeEditor.get().realPress([metaKey, "Shift", "I"]);
+};
 
 const inlinePrompt = () => cy.findByTestId("metabot-inline-sql-prompt");
 const inlinePromptInput = () =>
@@ -66,7 +69,7 @@ describe("Native SQL generation", () => {
           expect(codeEditor).to.exist;
           expect(codeEditor.buffers).to.have.length(1);
           expect(codeEditor.buffers[0].source.language).to.eq("sql");
-          expect(codeEditor.buffers[0].source.databaseId).to.eq(1); // Sample Database
+          expect(codeEditor.buffers[0].source.database_id).to.eq(1); // Sample Database
         });
 
         // should auto-close input and show diff with accept/reject buttons
@@ -166,14 +169,12 @@ describe("Native SQL generation", () => {
 
         // change the selected database, should close the input
         rejectButton().click();
-        H.NativeEditor.focus();
         toggleInlineSQLPrompt();
         inlinePrompt().should("be.visible");
         H.NativeEditor.selectDataSource("QA Postgres12");
         inlinePrompt().should("not.exist");
 
         // open again, send a prompt, req.body.history should be empty
-        H.NativeEditor.focus();
         toggleInlineSQLPrompt();
         inlinePromptInput().type("select something");
         H.mockMetabotResponse({
@@ -193,7 +194,6 @@ describe("Native SQL generation", () => {
         cy.visit("/");
         H.startNewNativeQuestion();
         H.NativeEditor.get().should("be.visible");
-        H.NativeEditor.focus();
         toggleInlineSQLPrompt();
         inlinePromptInput().type("new prompt");
         H.mockMetabotResponse({
@@ -234,7 +234,7 @@ describe("Native SQL generation", () => {
 
 // Response helpers
 const mockCodeEditResponse = (sql: string) =>
-  `2:{"type":"code_edit","version":1,"value":{"bufferId":"qb","mode":"rewrite","value":"${sql}"}}
+  `2:{"type":"code_edit","version":1,"value":{"buffer_id":"qb","mode":"rewrite","value":"${sql}"}}
 d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
 
 const mockTextOnlyResponse = (text: string) =>

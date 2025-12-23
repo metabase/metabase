@@ -50,7 +50,9 @@ describe("TransformHeader", () => {
         screen.getByRole("link", { name: "Definition" }),
       ).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Run" })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Target" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Settings" }),
+      ).toBeInTheDocument();
     });
 
     it("should not render tabs when isEditMode is true", () => {

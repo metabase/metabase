@@ -1917,7 +1917,7 @@ describe("Issue 56913", () => {
   });
 });
 
-describe.skip("issue 45919", () => {
+describe("issue 45919", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1929,7 +1929,8 @@ describe.skip("issue 45919", () => {
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
-    H.entityPickerModal().findByText("People").click();
+    H.popover().findByText("Sample Database").click();
+    H.popover().findByText("People").click();
     H.runButtonOverlay().click();
     H.tableInteractive().should("be.visible");
     cy.findByTestId("dataset-edit-bar").button("Save").click();

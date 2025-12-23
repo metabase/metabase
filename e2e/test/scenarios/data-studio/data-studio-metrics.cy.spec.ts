@@ -97,7 +97,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric overview page displays correct data");
     H.DataStudio.Metrics.overviewPage()
@@ -129,7 +131,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
@@ -152,7 +156,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
@@ -181,7 +187,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric is loaded before archiving");
     H.DataStudio.Metrics.overviewPage()
@@ -202,7 +210,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify metric is removed from collection view");
     cy.visit("/data-studio/library");
-    cy.findByRole("table")
+    H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric")
       .should("not.exist");
 
@@ -222,7 +230,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify metric is restored in collection view");
     cy.visit("/data-studio/library");
-    cy.findByRole("table")
+    H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric")
       .should("be.visible");
   });
@@ -232,7 +240,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.overviewPage()
@@ -254,7 +264,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.overviewPage()
@@ -294,7 +306,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify both metrics appear in collection view");
     H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
-    cy.findByRole("table").within(() => {
+    H.DataStudio.Library.libraryPage().within(() => {
       cy.findByText("Trusted Orders Metric").should("be.visible");
       cy.findByText("Trusted Orders Metric - Duplicate").should("be.visible");
     });
@@ -305,7 +317,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.overviewPage()
@@ -327,7 +341,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify metric is no longer in Metrics collection");
     cy.visit("/data-studio/library");
-    cy.findByRole("table")
+    H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric")
       .should("not.exist");
   });

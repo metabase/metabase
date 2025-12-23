@@ -83,7 +83,7 @@ export const LoginAttributesWidget = ({
         <Accordion.Item value="login-attributes">
           <Accordion.Control>
             <Text fz="md">{title}</Text>
-            <Text c="text-secondary" fw="normal">
+            <Text c="text-secondary" fw="normal" fz="sm">
               {description}
             </Text>
           </Accordion.Control>

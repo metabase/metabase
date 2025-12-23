@@ -10,7 +10,7 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
 import { trackTransformCreate } from "../../analytics";
-import { CreateTransformFolderModal } from "../CreateTransformFolderModal";
+import { CreateTransformCollectionModal } from "../CreateTransformCollectionModal";
 
 import { shouldDisableItem } from "./utils";
 
@@ -19,8 +19,8 @@ export const CreateTransformMenu = () => {
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
   const [
-    isFolderModalOpened,
-    { open: openFolderModal, close: closeFolderModal },
+    isCollectionModalOpened,
+    { open: openCollectionModal, close: closeCollectionModal },
   ] = useDisclosure();
 
   const { data: databases, isLoading } = useListDatabasesQuery({
@@ -87,7 +87,7 @@ export const CreateTransformMenu = () => {
               <Menu.Divider />
               <Menu.Item
                 leftSection={<Icon name="folder" />}
-                onClick={openFolderModal}
+                onClick={openCollectionModal}
               >
                 {t`New collection`}
               </Menu.Item>
@@ -111,8 +111,8 @@ export const CreateTransformMenu = () => {
         />
       )}
 
-      {isFolderModalOpened && (
-        <CreateTransformFolderModal onClose={closeFolderModal} />
+      {isCollectionModalOpened && (
+        <CreateTransformCollectionModal onClose={closeCollectionModal} />
       )}
     </>
   );
