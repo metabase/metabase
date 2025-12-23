@@ -122,17 +122,22 @@ export const settings = {
           getIn(col, ["fingerprint", "global", "distinct-count"]),
         );
 
-        let rows;
+        let rows: DatasetColumn[];
         let columns: DatasetColumn[];
 
-        if (dimensions.length < 2) {
+        if (dimensions.length === 0) {
+          // No dimensions (breakouts), only aggregations - this is an invalid
+          // pivot table configuration that checkRenderable will catch
           columns = [];
-          rows = [first].filter(Boolean);
+          rows = [];
+        } else if (dimensions.length < 2) {
+          columns = [];
+          rows = [first];
         } else if (dimensions.length <= 3) {
-          columns = [first].filter(Boolean);
-          rows = [second, ...rest].filter(Boolean);
+          columns = [first];
+          rows = [second, ...rest];
         } else {
-          columns = [first, second].filter(Boolean);
+          columns = [first, second];
           rows = rest;
         }
         setting = _.mapObject({ rows, columns, values }, (cols) =>
