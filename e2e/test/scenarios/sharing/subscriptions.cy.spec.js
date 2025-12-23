@@ -811,7 +811,13 @@ describe("scenarios > dashboard > subscriptions", () => {
           H.sendEmailAndVisitIt();
         });
 
-        cy.log("Checks that links should not work");
+        cy.log(
+          "Links should be disabled in modular embedding and modular embedding SDK subscription emails",
+        );
+        cy.findAllByRole("table")
+          .first()
+          .findByText("Orders in a dashboard")
+          .should("exist");
         cy.findAllByRole("link").should("not.exist");
       });
     });
