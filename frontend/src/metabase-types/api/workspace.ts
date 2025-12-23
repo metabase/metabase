@@ -30,8 +30,7 @@ export type WorkspaceItem = {
 };
 
 export type CreateWorkspaceRequest = {
-  name: string;
-  database_id?: DatabaseId;
+  database_id?: DatabaseId | null;
 };
 
 export type WorkspaceListResponse = {

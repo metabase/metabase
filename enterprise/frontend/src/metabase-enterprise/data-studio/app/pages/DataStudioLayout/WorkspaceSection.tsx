@@ -18,6 +18,7 @@ import {
   Group,
   Icon,
   type IconName,
+  Loader,
   Menu,
   Skeleton,
   Stack,
@@ -47,10 +48,12 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
   const dispatch = useDispatch();
   const [isWorkspacesExpanded, setIsWorkspacesExpanded] = useState(true);
   const { pathname } = useSelector(getLocation);
-  const { data: workspacesData, isLoading } = useGetWorkspacesQuery();
+  const { data: workspacesData, isLoading: areWorkspacesLoading } =
+    useGetWorkspacesQuery();
   const { data: allowedDatabasesData, isLoading: isLoadingDatabases } =
     useGetWorkspaceAllowedDatabasesQuery();
-  const [createWorkspace] = useCreateWorkspaceMutation();
+  const [createWorkspace, { isLoading: isCreatingWorkspace }] =
+    useCreateWorkspaceMutation();
 
   const workspaces = useMemo(
     () =>
@@ -199,16 +202,21 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
             className={S.newWorkspaceButton}
             onClick={() => {
               handleCreateWorkspace({
-                name: "New workspace",
-                databaseId: defaultDatabaseId,
+                databaseId: defaultDatabaseId ?? null,
               });
             }}
-            disabled={isLoadingDatabases}
+            disabled={
+              isLoadingDatabases || isCreatingWorkspace || areWorkspacesLoading
+            }
             p="0.5rem"
             bdrs="md"
           >
             <Flex align="center" gap="xs">
-              <Icon name="add" size={16} />
+              {isCreatingWorkspace ? (
+                <Loader size="xs" />
+              ) : (
+                <Icon name="add" size={16} />
+              )}
               <Text size="sm" fw={500}>
                 {t`New workspace`}
               </Text>
@@ -218,7 +226,7 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
             gap="0.75rem"
             style={{ flex: 1, overflowY: "auto", minHeight: 0 }}
           >
-            {isLoading ? (
+            {areWorkspacesLoading ? (
               <>
                 <Skeleton height={80} radius="md" />
                 <Skeleton height={80} radius="md" />

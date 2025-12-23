@@ -88,11 +88,9 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
   };
 
   const handleCreateWorkspace = async ({
-    name,
     databaseId,
   }: {
-    name?: string;
-    databaseId?: DatabaseId;
+    databaseId?: DatabaseId | null;
   }) => {
     if (!databaseId) {
       sendErrorToast(t`Failed to create workspace, no database id`);
@@ -101,7 +99,6 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
     try {
       const workspace = await createWorkspace({
-        name: name?.trim() || t`New workspace`,
         database_id: Number(databaseId),
       }).unwrap();
 
