@@ -269,7 +269,7 @@
   []
   (:id
    (u/seek #(driver.u/supports? (:engine %) :workspace %)
-           (t2/select :model/Database {:order-by [:name]}))))
+           (t2/select :model/Database {:order-by [:id]}))))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace
