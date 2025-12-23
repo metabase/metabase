@@ -16,7 +16,7 @@ import {
 const tokenFeatures = { tenants: true, audit_app: true };
 
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {
-  describe("Tenant Collections Tab", () => {
+  describe("Shared collections Tab", () => {
     it("shows the tab when tenants are enabled", async () => {
       setup({
         tokenFeatures,
@@ -25,7 +25,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       expect(
-        await screen.findByRole("radio", { name: "Tenant Collections" }),
+        await screen.findByRole("radio", { name: "Shared collections" }),
       ).toBeInTheDocument();
     });
 
@@ -37,7 +37,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       expect(
-        screen.queryByRole("radio", { name: "Tenant Collections" }),
+        screen.queryByRole("radio", { name: "Shared collections" }),
       ).not.toBeInTheDocument();
     });
   });

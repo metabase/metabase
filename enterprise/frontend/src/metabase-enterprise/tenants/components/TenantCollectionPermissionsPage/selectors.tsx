@@ -88,7 +88,7 @@ export const getTenantCollectionsSidebar = createSelector(
   (collectionsTree, collectionId): CollectionSidebarType => {
     return {
       selectedId: collectionId,
-      title: t`Tenant Collections`,
+      title: t`Shared collections`,
       entityGroups: [collectionsTree || []],
       filterPlaceholder: t`Search for a collection`,
     };
