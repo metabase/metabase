@@ -5,7 +5,6 @@
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
-   [metabase-enterprise.workspaces.models.workspace-transform :as ws.tx]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
@@ -152,7 +151,7 @@
   [creator-id {ws-name-maybe :name
                db-id         :database_id
                provisional?  :provisional?}]
-  (let [ws-name (or ws-name-maybe (str (random-uuid)))
+  (let [ws-name (or ws-name-maybe (ws.u/generate-name))
         ws      (create-uninitialized-workspace! creator-id db-id ws-name 5)]
     (if provisional?
       ws
@@ -176,7 +175,7 @@
             transform       (t2/insert-returning-instance!
                              :model/WorkspaceTransform
                              (assoc (select-keys body [:name :description :source :target])
-                                    :ref_id (ws.tx/generate-ref-id)
+                                    :ref_id (ws.u/generate-ref-id)
                                     :creator_id creator-id
                                     :global_id global-id
                                     :workspace_id workspace-id))]

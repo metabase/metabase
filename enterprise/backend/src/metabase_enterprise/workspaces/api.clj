@@ -261,7 +261,7 @@
 
 (def ^:private CreateWorkspace
   [:map
-   [:name [:string {:min 1}]]
+   [:name {:optional true} [:string {:min 1}]]
    [:database_id {:optional true} ::ws.t/appdb-id]])
 
 (defn- first-supported-database-id
