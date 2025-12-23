@@ -24,7 +24,7 @@ import {
   useValidateTableNameMutation,
   workspaceApi,
 } from "metabase-enterprise/api";
-import { tag } from "metabase-enterprise/api/tags";
+import { idTag, listTag } from "metabase-enterprise/api/tags";
 import { useWorkspaceTransformRun } from "metabase-enterprise/data-studio/workspaces/hooks";
 import {
   deactivateSuggestedTransform,
@@ -66,7 +66,7 @@ interface Props {
   workspaceTransforms: WorkspaceTransformItem[];
   isDisabled: boolean;
   onChange: (patch: Partial<EditedTransform>) => void;
-  onOpenTransform: (transformId: number | string) => void;
+  onOpenTransform: (transform: Transform | WorkspaceTransform) => void;
   onResultsClick?: (table: OpenTable) => void;
 }
 
@@ -215,13 +215,13 @@ export const TransformTab = ({
       // Invalidate workspace transforms after creating new one
       dispatch(
         workspaceApi.util.invalidateTags([
-          tag("workspace-transforms", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          listTag("external-transforms"),
         ]),
       );
 
       // Open the newly saved transform
-      setActiveTransform(savedTransform);
-      onOpenTransform(savedTransform.id);
+      onOpenTransform(savedTransform);
 
       sendSuccessToast(t`Transform saved successfully`);
       setSaveModalOpen(false);
@@ -253,8 +253,7 @@ export const TransformTab = ({
 
     removeEditedTransform(transform.id);
     removeOpenedTransform(transform.id);
-    setActiveTransform(savedTransform);
-    onOpenTransform(savedTransform.id);
+    onOpenTransform(savedTransform);
   };
 
   const validationSchemaExtension = useTransformValidation({

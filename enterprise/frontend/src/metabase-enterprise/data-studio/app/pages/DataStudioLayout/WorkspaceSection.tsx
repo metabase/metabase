@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { h } from "@tiptap/core";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
@@ -30,11 +31,9 @@ import {
   useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,
   useDeleteWorkspaceMutation,
-  useGetWorkspaceAllowedDatabasesQuery,
   useGetWorkspacesQuery,
   useUnarchiveWorkspaceMutation,
 } from "metabase-enterprise/api/workspace";
-import { useRecentWorkspaceDatabaseId } from "metabase-enterprise/data-studio/workspaces/hooks/use-recent-workspace-database-id";
 import { TOOLTIP_OPEN_DELAY } from "metabase-enterprise/dependencies/components/DependencyGraph/constants";
 import type { Workspace, WorkspaceId } from "metabase-types/api/workspace";
 
@@ -50,8 +49,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
   const { pathname } = useSelector(getLocation);
   const { data: workspacesData, isLoading: areWorkspacesLoading } =
     useGetWorkspacesQuery();
-  const { data: allowedDatabasesData, isLoading: isLoadingDatabases } =
-    useGetWorkspaceAllowedDatabasesQuery();
   const [createWorkspace, { isLoading: isCreatingWorkspace }] =
     useCreateWorkspaceMutation();
 
@@ -71,11 +68,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     [workspacesData],
   );
 
-  const defaultDatabaseId = useRecentWorkspaceDatabaseId(
-    workspaces,
-    allowedDatabasesData?.databases,
-  );
-
   const handleOpenWorkspace = useCallback(
     (workspaceId: number) => {
       dispatch(push(Urls.dataStudioWorkspace(workspaceId)));
@@ -85,31 +77,14 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
 
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const handleCreateWorkspace = useCallback(
-    async ({
-      name,
-      databaseId,
-    }: {
-      name: string;
-      databaseId: number | null;
-    }) => {
-      if (!databaseId) {
-        sendErrorToast(t`No available databases`);
-        return;
-      }
-
-      try {
-        const workspace = await createWorkspace({
-          name,
-          database_id: databaseId,
-        }).unwrap();
-        handleOpenWorkspace(workspace.id);
-      } catch (error) {
-        sendErrorToast(t`Failed to create workspace`);
-      }
-    },
-    [createWorkspace, handleOpenWorkspace, sendErrorToast],
-  );
+  const handleCreateWorkspace = useCallback(async () => {
+    try {
+      const workspace = await createWorkspace().unwrap();
+      handleOpenWorkspace(workspace.id);
+    } catch (error) {
+      sendErrorToast(t`Failed to create workspace`);
+    }
+  }, [createWorkspace, handleOpenWorkspace, sendErrorToast]);
 
   const [archiveWorkspace] = useArchiveWorkspaceMutation();
   const [unarchiveWorkspace] = useUnarchiveWorkspaceMutation();
@@ -200,14 +175,8 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
         <>
           <UnstyledButton
             className={S.newWorkspaceButton}
-            onClick={() => {
-              handleCreateWorkspace({
-                databaseId: defaultDatabaseId ?? null,
-              });
-            }}
-            disabled={
-              isLoadingDatabases || isCreatingWorkspace || areWorkspacesLoading
-            }
+            onClick={handleCreateWorkspace}
+            disabled={isCreatingWorkspace || areWorkspacesLoading}
             p="0.5rem"
             bdrs="md"
           >

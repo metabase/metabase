@@ -15,22 +15,26 @@ const LOGS_POLLING_INTERVAL = 1000;
 
 export const SetupLog = ({ workspaceId }: SetupTabProps) => {
   const [shouldPoll, setShouldPoll] = useState(true);
-  const { data, error, isLoading } = useGetWorkspaceLogQuery(workspaceId, {
+  const {
+    data: workspace,
+    error,
+    isLoading,
+  } = useGetWorkspaceLogQuery(workspaceId, {
     pollingInterval: LOGS_POLLING_INTERVAL,
     refetchOnMountOrArgChange: true,
     skip: !shouldPoll,
   });
   useEffect(() => {
     if (
-      data?.status === "ready" ||
-      data?.status === "archived" ||
-      data?.status === "uninitialized"
+      workspace?.status === "ready" ||
+      workspace?.status === "archived" ||
+      workspace?.status === "uninitialized"
     ) {
       setShouldPoll(false);
     }
-  }, [data?.status]);
+  }, [workspace?.status]);
 
-  const logs = useMemo(() => data?.logs ?? [], [data]);
+  const logs = useMemo(() => workspace?.logs ?? [], [workspace]);
 
   if (error || isLoading) {
     return <LoadingAndGenericErrorWrapper error={error} loading={isLoading} />;
@@ -44,7 +48,9 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
       gap="sm"
       p="md"
     >
-      {logs.length === 0 && data?.status === "pending" && <Loader size="xs" />}
+      {logs.length === 0 && workspace?.status === "pending" && (
+        <Loader size="xs" />
+      )}
 
       {logs.map((log) => {
         return (
@@ -63,7 +69,7 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
         );
       })}
 
-      {data?.status === "ready" && (
+      {workspace?.status === "ready" && (
         <Group gap="xs">
           <LogIcon status="success" />
 
@@ -71,7 +77,7 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
         </Group>
       )}
 
-      {data?.status === "archived" && (
+      {workspace?.status === "archived" && (
         <Group gap="xs">
           <Icon c="text-light" name="archive" />
 
