@@ -112,6 +112,7 @@ describe("formatValue", () => {
       setup(2, { column, scale: 100 });
       expect(screen.getByText("200")).toBeInTheDocument();
     });
+
     it("should correctly parse string with initial digit", () => {
       const column = createMockColumn({
         base_type: "type/Float",
@@ -130,6 +131,7 @@ describe("formatValue", () => {
       setup(2, { column, scale: 100 });
       expect(screen.getByText("200")).toBeInTheDocument();
     });
+
     it("should correctly parse string with big integer", () => {
       const column = createMockColumn({
         base_type: "type/Float",
