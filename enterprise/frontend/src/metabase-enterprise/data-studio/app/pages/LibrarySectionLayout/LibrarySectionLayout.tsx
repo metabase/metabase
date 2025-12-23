@@ -116,6 +116,7 @@ export function LibrarySectionLayout() {
         header: t`Name`,
         enableSorting: true,
         accessorKey: "name",
+        minWidth: 600,
         cell: memo(function NameCell({ row }) {
           return (
             <EntityNameCell
