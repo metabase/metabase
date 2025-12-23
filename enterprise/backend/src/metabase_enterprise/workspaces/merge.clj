@@ -70,7 +70,8 @@
                {:op :create :global_id nil :ref_id ref_id}
                (try
                  {:global_id (:id (transforms.api/create-transform!
-                                   (select-keys ws-transform [:name :description :source :target])))}
+                                   (select-keys ws-transform [:name :description :source :target])
+                                   (:creator_id ws-transform)))}
                  (catch Throwable e
                    {:error e}))))]
 

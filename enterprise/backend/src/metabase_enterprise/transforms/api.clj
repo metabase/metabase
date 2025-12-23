@@ -114,23 +114,25 @@
   (get-transforms query-params))
 
 (defn create-transform!
-  "Create new transform in the appdb."
-  [body]
-  (let [transform (t2/with-transaction [_]
-                    (let [tag-ids (:tag_ids body)
-                          transform (t2/insert-returning-instance!
-                                     :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger])
-                                            ;; TODO: For workspace transfrom creation this user is not correct.
-                                            ;;       We should revisit this bit when working on https://linear.app/metabase/issue/BOT-691/easy-correctly-set-transformcreator-id-on-workspace-merge
-                                            :creator_id api/*current-user-id*))]
-                      ;; Add tag associations if provided
-                      (when (seq tag-ids)
-                        (transform.model/update-transform-tags! (:id transform) tag-ids))
-                      ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids :creator)))]
-    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    transform))
+  "Create new transform in the appdb.
+   Optionally accepts a creator-id to use instead of the current user (for workspace merges)."
+  ([body]
+   (create-transform! body nil))
+  ([body creator-id]
+   (let [creator-id (or creator-id api/*current-user-id*)
+         transform  (t2/with-transaction [_]
+                      (let [tag-ids   (:tag_ids body)
+                            transform (t2/insert-returning-instance!
+                                       :model/Transform
+                                       (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                              :creator_id creator-id))]
+                        ;; Add tag associations if provided
+                        (when (seq tag-ids)
+                          (transform.model/update-transform-tags! (:id transform) tag-ids))
+                        ;; Return with hydrated tag_ids
+                        (t2/hydrate transform :transform_tag_ids :creator)))]
+     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
+     transform)))
 
 ;; TODO (chris 2025/12/16) fully populate the result schema
 ;; TODO (lbrdnk 2025/12/16) relaxed result schema to unblock FE. This should be properly handled later.

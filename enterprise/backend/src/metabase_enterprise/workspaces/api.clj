@@ -617,7 +617,7 @@
    ;; Not yet calculated, see https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
    [:target_stale :boolean]
    [:workspace_id ::ws.t/appdb-id]
-   ;;[:creator_id ::ws.t/appdb-id]
+   [:creator_id [:maybe ::ws.t/appdb-id]]
    [:archived_at :any]
    [:created_at :any]
    [:updated_at :any]
@@ -662,7 +662,7 @@
    [:global_id [:maybe ::ws.t/appdb-id]]
    [:name :string]
    [:source_type [:maybe :keyword]]
-   ;[:creator_id ::ws.t/appdb-id]
+   [:creator_id [:maybe ::ws.t/appdb-id]]
    ;[:last_run :map]
    ; See https://metaboat.slack.com/archives/C099RKNLP6U/p1765205882655869?thread_ts=1765205222.888209&cid=C099RKNLP6U
    #_[:target_stale :boolean]])
@@ -677,7 +677,9 @@
   "Get all transforms in a workspace."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source] :workspace_id id {:order-by [:created_at]}))})
+  {:transforms (->> (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source :creator_id]
+                               :workspace_id id {:order-by [:created_at]})
+                    (map map-source-type))})
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
@@ -802,7 +804,7 @@
    {:keys [commit-message]
     :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
-  (let [ws               (u/prog1 (t2/select-one [:model/Workspace :id :name :archived_at] :id ws-id)
+  (let [ws               (u/prog1 (t2/select-one :model/Workspace :id ws-id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged
