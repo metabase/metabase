@@ -46,7 +46,7 @@ const FullSearchCTA = ({
     return null;
   }
 
-  const promptOtherUsersSearch =
+  const promptSearchEverything =
     !searchResults.total && showOtherUsersCollections;
 
   return (
@@ -67,7 +67,7 @@ const FullSearchCTA = ({
     >
       <Group align="center" gap={rem(4)}>
         <span>
-          {promptOtherUsersSearch
+          {promptSearchEverything
             ? t`Search everything`
             : t`View and filter all ${searchResults.total} results`}
         </span>
