@@ -7,11 +7,15 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.isolation :as isolation]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
   (:import
    (java.sql Connection Statement)))
 
 (set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmethod driver/database-supports? [:redshift :workspace] [_driver _feature _db] true)
 
 (defn- user-exists?
   "Check if a Redshift user exists."

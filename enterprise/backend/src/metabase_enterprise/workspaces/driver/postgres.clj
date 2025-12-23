@@ -5,11 +5,15 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
   (:import
    (java.sql Connection Statement)))
 
 (set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmethod driver/database-supports? [:postgres :workspace] [_driver _feature _db] true)
 
 (defn- user-exists?
   "Check if a PostgreSQL user exists. Uses pg_user which also works in Redshift."

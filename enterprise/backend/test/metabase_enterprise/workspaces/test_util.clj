@@ -16,7 +16,7 @@
   (use-fixtures :once (fn [tests]
                         ;; E.g. app-db.yml tests perorm driver tests. Workspaces are not supported on mysql.
                         ;; Following disj suppresses those runs destined for failure.
-                        (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table) :mysql)
+                        (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
                           (mt/with-premium-features [:workspaces :dependencies :transforms]
                             (search.tu/with-index-disabled
                               (tests))))))

@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase-enterprise.workspaces.util :as ws.util]
+   [metabase.driver :as driver]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -26,6 +27,9 @@
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmethod driver/database-supports? [:h2 :workspace] [_driver _feature _db] true)
 
 (defn- service-account-credentials
   "Parse ServiceAccountCredentials from database details."
