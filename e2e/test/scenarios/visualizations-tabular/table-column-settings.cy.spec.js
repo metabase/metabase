@@ -936,6 +936,63 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByTestId("TAX-hide-button").should("exist");
       });
   });
+
+  it("should respect date_style column setting for week temporal unit", () => {
+    const questionWithWeekBreakout = {
+      display: "table",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        limit: 5,
+      },
+    };
+
+    H.createQuestion(questionWithWeekBreakout, { visitQuestion: true });
+
+    // Open visualization settings
+    H.openVizSettingsSidebar();
+
+    // Click on the "Created At: Week" column to open its settings
+    H.leftSidebar().findByTestId("Created At: Week-settings-button").click();
+
+    // Change date style to M/D/YYYY
+    H.popover().findByText("Date style").click();
+    H.popover()
+      .findByText(/^1\/31\/2018/)
+      .click();
+
+    // Verify the formatting changed to numeric style
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d+\/\d+\/\d{4} – \d+\/\d+\/\d{4}/); // Format like "1/1/2025 - 1/7/2025"
+    });
+
+    // Change date style to YYYY/M/D
+    H.popover().findByText("Date style").click();
+    H.popover()
+      .findByText(/^2018\/1\/31/)
+      .click();
+
+    // Verify the formatting changed to day-first numeric style
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d{4}\/\d+\/\d+ – \d{4}\/\d+\/\d+/); // Format like "2025/1/1 - 2025/1/7"
+    });
+
+    H.popover().findByText("YYYY.M.D").click();
+    // Verify separator formatting changed
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d{4}\.\d+\.\d+ – \d{4}\.\d+\.\d+/); // Format like "2025.1.1 - 2025.1.7"
+    });
+  });
 });
 
 const showColumn = (column) => {
