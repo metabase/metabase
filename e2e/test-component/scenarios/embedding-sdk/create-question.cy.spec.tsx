@@ -12,6 +12,7 @@ import {
   createQuestion,
   entityPickerModal,
   entityPickerModalTab,
+  miniPicker,
   modal,
   popover,
 } from "e2e/support/helpers";
@@ -286,6 +287,39 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
       // The question title's header should be updated.
       getSdkRoot().contains("My Orders");
+    });
+  });
+
+  it("should show columns from joined table when there is no FK relationship (metabase#EMB-1102)", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" />
+      </Flex>,
+    );
+
+    popover().within(() => {
+      cy.findByText("Orders").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.button("Join data").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Reviews").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("ID").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Reviewer").should("be.visible");
+      cy.findByText("Custom Expression").should("be.visible");
     });
   });
 });
