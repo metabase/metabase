@@ -198,7 +198,7 @@ const TableSectionBase = ({
 
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
-      <Box className={S.header} px="lg" mt="lg">
+      <Box className={S.header}>
         <NameDescriptionInput
           description={table.description ?? ""}
           descriptionPlaceholder={t`Give this table a description`}
@@ -211,147 +211,134 @@ const TableSectionBase = ({
         />
       </Box>
 
-      <Box px="lg">
-        <Group justify="stretch" gap="sm">
+      <Group justify="stretch" gap="sm">
+        <Button
+          flex="1"
+          p="sm"
+          leftSection={
+            <Icon name={table.is_published ? "unpublish" : "publish"} />
+          }
+          onClick={handlePublishToggle}
+        >
+          {table.is_published ? t`Unpublish` : t`Publish`}
+        </Button>
+        <Button
+          flex="1"
+          leftSection={<Icon name="settings" />}
+          onClick={onSyncOptionsClick}
+        >
+          {t`Sync settings`}
+        </Button>
+        <Tooltip label={t`Dependency graph`}>
           <Button
-            flex="1"
+            component={ForwardRefLink}
+            to={dependencyGraph({
+              entry: { id: Number(table.id), type: "table" },
+            })}
             p="sm"
-            leftSection={
-              <Icon name={table.is_published ? "unpublish" : "publish"} />
-            }
-            onClick={handlePublishToggle}
-          >
-            {table.is_published ? t`Unpublish` : t`Publish`}
-          </Button>
-          <Button
-            flex="1"
-            leftSection={<Icon name="settings" />}
-            onClick={onSyncOptionsClick}
-          >
-            {t`Sync settings`}
-          </Button>
-          <Tooltip label={t`Dependency graph`}>
-            <Button
-              component={ForwardRefLink}
-              to={dependencyGraph({
-                entry: { id: Number(table.id), type: "table" },
-              })}
-              p="sm"
-              leftSection={<Icon name="network" />}
-              style={{
-                flexGrow: 0,
-                width: 40,
-              }}
-              aria-label={t`Dependency graph`}
-            />
-          </Tooltip>
-          <Box style={{ flexGrow: 0, width: 40 }}>
-            <TableLink table={table} />
-          </Box>
-        </Group>
-      </Box>
-
-      <Box px="lg">
-        <TableAttributesEditSingle table={table} />
-      </Box>
-
-      <Box px="lg">
-        <TableSectionGroup title={t`Metadata`}>
-          <TableMetadata table={table} />
-        </TableSectionGroup>
-      </Box>
-
-      {table.is_published && (
-        <Box px="lg">
-          <TableCollection table={table} />
+            leftSection={<Icon name="network" />}
+            style={{
+              flexGrow: 0,
+              width: 40,
+            }}
+            aria-label={t`Dependency graph`}
+          />
+        </Tooltip>
+        <Box style={{ flexGrow: 0, width: 40 }}>
+          <TableLink table={table} />
         </Box>
-      )}
+      </Group>
 
-      <Box px="lg">
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List mb="md">
-            <Tabs.Tab
-              value="field"
-              leftSection={<Icon name="list" />}
-            >{t`Fields`}</Tabs.Tab>
-            <Tabs.Tab
-              value="segments"
-              leftSection={<Icon name="segment2" />}
-            >{t`Segments`}</Tabs.Tab>
-          </Tabs.List>
+      <TableAttributesEditSingle table={table} />
 
-          <Tabs.Panel value="field">
-            <Stack gap="md">
-              <Group gap="md" justify="flex-start" wrap="nowrap">
-                {isUpdatingSorting && (
-                  <Loader data-testid="loading-indicator" size="xs" />
-                )}
+      <TableSectionGroup title={t`Metadata`}>
+        <TableMetadata table={table} />
+      </TableSectionGroup>
 
-                {!isSorting && hasFields && (
-                  <ResponsiveButton
-                    icon="sort_arrows"
-                    showLabel
-                    onClick={() => setIsSorting(true)}
-                  >{t`Sorting`}</ResponsiveButton>
-                )}
+      {table.is_published && <TableCollection table={table} />}
 
-                {isSorting && (
-                  <FieldOrderPicker
-                    value={table.field_order}
-                    onChange={handleFieldOrderTypeChange}
+      <Tabs value={activeTab} onChange={handleTabChange}>
+        <Tabs.List mb="md">
+          <Tabs.Tab
+            value="field"
+            leftSection={<Icon name="list" />}
+          >{t`Fields`}</Tabs.Tab>
+          <Tabs.Tab
+            value="segments"
+            leftSection={<Icon name="segment2" />}
+          >{t`Segments`}</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="field">
+          <Stack gap="md">
+            <Group gap="md" justify="flex-start" wrap="nowrap">
+              {isUpdatingSorting && (
+                <Loader data-testid="loading-indicator" size="xs" />
+              )}
+
+              {!isSorting && hasFields && (
+                <ResponsiveButton
+                  icon="sort_arrows"
+                  showLabel
+                  onClick={() => setIsSorting(true)}
+                >{t`Sorting`}</ResponsiveButton>
+              )}
+
+              {isSorting && (
+                <FieldOrderPicker
+                  value={table.field_order}
+                  onChange={handleFieldOrderTypeChange}
+                />
+              )}
+
+              {isSorting && (
+                <ResponsiveButton
+                  icon="check"
+                  showLabel
+                  onClick={() => setIsSorting(false)}
+                >{t`Done`}</ResponsiveButton>
+              )}
+            </Group>
+
+            {!hasFields && <EmptyState message={t`This table has no fields`} />}
+
+            {hasFields && (
+              <>
+                <Box
+                  style={{
+                    display: isSorting ? "block" : "none",
+                  }}
+                  aria-hidden={!isSorting}
+                >
+                  <TableSortableFieldList
+                    activeFieldId={activeFieldId}
+                    table={table}
+                    onChange={handleCustomFieldOrderChange}
                   />
-                )}
+                </Box>
 
-                {isSorting && (
-                  <ResponsiveButton
-                    icon="check"
-                    showLabel
-                    onClick={() => setIsSorting(false)}
-                  >{t`Done`}</ResponsiveButton>
-                )}
-              </Group>
+                <Box
+                  style={{
+                    display: isSorting ? "none" : "block",
+                  }}
+                  aria-hidden={isSorting}
+                >
+                  <TableFieldList
+                    table={table}
+                    activeFieldId={activeFieldId}
+                    getFieldHref={getFieldHref}
+                  />
+                </Box>
+              </>
+            )}
+          </Stack>
+        </Tabs.Panel>
 
-              {!hasFields && (
-                <EmptyState message={t`This table has no fields`} />
-              )}
+        <Tabs.Panel value="segments">
+          <SegmentList table={table} />
+        </Tabs.Panel>
+      </Tabs>
 
-              {hasFields && (
-                <>
-                  <Box
-                    style={{
-                      display: isSorting ? "block" : "none",
-                    }}
-                    aria-hidden={!isSorting}
-                  >
-                    <TableSortableFieldList
-                      activeFieldId={activeFieldId}
-                      table={table}
-                      onChange={handleCustomFieldOrderChange}
-                    />
-                  </Box>
-
-                  <Box
-                    style={{
-                      display: isSorting ? "none" : "block",
-                    }}
-                    aria-hidden={isSorting}
-                  >
-                    <TableFieldList
-                      table={table}
-                      activeFieldId={activeFieldId}
-                      getFieldHref={getFieldHref}
-                    />
-                  </Box>
-                </>
-              )}
-            </Stack>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="segments">
-            <SegmentList table={table} />
-          </Tabs.Panel>
-        </Tabs>
-      </Box>
       <CreateLibraryModal
         title={t`First, let's create your Library`}
         explanatorySentence={t`This is where published tables will go.`}

@@ -31,7 +31,7 @@ describe("DashboardSubscriptionsSidebar Premium Features", () => {
         isAdmin: true,
         [channel]: true,
         tokenFeatures,
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sharing"],
         dashcards: [
           createMockDashboardCard({
             parameter_mappings: [],
@@ -76,7 +76,7 @@ describe("DashboardSubscriptionsSidebar Premium Features", () => {
         isAdmin: true,
         [channel]: true,
         tokenFeatures,
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sharing"],
         parameters: [totalParameter, titleParameter],
         dashcards: [
           createMockDashboardCard({
@@ -157,7 +157,7 @@ describe("DashboardSubscriptionsSidebar Premium Features", () => {
         isAdmin: true,
         [channel]: true,
         tokenFeatures,
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sharing"],
         parameters: [totalParameter, titleParameter],
         dashcards: [
           createMockDashboardCard({

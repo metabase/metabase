@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { mockEmbedJsToDevServer } from "e2e/support/helpers";
 
 import {
@@ -7,6 +8,8 @@ import {
 } from "./helpers";
 
 const { H } = cy;
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
@@ -222,10 +225,56 @@ describe(suiteTitle, () => {
 
   it("toggles subscriptions for dashboard when email is set up", () => {
     H.setupSMTP();
+    const dashboardName = "Dashboard with parameter";
+
+    cy.log("Create a dashboard with a single parameter mapped to a card");
+    const parameter = {
+      id: "1b9cd9f1",
+      name: "Category",
+      slug: "category",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    const questionDetails = {
+      display: "table",
+      query: { "source-table": PRODUCTS_ID },
+    } as const;
+
+    const dashboardDetails = {
+      name: dashboardName,
+      parameters: [parameter],
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 16,
+            size_y: 8,
+            parameter_mappings: [
+              {
+                parameter_id: parameter.id,
+                card_id,
+                target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+              },
+            ],
+            visualization_settings: {},
+          },
+        ],
+      });
+    });
 
     navigateToEmbedOptionsStep({
       experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
+      resourceName: dashboardName,
       preselectSso: true,
     });
 
@@ -254,6 +303,11 @@ describe(suiteTitle, () => {
       cy.findByRole("heading", { name: "Email this dashboard" }).should(
         "be.visible",
       );
+
+      cy.log("can customize filter values");
+      cy.findByRole("heading", {
+        name: "Set filter values for when this gets sent",
+      }).should("be.visible");
 
       /**
        * It seems `should("be.visible")` above doesn't not work in iframe.

@@ -46,9 +46,13 @@
   (maybe-with-endpoint* builder endpoint))
 
 (defn- s3-configuration ^S3Configuration []
-  (-> (S3Configuration/builder)
-      (.pathStyleAccessEnabled (transforms-python.settings/python-storage-s-3-path-style-access))
-      (.build)))
+  (let [path-style-access (transforms-python.settings/python-storage-s-3-path-style-access)]
+    (-> (S3Configuration/builder)
+        (.pathStyleAccessEnabled path-style-access)
+        ;; Disable chunked encoding when using path-style access, as most S3-compatible
+        ;; services don't handle it properly
+        (.chunkedEncodingEnabled (not path-style-access))
+        (.build))))
 
 (defn- put-object-request ^PutObjectRequest [^String bucket-name ^String key]
   (-> (PutObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
