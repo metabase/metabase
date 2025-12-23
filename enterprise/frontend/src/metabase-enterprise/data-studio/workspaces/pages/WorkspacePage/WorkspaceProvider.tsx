@@ -10,6 +10,7 @@ import {
 import { checkNotNull } from "metabase/lib/types";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type {
+  Dataset,
   DraftTransformSource,
   TableId,
   Transform,
@@ -37,7 +38,7 @@ export interface EditedTransform {
 export interface Tab {
   id: string;
   name: string;
-  type: "transform" | "table";
+  type: "transform" | "table" | "preview";
 }
 
 export interface TransformTab extends Tab {
@@ -50,7 +51,14 @@ export interface TableTab extends Tab {
   table: OpenTable;
 }
 
-export type WorkspaceTab = TransformTab | TableTab;
+export interface PreviewTab extends Tab {
+  type: "preview";
+  dataset: Dataset | null;
+  transformId: number | string;
+  isLoading?: boolean;
+}
+
+export type WorkspaceTab = TransformTab | TableTab | PreviewTab;
 
 export interface WorkspaceContextValue {
   workspaceId: number;
@@ -64,7 +72,7 @@ export interface WorkspaceContextValue {
     transform: Transform | WorkspaceTransform | undefined,
   ) => void;
   setActiveTable: (table: OpenTable | undefined) => void;
-  addOpenedTab: (tab: WorkspaceTab) => void;
+  addOpenedTab: (tab: WorkspaceTab, activate?: boolean) => void;
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
@@ -77,6 +85,7 @@ export interface WorkspaceContextValue {
   removeEditedTransform: (transformId: number) => void;
   runTransforms: Set<number>;
   updateTransformState: (transform: WorkspaceTransform) => void;
+  updatePreviewTab: (tabId: string, dataset: Dataset) => void;
   hasUnsavedChanges: () => boolean;
   hasTransformEdits: (
     originalTransform: Transform | WorkspaceTransform,
@@ -183,10 +192,13 @@ export const WorkspaceProvider = ({
   );
 
   const addOpenedTab = useCallback(
-    (tab: WorkspaceTab) => {
+    (tab: WorkspaceTab, activate = true) => {
       updateWorkspaceState((state) => {
         const exists = state.openedTabs.some((item) => item.id === tab.id);
         if (exists) {
+          if (!activate) {
+            return state;
+          }
           return {
             ...state,
             activeTab: tab,
@@ -197,6 +209,12 @@ export const WorkspaceProvider = ({
         }
 
         const newOpenedTabs = [...state.openedTabs, tab];
+        if (!activate) {
+          return {
+            ...state,
+            openedTabs: newOpenedTabs,
+          };
+        }
         return {
           ...state,
           openedTabs: newOpenedTabs,
@@ -454,6 +472,36 @@ export const WorkspaceProvider = ({
     [updateWorkspaceState],
   );
 
+  const updatePreviewTab = useCallback(
+    (tabId: string, dataset: Dataset) => {
+      updateWorkspaceState((state) => {
+        const newOpenedTabs = state.openedTabs.map((tab) => {
+          if (tab.id === tabId && tab.type === "preview") {
+            return {
+              ...tab,
+              dataset,
+              isLoading: false,
+            };
+          }
+          return tab;
+        });
+
+        // Also update activeTab if it's the preview tab being updated
+        const newActiveTab =
+          state.activeTab?.id === tabId && state.activeTab?.type === "preview"
+            ? { ...state.activeTab, dataset, isLoading: false }
+            : state.activeTab;
+
+        return {
+          ...state,
+          openedTabs: newOpenedTabs,
+          activeTab: newActiveTab,
+        };
+      });
+    },
+    [updateWorkspaceState],
+  );
+
   const hasUnsavedChanges = useCallback(() => {
     return (
       currentState.editedTransforms.size > 0 ||
@@ -634,6 +682,7 @@ export const WorkspaceProvider = ({
       removeEditedTransform,
       runTransforms: currentState.runTransforms,
       updateTransformState,
+      updatePreviewTab,
       hasUnsavedChanges,
       hasTransformEdits,
       isWorkspaceExecuting,
@@ -663,6 +712,7 @@ export const WorkspaceProvider = ({
       patchEditedTransform,
       removeEditedTransform,
       updateTransformState,
+      updatePreviewTab,
       hasUnsavedChanges,
       hasTransformEdits,
       isWorkspaceExecuting,

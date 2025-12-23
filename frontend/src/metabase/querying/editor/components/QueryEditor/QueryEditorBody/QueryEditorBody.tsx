@@ -57,6 +57,7 @@ type QueryEditorBodyProps = {
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
   shouldShowLibrary?: boolean;
+  resizable?: boolean;
   onChange: (newQuestion: Question) => void;
   onRunQuery: () => Promise<void>;
   onToggleDataReference: () => void;
@@ -88,6 +89,7 @@ export function QueryEditorBody({
   shouldDisableDatabase,
   shouldDisableItem,
   shouldShowLibrary,
+  resizable = true,
   onChange,
   onRunQuery,
   onToggleDataReference,
@@ -116,15 +118,21 @@ export function QueryEditorBody({
   );
 
   const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(
-    () => ({
-      className: S.nativeResizableBox,
-      height: editorHeight,
-      resizeHandles: ["s"],
-      style: isResizing ? undefined : { transition: "height 0.25s" },
-      onResizeStart: () => setIsResizing(true),
-      onResizeStop: () => setIsResizing(false),
-    }),
-    [isResizing, editorHeight],
+    () =>
+      resizable
+        ? {
+            className: S.nativeResizableBox,
+            height: editorHeight,
+            resizeHandles: ["s"],
+            style: isResizing ? undefined : { transition: "height 0.25s" },
+            onResizeStart: () => setIsResizing(true),
+            onResizeStop: () => setIsResizing(false),
+          }
+        : {
+            height: editorHeight,
+            resizeHandles: [],
+          },
+    [isResizing, editorHeight, resizable],
   );
 
   const setQuestion = (newQuestion: Question) => {
@@ -141,6 +149,7 @@ export function QueryEditorBody({
       question={question}
       proposedQuestion={proposedQuestion}
       query={question.legacyNativeQuery()}
+      resizable={resizable}
       resizableBoxProps={resizableBoxProps}
       placeholder="SELECT * FROM TABLE_NAME"
       hasTopBar
@@ -177,8 +186,8 @@ export function QueryEditorBody({
       axis="y"
       className={S.queryResizableBox}
       height={editorHeight}
-      handle={<ResizeHandle />}
-      resizeHandles={readOnly ? [] : ["s"]}
+      handle={resizable ? <ResizeHandle /> : <span />}
+      resizeHandles={readOnly || !resizable ? [] : ["s"]}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}
     >

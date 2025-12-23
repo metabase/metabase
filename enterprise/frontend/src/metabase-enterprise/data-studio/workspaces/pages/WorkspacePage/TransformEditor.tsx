@@ -5,7 +5,7 @@ import {
   TransformQueryPageEditor,
   type TransformQueryPageEditorUiState,
 } from "metabase-enterprise/transforms/pages/TransformQueryPage/TransformQueryPage";
-import type { DraftTransformSource } from "metabase-types/api";
+import type { DatasetQuery, DraftTransformSource } from "metabase-types/api";
 
 type TransformEditorProps = {
   disabled: boolean;
@@ -14,6 +14,7 @@ type TransformEditorProps = {
   proposedSource?: DraftTransformSource;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  onRunQueryStart?: (query: DatasetQuery) => void;
 };
 
 export function TransformEditor({
@@ -23,13 +24,16 @@ export function TransformEditor({
   proposedSource,
   onAcceptProposed,
   onRejectProposed,
+  onRunQueryStart,
 }: TransformEditorProps) {
   const [uiState, setUiState] = useState(getInitialUiStateForTransform);
+
   const uiOptions = useMemo(
     () => ({
       canChangeDatabase: false,
       readOnly: disabled,
       editorHeight: 350,
+      hidePreview: true,
     }),
     [disabled],
   );
@@ -50,6 +54,7 @@ export function TransformEditor({
       setSourceAndRejectProposed={handleSourceChange}
       acceptProposed={onAcceptProposed ?? _.noop}
       rejectProposed={onRejectProposed ?? _.noop}
+      onRunQueryStart={onRunQueryStart}
     />
   );
 }

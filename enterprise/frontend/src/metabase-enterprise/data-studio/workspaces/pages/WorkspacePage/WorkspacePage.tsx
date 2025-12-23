@@ -60,10 +60,13 @@ import type {
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
+import { isWorkspaceUninitialized } from "../../utils";
+
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
 import { MetabotTab } from "./MetabotTab";
+import { PreviewTab as PreviewTabComponent } from "./PreviewTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab/TransformTab";
 import styles from "./WorkspacePage.module.css";
@@ -74,7 +77,6 @@ import {
   type WorkspaceTab,
   useWorkspace,
 } from "./WorkspaceProvider";
-import { isWorkspaceUninitialized } from "../../utils";
 
 type WorkspacePageProps = {
   params: {
@@ -118,6 +120,14 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     hasUnsavedChanges,
     unsavedTransforms,
   } = useWorkspace();
+
+  // Compute active preview from activeTab
+  const activePreview = useMemo(() => {
+    if (activeTab?.type === "preview") {
+      return activeTab;
+    }
+    return undefined;
+  }, [activeTab]);
 
   // RTK
   const id = Number(params.workspaceId);
@@ -643,7 +653,9 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                               name={
                                 tab.type === "transform"
                                   ? "pivot_table"
-                                  : "table"
+                                  : tab.type === "preview"
+                                    ? "eye"
+                                    : "table"
                               }
                               aria-hidden
                             />
@@ -731,10 +743,18 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                       setActiveTransform(transform);
                       setTab(String(transform.id));
                     }}
-                    onResultsClick={handleTableSelect}
                   />
                 )}
               </Tabs.Panel>
+
+              {activePreview && (
+                <Tabs.Panel value={activePreview.id} h="100%">
+                  <PreviewTabComponent
+                    dataset={activePreview.dataset}
+                    isLoading={activePreview.isLoading}
+                  />
+                </Tabs.Panel>
+              )}
             </Box>
           </Tabs>
         </Box>

@@ -56,4 +56,5 @@ export type QueryEditorUiOptions = {
   ) => boolean;
   editorHeight?: number;
   shouldShowLibrary?: false;
+  hidePreview?: boolean;
 };

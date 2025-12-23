@@ -1,24 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useListDatabaseSchemasQuery } from "metabase/api";
+import {
+  useLazyGetAdhocQueryQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
   useValidateTableNameMutation,
@@ -41,6 +35,7 @@ import Question from "metabase-lib/v1/Question";
 import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
+  DatasetQuery,
   DraftTransformSource,
   ExternalTransform,
   Transform,
@@ -53,7 +48,7 @@ import type {
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { SaveTransformButton } from "../SaveTransformButton";
 import { TransformEditor } from "../TransformEditor";
-import type { EditedTransform, OpenTable } from "../WorkspaceProvider";
+import type { EditedTransform, PreviewTab } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
@@ -67,7 +62,6 @@ interface Props {
   isDisabled: boolean;
   onChange: (patch: Partial<EditedTransform>) => void;
   onOpenTransform: (transform: Transform | WorkspaceTransform) => void;
-  onResultsClick?: (table: OpenTable) => void;
 }
 
 export const TransformTab = ({
@@ -79,14 +73,14 @@ export const TransformTab = ({
   isDisabled,
   onChange,
   onOpenTransform,
-  onResultsClick,
 }: Props) => {
   const {
     updateTransformState,
-    setActiveTransform,
     removeUnsavedTransform,
     removeOpenedTransform,
     removeEditedTransform,
+    addOpenedTab,
+    updatePreviewTab,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
@@ -103,17 +97,50 @@ export const TransformTab = ({
   const wsTransform = transform as WorkspaceTransform;
 
   // Run transform hook - handles run state, API calls, and error handling
-  const {
-    statusRun,
-    buttonRun,
-    isRunStatusLoading,
-    isRunning,
-    handleRun,
-    output,
-  } = useWorkspaceTransformRun({
-    workspaceId,
-    transform: wsTransform,
-  });
+  const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
+    useWorkspaceTransformRun({
+      workspaceId,
+      transform: wsTransform,
+    });
+
+  const [runAdhocQuery] = useLazyGetAdhocQueryQuery();
+  const abortRef = useRef<(() => void) | undefined>();
+
+  const handleRunQueryStart = useCallback(
+    async (query: DatasetQuery) => {
+      // abort previous query
+      abortRef.current?.();
+
+      const previewTabId = `preview-${transform.id}`;
+
+      const previewTab: PreviewTab = {
+        id: previewTabId,
+        name: t`Preview (${transform.name})`,
+        type: "preview",
+        dataset: null,
+        transformId: transform.id,
+        isLoading: true,
+      };
+      addOpenedTab(previewTab, false);
+
+      const action = runAdhocQuery(query);
+      abortRef.current = action.abort;
+
+      const { data: dataset } = await action;
+      abortRef.current = undefined;
+
+      if (dataset) {
+        updatePreviewTab(previewTabId, dataset);
+      }
+    },
+    [
+      transform.id,
+      transform.name,
+      addOpenedTab,
+      updatePreviewTab,
+      runAdhocQuery,
+    ],
+  );
 
   const normalizeSource = useCallback(
     (source: DraftTransformSource) => {
@@ -375,44 +402,18 @@ export const TransformTab = ({
           </Group>
         </Group>
 
-        <Group align="flex-end" justify="space-between" w="100%">
-          {isSaved &&
-            (isRunStatusLoading ? (
-              <Group gap="sm">
-                <Icon c="text-secondary" name="sync" />
-                <Box>{t`Loading run status...`}</Box>
-              </Group>
-            ) : (
-              <RunStatus
-                run={statusRun}
-                neverRunMessage={t`This transform hasn't been run before.`}
-              />
-            ))}
-          <Group gap="xs" align="center">
-            {output && (
-              <Tooltip label={t`View transform output`}>
-                <Flex
-                  align="center"
-                  style={{
-                    alignSelf: "flex-end",
-                    cursor: "pointer",
-                  }}
-                  onClick={() =>
-                    onResultsClick?.({
-                      tableId: output.table_id,
-                      name: output.table_name,
-                      schema: output.schema,
-                      transformId: wsTransform.id,
-                    })
-                  }
-                >
-                  <Icon name="table2" mr="xs" c="brand" />
-                  <Text c="brand">{t`Results`}</Text>
-                </Flex>
-              </Tooltip>
-            )}
-          </Group>
-        </Group>
+        {isSaved &&
+          (isRunStatusLoading ? (
+            <Group gap="sm">
+              <Icon c="text-secondary" name="sync" />
+              <Box>{t`Loading run status...`}</Box>
+            </Group>
+          ) : (
+            <RunStatus
+              run={statusRun}
+              neverRunMessage={t`This transform hasn't been run before.`}
+            />
+          ))}
       </Stack>
 
       {editedTransform && (
@@ -424,6 +425,7 @@ export const TransformTab = ({
             onAcceptProposed={handleAcceptProposed}
             onRejectProposed={handleRejectProposed}
             onChange={handleSourceChange}
+            onRunQueryStart={handleRunQueryStart}
           />
         </Box>
       )}

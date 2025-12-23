@@ -23,6 +23,7 @@ import {
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type {
   Database,
+  DatasetQuery,
   DraftTransformSource,
   Transform,
 } from "metabase-types/api";
@@ -265,6 +266,7 @@ export type TransformQueryPageEditorProps = {
   acceptProposed: () => void;
   rejectProposed: () => void;
   uiOptions?: TransformEditorProps["uiOptions"];
+  onRunQueryStart?: (query: DatasetQuery) => void;
 };
 
 export function TransformQueryPageEditor({
@@ -279,6 +281,7 @@ export function TransformQueryPageEditor({
   setUiState,
   acceptProposed,
   rejectProposed,
+  onRunQueryStart,
 }: TransformQueryPageEditorProps) {
   return source.type === "python" ? (
     <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
@@ -305,6 +308,7 @@ export function TransformQueryPageEditor({
       onChangeUiState={setUiState}
       onAcceptProposed={acceptProposed}
       onRejectProposed={rejectProposed}
+      onRunQueryStart={onRunQueryStart}
     />
   );
 }

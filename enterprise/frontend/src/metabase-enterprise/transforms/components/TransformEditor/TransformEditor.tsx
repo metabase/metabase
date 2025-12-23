@@ -10,6 +10,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type {
   Database,
+  DatasetQuery,
   QueryTransformSource,
   TransformId,
 } from "metabase-types/api";
@@ -27,6 +28,7 @@ export type TransformEditorProps = {
   onChangeUiState: (state: QueryEditorUiState) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onRunQueryStart?: (query: DatasetQuery) => void;
   readOnly?: boolean;
   transformId?: TransformId;
 };
@@ -41,6 +43,7 @@ export function TransformEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onRunQueryStart,
   readOnly,
   transformId,
 }: TransformEditorProps) {
@@ -81,6 +84,7 @@ export function TransformEditor({
       onChangeUiState={onChangeUiState}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      onRunQueryStart={onRunQueryStart}
       topBarInnerContent={
         readOnly &&
         !!transformId && (

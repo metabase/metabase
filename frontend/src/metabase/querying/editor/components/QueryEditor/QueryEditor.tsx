@@ -5,6 +5,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { DatasetQuery } from "metabase-types/api";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
 import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
@@ -26,6 +27,7 @@ type QueryEditorProps = {
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  onRunQueryStart?: (query: DatasetQuery) => void;
   topBarInnerContent?: ReactNode;
 };
 
@@ -38,6 +40,7 @@ export function QueryEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onRunQueryStart,
   topBarInnerContent,
 }: QueryEditorProps) {
   const {
@@ -72,6 +75,7 @@ export function QueryEditor({
     proposedQuery,
     onChangeQuery,
     onChangeUiState,
+    onRunQueryStart,
   });
 
   if (isLoading || error != null) {
@@ -102,6 +106,7 @@ export function QueryEditor({
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
             shouldShowLibrary={uiOptions?.shouldShowLibrary}
+            resizable={!uiOptions?.hidePreview}
             onChange={setQuestion}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
@@ -116,17 +121,19 @@ export function QueryEditor({
             editorHeight={uiOptions?.editorHeight}
             topBarInnerContent={topBarInnerContent}
           />
-          <QueryEditorVisualization
-            question={question}
-            result={result}
-            rawSeries={rawSeries}
-            isNative={isNative}
-            isRunnable={isRunnable}
-            isRunning={isRunning}
-            isResultDirty={isResultDirty}
-            onRunQuery={runQuery}
-            onCancelQuery={cancelQuery}
-          />
+          {!uiOptions?.hidePreview && (
+            <QueryEditorVisualization
+              question={question}
+              result={result}
+              rawSeries={rawSeries}
+              isNative={isNative}
+              isRunnable={isRunnable}
+              isRunning={isRunning}
+              isResultDirty={isResultDirty}
+              onRunQuery={runQuery}
+              onCancelQuery={cancelQuery}
+            />
+          )}
           {!isNative && uiOptions?.canConvertToNative && (
             <NativeQueryPreviewSidebarToggle
               isNativeQueryPreviewSidebarOpen={
