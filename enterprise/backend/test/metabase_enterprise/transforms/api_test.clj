@@ -273,35 +273,34 @@
   (testing "should be able to filter transforms by source type"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms :transforms-python}
-        (mt/with-temp [:model/Transform {native-transform-id :id}
-                       {:name   "Native Transform"
-                        :source {:type  "query"
-                                 :query {:database (mt/id)
-                                         :type     "native"
-                                         :native   {:query         "SELECT 1"
-                                                    :template-tags {}}}}
-                        :target {:type "table"
-                                 :name (str "test_native_" (u/generate-nano-id))}}
-                       :model/Transform {python-transform-id :id}
-                       {:name   "Python Transform"
-                        :source {:type          "python"
-                                 :body          "print('hello')"
-                                 :source-tables {}}
-                        :target {:type     "table"
-                                 :name     (str "test_python_" (u/generate-nano-id))
-                                 :database (mt/id)}}]
-          (testing "filter by native type"
-            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["native"])]
-              (is (some #(= native-transform-id (:id %)) results))
-              (is (not (some #(= python-transform-id (:id %)) results)))))
-          (testing "filter by python type"
-            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["python"])]
-              (is (some #(= python-transform-id (:id %)) results))
-              (is (not (some #(= native-transform-id (:id %)) results)))))
-          (testing "filter by both types returns all"
-            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["native" "python"])]
-              (is (some #(= native-transform-id (:id %)) results))
-              (is (some #(= python-transform-id (:id %)) results)))))))))
+        (let [mp (mt/metadata-provider)
+              nq (lib/native-query mp "select 1")]
+          (mt/with-temp [:model/Transform {native-transform-id :id}
+                         {:name   "Native Transform"
+                          :source {:type  "query"
+                                   :query nq}
+                          :target {:type "table"
+                                   :name (str "test_native_" (u/generate-nano-id))}}
+                         :model/Transform {python-transform-id :id}
+                         {:name   "Python Transform"
+                          :source {:type          "python"
+                                   :body          "print('hello')"
+                                   :source-tables {}}
+                          :target {:type     "table"
+                                   :name     (str "test_python_" (u/generate-nano-id))
+                                   :database (mt/id)}}]
+            (testing "filter by native type"
+              (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["native"])]
+                (is (some #(= native-transform-id (:id %)) results))
+                (is (not (some #(= python-transform-id (:id %)) results)))))
+            (testing "filter by python type"
+              (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["python"])]
+                (is (some #(= python-transform-id (:id %)) results))
+                (is (not (some #(= native-transform-id (:id %)) results)))))
+            (testing "filter by both types returns all"
+              (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["native" "python"])]
+                (is (some #(= native-transform-id (:id %)) results))
+                (is (some #(= python-transform-id (:id %)) results))))))))))
 
 (deftest filter-transforms-by-database-id-test
   (testing "should be able to filter transforms by database_id"
