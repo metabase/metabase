@@ -40,7 +40,7 @@ export function DatabaseFormBodyDetails({
         key={engineField.name}
         field={engineField}
         autoFocus={autofocusFieldName === engineField.name}
-        data-kek={engineField.name}
+        data-key={engineField.name}
         engineKey={engineKey}
         engine={engine}
       />
