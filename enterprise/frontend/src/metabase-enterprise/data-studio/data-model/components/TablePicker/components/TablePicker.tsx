@@ -7,6 +7,7 @@ import {
   Badge,
   Box,
   Button,
+  Card,
   Group,
   Icon,
   Input,
@@ -70,7 +71,7 @@ export function TablePicker({
       className={className}
       style={{ overflow: "hidden" }}
     >
-      <Group gap="sm" p="lg" pb={0}>
+      <Group gap="sm" p={0}>
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
@@ -135,7 +136,7 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      <Box mih={0} flex="1 1 auto">
+      <Card mih={0} flex="1 1 auto" withBorder px={0} pb={0}>
         {deferredQuery === "" && filtersCount === 0 ? (
           <Tree
             path={path}
@@ -145,7 +146,7 @@ export function TablePicker({
         ) : (
           <SearchNew query={deferredQuery} params={params} filters={filters} />
         )}
-      </Box>
+      </Card>
     </Stack>
   );
 }

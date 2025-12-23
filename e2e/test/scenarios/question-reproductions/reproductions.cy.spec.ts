@@ -1414,3 +1414,35 @@ describe("issue 13347", () => {
     });
   });
 });
+
+describe("issue #47005", () => {
+  beforeEach(() => {
+    H.restore();
+    H.restore("postgres-12");
+    cy.signInAsNormalUser();
+
+    H.createQuestion({
+      name: "Question A",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    }).then(({ body: question }) => {
+      H.createQuestion(
+        {
+          name: "Question B",
+          query: {
+            "source-table": "card__" + question.id,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+  });
+
+  it("should show the collection of the base question in breadcrumbs (metabase#47005)", () => {
+    cy.findAllByTestId("head-crumbs-container")
+      .filter(":contains(Question A)")
+      .findByText("Our analytics")
+      .should("be.visible");
+  });
+});

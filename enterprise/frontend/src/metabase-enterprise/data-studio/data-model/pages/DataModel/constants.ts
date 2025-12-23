@@ -3,7 +3,7 @@ import type { Column, ColumnSizeConfig } from "./types";
 export const COLUMN_CONFIG: Record<Column, ColumnSizeConfig> = {
   nav: {
     flex: "6 1 0",
-    min: 600,
+    min: 800,
     max: "100%",
   },
   table: {

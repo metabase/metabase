@@ -24,29 +24,29 @@ async function setup({ hasAdvancedPermissions = false } = {}) {
 }
 
 describe("DataPermissionsHelp", () => {
-  it("shows link to the plans page on non-enterprise instances", () => {
-    setup({ hasAdvancedPermissions: false });
+  it("shows all the sections to users with advanced permissions", () => {
+    setup({ hasAdvancedPermissions: true });
 
-    screen
-      .queryAllByText("Only available in certain Metabase plans.")
-      .every((element) => {
-        expect(element).toBeInTheDocument();
-      });
-
-    screen.getAllByText("Upgrade to Pro").every((link) => {
-      expect(link).toHaveAttribute(
-        "href",
-        "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=admin_permissions&source_plan=oss",
-      );
+    [
+      "Database ‘View data’ levels",
+      "Schema or table ‘View data’ levels",
+      "‘Create queries’ levels",
+      "Other data permissions",
+    ].forEach((text) => {
+      expect(screen.getByText(text)).toBeVisible();
     });
   });
 
-  it("does not show the link to the plans page on enterprise instances", () => {
-    setup({ hasAdvancedPermissions: true });
+  it("hides sections to users without advanced permissions", () => {
+    setup({ hasAdvancedPermissions: false });
+    expect(screen.getByText("‘Create queries’ levels")).toBeInTheDocument();
 
-    expect(
-      screen.queryByText("Only available in certain Metabase plans."),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("Upgrade to Pro")).not.toBeInTheDocument();
+    [
+      "Database ‘View data’ levels",
+      "Schema or table ‘View data’ levels",
+      "Other data permissions",
+    ].forEach((text) => {
+      expect(screen.getByText(text)).not.toBeVisible();
+    });
   });
 });
