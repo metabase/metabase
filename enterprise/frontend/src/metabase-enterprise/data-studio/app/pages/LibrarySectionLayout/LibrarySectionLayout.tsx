@@ -130,7 +130,7 @@ export function LibrarySectionLayout() {
         accessorKey: "updatedAt",
         enableSorting: true,
         sortingFn: "datetime",
-        width: 200,
+        width: "auto",
         cell: ({ getValue }) => {
           const dateValue = getValue() as string | undefined;
           return dateValue ? <DateTime value={dateValue} /> : null;

@@ -32,7 +32,7 @@ interface UseColumnSizingOptions<TData extends TreeNodeData> {
 export function needsMeasurement<TData extends TreeNodeData>(
   column: TreeTableColumnDef<TData>,
 ): boolean {
-  return column.minWidth === "auto";
+  return column.minWidth === "auto" || column.width === "auto";
 }
 
 function pickTreeRowsToMeasure<TData>(
@@ -94,7 +94,12 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
 
   const fixedWidth = columns
     .filter((col) => col.width != null)
-    .reduce((sum, col) => sum + col.width!, 0);
+    .reduce((sum, col) => {
+      if (col.width === "auto") {
+        return sum + (contentWidths[col.id] ?? MIN_COLUMN_WIDTH);
+      }
+      return sum + col.width;
+    }, 0);
 
   let remainingSpace = containerWidth - fixedWidth;
 
@@ -104,7 +109,11 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
 
   columns.forEach((column) => {
     if (column.width != null) {
-      widths[column.id] = column.width;
+      if (column.width === "auto") {
+        widths[column.id] = contentWidths[column.id] ?? MIN_COLUMN_WIDTH;
+      } else {
+        widths[column.id] = column.width;
+      }
     }
   });
 
