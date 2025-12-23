@@ -2,9 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [metabase.test.data :as data]))
+   [metabase.test :as mt]))
 
 (defn- test-string-extract
   [expr & [filter]]
@@ -13,7 +14,7 @@
         ;; filter clause is optional
         :filter      filter
         ;; To ensure stable ordering
-        :order-by    [[:asc [:field (data/id :venues :id) nil]]]
+        :order-by    [[:asc [:field (mt/id :venues :id) nil]]]
         :limit       1}
        (mt/run-mbql-query venues)
        mt/rows
@@ -37,36 +38,36 @@
 
 (deftest ^:parallel test-upper
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "RED MEDICINE" (test-string-extract [:upper [:field (data/id :venues :name) nil]])))))
+    (is (= "RED MEDICINE" (test-string-extract [:upper [:field (mt/id :venues :name) nil]])))))
 
 (deftest ^:parallel test-lower
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "red medicine" (test-string-extract [:lower [:field (data/id :venues :name) nil]])))))
+    (is (= "red medicine" (test-string-extract [:lower [:field (mt/id :venues :name) nil]])))))
 
 (deftest ^:parallel test-substring
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red" (test-string-extract [:substring [:field (data/id :venues :name) nil] 1 3])))
+    (is (= "Red" (test-string-extract [:substring [:field (mt/id :venues :name) nil] 1 3])))
     ;; 0 is normalized 1 to by the normalize/canonicalize processing
-    (is (= "Red" (test-string-extract [:substring [:field (data/id :venues :name) nil] 0 3])))
-    (is (= "ed Medicine" (test-string-extract [:substring [:field (data/id :venues :name) nil] 2])))
-    (is (= "Red Medicin" (test-string-extract [:substring [:field (data/id :venues :name) nil]
-                                               1 [:- [:length [:field (data/id :venues :name) nil]] 1]])))
-    (is (= "ne" (test-string-extract [:substring [:field (data/id :venues :name) nil]
-                                      [:- [:length [:field (data/id :venues :name) nil]] 1]])))))
+    (is (= "Red" (test-string-extract [:substring [:field (mt/id :venues :name) nil] 0 3])))
+    (is (= "ed Medicine" (test-string-extract [:substring [:field (mt/id :venues :name) nil] 2])))
+    (is (= "Red Medicin" (test-string-extract [:substring [:field (mt/id :venues :name) nil]
+                                               1 [:- [:length [:field (mt/id :venues :name) nil]] 1]])))
+    (is (= "ne" (test-string-extract [:substring [:field (mt/id :venues :name) nil]
+                                      [:- [:length [:field (mt/id :venues :name) nil]] 1]])))))
 
 (deftest ^:parallel test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))
-    (is (= "Rod Modicino" (test-string-extract [:replace [:field (data/id :venues :name) nil] "e" "o"])))
-    (is (= "Red" (test-string-extract [:replace [:field (data/id :venues :name) nil] " Medicine" ""])))
+    (is (= "Red Baloon" (test-string-extract [:replace [:field (mt/id :venues :name) nil] "Medicine" "Baloon"])))
+    (is (= "Rod Modicino" (test-string-extract [:replace [:field (mt/id :venues :name) nil] "e" "o"])))
+    (is (= "Red" (test-string-extract [:replace [:field (mt/id :venues :name) nil] " Medicine" ""])))
     (is (= "Larry's The Prime Rib" (test-string-extract
-                                    [:replace [:field (data/id :venues :name) nil] "Lawry's" "Larry's"]
-                                    [:= [:field (data/id :venues :name) nil] "Lawry's The Prime Rib"])))))
+                                    [:replace [:field (mt/id :venues :name) nil] "Lawry's" "Larry's"]
+                                    [:= [:field (mt/id :venues :name) nil] "Lawry's The Prime Rib"])))))
 
 (deftest ^:parallel test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red Medicine" (test-string-extract [:coalesce
-                                                [:field (data/id :venues :name) nil]
+                                                [:field (mt/id :venues :name) nil]
                                                 "b"])))))
 
 (deftest ^:parallel test-concat
@@ -98,16 +99,16 @@
 
 (deftest ^:parallel test-regex-match-first
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
-    (is (= "Red" (test-string-extract [:regex-match-first [:field (data/id :venues :name) nil] "(.ed+)"])))))
+    (is (= "Red" (test-string-extract [:regex-match-first [:field (mt/id :venues :name) nil] "(.ed+)"])))))
 
 (deftest ^:parallel test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "MED" (test-string-extract [:upper [:substring [:trim [:substring [:field (data/id :venues :name) nil] 4]] 1 3]])))))
+    (is (= "MED" (test-string-extract [:upper [:substring [:trim [:substring [:field (mt/id :venues :name) nil] 4]] 1 3]])))))
 
 (deftest ^:parallel test-breakout
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= ["20th Century Cafefoo" 1]
-           (->> {:expressions  {"test" [:concat [:field (data/id :venues :name) nil] "foo"]}
+           (->> {:expressions  {"test" [:concat [:field (mt/id :venues :name) nil] "foo"]}
                  :breakout     [[:expression "test"]]
                  :aggregation  [[:count]]
                  :limit        1}
@@ -119,8 +120,8 @@
   (mt/test-drivers
     (mt/normal-drivers-with-feature :expressions :regex)
     (is (= "Taylor's" (test-string-extract
-                       [:regex-match-first [:field (data/id :venues :name) nil] "^Taylor's"]
-                       [:= [:field (data/id :venues :name) nil] "Taylor's Prime Steak House"])))))
+                       [:regex-match-first [:field (mt/id :venues :name) nil] "^Taylor's"]
+                       [:= [:field (mt/id :venues :name) nil] "Taylor's Prime Steak House"])))))
 
 (deftest ^:parallel regex-extract-in-explict-join-test
   (testing "Should be able to use regex extra in an explict join (#17790)"
@@ -146,3 +147,42 @@
                      str
                      int str str str str 2.0 2.0 str]
                     (qp/process-query query))))))))))
+
+(deftest ^:parallel email-extractions-test
+  (testing "`:domain` and `:host` extractions from emails should work correctly"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex/lookaheads-and-lookbehinds)
+      (let [mp           (mt/metadata-provider)
+            people       (lib.metadata/table mp (mt/id :people))
+            people-id    (lib.metadata/field mp (mt/id :people :id))
+            people-email (lib.metadata/field mp (mt/id :people :email))
+            query        (-> (lib/query mp people)
+                             (lib/order-by people-id)
+                             (lib/limit 2)
+                             (lib/with-fields [people-id people-email]))
+            extractions  (lib/column-extractions query people-email)
+            _            (is (= #{:domain :host}
+                                (into #{} (map :tag) extractions)))
+            query        (reduce (fn [query extraction]
+                                   (lib/extract query -1 extraction))
+                                 query
+                                 extractions)]
+        (is (= [[1 "borer-hudson@yahoo.com"        "yahoo" "yahoo.com"]
+                [2 "williamson-domenica@yahoo.com" "yahoo" "yahoo.com"]]
+               (mt/formatted-rows [int str str str] (qp/process-query query))))))))
+
+(deftest ^:parallel url-extractions-test
+  (testing "`:domain`, `:subdomain`, `:host`, and `:path` extractions from URLs should work correctly"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex/lookaheads-and-lookbehinds)
+      (let [mp          (mt/metadata-provider)
+            people      (lib.metadata/table mp (mt/id :people))
+            people-id   (lib.metadata/field mp (mt/id :people :id))
+            query       (-> (lib/query mp people)
+                            (lib/order-by people-id)
+                            (lib/limit 1)
+                            (lib/with-fields [people-id])
+                            (lib/expression "Domain"    [:domain    {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
+                            (lib/expression "Subdomain" [:subdomain {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
+                            (lib/expression "Host"      [:host      {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"])
+                            (lib/expression "Path"      [:path      {:lib/uuid (str (random-uuid))} "https://x.bbc.co.uk/some/path?search=foo"]))]
+        (is (= [[1 "bbc" "x" "bbc.co.uk" "/some/path"]]
+               (mt/formatted-rows [int str str str str] (qp/process-query query))))))))
