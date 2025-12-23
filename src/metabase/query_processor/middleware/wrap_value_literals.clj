@@ -229,6 +229,11 @@
 (defn- wrap-value-literals-in-clause
   [query path clause]
   (lib.util.match/match-lite clause
+    ;; two literals
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) (y :guard raw-value?)]
+    [tag opts x y]
+
+    ;; field and literal
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard raw-value?)]
     [tag opts field (add-type-info x (*type-info* query path field))]
 
