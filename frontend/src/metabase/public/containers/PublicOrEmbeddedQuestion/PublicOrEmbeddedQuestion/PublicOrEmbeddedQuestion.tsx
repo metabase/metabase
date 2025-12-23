@@ -3,11 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { overrideRequestsForPublicOrStaticEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
+import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields } from "metabase/redux/metadata";
@@ -56,14 +55,9 @@ export const PublicOrEmbeddedQuestion = ({
 
   const canWhitelabel = useSelector(getCanWhitelabel);
 
-  useMount(async () => {
-    if (uuid) {
-      overrideRequestsForPublicOrStaticEmbeds("public");
-    } else if (token) {
-      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
-      overrideRequestsForPublicOrStaticEmbeds("static");
-    }
+  usePublicEndpoints({ uuid, token });
 
+  useMount(async () => {
     try {
       let card;
       if (token) {

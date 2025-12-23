@@ -253,7 +253,7 @@ export const overrideRequestsForGuestEmbeds = () => {
  * into public or static embeds API requests.
  */
 export const overrideRequestsForPublicOrStaticEmbeds = (
-  embedType: EmbedType,
+  embedType: "static" | "public",
 ) => {
   setupRemappingUrls(embedType);
 

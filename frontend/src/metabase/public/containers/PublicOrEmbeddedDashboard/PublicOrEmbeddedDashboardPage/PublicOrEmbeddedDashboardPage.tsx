@@ -15,8 +15,8 @@ import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
+import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
-import { usePublicDashboardEndpoints } from "../use-public-dashboard-endpoints";
 
 const PublicOrEmbeddedDashboardPageInner = ({
   location,
@@ -36,7 +36,9 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
 
   const parameterQueryParams = props.location.query;
 
-  const { dashboardId } = usePublicDashboardEndpoints(props);
+  const dashboardId = uuid || token;
+
+  usePublicEndpoints({ uuid, token });
 
   useSetEmbedFont({ location });
 
@@ -57,7 +59,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
+      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
         <DashboardContextProvider
           dashboardId={dashboardId}
           uuid={uuid}
