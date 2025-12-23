@@ -8,7 +8,7 @@
   align-items: center;
   border-left: 1px solid transparent;
 
-  @container (max-width: 40rem) {
+  @container dashboard-header-container (width < 40rem) {
     flex-direction: column;
     align-items: baseline;
   }
@@ -31,7 +31,7 @@
   align-items: center;
   color: var(--mb-color-text-dark);
 
-  @container (min-width: 40rem) {
+  @container dashboard-header-container (width >= 40rem) {
     margin-left: auto;
   }
 
