@@ -29,7 +29,19 @@ export type Transform = {
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
 
-export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
+/**
+ * Reference to a source table for Python transforms.
+ * Contains both the table reference info and the resolved table_id.
+ */
+export type SourceTableRef = {
+  database_id: DatabaseId;
+  schema: string | null;
+  table: string;
+  table_id: ConcreteTableId | null;
+  display_name?: string;
+};
+
+export type PythonTransformTableAliases = Record<string, SourceTableRef>;
 
 export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
@@ -216,9 +228,13 @@ export type ListTransformRunsResponse = {
   data: TransformRun[];
 } & PaginationResponse;
 
+/**
+ * Request type for testing Python transforms.
+ * The test API expects table IDs directly, not full refs.
+ */
 export type TestPythonTransformRequest = {
   code: string;
-  source_tables: PythonTransformTableAliases;
+  source_tables: Record<string, ConcreteTableId>;
 };
 
 export type TestPythonTransformResponse = {

@@ -465,13 +465,41 @@ const createMockNativeTransformJSON = (
 ) =>
   `{"id":${id},"name":"A number","entity_id":null,"description":"","source":{"type":"query","query":{"database":${databaseId},"type":"native","native":{"query":"${sql}","template-tags":{}}}},"target":{"type":"table","name":""},"created_at":null,"updated_at":null}`;
 
+/**
+ * Create source-tables object with SourceTableRef format.
+ * Each entry is: { database_id, schema, table, table_id, display_name }
+ */
+const createSourceTablesRef = (
+  databaseId: number,
+  sourceTables: { [alias: string]: number },
+) => {
+  const result: Record<
+    string,
+    {
+      database_id: number;
+      schema: string | null;
+      table: string;
+      table_id: number;
+    }
+  > = {};
+  for (const [alias, tableId] of Object.entries(sourceTables)) {
+    result[alias] = {
+      database_id: databaseId,
+      schema: null,
+      table: alias,
+      table_id: tableId,
+    };
+  }
+  return result;
+};
+
 const createMockPythonTransformJSON = (
   id: number | null,
   databaseId: number,
   sourceTables: { [tableName: string]: number },
   body: string,
 ) =>
-  `{"id":${id},"name":"A number","entity_id":null,"description":"","source":{"type":"python","source-database":${databaseId},"source-tables":${JSON.stringify(sourceTables)},"body":"${body}"},"target":{"type":"table","name":""},"created_at":null,"updated_at":null}`;
+  `{"id":${id},"name":"A number","entity_id":null,"description":"","source":{"type":"python","source-database":${databaseId},"source-tables":${JSON.stringify(createSourceTablesRef(databaseId, sourceTables))},"body":"${body}"},"target":{"type":"table","name":""},"created_at":null,"updated_at":null}`;
 
 const createMockTransformSuggestionResponse = (
   text: string,

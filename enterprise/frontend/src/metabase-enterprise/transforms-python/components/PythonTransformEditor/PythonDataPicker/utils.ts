@@ -2,6 +2,8 @@ import { slugify as toSlug } from "metabase/lib/formatting";
 import type {
   ConcreteTableId,
   PythonTransformTableAliases,
+  SourceTableRef,
+  Table,
   TableId,
 } from "metabase-types/api";
 
@@ -11,8 +13,8 @@ export function getInitialTableSelections(
   tables: PythonTransformTableAliases | undefined,
 ) {
   if (tables && Object.keys(tables).length > 0) {
-    return Object.entries(tables).map(([alias, tableId]) => ({
-      tableId,
+    return Object.entries(tables).map(([alias, ref]) => ({
+      tableId: ref.table_id ?? undefined,
       alias,
     }));
   }
@@ -25,18 +27,43 @@ export function getInitialTableSelections(
   ];
 }
 
+/**
+ * Convert table selections to table aliases with full table references.
+ * The tableInfo array is used to look up database_id, schema, and table name for each selected table.
+ */
 export function selectionsToTableAliases(
   selections: TableSelection[],
+  tableInfo: Table[] = [],
 ): PythonTransformTableAliases {
   const tableAliases: PythonTransformTableAliases = {};
+  const tableById = new Map(tableInfo.map((t) => [t.id, t]));
 
   for (const selection of selections) {
     const { alias, tableId } = selection;
     if (tableId !== undefined && alias !== "") {
-      tableAliases[alias] = tableId;
+      const table = tableById.get(tableId);
+      const ref: SourceTableRef = {
+        database_id: table?.db_id ?? 0,
+        schema: table?.schema ?? null,
+        table: table?.name ?? "",
+        table_id: tableId,
+        display_name: table?.display_name,
+      };
+      tableAliases[alias] = ref;
     }
   }
   return tableAliases;
+}
+
+/**
+ * Extract table IDs from table aliases for use in UI components that need just the IDs.
+ */
+export function getTableIdsFromAliases(
+  tables: PythonTransformTableAliases,
+): ConcreteTableId[] {
+  return Object.values(tables)
+    .map((ref) => ref.table_id)
+    .filter((id): id is ConcreteTableId => id !== null);
 }
 
 export function slugify(
