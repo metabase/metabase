@@ -1196,7 +1196,7 @@
                              (= "href=")))]
         (testing "test that disable_links: false will keep links in the email subscription"
           (is (true? (has-link? (assoc pulse :disable_links false)))))
-        (testing "test that disable_links: nil will disable all links in the email subscription"
+        (testing "test that disable_links: nil will keep links in the email subscription"
           (is (true? (has-link? (assoc pulse :disable_links nil)))))
         (testing "test that disable_links: true will disable all links in the email subscription"
           (is (false? (has-link? pulse))))))))
