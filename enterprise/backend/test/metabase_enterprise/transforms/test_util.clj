@@ -37,7 +37,10 @@
   (if (map? table-name-prefix)
     ;; table-name-prefix is a whole target, randomize the name
     (update table-name-prefix :name gen-table-name)
-    (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))))
+    (let [table-name (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))]
+      ;; this caught me out when testing, was annoying to debug - hence assert
+      (assert (< (count table-name) 64) "identifiers in postgres cannot be 64 or more chars, use a shorter prefix!")
+      table-name)))
 
 (defmacro with-transform-cleanup!
   "Execute `body`, then delete any new :model/Transform instances and drop tables generated from `table-gens`."
