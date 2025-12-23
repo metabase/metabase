@@ -7,6 +7,7 @@ import {
   isRepeatingEvery,
 } from "metabase/admin/performance/utils";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
+import { useSetting } from "metabase/common/hooks";
 import { getScheduleExplanation } from "metabase/lib/cron";
 import { formatNotificationScheduleDescription } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
@@ -14,7 +15,6 @@ import {
   DEFAULT_ALERT_CRON_SCHEDULE,
   DEFAULT_ALERT_SCHEDULE,
 } from "metabase/notifications/utils";
-import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, type BoxProps, Flex, Text } from "metabase/ui";
 import type {
@@ -38,9 +38,7 @@ export const NotificationSchedule = ({
   onScheduleChange,
   ...boxProps
 }: NotificationScheduleProps & BoxProps & HTMLAttributes<HTMLDivElement>) => {
-  const timezone = useSelector((state) =>
-    getSetting(state, "report-timezone-short"),
-  );
+  const timezone = useSetting("report-timezone-short");
 
   const scheduleSettings = useMemo(() => {
     return (

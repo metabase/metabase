@@ -7,9 +7,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
+import { useSetting } from "metabase/common/hooks";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
 
@@ -88,9 +88,7 @@ function DatabasesPermissionsPage({
     getGroupsDataPermissionEditor(state, { params }),
   );
 
-  const showSplitPermsMessage = useSelector((state) =>
-    getSetting(state, "show-updated-permission-banner"),
-  );
+  const showSplitPermsMessage = useSetting("show-updated-permission-banner");
 
   const { loading: isLoading } = useAsync(async () => {
     if (params.databaseId) {

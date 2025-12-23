@@ -7,10 +7,10 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Flex, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -33,9 +33,7 @@ export const CreateStructuredQuestionModal = ({
     Question.create(),
   );
 
-  const reportTimezone = useSelector((state) =>
-    getSetting(state, "report-timezone-long"),
-  );
+  const reportTimezone = useSetting("report-timezone-long");
 
   const canSave = useMemo(
     () => Lib.canSave(modifiedQuestion.query(), modifiedQuestion.type()),

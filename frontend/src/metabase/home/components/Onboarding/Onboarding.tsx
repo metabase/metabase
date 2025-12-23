@@ -18,11 +18,7 @@ import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
-import {
-  getDocsUrl,
-  getIsPaidPlan,
-  getSetting,
-} from "metabase/selectors/settings";
+import { getDocsUrl, getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getApplicationName,
@@ -94,9 +90,7 @@ export const Onboarding = () => {
     cardType: "question",
   });
 
-  const lastUsedDatabaseId = useSelector((state) =>
-    getSetting(state, "last-used-native-database-id"),
-  );
+  const lastUsedDatabaseId = useSetting("last-used-native-database-id");
 
   const newNativeQuestionUrl = Urls.newQuestion({
     DEPRECATED_RAW_MBQL_type: "native",

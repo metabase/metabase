@@ -3,14 +3,14 @@ import { jt, t } from "ttag";
 
 import { UpsellMetabaseBanner } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import type {
   DisplayTheme,
   EmbedResourceType,
   EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
-import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
+import { getUpgradeUrl } from "metabase/selectors/settings";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import {
   Divider,
@@ -72,9 +72,7 @@ export const LookAndFeelSettings = ({
     }),
   );
   const canWhitelabel = useSelector(getCanWhitelabel);
-  const availableFonts = useSelector((state) =>
-    getSetting(state, "available-fonts"),
-  );
+  const availableFonts = useSetting("available-fonts");
   const isDashboard = resourceType === "dashboard";
 
   return (

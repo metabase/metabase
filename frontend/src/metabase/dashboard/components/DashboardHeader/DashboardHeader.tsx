@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useSetting } from "metabase/common/hooks";
 import {
   cancelEditingDashboard,
   fetchDashboard,
@@ -18,7 +19,6 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
-import { getSetting } from "metabase/selectors/settings";
 import { Flex, Loader } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
@@ -50,11 +50,9 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const { dashboardBeforeEditing, parameterQueryParams, isFullscreen } =
     useDashboardContext();
 
-  const isHomepageDashboard = useSelector(
-    (state) =>
-      getSetting(state, "custom-homepage") &&
-      getSetting(state, "custom-homepage-dashboard") === dashboard?.id,
-  );
+  const isHomepageDashboard =
+    useSetting("custom-homepage") &&
+    useSetting("custom-homepage-dashboard") === dashboard?.id;
 
   const { data: collection, isLoading: isLoadingCollection } =
     useGetCollectionQuery(

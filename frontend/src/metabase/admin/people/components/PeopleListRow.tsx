@@ -4,11 +4,10 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import UserAvatar from "metabase/common/components/UserAvatar";
-import { useSelector } from "metabase/lib/redux";
+import { useSetting } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS, PLUGIN_TENANTS } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Flex,
@@ -68,9 +67,7 @@ export const PeopleListRow = ({
     [userMemberships],
   );
 
-  const isPasswordLoginEnabled = useSelector((state) =>
-    getSetting(state, enablePasswordLoginKey),
-  );
+  const isPasswordLoginEnabled = useSetting(enablePasswordLoginKey);
 
   return (
     <tr key={user.id}>
