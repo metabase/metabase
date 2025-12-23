@@ -60,14 +60,23 @@ export const SavedQuestionIntroModal = ({
       <Modal.Overlay />
       <Modal.Content p="xl" ta="center">
         <Modal.Header maw={contentWidth} mx="auto" my="md">
-          <Stack align="center">
+          <Stack align="center" justify="center" style={{ width: "100%" }}>
             <Box w="6rem">
               <img
                 src={image}
                 alt={t`Saved entity modal empty state illustration`}
               />
             </Box>
-            <Modal.Title>{title}</Modal.Title>
+            <Modal.Title
+              style={{
+                maxWidth: "100%",
+                textAlign: "center",
+                whiteSpace: "normal",
+                wordBreak: "break-word",
+              }}
+            >
+              {title}
+            </Modal.Title>
           </Stack>
         </Modal.Header>
         <Modal.Body maw={contentWidth} mx="auto" my="md">
