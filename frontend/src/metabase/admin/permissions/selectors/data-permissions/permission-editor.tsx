@@ -386,7 +386,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       const sortedGroups = groups.flat();
 
       const defaultGroup = _.find(sortedGroups, isDefaultGroup);
-      const externalUsersGroup = _.find(
+      const allTenantUsersGroup = _.find(
         sortedGroups,
         PLUGIN_TENANTS.isExternalUsersGroup,
       );
@@ -400,11 +400,15 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
 
       const entities = sortedGroups.map((group) => {
         const isAdmin = isAdminGroup(group);
-        const isExternal =
-          !!externalUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
+
+        const isAllTenantUsersGroup =
+          !!allTenantUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
 
         const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
         let groupPermissions;
+
+        const shouldUseAllExternalUsersGroup =
+          !!allTenantUsersGroup && (isAllTenantUsersGroup || isTenantGroup);
 
         if (tableId != null) {
           groupPermissions = buildFieldsPermissions(
@@ -415,10 +419,10 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
-            isExternal,
+            isAllTenantUsersGroup,
             permissions,
             originalPermissions,
-            isExternal ? externalUsersGroup : defaultGroup,
+            shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
             database,
           );
         } else if (schemaName != null) {
@@ -429,10 +433,10 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
-            isExternal,
+            isAllTenantUsersGroup,
             permissions,
             originalPermissions,
-            isExternal ? externalUsersGroup : defaultGroup,
+            shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
             database,
           );
         } else if (databaseId != null) {
@@ -442,10 +446,10 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
-            isExternal,
+            isAllTenantUsersGroup,
             permissions,
             originalPermissions,
-            isExternal ? externalUsersGroup : defaultGroup,
+            shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
             database,
             "database",
           );
