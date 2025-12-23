@@ -197,35 +197,34 @@
         {:output (str "No metric found with metric_id " metric-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
+(defn- apply-aggregation-sort-order
+  "If sort-order is specified, add an order-by clause for the last aggregation in the query."
+  [query sort-order]
+  (if sort-order
+    (let [query-aggregations (lib/aggregations query)
+          last-aggregation-idx (dec (count query-aggregations))]
+      (lib/order-by query (lib/aggregation-ref query last-aggregation-idx) sort-order))
+    query))
+
 (defn- add-aggregation
   [query aggregation]
-  ;; Check if this is a measure aggregation
-  (if-let [measure-id (:measure-id aggregation)]
-    ;; Use lib/aggregate with a measure clause
-    (let [sort-order (:sort-order aggregation)
-          measure-clause [:measure {:lib/uuid (str (random-uuid))} measure-id]
-          query-with-aggregation (lib/aggregate query measure-clause)]
-      (if sort-order
-        (let [query-aggregations (lib/aggregations query-with-aggregation)
-              last-aggregation-idx (dec (count query-aggregations))]
-          (lib/order-by query-with-aggregation (lib/aggregation-ref query-with-aggregation last-aggregation-idx) sort-order))
-        query-with-aggregation))
-    ;; Standard field-based aggregation logic
-    (let [expr     (bucketed-column aggregation)
-          sort-order (:sort-order aggregation)
-          agg-expr (case (:function aggregation)
-                     :count          (lib/count)
-                     :count-distinct (lib/distinct expr)
-                     :sum            (lib/sum expr)
-                     :min            (lib/min expr)
-                     :max            (lib/max expr)
-                     :avg            (lib/avg expr))
-          query-with-aggregation (lib/aggregate query agg-expr)]
-      (if sort-order
-        (let [query-aggregations (lib/aggregations query-with-aggregation)
-              last-aggregation-idx (dec (count query-aggregations))]
-          (lib/order-by query-with-aggregation (lib/aggregation-ref query-with-aggregation last-aggregation-idx) sort-order))
-        query-with-aggregation))))
+  (let [sort-order (:sort-order aggregation)
+        query-with-aggregation
+        (if-let [measure-id (:measure-id aggregation)]
+          ;; Measure-based aggregation
+          (let [measure-clause [:measure {:lib/uuid (str (random-uuid))} measure-id]]
+            (lib/aggregate query measure-clause))
+          ;; Field-based aggregation
+          (let [expr (bucketed-column aggregation)
+                agg-expr (case (:function aggregation)
+                           :count          (lib/count)
+                           :count-distinct (lib/distinct expr)
+                           :sum            (lib/sum expr)
+                           :min            (lib/min expr)
+                           :max            (lib/max expr)
+                           :avg            (lib/avg expr))]
+            (lib/aggregate query agg-expr)))]
+    (apply-aggregation-sort-order query-with-aggregation sort-order)))
 
 (defn- expression?
   [expr-or-column]
@@ -268,13 +267,13 @@
         measure-aggregations (filter :measure-id aggregations)
         field-aggregations (remove :measure-id aggregations)
         resolved-field-aggregations (map resolve-visible-column field-aggregations)
-        ;; Measure aggregations are passed as-is (add-aggregation will skip them with a log)
+        ;; Measure aggregations don't need column resolution - passed directly to add-aggregation
         all-aggregations (concat resolved-field-aggregations measure-aggregations)
         ;; Separate field-based filters from segment-based filters
         segment-filters (filter :segment-id filters)
         field-filters (remove :segment-id filters)
         resolved-field-filters (map resolve-visible-column field-filters)
-        ;; Segment filters are passed as-is (add-filter will skip them with a log)
+        ;; Segment filters don't need column resolution - passed directly to add-filter
         all-filters (concat resolved-field-filters segment-filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
@@ -339,13 +338,13 @@
         measure-aggregations (filter :measure-id aggregations)
         field-aggregations (remove :measure-id aggregations)
         resolved-field-aggregations (map resolve-visible-column field-aggregations)
-        ;; Measure aggregations are passed as-is (add-aggregation will skip them with a log)
+        ;; Measure aggregations don't need column resolution - passed directly to add-aggregation
         all-aggregations (concat resolved-field-aggregations measure-aggregations)
         ;; Separate field-based filters from segment-based filters
         segment-filters (filter :segment-id filters)
         field-filters (remove :segment-id filters)
         resolved-field-filters (map resolve-visible-column field-filters)
-        ;; Segment filters are passed as-is (add-filter will skip them with a log)
+        ;; Segment filters don't need column resolution - passed directly to add-filter
         all-filters (concat resolved-field-filters segment-filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
