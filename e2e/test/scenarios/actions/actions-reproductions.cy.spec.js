@@ -389,7 +389,10 @@ describe("issue 51020", () => {
       cy.button("Save").click();
       H.modal()
         .findByLabelText("Name")
-        .should("have.value", "Foo")
+        /**
+         * we need to wait until the form finally initialize. Otherwise, the initialization will could the value.
+         */
+        .should("not.have.value", "")
         .clear()
         .type("Model 51020");
       H.modal().button("Save").click();
@@ -401,10 +404,14 @@ describe("issue 51020", () => {
       H.miniPickerBrowseAll().click();
       H.entityPickerModalTab("Data").click();
       H.entityPickerModalItem(1, "Model 51020").click();
-      H.saveQuestion("Question 51020", undefined, {
-        tab: "Browse",
-        path: ["Our analytics"],
-      });
+      H.saveQuestion(
+        "Question 51020",
+        { waitForInitialName: true },
+        {
+          tab: "Browse",
+          path: ["Our analytics"],
+        },
+      );
 
       setupDashboard({
         modelName: "Model 51020",

@@ -297,6 +297,7 @@ export function saveQuestion(
     idAlias = "questionId",
     shouldReplaceOriginalQuestion = false,
     shouldSaveAsNewQuestion = false,
+    waitForInitialName = false,
   } = {},
   pickEntityOptions = null,
 ) {
@@ -318,7 +319,17 @@ export function saveQuestion(
 
   cy.findByTestId("save-question-modal").within(() => {
     if (name) {
-      cy.findByLabelText("Name").clear().type(name);
+      if (waitForInitialName) {
+        /**
+         * we need to wait until the form finally initialize. Otherwise, the initialization will could the value.
+         */
+        cy.findByLabelText("Name")
+          .should("not.have.value", "")
+          .clear()
+          .type(name);
+      } else {
+        cy.findByLabelText("Name").clear().type(name);
+      }
     }
 
     if (pickEntityOptions) {
