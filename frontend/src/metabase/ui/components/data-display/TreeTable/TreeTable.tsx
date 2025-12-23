@@ -26,6 +26,7 @@ export function TreeTable<TData extends TreeNodeData>({
   getSelectionState,
   onCheckboxClick,
   isChildrenLoading,
+  getRowProps,
   classNames,
   styles,
   ariaLabel,
@@ -69,15 +70,12 @@ export function TreeTable<TData extends TreeNodeData>({
       return;
     }
 
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        const width = entry.contentRect.width;
-        const adjustedWidth = showCheckboxes
-          ? width - CHECKBOX_COLUMN_WIDTH
-          : width;
-        setContainerWidth(adjustedWidth);
-      }
+    const observer = new ResizeObserver(() => {
+      const width = container.clientWidth - 1;
+      const adjustedWidth = showCheckboxes
+        ? width - CHECKBOX_COLUMN_WIDTH
+        : width;
+      setContainerWidth(adjustedWidth);
     });
 
     observer.observe(container);
@@ -172,6 +170,7 @@ export function TreeTable<TData extends TreeNodeData>({
                     onCheckboxClick={onCheckboxClick}
                     classNames={classNames}
                     styles={styles}
+                    rowProps={getRowProps?.(row)}
                   />
                 );
               })}

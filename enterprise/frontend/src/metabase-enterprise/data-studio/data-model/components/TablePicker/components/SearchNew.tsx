@@ -9,23 +9,17 @@ import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import type { RouteParams } from "../../../pages/DataModel/types";
-import {
-  toggleDatabaseSelection,
-  toggleSchemaSelection,
-} from "../bulk-selection.utils";
 import { useExpandedState } from "../hooks";
 import type {
   DatabaseNode,
   FilterState,
-  FlatItem,
   RootNode,
   SchemaNode,
   TableNode,
 } from "../types";
-import { isDatabaseItem, isSchemaItem, isTableNode } from "../types";
-import { flatten, rootNode, toKey } from "../utils";
+import { rootNode, toKey } from "../utils";
 
-import { TablePickerResults } from "./Results";
+import { TablePickerTreeTable } from "./TablePickerTreeTable";
 
 interface SearchNewProps {
   query: string;
@@ -95,13 +89,7 @@ function buildResultTree(tables: Table[]): RootNode {
 }
 
 export function SearchNew({ query, params, filters }: SearchNewProps) {
-  const {
-    selectedTables,
-    setSelectedTables,
-    selectedSchemas,
-    selectedDatabases,
-    resetSelection,
-  } = useSelection();
+  const { resetSelection } = useSelection();
   const routeParams = parseRouteParams(params);
   const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
     term: query,
@@ -120,8 +108,8 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
   });
   const { data: databases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
-  const { isExpanded: getIsExpanded, toggle } = useExpandedState(
-    {}, // we expand all nodes, so need to pass path to expand specific branch
+  const { isExpanded, toggle } = useExpandedState(
+    {},
     {
       defaultClosed: false,
     },
@@ -147,63 +135,9 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
     [filteredTables],
   );
 
-  // clear the selection when tables changes, to make sure that bulk operations
-  // are performed on the intended tables
   useEffect(() => {
     resetSelection();
   }, [tables, resetSelection]);
-
-  const flatItems = flatten(resultTree, {
-    isExpanded: getIsExpanded,
-    addLoadingNodes: false,
-    canFlattenSingleSchema: true,
-    selection: {
-      tables: selectedTables,
-      schemas: selectedSchemas,
-      databases: selectedDatabases,
-    },
-  });
-
-  const handleItemToggle = (item: FlatItem) => {
-    const selection = {
-      tables: selectedTables,
-      schemas: selectedSchemas,
-      databases: selectedDatabases,
-    };
-
-    if (isDatabaseItem(item)) {
-      setSelectedTables(toggleDatabaseSelection(item, selection).tables);
-    }
-
-    if (isSchemaItem(item)) {
-      setSelectedTables(toggleSchemaSelection(item, selection).tables);
-    }
-    if (isTableNode(item)) {
-      setSelectedTables((prev) => {
-        const newSet = new Set(prev);
-        if (newSet.has(item.value.tableId)) {
-          newSet.delete(item.value.tableId);
-        } else {
-          newSet.add(item.value.tableId);
-        }
-        return newSet;
-      });
-    }
-  };
-
-  const handleRangeSelect = (items: FlatItem[]) => {
-    const tableItems = items.filter((item) => isTableNode(item) && item.table);
-
-    setSelectedTables((prev) => {
-      const newSet = new Set(prev);
-      tableItems.forEach((item) => {
-        if (isTableNode(item) && item.table) {
-          newSet.add(item.table.id);
-        }
-      });
-      return newSet;
-    });
-  };
 
   if (isLoading) {
     return (
@@ -222,12 +156,11 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
   }
 
   return (
-    <TablePickerResults
-      items={flatItems}
+    <TablePickerTreeTable
+      tree={resultTree}
       path={routeParams}
-      onItemToggle={handleItemToggle}
-      toggle={toggle}
-      onRangeSelect={handleRangeSelect}
+      isExpanded={isExpanded}
+      onToggle={toggle}
     />
   );
 }

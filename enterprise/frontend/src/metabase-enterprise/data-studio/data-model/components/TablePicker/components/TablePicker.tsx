@@ -71,7 +71,7 @@ export function TablePicker({
       className={className}
       style={{ overflow: "hidden" }}
     >
-      <Group gap="sm" p={0}>
+      <Group gap="sm" p="lg" pb="md">
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
@@ -136,17 +136,23 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      <Card mih={0} flex="1 1 auto" withBorder px={0} pb={0}>
-        {deferredQuery === "" && filtersCount === 0 ? (
-          <Tree
-            path={path}
-            onChange={onChange}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
-        ) : (
-          <SearchNew query={deferredQuery} params={params} filters={filters} />
-        )}
-      </Card>
+      <Box mih={0} flex="1 1 auto" px="lg" pb="lg">
+        <Card withBorder p={0} h="100%">
+          {deferredQuery === "" && filtersCount === 0 ? (
+            <Tree
+              path={path}
+              onChange={onChange}
+              setOnUpdateCallback={setOnUpdateCallback}
+            />
+          ) : (
+            <SearchNew
+              query={deferredQuery}
+              params={params}
+              filters={filters}
+            />
+          )}
+        </Card>
+      </Box>
     </Stack>
   );
 }

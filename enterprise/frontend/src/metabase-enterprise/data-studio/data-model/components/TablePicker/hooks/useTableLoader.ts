@@ -13,9 +13,9 @@ import type { DatabaseId, SchemaName } from "metabase-types/api";
 import { UNNAMED_SCHEMA_NAME } from "../constants";
 import type {
   DatabaseNode,
+  RootNode,
   SchemaNode,
   TableNode,
-  TreeNode,
   TreePath,
 } from "../types";
 import { merge, node, rootNode, toKey } from "../utils";
@@ -39,7 +39,7 @@ export function useTableLoader() {
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
 
-  const [tree, setTree] = useState<TreeNode>(rootNode());
+  const [tree, setTree] = useState<RootNode>(rootNode());
 
   const getDatabases = useCallback(async () => {
     const response = await fetchDatabases(
@@ -170,7 +170,7 @@ export function useTableLoader() {
         getTables(path.databaseId, path.schemaName),
       ]);
 
-      const newTree: TreeNode = rootNode(
+      const newTree = rootNode(
         databases.map((database) => ({
           ...database,
           children:

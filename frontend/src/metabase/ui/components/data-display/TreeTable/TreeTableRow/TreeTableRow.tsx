@@ -30,6 +30,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   onCheckboxClick,
   classNames,
   styles,
+  rowProps,
 }: TreeTableRowProps<TData>) {
   const isActive = activeRowId === row.id;
   const indent = row.depth * indentWidth;
@@ -45,6 +46,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
 
   return (
     <Flex
+      {...rowProps}
       role="row"
       tabIndex={isDisabled ? -1 : isActive ? 0 : -1}
       data-index={virtualItem.index}

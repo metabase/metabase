@@ -198,6 +198,12 @@ export interface TreeTableProps<TData extends TreeNodeData>
    */
   isChildrenLoading?: (row: Row<TData>) => boolean;
 
+  /**
+   * Callback to get additional props for each row element.
+   * Useful for adding test IDs or custom data attributes.
+   */
+  getRowProps?: (row: Row<TData>) => Record<string, unknown>;
+
   ariaLabel?: string;
   ariaLabelledBy?: string;
 }
@@ -223,6 +229,7 @@ export interface TreeTableRowProps<TData extends TreeNodeData>
   isChildrenLoading?: boolean;
   getSelectionState?: (row: Row<TData>) => SelectionState;
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
+  rowProps?: Record<string, unknown>;
 }
 
 /**
