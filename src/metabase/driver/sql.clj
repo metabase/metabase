@@ -274,7 +274,7 @@
 (defn- lca [default-type & types]
   (let [ancestor-sets (for [t types
                             :when t]
-                        (conj (ancestors t) t))
+                        (conj (set (ancestors t)) t))
         common-ancestors (when (seq ancestor-sets)
                            (apply set/intersection ancestor-sets))]
     (if (seq common-ancestors)
