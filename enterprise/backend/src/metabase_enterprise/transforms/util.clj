@@ -462,14 +462,6 @@
     (filter #(some tag-ids (get-in % field-path)))
     identity))
 
-(defn ->type-filter-xf
-  "Returns an xform for a transform source type filter."
-  [types]
-  (if-let [types (->> types (map keyword) set not-empty)]
-    (filter (fn [transform]
-              (contains? types (keyword (:source_type transform)))))
-    identity))
-
 (defn ->database-id-filter-xf
   "Returns an xform for a transform database ID filter.
    Matches transforms where the source database OR target database matches the given database-id."

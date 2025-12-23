@@ -1262,7 +1262,34 @@
                        (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]})))))
             (testing "transform has last_run_at after that"
               (is (=? {:last_run_at some?}
-                      (mt/user-http-request :crowberto :get 200 (ws-url (:id ws1) "transform" ref-id)))))))))))
+                      (mt/user-http-request :crowberto :get 200 (ws-url (:id ws1) "transform" ref-id)))))))))
+    (testing "failed execution returns status and message"
+      (transforms.tu/with-transform-cleanup! [output-table "ws_api_fail"]
+        (ws.tu/with-workspaces! [ws {:name "Workspace for failure test"}]
+          (let [bad-transform {:name   "Bad Transform"
+                               :source {:type  "query"
+                                        :query (mt/native-query {:query "SELECT nocolumn FROM orders"})}
+                               :target {:type     "table"
+                                        :database (mt/id)
+                                        :schema   "public"
+                                        :name     output-table}}
+                ref-id        (:ref_id
+                               (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
+                isolated-name (ws.u/isolated-table-name "public" output-table)]
+            (testing "failed execution returns 200 with failed status and error message"
+              (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
+                             (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
+                (is (=? {:status     "failed"
+                         :start_time some?
+                         :end_time   some?
+                         :message    #"(?s).*nocolumn.*"
+                         :table      {:schema (:schema ws)
+                                      :name   isolated-name}}
+                        result))))
+            (testing "transform has last_run_at and last_run_message after failure"
+              (is (=? {:last_run_at      some?
+                       :last_run_message #"(?s).*nocolumn.*"}
+                      (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id)))))))))))
 
 (deftest execute-workspace-test
   (testing "POST /api/ee/workspace/:id/execute"
