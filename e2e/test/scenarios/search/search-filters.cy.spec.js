@@ -1025,7 +1025,7 @@ describe("scenarios > search", () => {
       });
 
       it("should hydrate personal collection filter", () => {
-        cy.visit("/search?q=keyword&filter_items_in_personal_collection=only");
+        cy.visit("/search?q=keyword&filter_items_in_personal_collection=all");
         cy.wait("@search");
 
         cy.findByTestId("filter_items_in_personal_collection-search-filter")
@@ -1042,7 +1042,7 @@ describe("scenarios > search", () => {
 
       it("should not be exposed to non-admins", () => {
         cy.signInAsNormalUser();
-        cy.visit("/search?q=keyword&filter_items_in_personal_collection=only");
+        cy.visit("/search?q=keyword&filter_items_in_personal_collection=all");
         cy.wait("@search");
         expectSearchResultItemNameContent({
           itemNames: ["Normal User Personal Question [keyword]"],
@@ -1070,7 +1070,7 @@ describe("scenarios > search", () => {
           .findByRole("switch")
           .should("be.checked");
 
-        cy.url().should("contain", "filter_items_in_personal_collection=only");
+        cy.url().should("contain", "filter_items_in_personal_collection=all");
 
         cy.log("Should see own and other users' items when filter is on");
         expectSearchResultItemNameContent({

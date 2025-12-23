@@ -60,9 +60,6 @@ const FullSearchCTA = ({
         query: {
           ...locationQuery,
           q: searchTerm,
-          filter_items_in_personal_collection: promptOtherUsersSearch
-            ? "only"
-            : locationQuery.filter_items_in_personal_collection,
         },
       }}
       className={S.viewAndFilterResults}
@@ -71,7 +68,7 @@ const FullSearchCTA = ({
       <Group align="center" gap={rem(4)}>
         <span>
           {promptOtherUsersSearch
-            ? t`Search all personal collections`
+            ? t`Search everything`
             : t`View and filter all ${searchResults.total} results`}
         </span>
         <Icon name="chevronright" size={12} />

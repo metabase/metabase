@@ -5,6 +5,6 @@ import type { SearchFilterToggle } from "metabase/search/types";
 export const PersonalCollectionsFilter: SearchFilterToggle = {
   label: () => t`Search all personal collections`,
   type: "toggle",
-  fromUrl: (value) => value === "only",
-  toUrl: (value: boolean) => (value ? "only" : null),
+  fromUrl: (value) => value === "all",
+  toUrl: (value: boolean) => (value ? "all" : null),
 };

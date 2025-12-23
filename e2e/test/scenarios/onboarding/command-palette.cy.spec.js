@@ -441,12 +441,8 @@ describe("command palette", () => {
     cy.realType("asdf");
     H.commandPalette()
       .get("#search-results-metadata")
-      .should("contain", "Search all personal collections")
+      .should("contain", "Search everything")
       .click();
-
-    cy.findByTestId("filter_items_in_personal_collection-search-filter")
-      .findByRole("switch")
-      .should("be.checked");
   });
 
   describe("ee", () => {
