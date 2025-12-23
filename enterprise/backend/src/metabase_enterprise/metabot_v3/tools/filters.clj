@@ -164,10 +164,13 @@
                         lib/remove-all-breakouts)
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
+        ;; Separate segment filters from field filters before column resolution
+        segment-filters (filter :segment-id filters)
+        field-filters (remove :segment-id filters)
+        resolved-field-filters (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) field-filters)
+        all-filters (concat resolved-field-filters segment-filters)
         query (as-> base-query $q
-                (reduce add-filter
-                        $q
-                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) filters))
+                (reduce add-filter $q all-filters)
                 (reduce add-breakout
                         $q
                         (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
