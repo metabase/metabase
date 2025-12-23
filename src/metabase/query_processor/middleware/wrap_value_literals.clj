@@ -44,8 +44,9 @@
   (merge
    (when (lib.util/clause-of-type? clause :field)
      (type-info-from-col (lib.walk/apply-f-for-stage-at-path lib/metadata query path clause)))
-   (let [expr-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)]
-     {:base-type      expr-type
+   (let [expr-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)
+         [_ {:keys [base-type]}] clause]
+     {:base-type      (or base-type expr-type)
       :effective-type expr-type})))
 
 ;; TODO -- parsing the temporal string literals should be moved into `auto-parse-filter-values`, it's really a
