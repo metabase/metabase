@@ -441,8 +441,7 @@ describe("command palette", () => {
     cy.realType("asdf");
     H.commandPalette()
       .get("#search-results-metadata")
-      .should("contain", "Search everything")
-      .click();
+      .should("contain", "Search everything");
   });
 
   describe("ee", () => {
