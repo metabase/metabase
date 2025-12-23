@@ -114,7 +114,9 @@ export function TreeTable<TData extends TreeNodeData>({
 
   const measureElement = useCallback(
     (element: HTMLElement | null) => {
-      virtualizer.measureElement(element);
+      if (element?.isConnected) {
+        virtualizer.measureElement(element);
+      }
     },
     [virtualizer],
   );

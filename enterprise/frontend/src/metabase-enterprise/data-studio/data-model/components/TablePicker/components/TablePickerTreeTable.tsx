@@ -310,10 +310,13 @@ export function TablePickerTreeTable({
             return null;
           }
           const ownerId = row.original.table.owner_user_id;
-          if (ownerId != null && ownerNameById.has(ownerId)) {
-            return ownerNameById.get(ownerId);
-          }
-          return row.original.table.owner_email ?? null;
+          const ownerName =
+            ownerId != null && ownerNameById.has(ownerId)
+              ? ownerNameById.get(ownerId)
+              : (row.original.table.owner_email ?? null);
+          return ownerName ? (
+            <Box data-testid="table-owner">{ownerName}</Box>
+          ) : null;
         }),
       },
       {
@@ -326,7 +329,7 @@ export function TablePickerTreeTable({
           }
           const rowCount = row.original.table.estimated_row_count;
           return rowCount != null ? (
-            <Box w="100%" ta="center">
+            <Box w="100%" ta="center" data-testid="table-expected-rows">
               {formatNumber(rowCount)}
             </Box>
           ) : null;
@@ -341,7 +344,7 @@ export function TablePickerTreeTable({
             return null;
           }
           return row.original.table.is_published ? (
-            <Box w="100%" ta="center">
+            <Box w="100%" ta="center" data-testid="table-published">
               <Icon
                 name="verified_round"
                 c="success"
