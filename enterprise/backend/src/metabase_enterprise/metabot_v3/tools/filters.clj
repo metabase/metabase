@@ -10,11 +10,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
-(defn- query->output-format
-  "Convert query to MBQL5 pMBQL format for output."
-  [query]
-  (lib/->pMBQL query))
-
 (defn- apply-filter-bucket
   [column bucket]
   (case bucket
@@ -179,7 +174,7 @@
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     :query (query->output-format query)
+     :query query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -297,7 +292,7 @@
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     :query (query->output-format query)
+     :query query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -368,7 +363,7 @@
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     :query (query->output-format query)
+     :query query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -445,7 +440,7 @@
       {:structured-output
        {:type :query
         :query-id query-id
-        :query (query->output-format query)
+        :query query
         :result-columns (into []
                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                               (lib/returned-columns query))}})
