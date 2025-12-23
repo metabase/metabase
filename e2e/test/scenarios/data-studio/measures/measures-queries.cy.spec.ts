@@ -189,6 +189,31 @@ describe("scenarios > data studio > measures > queries", () => {
 
       H.undoToast().should("contain.text", "Failed to update measure");
     });
+
+    it("should not be possible to create a measure that references a metric", () => {
+      H.createQuestion({
+        name: "OrdersCount",
+        type: "metric",
+        description: "A metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      });
+
+      H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
+      MeasureEditor.getNameInput().type(MEASURE_NAME);
+      MeasureEditor.getAggregationPlaceholder().click();
+
+      H.popover().findByText("Metrics").should("not.exist");
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.type("[OrdersCount]").blur();
+      H.popover()
+        .findByText("Unknown Aggregation, Measure or Metric: OrdersCount")
+        .should("be.visible");
+      H.popover().button("Done").should("be.disabled");
+    });
   });
 });
 
