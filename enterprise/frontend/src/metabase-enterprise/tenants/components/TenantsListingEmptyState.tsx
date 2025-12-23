@@ -25,7 +25,7 @@ export const TenantsListingEmptyState = ({
             to="/admin/permissions"
             key="permissions-link"
           >{t`permissions`}</Anchor>
-        )}. Then, create dashboards and charts for each tenant in their tenant collection.`}
+        )}. Then, create dashboards and charts for each tenant in a shared collection.`}
       </Text>
     </Box>
 
