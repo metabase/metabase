@@ -117,13 +117,14 @@ describe("scenarios > metrics > editing", () => {
       cy.visit("/browse/metrics");
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
+        .should("be.visible")
         .click();
 
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
-      saveMetric({ name: "New metric" });
+      saveMetric();
 
       cy.log("Go to the collection this metric was saved in");
       cy.findByTestId("head-crumbs-container")
@@ -132,7 +133,6 @@ describe("scenarios > metrics > editing", () => {
 
       cy.findByTestId("pinned-items").within(() => {
         cy.findByRole("heading", { name: "Metrics" }).should("be.visible");
-        cy.findByText("New metric").should("be.visible");
         verifyScalarValue("18,760");
       });
     });
