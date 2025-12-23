@@ -101,6 +101,9 @@
           input (if fields
                   (select-keys record fields)
                   record)]
+      (when (= :has-temporal-dim attr-key)
+        (log/debugf "Executing function attr %s for model=%s id=%s name=%s"
+                    attr-key (:model record) (:id record) (:name record)))
       (f input))
     (catch Exception e
       (log/warn e "Function execution failed for attribute" attr-key)
