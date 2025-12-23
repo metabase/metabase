@@ -131,6 +131,7 @@ export function LibrarySectionLayout() {
         enableSorting: true,
         sortingFn: "datetime",
         width: "auto",
+        widthPadding: 20,
         cell: ({ getValue }) => {
           const dateValue = getValue() as string | undefined;
           return dateValue ? <DateTime value={dateValue} /> : null;

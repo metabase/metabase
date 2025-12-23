@@ -47,6 +47,15 @@ describe("getMinConstraint", () => {
     // maxDepth=3, indentWidth=20 -> MIN_COLUMN_WIDTH + 60 = 110
     expect(getMinConstraint(column, 0, {}, 3, 20)).toBe(MIN_COLUMN_WIDTH + 60);
   });
+
+  it("includes widthPadding when minWidth is auto", () => {
+    const column = createColumn({
+      id: "name",
+      minWidth: "auto",
+      widthPadding: 16,
+    });
+    expect(getMinConstraint(column, 1, { name: 200 }, 0, 20)).toBe(216);
+  });
 });
 
 describe("calculateColumnWidths", () => {
@@ -112,6 +121,26 @@ describe("calculateColumnWidths", () => {
     expect(calculateColumnWidths(columns, 500, {}, 0, 20)).toEqual({
       auto: MIN_COLUMN_WIDTH,
       stretch: 450,
+    });
+  });
+
+  it("adds widthPadding to width=auto columns", () => {
+    const columns = [
+      createColumn({ id: "auto", width: "auto", widthPadding: 20 }),
+      createColumn({ id: "stretch" }),
+    ];
+    expect(calculateColumnWidths(columns, 500, { auto: 150 }, 0, 20)).toEqual({
+      auto: 170,
+      stretch: 330,
+    });
+  });
+
+  it("adds widthPadding to minWidth=auto columns", () => {
+    const columns = [
+      createColumn({ id: "auto", minWidth: "auto", widthPadding: 20 }),
+    ];
+    expect(calculateColumnWidths(columns, 200, { auto: 150 }, 0, 20)).toEqual({
+      auto: 200,
     });
   });
 });

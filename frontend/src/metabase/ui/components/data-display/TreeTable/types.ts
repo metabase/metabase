@@ -37,6 +37,8 @@ export interface TreeTableColumnSizingDef {
   minWidth?: number | "auto";
   /** Maximum width in pixels. Only applies to stretching columns. */
   maxWidth?: number;
+  /** Extra pixels added to measured width. Only applies when width or minWidth is 'auto'. */
+  widthPadding?: number;
 }
 
 /**
