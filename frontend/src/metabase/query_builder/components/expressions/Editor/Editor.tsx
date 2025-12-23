@@ -256,6 +256,7 @@ function useExpression({
   expressionIndex,
   query,
   availableColumns,
+  availableMetrics,
   metadata,
   onChange,
   initialClause,
@@ -328,6 +329,7 @@ function useExpression({
         expressionIndex,
         metadata,
         availableColumns,
+        availableMetrics,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -345,6 +347,7 @@ function useExpression({
       handleChange,
       debouncedOnChange,
       availableColumns,
+      availableMetrics,
     ],
   );
 
