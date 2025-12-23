@@ -563,16 +563,12 @@ describe("issue 55853", () => {
   it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
-    // Verify that the chart renders successfully
+    cy.log("Verify that the chart renders successfully");
     H.echartsContainer().should("be.visible");
-
-    // Check that the y-axis exists and contains percentage values
     H.echartsContainer().get("text").should("contain", "%");
-
-    // Verify that bars are rendered
     H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
 
-    // Check that axis labels and title don't overlap
+    cy.log("Check that axis labels and title don't overlap");
     H.echartsContainer()
       .get("text")
       .then(($texts) => {
@@ -589,10 +585,10 @@ describe("issue 55853", () => {
           }
         });
 
-        // Verify we have percentage labels
+        cy.log("Verify we have percentage labels");
         expect(percentTexts.length).to.be.greaterThan(0);
 
-        // Check that axis labels and title don't overlap
+        cy.log("Check that axis labels and title don't overlap");
         if (axisTitle.length > 0 && percentTexts.length > 0) {
           const titleRect = axisTitle[0].element.getBoundingClientRect();
 
@@ -607,7 +603,9 @@ describe("issue 55853", () => {
         }
       });
 
-    // Verify tooltips show correct percentage values (not incorrectly rounded)
+    cy.log(
+      "Verify tooltips show correct percentage values (not incorrectly rounded)",
+    );
     H.chartPathWithFillColor("#88BF4D").first().realHover();
     H.assertEChartsTooltip({
       header: "Category A",

@@ -130,9 +130,7 @@ const getYAxisTicksWidth = (
       settings.column?.(axisModel.column).number_style === "percent";
 
     let value = rawValue;
-    // Don't transform percentage values before formatting, as the formatter
-    // will handle the conversion correctly. roundToHundredth would incorrectly
-    // change very small values (e.g., 0.0001 -> 0.01) leading to wrong measurements.
+
     if (!isPercent && !areDecimalTicksExpected) {
       value = Math.round(rawValue);
     }
