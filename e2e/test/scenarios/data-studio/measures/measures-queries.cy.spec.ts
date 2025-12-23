@@ -19,18 +19,17 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should create a measure with an aggregation without columns", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "18,760",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Count of rows").click();
         },
       });
+      verifyScalarValue("18,760");
     });
 
     it("should create a measure with with a column from the main data source", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "1,510,621.68",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().within(() => {
@@ -39,12 +38,12 @@ describe("scenarios > data studio > measures > queries", () => {
           });
         },
       });
+      verifyScalarValue("1,510,621.68");
     });
 
     it("should create a measure with with a column from the main data source using offset", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        rowValues: [["April 2022"], ["May 2022", "52.76"]],
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -54,12 +53,12 @@ describe("scenarios > data studio > measures > queries", () => {
         },
         addBreakout: true,
       });
+      verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
     });
 
     it("should create a measure with a column from an implicit join", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "55.69",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().within(() => {
@@ -69,12 +68,12 @@ describe("scenarios > data studio > measures > queries", () => {
           });
         },
       });
+      verifyScalarValue("55.69");
     });
 
     it("should create a measure with a column from an implicit join using offset", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        rowValues: [["April 2022"], ["May 2022", "49.54"]],
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -86,12 +85,12 @@ describe("scenarios > data studio > measures > queries", () => {
         },
         addBreakout: true,
       });
+      verifyRowValues([["April 2022"], ["May 2022", "49.54"]]);
     });
 
     it("should create a measure with a custom aggregation expression", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "18,867",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -102,6 +101,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      verifyScalarValue("18,867");
     });
 
     it("should create a measure based on a segment", () => {
@@ -115,7 +115,6 @@ describe("scenarios > data studio > measures > queries", () => {
       });
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "13,005",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -124,6 +123,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      verifyScalarValue("13,005");
     });
 
     it("should create a measure based on another measure with an identity expression", () => {
@@ -137,7 +137,6 @@ describe("scenarios > data studio > measures > queries", () => {
       });
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "1,510,621.68",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -146,6 +145,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      verifyScalarValue("1,510,621.68");
     });
 
     it("should create a measure based on another measure", () => {
@@ -159,7 +159,6 @@ describe("scenarios > data studio > measures > queries", () => {
       });
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "1,510,621",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -168,6 +167,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      verifyScalarValue("1,510,621.68");
     });
 
     it("should create a measure based on another measure with an identity expression", () => {
@@ -181,7 +181,6 @@ describe("scenarios > data studio > measures > queries", () => {
       });
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "1,510,621.68",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -190,6 +189,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      verifyScalarValue("1,510,621.68");
     });
 
     it("should not be possible to create a measure that references itself", () => {
@@ -241,7 +241,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to create measures with filters like CountIf", () => {
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "18,758",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -250,6 +249,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      verifyScalarValue("18,758");
     });
 
     it("should be possible to create measures with filters like CountIf based on segments", () => {
@@ -268,7 +268,6 @@ describe("scenarios > data studio > measures > queries", () => {
 
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "18,758",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -277,6 +276,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      verifyScalarValue("18,758");
     });
 
     it("should be possible to create measures with filters like based on segments that are nested", () => {
@@ -312,7 +312,6 @@ describe("scenarios > data studio > measures > queries", () => {
 
       verifyNewMeasure({
         tableId: ORDERS_ID,
-        scalarValue: "18,759",
         createQuery: () => {
           MeasureEditor.getAggregationPlaceholder().click();
           H.popover().findByText("Custom Expression").click();
@@ -321,6 +320,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
+      verifyScalarValue("18,759");
     });
 
     it("should be possible to offset a measure in a query", () => {
@@ -352,14 +352,10 @@ describe("scenarios > data studio > measures > queries", () => {
 
 function verifyNewMeasure({
   tableId,
-  scalarValue,
   createQuery,
   addBreakout,
-  rowValues,
 }: {
   tableId: TableId;
-  scalarValue?: string;
-  rowValues?: string[][];
   createQuery: () => void;
   addBreakout?: boolean;
 }) {
@@ -381,18 +377,6 @@ function verifyNewMeasure({
   }
 
   H.visualize();
-
-  if (scalarValue) {
-    H.queryBuilderMain()
-      .findByTestId("scalar-value")
-      .should("have.text", scalarValue);
-    H.assertQueryBuilderRowCount(1);
-  }
-
-  if (rowValues) {
-    switchToData();
-    verifyRowValues(rowValues);
-  }
 }
 
 function breakout(columnName = "Created At") {
@@ -406,6 +390,13 @@ function switchToData() {
   cy.findByTestId("view-footer").within(() => {
     cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
   });
+}
+
+function verifyScalarValue(scalarValue: string) {
+  H.queryBuilderMain()
+    .findByTestId("scalar-value")
+    .should("have.text", scalarValue);
+  H.assertQueryBuilderRowCount(1);
 }
 
 function verifyRowValues(rowValues: string[][]) {
