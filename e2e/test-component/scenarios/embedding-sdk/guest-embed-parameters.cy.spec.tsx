@@ -82,10 +82,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           name: "Orders native question",
           native: {
             query:
-              "SELECT * " +
-              "FROM ORDERS " +
-              "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
-              "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+              "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
             "template-tags": TEMPLATE_TAGS,
           },
           parameters: PARAMETERS,
@@ -167,7 +164,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
       });
 
       // Set field to use search instead of dropdown list
-      [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach((id) =>
+      [ORDERS.USER_ID].forEach((id) =>
         cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
       );
 
@@ -336,10 +333,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           name: "Orders native question",
           native: {
             query:
-              "SELECT * " +
-              "FROM ORDERS " +
-              "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
-              "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+              "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
             "template-tags": questionTemplateTags,
           },
           parameters: questionParameters,
@@ -434,10 +428,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           name: "Orders native question",
           native: {
             query:
-              "SELECT * " +
-              "FROM ORDERS " +
-              "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
-              "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+              "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
             "template-tags": TEMPLATE_TAGS,
           },
         },
@@ -547,8 +538,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
         human_readable_field_id: PEOPLE.NAME,
       });
 
-      // Set field to use search instead of dropdown list
-      [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach((id) =>
+      [ORDERS.USER_ID].forEach((id) =>
         cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
       );
 
@@ -732,10 +722,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           name: "Orders native question",
           native: {
             query:
-              "SELECT * " +
-              "FROM ORDERS " +
-              "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
-              "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+              "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
             "template-tags": dashboardTemplateTags,
           },
         },
