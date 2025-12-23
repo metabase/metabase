@@ -48,7 +48,22 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
 
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
+      // Don't handle shortcuts when typing in input fields
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      // Handle Cmd/Ctrl + . to toggle
       if (e.key === "." && (e.ctrlKey || e.metaKey)) {
+        setIsNavbarOpened(!isNavbarOpened);
+      }
+      // Handle [ to toggle (open/close)
+      if (e.key === "[") {
         setIsNavbarOpened(!isNavbarOpened);
       }
     }
