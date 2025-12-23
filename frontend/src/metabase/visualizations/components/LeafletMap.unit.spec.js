@@ -86,5 +86,55 @@ describe("LeafletMap", () => {
       expect(setZoomSpy).toHaveBeenCalled();
       expect(setViewSpy).toHaveBeenCalled();
     });
+
+    it("should preserve user's zoom on pure resize when zoom prop is provided", () => {
+      const initialProps = createProps({
+        width: 400,
+        height: 300,
+      });
+      const ref = createRef();
+      const { rerender } = render(<LeafletMap ref={ref} {...initialProps} />);
+      const mapInstance = ref.current.map;
+
+      const setViewSpy = jest.spyOn(mapInstance, "setView");
+      setViewSpy.mockClear();
+
+      const resizedProps = createProps({
+        width: 500,
+        height: 300,
+        points: initialProps.points,
+        zoom: 10,
+        lat: 5,
+        lng: 5,
+      });
+      rerender(<LeafletMap ref={ref} {...resizedProps} />);
+
+      expect(setViewSpy).toHaveBeenCalledWith([5, 5], 10);
+    });
+
+    it("should not call setView on pure resize when zoom prop is null", () => {
+      const initialProps = createProps({
+        width: 400,
+        height: 300,
+      });
+      const ref = createRef();
+      const { rerender } = render(<LeafletMap ref={ref} {...initialProps} />);
+      const mapInstance = ref.current.map;
+
+      const setViewSpy = jest.spyOn(mapInstance, "setView");
+      setViewSpy.mockClear();
+
+      const resizedProps = createProps({
+        width: 500,
+        height: 300,
+        points: initialProps.points,
+        zoom: null,
+        lat: null,
+        lng: null,
+      });
+      rerender(<LeafletMap ref={ref} {...resizedProps} />);
+
+      expect(setViewSpy).not.toHaveBeenCalled();
+    });
   });
 });
