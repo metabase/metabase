@@ -8,6 +8,7 @@ import type { MetabotContext } from "metabase/metabot";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  CollectionId,
   DashCardId,
   DatasetQuery,
   MetabotGenerateContentRequest,
@@ -67,6 +68,11 @@ type PluginMetabotType = {
   getAdminRoutes: () => React.ReactElement;
   getMetabotRoutes: () => React.ReactElement | null;
   MetabotAdminPage: ComponentType;
+  getMetabotQueryBuilderRoute: () => React.ReactElement | null;
+  getNewMenuItemAIExploration: (
+    hasDataAccess: boolean,
+    collectionId?: CollectionId,
+  ) => React.ReactElement | undefined;
   getMetabotVisible: (state: State, conversation_id: string) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
@@ -136,6 +142,8 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null,
   MetabotAdminPage: () => `placeholder`,
+  getMetabotQueryBuilderRoute: () => null,
+  getNewMenuItemAIExploration: () => undefined,
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,

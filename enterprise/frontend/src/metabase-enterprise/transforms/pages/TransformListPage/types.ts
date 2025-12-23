@@ -1,7 +1,7 @@
 import type { IconName } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
-export type TreeNodeType = "folder" | "transform";
+export type TreeNodeType = "folder" | "transform" | "library";
 
 export type TreeNode = {
   id: string;
@@ -13,6 +13,7 @@ export type TreeNode = {
   children?: TreeNode[];
   transformId?: number;
   collectionId?: number;
+  url?: string;
 };
 
 export function isCollectionNode(

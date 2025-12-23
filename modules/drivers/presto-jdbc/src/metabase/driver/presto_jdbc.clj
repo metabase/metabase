@@ -49,17 +49,18 @@
 (driver/register! :presto-jdbc, :parent #{:sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:basic-aggregations              true
-                              :binning                         true
-                              :expression-aggregations         true
-                              :expression-literals             true
-                              :expressions                     true
-                              :native-parameters               true
-                              :now                             true
-                              :set-timezone                    true
-                              :standard-deviation-aggregations true
-                              :metadata/key-constraints        false
-                              :database-routing                true}]
+(doseq [[feature supported?] {:basic-aggregations               true
+                              :binning                          true
+                              :database-routing                 true
+                              :expression-aggregations          true
+                              :expression-literals              true
+                              :expressions                      true
+                              :metadata/key-constraints         false
+                              :native-parameters                true
+                              :now                              true
+                              :regex/lookaheads-and-lookbehinds false
+                              :set-timezone                     true
+                              :standard-deviation-aggregations  true}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers

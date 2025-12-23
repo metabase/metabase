@@ -44,7 +44,9 @@ export const documentApi = Api.injectEndpoints({
         body: document,
       }),
       invalidatesTags: (_, error, { id }) =>
-        !error ? [listTag("document"), idTag("document", id)] : [],
+        !error
+          ? [listTag("document"), idTag("document", id), listTag("revision")]
+          : [],
     }),
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({

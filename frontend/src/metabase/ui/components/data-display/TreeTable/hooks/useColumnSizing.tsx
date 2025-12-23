@@ -32,7 +32,7 @@ interface UseColumnSizingOptions<TData extends TreeNodeData> {
 export function needsMeasurement<TData extends TreeNodeData>(
   column: TreeTableColumnDef<TData>,
 ): boolean {
-  return column.minWidth === "auto";
+  return column.minWidth === "auto" || column.width === "auto";
 }
 
 function pickTreeRowsToMeasure<TData>(
@@ -52,6 +52,15 @@ function pickTreeRowsToMeasure<TData>(
   return result;
 }
 
+function getContentWidth<TData extends TreeNodeData>(
+  column: TreeTableColumnDef<TData>,
+  contentWidths: Record<string, number>,
+): number {
+  const baseWidth = contentWidths[column.id] ?? MIN_COLUMN_WIDTH;
+  const padding = column.widthPadding ?? 0;
+  return baseWidth + padding;
+}
+
 export function getMinConstraint<TData extends TreeNodeData>(
   column: TreeTableColumnDef<TData>,
   colIndex: number,
@@ -61,7 +70,7 @@ export function getMinConstraint<TData extends TreeNodeData>(
 ): number {
   let minConstraint: number;
   if (column.minWidth === "auto") {
-    minConstraint = contentWidths[column.id] ?? MIN_COLUMN_WIDTH;
+    minConstraint = getContentWidth(column, contentWidths);
   } else if (typeof column.minWidth === "number") {
     minConstraint = column.minWidth;
   } else {
@@ -94,7 +103,12 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
 
   const fixedWidth = columns
     .filter((col) => col.width != null)
-    .reduce((sum, col) => sum + col.width!, 0);
+    .reduce((sum, col) => {
+      if (col.width === "auto") {
+        return sum + getContentWidth(col, contentWidths);
+      }
+      return sum + (col.width ?? 0);
+    }, 0);
 
   let remainingSpace = containerWidth - fixedWidth;
 
@@ -104,7 +118,11 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
 
   columns.forEach((column) => {
     if (column.width != null) {
-      widths[column.id] = column.width;
+      if (column.width === "auto") {
+        widths[column.id] = getContentWidth(column, contentWidths);
+      } else {
+        widths[column.id] = column.width;
+      }
     }
   });
 
