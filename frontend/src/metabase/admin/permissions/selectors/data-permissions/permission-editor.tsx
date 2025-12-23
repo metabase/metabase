@@ -408,7 +408,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         let groupPermissions;
 
         const shouldUseAllExternalUsersGroup =
-          isAllTenantUsersGroup || isTenantGroup;
+          !!allTenantUsersGroup && (isAllTenantUsersGroup || isTenantGroup);
 
         if (tableId != null) {
           groupPermissions = buildFieldsPermissions(
