@@ -185,7 +185,10 @@
         (testing "Trivial query works."
           (is (=? {:structured-output {:type :query,
                                        :query-id string?
-                                       :query (mt/mbql-query orders {:source-table model-card-id})}}
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-table model-card-id}]}}}
                   (metabot-v3.tools.filters/query-model
                    {:model-id model-id
                     :filters []
@@ -193,11 +196,13 @@
         (testing "Filtering, aggregation and grouping works and ignores bucketing for non-temporal columns."
           (is (=? {:structured-output {:type :query,
                                        :query-id string?
-                                       :query (mt/mbql-query orders
-                                                {:source-table model-card-id
-                                                 :aggregation [[:sum [:field "SUBTOTAL" {}]]]
-                                                 :breakout [[:field "PRODUCT_ID" {}]]
-                                                 :filter [:> [:field "DISCOUNT" {}] 3]})}}
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-table model-card-id
+                                                         :aggregation [[:sum {} [:field {} "SUBTOTAL"]]]
+                                                         :breakout [[:field {} "PRODUCT_ID"]]
+                                                         :filters [[:> {} [:field {} "DISCOUNT"] 3]]}]}}}
                   (metabot-v3.tools.filters/query-model
                    {:model-id model-id
                     :filters [{:field-id (->field-id "Discount")
@@ -211,27 +216,17 @@
         (testing "Temporal bucketing works for temporal columns."
           (is (=? {:structured-output {:type :query,
                                        :query-id string?
-                                       :query (mt/mbql-query orders
-                                                {:source-table model-card-id
-                                                 :aggregation [[:min [:field "CREATED_AT"
-                                                                      {:base-type :type/DateTimeWithLocalTZ
-                                                                       :temporal-unit :hour-of-day}]]
-                                                               [:avg [:field "CREATED_AT"
-                                                                      {:base-type :type/DateTimeWithLocalTZ
-                                                                       :temporal-unit :hour-of-day}]]
-                                                               [:max [:field "CREATED_AT"
-                                                                      {:base-type :type/DateTimeWithLocalTZ
-                                                                       :temporal-unit :hour-of-day}]]]
-                                                 :filter [:and
-                                                          [:!= [:get-week [:field "CREATED_AT" {}] :iso] 1 2 3]
-                                                          [:=
-                                                           [:get-month [:field "CREATED_AT"
-                                                                        {:base-type :type/DateTimeWithLocalTZ}]]
-                                                           6 7 8]]
-                                                 :breakout [[:field "PRODUCT_ID" {}]
-                                                            [:field "CREATED_AT"
-                                                             {:base-type :type/DateTimeWithLocalTZ
-                                                              :temporal-unit :week}]]})}}
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-table model-card-id
+                                                         :aggregation [[:min {} [:field {:temporal-unit :hour-of-day} "CREATED_AT"]]
+                                                                       [:avg {} [:field {:temporal-unit :hour-of-day} "CREATED_AT"]]
+                                                                       [:max {} [:field {:temporal-unit :hour-of-day} "CREATED_AT"]]]
+                                                         :filters [[:!= {} [:get-week {} [:field {} "CREATED_AT"] :iso] 1 2 3]
+                                                                   [:= {} [:get-month {} [:field {} "CREATED_AT"]] 6 7 8]]
+                                                         :breakout [[:field {} "PRODUCT_ID"]
+                                                                    [:field {:temporal-unit :week} "CREATED_AT"]]}]}}}
                   (metabot-v3.tools.filters/query-model
                    {:model-id model-id
                     :filters [{:field-id order-created-at-field-id
@@ -287,9 +282,11 @@
           (let [expected-query {:structured-output
                                 {:type :query,
                                  :query-id string?
-                                 :query (mt/mbql-query orders
-                                          {:source-table model-card-id
-                                           :filter [:!= [:field "USER_ID" {}] 3 42]})}}
+                                 :query {:database (mt/id)
+                                         :lib/type :mbql/query
+                                         :stages [{:lib/type :mbql.stage/mbql
+                                                   :source-table model-card-id
+                                                   :filters [[:!= {} [:field {} "USER_ID"] 3 42]]}]}}}
                 input {:model-id model-id
                        :filters [{:field-id (->field-id "User ID")
                                   :operation :not-equals
@@ -322,8 +319,9 @@
         (is (=? {:structured-output {:type :query,
                                      :query-id string?
                                      :query {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table table-id}}}}
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id}]}}}
                 (metabot-v3.tools.filters/filter-records
                  {:data-source {:table-id table-id}
                   :filters []}))))
@@ -331,19 +329,14 @@
         (is (=? {:structured-output {:type :query,
                                      :query-id string?
                                      :query {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table (mt/id :orders)
-                                                     :filter
-                                                     [:and
-                                                      [:=
-                                                       [:get-day-of-week
-                                                        [:field (mt/id :orders :created_at)
-                                                         {:base-type :type/DateTimeWithLocalTZ}]
-                                                        :iso]
-                                                       1 7]
-                                                      [:>
-                                                       [:field (mt/id :orders :discount) {:base-type :type/Float}]
-                                                       3]]}}}}
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table (mt/id :orders)
+                                                       :filters
+                                                       [[:= {}
+                                                         [:get-day-of-week {} [:field {} (mt/id :orders :created_at)] :iso]
+                                                         1 7]
+                                                        [:> {} [:field {} (mt/id :orders :discount)] 3]]}]}}}
                 (metabot-v3.tools.filters/filter-records
                  {:data-source {:table-id table-id}
                   :filters [{:field-id (->field-id "Created At")
@@ -382,8 +375,9 @@
             (is (=? {:structured-output {:type :query,
                                          :query-id string?
                                          :query {:database (mt/id)
-                                                 :type :query
-                                                 :query {:source-table table-id}}}}
+                                                 :lib/type :mbql/query
+                                                 :stages [{:lib/type :mbql.stage/mbql
+                                                           :source-table table-id}]}}}
                     (metabot-v3.tools.filters/filter-records
                      {:data-source {:table-id table-id}
                       :filters []}))))
@@ -391,9 +385,10 @@
             (is (=? {:structured-output {:type :query,
                                          :query-id string?
                                          :query {:database (mt/id)
-                                                 :type :query
-                                                 :query {:source-table table-id
-                                                         :filter [:> [:field "DISCOUNT" {:base-type :type/Float}] 3]}}}}
+                                                 :lib/type :mbql/query
+                                                 :stages [{:lib/type :mbql.stage/mbql
+                                                           :source-table table-id
+                                                           :filters [[:> {} [:field {} "DISCOUNT"] 3]]}]}}}
                     (metabot-v3.tools.filters/filter-records
                      {:data-source {:table-id table-id}
                       :filters [{:field-id (->field-id "Discount")
@@ -428,8 +423,9 @@
             (is (=? {:structured-output {:type :query,
                                          :query-id string?
                                          :query {:database (mt/id)
-                                                 :type :query
-                                                 :query {:source-table table-id}}}}
+                                                 :lib/type :mbql/query
+                                                 :stages [{:lib/type :mbql.stage/mbql
+                                                           :source-table table-id}]}}}
                     (metabot-v3.tools.filters/filter-records
                      {:data-source {:report-id card-id}
                       :filters []}))))
@@ -437,13 +433,10 @@
             (is (=? {:structured-output {:type :query,
                                          :query-id string?
                                          :query {:database (mt/id)
-                                                 :type :query
-                                                 :query {:source-table table-id
-                                                         :filter [:>
-                                                                  [:field
-                                                                   (mt/id :orders :discount)
-                                                                   {:base-type :type/Float}]
-                                                                  3]}}}}
+                                                 :lib/type :mbql/query
+                                                 :stages [{:lib/type :mbql.stage/mbql
+                                                           :source-table table-id
+                                                           :filters [[:> {} [:field {} (mt/id :orders :discount)] 3]]}]}}}
                     (metabot-v3.tools.filters/filter-records
                      {:data-source {:report-id card-id}
                       :filters [{:field-id (->field-id "Discount")
