@@ -177,7 +177,6 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
-            model-card-id (str "card__" model-id)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
                             (throw (ex-info (str "Column " % " not found") {:column %}))))
