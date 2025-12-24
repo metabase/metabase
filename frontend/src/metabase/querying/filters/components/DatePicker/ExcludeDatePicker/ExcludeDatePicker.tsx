@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSetting } from "metabase/common/hooks";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -9,7 +9,6 @@ import type {
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/filters/types";
-import { getSetting } from "metabase/selectors/settings";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
@@ -180,9 +179,7 @@ function ExcludeValuePicker({
   readOnly,
 }: ExcludeValuePickerProps) {
   const [values, setValues] = useState(initialValues);
-  const formattingOptions = useSelector((state) =>
-    getSetting(state, "custom-formatting"),
-  );
+  const formattingOptions = useSetting("custom-formatting");
   const option = useMemo(() => findExcludeUnitOption(unit), [unit]);
   const groups = useMemo(
     () => getExcludeValueOptionGroups(unit, formattingOptions["type/Temporal"]),
