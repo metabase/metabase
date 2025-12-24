@@ -88,6 +88,15 @@ describe("buildMatrix", () => {
     expect(result.config[49].name).toBe("python");
   });
 
+  it("should return special test configs when non-default spec pattern is provided", () => {
+    const result = testBuildMatrix(
+      "e2e/test/scenarios/data-studio/transforms.cy.spec.ts",
+      50,
+    );
+
+    expect(result.config[0].name).toBe("python");
+  });
+
   it("should not return special test configs when non-default spec pattern is provided", () => {
     const result = testBuildMatrix("test1.cy.spec.js,test2.cy.spec.js", 50);
 
