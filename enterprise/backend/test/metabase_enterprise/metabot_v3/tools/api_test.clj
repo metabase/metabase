@@ -253,17 +253,20 @@
           (is (=? {:structured_output
                    {:type "query"
                     :query_id string?
-                    :query (mt/mbql-query products
-                             {:aggregation [[:metric metric-id]]
-                              :breakout [!week.products.created_at !day.products.created_at]
-                              :filter [:and
-                                       [:> [:field %id {}] 50]
-                                       [:= [:field %title {}] "3" "4"]
-                                       [:!= [:field %rating {}] 3 4]
-                                       [:= [:get-month [:field %created_at {}]] 4 5 9]
-                                       [:!= [:get-day [:field %products.created_at {}]] 14 15 19]
-                                       [:= [:get-day-of-week [:field %created_at {}] :iso] 1 7]
-                                       [:= [:get-year [:field %created_at {}]] 2008]]})
+                    :query {:database (mt/id)
+                            :lib/type :mbql/query
+                            :stages [{:lib/type :mbql.stage/mbql
+                                      :source-table (mt/id :products)
+                                      :aggregation [[:metric {} metric-id]]
+                                      :breakout [[:field {:temporal-unit :week} (mt/id :products :created_at)]
+                                                 [:field {:temporal-unit :day} (mt/id :products :created_at)]]
+                                      :filters [[:> {} [:field {} (mt/id :products :id)] 50]
+                                                [:= {} [:field {} (mt/id :products :title)] "3" "4"]
+                                                [:!= {} [:field {} (mt/id :products :rating)] 3 4]
+                                                [:= {} [:get-month {} [:field {} (mt/id :products :created_at)]] 4 5 9]
+                                                [:!= {} [:get-day {} [:field {} (mt/id :products :created_at)]] 14 15 19]
+                                                [:= {} [:get-day-of-week {} [:field {} (mt/id :products :created_at)] :iso] 1 7]
+                                                [:= {} [:get-year {} [:field {} (mt/id :products :created_at)]] 2008]]}]}
                     :result_columns
                     [{:field_id (str "q" query-id "-0")
                       :name "CREATED_AT"
@@ -284,8 +287,7 @@
                       :database_type missing-value
                       :semantic_type "score"}]}
                    :conversation_id conversation-id}
-                  (-> response
-                      (update-in [:structured_output :query] mbql.normalize/normalize)))))))))
+                  response)))))))
 
 (deftest query-model-test
   (mt/with-premium-features #{:metabot-v3}

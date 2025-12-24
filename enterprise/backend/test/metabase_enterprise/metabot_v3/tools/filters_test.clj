@@ -110,29 +110,34 @@
                       :group-by [{:field-id (->field-id "Created At")
                                   :field-granularity :week}]}))))
           (testing "Multi-value filtering works"
-            (let [state-id (->field-id ["User" "State"])
-                  stat-field-clause [:field (mt/id :people :state)
-                                     {:base-type :type/Text
-                                      :source-field (mt/id :orders :user_id)}]]
+            (let [state-id (->field-id ["User" "State"])]
               (is (=? {:structured-output {:type :query,
                                            :query-id string?
                                            :query {:database (mt/id)
-                                                   :type :query
-                                                   :query {:source-table (mt/id :orders)
-                                                           :aggregation [[:metric metric-id]]
-                                                           :filter
-                                                           [:and
-                                                            [:contains {:case-sensitive false}
-                                                             stat-field-clause "o" "e"]
-                                                            [:does-not-contain
-                                                             stat-field-clause "y" {:case-sensitive false}]
-                                                            [:starts-with {:case-sensitive false}
-                                                             stat-field-clause "A" "G"]
-                                                            [:ends-with {:case-sensitive false}
-                                                             stat-field-clause "e" "f" "i" "T" "x"]
-                                                            [:!=
-                                                             [:field (mt/id :orders :discount) {:base-type :type/Float}]
-                                                             3 42]]}}}}
+                                                   :lib/type :mbql/query
+                                                   :stages [{:lib/type :mbql.stage/mbql
+                                                             :source-table (mt/id :orders)
+                                                             :aggregation [[:metric {} metric-id]]
+                                                             :filters
+                                                             [[:contains {:case-sensitive false}
+                                                               [:field {:source-field (mt/id :orders :user_id)}
+                                                                (mt/id :people :state)]
+                                                               "o" "e"]
+                                                              [:does-not-contain {:case-sensitive false}
+                                                               [:field {:source-field (mt/id :orders :user_id)}
+                                                                (mt/id :people :state)]
+                                                               "y"]
+                                                              [:starts-with {:case-sensitive false}
+                                                               [:field {:source-field (mt/id :orders :user_id)}
+                                                                (mt/id :people :state)]
+                                                               "A" "G"]
+                                                              [:ends-with {:case-sensitive false}
+                                                               [:field {:source-field (mt/id :orders :user_id)}
+                                                                (mt/id :people :state)]
+                                                               "e" "f" "i" "T" "x"]
+                                                              [:!= {}
+                                                               [:field {} (mt/id :orders :discount)]
+                                                               3 42]]}]}}}
                       (metabot-v3.tools.filters/query-metric
                        {:metric-id metric-id
                         :filters [{:field-id state-id
@@ -467,13 +472,11 @@
         expected {:structured-output {:type :query,
                                       :query-id string?
                                       :query {:database (mt/id)
-                                              :type :query
-                                              :query {:source-query {:source-table table-id}
-                                                      :filter [:>
-                                                               [:field
-                                                                "DISCOUNT"
-                                                                {:base-type :type/Float}]
-                                                               3]}}}}]
+                                              :lib/type :mbql/query
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table table-id}
+                                                       {:lib/type :mbql.stage/mbql
+                                                        :filters [[:> {} [:field {} "DISCOUNT"] 3]]}]}}}]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "Filtering works."
         (testing "new tool call with query and query-id"
@@ -600,24 +603,28 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
-            model-card-id (str "card__" model-id)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
                             (throw (ex-info (str "Column " % " not found") {:column %}))))]
         (testing "Basic model query works"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
-                                       :query (mt/mbql-query orders {:source-table model-card-id})}}
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-card model-id}]}}}
                   (metabot-v3.tools.filters/query-datasource
                    {:model-id model-id}))))
 
         (testing "Model query with fields selection"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
-                                       :query (mt/mbql-query orders
-                                                {:source-table model-card-id
-                                                 :fields [[:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
-                                                          [:field "TOTAL" {:base-type :type/Float}]]})}}
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-card model-id
+                                                         :fields [[:field {} "CREATED_AT"]
+                                                                  [:field {} "TOTAL"]]}]}}}
                   (metabot-v3.tools.filters/query-datasource
                    {:model-id model-id
                     :fields [{:field-id (->field-id "Created At")}
@@ -626,11 +633,12 @@
         (testing "Model query with filters"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
-                                       :query (mt/mbql-query orders
-                                                {:source-table model-card-id
-                                                 :filter [:and
-                                                          [:> [:field "DISCOUNT" {:base-type :type/Float}] 5]
-                                                          [:< [:field "SUBTOTAL" {:base-type :type/Float}] 100]]})}}
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-card model-id
+                                                         :filters [[:> {} [:field {} "DISCOUNT"] 5]
+                                                                   [:< {} [:field {} "SUBTOTAL"] 100]]}]}}}
                   (metabot-v3.tools.filters/query-datasource
                    {:model-id model-id
                     :filters [{:field-id (->field-id "Discount")
@@ -643,11 +651,13 @@
         (testing "Model query with aggregations and grouping"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
-                                       :query (mt/mbql-query orders
-                                                {:source-table model-card-id
-                                                 :aggregation [[:count]
-                                                               [:max [:field "TOTAL" {:base-type :type/Float}]]]
-                                                 :breakout [[:field "USER_ID" {:base-type :type/Integer}]]})}}
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-card model-id
+                                                         :aggregation [[:count {}]
+                                                                       [:max {} [:field {} "TOTAL"]]]
+                                                         :breakout [[:field {} "USER_ID"]]}]}}}
                   (metabot-v3.tools.filters/query-datasource
                    {:model-id model-id
                     :aggregations [{:field-id (->field-id "Product ID")
@@ -659,10 +669,12 @@
         (testing "Model query with order by and limit"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
-                                       :query (mt/mbql-query orders
-                                                {:source-table model-card-id
-                                                 :order-by [[:desc [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]]]
-                                                 :limit 50})}}
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-card model-id
+                                                         :order-by [[:desc {} [:field {} "CREATED_AT"]]]
+                                                         :limit 50}]}}}
                   (metabot-v3.tools.filters/query-datasource
                    {:model-id model-id
                     :order-by [{:field {:field-id (->field-id "Created At")}
