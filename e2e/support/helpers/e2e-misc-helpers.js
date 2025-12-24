@@ -297,12 +297,21 @@ export function saveQuestion(
     idAlias = "questionId",
     shouldReplaceOriginalQuestion = false,
     shouldSaveAsNewQuestion = false,
-    waitForInitialName = false,
+    waitForRecents = false,
   } = {},
   pickEntityOptions = null,
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
+  if (waitForRecents) {
+    cy.intercept("GET", "/api/activity/recents?context=selections*").as(
+      "saveQuestion_recents",
+    );
+  }
   cy.findByTestId("qb-header").button("Save").click();
+  if (waitForRecents) {
+    // Wait for recents API to complete before typing to avoid form reinitialization race condition
+    cy.wait("@saveQuestion_recents");
+  }
   if (shouldReplaceOriginalQuestion) {
     modal().within(() => {
       cy.log("Ensure that 'Replace original question' is checked");
@@ -319,17 +328,7 @@ export function saveQuestion(
 
   cy.findByTestId("save-question-modal").within(() => {
     if (name) {
-      if (waitForInitialName) {
-        /**
-         * we need to wait until the form finally initialize. Otherwise, the initialization will could the value.
-         */
-        cy.findByLabelText("Name")
-          .should("not.have.value", "")
-          .clear()
-          .type(name);
-      } else {
-        cy.findByLabelText("Name").clear().type(name);
-      }
+      cy.findByLabelText("Name").clear().type(name);
     }
 
     if (pickEntityOptions) {

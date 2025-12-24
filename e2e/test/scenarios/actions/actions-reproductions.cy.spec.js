@@ -367,6 +367,9 @@ describe("issue 51020", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card").as("createCard");
       cy.intercept("GET", "/api/card/*").as("getCard");
+      cy.intercept("GET", "/api/activity/recents?context=selections*").as(
+        "recents_selections",
+      );
 
       H.restore("postgres-writable");
       cy.signInAsAdmin();
@@ -381,20 +384,27 @@ describe("issue 51020", () => {
         .click();
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("foo");
+        /**
+         * Without this wait, typing speed causes flakiness: fast typing switches to search tab
+         * before picker content loads, so no folder is selected and "Everywhere" toggle doesn't appear.
+         * Slow typing allows content to load first, selecting a folder, making the toggle appear.
+         */
+        cy.findByTestId("single-picker-view").should("be.visible");
+        cy.get('[type="search"]').type("foo");
+        cy.findByText("Everywhere").click();
         cy.findByText("Foo").click();
       });
+
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");
+      /**
+       * we need to "wait" until first recent_selections is completed, then after
+       * clicking "Save button" there will be another one we must wait for.
+       */
+      cy.wait("@recents_selections");
       cy.button("Save").click();
-      H.modal()
-        .findByLabelText("Name")
-        /**
-         * we need to wait until the form finally initialize. Otherwise, the initialization will could the value.
-         */
-        .should("not.have.value", "")
-        .clear()
-        .type("Model 51020");
+      cy.wait("@recents_selections");
+      H.modal().findByLabelText("Name").clear().type("Model 51020");
       H.modal().button("Save").click();
       cy.wait("@createCard");
       cy.wait("@getCard");
@@ -406,7 +416,7 @@ describe("issue 51020", () => {
       H.entityPickerModalItem(1, "Model 51020").click();
       H.saveQuestion(
         "Question 51020",
-        { waitForInitialName: true },
+        { waitForRecents: true },
         {
           tab: "Browse",
           path: ["Our analytics"],
@@ -424,7 +434,7 @@ describe("issue 51020", () => {
       dropTemporaryTable();
     });
 
-    it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL x(metabase#51020)", () => {
+    it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL (metabase#51020)", () => {
       cy.log(
         "check when primary key parameter is populated with click behavior",
       );
