@@ -160,7 +160,8 @@
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
+       [:parameters          {:optional true} [:maybe [:sequential :map]]]]
+   request]
   (perms/check-has-application-permission :subscription false)
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
@@ -168,7 +169,9 @@
                     :collection_id       collection-id
                     :collection_position collection-position
                     :dashboard_id        dashboard-id
-                    :parameters          parameters}]
+                    :parameters          parameters
+                    :disable_links       (embed.util/modular-embedding-or-modular-embedding-sdk-context?
+                                          (get-in request [:headers "x-metabase-client"]))}]
     (api/create-check :model/Pulse (assoc pulse-data :cards cards))
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
@@ -457,7 +460,9 @@
   (notification/with-default-options {:notification/sync? true}
     (pulse.send/send-pulse! (-> body
                                 (assoc :creator_id api/*current-user-id*)
-                                (assoc :disable_links (embed.util/modular-embedding-context? (get-in request [:headers "x-metabase-client"]))))))
+                                (assoc :disable_links
+                                       (embed.util/modular-embedding-or-modular-embedding-sdk-context?
+                                        (get-in request [:headers "x-metabase-client"]))))))
   {:ok true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
