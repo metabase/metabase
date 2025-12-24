@@ -367,9 +367,6 @@ describe("issue 51020", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card").as("createCard");
       cy.intercept("GET", "/api/card/*").as("getCard");
-      cy.intercept("GET", "/api/activity/recents?context=selections*").as(
-        "recents_selections",
-      );
 
       H.restore("postgres-writable");
       cy.signInAsAdmin();
@@ -397,14 +394,13 @@ describe("issue 51020", () => {
 
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");
-      /**
-       * we need to wait for the recent_selections twice as two requests are made in this test:
-       * 1. Somewhere before this line
-       * 2. After clicking on the "Save" button. - this is a must to wait as it re-initializes the form and interferes with typing
-       */
-      cy.wait("@recents_selections");
+      // this interceptor must be here, because there might be other /recents requests at the moment.
+      cy.intercept("GET", "/api/activity/recents?context=selections*").as(
+        "saveModelRecents",
+      );
       cy.button("Save").click();
-      cy.wait("@recents_selections");
+      // Wait for recents API to complete before typing to avoid form reinitialization race condition
+      cy.wait("@saveModelRecents");
       H.modal().findByLabelText("Name").clear().type("Model 51020");
       H.modal().button("Save").click();
       cy.wait("@createCard");
