@@ -297,14 +297,28 @@
                           (group-by (fn [{base-type      :base_type
                                           effective-type :effective_type
                                           semantic-type  :semantic_type
-                                          unit           :unit}]
+                                          unit           :unit
+                                          source         :source
+                                          lib-source     :lib/source
+                                          lib-breakout?  :lib/breakout?}]
                                       (cond
-                                        (isa? semantic-type :Relation/*)                    :others
-                                        (u.date/truncate-units unit)                        :datetimes
-                                        (u.date/extract-units unit)                         :numbers
-                                        (isa? (or effective-type base-type) :type/Temporal) :datetimes
-                                        (isa? base-type :type/Number)                       :numbers
-                                        :else                                               :others))))]
+                                        (isa? semantic-type :Relation/*) :others
+
+                                     ;; Only count datetime columns from breakouts/dimensions, not aggregations
+                                     ;; Aggregations of datetime values (like max(created_at)) are computed values,
+                                     ;; not datetime dimensions for the X-axis (#62069)
+                                        (and
+                                         (or (u.date/truncate-units unit)
+                                             (isa? (or effective-type base-type) :type/Temporal))
+                                         (or lib-breakout?
+                                             (= source :breakout)
+                                             (and (not= source :aggregation)
+                                                  (not (= lib-source :source/aggregations)))))
+                                        :datetimes
+
+                                        (u.date/extract-units unit) :numbers
+                                        (isa? base-type :type/Number) :numbers
+                                        :else :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
-      :else                      (fingerprinters/constant-fingerprinter nil))))
+      :else (fingerprinters/constant-fingerprinter nil))))

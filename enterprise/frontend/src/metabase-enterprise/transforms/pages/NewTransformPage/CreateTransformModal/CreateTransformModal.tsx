@@ -1,6 +1,4 @@
-import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
@@ -8,7 +6,6 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils/errors";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
@@ -19,49 +16,18 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { slugify } from "metabase/lib/formatting/url";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
-import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
-import type {
-  CreateTransformRequest,
-  Transform,
-  TransformSource,
-} from "metabase-types/api";
+import type { Transform, TransformSource } from "metabase-types/api";
 
-import { trackTransformCreated } from "../../../analytics";
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 
 import { TargetNameInput } from "./TargetNameInput";
-
-const DEFAULT_VALIDATION_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable().defined(),
-  collection_id: Yup.number().nullable().defined(),
-  incremental: Yup.boolean().required(),
-  // For native queries, use checkpointFilter (plain string)
-  checkpointFilter: Yup.string().nullable(),
-  // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
-  checkpointFilterUniqueKey: Yup.string().nullable(),
-  sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
-  targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
-});
-
-export type NewTransformValues = Yup.InferType<
-  typeof DEFAULT_VALIDATION_SCHEMA
->;
+import type { NewTransformValues } from "./form";
+import { useCreateTransform } from "./hooks";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
-
-function getValidationSchema(extension?: ValidationSchemaExtension) {
-  if (!extension) {
-    return DEFAULT_VALIDATION_SCHEMA;
-  }
-  return DEFAULT_VALIDATION_SCHEMA.shape(extension);
-}
 
 type CreateTransformModalProps = {
   source: TransformSource;
@@ -122,7 +88,7 @@ function CreateTransformForm({
   onClose,
   schemas: schemasProp,
   showIncrementalSettings = true,
-  validationSchemaExtension,
+  _validationSchemaExtension,
   handleSubmit,
   targetDescription,
 }: CreateTransformFormProps) {
@@ -132,7 +98,7 @@ function CreateTransformForm({
   const shouldFetchSchemas = schemasProp === undefined;
   const showSchemaField = schemasProp !== null;
 
-  const [sendToast] = useToast();
+  const [_sendToast] = useToast();
 
   const {
     data: database,
@@ -158,18 +124,10 @@ function CreateTransformForm({
     isDatabaseLoading || (shouldFetchSchemas && isSchemasLoading);
   const error = databaseError ?? (shouldFetchSchemas ? schemasError : null);
 
-  const [createTransform] = useCreateTransformMutation();
   const supportsSchemas = database && hasFeature(database, "schemas");
 
-  const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas, defaultValues),
-    [schemas, defaultValues],
-  );
-
-  const validationSchema = useMemo(
-    () => getValidationSchema(validationSchemaExtension),
-    [validationSchemaExtension],
-  );
+  const { initialValues, validationSchema, createTransform } =
+    useCreateTransform(schemas, defaultValues);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -179,17 +137,8 @@ function CreateTransformForm({
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
-    const request = getCreateRequest(source, values, databaseId);
-    try {
-      const transform = await createTransform(request).unwrap();
-      trackTransformCreated({ transformId: transform.id });
-      onCreate?.(transform);
-    } catch (error) {
-      sendToast({
-        message: getErrorMessage(error, t`Failed to create transform`),
-        icon: "warning",
-      });
-    }
+    const transform = await createTransform(databaseId, source, values);
+    onCreate(transform);
   };
 
   return (
@@ -218,6 +167,7 @@ function CreateTransformForm({
             name="collection_id"
             title={t`Collection`}
             type="transform-collections"
+            style={{ marginBottom: 0 }}
           />
           {showIncrementalSettings && (
             <IncrementalTransformSettings source={source} />
@@ -233,89 +183,4 @@ function CreateTransformForm({
       </Form>
     </FormProvider>
   );
-}
-
-function getInitialValues(
-  schemas: string[] | null,
-  defaultValues: Partial<NewTransformValues>,
-): NewTransformValues {
-  return {
-    name: "",
-    targetSchema: schemas?.[0] || null,
-    collection_id: null,
-    ...defaultValues,
-    targetName: defaultValues.targetName
-      ? defaultValues.targetName
-      : defaultValues.name
-        ? slugify(defaultValues.name)
-        : "",
-    checkpointFilter: null,
-    checkpointFilterUniqueKey: null,
-    incremental: false,
-    sourceStrategy: "checkpoint",
-    targetStrategy: "append",
-  };
-}
-
-function getCreateRequest(
-  source: TransformSource,
-  {
-    name,
-    targetName,
-    targetSchema,
-    collection_id,
-    incremental,
-    checkpointFilter,
-    checkpointFilterUniqueKey,
-    sourceStrategy,
-    targetStrategy,
-  }: NewTransformValues,
-  databaseId: number,
-): CreateTransformRequest {
-  // Build the source with incremental strategy if enabled
-  let transformSource: TransformSource;
-  if (incremental) {
-    // For native queries, use checkpoint-filter (plain string)
-    // For MBQL/Python queries, use checkpoint-filter-unique-key (prefixed format)
-    const strategyFields = checkpointFilter
-      ? { "checkpoint-filter": checkpointFilter }
-      : checkpointFilterUniqueKey
-        ? { "checkpoint-filter-unique-key": checkpointFilterUniqueKey }
-        : {};
-
-    transformSource = {
-      ...source,
-      "source-incremental-strategy": {
-        type: sourceStrategy,
-        ...strategyFields,
-      },
-    };
-  } else {
-    transformSource = source;
-  }
-
-  // Build the target with incremental strategy if enabled
-  const transformTarget: CreateTransformRequest["target"] = incremental
-    ? {
-        type: "table-incremental",
-        name: targetName,
-        schema: targetSchema,
-        database: databaseId,
-        "target-incremental-strategy": {
-          type: targetStrategy,
-        },
-      }
-    : {
-        type: "table",
-        name: targetName,
-        schema: targetSchema ?? null,
-        database: databaseId,
-      };
-
-  return {
-    name,
-    source: transformSource,
-    target: transformTarget,
-    collection_id: collection_id ?? null,
-  };
 }

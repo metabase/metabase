@@ -246,7 +246,7 @@
                                                   :target     {:type   "table"
                                                                :schema "public"
                                                                :name   "test_table"
-                                                               :db_id  db-id}}
+                                                               :database  db-id}}
                      :model/User {user2-id :id} user2-data
                      :model/Transform transform2 {:name       "Second transform"
                                                   :creator_id user2-id
@@ -258,7 +258,7 @@
                                                   :target     {:type   "table"
                                                                :schema "public"
                                                                :name   "test_table2"
-                                                               :db_id  db-id}}]
+                                                               :database  db-id}}]
         (testing "Hydrates creator with user details"
           (is (=? (assoc user1-data :id user1-id)
                   (:creator (t2/hydrate transform1 :creator)))))

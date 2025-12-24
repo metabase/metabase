@@ -322,7 +322,7 @@ describe("Tenants - management", () => {
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
-      cy.findByRole("link", { name: /All Internal Users/ }).should(
+      cy.findByRole("link", { name: /All internal users/ }).should(
         "be.visible",
       );
       cy.findByRole("link", { name: /All tenant users/ }).should("not.exist");
@@ -333,7 +333,7 @@ describe("Tenants - management", () => {
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
-      cy.findByRole("link", { name: /All Internal Users/ }).should("not.exist");
+      cy.findByRole("link", { name: /All internal users/ }).should("not.exist");
       cy.findByRole("row", {
         name: `group-${ALL_EXTERNAL_USERS_GROUP_ID}-row`,
       }).within(() => {
@@ -416,7 +416,7 @@ describe("Tenants - management", () => {
     hasGlobeIcon(EXTERNAL_USER_GROUP_NAME);
     hasGlobeIcon(TENANT_GROUP_NAME);
     lacksGlobeIcon("Administrators");
-    lacksGlobeIcon("All Internal Users");
+    lacksGlobeIcon("All internal users");
   });
 
   it("should show 'All tenant users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
@@ -453,16 +453,16 @@ describe("Tenants - management", () => {
         .findByLabelText("warning icon")
         .realHover();
 
-      // Tooltip must reference "All tenant users" not "All Internal Users"
+      // Tooltip must reference "All tenant users" not "All internal users"
       H.tooltip().should(
         "contain",
         'The "All tenant users" group has a higher level of access',
       );
-      H.tooltip().should("not.contain", "All Internal Users");
+      H.tooltip().should("not.contain", "All internal users");
     });
   });
 
-  it("should show 'All Internal Users' in permission warning modal for internal groups on tenant collections (EMB-1143)", () => {
+  it("should show 'All internal users' in permission warning modal for internal groups on tenant collections (EMB-1143)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
 
     cy.request("POST", "/api/permissions/group", {
@@ -474,7 +474,7 @@ describe("Tenants - management", () => {
 
     cy.log("all internal users should have 'View' access");
     cy.findAllByRole("row")
-      .contains("tr", "All Internal Users")
+      .contains("tr", "All internal users")
       .findByText("View")
       .should("be.visible");
 
@@ -497,17 +497,79 @@ describe("Tenants - management", () => {
 
     H.modal().within(() => {
       cy.log("title should mention internal users group");
-      cy.findByText(/Revoke access even though "All Internal Users"/).should(
+      cy.findByText(/Revoke access even though "All internal users"/).should(
         "be.visible",
       );
 
       cy.log("description should mention internal users group");
       cy.findByText(
-        /The "All Internal Users" group has a higher level of access/,
+        /The "All internal users" group has a higher level of access/,
       ).should("be.visible");
 
       cy.log("should not mention tenant users");
       cy.contains("Tenant users").should("not.exist");
+    });
+  });
+
+  it("should show 'All tenant users' in permission warning tooltip and modal for tenant groups on data permissions (UXW-2624)", () => {
+    cy.request("PUT", "/api/setting", { "use-tenants": true });
+
+    cy.request("POST", "/api/permissions/group", {
+      name: "Test Tenant Group",
+      is_tenant_group: true,
+    });
+
+    cy.visit("/admin/permissions/data/database/1");
+
+    cy.log("all tenant users should have 'Can view' access");
+    cy.findAllByRole("row")
+      .contains("tr", "All tenant users")
+      .should("contain", "Can view");
+
+    cy.log(
+      "tenant group should have 'Blocked' access (new group default) with warning icon",
+    );
+    cy.findAllByRole("row")
+      .contains("tr", "Test Tenant Group")
+      .should("contain", "Blocked")
+      .findAllByLabelText("warning icon")
+      .first()
+      .realHover();
+
+    cy.log("tooltip should reference 'All tenant users'");
+    H.tooltip().should(
+      "contain",
+      'The "All tenant users" group has a higher level of access',
+    );
+
+    cy.log("click to change to 'Can view' and back to trigger modal");
+    cy.findAllByRole("row")
+      .contains("tr", "Test Tenant Group")
+      .findByText("Blocked")
+      .click();
+
+    H.popover().findByText("Can view").click();
+
+    cy.findAllByRole("row")
+      .contains("tr", "Test Tenant Group")
+      .findByText("Can view")
+      .click();
+
+    H.popover().findByText("Blocked").click();
+
+    H.modal().within(() => {
+      cy.log("title should mention tenant users group");
+      cy.findByText(/Revoke access even though "All tenant users"/).should(
+        "be.visible",
+      );
+
+      cy.log("description should mention tenant users group");
+      cy.findByText(
+        /The "All tenant users" group has a higher level of access/,
+      ).should("be.visible");
+
+      cy.log("should not mention internal users");
+      cy.contains("internal users").should("not.exist");
     });
   });
 

@@ -250,11 +250,11 @@ export const metabot = createSlice({
       state,
       { payload: codeEdit }: PayloadAction<MetabotCodeEdit>,
     ) => {
-      state.reactions.suggestedCodeEdits[codeEdit.bufferId] = codeEdit;
+      state.reactions.suggestedCodeEdits[codeEdit.buffer_id] = codeEdit;
     },
     removeSuggestedCodeEdit: (
       state,
-      action: PayloadAction<MetabotCodeEdit["bufferId"]>,
+      action: PayloadAction<MetabotCodeEdit["buffer_id"]>,
     ) => {
       delete state.reactions.suggestedCodeEdits[action.payload];
     },
