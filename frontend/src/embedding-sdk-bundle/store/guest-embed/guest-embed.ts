@@ -1,4 +1,4 @@
-import { overrideRequestsForGuestEmbeds } from "embedding-sdk-bundle/lib/override-requests-for-guest-embeds";
+import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 

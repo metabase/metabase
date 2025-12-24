@@ -23,7 +23,6 @@ import {
   parameterHasNoDisplayValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 
 import {
   ParameterDropdownWidget,
@@ -45,7 +44,6 @@ export type ParameterValueWidgetProps = {
   parameters?: UiParameter[];
   cardId?: CardId;
   dashboardId?: DashboardId;
-  token?: EntityToken | null;
   setParameterValueToDefault?: (parameterId: ParameterId) => void;
   // This means the widget will take care of the default value.
   // Should be used for dashboards and native questions in the parameter bar,
@@ -70,7 +68,6 @@ export const ParameterValueWidget = ({
   placeholder,
   cardId,
   dashboardId,
-  token,
   setParameterValueToDefault,
   setValue,
   value,
@@ -223,7 +220,6 @@ export const ParameterValueWidget = ({
             parameters={parameters}
             cardId={cardId}
             dashboardId={dashboardId}
-            token={token}
             value={value}
             setValue={setValue}
             isEditing={isEditing}
@@ -291,7 +287,6 @@ export const ParameterValueWidget = ({
                   value={value}
                   cardId={cardId}
                   dashboardId={dashboardId}
-                  token={token}
                   placeholder={placeholderText}
                   isPopoverOpen={isOpen}
                 />
@@ -312,7 +307,6 @@ export const ParameterValueWidget = ({
           parameters={parameters}
           cardId={cardId}
           dashboardId={dashboardId}
-          token={token}
           value={value}
           setValue={setValue}
           isEditing={isEditing}
