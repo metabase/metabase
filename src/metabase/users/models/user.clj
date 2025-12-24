@@ -120,7 +120,8 @@
   (validate-user-type! user-type)
   (validate-user-locale! locale)
   (validate-sso-setup! sso_source)
-  (premium-features/airgap-check-user-count))
+  (when (or (nil? user-type) (= user-type :personal))
+    (premium-features/assert-airgap-allows-user-creation!)))
 
 ;;; -------------------------------------------------- Password Management --------------------------------------------------
 

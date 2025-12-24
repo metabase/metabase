@@ -18,7 +18,7 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import type { DownloadsState, State } from "metabase-types/store";
 
 import { trackDownloadResults } from "./downloads-analytics";
@@ -31,7 +31,7 @@ export interface DownloadQueryResultsOpts {
   enablePivot?: boolean;
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
-  uuid?: string;
+  uuid?: EntityUuid | null;
   token?: EntityToken | null;
   documentUuid?: string;
   documentId?: number;

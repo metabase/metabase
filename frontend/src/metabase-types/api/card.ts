@@ -4,7 +4,7 @@ import type {
 } from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
-import type { EntityToken } from "metabase-types/api/entity";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -480,7 +480,8 @@ export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 
 export type GetRemappedCardParameterValueRequest = {
-  card_id: CardId | EntityToken;
+  card_id?: CardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };

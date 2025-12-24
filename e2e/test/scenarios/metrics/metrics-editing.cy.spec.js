@@ -117,20 +117,22 @@ describe("scenarios > metrics > editing", () => {
       cy.visit("/browse/metrics");
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
+        .should("be.visible")
         .click();
 
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
-      saveMetric({ name: "New metric" });
+      saveMetric();
 
+      cy.log("Go to the collection this metric was saved in");
       cy.findByTestId("head-crumbs-container")
-        .findByText("Our analytics")
+        .find('a[href*="collection"]')
         .click();
+
       cy.findByTestId("pinned-items").within(() => {
-        cy.findByText("Metrics").should("be.visible");
-        cy.findByText("New metric").should("be.visible");
+        cy.findByRole("heading", { name: "Metrics" }).should("be.visible");
         verifyScalarValue("18,760");
       });
     });
@@ -601,7 +603,7 @@ function renameMetric(newName) {
 }
 
 function verifyScalarValue(value) {
-  cy.findByTestId("scalar-container").findByText(value).should("be.visible");
+  cy.findByTestId("scalar-value").should("have.text", value).and("be.visible");
 }
 
 function verifyLineAreaBarChart({ xAxis, yAxis }) {

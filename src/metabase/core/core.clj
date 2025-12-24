@@ -21,7 +21,7 @@
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.plugins.core :as plugins]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
@@ -182,8 +182,6 @@
   (log/info "Setting up prometheus metrics")
   (analytics/setup!)
   (init-status/set-progress! 0.5)
-  (premium-features/airgap-check-user-count)
-  (init-status/set-progress! 0.55)
   (task/init-scheduler!)
   (analytics/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation

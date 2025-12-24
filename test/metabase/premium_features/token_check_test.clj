@@ -255,3 +255,49 @@
     (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 65 "a")))))
     (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 63 "a")))))
     (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str "mb_dev_" (repeat 53 "a")))))))
+
+(deftest assert-valid-airgap-user-count-test
+  (testing "no limit set - no error"
+    (with-redefs [token-check/max-users-allowed (constantly nil)]
+      (is (nil? (token-check/assert-valid-airgap-user-count!)))))
+
+  (testing "under limit - no error"
+    (with-redefs [token-check/max-users-allowed    (constantly 10)
+                  token-check/active-user-count (constantly 5)]
+      (is (nil? (token-check/assert-valid-airgap-user-count!)))))
+
+  (testing "at limit - no error"
+    (with-redefs [token-check/max-users-allowed    (constantly 10)
+                  token-check/active-user-count (constantly 10)]
+      (is (nil? (token-check/assert-valid-airgap-user-count!)))))
+
+  (testing "over limit - throws"
+    (with-redefs [token-check/max-users-allowed    (constantly 10)
+                  token-check/active-user-count (constantly 11)]
+      (is (thrown-with-msg? Exception
+                            #"You have reached the maximum number of users"
+                            (token-check/assert-valid-airgap-user-count!))))))
+
+(deftest assert-airgap-allows-user-creation-test
+  (testing "no limit set - no error"
+    (with-redefs [token-check/max-users-allowed (constantly nil)]
+      (is (nil? (token-check/assert-airgap-allows-user-creation!)))))
+
+  (testing "under limit - no error (room for one more)"
+    (with-redefs [token-check/max-users-allowed    (constantly 10)
+                  token-check/active-user-count (constantly 9)]
+      (is (nil? (token-check/assert-airgap-allows-user-creation!)))))
+
+  (testing "at limit - throws (no room for another)"
+    (with-redefs [token-check/max-users-allowed    (constantly 10)
+                  token-check/active-user-count (constantly 10)]
+      (is (thrown-with-msg? Exception
+                            #"Adding another user would exceed the maximum"
+                            (token-check/assert-airgap-allows-user-creation!)))))
+
+  (testing "over limit - throws"
+    (with-redefs [token-check/max-users-allowed    (constantly 10)
+                  token-check/active-user-count (constantly 11)]
+      (is (thrown-with-msg? Exception
+                            #"Adding another user would exceed the maximum"
+                            (token-check/assert-airgap-allows-user-creation!))))))

@@ -1,5 +1,6 @@
 import L from "leaflet";
 
+import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { GET } from "metabase/lib/api";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -9,6 +10,8 @@ import { getTileUrl } from "../lib/map";
 import LeafletMap from "./LeafletMap";
 
 export default class LeafletTilePinMap extends LeafletMap {
+  static contextType = EmbeddingEntityContext;
+
   componentDidMount() {
     super.componentDidMount();
 
@@ -55,7 +58,9 @@ export default class LeafletTilePinMap extends LeafletMap {
     const latFieldParam = JSON.stringify(latitudeField.field_ref);
     const lonFieldParam = JSON.stringify(longitudeField.field_ref);
 
-    const { dashboard, dashcard, uuid, token } = this.props;
+    const { dashboard, dashcard } = this.props;
+    // EmbeddingEntityContext is only available under embedding environment
+    const { uuid, token } = this.context ?? {};
 
     return getTileUrl({
       cardId: id,

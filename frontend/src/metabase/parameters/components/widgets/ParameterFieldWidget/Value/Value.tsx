@@ -1,10 +1,10 @@
 import { isValidElement } from "react";
 
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { DashboardId, Parameter } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 
 import RemappedValue from "./RemappedValue";
 
@@ -19,9 +19,9 @@ export const Value = ({
   parameter?: Parameter;
   cardId?: number;
   dashboardId?: DashboardId;
-  token?: EntityToken | null;
 } & OptionsType) => {
   const tc = useTranslateContent<unknown>();
+  const { uuid, token } = useEmbeddingEntityContext();
 
   if (rawOptions.hide) {
     return null;
@@ -31,6 +31,8 @@ export const Value = ({
 
   const options = {
     ...rawOptions,
+    uuid,
+    token,
     displayValue: tc(rawOptions.displayValue),
   };
 

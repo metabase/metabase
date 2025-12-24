@@ -336,10 +336,7 @@ export const useDataGridInstance = <TData, TValue>({
         setColumnSizingMap(newWidths);
       };
 
-      measureColumnWidths(
-        handleColumnsMeasured,
-        Object.keys(preserveColumnSizingMap),
-      );
+      measureColumnWidths(handleColumnsMeasured);
     },
     [
       measureColumnWidths,

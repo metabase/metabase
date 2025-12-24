@@ -1,15 +1,4 @@
-export type OnBeforeRequestHandlerData = {
-  method: "GET" | "POST";
-  url: string;
-  options: {
-    headers?: Record<string, string>;
-    hasBody: boolean;
-  } & Record<string, unknown>;
-};
-
-export type OnBeforeRequestHandler = (
-  data: OnBeforeRequestHandlerData,
-) => Promise<void | OnBeforeRequestHandlerData>;
+import type { OnBeforeRequestHandlerData } from "metabase/plugins/oss/api";
 
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,

@@ -2,21 +2,17 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
+import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import {
-  EmbedApi,
-  PublicApi,
-  maybeUsePivotEndpoint,
-  setEmbedQuestionEndpoints,
-  setPublicQuestionEndpoints,
-} from "metabase/services";
+import { EmbedApi, PublicApi, maybeUsePivotEndpoint } from "metabase/services";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -59,13 +55,9 @@ export const PublicOrEmbeddedQuestion = ({
 
   const canWhitelabel = useSelector(getCanWhitelabel);
 
-  useMount(async () => {
-    if (uuid) {
-      setPublicQuestionEndpoints(uuid);
-    } else if (token) {
-      setEmbedQuestionEndpoints(token);
-    }
+  usePublicEndpoints({ uuid, token });
 
+  useMount(async () => {
     try {
       let card;
       if (token) {
@@ -189,24 +181,24 @@ export const PublicOrEmbeddedQuestion = ({
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <PublicOrEmbeddedQuestionView
-        initialized={initialized}
-        card={card}
-        metadata={metadata}
-        result={result}
-        uuid={uuid}
-        token={token}
-        getParameters={getParameters}
-        parameterValues={parameterValues}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        bordered={bordered}
-        hide_parameters={hide_parameters}
-        theme={theme}
-        titled={titled}
-        setCard={setCard}
-        downloadsEnabled={downloadsEnabled}
-      />
+      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
+        <PublicOrEmbeddedQuestionView
+          initialized={initialized}
+          card={card}
+          metadata={metadata}
+          result={result}
+          getParameters={getParameters}
+          parameterValues={parameterValues}
+          setParameterValue={setParameterValue}
+          setParameterValueToDefault={setParameterValueToDefault}
+          bordered={bordered}
+          hide_parameters={hide_parameters}
+          theme={theme}
+          titled={titled}
+          setCard={setCard}
+          downloadsEnabled={downloadsEnabled}
+        />
+      </EmbeddingEntityContextProvider>
     </LocaleProvider>
   );
 };
