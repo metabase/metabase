@@ -20,7 +20,6 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         idAlias: "sqlQuestionId",
       },
     );
-
     cy.signOut();
 
     mockAuthProviderAndJwtSignIn();
