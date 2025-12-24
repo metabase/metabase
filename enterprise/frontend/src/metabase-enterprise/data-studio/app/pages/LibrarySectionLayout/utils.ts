@@ -11,7 +11,7 @@ import type { TreeItem } from "./types";
 
 function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
   return {
-    id: snippet.id,
+    id: `snippet:${snippet.id}`,
     name: snippet.name,
     icon: "snippet",
     model: "snippet",
@@ -43,7 +43,7 @@ function buildCollectionNode(
   ];
 
   return {
-    id: collection.id,
+    id: `collection:${collection.id}`,
     name: collection.name,
     model: "collection",
     icon: isRoot ? "snippet" : "folder",
