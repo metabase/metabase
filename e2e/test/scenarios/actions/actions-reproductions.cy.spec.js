@@ -394,9 +394,7 @@ describe("issue 51020", () => {
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");
       cy.button("Save").click();
-      H.modal()
-        .findByLabelText("Name")
-        .type("{backspace}{backspace}{backspace}Model 51020");
+      H.modal().findByLabelText("Name").clear().type("Model 51020");
       H.modal().button("Save").click();
       cy.wait("@createCard");
       cy.wait("@getCard");
