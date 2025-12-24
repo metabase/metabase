@@ -290,7 +290,12 @@
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
-    "X-Content-Type-Options"            "nosniff"}))
+    "X-Content-Type-Options"            "nosniff"}
+   ;; Add Cross-Origin headers from environment variables if set
+   (when-let [corp (env/env :mb-cross-origin-resource-policy)]
+     {"Cross-Origin-Resource-Policy" corp})
+   (when-let [coep (env/env :mb-cross-origin-embedder-policy)]
+     {"Cross-Origin-Embedder-Policy" coep})))
 
 (defn- always-allow-cors?
   "Returns true if the request/response should have CORS headers added."
