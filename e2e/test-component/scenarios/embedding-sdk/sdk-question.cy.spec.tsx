@@ -632,4 +632,29 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       expect(interception.response?.statusCode).to.equal(200);
     });
   });
+
+  it("should stay in editor mode after adding a filter for the first time for an existing saved question (EMB-1077)", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByRole("button", { name: "Visualize" }).should("exist");
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Previous 7 days").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByRole("button", { name: "Visualize" }).should("exist");
+    });
+  });
 });

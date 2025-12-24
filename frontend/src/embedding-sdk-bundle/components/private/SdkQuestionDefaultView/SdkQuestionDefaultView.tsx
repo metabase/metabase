@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
 import { useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -114,16 +115,18 @@ export const SdkQuestionDefaultView = ({
     return isNative;
   }, [question]);
 
+  const prevOriginalId = usePrevious(originalId);
+
   useEffect(() => {
     if (isNewQuestion && !isQuestionSaved) {
       // When switching to new question, open the notebook editor
       openEditor();
-    } else if (!isNewQuestion) {
-      // When no longer in a notebook editor, switch back to visualization.
-      // When a question is saved, also switch back to visualization.
+    } else if (prevOriginalId === "new" && !isNewQuestion) {
+      // Only close editor when transitioning from a new question to an existing one
+      // (e.g., after saving or switching questions), not on every render
       closeEditor();
     }
-  }, [isNewQuestion, isQuestionSaved, openEditor, closeEditor]);
+  }, [prevOriginalId, isNewQuestion, isQuestionSaved, openEditor, closeEditor]);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
