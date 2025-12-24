@@ -1,0 +1,6 @@
+# Metabase
+
+Links to `llms.txt` files for Metabase. These files contains the full documentation and guide for AI agents on these Metabase-related topics:
+
+- [Embedding Metabase with Modular Embedding](./embedding/llms.txt)
+
