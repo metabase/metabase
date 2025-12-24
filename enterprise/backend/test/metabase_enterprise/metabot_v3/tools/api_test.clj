@@ -287,8 +287,7 @@
                       :database_type missing-value
                       :semantic_type "score"}]}
                    :conversation_id conversation-id}
-                  (-> response
-                      (update-in [:structured_output :query] mbql.normalize/normalize)))))))))
+                  response)))))))
 
 (deftest query-model-test
   (mt/with-premium-features #{:metabot-v3}
