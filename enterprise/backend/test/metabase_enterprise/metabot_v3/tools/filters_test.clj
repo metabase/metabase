@@ -47,9 +47,10 @@
             (is (=? {:structured-output {:type :query,
                                          :query-id string?
                                          :query {:database (mt/id)
-                                                 :type :query
-                                                 :query {:source-table (mt/id :orders)
-                                                         :aggregation [[:metric metric-id]]}}}}
+                                                 :lib/type :mbql/query
+                                                 :stages [{:lib/type :mbql.stage/mbql
+                                                           :source-table (mt/id :orders)
+                                                           :aggregation [[:metric {} metric-id]]}]}}}
                     (metabot-v3.tools.filters/query-metric
                      {:metric-id metric-id
                       :filters []
@@ -58,21 +59,18 @@
             (is (=? {:structured-output {:type :query,
                                          :query-id string?
                                          :query {:database (mt/id)
-                                                 :type :query
-                                                 :query {:source-table (mt/id :orders)
-                                                         :aggregation [[:metric metric-id]]
-                                                         :breakout [[:field (mt/id :products :category)
-                                                                     {:base-type :type/Text
-                                                                      :source-field (mt/id :orders :product_id)}]]
-                                                         :filter
-                                                         [:and
-                                                          [:= [:field (mt/id :people :state)
-                                                               {:base-type :type/Text
-                                                                :source-field (mt/id :orders :user_id)}]
-                                                           "TX"]
-                                                          [:> [:field (mt/id :orders :discount)
-                                                               {:base-type :type/Float}]
-                                                           3]]}}}}
+                                                 :lib/type :mbql/query
+                                                 :stages [{:lib/type :mbql.stage/mbql
+                                                           :source-table (mt/id :orders)
+                                                           :aggregation [[:metric {} metric-id]]
+                                                           :breakout [[:field {:source-field (mt/id :orders :product_id)}
+                                                                       (mt/id :products :category)]]
+                                                           :filters
+                                                           [[:= {} [:field {:source-field (mt/id :orders :user_id)}
+                                                                    (mt/id :people :state)]
+                                                             "TX"]
+                                                            [:> {} [:field {} (mt/id :orders :discount)]
+                                                             3]]}]}}}
                     (metabot-v3.tools.filters/query-metric
                      {:metric-id metric-id
                       :filters [{:field-id (->field-id ["User" "State"])
@@ -87,23 +85,18 @@
             (is (=? {:structured-output {:type :query,
                                          :query-id string?
                                          :query {:database (mt/id)
-                                                 :type :query
-                                                 :query {:source-table (mt/id :orders)
-                                                         :aggregation [[:metric metric-id]]
-                                                         :filter [:and
-                                                                  [:!=
-                                                                   [:get-week
-                                                                    [:field (mt/id :orders :created_at)
-                                                                     {:base-type :type/DateTimeWithLocalTZ}]
-                                                                    :iso]
-                                                                   1 2 3]
-                                                                  [:=
-                                                                   [:get-month [:field (mt/id :orders :created_at)
-                                                                                {:base-type :type/DateTimeWithLocalTZ}]]
-                                                                   6 7 8]]
-                                                         :breakout [[:field (mt/id :orders :created_at)
-                                                                     {:base-type :type/DateTimeWithLocalTZ
-                                                                      :temporal-unit :week}]]}}}}
+                                                 :lib/type :mbql/query
+                                                 :stages [{:lib/type :mbql.stage/mbql
+                                                           :source-table (mt/id :orders)
+                                                           :aggregation [[:metric {} metric-id]]
+                                                           :filters [[:!= {}
+                                                                      [:get-week {} [:field {} (mt/id :orders :created_at)] :iso]
+                                                                      1 2 3]
+                                                                     [:= {}
+                                                                      [:get-month {} [:field {} (mt/id :orders :created_at)]]
+                                                                      6 7 8]]
+                                                           :breakout [[:field {:temporal-unit :week}
+                                                                       (mt/id :orders :created_at)]]}]}}}
                     (metabot-v3.tools.filters/query-metric
                      {:metric-id metric-id
                       :filters [{:field-id (->field-id "Created At")
@@ -508,8 +501,9 @@
         (is (=? {:structured-output {:type :query
                                      :query-id string?
                                      :query {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table table-id}}}}
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id}]}}}
                 (metabot-v3.tools.filters/query-datasource
                  {:table-id table-id}))))
 
@@ -517,10 +511,11 @@
         (is (=? {:structured-output {:type :query
                                      :query-id string?
                                      :query {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table table-id
-                                                     :fields [[:field (mt/id :orders :created_at) {:base-type :type/DateTimeWithLocalTZ}]
-                                                              [:field (mt/id :orders :total) {:base-type :type/Float}]]}}}}
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :fields [[:field {} (mt/id :orders :created_at)]
+                                                                [:field {} (mt/id :orders :total)]]}]}}}
                 (metabot-v3.tools.filters/query-datasource
                  {:table-id table-id
                   :fields [{:field-id (->field-id "Created At")}
@@ -530,11 +525,11 @@
         (is (=? {:structured-output {:type :query
                                      :query-id string?
                                      :query {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table table-id
-                                                     :filter [:and
-                                                              [:> [:field (mt/id :orders :discount) {:base-type :type/Float}] 3]
-                                                              [:= [:field (mt/id :orders :user_id) {:base-type :type/Integer}] 10]]}}}}
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :filters [[:> {} [:field {} (mt/id :orders :discount)] 3]
+                                                                 [:= {} [:field {} (mt/id :orders :user_id)] 10]]}]}}}
                 (metabot-v3.tools.filters/query-datasource
                  {:table-id table-id
                   :filters [{:field-id (->field-id "Discount")
@@ -548,11 +543,12 @@
         (is (=? {:structured-output {:type :query
                                      :query-id string?
                                      :query {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table table-id
-                                                     :aggregation [[:sum [:field (mt/id :orders :subtotal) {:base-type :type/Float}]]
-                                                                   [:avg [:field (mt/id :orders :discount) {:base-type :type/Float}]]]
-                                                     :breakout [[:field (mt/id :orders :product_id) {:base-type :type/Integer}]]}}}}
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:sum {} [:field {} (mt/id :orders :subtotal)]]
+                                                                     [:avg {} [:field {} (mt/id :orders :discount)]]]
+                                                       :breakout [[:field {} (mt/id :orders :product_id)]]}]}}}
                 (metabot-v3.tools.filters/query-datasource
                  {:table-id table-id
                   :aggregations [{:field-id (->field-id "Subtotal")
@@ -565,11 +561,12 @@
         (is (=? {:structured-output {:type :query
                                      :query-id string?
                                      :query {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table table-id
-                                                     :order-by [[:asc [:field (mt/id :orders :created_at) {:base-type :type/DateTimeWithLocalTZ}]]
-                                                                [:desc [:field (mt/id :orders :total) {:base-type :type/Float}]]]
-                                                     :limit 100}}}}
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :order-by [[:asc {} [:field {} (mt/id :orders :created_at)]]
+                                                                  [:desc {} [:field {} (mt/id :orders :total)]]]
+                                                       :limit 100}]}}}
                 (metabot-v3.tools.filters/query-datasource
                  {:table-id table-id
                   :order-by [{:field {:field-id (->field-id "Created At")}
@@ -582,12 +579,11 @@
         (is (=? {:structured-output {:type :query
                                      :query-id string?
                                      :query {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table table-id
-                                                     :aggregation [[:count]]
-                                                     :breakout [[:field (mt/id :orders :created_at)
-                                                                 {:base-type :type/DateTimeWithLocalTZ
-                                                                  :temporal-unit :month}]]}}}}
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:count {}]]
+                                                       :breakout [[:field {:temporal-unit :month} (mt/id :orders :created_at)]]}]}}}
                 (metabot-v3.tools.filters/query-datasource
                  {:table-id table-id
                   :aggregations [{:field-id (->field-id "Product ID")
