@@ -3537,6 +3537,37 @@ describe("scenarios > data studio > datamodel", () => {
     });
   });
 
+  it("should allow you to close table and field details", () => {
+    H.DataModel.visitDataStudio({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
+
+    FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+
+    PreviewSection.get().should("exist");
+
+    FieldSection.getCloseButton().click();
+
+    PreviewSection.get().should("not.exist");
+    FieldSection.get().should("not.exist");
+    TableSection.get().should("exist");
+
+    TableSection.getCloseButton().click();
+    TableSection.get().should("not.exist");
+
+    cy.log(
+      "ensure that preview opened state was cleared and does not re-appear",
+    );
+    TablePicker.getTable("Orders").click();
+    TableSection.clickField("Subtotal");
+    PreviewSection.get().should("not.exist");
+    FieldSection.get().should("exist");
+    TableSection.get().should("exist");
+  });
+
   describe("Error handling", { tags: "@external" }, () => {
     beforeEach(() => {
       H.restore("postgres-writable");

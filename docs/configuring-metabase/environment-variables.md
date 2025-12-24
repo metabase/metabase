@@ -810,6 +810,17 @@ Change this to a higher value if you notice that regular usage consumes all or c
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
 
+### `MB_JDBC_NETWORKOUT_TIMEOUT_MS`
+
+- Type: integer
+- Default: `1800000`
+
+By default, this is 30 minutes.
+
+Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
+        are stuck waiting for a database response in a socket read. See the documentation for more details:
+        https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-
+
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
