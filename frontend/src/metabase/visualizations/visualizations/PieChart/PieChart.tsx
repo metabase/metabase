@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
@@ -184,7 +183,8 @@ export function PieChart(props: VisualizationProps) {
       legendColors={legendColors}
       showLegend={showLegend}
       onHoverChange={onHoverChange}
-      className={cx(props.className, S.PieChartContainer)}
+      className={props.className}
+      chartClassName={S.PieChartContainer}
       gridSize={props.gridSize}
       hovered={props.hovered}
       isDashboard={isDashboard}

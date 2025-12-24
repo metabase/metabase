@@ -40,6 +40,7 @@ type ChartWithLegendProps = {
   hovered?: HoveredObject | null;
   onHoverChange?: (hover?: LegendHover | null) => void;
   className?: string;
+  chartClassName?: string;
   style?: CSSProperties;
   gridSize?: {
     width: number;
@@ -63,6 +64,7 @@ const ChartWithLegendInner = ({
   hovered,
   onHoverChange,
   className,
+  chartClassName,
   style = {},
   gridSize,
   aspectRatio = 1,
@@ -195,7 +197,7 @@ const ChartWithLegendInner = ({
         </div>
       )}
       <div
-        className={cx(styles.Chart)}
+        className={cx(styles.Chart, chartClassName)}
         style={{
           width: layout.chartWidth,
           height: layout.chartHeight,
