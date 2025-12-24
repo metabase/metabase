@@ -511,6 +511,68 @@ describe("Tenants - management", () => {
     });
   });
 
+  it("should show 'All tenant users' in permission warning tooltip and modal for tenant groups on data permissions (UXW-2624)", () => {
+    cy.request("PUT", "/api/setting", { "use-tenants": true });
+
+    cy.request("POST", "/api/permissions/group", {
+      name: "Test Tenant Group",
+      is_tenant_group: true,
+    });
+
+    cy.visit("/admin/permissions/data/database/1");
+
+    cy.log("all tenant users should have 'Can view' access");
+    cy.findAllByRole("row")
+      .contains("tr", "All tenant users")
+      .should("contain", "Can view");
+
+    cy.log(
+      "tenant group should have 'Blocked' access (new group default) with warning icon",
+    );
+    cy.findAllByRole("row")
+      .contains("tr", "Test Tenant Group")
+      .should("contain", "Blocked")
+      .findAllByLabelText("warning icon")
+      .first()
+      .realHover();
+
+    cy.log("tooltip should reference 'All tenant users'");
+    H.tooltip().should(
+      "contain",
+      'The "All tenant users" group has a higher level of access',
+    );
+
+    cy.log("click to change to 'Can view' and back to trigger modal");
+    cy.findAllByRole("row")
+      .contains("tr", "Test Tenant Group")
+      .findByText("Blocked")
+      .click();
+
+    H.popover().findByText("Can view").click();
+
+    cy.findAllByRole("row")
+      .contains("tr", "Test Tenant Group")
+      .findByText("Can view")
+      .click();
+
+    H.popover().findByText("Blocked").click();
+
+    H.modal().within(() => {
+      cy.log("title should mention tenant users group");
+      cy.findByText(/Revoke access even though "All tenant users"/).should(
+        "be.visible",
+      );
+
+      cy.log("description should mention tenant users group");
+      cy.findByText(
+        /The "All tenant users" group has a higher level of access/,
+      ).should("be.visible");
+
+      cy.log("should not mention internal users");
+      cy.contains("internal users").should("not.exist");
+    });
+  });
+
   it("should not show send email modal when creating tenant users when SMTP is configured", () => {
     H.setupSMTP();
     cy.request("PUT", "/api/setting", {

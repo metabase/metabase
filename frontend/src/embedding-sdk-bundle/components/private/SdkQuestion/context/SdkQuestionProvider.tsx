@@ -11,6 +11,7 @@ import {
   getPlugins,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -235,7 +236,9 @@ export const SdkQuestionProvider = ({
 
   return (
     <SdkQuestionContext.Provider value={questionContext}>
-      {children}
+      <EmbeddingEntityContextProvider uuid={null} token={token}>
+        {children}
+      </EmbeddingEntityContextProvider>
     </SdkQuestionContext.Provider>
   );
 };
