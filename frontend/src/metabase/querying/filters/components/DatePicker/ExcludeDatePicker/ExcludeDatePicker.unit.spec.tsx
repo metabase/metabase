@@ -237,9 +237,9 @@ describe("ExcludeDatePicker", () => {
       const { onChange } = setup({ timeStyle: "HH:mm" });
 
       await userEvent.click(screen.getByText("Hours of the day…"));
-      ["00:00", "09:00", "17:00"].forEach(async (label) => {
+      for (const label of ["00:00", "09:00", "17:00"]) {
         await userEvent.click(screen.getByLabelText(label));
-      });
+      }
       await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
       expect(onChange).toHaveBeenCalledWith({
