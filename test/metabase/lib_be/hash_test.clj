@@ -284,6 +284,19 @@
                                  [(lib/= (meta/field-metadata :venues :category-id)
                                          (meta/field-metadata :categories :id))]))))
 
+(defn- query-with-join-subquery-aggregation
+  "Build a query with a join that has a subquery with aggregations and order-by.
+   This tests that aggregation refs in join stages are properly handled by the encoder."
+  []
+  (let [subquery (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                     (lib/aggregate (lib/count))
+                     (lib/breakout (meta/field-metadata :categories :name))
+                     (as-> $q (lib/order-by $q (lib/aggregation-ref $q 0))))]
+    (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        (lib/join (lib/join-clause subquery
+                                   [(lib/= (meta/field-metadata :venues :name)
+                                           (meta/field-metadata :categories :name))])))))
+
 (comment
   (require (quote [metabase.lib-be.hash-test :as test]))
   (let [q1 (query-with-simple-join) q2 (query-with-simple-join)]
@@ -353,7 +366,14 @@
             query-2 (query-with-simple-join)]
         (is (= (query-hash-hex query-1)
                (query-hash-hex query-2))
-            "Simple joins should hash the same regardless of UUIDs")))))
+            "Simple joins should hash the same regardless of UUIDs")))
+    (testing "join with subquery containing aggregation refs"
+      ;; This tests that the aggregation ref encoder is applied to stages inside joins
+      (let [query-1 (query-with-join-subquery-aggregation)
+            query-2 (query-with-join-subquery-aggregation)]
+        (is (= (query-hash-hex query-1)
+               (query-hash-hex query-2))
+            "Join subqueries with aggregation refs should hash the same")))))
 
 ;; Test cases for :any typed schema positions that can contain :lib/uuid
 ;; These test the issue where Malli encoders don't apply to values typed as :any
