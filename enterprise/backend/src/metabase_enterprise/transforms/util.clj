@@ -461,15 +461,3 @@
   (if-let [tag-ids (-> tag-ids set not-empty)]
     (filter #(some tag-ids (get-in % field-path)))
     identity))
-
-(defn ->database-id-filter-xf
-  "Returns an xform for a transform database ID filter.
-   Matches transforms where the source database OR target database matches the given database-id."
-  [database-id]
-  (if database-id
-    (filter (fn [transform]
-              (let [python-source-db-id (transforms.i/source-db-id transform)
-                    target-db-id        (transforms.i/target-db-id transform)]
-                (or (= database-id python-source-db-id)
-                    (= database-id target-db-id)))))
-    identity))

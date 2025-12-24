@@ -395,7 +395,8 @@
                                            (lib.metadata.jvm/application-database-metadata-provider other-db-id)
                                            "select 2")}
                           :target {:type "table"
-                                   :name (str "test_qo_" (u/generate-nano-id))}}]
+                                   :name (str "test_qo_" (u/generate-nano-id))
+                                   :database other-db-id}}]
             (testing "filter by main database and query type"
               (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
                                                   :database_id (mt/id)
