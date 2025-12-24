@@ -6,7 +6,6 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
@@ -20,7 +19,8 @@ import { modelToUrl } from "metabase/lib/urls";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { zoomInRow } from "metabase/query_builder/actions";
-import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
+import { useLocation } from "metabase/router";
+import type { WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
@@ -41,18 +41,13 @@ import {
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
-type RouterProps = {
-  location: SearchAwareLocation;
-};
-
-type OwnProps = {
+type Props = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
 };
 
-type Props = RouterProps & OwnProps;
-
-function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+export const SearchBar = ({ onSearchActive, onSearchInactive }: Props) => {
+  const location = useLocation();
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
@@ -229,10 +224,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       )}
     </SearchBarRoot>
   );
-}
-
-export const SearchBar = withRouter(SearchBarView);
-
+};
 // for some reason our unit test don't work if this is a name export ¯\_(ツ)_/¯
 // eslint-disable-next-line import/no-default-export
 export default SearchBar;

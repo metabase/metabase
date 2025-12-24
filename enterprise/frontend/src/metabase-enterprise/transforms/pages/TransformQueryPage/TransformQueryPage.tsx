@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import type { Route, RouteProps } from "react-router";
 import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -15,6 +14,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useRouter } from "metabase/router";
 import { Box } from "metabase/ui";
 import {
   useGetTransformQuery,
@@ -37,10 +37,9 @@ type TransformQueryPageParams = {
 
 type TransformQueryPageProps = {
   params: TransformQueryPageParams;
-  route: RouteProps;
 };
 
-export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
+export function TransformQueryPage({ params }: TransformQueryPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
@@ -64,24 +63,18 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   }
 
   return (
-    <TransformQueryPageBody
-      transform={transform}
-      databases={databases.data}
-      route={route}
-    />
+    <TransformQueryPageBody transform={transform} databases={databases.data} />
   );
 }
 
 type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
-  route: RouteProps;
 };
 
 function TransformQueryPageBody({
   transform,
   databases,
-  route,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -96,11 +89,12 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const dispatch = useDispatch();
+  const { route } = useRouter();
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const isEditMode = !!route.path?.includes("/edit");
+  const isEditMode = !!route?.path?.includes("/edit");
   useRegisterMetabotTransformContext(transform, source);
 
   const {
@@ -224,7 +218,6 @@ function TransformQueryPageBody({
         />
       )}
       <LeaveRouteConfirmModal
-        route={route as Route}
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />

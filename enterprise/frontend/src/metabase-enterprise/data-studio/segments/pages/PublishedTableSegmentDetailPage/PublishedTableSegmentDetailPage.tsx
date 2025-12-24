@@ -1,5 +1,3 @@
-import type { Route } from "react-router";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Center } from "metabase/ui";
 
@@ -14,12 +12,10 @@ type PublishedTableSegmentDetailPageParams = {
 
 type PublishedTableSegmentDetailPageProps = {
   params: PublishedTableSegmentDetailPageParams;
-  route: Route;
 };
 
 export function PublishedTableSegmentDetailPage({
   params,
-  route,
 }: PublishedTableSegmentDetailPageProps) {
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     usePublishedTableSegmentPage(params);
@@ -34,7 +30,6 @@ export function PublishedTableSegmentDetailPage({
 
   return (
     <SegmentDetailPage
-      route={route}
       segment={segment}
       tabUrls={tabUrls}
       breadcrumbs={

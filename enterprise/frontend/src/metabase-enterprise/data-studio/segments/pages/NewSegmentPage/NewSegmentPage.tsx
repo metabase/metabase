@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -23,14 +22,12 @@ import {
 } from "../../utils/segment-query";
 
 type NewSegmentPageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (segment: Segment) => string;
 };
 
 export function NewSegmentPage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
@@ -120,7 +117,7 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

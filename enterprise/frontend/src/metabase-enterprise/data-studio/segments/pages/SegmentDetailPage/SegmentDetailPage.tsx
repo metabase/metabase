@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
@@ -20,7 +19,6 @@ import type { SegmentTabUrls } from "../../types";
 import { getPreviewUrl } from "../../utils/segment-query";
 
 type SegmentDetailPageProps = {
-  route: Route;
   segment: Segment;
   tabUrls: SegmentTabUrls;
   breadcrumbs: ReactNode;
@@ -28,7 +26,6 @@ type SegmentDetailPageProps = {
 };
 
 export function SegmentDetailPage({
-  route,
   segment,
   tabUrls,
   breadcrumbs,
@@ -127,7 +124,6 @@ export function SegmentDetailPage({
       />
       <LeaveRouteConfirmModal
         key={segment.id}
-        route={route}
         isEnabled={isDirty && !isSaving}
       />
     </PageContainer>

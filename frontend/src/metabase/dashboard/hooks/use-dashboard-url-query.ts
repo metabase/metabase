@@ -1,6 +1,5 @@
 import type { Location } from "history";
 import { useEffect, useMemo } from "react";
-import type { InjectedRouter } from "react-router";
 import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
@@ -9,6 +8,7 @@ import { useSetting } from "metabase/common/hooks";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useLocation, useRouter } from "metabase/router";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { selectTab } from "../actions";
@@ -20,10 +20,9 @@ import {
 } from "../selectors";
 import { createTabSlug } from "../utils";
 
-export function useDashboardUrlQuery(
-  router: InjectedRouter,
-  location: Location,
-) {
+export function useDashboardUrlQuery() {
+  const { router } = useRouter();
+  const location = useLocation();
   const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);

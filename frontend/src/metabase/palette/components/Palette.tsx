@@ -48,61 +48,59 @@ export const Palette = withRouter((props) => {
   );
 });
 
-export const PaletteContainer = withRouter(
-  ({
-    disabled,
+export const PaletteContainer = ({
+  disabled,
+  locationQuery,
+}: {
+  disabled: boolean;
+  locationQuery: Query;
+}) => {
+  const { query } = useKBar((state) => ({ actions: state.actions }));
+  const ref = useRef(null);
+
+  const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
     locationQuery,
-  }: {
-    disabled: boolean;
-    locationQuery: Query;
-  }) => {
-    const { query } = useKBar((state) => ({ actions: state.actions }));
-    const ref = useRef(null);
+    disabled,
+  });
 
-    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
-      locationQuery,
-      disabled,
-    });
+  useOnClickOutside(ref, () => {
+    query.setVisualState(VisualState.hidden);
+  });
 
-    useOnClickOutside(ref, () => {
-      query.setVisualState(VisualState.hidden);
-    });
-
-    return (
-      <Card
-        ref={ref}
-        w="640px"
-        p="0"
-        data-testid="command-palette"
-        bd="1px solid var(--mb-color-border)"
-      >
-        <Stack gap={rem(4)} pb="lg">
-          <Box pos="relative">
-            <KBarSearch
-              className={S.input}
-              defaultPlaceholder={t`Search for anything…`}
-            />
-
-            <Stack
-              className={S.iconContainer}
-              align="center"
-              left={36} // align this icon with results icons
-              pos="absolute"
-              top={26}
-            >
-              <Icon c="text-dark" name="search" />
-            </Stack>
-          </Box>
-
-          <PaletteResults
-            align="stretch"
-            locationQuery={locationQuery}
-            searchRequestId={searchRequestId}
-            searchResults={searchResults}
-            searchTerm={searchTerm}
+  return (
+    <Card
+      ref={ref}
+      w="640px"
+      p="0"
+      data-testid="command-palette"
+      bd="1px solid var(--mb-color-border)"
+    >
+      <Stack gap={rem(4)} pb="lg">
+        <Box pos="relative">
+          <KBarSearch
+            className={S.input}
+            defaultPlaceholder={t`Search for anything…`}
           />
-        </Stack>
-      </Card>
-    );
-  },
-);
+
+          <Stack
+            className={S.iconContainer}
+            align="center"
+            left={36} // align this icon with results icons
+            pos="absolute"
+            top={26}
+          >
+            <Icon c="text-dark" name="search" />
+          </Stack>
+        </Box>
+
+        <PaletteResults
+          align="stretch"
+          locationQuery={locationQuery}
+          searchRequestId={searchRequestId}
+          searchResults={searchResults}
+          searchTerm={searchTerm}
+        />
+      </Stack>
+    </Card>
+  );
+};

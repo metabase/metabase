@@ -10,7 +10,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
@@ -81,7 +80,6 @@ import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 
 export const DocumentPage = ({
   params,
-  route,
   location,
   children,
 }: {
@@ -90,7 +88,6 @@ export const DocumentPage = ({
     childTargetId?: string;
   };
   location: Location;
-  route: Route;
   children?: ReactNode;
 }) => {
   const { entityId, childTargetId: paramsChildTargetId } = params;
@@ -518,7 +515,6 @@ export const DocumentPage = ({
           // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
           key={location.key}
           isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
-          route={route}
           onOpenChange={(open) => {
             if (open) {
               trackDocumentUnsavedChangesWarningDisplayed(documentData);

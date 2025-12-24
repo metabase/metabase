@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -58,7 +57,7 @@ export interface CopyDashboardFormProps {
   originalDashboardId: DashboardId;
 }
 
-function CopyDashboardForm({
+export const CopyDashboardFormConnected = ({
   onSubmit,
   onSaved,
   onClose,
@@ -66,7 +65,7 @@ function CopyDashboardForm({
   filterPersonalCollections,
   onValuesChange,
   originalDashboardId,
-}: CopyDashboardFormProps) {
+}: CopyDashboardFormProps) => {
   const {
     currentData: originalDashboard,
     isLoading,
@@ -163,6 +162,4 @@ function CopyDashboardForm({
       </Form>
     </FormProvider>
   );
-}
-
-export const CopyDashboardFormConnected = withRouter(CopyDashboardForm);
+};
