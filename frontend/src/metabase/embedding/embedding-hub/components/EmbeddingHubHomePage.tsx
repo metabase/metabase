@@ -25,15 +25,12 @@ export const EmbeddingHubHomePage = (): ReactNode => {
     dispatch(dismissEmbeddingHomepage("dismissed-done"));
 
   return (
-    <Stack mx="auto" py="xl" maw={800}>
+    <Stack mx="auto" p="xl" maw={850}>
       <Group gap="sm" justify="space-between" mb="xl">
         <Group gap="sm">
           <MetabotGreeting />
 
-          <Text
-            fw={700}
-            fz="lg"
-          >{t`Get started with Embedded Analytics JS`}</Text>
+          <Text fw={700} fz="lg">{t`Get started with modular embedding`}</Text>
         </Group>
 
         <Menu position="bottom-end">

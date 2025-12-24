@@ -175,41 +175,96 @@
   `(with-weights {:rrf 1}
      ~@body))
 
+(def ^:private mock-documents-for-embeddings
+  "Mock documents and queries for testing, associated with fake embedding vectors in [[mock-embeddings]]."
+  [{:model "card" :name "Dog Training Guide" :query "puppy"}
+   {:model "card" :name "Bird Watching Tips" :query "avian"}
+   {:model "card" :name "Cat Behavior Study" :query "feline"}
+   {:model "card" :name "Horse Racing Analysis" :query "equine"}
+   {:model "card" :name "Fish Tank Setup" :query "aquatic"}
+   {:model "card" :name "Bigfoot Sightings" :query "spooky video evidence"}
+   {:model "dashboard" :name "Elephant Migration" :query "pachyderm"}
+   {:model "dashboard" :name "Lion Pride Dynamics" :query "predator"}
+   {:model "dashboard" :name "Penguin Colony Study" :query "Antarctic wildlife"}
+   {:model "dashboard" :name "Whale Communication" :query "marine mammal"}
+   {:model "dashboard" :name "Tiger Conservation" :query "endangered species"}
+   {:model "dashboard" :name "Loch Ness Stuff" :query "prehistoric monsters"}
+   ;; Tables include display_name in their search-terms (see table.clj:387-389), which gets
+   ;; included in embeddable_text as "display_name: Species Table". We must include it here
+   ;; so the mock embeddings match what gets indexed.
+   {:model "table" :name "Species Table" :display_name "Species Table" :query "taxonomy"}
+   {:model "table" :name "Monsters Table" :display_name "Monsters Table" :query "monster facts"}])
+
+(def ^:private base-embedding-vectors
+  "Fake 4-dimensional embedding vectors for each document"
+  [[0.12 -0.34  0.56 -0.78]
+   [0.23  0.45 -0.67  0.89]
+   [0.11 -0.22  0.33 -0.44]
+   [0.55  0.66 -0.77  0.88]
+   [0.10  0.20 -0.30  0.40]
+   [0.19  0.30 -0.41  0.52]
+   [0.15 -0.25  0.35 -0.45]
+   [0.31  0.42 -0.53  0.64]
+   [0.75 -0.86  0.97 -0.18]
+   [0.29  0.38 -0.47  0.56]
+   [0.65 -0.74  0.83 -0.92]
+   [0.77 -0.88  0.99 -0.19]
+   [0.21  0.32 -0.43  0.54]
+   [0.79 -0.89  0.91 -0.20]])
+
+(defn- slightly-different-vector
+  "Make a slightly different vector for the query so it's similar but not identical to the document."
+  [v]
+  (mapv #(+ % 0.01) v))
+
 (def mock-embeddings
-  "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing. Each pair of strings represents a
-  document and a search query that should be most semantically similar to it, according to the embeddings."
-  {"Dog Training Guide"    [0.12 -0.34  0.56 -0.78]
-   "puppy"                 [0.13 -0.33  0.57 -0.77]
-   "Bird Watching Tips"    [0.23  0.45 -0.67  0.89]
-   "avian"                 [0.24  0.46 -0.66  0.88]
-   "Cat Behavior Study"    [0.11 -0.22  0.33 -0.44]
-   "feline"                [0.12 -0.21  0.34 -0.43]
-   "Horse Racing Analysis" [0.55  0.66 -0.77  0.88]
-   "equine"                [0.56  0.67 -0.76  0.87]
-   "Fish Tank Setup"       [0.10  0.20 -0.30  0.40]
-   "aquatic"               [0.11  0.21 -0.29  0.39]
-   "Elephant Migration"    [0.15 -0.25  0.35 -0.45]
-   "pachyderm"             [0.16 -0.24  0.36 -0.44]
-   "Lion Pride Dynamics"   [0.31  0.42 -0.53  0.64]
-   "predator"              [0.32  0.43 -0.52  0.63]
-   "Penguin Colony Study"  [0.75 -0.86  0.97 -0.18]
-   "Antarctic wildlife"    [0.76 -0.85  0.96 -0.17]
-   "Whale Communication"   [0.29  0.38 -0.47  0.56]
-   "marine mammal"         [0.30  0.39 -0.46  0.55]
-   "Tiger Conservation"    [0.65 -0.74  0.83 -0.92]
-   "endangered species"    [0.66 -0.73  0.84 -0.91]
-   "Butterfly Migration"   [0.17  0.28 -0.39  0.50]
-   "insect patterns"       [0.18  0.29 -0.38  0.49]})
+  "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing."
+  (into {}
+        (mapcat (fn [doc base-vec]
+                  (let [embeddable-text (#'search.ingestion/embeddable-text doc)
+                        query (:query doc)]
+                    [[embeddable-text base-vec]
+                     [query (slightly-different-vector base-vec)]]))
+                mock-documents-for-embeddings
+                base-embedding-vectors)))
+
+(def ^:dynamic *extra-mock-embeddings*
+  "Dynamic var for test-specific mock embeddings. Merged with [[mock-embeddings]] in [[get-mock-embedding]]."
+  nil)
+
+(defn- parse-entity-name
+  "Extract the entity name from embeddable text format.
+   E.g., '[dashboard]\\nname: My Dashboard\\n...' -> 'My Dashboard'"
+  [text]
+  (second (re-find #"(?m)^name:\s*(.+)$" text)))
 
 (defn get-mock-embedding
-  "Lookup the embedding for `text` in [[mock-embeddings]]."
+  "Lookup the embedding for `text` in [[*extra-mock-embeddings*]] first, then [[mock-embeddings]].
+   Lookups try both the raw text and the parsed entity name from embeddable text format."
   [text]
-  (get mock-embeddings text [0.01 0.02 0.03 0.04]))
+  (let [entity-name (parse-entity-name text)]
+    (or (get *extra-mock-embeddings* text)
+        (get *extra-mock-embeddings* entity-name)
+        (get mock-embeddings text)
+        (get mock-embeddings entity-name)
+        [0.01 0.02 0.03 0.04])))
 
 (defn get-mock-embeddings-batch
   "Lookup embeddings for multiple texts in [[mock-embeddings]]."
   [texts]
   (mapv get-mock-embedding texts))
+
+(defmacro with-mock-embeddings
+  "Bind extra mock embeddings for the duration of `body`. The embeddings map should be
+   a map from text strings to 4-dimensional vectors, e.g.:
+
+   (with-mock-embeddings
+     {\"belligerent\" [0.9 0.1 0.0 0.0]
+      \"combative\"   [0.91 0.11 0.01 0.01]}  ; similar vector = semantic match
+     ...)"
+  [embeddings-map & body]
+  `(binding [*extra-mock-embeddings* ~embeddings-map]
+     ~@body))
 
 ;;;; mock provider
 
@@ -270,6 +325,7 @@
       :id 123
       :name "Dog Training Guide"
       :searchable_text "Dog Training Guide"
+      :embeddable_text "Dog Training Guide"
       :created_at #t "2025-01-01T12:00:00Z"
       :creator_id 1
       :archived false
@@ -284,6 +340,7 @@
       :id 456
       :name "Elephant Migration"
       :searchable_text "Elephant Migration"
+      :embeddable_text "Elephant Migration"
       :created_at #t "2025-02-01T12:00:00Z"
       :creator_id 2
       :archived true
@@ -293,7 +350,8 @@
 (defn filter-for-mock-embeddings
   "Filter results to only include items whose names are keys in mock-embeddings map."
   [results]
-  (filter #(contains? mock-embeddings (:name %)) results))
+  (let [mock-document-names (set (map :name mock-documents-for-embeddings))]
+    (filter #(contains? mock-document-names (:name %)) results)))
 
 (defn closeable ^Closeable [o close-fn]
   (reify
@@ -416,7 +474,7 @@
   `(do-with-indexable-documents! (fn [] ~@body)))
 
 (defn index-all!
-  "Run indexer synchonously until we've exhausted polling all documents"
+  "Run indexer synchronously until we've exhausted polling all documents"
   []
   (let [metadata-row   {:indexer_last_poll Instant/EPOCH
                         :indexer_last_seen Instant/EPOCH}

@@ -30,6 +30,7 @@ export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   isDisabled?: boolean;
   isMarkdown?: boolean;
   onChange?: (value: string) => void;
+  onContentChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;
   "data-testid"?: string;
@@ -46,6 +47,7 @@ const EditableText = forwardRef(function EditableText(
     isDisabled = false,
     isMarkdown = false,
     onChange,
+    onContentChange,
     onFocus,
     onBlur,
     "data-testid": dataTestId,
@@ -95,10 +97,12 @@ const EditableText = forwardRef(function EditableText(
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setInputValue(event.currentTarget.value);
+      const nextValue = event.currentTarget.value;
+      setInputValue(nextValue);
       submitOnBlur.current = true;
+      onContentChange?.(nextValue);
     },
-    [submitOnBlur],
+    [onContentChange],
   );
 
   const handleKeyDown = useCallback(

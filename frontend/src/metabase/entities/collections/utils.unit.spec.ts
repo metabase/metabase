@@ -1,5 +1,9 @@
-import { setupEnterpriseTest } from "__support__/enterprise";
-import { createMockCollection } from "metabase-types/api/mocks";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { PERSONAL_COLLECTIONS } from "./constants";
 import {
@@ -106,10 +110,9 @@ describe("entities > collections > utils", () => {
           children: [child],
         });
 
-        const transformed = buildCollectionTree(
-          [collection],
-          (model) => model === "dataset",
-        );
+        const transformed = buildCollectionTree([collection], {
+          modelFilter: (model) => model === "dataset",
+        });
 
         expect(transformed).toMatchObject([
           {
@@ -156,7 +159,7 @@ describe("entities > collections > utils", () => {
 
         const transformed = buildCollectionTree(
           [collectionWithDatasets, collectionWithCards],
-          (model) => model === "dataset",
+          { modelFilter: (model) => model === "dataset" },
         );
 
         expect(transformed).toMatchObject([
@@ -206,10 +209,9 @@ describe("entities > collections > utils", () => {
           ],
         });
 
-        const collectionTree = buildCollectionTree(
-          [collection],
-          (model) => model === "card",
-        );
+        const collectionTree = buildCollectionTree([collection], {
+          modelFilter: (model) => model === "card",
+        });
 
         expect(collectionTree).toMatchObject([
           {
@@ -247,10 +249,9 @@ describe("entities > collections > utils", () => {
           ],
         });
 
-        const collectionTree = buildCollectionTree(
-          [collection],
-          (model) => model === "card",
-        );
+        const collectionTree = buildCollectionTree([collection], {
+          modelFilter: (model) => model === "card",
+        });
 
         expect(collectionTree).toEqual([]);
       });
@@ -310,7 +311,13 @@ describe("entities > collections > utils", () => {
 
     describe("EE", () => {
       beforeEach(() => {
-        setupEnterpriseTest();
+        mockSettings({
+          "token-features": createMockTokenFeatures({
+            official_collections: true,
+            audit_app: true,
+          }),
+        });
+        setupEnterpriseOnlyPlugin("collections");
       });
 
       it("returns correct icon for official collections", () => {
@@ -389,7 +396,13 @@ describe("entities > collections > utils", () => {
 
     describe("EE", () => {
       beforeEach(() => {
-        setupEnterpriseTest();
+        mockSettings({
+          "token-features": createMockTokenFeatures({
+            official_collections: true,
+            audit_app: true,
+          }),
+        });
+        setupEnterpriseOnlyPlugin("collections");
       });
 
       testCasesEE.forEach((testCase) => {

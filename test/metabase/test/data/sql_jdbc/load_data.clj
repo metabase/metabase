@@ -135,21 +135,23 @@
                     chunk-xform)]
     (reify clojure.lang.IReduceInit
       (reduce [_this rf init]
-        (let [rf (xform rf)]
-          (if chunk-size
-            (transduce
-             (partition-all chunk-size)
-             ;; we are very deliberately not passing `rf` directly here, because calling the completing arity with it
-             ;; breaks things since we're not supposed to be doing that inside `reduce`. We have to use `transduce` here
-             ;; to get the `partition-all` transducer to work correctly tho which is why we're not just using reduce
-             (fn
-               ([acc]
-                acc)
-               ([acc chunk]
-                (rf acc chunk)))
-             init
-             rows)
-            (rf init rows)))))))
+        (if (empty? rows)
+          init
+          (let [rf (xform rf)]
+            (if chunk-size
+              (transduce
+               (partition-all chunk-size)
+                ;; we are very deliberately not passing `rf` directly here, because calling the completing arity with it
+                ;; breaks things since we're not supposed to be doing that inside `reduce`. We have to use `transduce` here
+                ;; to get the `partition-all` transducer to work correctly tho which is why we're not just using reduce
+               (fn
+                 ([acc]
+                  acc)
+                 ([acc chunk]
+                  (rf acc chunk)))
+               init
+               rows)
+              (rf init rows))))))))
 
 (mu/defn- reducible-chunks  :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   [driver   :- :keyword

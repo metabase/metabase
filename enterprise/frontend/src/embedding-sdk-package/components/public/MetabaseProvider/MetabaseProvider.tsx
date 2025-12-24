@@ -20,7 +20,6 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper() {
   const useInitData = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useInitData;
   const useLogVersionInfo =
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useLogVersionInfo;
-
   useInitData?.();
   useLogVersionInfo?.();
 
@@ -109,7 +108,7 @@ export const MetabaseProvider = memo(function MetabaseProvider({
         instanceId={ensureSingleInstanceId}
         multipleRegisteredInstancesWarningMessage={
           // eslint-disable-next-line no-literal-metabase-strings -- Warning message
-          "Multiple instances of MetabaseProvider detected. Metabase Embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time."
+          "Multiple instances of MetabaseProvider detected. Metabase modular embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time."
         }
       >
         <MetabaseProviderInner {...props} />

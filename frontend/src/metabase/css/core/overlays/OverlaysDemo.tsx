@@ -15,7 +15,6 @@ import LegacySelect, { Option } from "metabase/common/components/Select";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import Toaster from "metabase/common/components/Toaster";
 import { UndoListOverlay } from "metabase/common/components/UndoListing";
-import { PaletteCard } from "metabase/palette/components/Palette";
 import {
   Box,
   Button,
@@ -30,6 +29,7 @@ import {
   Select as MantineSelect,
   Tooltip as MantineTooltip,
   type ModalProps,
+  Overlay,
   Paper,
   type PaperProps,
   Stack,
@@ -348,13 +348,16 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
       ))}
       {Array.from({ length: commandPaletteCount }).map((_value, index) => {
         const modalTitleId = `command-palette-title-${index}`;
+        // This isn't a command palette per say, but this does test that "<Overlay>" works as we expect
         return (
-          <PaletteCard
+          <Overlay
             key={`command-palette-${index}`}
+            //@ts-expect-error We are doing a bad job with polymophic mantine component types, but this is fine
             onClick={() => {
               setCommandPaletteCount((c) => c - 1);
             }}
             aria-labelledby={modalTitleId}
+            component={Box}
           >
             <div onClick={(e) => e.stopPropagation()}>
               <Flex p="lg">
@@ -367,7 +370,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
                 </Stack>
               </Flex>
             </div>
-          </PaletteCard>
+          </Overlay>
         );
       })}
     </Stack>

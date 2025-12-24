@@ -536,17 +536,18 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   describe("metabot", () => {
     it("should toggle metabot visibility", () => {
       cy.visit("/");
-      cy.findAllByAltText("Metabot").should("have.length", 2);
+      cy.findAllByRole("img", { name: "Metabot" }).should("have.length", 2);
 
       cy.visit("/admin/settings/whitelabel/conceal-metabase");
       cy.findByRole("main")
-        .findByText("Show links and references to Metabase")
+        .findByText("Display welcome message on the homepage")
         .click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");
 
       cy.visit("/");
-      cy.findByAltText("Metabot").should("not.exist");
+      cy.findByRole("link", { name: /home/ }).should("exist");
+      cy.findByRole("img", { name: "Metabot" }).should("not.exist");
     });
   });
 

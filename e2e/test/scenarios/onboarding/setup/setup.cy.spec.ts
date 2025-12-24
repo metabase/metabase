@@ -201,24 +201,6 @@ describe("scenarios > setup", () => {
     });
   });
 
-  // Values in this test are set through MB_USER_DEFAULTS environment variable!
-  // Please see https://github.com/metabase/metabase/pull/18763 for details
-  it("should allow pre-filling user details", () => {
-    cy.visit("/setup#123456");
-
-    skipWelcomePage();
-
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("First name").should("have.value", "Testy");
-      cy.findByLabelText("Last name").should("have.value", "McTestface");
-      cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
-      cy.findByLabelText("Company or team name").should(
-        "have.value",
-        "Epic Team",
-      );
-    });
-  });
-
   it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
     H.mockSessionProperty("is-hosted?", true);
 
@@ -312,6 +294,19 @@ describe("scenarios > setup", () => {
     H.main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("be.visible");
+  });
+
+  // There are only one step in the setup flow, so there is no need to show step numbers.
+  it("should not show step numbers in cloud embedding use case", () => {
+    H.mockSessionProperty("is-hosted?", true);
+    H.mockSessionProperty("token-features", { hosting: true });
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+    );
+
+    H.main().findByText("What should we call you?").should("be.visible");
+    cy.findByTestId("step-number").should("not.exist");
   });
 
   it("should allow localization in the 'embedding' setup flow", () => {
@@ -424,35 +419,7 @@ describe("scenarios > setup", () => {
     cy.intercept("GET", "api/collection/root").as("getRootCollection");
     cy.intercept("GET", "api/database").as("getDatabases");
 
-    cy.visit("/setup#123456");
-
-    skipWelcomePage();
-
-    cy.findByLabelText(/What should we call you/);
-
-    cy.findByTestId("setup-forms").within(() => {
-      const strongPassword = "QJbHYJN3tPW[";
-      cy.findByLabelText(/^Create a password/)
-        .clear()
-        .type(strongPassword, { delay: 0 });
-      cy.findByLabelText(/^Confirm your password/)
-        .clear()
-        .type(strongPassword, { delay: 0 })
-        .blur();
-    });
-
-    cy.findByLabelText(/What should we call you/)
-      .button("Next")
-      .click();
-
-    // make sure this bit of the form loads before clicking next
-    cy.findByLabelText(/What will you use Metabase for/).findByText(
-      /Let us know your plans/,
-    );
-
-    cy.findByLabelText(/What will you use Metabase for/)
-      .button("Next")
-      .click();
+    navigateToDatabaseStep();
 
     cy.findByTestId("database-form").within(() => {
       cy.findByPlaceholderText("Search databases").type("lite").blur();
@@ -501,6 +468,10 @@ describe("scenarios > setup", () => {
   });
 
   it("embedded use-case, it should hide the db step and show the embedding homepage", () => {
+    cy.intercept("GET", "/api/activity/recents*").as("getRecents");
+    cy.intercept("GET", "/api/collection/root").as("getRootCollection");
+    cy.intercept("GET", "/api/database").as("getDatabases");
+
     cy.visit("/setup");
 
     cy.location("pathname").should("eq", "/setup");
@@ -559,12 +530,20 @@ describe("scenarios > setup", () => {
 
     // should persist page loads
     cy.reload();
+    cy.wait([
+      "@getRecents",
+      "@getRootCollection",
+      "@getDatabases",
+      "@properties",
+    ]);
 
     H.main()
       .findByText("Get started with Embedding Metabase in your app")
-      .should("exist");
+      .should("be.visible");
 
-    H.main().findByText("Hide these").realHover();
+    H.main().scrollTo("top");
+
+    H.main().findByText("Hide these").trigger("mouseover");
 
     H.popover().findByText("Embedding done, all good").click();
 
@@ -614,7 +593,7 @@ describe("scenarios > setup (EE)", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > setup", () => {
+describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore("blank");
     H.resetSnowplow();

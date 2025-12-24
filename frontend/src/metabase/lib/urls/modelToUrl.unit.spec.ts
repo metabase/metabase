@@ -1,13 +1,13 @@
 import { modelToUrl } from "./modelToUrl";
 
 describe("urls > modelToUrl", () => {
-  it("should return null for unknown model", () => {
+  it("should return 404 for unknown model", () => {
     expect(
       // @ts-expect-error - testing the error case
       modelToUrl({
         model: "pikachu",
       }),
-    ).toBeNull();
+    ).toContain("/404");
   });
 
   it("should return a question URL for a card", () => {

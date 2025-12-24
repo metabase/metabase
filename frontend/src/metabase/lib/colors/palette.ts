@@ -2,12 +2,12 @@ import Color from "color";
 
 import type { ColorGetter } from "metabase/visualizations/types";
 
-import { colors } from "./colors";
+import { colors, getColors } from "./colors";
 import type { ColorName, ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
 
-export const originalColors = { ...colors };
+export const originalColors = getColors();
 
 export const aliases: Record<string, (palette: ColorPalette) => string> = {
   dashboard: (palette) => color("brand", palette),
@@ -111,10 +111,6 @@ export const tint = (c: string, f: number = 0.125) => {
 export const shade = (c: string, f: number = 0.125) => {
   const value = Color(color(c));
   return value.lightness(value.lightness() - f * 100).hex();
-};
-
-export const hueRotate = (c: string) => {
-  return Color(color(c)).hue() - Color(color(c, originalColors)).hue();
 };
 
 export const isLight = (c: string) => {

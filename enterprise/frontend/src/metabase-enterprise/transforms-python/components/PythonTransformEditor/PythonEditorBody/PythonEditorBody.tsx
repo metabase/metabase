@@ -2,11 +2,20 @@ import type { ReactNode } from "react";
 import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Box, Checkbox, Flex, Icon, Stack } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
-import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
 import { PythonEditor } from "../../PythonEditor";
 
@@ -16,6 +25,7 @@ import { hasImport, insertImport, removeImport } from "./utils";
 
 type PythonEditorBodyProps = {
   source: string;
+  proposedSource?: string;
   isRunnable: boolean;
   onChange: (source: string) => void;
   onRun?: () => void;
@@ -24,12 +34,15 @@ type PythonEditorBodyProps = {
   isDirty?: boolean;
   tables?: Record<string, number>;
   withDebugger?: boolean;
+  onAcceptProposed?: () => void;
+  onRejectProposed?: () => void;
 };
 
 const EDITOR_HEIGHT = 400;
 
 export function PythonEditorBody({
   source,
+  proposedSource,
   onChange,
   isRunnable,
   onRun,
@@ -37,29 +50,58 @@ export function PythonEditorBody({
   isRunning,
   isDirty,
   withDebugger,
+  onAcceptProposed,
+  onRejectProposed,
 }: PythonEditorBodyProps) {
   return (
     <MaybeResizableBox resizable={withDebugger}>
       <Flex h="100%" align="end" bg="bg-light" pos="relative">
         <PythonEditor
           value={source}
+          proposedValue={proposedSource}
           onChange={onChange}
           withPandasCompletions
           data-testid="python-editor"
         />
 
-        {withDebugger && (
-          <Box p="md">
-            <RunButtonWithTooltip
-              disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
-              onRun={onRun}
-              onCancel={onCancel}
-              getTooltip={() => t`Run Python script`}
-            />
-          </Box>
-        )}
+        <Stack m="1rem" gap="md" mt="auto">
+          {proposedSource && onRejectProposed && onAcceptProposed && (
+            <>
+              <Tooltip label={t`Accept proposed changes`} position="left">
+                <Button
+                  data-testid="accept-proposed-changes-button"
+                  variant="filled"
+                  bg="success"
+                  px="0"
+                  w="2.5rem"
+                  onClick={onAcceptProposed}
+                >
+                  <Icon name="check" />
+                </Button>
+              </Tooltip>
+              <Tooltip label={t`Reject proposed changes`} position="left">
+                <Button
+                  data-testid="reject-proposed-changes-button"
+                  w="2.5rem"
+                  px="0"
+                  variant="filled"
+                  bg="danger"
+                  onClick={onRejectProposed}
+                >
+                  <Icon name="close" />
+                </Button>
+              </Tooltip>
+            </>
+          )}
+          <RunButtonWithTooltip
+            disabled={!isRunnable}
+            isRunning={isRunning}
+            isDirty={isDirty}
+            onRun={onRun}
+            onCancel={onCancel}
+            getTooltip={() => t`Run Python script`}
+          />
+        </Stack>
         <SharedLibraryActions source={source} onChange={onChange} />
       </Flex>
     </MaybeResizableBox>
@@ -74,7 +116,11 @@ function MaybeResizableBox({
   children?: ReactNode;
 }) {
   if (!resizable) {
-    return <Box h="100%">{children}</Box>;
+    return (
+      <Box w="100%" h="100%">
+        {children}
+      </Box>
+    );
   }
 
   return (
@@ -97,50 +143,52 @@ function SharedLibraryActions({
   onChange: (source: string) => void;
 }) {
   return (
-    <Stack className={S.libraryActions} p="md" gap="sm">
-      <SharedLibraryImportToggle source={source} onChange={onChange} />
+    <Group className={S.libraryActions} p="md" gap="sm">
+      <SharedLibraryImportButton source={source} onChange={onChange} />
       <SharedLibraryEditLink />
-    </Stack>
+    </Group>
   );
 }
 
-function SharedLibraryImportToggle({
+function SharedLibraryImportButton({
   source,
   onChange,
 }: {
   source: string;
   onChange: (source: string) => void;
 }) {
-  const hasSharedLib = hasImport(source, SHARED_LIB_IMPORT_PATH);
+  const label = t`Import common library`;
 
-  function handleToggleSharedLib() {
+  const handleToggleSharedLib = () => {
     if (hasImport(source, SHARED_LIB_IMPORT_PATH)) {
       onChange(removeImport(source, SHARED_LIB_IMPORT_PATH));
     } else {
       onChange(insertImport(source, SHARED_LIB_IMPORT_PATH));
     }
-  }
+  };
 
   return (
-    <Checkbox
-      label={t`Import common library`}
-      checked={hasSharedLib}
-      onChange={handleToggleSharedLib}
-      size="sm"
-    />
+    <Tooltip label={label}>
+      <ActionIcon aria-label={label} onClick={handleToggleSharedLib}>
+        <Icon name="reference" c="text-dark" />
+      </ActionIcon>
+    </Tooltip>
   );
 }
 
 function SharedLibraryEditLink() {
+  const label = t`Edit common library`;
+
   return (
-    <Flex
-      component={Link}
-      target="_blank"
-      to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
-      gap="sm"
-    >
-      <Icon name="pencil" />
-      {t`Edit common library`}
-    </Flex>
+    <Tooltip label={label}>
+      <ActionIcon
+        component={ForwardRefLink}
+        target="_blank"
+        aria-label={label}
+        to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
+      >
+        <Icon name="pencil" c="text-dark" />
+      </ActionIcon>
+    </Tooltip>
   );
 }

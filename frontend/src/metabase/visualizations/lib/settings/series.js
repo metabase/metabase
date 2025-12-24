@@ -189,7 +189,8 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
       getHidden: (single, seriesSettings, { settings, series }) =>
         series.length <= 1 || // no need to show series-level control if there's only one series
         !settings["graph.show_values"] || // don't show it unless this chart has a global setting
-        settings["graph.show_stack_values"] === "total",
+        (settings["stackable.stack_type"] &&
+          settings["graph.show_stack_values"] === "total"),
       getDefault: (single, seriesSettings, { settings }) =>
         getSeriesDefaultShowSeriesValues(settings),
       readDependencies: ["graph.show_values", "stackable.stack_type"],

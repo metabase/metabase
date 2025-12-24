@@ -11,14 +11,13 @@ With database routing, an admin can build a question once using one database, an
 
 Database routing is useful for:
 
-- Managing interactive embedding setups where each customer has their own database with identical schemas.
+- Managing modular and full app embedding setups where each customer has their own database with identical schemas.
 
-  Database routing can't be used with static embedding, because database routing requires people who use the embedded questions and dashboards to have a Metabase account. Without a Metabase account, Metabase can't route the queries because it doesn't know who is viewing the embed.
+  Database routing can't be used with guest embedding, because database routing requires people who use the embedded questions and dashboards to have a Metabase account. Without a Metabase account, Metabase can't route the queries because it doesn't know who is viewing the embed.
 
 - Switching between dev and prod data warehouses.
 - Changing the target data warehouse for certain teams.
 - Managing separate connections to the same data warehouse, with each connection having separate privileges. This connection management is akin to [connection impersonation](./impersonation.md) for databases that prevent the same connection from changing roles.
-
 
 ## Database routing limitations
 
@@ -26,7 +25,7 @@ Database routing is useful for:
 
 Different database have different setups, so _what_ you can route between (database, schema, data catalog, etc.) will differ slightly depending on which data warehouse you're using.
 
-- [Athena](../databases/connections/athena.md): Only routing between different connections is supported (e.g., different buckets, roles, or catalogs). 
+- [Athena](../databases/connections/athena.md): Only routing between different connections is supported (e.g., different buckets, roles, or catalogs).
 - [BigQuery](../databases/connections/bigquery.md): Only routing between databases in different projects is supported.
 - [Databricks](../databases/connections/databricks.md): When multi-catalog is not enabled, you can route between catalogs on the same host. If multi-catalog is enabled, then you can only route between databases on separate hosts.
 

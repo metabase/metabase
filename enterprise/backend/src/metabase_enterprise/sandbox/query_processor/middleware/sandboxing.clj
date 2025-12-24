@@ -19,10 +19,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
@@ -213,9 +214,7 @@
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
                 (t2/update! :model/Card card-id {:result_metadata cols}))
-              (assoc-in query [:stages 0 :lib/stage-metadata] (->> cols
-                                                                   lib.util/->stage-metadata
-                                                                   (lib/normalize ::lib.schema.metadata/stage)))))))
+              (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 
 (mu/defn- sandbox->query :- ::lib.schema/query
@@ -285,25 +284,44 @@
                   (merge native-col table-col))))
         original-table-cols))
 
-(mu/defn- apply-sandbox-to-stage :- [:sequential {:min 2} ::lib.schema/stage]
+(mu/defn- apply-sandbox-to-stage :- [:and
+                                     [:sequential {:min 1} ::lib.schema/stage]
+                                     ::lib.schema.util/unique-uuids]
   "Apply a Sandbox to a `stage`, returning a vector of replacement stages."
   [query                            :- ::lib.schema/query
+   path                             :- ::lib.walk/path
    {:keys [source-table] :as stage} :- ::lib.schema/stage
    sandbox                          :- ::sandbox]
-  (let [sandbox-query       (sandbox->query query sandbox)
-        sandbox-query       (project-only-columns-from-original-table query sandbox-query source-table)
-        new-source-stages   (mapv (fn [stage]
-                                    (assoc stage :query-permissions/sandboxed-table source-table))
-                                  (:stages sandbox-query))
+  (let [sandbox-query      (sandbox->query query sandbox)
+        sandbox-query      (project-only-columns-from-original-table query sandbox-query source-table)
+        new-source-stages  (mapv (fn [stage]
+                                   (-> stage
+                                       (assoc :query-permissions/sandboxed-table source-table)
+                                       lib/fresh-uuids))
+                                 (:stages sandbox-query))
         ;; merge stage metadata in the last source stage if needed
-        new-source-stages   (m/update-existing-in new-source-stages
-                                                  [(dec (count new-source-stages)) :lib/stage-metadata :columns]
-                                                  (fn [cols]
-                                                    (merge-original-table-metadata
-                                                     cols
-                                                     (lib/returned-columns query (lib.metadata/table query source-table)))))
-        replacement-stages  (conj new-source-stages
-                                  (dissoc stage :source-table))]
+        new-source-stages  (m/update-existing-in new-source-stages
+                                                 [(dec (count new-source-stages)) :lib/stage-metadata :columns]
+                                                 (fn [cols]
+                                                   (merge-original-table-metadata
+                                                    cols
+                                                    (lib/returned-columns query (lib.metadata/table query source-table)))))
+        is-stage-in-join?  (->> path          ; [:stages 0 :joins 0 :stages 0]
+                                (drop-last 3) ; [:stages 0 :joins]
+                                last
+                                (= :joins))
+        ;; don't add a new additional stage IF WE'RE RECURSING INTO A JOIN and it only contains `:fields` and the last
+        ;; of the `new-source-stages` already contains `:fields` anyway... the `:fields` for the join will just
+        ;; basically be `SELECT *`, so at best this is completely unnecessary and at worst it can cause query failures
+        ;; because the stuff in `:fields` can be wrong if some of those fields have been filtered out by the
+        ;; sandbox (see #66781)
+        skip-final-stage?  (and is-stage-in-join?
+                                (:fields (last new-source-stages))
+                                (empty? (->> (keys stage)
+                                             (remove #{:source-table :fields})
+                                             (remove qualified-keyword?))))
+        replacement-stages (cond-> new-source-stages
+                             (not skip-final-stage?) (conj (dissoc stage :source-table)))]
     (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
                 (u/cprint-to-str stage)
                 (u/cprint-to-str replacement-stages))
@@ -318,7 +336,7 @@
   ;; `::sandbox?` key
   (lib.walk/walk-stages
    query
-   (fn [query _path stage]
+   (fn [query path stage]
      (when (and (= (:lib/type stage) :mbql.stage/mbql)
                 (:source-table stage)
                 (not (::sandbox? stage)))
@@ -328,7 +346,7 @@
          (mapv (fn [stage]
                  (cond-> stage
                    (:source-table stage) (assoc ::sandbox? true)))
-               (apply-sandbox-to-stage query stage sandbox)))))))
+               (apply-sandbox-to-stage query path stage sandbox)))))))
 
 (mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
   [query :- ::lib.schema/query]
@@ -348,13 +366,16 @@
   (or (when (not api/*is-superuser?*)
         (when-let [table-id->sandbox (when *current-user-id*
                                        (query->table-id->sandbox query))]
+          (premium-features/assert-has-feature :sandboxes (tru "Sandboxing"))
           (sandboxed-query query table-id->sandbox)))
       query))
 
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
-  :feature :sandboxes
+  ;; run this even when the `:sandboxes` feature is not enabled, so that we can assert that it *is* enabled if
+  ;; sandboxing is configured. (Throwing here is better than silently ignoring the configured sandbox.)
+  :feature :none
   [query]
   (apply-sandboxing* query))
 

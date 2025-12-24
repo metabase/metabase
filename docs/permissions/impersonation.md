@@ -6,13 +6,22 @@ title: Impersonation access
 
 {% include plans-blockquote.html feature="Impersonation access" %}
 
-> For now, impersonation access is only available for ClickHouse, MySQL, PostgreSQL, Redshift, Snowflake, and SQL Server. If you want to switch database _connections_ based on who is logged in, check out [Database routing](./database-routing.md).
-
-> If you're using views in PostgresSQL, the row-level security policies on views will only work on Postgres versions 15 and higher.
-
 This page covers the [View data](./data.md#view-data-permissions) permission level called Impersonation.
 
 **Impersonation access** allows admins to "outsource" View data permissions to roles in your database. Admins can associate user attributes with database-defined roles and their privileges. If someone is in a group with their View data permission set to Impersonation, the person will be able to view and query data based on the privileges granted to the role specified by their user attribute.
+
+## Databases that support impersonation
+
+For now, impersonation access is only available for the following databases:
+- ClickHouse
+- MySQL
+- PostgreSQL. If you're using views in PostgreSQL, the row-level security policies on views will only work on Postgres versions 15 and higher.
+- Redshift
+- Snowflake
+- SQL Server
+- Starburst/Trino.
+
+If you want to switch database _connections_ based on who is logged in, check out [Database routing](./database-routing.md).
 
 ## Impersonation vs row and column security
 
@@ -39,7 +48,7 @@ For impersonation access to work, you'll first need to set up roles in your data
 
 ### Set up Metabase database connection for impersonation
 
-Impersonation uses database roles to run queries on your database, but there still needs to be a default role that that will be used to run operations like [sync, scans, and fingerprinting](../databases/sync-scan.md). So the user account that Metabase uses to [connect to your database](../databases/connecting.md) should have access to everything in that database that any Metabase group may need access to, as that database user account is what Metabase uses to sync table information.
+Impersonation uses database roles to run queries on your database, but there still needs to be a default role that will be used to run operations like [sync, scans, and fingerprinting](../databases/sync-scan.md). So the user account that Metabase uses to [connect to your database](../databases/connecting.md) should have access to everything in that database that any Metabase group may need access to, as that database user account is what Metabase uses to sync table information.
 
 You can then create roles in the database that have more restrictive access to the database (like row-level or table-level security). When the role is passed to the database using impersonation, the engine will return a subset of the data, or restrict the query altogether.
 
@@ -111,7 +120,7 @@ People in one group can have different attribute values, but must have the same 
 
 1. In Metabase, hit Cmd/Ctrl + K to bring up the command palette and search for **Permissions**, or go directly to **Admin settings** > **Permissions** > **Data**.
 
-2. Select the group that you want to to associate with the database role you created.
+2. Select the group that you want to associate with the database role you created.
 
 3. Select the database to configure access to.
 
@@ -170,6 +179,6 @@ Blue group's more permissive access would override the impersonated access.
 
 Admins won't ever see the effects of impersonation effects, because their privileges will override those of any other group they're a member of.
 
-Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multple groups, so any admin will have "Can view" - not "Impersonated" - access to the database.
+Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multiple groups, so any admin will have "Can view" - not "Impersonated" - access to the database.
 
 To test impersonation, create a test user, assign them a user attribute with the database role, and add them to the impersonated group. Then, log in as the test user and verify the data access.

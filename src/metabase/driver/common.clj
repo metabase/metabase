@@ -1,5 +1,6 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
+  (:refer-clojure :exclude [get-in])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
@@ -9,6 +10,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]]
    [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
@@ -249,36 +251,50 @@
   added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
   {:cloud-ip-address-info cloud-ip-address-info})
 
-(def auth-provider-options
-  "Options for using an auth provider instead of a literal password."
-  [{:name "use-auth-provider"
-    :type :checked-section
-    :check (fn []
-             (and
-               ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
-              (not (premium-features/is-hosted?))
-              (premium-features/enable-database-auth-providers?)))
-    :default false}
-   {:name "auth-provider"
-    :display-name (deferred-tru "Auth provider")
-    :type :select
-    :options [{:name (deferred-tru "Azure Managed Identity")
-               :value "azure-managed-identity"}
-              {:name (deferred-tru "OAuth")
-               :value "oauth"}]
-    :default "azure-managed-identity"
-    :visible-if {"use-auth-provider" true}}
-   {:name "azure-managed-identity-client-id"
-    :display-name (deferred-tru "Client ID")
-    :required true
-    :visible-if {"auth-provider" "azure-managed-identity"}}
-   {:name "oauth-token-url"
-    :display-name (deferred-tru "Auth token URL")
-    :required true
-    :visible-if {"auth-provider" "oauth"}}
-   {:name "oauth-token-headers"
-    :display-name (deferred-tru "Auth token request headers (a JSON map)")
-    :visible-if {"auth-provider" "oauth"}}])
+(defn auth-provider-options
+  "Options for using an auth provider instead of a literal password.
+  When called with no arguments, returns options for all available auth providers.
+  When called with a collection of provider keywords (e.g., #{:aws-iam}), returns options
+  filtered to only those providers."
+  ([]
+   (auth-provider-options nil))
+  ([allowed-providers]
+   (let [all-provider-options [{:name (deferred-tru "Azure Managed Identity")
+                                :value "azure-managed-identity"}
+                               {:name (deferred-tru "AWS IAM")
+                                :value "aws-iam"}
+                               {:name (deferred-tru "OAuth")
+                                :value "oauth"}]
+         provider-options (if (seq allowed-providers)
+                            (let [allowed-set (set (map name allowed-providers))]
+                              (filterv #(contains? allowed-set (:value %)) all-provider-options))
+                            all-provider-options)
+         default-provider (:value (first provider-options))]
+     [{:name "use-auth-provider"
+       :type :checked-section
+       :check (fn []
+                (and
+                  ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
+                 (not (premium-features/is-hosted?))
+                 (premium-features/enable-database-auth-providers?)))
+       :default false}
+      {:name "auth-provider"
+       :display-name (deferred-tru "Auth provider")
+       :type :select
+       :options provider-options
+       :default default-provider
+       :visible-if {"use-auth-provider" true}}
+      {:name "azure-managed-identity-client-id"
+       :display-name (deferred-tru "Client ID")
+       :required true
+       :visible-if {"auth-provider" "azure-managed-identity"}}
+      {:name "oauth-token-url"
+       :display-name (deferred-tru "Auth token URL")
+       :required true
+       :visible-if {"auth-provider" "oauth"}}
+      {:name "oauth-token-headers"
+       :display-name (deferred-tru "Auth token request headers (a JSON map)")
+       :visible-if {"auth-provider" "oauth"}}])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Class -> Base Type                                               |

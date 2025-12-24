@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
@@ -10,6 +10,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Box, Button, Icon, Stack, Text } from "metabase/ui";
+import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 import type {
   Database,
   DatabaseId,
@@ -46,6 +47,10 @@ export function PythonDataPicker({
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),
   );
+
+  useEffect(() => {
+    setTableSelections(getInitialTableSelections(tables));
+  }, [tables]);
 
   const {
     data: databases,
@@ -158,6 +163,7 @@ export function PythonDataPicker({
           setDatabaseFn={handleDatabaseChange}
           databases={databases?.data ?? []}
           databaseIsDisabled={(database: Database) =>
+            !doesDatabaseSupportTransforms(database) ||
             !hasFeature(database, "transforms/python")
           }
         />

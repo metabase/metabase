@@ -148,10 +148,10 @@
                json/decode+kw)))))
 
 (def query-validator
-  (mr/validator mbql.s/MBQLQuery))
+  (mr/validator ::mbql.s/MBQLQuery))
 
 (def query-explainer
-  (mr/explainer mbql.s/MBQLQuery))
+  (mr/explainer ::mbql.s/MBQLQuery))
 
 (deftest migrate-metrics-to-v2-test
   (impl/test-migrations ["v51.2024-05-13T15:30:57" "v51.2024-05-13T16:00:00"] [migrate!]

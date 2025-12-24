@@ -18,7 +18,7 @@
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -126,7 +126,8 @@
 
            {:name  "abc"
             :cards ["abc"]}
-           default-post-card-ref-validation-error
+           {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
+                     :channels "one or more map"}}
 
            {:name  "abc"
             :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
@@ -464,7 +465,7 @@
              default-put-card-ref-validation-error
 
              {:cards ["abc"]}
-             default-put-card-ref-validation-error
+             {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`."}}
 
              {:channels 123}
              {:errors {:channels "nullable one or more map"}}
@@ -589,7 +590,7 @@
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           ;; now make an API call to move collections. Should fail
-          (is (=? {:message "You do not have curate permissions for this Collection."}
+          (is (=? "You don't have permissions to do that."
                   (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
 
 (deftest update-collection-position-test

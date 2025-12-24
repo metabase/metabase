@@ -984,7 +984,7 @@ describe("scenarios > admin > databases > sample database", () => {
   });
 });
 
-H.describeWithSnowplow("add database card", () => {
+describe("add database card", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

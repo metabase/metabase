@@ -1,8 +1,6 @@
 (ns metabase.query-processor.reducible
   (:require
    [clojure.core.async :as a]
-   [metabase.analytics.core :as analytics]
-   [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
@@ -26,7 +24,6 @@
       ([result]
        {:pre [(map? (unreduced result))]}
        ;; if the result is a clojure.lang.Reduced, unwrap it so we always get back the standard-format map
-       (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
        (-> (unreduced result)
            (assoc :row_count @row-count
                   :status :completed)

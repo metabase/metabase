@@ -9,3 +9,7 @@ export const exportFormatPng: ExportFormat = "png";
 export function accountSettings() {
   return "/account/profile";
 }
+
+export function unauthorized() {
+  return "/unauthorized";
+}

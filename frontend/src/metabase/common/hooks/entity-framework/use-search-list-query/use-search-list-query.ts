@@ -1,4 +1,4 @@
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import type {
   CollectionItem,
   SearchRequest,

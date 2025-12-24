@@ -105,8 +105,9 @@ export function DetailsTableCell({
     value.startsWith("http");
 
   const handleClick = (e: MouseEvent<HTMLSpanElement>) => {
-    if (onVisualizationClick && visualizationIsClickable(clicked)) {
-      onVisualizationClick({ ...clicked, element: e.currentTarget });
+    const clickData = { ...clicked, element: e.currentTarget };
+    if (onVisualizationClick && visualizationIsClickable(clickData)) {
+      onVisualizationClick(clickData);
     }
   };
 

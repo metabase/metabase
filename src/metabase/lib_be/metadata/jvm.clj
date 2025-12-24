@@ -1,5 +1,6 @@
 (ns metabase.lib-be.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
+  (:refer-clojure :exclude [get-in])
   (:require
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
@@ -17,7 +18,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -45,10 +46,11 @@
 (def ^:private metadata-type->schema
   {:metadata/card ::lib.schema.metadata/card})
 
-(defn instance->metadata
+(mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
   metadata instance with `:lib/type` and `kebab-case` keys."
-  [instance metadata-type]
+  [instance      :- :map
+   metadata-type :- :keyword]
   (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
                     (fn [instance]
                       (lib.normalize/normalize schema instance))
@@ -102,7 +104,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -148,6 +150,7 @@
    {:select    [:field/active
                 :field/base_type
                 :field/coercion_strategy
+                :field/database_partitioned
                 :field/database_type
                 :field/description
                 :field/display_name
@@ -349,6 +352,28 @@
   (instance->metadata snippet :metadata/native-query-snippet))
 
 ;;;
+;;; Transforms
+;;;
+
+(derive :metadata/transform :model/Transform)
+
+(methodical/defmethod t2.model/resolve-model :metadata/transform
+  [model]
+  (t2/resolve-model :model/Transform) ; for side-effects
+  model)
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/transform
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
+         {:select [:id :name :source :target]}))
+
+(t2/define-after-select :metadata/transform
+  [snippet]
+  (instance->metadata snippet :metadata/transform))
+
+;;;
 ;;; MetadataProvider
 ;;;
 
@@ -367,7 +392,8 @@
     :metadata/card                 :card/database_id
     :metadata/metric               :database_id
     :metadata/segment              :table/db_id
-    :metadata/native-query-snippet nil))
+    :metadata/native-query-snippet nil
+    :metadata/transform            nil))
 
 (defn- id-key [metadata-type]
   (case metadata-type
@@ -376,7 +402,8 @@
     :metadata/card                 :card/id
     :metadata/metric               :id
     :metadata/segment              :segment/id
-    :metadata/native-query-snippet :id))
+    :metadata/native-query-snippet :id
+    :metadata/transform            :id))
 
 (defn- name-key [metadata-type]
   (case metadata-type
@@ -385,7 +412,8 @@
     :metadata/card                 :card/name
     :metadata/metric               :name
     :metadata/segment              :segment/name
-    :metadata/native-query-snippet :name))
+    :metadata/native-query-snippet :name
+    :metadata/transform            :name))
 
 (defn- table-id-key [metadata-type]
   ;; types not in the case statement do not support Table ID
@@ -506,10 +534,20 @@
 (defmacro with-metadata-provider-cache
   "Wrapper to create a [[*metadata-provider-cache*]] for the duration of the `body`.
 
-  If there is already a [[*metadata-provider-cache*]], this leaves it in place."
+  If there is already a [[*metadata-provider-cache*]], this leaves it in place.
+
+  Note that the metadata provider cache is initialized automatically in a REST API request context by
+  the [[metabase.server.middleware.metadata-provider-cache]] middleware; if writing a REST API endpoint you do not
+  need to manually initialize one."
   [& body]
   `(binding [*metadata-provider-cache* (or *metadata-provider-cache*
                                            (atom (cache/basic-cache-factory {})))]
+     ~@body))
+
+(defmacro with-existing-metadata-provider-cache
+  "Wrapper to bind [[*metadata-provider-cache*]] to an existing cache, if you are doing something weird."
+  [metadata-provider-cache & body]
+  `(binding [*metadata-provider-cache* ~metadata-provider-cache]
      ~@body))
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider

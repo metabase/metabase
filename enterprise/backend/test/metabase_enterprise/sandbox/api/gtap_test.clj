@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.driver.util :as driver.util]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -23,7 +23,8 @@
    :card_id              true
    :table_id             true
    :group_id             true
-   :attribute_remappings {:foo 1}})
+   :attribute_remappings {:foo 1}
+   :dependency_analysis_version 0})
 
 (defmacro ^:private with-gtap-cleanup!
   "Invokes `body` ensuring any `Sandbox` created will be removed afterward. Leaving behind a GTAP can

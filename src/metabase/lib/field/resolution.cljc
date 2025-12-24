@@ -1,7 +1,7 @@
 (ns metabase.lib.field.resolution
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
-  (:refer-clojure :exclude [not-empty some select-keys])
+  (:refer-clojure :exclude [not-empty some select-keys get-in #?(:clj empty?)])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -26,7 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [not-empty some select-keys]]))
+   [metabase.util.performance :refer [not-empty some select-keys get-in #?(:clj empty?)]]))
 
 (mr/def ::id-or-name
   [:or :string ::lib.schema.id/field])
@@ -422,7 +422,7 @@
            :fk-field-id source-field-id)))
 
 ;;; See for
-;;; example [[metabase.query-processor-test.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],
+;;; example [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],
 ;;; if we have a field ref to an implicit join but the implicit join in a previous stage but that column is not
 ;;; propagated to the stage we're resolving for the query almost certainly won't work, but we can at least return
 ;;; somewhat more helpful metadata than the base fallback metadata that would give you a confusing error message.
@@ -513,10 +513,10 @@
     (resolve-in-card-returned-columns query source-card-id id-or-name)))
 
 (defn- fallback-metadata [id-or-name]
-  (log/warn (u/format-color :red
-                            (str "We tried every trick we could think of and still failed to resolve a field"
-                                 " ref. If the query doesn't work, this is why. Returning fallback metadata for %s")
-                            (pr-str id-or-name)))
+  (log/debug (u/format-color :red
+                             (str "We tried every trick we could think of and still failed to resolve a field"
+                                  " ref. If the query doesn't work, this is why. Returning fallback metadata for %s")
+                             (pr-str id-or-name)))
   (merge
    {:lib/type            :metadata/column
     ;; guess that the column came from the previous stage
@@ -600,13 +600,36 @@
              (not *recursive-expression-resolution?*))
     (binding [*recursive-expression-resolution?* true]
       (when-some [expr (lib.expression/maybe-resolve-expression query stage-number id-or-name)]
-        (log/warn (u/format-color :red
-                                  (str "Resolved field %s to an expression. Please remember to use :expression references"
-                                       " for expressions in the current stage -- using a :field ref is unsupported and may"
-                                       " not be allowed in the future.")
-                                  (pr-str id-or-name)))
+        (log/debug (u/format-color :red
+                                   (str "Resolved field %s to an expression. Please remember to use :expression references"
+                                        " for expressions in the current stage -- using a :field ref is unsupported and may"
+                                        " not be allowed in the future.")
+                                   (pr-str id-or-name)))
         (-> (lib.expression/expression-metadata query stage-number expr)
             (assoc :lib/source-column-alias id-or-name))))))
+
+(declare resolve-from-previous-stage-or-source)
+
+(defn- resolve-nonexistent-deduplicated-column-name
+  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter."
+  [query stage-number id-or-name]
+  (when (string? id-or-name)
+    (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9]\d*)$" id-or-name)]
+      (let [suffix     (parse-long suffix)
+            new-suffix (dec suffix)
+            ;; e.g. `CATEGORY_3` becomes `CATEGORY_2`; `CATEGORY_2` becomes `CATEGORY`
+            new-name   (if (<= new-suffix 1)
+                         original-name
+                         (str original-name \_ new-suffix))]
+        (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
+        (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
+          (if (::fallback-metadata? resolved)
+            (do
+              (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
+              nil)
+            (do
+              (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
+              resolved)))))))
 
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/visible-column
   [query        :- ::lib.schema/query
@@ -624,6 +647,9 @@
                 ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
                 ;; expression.
                 (maybe-resolve-expression-in-current-stage query stage-number id-or-name)
+                ;; if that fails and this is a deduplicated name like `CATEGORY_2` then try looking for `CATEGORY` and
+                ;; so forth
+                (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
                 ;; if we STILL can't find a match, return made-up fallback metadata.
                 (fallback-metadata id-or-name))]
     (when col
@@ -645,9 +671,9 @@
                 (resolve-in-join query stage-number join-alias source-field id-or-name))
               (when source-field
                 (resolve-in-implicit-join query stage-number source-field id-or-name))
-              (resolve-from-previous-stage-or-source query stage-number id-or-name)
               (merge
-               (or (fallback-metadata-for-field query stage-number id-or-name)
+               (or (resolve-from-previous-stage-or-source query stage-number id-or-name)
+                   (fallback-metadata-for-field query stage-number id-or-name)
                    (fallback-metadata id-or-name))
                (when (and join-alias
                           (contains? (into #{}
@@ -660,7 +686,11 @@
           {:lib/original-ref-style-for-result-metadata-purposes (if (pos-int? id-or-name)
                                                                   :original-ref-style/id
                                                                   :original-ref-style/name)}])
-        (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))
+        (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col))
+          (cond-> $col
+            (and (contains? #{nil :type/*} (:effective-type $col))
+                 (not (contains? #{nil :type/*} (:base-type $col))))
+            (assoc :effective-type (:base-type $col))))
         ;; `:lib/desired-column-alias` needs to be recalculated in the context of the stage where the ref
         ;; appears, go ahead and remove it so we don't accidentally try to use it when it may or may not be
         ;; accurate at all.

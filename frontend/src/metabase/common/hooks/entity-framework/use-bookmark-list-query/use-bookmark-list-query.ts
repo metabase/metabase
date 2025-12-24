@@ -1,4 +1,4 @@
-import Bookmarks from "metabase/entities/bookmarks";
+import { Bookmarks } from "metabase/entities/bookmarks";
 import type { Bookmark } from "metabase-types/api";
 
 import type {

@@ -16,7 +16,11 @@ export function usePalette(): ColorPalette {
       white: theme.fn.themeColor("white"),
       border: theme.fn.themeColor("border"),
       "text-dark": theme.fn.themeColor("text-dark"),
+      "text-medium": theme.fn.themeColor("text-medium"),
+      "text-light": theme.fn.themeColor("text-light"),
       "text-white": theme.fn.themeColor("text-white"),
+      "text-primary": theme.fn.themeColor("text-primary"),
+      "bg-white": theme.fn.themeColor("bg-white"),
     };
   }, [theme]);
 }

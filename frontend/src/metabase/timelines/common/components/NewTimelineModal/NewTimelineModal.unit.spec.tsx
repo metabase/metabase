@@ -32,7 +32,6 @@ const getProps = (
 ): NewTimelineModalProps => ({
   collection: createMockCollection(),
   onSubmit: jest.fn(),
-  onCancel: jest.fn(),
   onClose: jest.fn(),
   ...opts,
 });

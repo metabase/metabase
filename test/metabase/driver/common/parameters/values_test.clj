@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.values :as params.values]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.metadata :as lib.metadata]
@@ -17,7 +17,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -89,6 +89,42 @@
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :number}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
+
+(deftest ^:parallel variable-multiple-values-test
+  (testing "Allows multiple bindings of the same tag"
+    (testing "if only one has a value set"
+      (is (= "2"
+             (#'params.values/value-for-tag
+              {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+              [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+    (testing "if all values are equal"
+      (is (= "2"
+             (#'params.values/value-for-tag
+              {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+              [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+    (testing "if no values are given"
+      (testing "required tags use their defaults"
+        (is (= "100"
+               (#'params.values/value-for-tag
+                {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+                [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
+                 {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+      (testing "optional tags get no value"
+        (is (= params/no-value
+               (#'params.values/value-for-tag
+                {:name "id", :display-name "ID", :type :text, :required false, :default "100"}
+                [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
+                 {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))))
+  (testing "Throws if multiple real values are set"
+    (is (thrown-with-msg? Exception #"Multiple conflicting values"
+                          (#'params.values/value-for-tag
+                           {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+                           [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+                            {:type :category, :target [:variable [:template-tag "id"]], :value "8"}])))))
 
 (defn- value-for-tag
   "Call the private function and de-recordize the field"
@@ -489,11 +525,11 @@
                                                                              {:order-by [[:asc $id]] :limit 2})}
                          :model/Card       card-2 {:collection_id (u/the-id collection)
                                                    :dataset_query (mt/native-query
-                                                                    {:query         "SELECT * FROM {{card}}"
-                                                                     :template-tags {"card" {:name         "card"
-                                                                                             :display-name "card"
-                                                                                             :type         :card
-                                                                                             :card-id      card-1-id}}})}]
+                                                                   {:query         "SELECT * FROM {{card}}"
+                                                                    :template-tags {"card" {:name         "card"
+                                                                                            :display-name "card"
+                                                                                            :type         :card
+                                                                                            :card-id      card-1-id}}})}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card-2)]
@@ -781,7 +817,7 @@
     (mt/dataset test-data
       (qp.store/with-metadata-provider meta/metadata-provider
         (let [template-tags {"createdAt" {:type         :dimension
-                                          :dimension    [:field (meta/id :orders :created-at) {}]
+                                          :dimension    [:field (meta/id :orders :created-at) nil]
                                           :name         "createdAt"
                                           :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
                                           :display-name "CreatedAt"
@@ -842,11 +878,11 @@
                                               :dataset_query (mt/mbql-query venues {:limit 2})}
                  :model/Card {card-2-id :id} {:collection_id nil
                                               :dataset_query (mt/native-query
-                                                               {:query         "SELECT * FROM {{card}}"
-                                                                :template-tags {"card" {:name         "card"
-                                                                                        :display-name "card"
-                                                                                        :type         :card
-                                                                                        :card-id      card-1-id}}})}]
+                                                              {:query         "SELECT * FROM {{card}}"
+                                                               :template-tags {"card" {:name         "card"
+                                                                                       :display-name "card"
+                                                                                       :type         :card
+                                                                                       :card-id      card-1-id}}})}]
     ;; even tho Card 2 references Card 1, we don't want to include it in the set of referenced Card IDs, since you
     ;; should only need permissions for Card 2 to be able to run the query (see #15131)
     (testing (format "Card 1 ID = %d, Card 2 ID = %d" card-1-id card-2-id)

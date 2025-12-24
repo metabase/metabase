@@ -69,3 +69,42 @@
     (mt/with-premium-features #{:transforms}
       (is (false? (transforms.util/is-temp-transform-table? {:name :orders})))
       (is (false? (transforms.util/is-temp-transform-table? {:name :public/orders}))))))
+
+(deftest create-table-from-schema!-test
+  (testing "create-table-from-schema! preserves column order from schema definition"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (let [driver driver/*driver*
+            db-id (mt/id)
+            schema-name (when (get-method sql.tx/session-schema driver)
+                          (sql.tx/session-schema driver))
+            table-name (keyword "test_column_order")
+            qualified-table-name (if schema-name
+                                   (keyword schema-name (name table-name))
+                                   table-name)
+            table-schema {:name qualified-table-name
+                          :columns [{:name "zebra_col" :type :type/Text}
+                                    {:name "apple_col" :type :type/Integer}
+                                    {:name "mango_col" :type :type/Boolean}]}]
+        (mt/as-admin
+          (try
+            (testing "Creating table with ordered columns"
+              (transforms.util/create-table-from-schema! driver db-id table-schema)
+              (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
+
+            (when (get-method driver/describe-table driver)
+              (testing "Column order matches schema definition order (not alphabetical)"
+                (let [table-metadata {:schema schema-name :name (name table-name)}
+                      described-fields (:fields (driver/describe-table driver (mt/db) table-metadata))
+                      sorted-fields (sort-by :database-position described-fields)
+                      column-names (mapv :name sorted-fields)
+                      expected-names ["zebra_col" "apple_col" "mango_col"]]
+                  (is (= expected-names column-names)
+                      (str "Expected column order " expected-names
+                           " but got " column-names)))))
+
+            (finally
+              (try
+                (driver/drop-table! driver db-id qualified-table-name)
+                (catch Exception _e
+                  ;; Ignore cleanup errors
+                  nil)))))))))

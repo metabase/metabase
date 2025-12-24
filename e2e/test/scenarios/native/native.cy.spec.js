@@ -140,9 +140,6 @@ describe("scenarios > question > native", () => {
           expect(parameter.default).to.equal("Gizmo");
         });
       });
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Not now").click();
     });
 
     it("should recognize template tags and save them as parameters", () => {
@@ -169,8 +166,6 @@ describe("scenarios > question > native", () => {
           cy.wrap(xhr.response.body.id).as("questionId");
         });
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Not now").click();
 
       // Now load the question again and parameters[] should still be there
       cy.get("@questionId").then((questionId) => {
@@ -914,10 +909,10 @@ describe("scenarios > native question > data reference sidebar", () => {
     H.startNewNativeQuestion();
 
     dataReferenceSidebar().within(() => {
-      cy.findByText("2 models");
+      cy.findByText("2 models in 2 collections");
+      cy.findByText("Bobby Tables's Personal Collection").click(); // collection
       cy.findByText("Native Products Model").click();
       cy.findByText("A model of the Products table"); // description
-      cy.findByText("Bobby Tables's Personal Collection"); // collection
       cy.findByText("1 column");
       cy.findByText("RENAMED_ID").click();
       cy.findByText("No description");

@@ -29,8 +29,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: manage-translations
       - name: install gettext
         run: sudo apt-get install gettext
 

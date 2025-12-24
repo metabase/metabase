@@ -19,7 +19,13 @@ import { AnonymousTrackingInput } from "./AnonymousTrackingInput";
 
 const trackingFN = jest.spyOn(analytics, "trackTrackingPermissionChanged");
 
-const setup = ({ value }: { value: boolean }) => {
+const setup = ({
+  value,
+  isEnvSetting,
+}: {
+  value: boolean;
+  isEnvSetting?: boolean;
+}) => {
   const settings = createMockSettings({
     "anon-tracking-enabled": value,
   });
@@ -31,6 +37,8 @@ const setup = ({ value }: { value: boolean }) => {
       key: "anon-tracking-enabled",
       description: "Enable the collection of anonymous usage data",
       value: false,
+      is_env_setting: isEnvSetting,
+      env_name: isEnvSetting ? "MB_ANON_TRACKING_ENABLED" : undefined,
     }),
   ]);
 
@@ -74,5 +82,28 @@ describe("AnonymousTrackingInput", () => {
     expect(trackingFN).toHaveBeenCalledWith(true);
 
     expect(await screen.findByRole("switch")).toBeChecked();
+  });
+
+  it("should show environment variable message when anonymous tracking is set via env var", async () => {
+    setup({ value: true, isEnvSetting: true });
+    expect(
+      await screen.findByText(/This has been set by the/),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("MB_ANON_TRACKING_ENABLED"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show the switch when anonymous tracking is set via env var", async () => {
+    setup({ value: true, isEnvSetting: true });
+    await screen.findByText(/This has been set by the/);
+
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
+
+  it("should show the switch when anonymous tracking is not set via env var", async () => {
+    setup({ value: true, isEnvSetting: false });
+
+    expect(await screen.findByRole("switch")).toBeInTheDocument();
   });
 });

@@ -1,7 +1,9 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
@@ -11,7 +13,8 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -32,7 +35,13 @@
   [_]
   #{:snippets})
 
-(defn- add-template-tags [{old-tags :template_tags :as snippet}]
+(derive ::event :metabase/event)
+(doseq [e [:event/snippet-create :event/snippet-update :event/snippet-delete]]
+  (derive e ::event))
+
+(defn add-template-tags
+  "Update the template tags based on the new contents."
+  [{old-tags :template_tags :as snippet}]
   ;; Parse the snippet content to identify all template tags (like {{snippet: FilterA}} or {{var}}).
   ;; For snippet references, we need to resolve them to snippet IDs while preserving reference stability.
   ;;
@@ -65,16 +74,33 @@
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
+    (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
+
+(t2/define-after-insert :model/NativeQuerySnippet
+  [snippet]
+  (u/prog1 (t2.realize/realize snippet)
+    (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
+  (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
+
+(t2/define-after-update :model/NativeQuerySnippet
+  [snippet]
+  (u/prog1 (t2.realize/realize snippet)
+    (events/publish-event! :event/snippet-update {:object <> :user-id api/*current-user-id*})))
+
+(t2/define-before-delete :model/NativeQuerySnippet
+  [snippet]
+  (u/prog1 snippet
+    (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
 (defmethod serdes/hash-fields :model/NativeQuerySnippet
   [_snippet]
@@ -123,6 +149,7 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy [:archived :content :description :entity_id :name :template_tags]
+   :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id (serdes/fk :model/User)}})

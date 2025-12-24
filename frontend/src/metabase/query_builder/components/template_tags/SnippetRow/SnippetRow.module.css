@@ -14,3 +14,7 @@
     color: var(--mb-color-brand);
   }
 }
+
+.SnippetIcon {
+  flex-shrink: 0;
+}

@@ -1,4 +1,5 @@
 (ns metabase-enterprise.api.session-test
+  ;; TODO (Cam 10/30/25) -- Move this somewhere better
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
@@ -18,8 +19,8 @@
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
+                              :data-studio
                               :development-mode
-                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
@@ -34,8 +35,10 @@
                               :ai-sql-generation
                               :no-upsell
                               :offer-metabase-ai
+                              :offer-metabase-ai-tiered
                               :official-collections
                               :query-reference-validation
+                              :remote-sync
                               :sandboxes
                               :scim
                               :semantic-search
@@ -46,12 +49,14 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :support-users
                               :transforms
                               :transforms-python
                               :upload-management
                               :whitelabel
                               :collection-cleanup
                               :database-routing
+                              :tenants
                               :cloud-custom-smtp}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
@@ -64,8 +69,8 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
+            :data_studio                    true
             :development_mode               true
-            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -78,8 +83,10 @@
             :ai_sql_fixer                   true
             :ai_sql_generation              true
             :offer_metabase_ai              true
+            :offer_metabase_ai_tiered       true
             :official_collections           true
             :query_reference_validation     true
+            :remote_sync                    true
             :sandboxes                      true
             :scim                           true
             :semantic_search                true
@@ -90,6 +97,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :support-users                  true
             :table_data_editing             false
             :transforms                     true
             :transforms-python              true
@@ -97,7 +105,9 @@
             :whitelabel                     true
             :collection_cleanup             true
             :database_routing               true
+            :tenants                        true
             :cloud_custom_smtp              true
             :etl_connections                false
-            :etl_connections_pg             false}
+            :etl_connections_pg             false
+            :dependencies                   false}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

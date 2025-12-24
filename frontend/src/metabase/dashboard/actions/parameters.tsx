@@ -16,6 +16,7 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   type NewParameterOpts,
   createParameter,
+  getFilteredParameterMappingsForDashcardText,
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
@@ -409,7 +410,7 @@ export const setParameterMapping = createThunkAction(
   (
     parameterId: ParameterId,
     dashcardId: DashCardId,
-    cardId: CardId,
+    cardId: CardId | null,
     target: ParameterTarget | null,
   ) => {
     return (dispatch, getState) => {
@@ -440,6 +441,39 @@ export const setParameterMapping = createThunkAction(
               cardId,
               target,
             ),
+          },
+        }),
+      );
+    };
+  },
+);
+
+export const UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT =
+  "metabase/dashboard/UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT";
+export const updateParameterMappingsForDashcardText = createThunkAction(
+  UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT,
+  (dashcardId: DashCardId) => {
+    return (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const parameterMappings = dashcard?.parameter_mappings;
+      const text = dashcard?.visualization_settings?.text;
+
+      if (typeof text !== "string") {
+        return;
+      }
+
+      const filteredParameterMappings =
+        getFilteredParameterMappingsForDashcardText(parameterMappings, text);
+
+      if (!filteredParameterMappings) {
+        return;
+      }
+
+      dispatch(
+        setDashCardAttributes({
+          id: dashcardId,
+          attributes: {
+            parameter_mappings: filteredParameterMappings,
           },
         }),
       );
@@ -960,7 +994,23 @@ export const setOrUnsetParameterValues =
       _.isEqual(value, parameterValues[id]),
     );
     parameterIdValuePairs
-      .map(([id, value]) => setParameterValue(id, areAllSet ? null : value))
+      .map(([id, value]) => {
+        let valueToSet = value;
+
+        if (areAllSet) {
+          // unsetting value from parameter custom click behavior (Update a dashboard filter)
+          const parameter = getParameters(getState()).find(
+            ({ id: itemId }) => id === itemId,
+          );
+
+          valueToSet =
+            parameter?.default && parameter?.required
+              ? parameter.default || null
+              : null;
+        }
+
+        return setParameterValue(id, valueToSet);
+      })
       .forEach(dispatch);
   };
 

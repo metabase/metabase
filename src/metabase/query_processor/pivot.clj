@@ -3,10 +3,10 @@
   warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
-  (:refer-clojure :exclude [every? mapv some select-keys update-keys])
+  (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.schema :as lib.schema]
@@ -24,14 +24,14 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv some every? select-keys update-keys]]))
+   [metabase.util.performance :as perf :refer [mapv some every? select-keys update-keys empty? not-empty get-in]]))
 
 (set! *warn-on-reflection* true)
 
@@ -383,24 +383,20 @@
         show-row-totals    (get viz-settings :pivot.show_row_totals true)
         show-column-totals (get viz-settings :pivot.show_column_totals true)
         metadata-provider  (or (:lib/metadata query)
-                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                               (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        unique-name-fn     (lib.util/unique-name-generator)
+        unique-name-fn     (lib/unique-name-generator)
         returned-columns   (->> (lib/returned-columns query)
                                 (mapv #(update % :name unique-name-fn)))
         aggregations       (filter #(= (:lib/source %) :source/aggregations)
                                    returned-columns)
         breakouts          (filter :lib/breakout? returned-columns)
-        column-alias->index (into {}
-                                  (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
-                                  (concat breakouts aggregations))
         column-name->index (into {}
-                                 (map-indexed (fn [i column] [(:name column) i]))
+                                 (map-indexed (fn [i column] [(:lib/deduplicated-name column) i]))
                                  (concat breakouts aggregations))
         process-columns    (fn process-columns [column-names]
                              (when (seq column-names)
-                               (into [] (keep (fn [n] (or (column-alias->index n)
-                                                          (column-name->index n)))) column-names)))
+                               (into [] (keep column-name->index) column-names)))
         pivot-opts         {:pivot-rows         (process-columns rows)
                             :pivot-cols         (process-columns columns)
                             :pivot-measures     (process-columns values)
@@ -416,7 +412,7 @@
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [metadata-provider  (or (:lib/metadata query)
-                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                               (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
         index-in-breakouts (into {}
                                  (comp (filter (some-fn :lib/breakout? #(= (:lib/source %) :source/aggregations)))
@@ -440,7 +436,7 @@
         show-row-totals    (get viz-settings "pivot.show_row_totals" true)
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
         metadata-provider             (or (:lib/metadata query)
-                                          (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                                          (lib-be/application-database-metadata-provider (:database query)))
         mlv2-query                    (lib/query metadata-provider query)
         breakouts                     (into []
                                             (map-indexed (fn [i col]

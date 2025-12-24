@@ -3,13 +3,18 @@ import type React from "react";
 import { createContext, useCallback, useRef, useState } from "react";
 import _ from "underscore";
 
-import { useLazyListDatabasesQuery } from "metabase/api";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
   MetabotContext as MetabotCtx,
+  MetabotPromptInputRef,
 } from "metabase/metabot";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
+import type { MetabotChatContext } from "metabase-types/api";
 
 export const defaultContext = {
   prompt: "",
@@ -20,8 +25,22 @@ export const defaultContext = {
     Promise.resolve({
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
+      capabilities: [],
     }),
   registerChatContextProvider: () => () => {},
+};
+
+const mergeCtx = (
+  ctx: MetabotChatContext,
+  partialCtx: Partial<MetabotChatContext>,
+): MetabotChatContext => {
+  return {
+    ...ctx,
+    ...partialCtx,
+    user_is_viewing: partialCtx.user_is_viewing
+      ? [...ctx.user_is_viewing, ...partialCtx.user_is_viewing]
+      : ctx.user_is_viewing,
+  };
 };
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
@@ -33,44 +52,44 @@ export const MetabotProvider = ({
 }) => {
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
-  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const promptInputRef = useRef<MetabotPromptInputRef>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
   const store = useStore();
 
-  const [listDbs] = useLazyListDatabasesQuery();
-
   const getChatContext = useCallback(async () => {
     const state = store.getState();
     const providerFns = [...providerFnsRef.current];
 
-    const { data: dbData } = await listDbs(undefined, true);
-    const databases = dbData?.data ?? [];
-    const hasDataAccess = getHasDataAccess(databases);
-    const hasNativeWrite = getHasNativeWrite(databases);
+    const isAdmin = getUserIsAdmin(state);
+    const hasDataAccess = canUserCreateQueries(state);
+    const hasNativeWrite = canUserCreateNativeQueries(state);
 
-    const ctx = {
+    let ctx: MetabotChatContext = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
       capabilities: _.compact([
         "frontend:navigate_user_v1",
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
-      ]),
+        isAdmin && "permission:write_transforms",
+      ]) as string[],
     };
 
     for (const providerFn of providerFns) {
       try {
         const partialCtx = await providerFn(state);
-        return Object.assign(ctx, partialCtx);
+        if (partialCtx) {
+          ctx = mergeCtx(ctx, partialCtx);
+        }
       } catch (err) {
         console.error("A metabot chat context provider failed:", err);
       }
     }
 
     return ctx;
-  }, [store, listDbs]);
+  }, [store]);
 
   const registerChatContextProvider = useCallback(
     (providerFn: ChatContextProviderFn) => {

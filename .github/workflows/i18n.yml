@@ -38,8 +38,6 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'i18n'
     - name: Install xgettext if necessary
       run: |
         if ! command -v xgettext > /dev/null; then

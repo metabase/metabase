@@ -1,7 +1,8 @@
 /* eslint-disable i18next/no-literal-string */
+
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -23,7 +24,11 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
+import type { DashboardState } from "metabase-types/store/dashboard";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { DashboardSharingMenu } from "../DashboardSharingMenu";
 import { QuestionSharingMenu } from "../QuestionSharingMenu";
@@ -48,6 +53,7 @@ type SettingsProps = {
   canManageSubscriptions?: boolean;
   isEnterprise?: boolean;
   card?: Card;
+  dashboardState?: Partial<DashboardState>;
 };
 
 const setupState = ({
@@ -59,6 +65,7 @@ const setupState = ({
   canManageSubscriptions = false,
   isEnterprise = false,
   card,
+  dashboardState,
 }: SettingsProps) => {
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: isEnterprise,
@@ -94,6 +101,7 @@ const setupState = ({
         card,
       },
     } as User,
+    dashboard: createMockDashboardState(dashboardState),
   });
 
   return state;
@@ -109,6 +117,7 @@ export function setupDashboardSharingMenu({
   isEnterprise = false,
   hasPublicLink = false,
   dashboard: dashboardOverrides = {},
+  dashboardState,
 }: {
   dashboard?: Partial<Dashboard>;
   hasPublicLink?: boolean;
@@ -132,10 +141,13 @@ export function setupDashboardSharingMenu({
     isAdmin,
     canManageSubscriptions,
     isEnterprise,
+    dashboardState,
   });
 
   if (isEnterprise) {
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("audit_app");
+    setupEnterpriseOnlyPlugin("application_permissions");
+    setupEnterpriseOnlyPlugin("collections");
   }
 
   renderWithProviders(
@@ -190,7 +202,9 @@ export function setupQuestionSharingMenu({
   setupWebhookChannelsEndpoint();
 
   if (isEnterprise) {
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("audit_app");
+    setupEnterpriseOnlyPlugin("application_permissions");
+    setupEnterpriseOnlyPlugin("collections");
   }
 
   renderWithProviders(

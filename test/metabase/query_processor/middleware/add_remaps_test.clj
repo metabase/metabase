@@ -11,7 +11,7 @@
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -47,7 +47,14 @@
              (lib/query
               category-id-remap-metadata-provider
               (meta/table-metadata :venues))
-             [:stages 0])))))
+             [:stages 0])))
+    (testing "but ignore remaps to `:visibility-type :sensitive` columns"
+      (is (nil? (-> category-id-remap-metadata-provider
+                    (lib.tu/merged-mock-metadata-provider
+                     {:fields [{:id               (meta/id :categories :name)
+                                :visibility-type :sensitive}]})
+                    (lib/query (meta/table-metadata :venues))
+                    (#'qp.add-remaps/remap-column-infos [:stages 0])))))))
 
 (deftest ^:parallel add-fk-remaps-add-fields-test
   (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
@@ -393,10 +400,13 @@
 (deftest ^:parallel multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)\n"
     (let [mp                                        (-> meta/metadata-provider
-                                                        (lib.tu/remap-metadata-provider (meta/field-metadata :venues :category-id)
-                                                                                        (meta/field-metadata :categories :name))
-                                                        (lib.tu/remap-metadata-provider (meta/field-metadata :venues :id)
-                                                                                        (meta/field-metadata :categories :name)))
+                                                        (lib.tu/merged-mock-metadata-provider
+                                                         {:fields [{:id (meta/id :venues :id)
+                                                                    :fk-target-field-id (meta/id :categories :id)}]})
+                                                        (lib.tu/remap-metadata-provider (meta/id :venues :category-id)
+                                                                                        (meta/id :categories :name))
+                                                        (lib.tu/remap-metadata-provider (meta/id :venues :id)
+                                                                                        (meta/id :categories :name)))
           query                                     (lib/query
                                                      mp
                                                      (lib.tu.macros/mbql-query venues
@@ -476,7 +486,7 @@
 
 ;;; TODO -- this test was actually broken in the PR that introduced it (#20154) -- it used `partial` instead of
 ;;; `partial=`, which ended up asserting nothing of value. However, other tests for this
-;;; issue, [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]], and a test
+;;; issue, [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]], and a test
 ;;; in `e2e/test/scenarios/joins/joins.cy.spec.js`, are still passing. So I'm not sure what to do with this test. I
 ;;; updated it to use MLv2, but it's commented out for now.
 ;;;

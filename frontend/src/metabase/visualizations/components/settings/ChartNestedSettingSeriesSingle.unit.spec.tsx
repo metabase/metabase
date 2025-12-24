@@ -74,22 +74,60 @@ function getSeries(): Series {
   ] as any;
 }
 
-const setup = () => {
+const setup = ({ series }: { series: Series }) => {
   return renderWithProviders(
-    <QuestionChartSettings
-      series={getSeries()}
-      initial={{ section: "Data" }}
-    />,
+    <QuestionChartSettings series={series} initial={{ section: "Data" }} />,
   );
 };
 
 describe("ChartNestedSettingSeriesSingle", () => {
   it("should render the `Show values for this series` switch (metabase#53248)", async () => {
-    setup();
+    setup({ series: getSeries() });
 
     const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
     expect(expandButtons).toHaveLength(5);
 
+    await fireEvent.click(expandButtons[1]);
+
+    await waitFor(() => {
+      screen.getByTestId("chart-settings-widget-series_settings");
+    });
+
+    expect(
+      within(
+        screen.getByTestId("chart-settings-widget-series_settings"),
+      ).getByTestId("chart-settings-widget-show_series_values"),
+    ).not.toHaveAttribute("hidden");
+  });
+
+  it("should not render the `Show values for this series` switch when graph.show_stack_values is 'total' (metabase#53248)", async () => {
+    const series = getSeries();
+    series[0].card.visualization_settings["graph.show_stack_values"] = "total";
+    setup({ series });
+
+    const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
+    expect(expandButtons).toHaveLength(5);
+
+    await fireEvent.click(expandButtons[1]);
+
+    await waitFor(() => {
+      screen.getByTestId("chart-settings-widget-series_settings");
+    });
+
+    expect(
+      within(
+        screen.getByTestId("chart-settings-widget-series_settings"),
+      ).getByTestId("chart-settings-widget-show_series_values"),
+    ).toHaveAttribute("hidden");
+  });
+
+  it("should render the `Show values for this series` switch when stackable.stack_type is null (metabase#58552)", async () => {
+    const series = getSeries();
+    series[0].card.visualization_settings["stackable.stack_type"] = null;
+    series[0].card.visualization_settings["graph.show_stack_values"] = "total";
+    setup({ series });
+
+    const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
     await fireEvent.click(expandButtons[1]);
 
     await waitFor(() => {

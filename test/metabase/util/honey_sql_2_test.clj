@@ -29,6 +29,22 @@
     (is (= ["(a AT TIME ZONE 'US/Pacific')"]
            (sql/format-expr [::h2x/at-time-zone :a "US/Pacific"])))))
 
+(deftest ^:parallel postgres-interval-test
+  (testing `::h2x/postgres-interval
+    (is (= ["INTERVAL '2 day'"]
+           (sql/format-expr [::h2x/postgres-interval 2 :day])))
+    (is (= ["INTERVAL '-2.5 year'"]
+           (sql/format-expr [::h2x/postgres-interval -2.5 :year])))
+    (are [amount unit msg] (thrown-with-msg?
+                            AssertionError
+                            msg
+                            (sql/format-expr [::h2x/postgres-interval amount unit]))
+      "2"  :day  #"\QAssert failed: (number? amount)\E"
+      :day 2     #"\QAssert failed: (number? amount)\E"
+      2    "day" #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
+      2    2     #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
+      2    :can  #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E")))
+
 (deftest ^:parallel format-test
   (testing "Basic format test not including a specific quoting option"
     (is (= ["SELECT setting"]

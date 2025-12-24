@@ -10,7 +10,7 @@ If you're self-hosting Metabase and you've opted in to provide us with anonymous
 
 **[We only collect anonymous Metabase data; we don't collect any of your data](https://www.metabase.com/security).** We don't collect any usernames, emails, server IPs, database details of any kind, or any personally identifiable information (PII).
 
-This anonymous data helps us understand how people are actually using Metabase, which in turn helps us prioritize what to work on next.
+This anonymous data helps us understand how people are using Metabase, which in turn helps us prioritize what to work on next.
 
 ## Examples of the anonymous data we collect and how we use it
 
@@ -40,6 +40,25 @@ If you're self-hosting Metabase, you can opt out of providing us with your anony
 5. Toggle the **Anonymous tracking** option.
 
 If you're in the process of setting up your Metabase, you can also toggle off tracking during the `Usage Data Preferences` onboarding step. We collect a few anonymous events before that point, but won't do so anymore if you choose to opt out.
+
+## Token validation requests for paid plans
+
+If you're on a paid plan (Pro, Enterprise, or a trial), Metabase periodically sends a token validation request to verify your license. This is separate from the anonymous usage data described above.
+
+### Data included in token validation requests
+
+The token validation request includes:
+
+- Count of active users (used for billing)
+- Count of external users
+- Count of internal users
+- Count of email domains
+- Count of embedded dashboards and questions
+- Types of embedding (modular, guest, SDK, full app)
+- Site UUID (just an identifier for your Metabase)
+- Metabase version
+- Query execution timestamp (last UTC day)
+- Metabot usage statistics: count of tokens, queries, users, and date (just counts and the date).
 
 ## Further reading
 

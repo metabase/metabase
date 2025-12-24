@@ -7,7 +7,6 @@ import ss from "simple-statistics";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-// eslint-disable-next-line no-restricted-imports -- deprecated sdk import
 import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
 import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
@@ -341,15 +340,15 @@ class ChoroplethMapInner extends Component {
     const onClickFeature =
       isClickable &&
       ((click) => {
-        if (visualizationIsClickable(getFeatureClickObject(rows[0]))) {
-          const featureKey = getFeatureKey(click.feature);
-          const row = rowByFeatureKey.get(featureKey);
-          if (onVisualizationClick) {
-            onVisualizationClick({
-              ...getFeatureClickObject(row, click.feature),
-              event: click.event,
-            });
-          }
+        const featureKey = getFeatureKey(click.feature);
+        const row = rowByFeatureKey.get(featureKey);
+        const clickData = {
+          ...getFeatureClickObject(row, click.feature),
+          event: click.event,
+        };
+
+        if (onVisualizationClick && visualizationIsClickable(clickData)) {
+          onVisualizationClick(clickData);
         }
       });
     const onHoverFeature =

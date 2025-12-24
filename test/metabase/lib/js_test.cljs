@@ -9,11 +9,14 @@
    [metabase.lib.js :as lib.js]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]
    [metabase.util.malli.registry :as mr]))
+
+(comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
 
 (deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
@@ -624,3 +627,60 @@
                         :keyword "too"
                         :value   nil}]
       (is (js= expected (lib.js/display-info->js input))))))
+
+(deftest ^:parallel query-to-js-test
+  (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/count))
+                     lib/append-stage
+                     (as-> $query (lib/filter $query (lib/> (first (lib/returned-columns $query)) 100))))
+        js-query (lib.js/to-js-query query)
+        ag-uuid (lib.options/uuid (first (lib/aggregations query 0)))
+        filter-uuid (lib.options/uuid (first (lib/filters query)))
+        field-uuid  (-> (first (lib/filters query))
+                        (nth 2)
+                        lib.options/uuid)]
+    (testing "CLJS to JS"
+      (is (js= #js {"database" (meta/id)
+                    "lib/type" "mbql/query"
+                    "stages"   #js [#js {"source-table" (meta/id :orders)
+                                         "lib/type"     "mbql.stage/mbql"
+                                         "aggregation"  #js [#js ["count" #js {"lib/uuid" ag-uuid}]]}
+                                    #js {"lib/type" "mbql.stage/mbql"
+                                         "filters"  #js [#js [">"
+                                                              #js {"lib/uuid" filter-uuid}
+                                                              #js ["field"
+                                                                   #js {"effective-type" "type/Integer"
+                                                                        "lib/uuid"       field-uuid
+                                                                        "base-type"      "type/Integer"}
+                                                                   "count"]
+                                                              100]]}]}
+               js-query)))
+    (testing "JS to CLJS"
+      (testing "MBQL 5"
+        (is (= query
+               (lib.js/from-js-query (:lib/metadata query) js-query))))
+      (testing "MBQL 4 (legacy)"
+        (is (=? (lib.schema.util/remove-lib-uuids query)
+                (lib.js/from-js-query (:lib/metadata query) (lib.js/legacy-query js-query)))))
+      (testing "Cache converted queries"
+        (let [q1 (lib.js/from-js-query (:lib/metadata query) js-query)
+              q2 (lib.js/from-js-query (:lib/metadata query) js-query)]
+          (is (identical? q1 q2)))))))
+
+(deftest ^:parallel from-js-query-preserve-database-id-test
+  (is (=? {:lib/type :mbql/query,
+           :stages   [{:lib/type :mbql.stage/mbql, :source-table 2}]
+           :database 1}
+          (lib.js/from-js-query
+           (lib.js/metadataProvider 1 #js {})
+           #js {:database 1, :type "query", :query #js {:source-table 2}}))))
+
+(deftest ^:parallel query-equals-should-work-on-js-and-cljs-mbql-4-and-5
+  (let [queries {"Cljs MBQL 4" {:database 1, :type :query, :query {:source-table 2}}
+                 "JS MBQL 4"   #js {:database 1, :type :query, :query #js {:source-table 2}}
+                 "Cljs MBQL 5" {:database 1, :lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql, :source-table 2}]}
+                 "JS MBQL 5"   #js {:database 1, "lib/type" :mbql/query, :stages #js [#js {"lib/type" :mbql.stage/mbql, :source-table 2}]}}]
+    (doseq [[q1-type q1] queries
+            [q2-type q2] queries]
+      (testing (str "q1 = " q1-type ", q2 = " q2-type)
+        (lib.js/query= q1 q2)))))

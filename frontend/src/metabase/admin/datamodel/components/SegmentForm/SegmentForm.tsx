@@ -15,7 +15,7 @@ import { SegmentEditor } from "metabase/querying/segments/components/SegmentEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Segment, StructuredQuery, TableId } from "metabase-types/api";
+import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
@@ -179,7 +179,7 @@ const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
 };
 
 function getSegmentEditorProps(
-  definitionProps: FieldInputProps<StructuredQuery | undefined>,
+  definitionProps: FieldInputProps<DatasetQuery | undefined>,
   tableIdProps: FieldInputProps<TableId | undefined>,
   metadata: Metadata,
 ) {

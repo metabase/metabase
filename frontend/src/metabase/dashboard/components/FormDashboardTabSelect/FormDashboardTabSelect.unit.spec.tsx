@@ -87,6 +87,7 @@ describe("FormDashboardTabSelect", () => {
       initialValue: FOO_TAB_1.id,
     });
 
+    await waitForTabSelector(FOO_TAB_1.name);
     await userEvent.click(screen.getByText("Submit"));
     expect(onSubmit).toHaveBeenCalledWith(
       { dashboard_tab_id: String(FOO_TAB_1.id) },
@@ -130,6 +131,7 @@ describe("FormDashboardTabSelect", () => {
       ).not.toBeInTheDocument();
     });
     rerender(FOO_DASH.id);
+    await waitForTabSelector(FOO_TAB_1.name);
 
     await userEvent.click(screen.getByText("Submit"));
     expect(onSubmit).toHaveBeenCalledWith(
@@ -176,3 +178,11 @@ describe("FormDashboardTabSelect", () => {
     );
   });
 });
+
+async function waitForTabSelector(tabName: string) {
+  await waitFor(async () => {
+    expect(
+      await screen.findByLabelText(/Which tab should this go on/),
+    ).toHaveValue(tabName);
+  });
+}

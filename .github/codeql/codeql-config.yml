@@ -1,3 +1,5 @@
+version: 1
+
 name: "Metabase CodeQL config"
 
 paths-ignore:

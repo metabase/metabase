@@ -35,6 +35,7 @@ export function useModelsAndOption(
     onRender,
     hovered,
     isFullscreen,
+    gridSize,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
@@ -82,6 +83,7 @@ export function useModelsAndOption(
       Array.from(hiddenSeries),
       renderingContext,
       showWarning,
+      gridSize,
     );
 
     if (model.dimensionModel.column) {
@@ -97,6 +99,7 @@ export function useModelsAndOption(
     hiddenSeries,
     renderingContext,
     showWarning,
+    gridSize,
     tc,
   ]);
 

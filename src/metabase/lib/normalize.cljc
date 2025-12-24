@@ -7,9 +7,11 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some]]))
 
@@ -35,7 +37,7 @@
     (or (-> x lib-type lib-type->schema)
         :map)
 
-    (and (vector? x)
+    (and (sequential? x)
          ((some-fn simple-keyword? string?) (first x)))
     (lib.schema.mbql-clause/tag->registered-schema-name (first x))
 
@@ -46,9 +48,9 @@
   "If normalization errors somewhere, just log the error and return the partially-normalized result. Easier to debug
   this way."
   [error]
-  (log/warnf "Error normalizing MBQL 5: %s\n%s"
-             (pr-str (me/humanize (:explain error)))
-             (u/pprint-to-str (dissoc error :explain)))
+  (log/debugf "Error normalizing MBQL 5: %s\n%s"
+              (pr-str (me/humanize (:explain error)))
+              (u/pprint-to-str (dissoc error :explain)))
   (:value error))
 
 (def ^:private ^:dynamic *error-fn*
@@ -60,6 +62,7 @@
              (fn []
                (let [respond identity
                      raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
+                 (log/debugf "Building :normalize coercer for schema %s" (pr-str schema))
                  (mc/coercer schema (mtx/transformer mtx/default-value-transformer {:name :normalize}) respond raise)))))
 
 (defn normalize
@@ -94,3 +97,12 @@
                                               {:schema schema, :x x, :error error})))]
          (thunk))
        (thunk)))))
+
+(mu/defn ->normalized-stage-metadata :- ::lib.schema.metadata/stage
+  "Take a sequence of legacy or Lib metadata maps, convert to Lib-style if needed, then normalize them.
+
+  Note that this returns a map with `:columns` rather than a sequence of columns like the input."
+  [cols :- [:sequential :map]]
+  (->> cols
+       lib.util/->stage-metadata
+       (normalize ::lib.schema.metadata/stage)))

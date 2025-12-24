@@ -24,6 +24,39 @@ on:
         required: true
 
 jobs:
+  test-mode-config:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      run_mode: ${{ fromJson(steps.config.outputs.result).runMode }}
+      dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      # note: this block can be removed after we stop needing to be able to test versions before v55
+      - name: Get test mode config
+        id: config
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const { getMajorVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            // Versions before v55 used a single token for testing
+            // with v55 and later we use enterprise tokens that mirror actual Metabase plans
+            const MULTIPLE_TEST_TOKEN_THRESHOLD = 55;
+
+            const version = '${{ inputs.version }}';
+            const majorVersion = Number(getMajorVersion(version));
+            const oldTestToken = majorVersion < MULTIPLE_TEST_TOKEN_THRESHOLD;
+
+            return ({
+              runMode: oldTestToken ? 'prod' : 'e2e',
+              metastoreDevServer: oldTestToken ? '' : '${{ vars.METASTORE_DEV_SERVER_URL }}'
+            });
+
   release-artifact:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -96,17 +129,19 @@ jobs:
   run-sanity-check:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [release-artifact]
+    needs: [test-mode-config, release-artifact]
     strategy:
       matrix:
         edition: [oss, ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
-      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
-      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
-      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
+      MB_RUN_MODE: ${{ needs.test-mode-config.outputs.run_mode }}
+      METASTORE_DEV_SERVER_URL: ${{ needs.test-mode-config.outputs.dev_server }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
       # these are needed for backwards compatibility with release branches earlier than v55, since
       # this workflow always runs from master, but we run tests from the release branch
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
@@ -131,11 +166,8 @@ jobs:
           snowplow: true
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
@@ -154,24 +186,32 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
+      # For now we only need the default snapshots for pre-release checks.
+      # If we decide to include tests that rely on the external QA databases, we should:
+      #   1. remove the --spec ... line
+      #   2. add postgres, mysql, and mongo to the prepare-containers step
       - name: Make app db snapshot
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       - name: Run a few important OSS Cypress tests as sanity check
         if: ${{ matrix.edition == 'oss' }}
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@EE",grepOmitFiltered=true \
-            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+            --env grepTags="@smoke+-@EE" \
+            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important EE Cypress tests as sanity check
         if: ${{ matrix.edition == 'ee' }}
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@OSS",grepOmitFiltered=true \
-            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+            --env grepTags="@smoke+-@OSS" \
+            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

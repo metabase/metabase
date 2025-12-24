@@ -570,7 +570,7 @@
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
-                                                   :total-els-text     #{"TOTAL"}}]
+                                                   :total-els-text     #{"Total"}}]
                                                  [card-b-doc "Renders legend even if disabled in viz-settings, so that static pie charts are legible, but does not render total if it is disabled."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -581,7 +581,7 @@
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
-                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"TOTAL") doc)
+                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"Total") doc)
                                          (map (fn [el] (-> el :content first)))
                                          set)]
                 (testing test-str
@@ -808,7 +808,7 @@
                   ;; the series bars each have distinct colours, so we can group by those attrs to get a count.
                   ;; and remove any paths that are 'transparent'
                   series-counts          (-> (group-by #(get-in % [:attrs :fill]) dashcard-path-elements)
-                                             (dissoc "transparent")
+                                             (dissoc "none")
                                              (update-vals count))]
               ;; The series count should be 1 for each series, since we're filtering by a single month of the year
               ;; and each question is set up with a breakout on :created_at by :month, so filtering on a single month produces just 1 bar.
@@ -1006,7 +1006,7 @@
             (let [doc            (render.tu/render-card-as-hickory! card-id)
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 7)
+                                      (take-last 6)
                                       (map str/trim)
                                       first)]
               (testing "Renders with correct day of week first"

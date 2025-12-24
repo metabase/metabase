@@ -25,7 +25,7 @@ export function NativeQueryPreview({
   parameters?: UiParameter[];
 }) {
   const { data, error, isFetching } = useGetNativeDatasetQuery({
-    ...Lib.toLegacyQuery(query),
+    ...Lib.toJsQuery(query),
     parameters,
   });
 
@@ -82,7 +82,7 @@ function getFormattedQuery(
   if (engine === null) {
     return data.query;
   }
-  return formatNativeQuery(data.query, engine);
+  return formatNativeQuery(data.query);
 }
 
 function NativeCodePanel({

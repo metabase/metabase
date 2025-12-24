@@ -14,12 +14,12 @@ const setup = async ({
   initialRoute = "",
   features = {},
 } = {}) => {
-  return baseSetup({
-    hasEnterprisePlugins: true,
+  await baseSetup({
     hasTokenFeatures: true,
     isAdmin,
     features,
     initialRoute,
+    enterprisePlugins: "*", // means all enterprise plugins
   });
 };
 

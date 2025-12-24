@@ -6,15 +6,15 @@
 
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
-  (:refer-clojure :exclude [mapv select-keys some update-keys every?])
+  (:refer-clojure :exclude [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
@@ -33,7 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some update-keys every?]]))
+   [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)]]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -118,7 +118,8 @@
           (log/error e)
           (mapv merge-col
                 initial-cols
-                (concat lib-cols (repeat nil))))
+                ;; `util.perf/mapv` checks the `count` of all args, so it's NSFIS - Not Safe For Infinite Seqs.
+                (take (count initial-cols) (concat lib-cols (repeat nil)))))
         (throw e)))))
 
 (mu/defn- legacy-source :- ::lib.schema.metadata/column.legacy-source
@@ -236,6 +237,7 @@
   used by individual pieces of middleware or driver implementations for tracking little bits of information that
   should not be considered relevant when comparing clauses for equality."
   [legacy-ref]
+  ^{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/update-field-options legacy-ref (partial into {} (remove (fn [[k _]]
                                                                      (qualified-keyword? k))))))
 
@@ -381,6 +383,11 @@
       (seq model-metadata)
       (lib.card/merge-model-metadata model-metadata))))
 
+(defn- add-source-and-desired-aliases [query cols]
+  (into []
+        (lib.field.util/add-source-and-desired-aliases-xform query)
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
@@ -407,13 +414,14 @@
            add-legacy-source
            deduplicate-names
            (add-legacy-field-refs query)
-           (merge-model-metadata query)))))
+           (merge-model-metadata query)
+           (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
   (merge
    ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
    ;; formatting to display values of the column" according
-   ;; to [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
+   ;; to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
    (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :inherited-temporal-unit) col)]
      {:unit temporal-unit})
    col))
@@ -450,7 +458,11 @@
   (mapv col->legacy-metadata cols))
 
 (mu/defn returned-columns :- [:and
-                              [:sequential ::kebab-cased-map]
+                              [:sequential
+                               [:merge
+                                ::kebab-cased-map
+                                [:map
+                                 [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]]
                               [:fn
                                {:error/message "columns should have unique :name(s)"}
                                (fn [cols]

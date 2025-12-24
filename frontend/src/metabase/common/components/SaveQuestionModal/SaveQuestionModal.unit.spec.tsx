@@ -2,12 +2,14 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
-import type { CollectionEndpoints } from "__support__/server-mocks";
 import {
+  type CollectionEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupDatabasesEndpoints,
+  setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -119,6 +121,8 @@ const setup = async (
   });
   setupDashboardEndpoints(FOO_DASH);
   setupDashboardEndpoints(BAR_DASH);
+  setupLibraryEndpoints();
+  setupDatabasesEndpoints([]);
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
@@ -595,9 +599,11 @@ describe("SaveQuestionModal", () => {
       expect(
         await screen.findByLabelText(/Which tab should this go on/),
       ).toBeInTheDocument();
-      expect(
-        await screen.findByLabelText(/Which tab should this go on/),
-      ).toHaveValue("Foo Tab 1");
+      await waitFor(async () => {
+        expect(
+          await screen.findByLabelText(/Which tab should this go on/),
+        ).toHaveValue("Foo Tab 1");
+      });
     });
 
     it("should now show tab input if selected dashboard has no tabs", async () => {

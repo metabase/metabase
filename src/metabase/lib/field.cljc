@@ -1,11 +1,12 @@
 (ns metabase.lib.field
-  (:refer-clojure :exclude [every? select-keys mapv])
+  (:refer-clojure :exclude [every? select-keys mapv empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -26,13 +27,14 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? select-keys mapv]]
+   [metabase.util.performance :refer [every? select-keys mapv empty? not-empty get-in #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (defn- column-metadata-effective-type
@@ -77,6 +79,30 @@
     (when (every? some? path)
       (str/join ": " path))))
 
+(defn- clauses-in-stage-by-uuid
+  [query stage-number]
+  (lib.computed/with-cache-ephemeral* query [::clauses-in-stage-by-uuid stage-number]
+    (fn []
+      (let [sink (volatile! (transient {}))]
+        (lib.walk/walk-clauses-in-stage
+         (lib.util/query-stage query stage-number)
+         (fn [clause]
+           (when-let [lib-uuid (lib.options/uuid clause)]
+             (vswap! sink assoc! lib-uuid clause))
+           nil))
+        (persistent! @sink)))))
+
+(defn- find-stage-index-and-clause-by-uuid
+  "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
+  [query stage-number lib-uuid]
+  (let [max-stage (lib.util/canonical-stage-index query stage-number)]
+    (loop [stage-number 0]
+      (if (> stage-number max-stage)
+        nil
+        (if-let [clause (get (clauses-in-stage-by-uuid query stage-number) lib-uuid)]
+          [stage-number clause]
+          (recur (inc stage-number)))))))
+
 (defn- field-display-name-initial-display-name
   [query
    stage-number
@@ -117,7 +143,7 @@
                         (not (or fk-field-id join-alias))
                         (not (str/includes? field-display-name " → "))
                         (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                          (lib.util/find-stage-index-and-clause-by-uuid query previous-stage-number source-uuid)))]
+                          (find-stage-index-and-clause-by-uuid query previous-stage-number source-uuid)))]
           ;; The :display-name from the field metadata is probably not a :long display name, so
           ;; if the caller requested a :long name and we can lookup the original clause by the
           ;; source-uuid, use that to get the :long name. This allows display-info to get the

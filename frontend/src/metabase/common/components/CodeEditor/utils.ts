@@ -7,26 +7,38 @@ import { StreamLanguage, indentUnit } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
+import { unifiedMergeView } from "@codemirror/merge";
 import type { Extension } from "@codemirror/state";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
 import { useMemo } from "react";
+import _ from "underscore";
 
 import type { CodeLanguage } from "./types";
 
 export function useExtensions({
   language,
   extensions,
+  originalValue,
+  proposedValue,
 }: {
   language?: CodeLanguage | Extension;
   extensions?: Extension[];
+  originalValue?: string;
+  proposedValue?: string;
 }) {
-  return useMemo(
-    () => [
+  return useMemo(() => {
+    const hasProposed = !!originalValue && !!proposedValue;
+
+    return _.compact([
       ...(extensions ?? []),
-      ...(language ? [getLanguageExtension(language)] : []),
-    ],
-    [language, extensions],
-  );
+      language && getLanguageExtension(language),
+      hasProposed &&
+        unifiedMergeView({
+          original: originalValue,
+          mergeControls: false,
+        }),
+    ]);
+  }, [language, extensions, originalValue, proposedValue]);
 }
 
 export function getLanguageExtension(language: CodeLanguage | Extension) {

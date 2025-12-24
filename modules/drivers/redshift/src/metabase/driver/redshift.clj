@@ -34,20 +34,24 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation       true
-                              :describe-fields                true
-                              :describe-fks                   true
-                              :rename                         true
-                              :atomic-renames                 true
-                              :expression-literals            true
-                              :identifiers-with-spaces        false
-                              :uuid-type                      false
-                              :nested-field-columns           false
-                              :test/jvm-timezone-setting      false
-                              :database-routing               true
-                              :metadata/table-existence-check true
-                              :transforms/python              true
-                              :transforms/table               true}]
+(doseq [[feature supported?] {:atomic-renames                   true
+                              :connection-impersonation         true
+                              :database-routing                 true
+                              :describe-default-expr            false
+                              :describe-fields                  true
+                              :describe-fks                     true
+                              :describe-is-generated            false
+                              :describe-is-nullable             false
+                              :expression-literals              true
+                              :identifiers-with-spaces          false
+                              :metadata/table-existence-check   true
+                              :nested-field-columns             false
+                              :regex/lookaheads-and-lookbehinds false
+                              :rename                           true
+                              :test/jvm-timezone-setting        false
+                              :transforms/python                true
+                              :transforms/table                 true
+                              :uuid-type                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -91,9 +95,9 @@
      "  where c.relnamespace = n.oid"
      "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
      "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
-     "    and pg_catalog.has_schema_privilege(n.nspname, 'USAGE')"
-     "    and (pg_catalog.has_table_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT')"
-     "         or pg_catalog.has_any_column_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT'))"
+     "    and pg_catalog.has_schema_privilege(n.oid, 'USAGE')"
+     "    and (pg_catalog.has_table_privilege(c.oid,'SELECT')"
+     "         or pg_catalog.has_any_column_privilege(c.oid,'SELECT'))"
      "union all"
      "select"
      "  tablename as name,"
@@ -220,6 +224,19 @@
         (str/starts-with? stn "tinytext")   :type/Text
         (str/starts-with? stn "mediumtext") :type/Text
         (str/starts-with? stn "longtext")   :type/Text
+
+        ;; Iceberg table types - https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+        (= stn "string")                    :type/Text
+        (= stn "boolean")                   :type/Boolean
+        (= stn "long")                      :type/BigInteger
+        (str/starts-with? stn "decimal(")   :type/Decimal
+        (= stn "binary")                    :type/*
+        (= stn "date")                      :type/Date
+        (= stn "timestamp")                 :type/DateTime
+        (= stn "timestamptz")               :type/DateTimeWithTZ
+
+        ;; MySQL federated table enum types
+        (str/starts-with? stn "enum(")      :type/Text
 
         (= stn "datetime")                  :type/DateTime
         (= stn "year")                      :type/Integer))))
@@ -465,7 +482,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
   [_ {:keys [host port db dbname], :as opts}]
   (when (and db dbname)
-    (throw (ex-info "Redshift connection details cannot contain both 'db' and 'dbname' options" {})))
+    (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"

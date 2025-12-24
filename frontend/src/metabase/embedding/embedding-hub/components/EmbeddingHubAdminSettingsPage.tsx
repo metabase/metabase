@@ -4,27 +4,30 @@ import {
   RelatedSettingsSection,
   getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
+import { useSetting } from "metabase/common/hooks";
 import { Stack, Text, Title } from "metabase/ui";
 
 import { EmbeddingHub } from "./EmbeddingHub";
 
 export const EmbeddingHubAdminSettingsPage = () => {
+  const isUsingTenants = useSetting("use-tenants");
+
   return (
     <Stack mx="auto" py="xl" gap="xl" maw={800}>
-      <Stack gap="xs" ml="3rem">
+      <Stack gap="xs">
         <Title
           order={1}
           c="var(--mb-color-text-primary)"
         >{t`Embedding setup guide`}</Title>
 
-        <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
+        <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with modular embedding`}</Text>
       </Stack>
 
       <EmbeddingHub />
 
       <Stack ml="2.7rem">
         <RelatedSettingsSection
-          items={getModularEmbeddingRelatedSettingItems()}
+          items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
         />
       </Stack>
     </Stack>

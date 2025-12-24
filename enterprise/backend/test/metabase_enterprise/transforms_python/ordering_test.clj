@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.ordering-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.ordering :as ordering]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -8,16 +9,18 @@
    [toucan2.core :as t2]))
 
 (defn- make-transform [query & [name schema]]
-  (let [name (or name (mt/random-name))
+  (let [name           (or name (mt/random-name))
         default-schema (when (get-method driver.sql/default-schema driver/*driver*)
                          (driver.sql/default-schema driver/*driver*))
-        schema (or schema default-schema "public")]
-    {:source {:type :query
-              :query query}
-     :name (str "transform_" name)
-     :target {:schema schema
-              :name name
-              :type :table}}))
+        schema         (or schema default-schema "public")]
+    {:source       {:type  :query
+                    :query query}
+     :name         (str "transform_" name)
+     :target       {:schema schema
+                    :name   name
+                    :type   :table}
+     :target_db_id (or (:database query)
+                       (mt/id))}))
 
 (defn- make-python-transform [source-tables & [name schema target-db]]
   (let [name (or name (mt/random-name))
@@ -32,11 +35,12 @@
      :target {:database target-db
               :schema schema
               :name name
-              :type "table"}}))
+              :type "table"}
+     :target_db_id target-db}))
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
-    (#'ordering/transform-deps transform)))
+    (#'transforms.i/table-dependencies transform)))
 
 (deftest python-transform-basic-dependencies-test
   (testing "Python transforms with source-tables dependencies are extracted correctly"

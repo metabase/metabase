@@ -1,5 +1,9 @@
 (ns metabase.query-processor.schema
   (:require
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This is allowed for now
+   ;; because the QP still returns legacy-style metadata (for now)
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -65,5 +69,14 @@
 (mr/def ::export-format
   "Schema for valid export formats for downloading query results."
   (into [:enum {:decode/json keyword
-                :api/regex   export-formats-regex}]
+               ;; :api/regex   export-formats-regex
+                }]
         export-formats))
+
+(mr/def ::result-metadata.column
+  "A single result metadata column as returned by the Query Processor."
+  [:ref ::mbql.s/legacy-column-metadata])
+
+(mr/def ::result-metadata.columns
+  "A sequence of result metadata columns as returned by the Query Processor."
+  [:sequential ::result-metadata.column])

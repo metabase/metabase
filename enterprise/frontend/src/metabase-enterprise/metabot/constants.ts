@@ -17,6 +17,11 @@ export const FIXED_METABOT_ENTITY_IDS = {
   EMBEDDED: "embeddedmetabotmetabo" as const,
 };
 
+export const METABOT_PROFILE_OVERRIDES = {
+  DEFAULT: undefined,
+  SQL: "sql",
+};
+
 export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;
@@ -47,5 +52,29 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   },
   get search_metabase_documentation() {
     return t`Consulting the docs`;
+  },
+  get write_transform_python() {
+    return t`Writing Python`;
+  },
+  get write_transform_sql() {
+    return t`Writing SQL`;
+  },
+  get todo_write() {
+    return t`Planning`;
+  },
+  get todo_read() {
+    return t`Planning`;
+  },
+  get search_transforms() {
+    return t`Searching transforms`;
+  },
+  get get_transform_details() {
+    return t`Getting transform details`;
+  },
+  get get_field_values() {
+    return t`Retrieving table metadata`;
+  },
+  get search_tables() {
+    return t`Searching database tables`;
   },
 };

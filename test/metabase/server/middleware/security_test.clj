@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core :as env]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
    [metabase.server.middleware.security :as mw.security]
@@ -110,7 +111,9 @@
       "https://example.com"     {:protocol "https" :domain "example.com" :port nil}
       "http://example.com:8080" {:protocol "http" :domain "example.com" :port "8080"}
       "example.com:80"          {:protocol nil :domain "example.com" :port "80"}
-      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}))
+      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
+      "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
+      "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
       "ftp://example.com"
@@ -141,9 +144,11 @@
     (is (mw.security/approved-protocol? "http" "http"))
     (is (mw.security/approved-protocol? "https" "https"))
     (is (not (mw.security/approved-protocol? "http" "https"))))
-  (testing "Nil reference should allow any protocol"
+  (testing "Nil reference should allow only http/https"
     (is (mw.security/approved-protocol? "http" nil))
-    (is (mw.security/approved-protocol? "https" nil))))
+    (is (mw.security/approved-protocol? "https" nil))
+    (is (not (mw.security/approved-protocol? "app" nil)))
+    (is (not (mw.security/approved-protocol? "capacitor" nil)))))
 
 (deftest ^:parallel test-approved-port?
   (testing "Exact port match"
@@ -184,10 +189,11 @@
       (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
     (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
-  (testing "Origins without protocol should accept both http and https"
+  (testing "Origins without protocol should accept only http and https"
     (let [approved "example.com"]
       (is (mw.security/approved-origin? "http://example.com" approved))
-      (is (mw.security/approved-origin? "https://example.com" approved))))
+      (is (mw.security/approved-origin? "https://example.com" approved))
+      (is (not (mw.security/approved-origin? "app://example.com" approved)))))
   (testing "Different ports should fail"
     (is (not (mw.security/approved-origin? "http://example.com:3000" "http://example.com:3003"))))
   (testing "Should allow anything with *"
@@ -519,3 +525,65 @@
                                       identity)]
         (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))
             (format "Should not set CORS headers for /auth/sso with %d status" status))))))
+
+(deftest cross-origin-headers-test
+  (testing "Cross-Origin-Resource-Policy header from environment variable"
+    (testing "Should add header when MB_CROSS_ORIGIN_RESOURCE_POLICY is set"
+      (with-redefs [env/env {:mb-cross-origin-resource-policy "cross-origin"}]
+        (let [headers (mw.security/security-headers)]
+          (is (= "cross-origin" (get headers "Cross-Origin-Resource-Policy"))
+              "Should include Cross-Origin-Resource-Policy header when env var is set"))))
+
+    (testing "Should not add header when MB_CROSS_ORIGIN_RESOURCE_POLICY is not set"
+      (with-redefs [env/env {}]
+        (let [headers (mw.security/security-headers)]
+          (is (nil? (get headers "Cross-Origin-Resource-Policy"))
+              "Should not include Cross-Origin-Resource-Policy header when env var is not set")))))
+
+  (testing "Cross-Origin-Embedder-Policy header from environment variable"
+    (testing "Should add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is set"
+      (with-redefs [env/env {:mb-cross-origin-embedder-policy "require-corp"}]
+        (let [headers (mw.security/security-headers)]
+          (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy"))
+              "Should include Cross-Origin-Embedder-Policy header when env var is set"))))
+
+    (testing "Should not add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is not set"
+      (with-redefs [env/env {}]
+        (let [headers (mw.security/security-headers)]
+          (is (nil? (get headers "Cross-Origin-Embedder-Policy"))
+              "Should not include Cross-Origin-Embedder-Policy header when env var is not set")))))
+
+  (testing "Both Cross-Origin headers can be set independently"
+    (testing "Only CORP set"
+      (with-redefs [env/env {:mb-cross-origin-resource-policy "same-origin"}]
+        (let [headers (mw.security/security-headers)]
+          (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
+          (is (nil? (get headers "Cross-Origin-Embedder-Policy"))))))
+
+    (testing "Only COEP set"
+      (with-redefs [env/env {:mb-cross-origin-embedder-policy "credentialless"}]
+        (let [headers (mw.security/security-headers)]
+          (is (nil? (get headers "Cross-Origin-Resource-Policy")))
+          (is (= "credentialless" (get headers "Cross-Origin-Embedder-Policy"))))))
+
+    (testing "Both set"
+      (with-redefs [env/env {:mb-cross-origin-resource-policy "same-site"
+                             :mb-cross-origin-embedder-policy "require-corp"}]
+        (let [headers (mw.security/security-headers)]
+          (is (= "same-site" (get headers "Cross-Origin-Resource-Policy")))
+          (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy")))))))
+
+  (testing "Cross-Origin headers are included in middleware response"
+    (testing "Headers are present in actual HTTP response"
+      (with-redefs [env/env {:mb-cross-origin-resource-policy "cross-origin"
+                             :mb-cross-origin-embedder-policy "require-corp"}]
+        (let [wrapped-handler (mw.security/add-security-headers
+                               (fn [_request respond _raise]
+                                 (respond {:status 200 :headers {} :body "ok"})))
+              response (wrapped-handler {:headers {} :uri "/"}
+                                        identity
+                                        identity)]
+          (is (= "cross-origin" (get-in response [:headers "Cross-Origin-Resource-Policy"]))
+              "Cross-Origin-Resource-Policy should be in the response")
+          (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"]))
+              "Cross-Origin-Embedder-Policy should be in the response"))))))

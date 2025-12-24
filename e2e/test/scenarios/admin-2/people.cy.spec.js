@@ -336,12 +336,23 @@ describe("scenarios > admin > people", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`Reset ${normalUserName}'s password?`);
         clickButton("Reset password");
+
+        H.undoToast().within(() => {
+          cy.findByText(
+            `Password reset email sent to ${normalUserName}`,
+          ).should("be.visible");
+        });
+
+        cy.log("Should not show temporary password modal");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${normalUserName}'s password has been reset`).should(
           "not.exist",
         );
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(/^temporary password$/i).should("not.exist");
+
+        cy.log("Should close the modal");
+        H.modal().should("not.exist");
       },
     );
 
@@ -620,8 +631,8 @@ describe("scenarios > admin > people", () => {
 
     const { first_name, last_name, email } = TEST_USER;
     const FULL_NAME = `${first_name} ${last_name}`;
-    cy.visit("/admin/people");
 
+    cy.visit("/admin/people");
     clickButton("Invite someone");
 
     // first modal
@@ -631,25 +642,23 @@ describe("scenarios > admin > people", () => {
     clickButton("Create");
 
     // second modal
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`${FULL_NAME} has been added`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(
-      `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
-    );
-    cy.url().then((url) => {
-      const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
-      const { userId } = URL_REGEX.exec(url).groups;
-      assertLinkMatchesUrl(
-        "reset their password.",
-        `/admin/people/${userId}/reset`,
+    H.modal().within(() => {
+      cy.findByText(`${FULL_NAME} has been added`);
+      cy.contains(
+        `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
       );
+      cy.url().then((url) => {
+        const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
+        const { userId } = URL_REGEX.exec(url).groups;
+        assertLinkMatchesUrl(
+          "reset their password.",
+          `/admin/people/${userId}/reset`,
+        );
+      });
+      cy.button("Done").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(FULL_NAME);
+    cy.findByTestId("admin-people-list-table").should("contain", FULL_NAME);
   });
 });
 
@@ -700,7 +709,7 @@ describe("scenarios > admin > people > group managers", () => {
       cy.icon("ellipsis").eq(0).click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit Name").click();
-      cy.get("input").type(" updated");
+      cy.findByDisplayValue("collection").type(" updated");
       cy.button("Done").click();
 
       // Click on the group with the new name
@@ -767,7 +776,7 @@ describe("scenarios > admin > people > group managers", () => {
       cy.url().should("match", /\/$/);
     });
 
-    it("can manage members from the people page", { tags: "@flaky" }, () => {
+    it("can manage members from the people page", () => {
       // Open membership select for a user
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName)
@@ -808,19 +817,16 @@ describe("scenarios > admin > people > group managers", () => {
         });
 
       // Demote myself from being manager
-      H.popover().within(() => {
-        cy.icon("arrow_down").eq(0).click();
-      });
+      H.popover().findByLabelText("collection").click();
       confirmLosingAbilityToManageGroup();
+      H.popover().findByLabelText("collection").should("not.exist");
 
       // Remove myself from another group
-      H.popover().within(() => {
-        cy.findByText("data").click();
-      });
+      H.popover().findByLabelText("data").click();
       confirmLosingAbilityToManageGroup();
 
       // Redirected to the home page
-      cy.url().should("match", /\/$/);
+      cy.location("pathname").should("eq", "/");
     });
   });
 

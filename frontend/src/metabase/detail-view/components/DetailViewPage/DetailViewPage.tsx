@@ -116,11 +116,8 @@ export function DetailViewPage({
             w={isMediumBreakpoint ? "100%" : rem(440)}
           >
             <Relationships
-              columns={columns}
-              row={row}
               rowId={rowId}
               rowName={rowName}
-              table={table}
               tableForeignKeys={tableForeignKeys}
             />
           </Box>

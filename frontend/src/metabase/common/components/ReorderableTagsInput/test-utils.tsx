@@ -1,4 +1,5 @@
 import { renderWithProviders } from "__support__/ui";
+import type { MantineSize } from "metabase/ui";
 
 import { type Option, ReorderableTagsInput } from "./ReorderableTagsInput";
 
@@ -18,7 +19,7 @@ interface SetupOpts {
   onChange?: (value: string[]) => void;
   maxValues?: number;
   placeholder?: string;
-  size?: string;
+  size?: MantineSize;
   containerId?: string;
   useExternalDnd?: boolean;
   draggedItemId?: string | null;

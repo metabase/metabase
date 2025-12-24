@@ -23,6 +23,7 @@
  [metabase.actions.actions
   cached-value
   check-actions-enabled!
+  check-actions-enabled-for-database!
   check-data-editing-enabled-for-database!
   cached-database
   cached-database-via-table-id
@@ -53,8 +54,10 @@
   apply-json-query]
  [metabase.actions.models
   dashcard->action
+  insert!
   select-action
-  select-actions]
+  select-actions
+  update!]
  [metabase.actions.events
   publish-action-success!]
  [metabase.actions.scope

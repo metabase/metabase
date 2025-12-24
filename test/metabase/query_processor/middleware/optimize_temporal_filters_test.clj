@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -116,6 +115,11 @@
     :lower        (u.date/parse "2019-01-01" "UTC")
     :upper        (u.date/parse "2020-01-01" "UTC")}])
 
+;;; TODO (Cam 10/10/25) -- rework these tests to use MBQL 5 so we can use lib tools for this stuff instead of icky
+;;; manual legacy MBQL manipulation
+(defn- assoc-field-options [legacy-ref & kvs]
+  (apply update (vec legacy-ref) 2 assoc kvs))
+
 (deftest ^:parallel optimize-temporal-filters-test
   (doseq [field-or-expr [[:field (meta/id :orders :created-at) {}]
                          [:expression "date" {}]]
@@ -129,51 +133,51 @@
                        (pr-str upper))
         (testing :=
           (is (= [:and
-                  [:>= (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) lower]
-                  [:< (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) upper]]
+                  [:>= (assoc-field-options field-or-expr :temporal-unit :default) lower]
+                  [:< (assoc-field-options field-or-expr :temporal-unit :default) upper]]
                  (optimize-filters
                   [:=
-                   (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                   (assoc-field-options field-or-expr :temporal-unit unit)
                    [:absolute-datetime filter-value unit]]))))
         (testing :!=
           (is (= [:or
-                  [:< (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) lower]
-                  [:>= (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) upper]]
+                  [:< (assoc-field-options field-or-expr :temporal-unit :default) lower]
+                  [:>= (assoc-field-options field-or-expr :temporal-unit :default) upper]]
                  (optimize-filters
                   [:!=
-                   (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                   (assoc-field-options field-or-expr :temporal-unit unit)
                    [:absolute-datetime filter-value unit]]))))
-        (testing :<
-          (is (= [:< (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) lower]
+        (testing :<n
+          (is (= [:< (assoc-field-options field-or-expr :temporal-unit :default) lower]
                  (optimize-filters
                   [:<
-                   (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                   (assoc-field-options field-or-expr :temporal-unit unit)
                    [:absolute-datetime filter-value unit]]))))
         (testing :<=
-          (is (= [:< (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) upper]
+          (is (= [:< (assoc-field-options field-or-expr :temporal-unit :default) upper]
                  (optimize-filters
                   [:<=
-                   (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                   (assoc-field-options field-or-expr :temporal-unit unit)
                    [:absolute-datetime filter-value unit]]))))
         (testing :>
-          (is (= [:>= (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) upper]
+          (is (= [:>= (assoc-field-options field-or-expr :temporal-unit :default) upper]
                  (optimize-filters
                   [:>
-                   (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                   (assoc-field-options field-or-expr :temporal-unit unit)
                    [:absolute-datetime filter-value unit]]))))
         (testing :>=
-          (is (= [:>= (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) lower]
+          (is (= [:>= (assoc-field-options field-or-expr :temporal-unit :default) lower]
                  (optimize-filters
                   [:>=
-                   (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                   (assoc-field-options field-or-expr :temporal-unit unit)
                    [:absolute-datetime filter-value unit]]))))
         (testing :between
           (is (= [:and
-                  [:>= (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) lower]
-                  [:< (mbql.u/assoc-field-options field-or-expr :temporal-unit :default) upper]]
+                  [:>= (assoc-field-options field-or-expr :temporal-unit :default) lower]
+                  [:< (assoc-field-options field-or-expr :temporal-unit :default) upper]]
                  (optimize-filters
                   [:between
-                   (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                   (assoc-field-options field-or-expr :temporal-unit unit)
                    [:absolute-datetime filter-value unit]
                    [:absolute-datetime filter-value unit]]))))))))
 
@@ -312,10 +316,10 @@
         (testing (format "last %s" unit)
           (is (=? {:query {:filter [:and
                                     [:>=
-                                     (mbql.u/assoc-field-options field-or-expr :temporal-unit :default)
+                                     (assoc-field-options field-or-expr :temporal-unit :default)
                                      [:relative-datetime -1 unit]]
                                     [:<
-                                     (mbql.u/assoc-field-options field-or-expr :temporal-unit :default)
+                                     (assoc-field-options field-or-expr :temporal-unit :default)
                                      [:relative-datetime 0 unit]]]}}
                   (optimize-query
                    mp
@@ -327,7 +331,7 @@
                                                       (lib.tu.attempted-murders-metadata-provider/id :attempts :datetime)
                                                       nil]}
                                :filter       [:=
-                                              (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                                              (assoc-field-options field-or-expr :temporal-unit unit)
                                               [:relative-datetime -1 unit]]}}))))
         (testing (format "this %s" unit)
           ;; test the various different ways we might refer to 'now'
@@ -337,10 +341,10 @@
             (testing (format "clause = %s" (pr-str clause))
               (is (=? {:query {:filter [:and
                                         [:>=
-                                         (mbql.u/assoc-field-options field-or-expr :temporal-unit :default)
+                                         (assoc-field-options field-or-expr :temporal-unit :default)
                                          [:relative-datetime 0 unit]]
                                         [:<
-                                         (mbql.u/assoc-field-options field-or-expr :temporal-unit :default)
+                                         (assoc-field-options field-or-expr :temporal-unit :default)
                                          [:relative-datetime 1 unit]]]}}
                       (optimize-query
                        mp
@@ -352,15 +356,15 @@
                                                           (lib.tu.attempted-murders-metadata-provider/id :attempts :datetime)
                                                           nil]}
                                    :filter       [:=
-                                                  (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                                                  (assoc-field-options field-or-expr :temporal-unit unit)
                                                   clause]}}))))))
         (testing (format "next %s" unit)
           (is (=? {:query {:filter [:and
                                     [:>=
-                                     (mbql.u/assoc-field-options field-or-expr :temporal-unit :default)
+                                     (assoc-field-options field-or-expr :temporal-unit :default)
                                      [:relative-datetime 1 unit]]
                                     [:<
-                                     (mbql.u/assoc-field-options field-or-expr :temporal-unit :default)
+                                     (assoc-field-options field-or-expr :temporal-unit :default)
                                      [:relative-datetime 2 unit]]]}}
                   (optimize-query
                    mp
@@ -372,7 +376,7 @@
                                                       (lib.tu.attempted-murders-metadata-provider/id :attempts :datetime)
                                                       nil]}
                                :filter       [:=
-                                              (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
+                                              (assoc-field-options field-or-expr :temporal-unit unit)
                                               [:relative-datetime 1 unit]]}}))))))))
 
 (deftest ^:parallel optimize-mixed-temporal-values-test

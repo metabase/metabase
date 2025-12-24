@@ -37,6 +37,7 @@
           search-doc {:model           "card"
                       :id              "123"
                       :searchable_text "Dog Training Guide"
+                      :embeddable_text "Dog Training Guide"
                       :updated_at      t1}
           sut        semantic.gate/search-doc->gate-doc]
       (is (= {:id            "card_123"
@@ -55,7 +56,7 @@
                (:updated_at (sut (assoc search-doc :updated_at nil) t2))))))))
 
 (deftest gate-doc->search-doc-test
-  (let [original-search-doc {:model "card" :id "123" :searchable_text "Dog Training Guide"}
+  (let [original-search-doc {:model "card" :id "123" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
         gate-doc            {:document (doto (PGobject.)
                                          (.setType "jsonb")
                                          (.setValue (json/encode original-search-doc)))}
@@ -96,10 +97,10 @@
         t1             (ts "2025-01-01T00:01:00Z")
         t2             (ts "2025-01-02T00:03:10Z")
         t3             (ts "2025-01-03T00:02:42Z")
-        c1             {:model "card" :id "123" :searchable_text "Dog Training Guide"}
-        c2             {:model "card" :id "123" :searchable_text "Dog Training Guide 2"}
-        c3             {:model "card" :id "123" :searchable_text "Dog Training Guide 3"}
-        d1             {:model "dashboard" :id "456" :searchable_text "Elephant Migration"}
+        c1             {:model "card" :id "123" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
+        c2             {:model "card" :id "123" :searchable_text "Dog Training Guide 2" :embeddable_text "Dog Training Guide 2"}
+        c3             {:model "card" :id "123" :searchable_text "Dog Training Guide 3" :embeddable_text "Dog Training Guide 3"}
+        d1             {:model "dashboard" :id "456" :searchable_text "Elephant Migration" :embeddable_text "Elephant Migration"}
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))
         sut            semantic.gate/gate-documents!]
@@ -172,9 +173,9 @@
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         epoch-watermark {:last-poll Instant/EPOCH :last-seen Instant/EPOCH}
-        c1              {:model "card" :id "123" :searchable_text "a"}
-        c2              {:model "card" :id "234" :searchable_text "b"}
-        c3              {:model "card" :id "345" :searchable_text "c"}
+        c1              {:model "card" :id "123" :searchable_text "a" :embeddable_text "a"}
+        c2              {:model "card" :id "234" :searchable_text "b" :embeddable_text "b"}
+        c3              {:model "card" :id "345" :searchable_text "c" :embeddable_text "c"}
         t0              (ts "2025-01-01T00:00:00Z")
         t1              (ts "2025-01-01T00:01:00Z")
         t2              (ts "2025-01-02T00:03:10Z")
@@ -334,8 +335,8 @@
     (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           t1             (ts "2025-01-01T00:01:00Z")
-          c1             {:model "card" :id "123" :searchable_text "Dog Training Guide"}
-          d1             {:model "dashboard" :id "456" :searchable_text "Elephant Migration"}
+          c1             {:model "card" :id "123" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
+          d1             {:model "dashboard" :id "456" :searchable_text "Elephant Migration" :embeddable_text "Elephant Migration"}
           version        semantic.gate/search-doc->gate-doc
           sut            semantic.gate/gate-documents!]
       (with-open [_ (open-tables! pgvector index-metadata)]

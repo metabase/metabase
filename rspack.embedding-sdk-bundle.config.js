@@ -31,6 +31,7 @@ const {
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 const {
   SDK_BUNDLE_PATH,
   SDK_BUNDLE_FILENAME,
@@ -43,7 +44,7 @@ const {
 } = require("./frontend/build/embedding-sdk/lib/get-sdk-bundle-version-from-version-properties");
 
 const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
+  __dirname + "/frontend/src/embedding-sdk-bundle";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
@@ -151,6 +152,7 @@ const config = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],

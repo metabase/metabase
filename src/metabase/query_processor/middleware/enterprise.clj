@@ -91,19 +91,6 @@
   (fn [query rff]
     ((check-download-permissions qp) query rff)))
 
-(defenterprise maybe-apply-column-level-perms-check
-  "Execution middleware. Check column-level permissions if applicable."
-  metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check
-  [qp]
-  qp)
-
-(defn maybe-apply-column-level-perms-check-middleware
-  "Helper middleware wrapper for [[maybe-apply-column-level-perms-check]] to make sure we do [[defenterprise]] dispatch
-  correctly on each QP run rather than just once when we combine all of the QP middleware."
-  [qp]
-  (fn [query rff]
-    ((maybe-apply-column-level-perms-check qp) query rff)))
-
 ;;;; Post-processing middleware
 
 ;;; (f query rff) => rff

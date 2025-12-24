@@ -3,7 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
        :clj  ([java-time.api :as t]
               [metabase.util.malli.fn :as mu.fn]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru :as lib.drill-thru]
@@ -16,9 +16,12 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.underlying :as lib.underlying]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel underlying-records-availability-test
   (testing "underlying-records is available for non-header clicks with at least one breakout"
@@ -114,15 +117,23 @@
                                  :value      "2022-12-01T00:00:00+02:00"}]}}))
 
 (def ^:private last-month
-  #?(:cljs (let [now    (js/Date.)
-                 year   (.getFullYear now)
-                 month  (.getMonth now)]
-             (-> (js/Date.UTC year (dec month))
-                 (js/Date.)
-                 (.toISOString)))
+  ;; The JS date libraries suck. Rather than working hard to get this right in both environments for a unit test,
+  ;; here's a hard-coded value. This can be any month, provided it is in the range of the Sample Database, which is
+  ;; roughly +/- 2 years. I've picked June 2026 in October 2025, so this value should be good for a few years.
+  #?(:cljs "2026-06-01"
      :clj  (let [last-month (-> (t/zoned-date-time (t/year) (t/month))
                                 (t/minus (t/months 1)))]
              (t/format :iso-offset-date-time last-month))))
+
+;; See the note above under [[last-month]] about the hard-coded values in CLJS.
+(let [[start end] #?(:cljs ["2026-06-01" "2026-06-30"]
+                     :clj  (let [this-month (t/local-date (t/year) (t/month))]
+                             [(t/minus this-month (t/months 1))
+                              (t/minus this-month (t/days 1))]))
+      ->str       #?(:cljs identity ; They're already just strings.
+                     :clj  #(t/format :iso-date %))]
+  (def ^:private last-month-start (->str start))
+  (def ^:private last-month-end   (->str end)))
 
 (defn- underlying-state [query agg-index agg-value breakout-values exp-filters-fn]
   (let [columns    (lib/returned-columns query)
@@ -166,10 +177,11 @@
                       42295.12
                       [last-month]
                       (fn [_agg-dim [breakout-dim]]
-                        [[:= {}
+                        [[:between {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]]))))
+                          last-month-start
+                          last-month-end]]))))
 
 (deftest ^:parallel underlying-records-apply-test-2
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
@@ -185,10 +197,11 @@
                       6572.12
                       [last-month]
                       (fn [_agg-dim [breakout-dim]]
-                        [[:= {}
+                        [[:between {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]
+                          last-month-start
+                          last-month-end]
                          [:= {} (-> (meta/field-metadata :products :category)
                                     lib/ref
                                     (lib.options/with-options {}))
@@ -219,7 +232,7 @@
                         (fn [_agg-dim [breakout-dim]]
                           (let [monthly-breakout (-> (:column-ref breakout-dim)
                                                      (lib.options/with-options {:temporal-unit :month}))]
-                            [[:=  {} monthly-breakout last-month]]))))))
+                            [[:between {} monthly-breakout last-month-start last-month-end]]))))))
 
 (deftest ^:parallel multiple-aggregations-multiple-breakouts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -238,10 +251,11 @@
                             (-> (:column-ref product-id-dim)
                                 (lib.options/update-options dissoc :lib/uuid))
                             120]
-                           [:= {}
+                           [:between {}
                             (-> (:column-ref created-at-dim)
                                 (lib.options/with-options {:temporal-unit :month}))
-                            last-month]])))))
+                            last-month-start
+                            last-month-end]])))))
 
 (deftest ^:parallel temporal-unit-breakouts-test
   (let [column (-> (meta/field-metadata :orders :created-at)
@@ -367,9 +381,10 @@
       (is (=? {:stages [{:filters [[:> {}
                                     [:field {} (meta/id :orders :total)]
                                     50]
-                                   [:= {}
+                                   [:between {}
                                     [:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                    "2023-03-01T00:00:00Z"]]}]}
+                                    "2023-03-01"
+                                    "2023-03-31"]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel negative-aggregation-values-display-info-test
@@ -511,11 +526,12 @@
                :column-ref [:aggregation {:lib/source-name "sum_where_SUBTOTAL"} string?]}
               drill))
       (is (=? {:lib/type :mbql/query
-               :stages   [{:filters     [[:= {}
+               :stages   [{:filters     [[:between {}
                                           (-> (meta/field-metadata :orders :created-at)
                                               lib/ref
                                               (lib.options/with-options {}))
-                                          "2023-12-01"]
+                                          "2023-12-01"
+                                          "2023-12-31"]
                                          [:= {} (-> (meta/field-metadata :products :category)
                                                     lib/ref
                                                     (lib.options/with-options {}))
@@ -588,6 +604,41 @@
                         (lib.underlying/top-level-column query (:column bucket-dim)))))
       (is (=? [[:= {} [:expression {} "cost bucket"] "12"]]
               (lib/filters (lib/drill-thru query drill)))))))
+
+(deftest ^:parallel expression-after-aggregation-test
+  (testing "custom column defined after aggregation should not offer underlying-records drill (#66715)"
+    (let [;; Stage 0: Count of products by category
+          ;; Stage 1: Add custom column "Custom Category" that references the breakout result
+          base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                             (lib/aggregate (lib/count))
+                             (lib/breakout (meta/field-metadata :products :category))
+                             lib/append-stage)
+          category-col   (m/find-first #(= (:name %) "CATEGORY")
+                                       (lib/returned-columns base-query))
+          query          (lib/expression base-query "Custom Category" (lib/ref category-col))
+          cols           (lib/returned-columns query)
+          custom-cat-col (m/find-first #(= (:name %) "Custom Category") cols)
+          count-col      (m/find-first #(= (:name %) "count") cols)
+          ;; Simulate clicking on a bar chart with Custom Category on X axis
+          context        {:column     custom-cat-col
+                          :column-ref (lib/ref custom-cat-col)
+                          :value      42
+                          :row        [{:column     custom-cat-col
+                                        :column-ref (lib/ref custom-cat-col)
+                                        :value      "Doohickey"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      42}]
+                          :dimensions [{:column     custom-cat-col
+                                        :column-ref (lib/ref custom-cat-col)
+                                        :value      "Doohickey"}]}
+          ;; No underlying-records drill:
+          drill          (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                       (lib/available-drill-thrus query context))]
+      (testing "Custom Category expression can't be traced to top-level query"
+        (is (nil? (lib.underlying/top-level-column query custom-cat-col))))
+      (testing "drill should not be available when dimension can't be traced back"
+        (is (nil? drill))))))
 
 (deftest ^:parallel native-query-with-multiple-breakouts-on-same-column-test
   (let [mp               (lib.tu/mock-metadata-provider
@@ -687,12 +738,49 @@
                                        (lib/available-drill-thrus query context))]
     (is (some? drill))
     (is (=? [{:source-card 1
-              :filters     [[:=
+              :filters     [[:between
                              {}
                              [:field {:temporal-unit :month} "CREATED_AT"]
-                             "2023-07-01T00:00:00Z"]
-                            [:=
+                             "2023-07-01"
+                             "2023-07-31"]
+                            [:between
                              {}
                              [:field {:temporal-unit :year} "CREATED_AT"]
-                             "2023-01-01T00:00:00Z"]]}]
+                             "2023-01-01"
+                             "2023-12-31"]]}]
             (:stages (lib/drill-thru query drill))))))
+
+(deftest ^:parallel remove-original-binning-test
+  (testing "We should remove :lib/original-binning from display info as well"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (-> (meta/field-metadata :orders :total)
+                                          (lib/with-binning {:strategy :num-bins, :num-bins 100})))
+                        (as-> $query (lib/filter $query (lib/>= (meta/field-metadata :orders :total) 90))))
+          cols      (lib/returned-columns query)
+          count-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Count"})
+          total-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Total: 100 bins"})
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      37
+                     :row        [{:column total-col, :column-ref (lib/ref total-col), :value 90}
+                                  {:column count-col, :column-ref (lib/ref count-col), :value 37}]
+                     :dimensions [{:column total-col, :column-ref (lib/ref total-col), :value 90}]}
+          drill     (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                  (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (let [query' (lib/drill-thru query drill)]
+        (is (=? [{:source-table (meta/id :orders)
+                  :filters      [[:>= {}
+                                  [:field {} (meta/id :orders :total)]
+                                  90]
+                                 [:<
+                                  {}
+                                  [:field {} (meta/id :orders :total)]
+                                  92.0]]}]
+                (:stages query')))
+        (is (= ["Total is greater than or equal to 90"
+                #?(:clj  "Total is less than 92.0"
+                   :cljs "Total is less than 92")]
+               (map #(:long-display-name (lib/display-info query' %))
+                    (lib/filters query'))))))))

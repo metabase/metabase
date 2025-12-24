@@ -97,7 +97,6 @@
      metabot-get-prompt-templates-url
      metabot-prompt-generator-token-limit
      multi-setting-read-only
-     notebook-native-preview-shown
      notebook-native-preview-sidebar-width
      notification-link-base-url
      num-metabot-choices
@@ -119,10 +118,10 @@
      reset-token-ttl-hours
      retired-setting
      retry-initial-interval
-     retry-max-attempts
+     retry-max-retries
      retry-max-interval-millis
      retry-multiplier
-     retry-randomization-factor
+     retry-jitter-factor
      saml-application-name
      saml-attribute-email
      saml-attribute-firstname

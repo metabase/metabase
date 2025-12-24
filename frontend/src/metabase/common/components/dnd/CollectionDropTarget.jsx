@@ -18,7 +18,10 @@ const CollectionDropTarget = DropTarget(
     canDrop(props, monitor) {
       const { collection } = props;
       const { item } = monitor.getItem();
-      if (collection.can_write === false) {
+      if (
+        !isRootTrashCollection(collection) &&
+        collection.can_write === false
+      ) {
         return false;
       }
       const droppingToTrashFromTrash =

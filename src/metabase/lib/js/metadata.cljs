@@ -7,6 +7,7 @@
    [goog.object :as gobject]
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util :as lib.util]
@@ -35,20 +36,23 @@
   "Convert a JS object of *any* class to a ClojureScript object."
   ([xform obj]
    (obj->clj xform obj {}))
-  ([xform obj {:keys [use-plain-object?] :or {use-plain-object? true}}]
+  ([xform obj {:keys [use-plain-object? skip-keys]
+               :or   {use-plain-object? true
+                      skip-keys         #{}}}]
    (if (map? obj)
      ;; already a ClojureScript object.
-     (into {} xform obj)
+     (into {} xform (m/remove-keys skip-keys obj))
      ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
      (if-let [plain-object (when use-plain-object?
                              (some-> (object-get obj "_plainObject")
                                      js->clj
                                      not-empty))]
-       (into {} xform plain-object)
+       (into {} xform (m/remove-keys skip-keys plain-object))
        ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
        ;; arbitrary classes other than `Object`)
        (into {}
              (comp
+              (remove (set skip-keys))
               (map (fn [k]
                      [k (object-get obj k)]))
               ;; ignore values that are functions
@@ -298,28 +302,43 @@
       ;; land, and avoid the issue.
       :field-ref                        (to-array v)
       :lib/source                       (case v
+                                          ;; These are the legacy values from the "source" key
                                           "aggregation" :source/aggregations
                                           ;; TODO (Cam 7/1/25) -- if we wanted to be smarter we could use `source =
                                           ;; breakout` to populate `:lib/breakout?` but I don't really think that's
                                           ;; super necessary.
                                           "breakout"    nil
                                           "fields"      nil
-                                          (keyword "source" v))
+                                          ;; For other values: if already prefixed with "source/" (from the modern
+                                          ;; "lib/source" key), just keywordize it directly. Otherwise add the prefix.
+                                          (if (str/starts-with? v "source/")
+                                            (keyword v)
+                                            (keyword "source" v)))
       :metabase.lib.field/temporal-unit (keyword v)
       :inherited-temporal-unit          (keyword v)
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
       :metabase.lib.field/binning       (parse-binning-info v)
+      :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
       ::dimension                       (parse-dimension v)
       v)))
 
 (defmethod parse-object-fn* :field
   [object-type opts]
-  (let [f ((get-method parse-object-fn* :default) object-type opts)]
+  (let [default-impl (get-method parse-object-fn* :default)]
     (fn [unparsed]
-      (let [{{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
+      (let [;; If the JS object has both "source" and "lib/source" keys, the default parsing would
+            ;; rename "source" -> :lib/source and process both, with last-one-wins semantics.
+            ;; Since the key ordering in the JS object is non-deterministic, this causes flaky behavior.
+            ;; When "lib/source" exists, we skip the legacy "source" key entirely.
+            ;; See issue #66721 for details. Will be resolved by QUE-1404.
+            opts (if (object-get unparsed "lib/source")
+                   (update opts :skip-keys (fnil conj #{}) "source")
+                   opts)
+            f (default-impl object-type opts)
+            {{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
         (-> (case dimension-type
               :metadata.column.remapping/external
               (assoc parsed :lib/external-remap dimension)
@@ -544,24 +563,25 @@
   #_{:pre [(pos-int? database-id)]}
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
-    (reify lib.metadata.protocols/MetadataProvider
-      (database [_this]
-        (database metadata database-id))
-      (metadatas [_this metadata-spec]
-        (metadatas metadata database-id metadata-spec))
-      (setting [_this setting-key]
-        (setting unparsed-metadata setting-key))
+    (lib.metadata.cached-provider/cached-metadata-provider
+     (reify lib.metadata.protocols/MetadataProvider
+       (database [_this]
+         (database metadata database-id))
+       (metadatas [_this metadata-spec]
+         (metadatas metadata database-id metadata-spec))
+       (setting [_this setting-key]
+         (setting unparsed-metadata setting-key))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.
-      clojure.core.protocols/Datafiable
-      (datafy [_this]
-        (perf/postwalk
-         (fn [form]
-           (if (delay? form)
-             (deref form)
-             form))
-         metadata)))))
+       clojure.core.protocols/Datafiable
+       (datafy [_this]
+         (perf/postwalk
+          (fn [form]
+            (if (delay? form)
+              (deref form)
+              form))
+          metadata))))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."

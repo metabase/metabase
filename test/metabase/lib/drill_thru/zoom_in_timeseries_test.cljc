@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -10,9 +10,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]))
+   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel zoom-in-timeseries-available-test
   (testing "zoom-in for bins is available for cells, pivots and legends on numeric columns which have binning set"
@@ -182,12 +185,15 @@
             ;; and hence no zoom-in-timeseries drill thru should be returned.
             bucketing   [:day :hour]]
       (testing (str "aggregation = " aggregation ", bucketing = " bucketing)
-        (lib.drill-thru.tu/test-drill-not-returned
-         (zoom-in-timeseries-drill-for-orders-created-at
-          metadata-provider-with-orders-created-at-as-date
-          aggregation
-          bucketing
-          {"CREATED_AT" "2022-12-01"}))))))
+        ;; it should not even be legacy to give this column `:hour` bucketing, so disable Malli enforcement to
+        ;; simulate it having it anyway
+        (mu/disable-enforcement
+          (lib.drill-thru.tu/test-drill-not-returned
+           (zoom-in-timeseries-drill-for-orders-created-at
+            metadata-provider-with-orders-created-at-as-date
+            aggregation
+            bucketing
+            {"CREATED_AT" "2022-12-01"})))))))
 
 (deftest ^:parallel returns-zoom-in-timeseries-for-multi-stage-query-test
   (lib.drill-thru.tu/test-returns-drill

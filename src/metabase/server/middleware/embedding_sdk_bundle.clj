@@ -36,6 +36,6 @@
   (fn [request]
     (let [base (response/resource-response bundle-resource)]
       (cond
-        (nil? base)        (not-found)
-        config/is-prod?    (serve-for-prod base request)
-        :else              (serve-for-dev base)))))
+        (nil? base)                         (not-found)
+        config/is-prod?                     (serve-for-prod base request)
+        :else                               (serve-for-dev base)))))

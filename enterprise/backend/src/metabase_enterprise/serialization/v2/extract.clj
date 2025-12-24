@@ -37,11 +37,6 @@
     (not (:no-transforms opts))
     (conj "Transform" "TransformTag" "TransformJob")))
 
-(defn targets-of-type
-  "Returns target seq filtered on given model name"
-  [targets model-name]
-  (filter #(= (first %) model-name) targets))
-
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
   [model-name ids]
@@ -113,12 +108,12 @@
 
 (defn- resolve-targets
   "Returns all targets (for either supplied initial `targets` or for supplied `user-id`)."
-  [targets user-id]
+  [{:keys [targets] :as opts} user-id]
   (let [initial-targets (if (seq targets)
                           (mapv parse-target targets)
                           (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
         ;; a map of `{[model-name id] {source-model source-id ...}}`
-        targets         (u/traverse initial-targets #(serdes/descendants (first %) (second %)))]
+        targets         (u/traverse initial-targets #(serdes/descendants (first %) (second %) opts))]
     ;; due to traverse argument we'd lose original source entities, lets track them
     (merge-with into
                 targets
@@ -139,20 +134,25 @@
   `opts` are passed down to [[serdes/extract-all]] for each model."
   [{:keys [targets user-id] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [nodes    (resolve-targets targets user-id)
+  (let [nodes    (resolve-targets opts user-id)
         ;; by model is a map of `{model-name [ids ...]}`
         by-model (u/group-by first second (keys nodes))
         escaped  (escape-analysis by-model nodes)]
     (if (seq escaped)
       (log-escape-report! escaped)
-      (let [models         (model-set opts)
-            coll-set       (get by-model "Collection")
-            by-model       (select-keys by-model models)
-            extract-by-ids (fn [[model ids]]
-                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                    :where          [:in :id ids]})))
-            extract-all    (fn [model]
-                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
+      (let [models          (model-set opts)
+            coll-set        (get by-model "Collection")
+            ;; When targets are specified, also include Tables found via descendants
+            ;; (published tables in target collections). These are extracted by ID, not all.
+            targeted-tables (when (seq targets) (get by-model "Table"))
+            by-model        (cond-> (select-keys by-model models)
+                              ;; Add Tables back if they were found in descendants
+                              (seq targeted-tables) (assoc "Table" targeted-tables))
+            extract-by-ids  (fn [[model ids]]
+                              (serdes/extract-all model (merge opts {:collection-set coll-set
+                                                                     :where          [:in :id ids]})))
+            extract-all     (fn [model]
+                              (serdes/extract-all model (assoc opts :collection-set coll-set)))]
         (eduction cat
                   [(if (seq targets)
                      (eduction (map extract-by-ids) cat by-model)
@@ -170,6 +170,6 @@
   (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
                (merge
                 (u/traverse colls #(serdes/ascendants (first %) (second %)))
-                (u/traverse colls #(serdes/descendants (first %) (second %))))))
+                (u/traverse colls #(serdes/descendants (first %) (second %) {})))))
   (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
   (log-escape-report! escaped))

@@ -3,8 +3,8 @@ import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 export const HeaderLink = styled.div`
   display: flex;
@@ -19,11 +19,7 @@ export const HeaderLink = styled.div`
   }
 `;
 
-interface HeaderTitleProps {
-  tooltipMaxWidth?: string;
-}
-
-export const HeaderTitle = styled(Ellipsified)<HeaderTitleProps>`
+export const HeaderTitle = styled(Ellipsified)`
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;

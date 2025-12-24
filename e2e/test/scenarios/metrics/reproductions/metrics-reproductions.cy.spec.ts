@@ -137,10 +137,10 @@ describe("issue 44171", () => {
     H.sidebar().findByText("Metric 44171-A").click();
 
     H.showDashboardCardActions(0);
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.selectDataset("Metric 44171-B");
@@ -213,8 +213,8 @@ describe("issue 30574", () => {
 
     cy.log("create the first metric");
     H.main().findByText("Create metric").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("edit-bar").button("Save").click();
@@ -228,8 +228,8 @@ describe("issue 30574", () => {
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Metrics").click();
     H.main().findByLabelText("Create a new metric").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.getNotebookStep("summarize").findByText("Count").click();

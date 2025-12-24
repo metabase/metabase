@@ -1,4 +1,3 @@
-import { createMockMetadata } from "__support__/metadata";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { type OptionsType, formatValue } from "metabase/lib/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
@@ -9,6 +8,7 @@ import {
 } from "metabase/visualizations/lib/settings/column";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   isAvatarURL,
   isEntityName,
@@ -174,24 +174,21 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
   }
 };
 
-export function getTableQuery(table: Table | undefined): Lib.Query | undefined {
+export function getTableQuery(
+  metadata: Metadata,
+  table: Table | undefined,
+): Lib.Query | undefined {
   if (!table) {
     return undefined;
   }
 
-  const metadata = createMockMetadata({
-    tables: [table],
-  });
-
   const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+  if (tableMetadata == null) {
+    return undefined;
+  }
 
-  return Lib.fromLegacyQuery(table.db_id, metadataProvider, {
-    type: "query",
-    database: table.db_id,
-    query: {
-      "source-table": table.id,
-    },
-  });
+  return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
 }
 
 export function filterByPk(

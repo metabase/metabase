@@ -1,22 +1,19 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format every? mapv select-keys update-keys some])
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([potemkin :as p])
        :cljs
-       (["crc-32" :as CRC32]
-        [goog.string :as gstring]
+       ([goog.string :as gstring]
         [goog.string.format :as gstring.format]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -26,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? mapv select-keys update-keys some]]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in #?(:clj for)]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -44,13 +41,21 @@
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?
-  "Returns true if this is a clause."
+  "Returns true if this is a **normalized** MBQL 5 clause."
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
        (let [opts (second clause)]
          (and (map? opts)
               (contains? opts :lib/uuid)))))
+
+(defn- denormalized-or-unconverted-clause?
+  "Whether this clause is a not a properly normalized MBQL 5 clause -- usually because it failed normalization because
+  it's invalid, e.g. using an aggregation function like `:sum` inside `:expressions`."
+  [clause]
+  (and (sequential? clause)
+       (not (map-entry? clause))
+       (string? (first clause))))
 
 ;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.dispatch/mbql-clause-type]]
 (defn clause-of-type?
@@ -73,18 +78,6 @@
   (and (clause? clause)
        (lib.hierarchy/isa? (first clause) ::lib.schema.ref/ref)))
 
-(defn segment-clause?
-  "Returns true if this is a segment clause"
-  [clause]
-  (and (clause? clause)
-       (lib.hierarchy/isa? (first clause) ::lib.schema.ref/segment)))
-
-(defn metric-clause?
-  "Returns true if this is a metric clause"
-  [clause]
-  (and (clause? clause)
-       (lib.hierarchy/isa? (first clause) ::lib.schema.ref/metric)))
-
 ;;; TODO (Cam 8/28/25) -- base type is the original effective type!!! We shouldn't need a separate
 ;;; `:metabase.lib.field/original-effective-type` key.
 (defn original-isa?
@@ -106,15 +99,21 @@
 (defn top-level-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
-  (-> (if (clause? clause)
-        clause
-        [:value {:lib/uuid (str (random-uuid))
-                 :effective-type (lib.schema.expression/type-of clause)}
-         clause])
-      (lib.options/update-options (fn [opts]
-                                    (-> opts
-                                        (assoc :lib/expression-name a-name)
-                                        (dissoc :name :display-name))))))
+  (some-> (cond
+            (clause? clause)
+            clause
+
+            (denormalized-or-unconverted-clause? clause)
+            nil
+
+            :else
+            [:value {:lib/uuid (str (random-uuid))
+                     :effective-type (lib.schema.expression/type-of clause)}
+             clause])
+          (lib.options/update-options (fn [opts]
+                                        (-> opts
+                                            (assoc :lib/expression-name a-name)
+                                            (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
   "Implementation for [[custom-name]]."
@@ -432,50 +431,6 @@
            conjunction
            (last coll)))))))
 
-(def ^:private truncate-alias-max-length-bytes
-  "Length to truncate column and table identifiers to. See [[metabase.driver.impl/default-alias-max-length-bytes]] for
-  reasoning."
-  60)
-
-(def ^:private truncated-alias-hash-suffix-length
-  "Length of the hash suffixed to truncated strings by [[truncate-alias]]."
-  ;; 8 bytes for the CRC32 plus one for the underscore
-  9)
-
-(mu/defn- crc32-checksum :- [:string {:min 8, :max 8}]
-  "Return a 4-byte CRC-32 checksum of string `s`, encoded as an 8-character hex string."
-  [s :- :string]
-  (let [s #?(:clj (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
-                                                 (.update (.getBytes ^String s "UTF-8")))))
-             :cljs (-> (CRC32/str s 0)
-                       (unsigned-bit-shift-right 0) ; see https://github.com/SheetJS/js-crc32#signed-integers
-                       (.toString 16)))]
-    ;; pad to 8 characters if needed. Might come out as less than 8 if the first byte is `00` or `0x` or something.
-    (loop [s s]
-      (if (< (count s) 8)
-        (recur (str \0 s))
-        s))))
-
-(mu/defn truncate-alias :- [:string {:min 1, :max 60}]
-  "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
-  checksum of the original string. Truncated string is truncated to [[truncate-alias-max-length-bytes]]
-  minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is
-  exactly [[truncate-alias-max-length-bytes]]. The goal here is that two really long strings that only differ at the
-  end will still have different resulting values.
-
-    (truncate-alias \"some_really_long_string\" 15) ;   -> \"some_r_8e0f9bc2\"
-    (truncate-alias \"some_really_long_string_2\" 15) ; -> \"some_r_2a3c73eb\""
-  ([s]
-   (truncate-alias s truncate-alias-max-length-bytes))
-
-  ([s         :- ::lib.schema.common/non-blank-string
-    max-bytes :- [:int {:min 0}]]
-   (if (<= (u/string-byte-count s) max-bytes)
-     s
-     (let [checksum  (crc32-checksum s)
-           truncated (u/truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
-       (str truncated \_ checksum)))))
-
 (mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
   "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
   queries! You don't need to use this in MBQL 5 since this is converted automatically by [[metabase.lib.convert]] to
@@ -494,119 +449,6 @@
   "If this query has a `:source-card` ID, return it."
   [query]
   (-> query :stages first :source-card))
-
-(mu/defn first-stage-type :- [:maybe [:enum :mbql.stage/mbql :mbql.stage/native]]
-  "Type of the first query stage."
-  [query :- :map]
-  (:lib/type (query-stage query 0)))
-
-(mu/defn first-stage-is-native? :- :boolean
-  "Whether the first stage of the query is a native query stage."
-  [query :- :map]
-  (= (first-stage-type query) :mbql.stage/native))
-
-(mu/defn- unique-alias :- :string
-  [original :- :string
-   suffix   :- :string]
-  (-> (str original \_ suffix)
-      (truncate-alias)))
-
-(mr/def ::unique-name-generator
-  "Stateful function with the signature
-
-    (f)        => 'fresh' unique name generator
-    (f str)    => unique-str
-    (f id str) => unique-str
-
-  i.e. repeated calls with the same string should return different unique strings."
-  [:function
-   ;; (f) => generates a new instance of the unique name generator for recursive generation without 'poisoning the
-   ;; well'.
-   [:=>
-    [:cat]
-    [:ref ::unique-name-generator]]
-   ;; (f str) => unique-str
-   [:=>
-    [:cat :string]
-    ::lib.schema.common/non-blank-string]
-   ;; (f id str) => unique-str
-   [:=>
-    [:cat :any :string]
-    ::lib.schema.common/non-blank-string]])
-
-(mu/defn- unique-name-generator-with-options :- ::unique-name-generator
-  [options :- :map]
-  ;; ok to use here because this is the one designated wrapper for it.
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (let [f         (mbql.u/unique-name-generator options)
-        truncate* (if (::truncate? options)
-                    truncate-alias
-                    identity)]
-    ;; I know we could just use `comp` here but it gets really hard to figure out where it's coming from when you're
-    ;; debugging things; a named function like this makes it clear where this function came from
-    (fn unique-name-generator-fn
-      ([]
-       (unique-name-generator-with-options options))
-      ([s]
-       (->> s truncate* f))
-      ([id s]
-       (->> s truncate* (f id))))))
-
-(mu/defn- unique-name-generator-factory :- [:function
-                                            [:=>
-                                             [:cat]
-                                             ::unique-name-generator]
-                                            [:=>
-                                             [:cat [:schema [:sequential :string]]]
-                                             ::unique-name-generator]]
-  [options :- :map]
-  (mu/fn :- ::unique-name-generator
-    ([]
-     (unique-name-generator-with-options options))
-    ([existing-names :- [:sequential :string]]
-     (let [f (unique-name-generator-with-options options)]
-       (doseq [existing existing-names]
-         (f existing))
-       f))))
-
-(def ^{:arglists '([] [existing-names])} unique-name-generator
-  "Create a new function with the signature
-
-    (f str) => str
-
-  or
-
-   (f id str) => str
-
-  That takes any sort of string identifier (e.g. a column alias or table/join alias) and returns a guaranteed-unique
-  name truncated to 60 characters (actually 51 characters plus a hash).
-
-  Optionally takes a list of names which are already defined, \"priming\" the generator with eg. all the column names
-  that currently exist on a stage of the query.
-
-  The two-arity version of the returned function can be used for idempotence. See docstring
-  for [[metabase.legacy-mbql.util/unique-name-generator]] for more information.
-
-  New!
-
-  You can call
-
-    (f)
-
-  to get a new, fresh unique name generator for recursive usage without 'poisoning the well'."
-  ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
-   ;;
-   ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless of
-   ;; case
-  (unique-name-generator-factory
-   {::truncate?      true
-    :name-key-fn     u/lower-case-en
-    :unique-alias-fn unique-alias}))
-
-(def ^{:arglists '([] [existing-names])} non-truncating-unique-name-generator
-  "This is the same as [[unique-name-generator]] but doesn't truncate names, matching the 'classic' behavior in QP
-  results metadata."
-  (unique-name-generator-factory {::truncate? false}))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -648,17 +490,6 @@
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 
-(defn find-stage-index-and-clause-by-uuid
-  "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
-  ([query lib-uuid]
-   (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
-  ([query stage-number lib-uuid]
-   (first (keep-indexed (fn [idx stage]
-                          (lib.util.match/match-lite-recursive stage
-                            (clause :guard (= lib-uuid (lib.options/uuid clause)))
-                            [idx clause]))
-                        (:stages (drop-later-stages query stage-number))))))
-
 (defn fresh-uuids
   "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
   than once."
@@ -683,35 +514,20 @@
      :else
      x)))
 
-(defn- replace-uuid-references
-  [x replacement-map]
-  (let [replacement (find replacement-map x)]
-    (cond
-      replacement
-      (val replacement)
-
-      (sequential? x)
-      (into (empty x) (map #(replace-uuid-references % replacement-map)) x)
-
-      (map? x)
-      (into
-       (empty x)
-       (map (fn [[k v]]
-              [k (cond-> v
-                   (not= k :lib/uuid) (replace-uuid-references replacement-map))]))
-       x)
-
-      :else
-      x)))
-
-(defn fresh-query-instance
-  "Create an copy of `query` with fresh :lib/uuid values making sure that internal
-  uuid references are kept."
+(defn fresh-uuids-preserving-aggregation-refs
+  "Recursively replace all `:lib/uuid`s on an MBQL structure with fresh ones. Avoids duplicate UUID errors when
+  attaching something to a query more than once. This builds on [[fresh-uuids]] to include updating any
+  `[:aggregation {} \"uuid\"]` refs to use the corresponding new UUID."
   [query]
-  (let [v-replacement (volatile! (transient {}))
-        almost-query (fresh-uuids query #(vswap! v-replacement assoc! %1 %2))
-        replacement (persistent! @v-replacement)]
-    (replace-uuid-references almost-query replacement)))
+  (let [remapping (volatile! (transient {}))
+        query     (fresh-uuids query (fn [old-uuid new-uuid]
+                                       (vswap! remapping assoc! old-uuid new-uuid)))
+        remapping (persistent! @remapping)]
+    (lib.util.match/replace query
+      [:aggregation opts old-uuid]
+      [:aggregation opts (or (remapping old-uuid)
+                             (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"
+                                             {:aggregation &match})))])))
 
 (mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
@@ -731,17 +547,3 @@
     (:query :native) :mbql-version/legacy
     ;; otherwise, this is not a valid MBQL query.
     nil))
-
-(defn collect-source-tables
-  "Return sequence of source tables from `query`.
-
-  DEPRECATED: This operates on legacy MBQL, so it's really out of place here in Lib.
-  Use [[metabase.lib.walk.util/all-source-table-ids]] going forward."
-  {:deprecated "0.57.0"}
-  [legacy-query]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [from-joins (mapcat collect-source-tables (:joins legacy-query))]
-    (if-let [source-query (:source-query legacy-query)]
-      (concat (collect-source-tables source-query) from-joins)
-      (cond->> from-joins
-        (:source-table legacy-query) (cons (:source-table legacy-query))))))

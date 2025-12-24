@@ -3,14 +3,18 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.metadata-providers.remap :as lib.tu.remap]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.fetch-source-query]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -1090,3 +1094,82 @@
       (is (=? {:joins [{:alias "CATEGORIES__via__CATEGORY_ID"}
                        {:alias "CATEGORIES__via__ID"}]}
               (#'qp.add-implicit-joins/resolve-implicit-joins-this-level query path stage))))))
+
+(deftest ^:parallel implicit-join-from-much-earlier-stage-test
+  (testing "if a join in stage 1 is used in stage 2, the field should propagate through stage 1 (#63245)"
+    (let [;; These remaps are required! Otherwise the implicit join clause is added elsewhere, and #63245 does not
+          ;; come into play. With the remaps, the innermost query on `Orders` includes a join on People so it can remap
+          ;; the `USER_ID` column. Then the implicit join in stage 2 of the test query will reuse that join clause on
+          ;; stage 0, which is the condition which causes #63245.
+          mp              (lib.tu.remap/remap-metadata-provider
+                           meta/metadata-provider
+                           (meta/id :orders :user-id)    (meta/id :people :name)
+                           (meta/id :orders :product-id) (meta/id :products :title))
+          ordersQ         (lib/query mp (meta/table-metadata :orders))
+          mp              (lib.tu/metadata-provider-with-card-from-query mp 1 ordersQ)
+          ordersQ+peopleT (-> (lib/query mp (lib.metadata/card mp 1))
+                              (lib/join (meta/table-metadata :people)))
+          mp              (lib.tu/metadata-provider-with-card-from-query mp 2 ordersQ+peopleT)
+          query           (-> (lib/query mp (lib.metadata/card mp 2))
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (lib.options/ensure-uuid
+                                             [:field {:source-field (meta/id :orders :user-id)
+                                                      :source-field-name "USER_ID"}
+                                              (meta/id :people :state)])))
+          preprocessed    (qp.preprocess/preprocess query)]
+      (is (=? {:stages [{:fields [any? any? any? any? any? any? any? any? any? any? any?
+                                  [:field {:join-alias        "PEOPLE__via__USER_ID"
+                                           :source-field      (meta/id :orders :user-id)
+                                           :source-field-name "USER_ID"}
+                                   (meta/id :people :state)]]}
+                        {}
+                        {}]}
+              preprocessed)))))
+
+;; before the fix this failed with
+;;
+;; Error preprocessing query in #'metabase.query-processor.middleware.add-implicit-joins/add-implicit-joins:
+;; Cannot find matching FK Table ID for FK Field 31 nil
+(deftest ^:parallel conflicting-implicit-joins-with-same-generated-alias-test
+  (testing "If two DIFFERENT implicit joins need to be added that would have the same generated alias, deduplicate them"
+    (let [mp          (-> (lib.tu/mock-metadata-provider
+                           {:database meta/database
+                            :tables   [{:id 1, :name "A"}
+                                       {:id 2, :name "B"}
+                                       {:id 3, :name "C"}
+                                       {:id 4, :name "D"}]
+                            :fields   [{:id 10, :table-id 1, :name "ID", :semantic-type :type/PK}
+                                       {:id 11, :table-id 1, :name "B_ID", :fk-target-field-id 20, :semantic-type :type/FK}
+                                       {:id 12, :table-id 1, :name "C_ID", :fk-target-field-id 30, :semantic-type :type/FK}
+                                       {:id 20, :table-id 2, :name "ID", :semantic-type :type/PK}
+                                       {:id 21, :table-id 2, :name "D_ID", :fk-target-field-id 40, :semantic-type :type/FK}
+                                       {:id 30, :table-id 3, :name "ID", :semantic-type :type/PK}
+                                       {:id 31, :table-id 3, :name "D_ID", :fk-target-field-id 40, :semantic-type :type/FK}
+                                       {:id 40, :table-id 4, :name "ID", :semantic-type :type/PK}
+                                       {:id 41, :table-id 4, :name "NAME"}]})
+                          (lib.tu/remap-metadata-provider 21 41)
+                          (lib.tu/remap-metadata-provider 31 41))
+          model-query (-> (lib/query mp (lib.metadata/table mp 1))
+                          (lib/join (lib.metadata/table mp 2))
+                          (lib/join (lib.metadata/table mp 3)))
+          mp          (lib.tu/mock-metadata-provider
+                       mp
+                       {:cards [{:id            1
+                                 :type          :model
+                                 :name          "A + B + C"
+                                 :display-name  "A + B + C"
+                                 :dataset-query model-query}]})
+          query       (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? {:stages [{:joins [{:alias "B"}
+                                 {:alias "C"}]}
+                        {:joins [{:alias      "D__via__D_ID"
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} "B__D_ID"]
+                                                [:field {:join-alias "D__via__D_ID"} 40]]]}
+                                 {:alias      "D__via__D_ID_2"
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} "C__D_ID"]
+                                                [:field {:join-alias "D__via__D_ID_2"} 40]]]}]}]}
+              (qp.preprocess/preprocess query))))))

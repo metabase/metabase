@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.metrics
-  (:refer-clojure :exclude [select-keys some])
+  (:refer-clojure :exclude [select-keys some empty? not-empty])
   (:require
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
@@ -11,7 +11,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [select-keys some]]))
+   [metabase.util.performance :as perf :refer [select-keys some empty? not-empty]]))
 
 (defn- filters->condition
   [filters]
@@ -255,7 +255,7 @@
                          :aggregation
                          (fetch-referenced-metrics query))]
       (let [temp-query (temp-query-at-stage-path query path)
-            unique-name-fn (lib.util/unique-name-generator
+            unique-name-fn (lib/unique-name-generator
                             (map
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))

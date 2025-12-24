@@ -1,5 +1,5 @@
 (ns metabase.lib.filter.simplify-compound
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some empty?])
   (:require
    [medley.core :as m]
    [metabase.lib.filter :as lib.filter]
@@ -10,7 +10,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [some empty?]]))
 
 (mr/def ::mbql-clause
   "An MBQL clause that may not be well-formed, e.g. an `:and` clause with only one arg."

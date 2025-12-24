@@ -40,7 +40,7 @@
 
   If this clause is 'selected' (i.e., appears in `:fields`, `:aggregation`, or `:breakout`), select the clause `AS`
   this alias. This alias is guaranteed to be unique."
-  (:refer-clojure :exclude [mapv ref select-keys some])
+  (:refer-clojure :exclude [mapv ref select-keys some empty? not-empty get-in])
   (:require
    [medley.core :as m]
    [metabase.config.core :as config]
@@ -49,19 +49,19 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some]]))
+   [metabase.util.performance :refer [mapv select-keys some empty? not-empty get-in]]))
 
 (mu/defn- ^:dynamic *escape-alias-fn* :- :string
   [driver :- :keyword
@@ -80,7 +80,7 @@
 
 (defn- escape-fn []
   {:pre [(keyword? driver/*driver*)]}
-  (let [f      (lib.util/unique-name-generator)
+  (let [f      (lib/unique-name-generator)
         driver driver/*driver*]
     (fn [s]
       (->> s
@@ -274,21 +274,29 @@
     (m/update-existing stage :aggregation update-aggregations)))
 
 (mu/defn- add-desired-aliases-to-refs :- ::lib.schema/stage.mbql
-  [query            :- ::lib.schema/query
-   path             :- ::lib.walk/path
-   returned-columns :- :metabase.lib.metadata.calculation/returned-columns
-   stage            :- ::lib.schema/stage.mbql]
+  [query              :- ::lib.schema/query
+   path               :- ::lib.walk/path
+   by-id              :- [:map-of ::lib.schema.id/field [:sequential ::lib.schema.metadata/column]]
+   by-source-alias    :- [:map-of :string [:sequential ::lib.schema.metadata/column]]
+   by-expression-name :- [:map-of :string ::lib.schema.metadata/column]
+   stage              :- ::lib.schema/stage.mbql]
   (lib.util.match/replace stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
     (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins ::resolved])))
     &match
 
     [:field opts _id-or-name]
-    (let [col (m/find-first #(lib.equality/= % (or (::resolved opts)
-                                                   (throw (ex-info "Missing ::resolved -- should have been added by add-source-aliases"
-                                                                   {:field-ref &match
-                                                                    :path      (concat path &parents)}))))
-                            returned-columns)]
+    (let [resolved (or (::resolved opts)
+                       (throw (ex-info "Missing ::resolved -- should have been added by add-source-aliases"
+                                       {:field-ref &match
+                                        :path      (concat path &parents)})))
+          ;; Sometimes these maps of returned columns by `:id` and `:lib/source-column-alias` are not enough to find a
+          ;; match - but in that case no match can be found in the whole `returned-columns` either! So there's no need
+          ;; to search it, since we won't find a match for our `::resolved` column.
+          col      (or (when (:id resolved)
+                         (m/find-first #(lib.equality/= % resolved) (get by-id (:id resolved))))
+                       (m/find-first #(lib.equality/= % resolved)
+                                     (get by-source-alias (:lib/source-column-alias resolved))))]
       (-> &match
           (lib/update-options (fn [opts]
                                 (-> opts
@@ -296,8 +304,7 @@
                                     (dissoc ::resolved))))))
 
     [:expression _opts expression-name]
-    (let [col (m/find-first #(= (:lib/expression-name %) expression-name)
-                            returned-columns)]
+    (let [col (get by-expression-name expression-name)]
       (lib/update-options &match assoc ::desired-alias (escaped-desired-alias query path (:lib/desired-column-alias col))))
 
     [:aggregation _opts uuid]
@@ -310,10 +317,16 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage.mbql]
-  (let [returned-columns (returned-columns query path)]
+  (let [returned-columns   (returned-columns query path)
+        by-id              (u/group-by :id some? identity some? conj [] returned-columns)
+        by-source-alias    (u/group-by :lib/source-column-alias some? identity some? conj [] returned-columns)
+        by-expression-name (into {} (keep (fn [col]
+                                            (when-let [expr-name (:lib/expression-name col)]
+                                              [expr-name col])))
+                                 returned-columns)]
     (->> stage
          (add-desired-aliases-to-aggregations query path returned-columns)
-         (add-desired-aliases-to-refs query path returned-columns))))
+         (add-desired-aliases-to-refs query path by-id by-source-alias by-expression-name))))
 
 (mu/defn- add-alias-info-to-stage :- ::lib.schema/stage
   [query      :- ::lib.schema/query
@@ -440,8 +453,8 @@
   [query                                                                              :- ::lib.schema/query
    {:keys [globally-unique-join-aliases?], :or {globally-unique-join-aliases? false}} :- [:maybe ::options]]
   (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
-                                                (constantly (lib.util/unique-name-generator))
-                                                lib.util/unique-name-generator)]
+                                                (constantly (lib/unique-name-generator))
+                                                lib/unique-name-generator)]
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
@@ -529,6 +542,7 @@
      ;; MBQL 4 inner MBQL query
      ((some-fn :source-table :source-query) query)
      (-> query
+         #_{:clj-kondo/ignore [:deprecated-var]}
          annotate.legacy-helper-fns/legacy-inner-query->mlv2-query
          (add-alias-info options)
          lib/->legacy-MBQL

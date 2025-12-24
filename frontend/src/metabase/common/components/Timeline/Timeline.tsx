@@ -3,7 +3,6 @@ import _ from "underscore";
 
 import Button from "metabase/common/components/Button";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
-import { color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
@@ -25,7 +24,7 @@ interface TimelineProps {
   canWrite: boolean;
   revert: (revision: Revision) => void;
   className?: string;
-  entity: "card" | "dashboard";
+  entity: "card" | "dashboard" | "document" | "transform";
 }
 
 export function Timeline({
@@ -85,7 +84,7 @@ function EventIcon({ icon }: { icon: RevisionOrModerationEvent["icon"] }) {
     return null;
   }
   if (_.isObject(icon)) {
-    return <Icon name={icon.name} color={color(icon.color)} size={16} />;
+    return <Icon name={icon.name} c={icon.color} size={16} />;
   }
-  return <Icon name={icon} color={color("text-light")} size={16} />;
+  return <Icon name={icon} c="text-light" size={16} />;
 }

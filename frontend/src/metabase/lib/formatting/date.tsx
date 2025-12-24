@@ -1,12 +1,13 @@
 import cx from "classnames";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs, { type Dayjs, type OpUnitType, type QUnitType } from "dayjs";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { parseTimestamp } from "metabase/lib/time";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { DatetimeUnit } from "metabase-types/api/query";
+import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/guards/settings";
+
+import { parseTimestamp } from "../time-dayjs";
 
 import {
   DEFAULT_DATE_STYLE,
@@ -61,10 +62,10 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
 
 const DATE_RANGE_MONTH_PLACEHOLDER = "<MONTH>";
 
-type DateVal = string | number | Moment;
+type DateVal = string | number | Dayjs;
 
 interface DateRangeFormatSpec {
-  same: null | moment.unitOfTime.StartOf;
+  same: null | OpUnitType | QUnitType;
   format: [string] | [string, string];
   removedYearFormat?: [string] | [string, string];
   removedDayFormat?: [string] | [string, string];
@@ -769,6 +770,8 @@ export function formatDateTimeForParameter(
     return m.format("[Q]Q-YYYY");
   } else if (unit === "day") {
     return m.format("YYYY-MM-DD");
+  } else if (unit === "hour" || unit === "minute") {
+    return m.format("YYYY-MM-DDTHH:mm");
   } else if (unit) {
     return formatDateToRangeForParameter(value, unit);
   }
@@ -786,24 +789,34 @@ export function formatDateToRangeForParameter(
   }
 
   const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
+  const end = getEndOfInterval(start, unit);
 
   if (!start.isValid() || !end.isValid()) {
     return String(value);
   }
 
-  const isSameDay = start.isSame(end, "day");
+  if (unit === "hour" || unit === "minute") {
+    return `${start.format("YYYY-MM-DDTHH:mm")}~${end.format("YYYY-MM-DDTHH:mm")}`;
+  }
 
+  const isSameDay = start.isSame(end, "day");
   return isSameDay
     ? start.format("YYYY-MM-DD")
     : `${start.format("YYYY-MM-DD")}~${end.format("YYYY-MM-DD")}`;
+}
+
+function getEndOfInterval(start: Dayjs, unit: DatetimeUnit | null) {
+  if (unit === "hour" || unit === "minute") {
+    return start.clone().add(1, unit);
+  }
+  return start.clone().endOf(unit);
 }
 
 export function normalizeDateTimeRangeWithUnit(
   values: [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
-) {
+): [Dayjs, Dayjs, number] | [Dayjs, Dayjs] {
   const [a, b] = [values[0], values[1] ?? values[0]].map((d) =>
     parseTimestamp(d, unit, options.local),
   );
@@ -812,15 +825,16 @@ export function normalizeDateTimeRangeWithUnit(
   }
 
   // week-of-year → week, minute-of-hour → minute, etc
-  const momentUnit = unit.split("-")[0];
+  const dayjsUnit = unit.split("-")[0] as OpUnitType;
 
   // The client's unit boundaries might not line up with the data returned from the server.
   // We shift the range so that the start lines up with the value.
-  const start = a.clone().startOf(momentUnit);
-  const end = b.clone().endOf(momentUnit);
+  const start = a.clone().startOf(dayjsUnit);
+  const end = b.clone().endOf(dayjsUnit);
   const shift = a.diff(start, "days");
-  [start, end].forEach((d) => d.add(shift, "days"));
-  return [start, end, shift];
+  const shiftedStart = start.add(shift, "days");
+  const shiftedEnd = end.add(shift, "days");
+  return [shiftedStart, shiftedEnd, shift];
 }
 
 /** This formats a time with unit as a date range */
@@ -829,14 +843,13 @@ export function formatDateTimeRangeWithUnit(
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
-  const [start, end, shift] = normalizeDateTimeRangeWithUnit(
-    values,
-    unit,
-    options,
-  );
-  if (shift === undefined) {
+  const result = normalizeDateTimeRangeWithUnit(values, unit, options);
+  if (result.length === 2) {
+    const [start, _end] = result;
     return String(start);
-  } else if (!start.isValid() || !end.isValid()) {
+  }
+  const [start, end, _shift] = result;
+  if (!start.isValid() || !end.isValid()) {
     // TODO: when is this used?
     return formatWeek(start, options);
   }
@@ -854,11 +867,28 @@ export function formatDateTimeRangeWithUnit(
     return String(start);
   }
 
-  const formatDate = (date: Moment, formatStr: string) => {
+  const formatDate = (date: Dayjs, formatStr: string) => {
     // month format is configurable, so we need to insert it after lookup
-    return date.format(
-      formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat),
+    const processedFormat = formatStr.replace(
+      DATE_RANGE_MONTH_PLACEHOLDER,
+      monthFormat,
     );
+
+    // Fix for day-of-year formatting: replace DDD and DDDo with custom formatting
+    // because dayjs DDD format token doesn't work like moment's DDD
+    if (processedFormat.includes("DDDo")) {
+      const dayOfYear = date.dayOfYear();
+      const ordinal = dayjs().localeData().ordinal(dayOfYear);
+      const formattedDate = processedFormat
+        // Replace DDDo token
+        .replace(/DDDo/g, ordinal)
+        // Remove brackets from literal text since we're not using dayjs formatting
+        .replace(/\[([^\]]+)\]/g, "$1");
+
+      return formattedDate;
+    }
+
+    return date.format(processedFormat);
   };
 
   if (!condensed) {
@@ -933,10 +963,10 @@ export function formatDateTimeRangeWithUnit(
 }
 
 interface formatDateStringParameters {
-  start: Moment;
+  start: Dayjs;
   startFormat: string;
-  formatDate: (date: Moment, format: string) => string;
-  end?: Moment;
+  formatDate: (date: Dayjs, format: string) => string;
+  end?: Dayjs;
   endFormat?: string | undefined;
   dashPad?: string;
 }
@@ -979,7 +1009,7 @@ export function formatRange(
   }
 }
 
-function formatWeek(m: Moment, options: OptionsType = {}) {
+function formatWeek(m: Dayjs, options: OptionsType = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
@@ -1018,12 +1048,12 @@ function replaceDateFormatNames(format: string, options: OptionsType) {
 }
 
 export function formatDateTimeWithFormats(
-  value: number | string | Date | Moment,
+  value: number | string | Date | Dayjs,
   dateFormat: string,
   timeFormat: string | null,
   options: OptionsType,
 ) {
-  const m = moment.isMoment(value)
+  const m = dayjs.isDayjs(value)
     ? value
     : parseTimestamp(
         value,
@@ -1049,22 +1079,54 @@ export function formatDateTimeWithFormats(
 }
 
 export function formatDateTimeWithUnit(
-  value: number | string | Date | Moment,
+  value: number | string | Date | Dayjs,
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
-  if (options.isExclude && unit === "hour-of-day") {
-    return moment.utc(value).format("h A");
-  } else if (options.isExclude && unit === "day-of-week") {
-    const date = moment.utc(value);
+  if (options.isExclude) {
+    if (unit === "hour-of-day") {
+      return dayjs.utc(value).format("h A");
+    }
+
+    if (unit === "day-of-week") {
+      const date = dayjs.utc(value);
+
+      if (date.isValid()) {
+        return date.format("dddd");
+      }
+    }
+  }
+
+  if (
+    unit === "day-of-week" &&
+    typeof value === "string" &&
+    isScheduleDay(value)
+  ) {
+    const dayIndex = SCHEDULE_DAY.indexOf(value);
+    const date = dayjs().day(dayIndex);
+
     if (date.isValid()) {
-      return date.format("dddd");
+      const dayFormat = getDayFormat(options);
+      return date.format(dayFormat);
     }
   }
 
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
+  }
+
+  // dayjs can't format DDD to day of year, handle manually
+  if (unit === "day-of-year") {
+    return m.dayOfYear();
+  }
+
+  if (unit === "week-of-year") {
+    const ordinal = String(dayjs().localeData().ordinal(m.isoWeek()));
+    if (ordinal.startsWith("[") && ordinal.endsWith("]")) {
+      return ordinal.slice(1, -1);
+    }
+    return ordinal;
   }
 
   // expand "week" into a range in specific contexts
@@ -1108,7 +1170,7 @@ export function formatDateTimeWithUnit(
   return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
 }
 
-const EXAMPLE_DATE = moment("2018-01-31 17:24");
+const EXAMPLE_DATE = dayjs("2018-01-31 17:24");
 
 export function getDateStyleOptionsForUnit(
   unit: DatetimeUnit,

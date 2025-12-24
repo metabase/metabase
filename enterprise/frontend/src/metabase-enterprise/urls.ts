@@ -1,4 +1,4 @@
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, Tenant } from "metabase-types/api";
 
 export * as Urls from "metabase/lib/urls";
 
@@ -26,4 +26,24 @@ export function removeDestinationDatabase(
 
 export function newMetabotConversation({ prompt }: { prompt: string }) {
   return `/metabot/new?q=${encodeURIComponent(prompt)}`;
+}
+
+export function newTenant() {
+  return `/admin/tenants/new`;
+}
+
+export function editTenant(tenantId: Tenant["id"]) {
+  return `/admin/tenants/${tenantId}/edit`;
+}
+
+export function deactivateTenant(tenantId: Tenant["id"]) {
+  return `/admin/tenants/${tenantId}/deactivate`;
+}
+
+export function reactivateTenant(tenantId: Tenant["id"]) {
+  return `/admin/tenants/${tenantId}/reactivate`;
+}
+
+export function editUserStrategy(page: "people" | "tenants") {
+  return `/admin/${page}/user-strategy`;
 }

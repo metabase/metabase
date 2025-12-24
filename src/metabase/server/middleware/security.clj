@@ -64,7 +64,7 @@
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
+    (let [pattern #"^(?:(https?|app|capacitor)://)?([^:/]+)(?::(\d+|\*))?$"
           matches (re-matches pattern url)]
       (if-not matches
         (do (log/errorf "Invalid URL: %s" url) nil)
@@ -160,6 +160,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
+                  :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
@@ -203,8 +204,12 @@
 (defn approved-protocol?
   "Checks if the protocol is compatible with the reference one"
   [protocol reference-protocol]
-  (or (nil? reference-protocol)
-      (= protocol reference-protocol)))
+  (if (nil? reference-protocol)
+    ;; When the approved origin has no protocol (e.g., "localhost"),
+    ;; treat it as allowing only HTTP or HTTPS. Custom schemes like
+    ;; app:// must be explicitly specified in the approved origins.
+    (contains? #{"http" "https"} protocol)
+    (= protocol reference-protocol)))
 
 (defn approved-port?
   "Checks if the port is compatible with the reference one"
@@ -258,7 +263,7 @@
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"
         "Access-Control-Allow-Methods"  "*"
-        "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
+        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
         ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
         "Access-Control-Max-Age"  "60"}))))
 
@@ -286,7 +291,12 @@
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
-    "X-Content-Type-Options"            "nosniff"}))
+    "X-Content-Type-Options"            "nosniff"}
+   ;; Add Cross-Origin headers from environment variables if set
+   (when-let [corp (env/env :mb-cross-origin-resource-policy)]
+     {"Cross-Origin-Resource-Policy" corp})
+   (when-let [coep (env/env :mb-cross-origin-embedder-policy)]
+     {"Cross-Origin-Embedder-Policy" coep})))
 
 (defn- always-allow-cors?
   "Returns true if the request/response should have CORS headers added."

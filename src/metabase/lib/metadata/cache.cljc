@@ -2,16 +2,18 @@
   "Cache arbitrary immutable values on `metadata-providerable` (eg. a query), by using the `CachedMetadataProvider`'s
   general caching facilities. Has helpers for constructing a cache key that includes the query and stage, making it
   easy to cache things like `visible-columns`."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.metadata.util :as lib.metadata.util]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [not-empty]])
   #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
 
 (mr/def ::cache-key
@@ -86,7 +88,7 @@
 
 (mu/defn- ->cached-metadata-provider :- [:maybe ::lib.metadata.protocols/cached-metadata-provider]
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]
-  (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)]
+  (let [metadata-provider (lib.metadata.util/->metadata-provider metadata-providerable)]
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       metadata-provider)))
 
@@ -96,14 +98,16 @@
    not-found]
   (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
     (lib.metadata.protocols/cached-value metadata-provider k not-found)
-    not-found))
+    (do (log/warn "Not a cached-metadata-provider")
+        not-found)))
 
 (mu/defn- cache-value! :- :nil
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
    v]
-  (when-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
-    (lib.metadata.protocols/cache-value! metadata-provider k v))
+  (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
+    (lib.metadata.protocols/cache-value! metadata-provider k v)
+    (log/warn "Not a cached-metadata-provider"))
   nil)
 
 (defn ^:dynamic *cache-hit-hook*

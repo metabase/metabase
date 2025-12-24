@@ -1,5 +1,5 @@
 (ns metabase.lib.binning
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv select-keys get-in])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -13,10 +13,9 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.formatting.numbers :as fmt.num]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys]]))
+   [metabase.util.performance :refer [mapv select-keys get-in]]))
 
 (defmulti with-binning-method
   "Implementation for [[with-binning]]. Implement this to tell [[with-binning]] how to add binning to a particular MBQL
@@ -116,6 +115,14 @@
          {:display-name (i18n/tru "Bin every 0.01 degrees")  :mbql {:strategy :bin-width :bin-width 0.01}}
          {:display-name (i18n/tru "Bin every 0.005 degrees") :mbql {:strategy :bin-width :bin-width 0.005}}]))
 
+(defn- format-number-simple
+  "Format a number for display in binning display names. Returns integers as whole numbers (no decimal point), and
+  decimals as-is. The limited configurability is sufficient for the usecase where this function is invoked."
+  [n]
+  (str (if (zero? (rem n 1))
+         (int n)
+         n)))
+
 (mu/defn binning-display-name :- ::lib.schema.common/non-blank-string
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
   It's called directly by `:field` or `:metadata/column`'s [[lib.metadata.calculation/display-name]]."
@@ -129,7 +136,7 @@
                           (and (map? x) (= :metadata/column (:lib/type x))) :semantic-type)]
       (case strategy
         :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
-        :bin-width (str (fmt.num/format-number bin-width {})
+        :bin-width (str (format-number-simple bin-width)
                         (when (isa? semantic-type :type/Coordinate)
                           "°"))
         :default   (i18n/tru "Auto binned")))))
@@ -234,6 +241,7 @@
 ;;; belongs in Lib in its current shape.
 (defn ensure-binning-in-display-name
   "Update results column so binning is contained in its display_name."
+  {:deprecated "0.57.0"}
   [column]
   (if (:binning_info column)
     (update column :display_name #(ensure-ends-with-binning %1

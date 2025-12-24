@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
-import fetchMock from "fetch-mock";
 
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ProfileLink } from "metabase/nav/components/ProfileLink";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
+  createMockMetabaseInfo,
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -59,7 +60,7 @@ function setup({
     }),
   });
 
-  return renderWithProviders(<ProfileLink onLogout={jest.fn()} />, {
+  return renderWithProviders(<ProfileLink />, {
     storeInitialState: {
       admin,
       settings,
@@ -74,7 +75,7 @@ function setupHosted(opts = {}) {
 
 describe("ProfileLink", () => {
   beforeEach(() => {
-    fetchMock.get("path:/api/bug-reporting/details", "mockBugReportDetails");
+    setupBugReportingDetailsEndpoint();
   });
 
   describe("self-hosted", () => {
@@ -185,7 +186,7 @@ describe("ProfileLink", () => {
 
           expect(link).toBeInTheDocument();
           const mockBugReportDetails = encodeURIComponent(
-            JSON.stringify("mockBugReportDetails"),
+            JSON.stringify(createMockMetabaseInfo()),
           );
           const expected = `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v1&diag=${mockBugReportDetails}`;
           await waitFor(() => expect(link).toHaveProperty("href", expected));

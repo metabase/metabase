@@ -159,3 +159,11 @@ export const getNextStep = (state: State) => {
   const activeStepIndex = steps.findIndex((step) => step.isActiveStep);
   return steps[activeStepIndex + 1].key;
 };
+
+export const getShouldShowStepNumber = (state: State): boolean => {
+  const interactiveSteps = getSteps(state).filter(
+    (step) => step.key !== "welcome" && step.key !== "completed",
+  );
+
+  return interactiveSteps.length > 1;
+};

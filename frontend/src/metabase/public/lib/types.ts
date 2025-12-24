@@ -7,13 +7,12 @@ import type {
 
 export type DisplayTheme = "light" | "night" | "transparent";
 
-export type EmbedModalStep = "application" | "legalese" | null;
-
 export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters | null;
 };
 
-export type EmbedResourceType = "dashboard" | "question";
+export type EmbedResourceType = "dashboard" | "question" | "document";
+export type GuestEmbedResourceType = "dashboard" | "question";
 
 export type EmbedResourceParameter = {
   id: string;
@@ -29,11 +28,16 @@ export type EmbedResourceDownloadOptions = {
   results?: boolean;
 };
 
+export type EmbeddingType = "static-legacy" | "guest-embed";
+
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 
 export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
 
-export type EmbeddingParametersValues = Record<string, string>;
+export type EmbeddingParametersValues = Record<
+  string,
+  number | string | string[] | null | undefined
+>;
 
 /**
  * This is a type for all the display options in static embedding sharing modal's Look and Feel tab.
@@ -68,7 +72,8 @@ export type CodeSampleParameters = {
   resourceType: EmbedResourceType;
   resourceId: EmbedResource["id"];
   params: EmbeddingParametersValues;
-  displayOptions: EmbeddingDisplayOptions;
+  displayOptions?: EmbeddingDisplayOptions;
+  withIframeSnippet: boolean;
 };
 
 export type ClientCodeSampleConfig = {

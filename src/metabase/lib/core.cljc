@@ -33,6 +33,7 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.column]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols]
    [metabase.lib.metric :as lib.metric]
@@ -41,6 +42,7 @@
    [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
+   [metabase.lib.parameters]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -55,6 +57,8 @@
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator]
+   [metabase.lib.validate :as lib.validate]
    [metabase.lib.walk.util]
    [metabase.util.namespaces :as shared.ns]))
 
@@ -87,6 +91,7 @@
          lib.limit/keep-me
          metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
+         metabase.lib.metadata.column/keep-me
          lib.metadata.composed-provider/keep-me
          metabase.lib.metadata.protocols/keep-me
          lib.metric/keep-me
@@ -94,6 +99,7 @@
          lib.normalize/keep-me
          metabase.lib.options/keep-me
          lib.order-by/keep-me
+         metabase.lib.parameters/keep-me
          lib.parse/keep-me
          lib.query/keep-me
          lib.ref/keep-me
@@ -108,6 +114,7 @@
          lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
          lib.util/keep-me
+         metabase.lib.util.unique-name-generator/keep-me
          metabase.lib.walk.util/keep-me)
 
 (shared.ns/import-fns
@@ -120,6 +127,7 @@
   aggregations
   aggregations-metadata
   available-aggregation-operators
+  remove-all-aggregations
   selected-aggregation-operators
   count
   avg
@@ -233,6 +241,7 @@
   text
   today
   split-part
+  collate
   integer
   float]
  [lib.extraction
@@ -281,8 +290,6 @@
   filter-clause
   filter-operator
   filter-parts
-  find-filter-for-legacy-filter
-  find-filterable-column-for-legacy-ref
   and
   or
   not
@@ -353,6 +360,9 @@
   suggested-name
   type-of
   visible-columns]
+ [metabase.lib.metadata.column
+  column-unique-key
+  column-with-unique-key]
  [lib.metadata.composed-provider
   composed-metadata-provider]
  [metabase.lib.metadata.protocols
@@ -360,8 +370,10 @@
   metadata-provider?
   metadata-providerable?]
  [lib.native
+  add-parameters-for-template-tags
   engine
   extract-template-tags
+  fully-parameterized-query?
   has-template-tag-variables?
   has-write-permission
   native-extras
@@ -388,10 +400,23 @@
   order-bys
   orderable-columns]
  [lib.normalize
-  normalize]
+  normalize
+  ->normalized-stage-metadata]
  [metabase.lib.page
   current-page
   with-page]
+ [metabase.lib.parameters
+  parameter-target-dimension-options
+  parameter-target-expression-name
+  parameter-target-expression-options
+  parameter-target-expression-ref
+  parameter-target-field-id
+  parameter-target-field-name
+  parameter-target-field-options
+  parameter-target-field-ref
+  parameter-target-is-dimension?
+  parameter-target-template-tag-name
+  update-parameter-target-dimension-options]
  [lib.parse
   parse]
  [lib.query
@@ -410,6 +435,8 @@
   with-wrapped-native-query
   wrap-native-query-with-mbql]
  [lib.ref
+  field-ref-id
+  field-ref-name
   ref]
  [lib.remove-replace
   remove-clause
@@ -419,7 +446,8 @@
   replace-join]
  [metabase.lib.schema
   native-only-query?]
- [metabase.lib.schema.util]
+ [metabase.lib.schema.util
+  remove-lib-uuids]
  [lib.segment
   available-segments]
  [metabase.lib.serialize
@@ -458,8 +486,18 @@
   source-table-id
   source-card-id
   update-query-stage]
+ [metabase.lib.util.unique-name-generator
+  non-truncating-unique-name-generator
+  truncate-alias
+  unique-name-generator
+  unique-name-generator-with-options]
+ [lib.validate
+  find-bad-refs]
  [metabase.lib.walk.util
   all-field-ids
+  all-implicitly-joined-field-ids
+  all-implicitly-joined-table-ids
+  all-segment-ids
   all-source-card-ids
   all-source-table-ids
   all-template-tag-field-ids
@@ -467,4 +505,5 @@
   all-template-tags
   all-template-tags-map
   all-template-tags-id->field-ids
-  any-native-stage?])
+  any-native-stage?
+  any-native-stage-not-introduced-by-sandbox?])

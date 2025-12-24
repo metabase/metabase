@@ -34,6 +34,7 @@
   Question transformation:
 
   - Set default display"
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
@@ -48,7 +49,8 @@
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (mu/defn- valid-current-units :- [:sequential ::lib.schema.temporal-bucketing/unit.date-time.truncate]
   [query :- ::lib.schema/query
@@ -63,22 +65,25 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    dimensions   :- [:sequential ::lib.schema.drill-thru/context.row.value]]
-  (first (for [[breakout-ref breakout-col] (map vector
-                                                (lib.breakout/breakouts query stage-number)
-                                                (lib.breakout/breakouts-metadata query stage-number))
-               :when (and (lib.util/clause-of-type? breakout-ref :field)
-                          (lib.temporal-bucket/temporal-bucket breakout-ref))
-               {:keys [column] :as dimension} dimensions
-               :when (and (lib.equality/find-matching-column breakout-ref [column])
-                          (= (lib.temporal-bucket/raw-temporal-bucket breakout-ref)
-                             (or (lib.temporal-bucket/raw-temporal-bucket column)
-                                 ;; If query is multi-stage and column comes from a call
-                                 ;; to [[lib.calculation/returned-columns]], then it may have an
-                                 ;; :inherited-temporal-unit instead of a :temporal-unit.
-                                 (:inherited-temporal-unit column))))]
-           ;; If stage-number is not -1, then the column from the input dimension will be from the last stage,
-           ;; whereas breakout-col will be the corresponding breakout column from [[lib.underlying/top-level-stage]].
-           (assoc dimension :column breakout-col :column-ref breakout-ref))))
+  (some (fn [[breakout-ref breakout-col]]
+          (when (and (lib.util/clause-of-type? breakout-ref :field)
+                     (lib.temporal-bucket/temporal-bucket breakout-ref))
+            (some (fn [{:keys [column] :as dimension}]
+                    (when (and (lib.equality/find-matching-column breakout-ref [column])
+                               (= (lib.temporal-bucket/raw-temporal-bucket breakout-ref)
+                                  (or (lib.temporal-bucket/raw-temporal-bucket column)
+                                      ;; If query is multi-stage and column comes from a call
+                                      ;; to [[lib.calculation/returned-columns]], then it may have an
+                                      ;; :inherited-temporal-unit instead of a :temporal-unit.
+                                      (:inherited-temporal-unit column))))
+                      ;; If stage-number is not -1, then the column from the input dimension will be from the
+                      ;; last stage, whereas breakout-col will be the corresponding breakout column
+                      ;; from [[lib.underlying/top-level-stage]].
+                      (assoc dimension :column breakout-col :column-ref breakout-ref)))
+                  dimensions)))
+        (map vector
+             (lib.breakout/breakouts query stage-number)
+             (lib.breakout/breakouts-metadata query stage-number))))
 
 (mu/defn- next-breakout-unit :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
   [query :- ::lib.schema/query

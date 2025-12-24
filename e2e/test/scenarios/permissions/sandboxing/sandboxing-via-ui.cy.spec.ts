@@ -78,16 +78,17 @@ describe(
       H.restore("sandboxing-snapshot" as any);
     });
 
-    it(
-      "shows all data before sandboxing policy is applied",
-      { tags: "@flaky" },
-      () => {
-        signInAs(gizmoViewer);
-        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
-        signInAs(widgetViewer);
-        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
-      },
-    );
+    it("shows all data before sandboxing policy is applied - gizmoViewer", () => {
+      signInAs(gizmoViewer);
+      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+    });
+
+    // this test looks like it could be merged with the previous one,
+    // but then it flakes at a very high rate
+    it("shows all data before sandboxing policy is applied - widgetViewer", () => {
+      signInAs(widgetViewer);
+      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+    });
 
     describe("we can apply a sandbox policy", () => {
       beforeEach(() => {

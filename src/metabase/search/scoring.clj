@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
-   [metabase.search.config :as search.config]))
+   [metabase.search.config :as search.config]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (def ^:private seconds-in-a-day 86400)
 
@@ -65,25 +66,32 @@
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
-   :from   [:recent_views]
-   :where  [:and
-            [:= :recent_views.user_id current-user-id]
-            [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
-            [:= :recent_views.model
-             [:case
-              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
-              [:= :search_index.model [:inline "metric"]] [:inline "card"]
-              :else :search_index.model]]]})
+  (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
+    {:select [[[:case
+                ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them
+                [:= :search_index.model [:inline "transform"]]
+                one-day-ago
+                :else
+                [:max :recent_views.timestamp]]
+               :last_viewed_at]]
+     :from   [:recent_views]
+     :where  [:and
+              [:= :recent_views.user_id current-user-id]
+              [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
+              [:= :recent_views.model
+               [:case
+                [:= :search_index.model [:inline "dataset"]] [:inline "card"]
+                [:= :search_index.model [:inline "metric"]] [:inline "card"]
+                :else :search_index.model]]]}))
 
 (defn model-rank-expr
   "Score an item based on its :model type."
-  [{:keys [context]}]
+  [search-ctx]
   (let [search-order search.config/models-search-order
         n            (double (count search-order))
         cases        (map-indexed (fn [i sm]
                                     [[:= :search_index.model sm]
-                                     (or (search.config/scorer-param context :model sm)
+                                     (or (search.config/scorer-param search-ctx :model sm)
                                          [:inline (/ (- n i) n)])])
                                   search-order)]
     (-> (into [:case] cat (concat cases))
@@ -136,22 +144,22 @@
 
 (defn weighted-score
   "Multiply a score by its weight."
-  [context [column-alias expr]]
-  [:* [:inline (search.config/weight context column-alias)] expr])
+  [search-ctx [column-alias expr]]
+  [:* [:inline (search.config/weight search-ctx column-alias)] expr])
 
 (defn select-items
   "Select expressions for each scorer, plus a :total_score that is the weighted sum of the `scorers`."
-  [context scorers]
+  [search-ctx scorers]
   (concat
    (for [[column-alias expr] scorers]
      [expr column-alias])
-   [[(sum-columns (map (partial weighted-score context) scorers))
+   [[(sum-columns (map (partial weighted-score search-ctx) scorers))
      :total_score]]))
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores."
   [search-ctx scorers qry]
-  (apply sql.helpers/select qry (select-items (:context search-ctx) scorers)))
+  (apply sql.helpers/select qry (select-items search-ctx scorers)))
 
 (defn all-scores
   "Scoring stats for each `index-row`."
@@ -164,3 +172,8 @@
              :weight       weight
              :contribution (* weight score)}))
         scorers))
+
+(defn no-scoring-required?
+  "Scoring is unnecessary when we are not returning any results, e.g. counting potential results"
+  [{:keys [limit-int]}]
+  (and limit-int (zero? limit-int)))

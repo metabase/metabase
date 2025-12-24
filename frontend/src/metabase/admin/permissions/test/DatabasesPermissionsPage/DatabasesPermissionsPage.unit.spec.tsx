@@ -27,8 +27,12 @@ const TEST_DATABASE = createSampleDatabase();
 
 // Order is important here for test to pass, since admin options aren't editable
 const TEST_GROUPS = [
-  createMockGroup({ name: "All Users" }),
-  createMockGroup({ id: 2, name: "Administrators" }),
+  createMockGroup({
+    id: 1,
+    name: "All internal users",
+    magic_group_type: "all-internal-users",
+  }),
+  createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
 ];
 
 const setup = async () => {

@@ -1,7 +1,8 @@
 (ns metabase.lib.metadata.invocation-tracker
   (:require
    #?@(:clj
-       ([metabase.util.json :as json]
+       (^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+        [metabase.util.json :as json]
         [pretty.core :as pretty]))
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
@@ -68,14 +69,18 @@
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       (lib.metadata.protocols/store-metadata! metadata-provider object)))
   (cached-value [_this k not-found]
-    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
-      (lib.metadata.protocols/cached-value metadata-provider k not-found)))
+    (if (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/cached-value metadata-provider k not-found)
+      not-found))
   (cache-value! [_this k v]
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       (lib.metadata.protocols/cache-value! metadata-provider k v)))
   (has-cache? [_this]
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       (lib.metadata.protocols/has-cache? metadata-provider)))
+  (clear-cache! [_this]
+    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/clear-cache! metadata-provider)))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
@@ -98,3 +103,11 @@
     InvocationTracker
     (fn [_mp json-generator]
       (json/generate-nil nil json-generator))))
+
+;;; this is here as a sanity check to make sure we're not trying to write MBQL 5 to SerDes yet until we update the
+;;; SerDes code to handle it
+#?(:clj
+   (extend-protocol clj-yaml.core/YAMLCodec
+     InvocationTracker
+     (encode [_this]
+       (throw (Exception. "Encoding MBQL 5 queries to YAML for SerDes is not yet supported; please convert the query to legacy first.")))))

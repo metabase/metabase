@@ -1,4 +1,3 @@
-import type { DisplayTheme } from "metabase/public/lib/types";
 import type {
   DashCardDataMap,
   DashCardId,
@@ -126,6 +125,4 @@ export interface DashboardState {
     toastDashboardId: number | null;
   };
   tabDeletions: Record<TabDeletionId, TabDeletion>;
-
-  theme: DisplayTheme;
 }

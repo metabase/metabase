@@ -1,12 +1,12 @@
 (ns metabase.lib.schema.aggregation
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some #?(:clj doseq)])
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [some #?(:clj doseq)]]))
 
 ;; count has an optional expression arg. This is the number of non-NULL values -- corresponds to count(<expr>) in SQL
 (mbql-clause/define-catn-mbql-clause :count :- :type/Integer
@@ -130,10 +130,12 @@
   "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
   a single aggregation clause."
   [x]
-  (when-let [[tag _opts & args] (and (vector? x) x)]
+  (when-let [[tag _opts & args] (when (vector? x) x)]
     (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
         ;; Case has the following shape [:case opts [[cond expr]...] default-expr?]
-        (if (= :case tag)
+        ;;
+        ;; `:if` is an alias for `:case`
+        (if (#{:case :if} tag)
           (or (some aggregation-expression? (ffirst args))
               (some aggregation-expression? (fnext args)))
           (some aggregation-expression? args)))))
@@ -142,7 +144,8 @@
   [:and
    [:ref :metabase.lib.schema.mbql-clause/clause]
    [:fn
-    {:error/message "Valid aggregation clause"}
+    {:error/message #(i18n/tru "Aggregations should contain at least one aggregation function.")
+     :error/friendly true}
     aggregation-expression?]])
 
 (mr/def ::aggregations

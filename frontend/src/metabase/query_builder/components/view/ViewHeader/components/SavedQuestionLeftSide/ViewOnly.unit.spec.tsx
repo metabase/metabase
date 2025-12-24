@@ -121,7 +121,7 @@ function createCardFromQuery({
 }: Partial<Card> & { query: Lib.Query }): Card {
   return createMockCard({
     ...rest,
-    dataset_query: Lib.toLegacyQuery(query),
+    dataset_query: Lib.toJsQuery(query),
   });
 }
 

@@ -122,7 +122,7 @@
 
 (deftest ^:parallel remove-duplicate-order-by-clauses-test
   (testing (str "if a Field is referenced twice and we bucket an unbucketed reference, creating duplicate order-by "
-                "clauses, we should remove them, as it is illegal in MBQL 2000+")
+                "clauses, we should remove them, as it is illegal in MBQL 4+")
     (is (=? (mbql-query
              :breakout [[:field 1 {:temporal-unit :day}]]
              :order-by [[:asc [:field 1 {:temporal-unit :day}]]])

@@ -15,14 +15,16 @@ describe("scenarios > alert", () => {
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create an alert");
+
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
 
       H.modal().within(() => {
         cy.findByText(
-          "To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook.",
+          "To get notified when something happens, or to send this chart on a schedule, first set up email, Slack, or a webhook.",
         );
 
-        cy.findByText("Set up SMTP")
+        cy.findByText("Set up email")
           .should("be.visible")
           .closest("a")
           .should("have.attr", "href", "/admin/settings/email");
@@ -41,14 +43,16 @@ describe("scenarios > alert", () => {
       cy.signInAsNormalUser();
 
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create an alert");
+
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
 
       H.modal().within(() => {
         cy.findByText(
-          "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP or Slack.",
+          "To get notified when something happens, or to send this chart on a schedule, ask your admin to set up email, Slack, or a webhook.",
         );
 
-        cy.findByText("Set up SMTP").should("not.exist");
+        cy.findByText("Set up email").should("not.exist");
         cy.findByText("Set up Slack").should("not.exist");
         cy.findByText("Add a webhook").should("not.exist");
       });
@@ -70,7 +74,9 @@ describe("scenarios > alert", () => {
 
     it("should be able to create and delete alerts with webhooks enabled", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create an alert");
+
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
 
       H.addNotificationHandlerChannel("Bar Hook");
 
@@ -78,7 +84,8 @@ describe("scenarios > alert", () => {
 
       H.notificationList().findByText("Your alert is all set up.");
 
-      H.openSharingMenu("Edit alerts");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Edit alerts").click();
 
       H.modal().within(() => {
         cy.findByText("Edit alerts").should("be.visible");
@@ -129,10 +136,12 @@ describe("scenarios > alert", () => {
       { visitQuestion: true },
     );
 
-    H.openSharingMenu("Create an alert");
+    cy.findByLabelText("Move, duplicate, and more…").click();
+    H.popover().findByText("Create an alert").click();
     H.modal().button("Done").click();
 
-    H.openSharingMenu("Edit alerts");
+    cy.findByLabelText("Move, duplicate, and more…").click();
+    H.popover().findByText("Edit alerts").click();
     H.modal().within(() => {
       cy.findByText("Edit alerts").should("be.visible");
       cy.findByText(/Created by you/).should("be.visible");
@@ -171,7 +180,8 @@ describe("scenarios > alert", () => {
       it("should validate approved email domains for a question alert", () => {
         H.visitQuestion(ORDERS_QUESTION_ID);
 
-        H.openSharingMenu("Create an alert");
+        cy.findByLabelText("Move, trash, and more…").click();
+        H.popover().findByText("Create an alert").click();
 
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
@@ -204,7 +214,8 @@ describe("scenarios > alert", () => {
         cy.signInAsNormalUser();
         H.visitQuestion(ORDERS_QUESTION_ID);
 
-        H.openSharingMenu("Create an alert");
+        cy.findByLabelText("Move, trash, and more…").click();
+        H.popover().findByText("Create an alert").click();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 

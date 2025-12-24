@@ -15,16 +15,18 @@ export function SettingsSection({
   title,
   description,
   children,
+  stackProps,
   ...boxProps
 }: {
   title?: React.ReactNode;
   description?: React.ReactNode;
   children?: React.ReactNode;
+  stackProps?: StackProps;
 } & BoxProps) {
   return (
     <Box {...boxProps}>
       {children && (
-        <Stack gap="lg" className={S.SettingsSection}>
+        <Stack gap="lg" className={S.SettingsSection} {...stackProps}>
           {(title || description) && (
             <Box mb="sm">
               {title && <Title order={2}>{title}</Title>}

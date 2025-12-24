@@ -18,7 +18,6 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
-import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -94,11 +93,16 @@ export function MetabotAdminPage() {
 
           <MetabotVerifiedContentConfigurationPane metabot={metabot} />
 
-          {isEmbedMetabot && (
-            <MetabotCollectionConfigurationPane metabot={metabot} />
-          )}
+          <MetabotCollectionConfigurationPane
+            metabot={metabot}
+            title={
+              isEmbedMetabot
+                ? undefined
+                : t`Collection for natural language querying`
+            }
+          />
 
-          <MetabotPromptSuggestionPane metabotId={metabotId} />
+          <MetabotPromptSuggestionPane metabot={metabot} />
         </SettingsSection>
       </ErrorBoundary>
     </AdminSettingsLayout>
@@ -187,8 +191,10 @@ function MetabotVerifiedContentConfigurationPane({
 
 function MetabotCollectionConfigurationPane({
   metabot,
+  title,
 }: {
   metabot: MetabotInfo;
+  title?: string;
 }) {
   const metabotId = metabot.id;
   const metabotName = metabot.name;
@@ -231,13 +237,12 @@ function MetabotCollectionConfigurationPane({
     }
   };
 
+  const defaultTitle = c("{0} is the name of an AI assistant")
+    .t`Collection ${metabotName} can use`;
+
   return (
     <Box>
-      <SettingHeader
-        id="allow-metabot"
-        title={c("{0} is the name of an AI assistant")
-          .t`Collection ${metabotName} can use`}
-      />
+      <SettingHeader id="allow-metabot" title={title ?? defaultTitle} />
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
         <Button onClick={open} leftSection={isUpdating && <Loader size="xs" />}>
@@ -304,7 +309,7 @@ const CollectionDisplay = ({
   const icon = getIcon({ model: "collection", ...collection });
   return (
     <Flex align="center" gap="sm">
-      <Icon {...icon} color={color(icon.color ?? "brand")} />
+      <Icon {...icon} c={icon.color ?? "brand"} />
       <Text c="text-medium" fw="bold">
         {collection.name}
       </Text>

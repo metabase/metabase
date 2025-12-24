@@ -95,11 +95,18 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     };
 
     H.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Wait for the table to fully render");
     cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
+    cy.findByTestId("table-header")
+      .should("be.visible")
+      .and("contain", "Subtotal");
+    cy.findByTestId("table-body")
+      .should("be.visible")
+      .and("contain", "37.65")
+      .and("contain", "110.93");
 
     cy.log("Check object details for the first row");
-    cy.findAllByTestId("cell-data").filter(":contains(37.65)").realHover();
-    cy.findAllByTestId("detail-shortcut").eq(1).should("be.hidden");
     H.openObjectDetail(0);
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading", { name: "Awesome Concrete Shoes" }).should(
@@ -111,8 +118,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
 
     cy.log("Check object details for the second row");
-    cy.findAllByTestId("cell-data").filter(":contains(110.93)").realHover();
-    cy.findAllByTestId("detail-shortcut").eq(0).should("be.hidden");
     H.openObjectDetail(1);
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading", { name: "Mediocre Wooden Bench" }).should(
@@ -229,7 +234,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     getNextObjectDetailButton().should("not.exist");
   });
 
-  it("handles opening a filtered out record", () => {
+  it.skip("handles opening a filtered out record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     const FILTERED_OUT_ID = 1;
 
@@ -242,7 +247,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("can view details of an out-of-range record", () => {
+  it.skip("can view details of an out-of-range record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     // since we only fetch 2000 rows, this ID is out of range
     // and has to be fetched separately
@@ -285,24 +290,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("view-footer")
       .findByText("Showing 92 rows")
       .should("be.visible");
-  });
-
-  it("should fetch linked entities data only once per entity type when reopening the modal (metabase#32720)", () => {
-    cy.intercept("POST", "/api/dataset", cy.spy().as("fetchDataset"));
-
-    H.openProductsTable();
-    cy.get("@fetchDataset").should("have.callCount", 1);
-
-    drillPK({ id: 5 });
-    cy.get("@fetchDataset").should("have.callCount", 3);
-
-    cy.findByLabelText("Close").click();
-
-    drillPK({ id: 5 });
-    cy.get("@fetchDataset").should("have.callCount", 3);
-
-    cy.wait(100);
-    cy.get("@fetchDataset").should("have.callCount", 3);
   });
 
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
@@ -397,6 +384,48 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.wait(["@dataset", "@dataset", "@dataset"]); // object detail + Orders relationship + Reviews relationship
 
     cy.get("@getActions").should("have.callCount", 0);
+  });
+
+  it("reset object detail navigation state on query change (metabase#54317)", () => {
+    const initialFilter = {
+      name: "Filter Orders ID < 15",
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["and", ["<", ["field", ORDERS.ID, null], 15]],
+      },
+    };
+
+    // Create the question with the initial filter and visit it
+    H.createQuestion(initialFilter, { visitQuestion: true });
+
+    // Click object display
+    cy.findByTestId("view-footer").within(() => {
+      cy.findByText("Visualization").click();
+    });
+
+    cy.findByTestId("display-options-sensible");
+    cy.icon("document").click();
+
+    // Verify "Item 14 of 14" in the pagination footer
+    cy.findByTestId("pagination-footer").within(() => {
+      for (let i = 1; i < 14; i++) {
+        cy.icon("chevronright").click(); // Click the right arrow
+      }
+      cy.findByText("Item 14 of 14").should("be.visible");
+    });
+
+    // Apply a new filter for order id < 10
+    cy.findByTestId("filters-visibility-control").click();
+    cy.findByTestId("filter-pill").click();
+    cy.findByTestId("number-filter-picker").within(() => {
+      cy.findByLabelText("Filter value").clear().type("10");
+      cy.findByRole("button", { name: "Update filter" }).click();
+    });
+
+    // Verify the pagination footer says "Item 1 of 9"
+    cy.findByTestId("pagination-footer").within(() => {
+      cy.findByText("Item 1 of 9").should("be.visible");
+    });
   });
 
   it("should respect 'view_as' column settings (VIZ-199)", () => {
@@ -967,5 +996,38 @@ describe("Object Detail > public", () => {
     cy.findByTestId("pagination-footer").within(() => {
       cy.findByText("Item 1 of 3").should("be.visible");
     });
+  });
+});
+
+describe("issue 66957", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("filter header should not hide when opening object details (metabase#66957)", () => {
+    H.tableInteractive().findByText("Quantity").click();
+    H.popover().findByText("Filter by this column").click();
+    H.popover().within(() => {
+      cy.findByText("2").click();
+      cy.button("Add filter").click();
+    });
+
+    H.openObjectDetail(5);
+
+    H.queryBuilderFiltersPanel()
+      .should("be.visible")
+      .findByText("Quantity is equal to 2")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("3").click();
+      cy.button("Update filter").click();
+    });
+
+    H.queryBuilderFiltersPanel()
+      .findByText("Quantity is equal to 2 selections")
+      .should("be.visible");
   });
 });

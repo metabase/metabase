@@ -732,39 +732,47 @@
 
 (deftest segment-revisions-test
   (testing "GET /api/revision/segment/:id"
-    (mt/with-temp
-      [:model/Database {database-id :id} {}
-       :model/Table    {table-id :id}    {:db_id database-id}
-       :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
-                                          :table_id   table-id
-                                          :definition {:database 123
-                                                       :query    {:filter [:= [:field 2 nil] "cans"]}}}
-       :model/Revision _                 {:model       "Segment"
-                                          :model_id    id
-                                          :object      {:name       "b"
-                                                        :definition {:filter [:and [:> 1 25]]}}
-                                          :is_creation true}
-       :model/Revision _                 {:model    "Segment"
-                                          :model_id id
-                                          :user_id  (mt/user->id :crowberto)
-                                          :object   {:name       "c"
-                                                     :definition {:filter [:and [:> 1 25]]}}
-                                          :message  "updated"}]
-      (mt/with-full-data-perms-for-all-users!
-        (is (=? [{:is_reversion false
-                  :is_creation  false
-                  :message      "updated"
-                  :user         {:first_name "Crowberto"}
-                  :diff         {:name {:before "b" :after "c"}}
-                  :description  "renamed this Segment from \"b\" to \"c\"."}
-                 {:is_reversion false
-                  :is_creation  true
-                  :message      nil
-                  :user         {:first_name "Rasta"}
-                  :diff         {:name       {:after "b"}
-                                 :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
-                  :description  "created this."}]
-                (mt/user-http-request :rasta :get 200 (format "revision/segment/%d" id))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp
+        [:model/Database {database-id :id} {}
+         :model/Table    {table-id :id}    {:db_id database-id}
+         :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
+                                            :table_id   table-id
+                                            :definition {:filter [:= [:field 2 nil] "cans"]}}
+         :model/Revision _                 {:model       "Segment"
+                                            :model_id    id
+                                            :object      {:name       "b"
+                                                          :table_id   table-id
+                                                          :definition {:filter [:> [:field 1 nil] 25]}}
+                                            :is_creation true}
+         :model/Revision _                 {:model    "Segment"
+                                            :model_id id
+                                            :user_id  (mt/user->id :crowberto)
+                                            :object   {:name       "c"
+                                                       :table_id   table-id
+                                                       :definition {:filter [:> [:field 1 nil] 25]}}
+                                            :message  "updated"}]
+        (mt/with-full-data-perms-for-all-users!
+          (is (=? [{:is_reversion false
+                    :is_creation  false
+                    :message      "updated"
+                    :user         {:first_name "Crowberto"}
+                    :diff         {:name {:before "b" :after "c"}}
+                    :description  "renamed this Segment from \"b\" to \"c\"."}
+                   {:is_reversion false
+                    :is_creation  true
+                    :message      nil
+                    :user         {:first_name "Rasta"}
+                    :diff         {:name       {:after "b"}
+                                   :definition {:after {:lib/type "mbql/query"
+                                                        :stages
+                                                        [{:lib/type "mbql.stage/mbql"
+                                                          :source-table table-id
+                                                          :filters
+                                                          [[">" {} ["field" {} 1] 25]]}]
+                                                        :database database-id}}}
+                    :description  "created this."}]
+                  (mt/user-http-request :rasta :get 200 (format "revision/segment/%d" id)))))))))
 
 (deftest ^:parallel segment-revert-permissions-test
   (testing "POST /api/revision/revert <Segment>"
@@ -782,70 +790,76 @@
 
 (deftest segment-revert-test
   (testing "POST /api/revision/revert <Segment>"
-    (mt/with-temp
-      [:model/Database {database-id :id} {}
-       :model/Table    {table-id :id}    {:db_id database-id}
-       :model/Segment  {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
-                                          :table_id                table-id
-                                          :name                    "One Segment to rule them all, one segment to define them"
-                                          :description             "One segment to bring them all, and in the DataModel bind them"
-                                          :show_in_getting_started false
-                                          :caveats                 nil
-                                          :points_of_interest      nil
-                                          :definition              {:filter [:= [:field 2 nil] "cans"]}}
-       :model/Revision {revision-id :id} {:model       "Segment"
-                                          :model_id    id
-                                          :object      {:creator_id              (mt/user->id :crowberto)
-                                                        :table_id                table-id
-                                                        :name                    "One Segment to rule them all, one segment to define them"
-                                                        :description             "One segment to bring them all, and in the DataModel bind them"
-                                                        :show_in_getting_started false
-                                                        :caveats                 nil
-                                                        :points_of_interest      nil
-                                                        :definition              {:filter [:= [:field 2 nil] "cans"]}}
-                                          :is_creation true}
-       :model/Revision _                 {:model    "Segment"
-                                          :model_id id
-                                          :user_id  (mt/user->id :crowberto)
-                                          :object   {:creator_id              (mt/user->id :crowberto)
-                                                     :table_id                table-id
-                                                     :name                    "Changed Segment Name"
-                                                     :description             "One segment to bring them all, and in the DataModel bind them"
-                                                     :show_in_getting_started false
-                                                     :caveats                 nil
-                                                     :points_of_interest      nil
-                                                     :definition              {:filter [:= [:field 2 nil] "cans"]}}
-                                          :message  "updated"}]
-      (testing "the api response"
-        (is (=? {:is_reversion true
-                 :is_creation  false
-                 :message      nil
-                 :user         {:first_name "Crowberto"}
-                 :diff         {:name {:before "Changed Segment Name"
-                                       :after  "One Segment to rule them all, one segment to define them"}}
-                 :description  "reverted to an earlier version."}
-                (mt/user-http-request :crowberto :post 200 "revision/revert" {:id id, :entity "segment", :revision_id revision-id}))))
-      (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
-        (is (=? [{:is_reversion true
-                  :is_creation  false
-                  :message      nil
-                  :user         {:first_name "Crowberto"}
-                  :diff         {:name {:before "Changed Segment Name"
-                                        :after  "One Segment to rule them all, one segment to define them"}}
-                  :description  "reverted to an earlier version."}
-                 {:is_reversion false
-                  :is_creation  false
-                  :message      "updated"
-                  :user         {:first_name "Crowberto"}
-                  :diff         {:name {:after  "Changed Segment Name"
-                                        :before "One Segment to rule them all, one segment to define them"}}
-                  :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
-                 {:is_reversion false
-                  :is_creation  true
-                  :message      nil
-                  :user         {:first_name "Rasta"}
-                  :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
-                                 :description {:after "One segment to bring them all, and in the DataModel bind them"}
-                                 :definition  {:after {:filter ["=" ["field" 2 nil] "cans"]}}}
-                  :description  "created this."}]
-                (mt/user-http-request :crowberto :get 200 (format "revision/segment/%d" id))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp
+        [:model/Database {database-id :id} {}
+         :model/Table    {table-id :id}    {:db_id database-id}
+         :model/Segment  {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
+                                            :table_id                table-id
+                                            :name                    "One Segment to rule them all, one segment to define them"
+                                            :description             "One segment to bring them all, and in the DataModel bind them"
+                                            :show_in_getting_started false
+                                            :caveats                 nil
+                                            :points_of_interest      nil
+                                            :definition              {:filter [:= [:field 2 nil] "cans"]}}
+         :model/Revision {revision-id :id} {:model       "Segment"
+                                            :model_id    id
+                                            :object      {:creator_id              (mt/user->id :crowberto)
+                                                          :table_id                table-id
+                                                          :name                    "One Segment to rule them all, one segment to define them"
+                                                          :description             "One segment to bring them all, and in the DataModel bind them"
+                                                          :show_in_getting_started false
+                                                          :caveats                 nil
+                                                          :points_of_interest      nil
+                                                          :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                            :is_creation true}
+         :model/Revision _                 {:model    "Segment"
+                                            :model_id id
+                                            :user_id  (mt/user->id :crowberto)
+                                            :object   {:creator_id              (mt/user->id :crowberto)
+                                                       :table_id                table-id
+                                                       :name                    "Changed Segment Name"
+                                                       :description             "One segment to bring them all, and in the DataModel bind them"
+                                                       :show_in_getting_started false
+                                                       :caveats                 nil
+                                                       :points_of_interest      nil
+                                                       :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                            :message  "updated"}]
+        (testing "the api response"
+          (is (=? {:is_reversion true
+                   :is_creation  false
+                   :message      nil
+                   :user         {:first_name "Crowberto"}
+                   :diff         {:name {:before "Changed Segment Name"
+                                         :after  "One Segment to rule them all, one segment to define them"}}
+                   :description  "reverted to an earlier version."}
+                  (mt/user-http-request :crowberto :post 200 "revision/revert" {:id id, :entity "segment", :revision_id revision-id}))))
+        (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
+          (is (=? [{:is_reversion true
+                    :is_creation  false
+                    :message      nil
+                    :user         {:first_name "Crowberto"}
+                    :diff         {:name {:before "Changed Segment Name"
+                                          :after  "One Segment to rule them all, one segment to define them"}}
+                    :description  "reverted to an earlier version."}
+                   {:is_reversion false
+                    :is_creation  false
+                    :message      "updated"
+                    :user         {:first_name "Crowberto"}
+                    :diff         {:name {:after  "Changed Segment Name"
+                                          :before "One Segment to rule them all, one segment to define them"}}
+                    :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
+                   {:is_reversion false
+                    :is_creation  true
+                    :message      nil
+                    :user         {:first_name "Rasta"}
+                    :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
+                                   :description {:after "One segment to bring them all, and in the DataModel bind them"}
+                                   :definition  {:after {:lib/type "mbql/query",
+                                                         :stages
+                                                         [{:lib/type "mbql.stage/mbql",
+                                                           :source-table table-id
+                                                           :filters [["=" {} ["field" {} 2] "cans"]]}]
+                                                         :database database-id}}}
+                    :description  "created this."}]
+                  (mt/user-http-request :crowberto :get 200 (format "revision/segment/%d" id)))))))))

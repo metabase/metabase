@@ -20,7 +20,7 @@ inputs:
     required: true
   variant:
     required: false
-    default: ''
+    default: ""
 
 runs:
   using: "composite"
@@ -48,11 +48,12 @@ runs:
         aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
 
     - name: Upload results to Trunk
-      if: ${{ always() && !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
+      if: always() # Important! This step must always run because it controls job's exit code.
       uses: trunk-io/analytics-uploader@main
       with:
         junit-paths: ${{ inputs.input-path }}
         variant: ${{ inputs.variant || inputs.output-name }}
         org-slug: metabase
+        dry-run: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true }} # quarantine, but do not upload results
         token: ${{ inputs.trunk-api-token }}
-      continue-on-error: true
+        use-cache: true

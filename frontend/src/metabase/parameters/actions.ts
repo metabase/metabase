@@ -1,3 +1,4 @@
+import { stableStringify } from "metabase/lib/objects";
 import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -9,6 +10,7 @@ import type {
   ParameterId,
   ParameterValues,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getParameterValuesCache } from "./selectors";
@@ -48,15 +50,21 @@ export const fetchParameterValues =
 
 export interface FetchCardParameterValuesOpts {
   cardId: CardId;
+  entityIdentifier: EntityUuid | EntityToken | null;
   parameter: Parameter;
   query?: string;
 }
 
 export const fetchCardParameterValues =
-  ({ cardId, parameter, query }: FetchCardParameterValuesOpts) =>
+  ({
+    cardId,
+    entityIdentifier,
+    parameter,
+    query,
+  }: FetchCardParameterValuesOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const request = {
-      cardId,
+    const request: CardParameterValuesRequest = {
+      ...(entityIdentifier ? { entityIdentifier } : { cardId }),
       paramId: parameter.id,
       query,
     };
@@ -71,6 +79,7 @@ export const fetchCardParameterValues =
 
 export interface FetchDashboardParameterValuesOpts {
   dashboardId: DashboardId;
+  entityIdentifier: EntityUuid | EntityToken | null;
   parameter: Parameter;
   parameters: Parameter[];
   query?: string;
@@ -79,14 +88,15 @@ export interface FetchDashboardParameterValuesOpts {
 export const fetchDashboardParameterValues =
   ({
     dashboardId,
+    entityIdentifier,
     parameter,
     parameters,
     query,
   }: FetchDashboardParameterValuesOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const request = {
+    const request: DashboardParameterValuesRequest = {
+      ...(entityIdentifier ? { entityIdentifier } : { dashId: dashboardId }),
       paramId: parameter.id,
-      dashId: dashboardId,
       query,
       ...getFilteringParameterValuesMap(parameter, parameters),
     };
@@ -117,7 +127,8 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
 };
 
 interface CardParameterValuesRequest {
-  cardId: CardId;
+  cardId?: CardId;
+  entityIdentifier?: EntityUuid | EntityToken | null;
   paramId: ParameterId;
   query?: string;
 }
@@ -134,7 +145,8 @@ const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
 };
 
 interface DashboardParameterValuesRequest {
-  dashId: DashboardId;
+  dashId?: DashboardId;
+  entityIdentifier?: EntityUuid | EntityToken | null;
   paramId: ParameterId;
   query?: string;
 }
@@ -158,7 +170,7 @@ const fetchParameterValuesWithCache = async <T>(
   dispatch: Dispatch,
   getState: GetState,
 ) => {
-  const requestKey = JSON.stringify(request);
+  const requestKey = stableStringify(request);
   const requestCache = getParameterValuesCache(getState());
   const response = requestCache[requestKey]
     ? requestCache[requestKey]

@@ -12,8 +12,8 @@
   Extra constraints:
 
   - MBQL stages only
-  - Database must support `:regex` feature for the URL and Email extractions to work."
-  (:refer-clojure :exclude [select-keys])
+  - Database must support `:regex/lookaheads-and-lookbehinds` feature for the URL and Email extractions to work."
+  (:refer-clojure :exclude [select-keys not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
@@ -26,7 +26,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys]]))
+   [metabase.util.performance :refer [select-keys not-empty]]))
 
 (defn- column-extract-drill-for-column [query column]
   (when-let [extractions (not-empty (lib.extraction/column-extractions query column))]

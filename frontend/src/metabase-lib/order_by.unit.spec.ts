@@ -129,7 +129,7 @@ describe("order by", () => {
       );
 
       const roundtripQuery = createQuery({
-        query: Lib.toLegacyQuery(nextQuery),
+        query: Lib.toJsQuery(nextQuery),
       });
       const roundtripQueryColumns = Lib.orderableColumns(roundtripQuery, 0);
       const roundtripTaxColumn = columnFinder(
@@ -160,7 +160,9 @@ describe("order by", () => {
       const orderBys = Lib.orderBys(nextQuery, 0);
 
       expect(orderBys).toHaveLength(1);
-      expect(Lib.displayName(nextQuery, orderBys[0])).toBe("Title ascending");
+      const displayInfo = Lib.displayInfo(nextQuery, 0, orderBys[0]);
+      expect(displayInfo.displayName).toBe("Title");
+      expect(displayInfo.direction).toBe("asc");
     });
   });
 
@@ -186,9 +188,10 @@ describe("order by", () => {
         Lib.orderByClause(productCategory, "desc"),
       );
       const nextOrderBys = Lib.orderBys(nextQuery, 0);
-      expect(Lib.displayName(nextQuery, nextOrderBys[0])).toBe(
-        "Category descending",
-      );
+      const displayInfo = Lib.displayInfo(nextQuery, 0, nextOrderBys[0]);
+      expect(displayInfo.displayName).toBe("Category");
+      expect(displayInfo.direction).toBe("desc");
+
       expect(orderBys[0]).not.toEqual(nextOrderBys[0]);
     });
   });

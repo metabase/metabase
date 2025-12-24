@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata.cached-provider
-  (:refer-clojure :exclude [update-keys])
+  (:refer-clojure :exclude [update-keys get-in #?(:clj doseq)])
   (:require
    #?@(:clj ([metabase.util.json :as json]
              [pretty.core :as pretty]))
@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [update-keys]]))
+   [metabase.util.performance :refer [update-keys get-in #?(:clj doseq)]]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -30,16 +30,17 @@
    id            :- pos-int?
    metadata      :- [:multi
                      {:dispatch :lib/type}
-                     [:metadata/database      ::lib.schema.metadata/database]
-                     [:metadata/table         ::lib.schema.metadata/table]
-                     [:metadata/column        ::lib.schema.metadata/column]
-                     [:metadata/card          ::lib.schema.metadata/card]
-                     [:metadata/metric        ::lib.schema.metadata/metric]
-                     [:metadata/segment       ::lib.schema.metadata/segment]]]
+                     [:metadata/database             ::lib.schema.metadata/database]
+                     [:metadata/table                ::lib.schema.metadata/table]
+                     [:metadata/column               ::lib.schema.metadata/column]
+                     [:metadata/card                 ::lib.schema.metadata/card]
+                     [:metadata/metric               ::lib.schema.metadata/metric]
+                     [:metadata/segment              ::lib.schema.metadata/segment]
+                     [:metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet]]]
   (let [metadata (-> metadata
                      (update-keys u/->kebab-case-en)
                      (assoc :lib/type metadata-type))]
-    (store-in-cache! cache [metadata-type id] metadata))
+    (store-in-cache! cache [metadata-type :id id] metadata))
   true)
 
 (defn- get-in-cache-or-fetch [cache ks fetch-thunk]
@@ -111,7 +112,7 @@
                              (u/prog1 (lib.metadata.protocols/metadatas uncached-provider metadata-spec)
                                (doseq [metadata <>
                                        k        [:id :name]]
-                                 (store-in-cache! cache [metadata-type (k metadata)] metadata)))))))
+                                 (store-in-cache! cache [metadata-type k (k metadata)] metadata)))))))
 
 (defn- cached-metadatas [cache metadata-type metadata-ids]
   (into []
@@ -143,6 +144,9 @@
     (cache-value! cache k v))
   (has-cache? [_this]
     true)
+  (clear-cache! [_this]
+    (reset! cache {})
+    nil)
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

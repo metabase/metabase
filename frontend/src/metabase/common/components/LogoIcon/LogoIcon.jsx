@@ -22,7 +22,7 @@ export class DefaultLogoIcon extends Component {
       <svg
         className={cx(
           "Icon",
-          { [CS.textBrand]: !dark },
+          { [CS.textMetabaseBrand]: !dark },
           { [CS.textWhite]: dark },
         )}
         viewBox="0 0 212 256"

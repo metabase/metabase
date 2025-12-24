@@ -23,12 +23,12 @@ describe("scenarios - embedding hub", () => {
         .should("exist");
     });
 
-    it('"Generate a dashboard" card should work correctly', () => {
+    it('"Create a dashboard" card should work correctly', () => {
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("Find and click on 'Generate a dashboard' card");
+      cy.log("Find and click on 'Create a dashboard' card");
       cy.findByTestId("admin-layout-content")
-        .findByText("Generate a dashboard")
+        .findByText("Create a dashboard")
         .click();
 
       cy.log("Select a table to generate dashboard from");
@@ -37,18 +37,20 @@ describe("scenarios - embedding hub", () => {
           "be.visible",
         );
         // Click on the first available table
-        cy.get("[data-testid='picker-item']").first().click();
+        H.entityPickerModalItem(3, "Accounts").click();
       });
 
       cy.log("Should navigate to auto dashboard creation");
       cy.url().should("include", "/auto/dashboard/table/");
     });
 
-    it('"Add data" card should work correctly', () => {
+    it('"Connect a database" card should work correctly', () => {
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("Find and click on 'Add data' card");
-      cy.findByTestId("admin-layout-content").findByText("Add data").click();
+      cy.log("Find and click on 'Connect a database' card");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect a database")
+        .click();
 
       cy.log("Add data modal should open");
       cy.findByRole("dialog").within(() => {
@@ -70,14 +72,16 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("'Add data' should not be marked as done");
+      cy.log("'Connect a database' should not be marked as done");
       cy.findByTestId("admin-layout-content")
-        .findByText("Add data")
+        .findByText("Connect a database")
         .closest("button")
         .findByText("Done")
         .should("not.exist");
 
-      cy.findByTestId("admin-layout-content").findByText("Add data").click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect a database")
+        .click();
 
       H.modal().within(() => {
         cy.findByText("CSV").click();
@@ -101,9 +105,9 @@ describe("scenarios - embedding hub", () => {
 
       cy.wait("@getChecklist");
 
-      cy.log("'Add data' should be marked as done");
+      cy.log("'Connect a database' should be marked as done");
       cy.findByTestId("admin-layout-content")
-        .findByText("Add data")
+        .findByText("Connect a database")
         .closest("button")
         .scrollIntoView()
         .findByText("Done")
@@ -143,21 +147,25 @@ describe("scenarios - embedding hub", () => {
       });
     });
 
-    it('"Embed in your code" card should take you to the embed flow', () => {
+    it('"Get embed snippet" card should take you to the embed flow', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.findByTestId("admin-layout-content")
-        .findByText("Embed in your code")
+        .findByText("Get embed snippet")
         .click();
 
-      cy.url().should("include", "/embed-js?auth_method=user_session");
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Select your embed experience").should("be.visible");
+        });
     });
 
     it("Embed in production step should be locked until JWT is enabled", () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production")
+        .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
         .closest("button")
@@ -168,7 +176,7 @@ describe("scenarios - embedding hub", () => {
       cy.reload();
 
       cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production")
+        .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
         .closest("button")
@@ -183,14 +191,14 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/");
 
-      cy.findAllByText("Get started with Embedded Analytics JS")
+      cy.findAllByText("Get started with modular embedding")
         .first()
         .should("be.visible");
 
       cy.get("main").within(() => {
         cy.findByText("Create models").should("be.visible");
-        cy.findByText("Generate a dashboard").should("be.visible");
-        cy.findByText("Add data").should("be.visible").click();
+        cy.findByText("Create a dashboard").should("be.visible");
+        cy.findByText("Connect a database").should("be.visible").click();
       });
 
       cy.log("Sanity check: add data modal should open");
@@ -203,7 +211,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/");
 
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("not.exist");
     });
 
@@ -236,7 +244,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/");
 
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("be.visible");
 
       cy.log("Click overflow menu button on the embedding homepage");
@@ -248,8 +256,77 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Verify guide is dismissed and no longer visible");
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("not.exist");
+    });
+
+    it('"Pick a user strategy" card should open the edit strategy modal', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      H.main()
+        .findByText("Pick a user strategy")
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByText("Pick a user strategy").should("be.visible");
+        cy.findByText("Multi tenant").click();
+        cy.button("Apply").click();
+      });
+
+      cy.log("the internal prefix should show up on the page");
+      H.main().findByText("Internal users").should("be.visible");
+      H.main().findByText("Internal groups").should("be.visible");
+
+      cy.visit("/");
+
+      cy.log("'Pick a user strategy' should now be marked as done");
+      H.main()
+        .findByText("Pick a user strategy")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done", { timeout: 10_000 })
+        .should("be.visible");
+    });
+
+    it("should link to user strategy when tenants are disabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/people/user-strategy");
+    });
+
+    it("should link to tenants page when tenants are enabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      H.updateSetting("use-tenants", true);
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/tenants");
     });
   });
 });

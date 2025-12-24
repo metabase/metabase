@@ -26,8 +26,12 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]
+   [potemkin.types :as p]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (com.google.common.cache CacheBuilder RemovalCause RemovalNotification)
+   (java.util.concurrent TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -44,20 +48,17 @@
    [:re RemoteCheckedToken]
    [:re AirgapToken]])
 
-(def token-check-url
+(def ^:private ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
-  Specify the env var `METASTORE_DEV_SERVER_URL`."
-  (or
-   ;; only enable the changing the token check url during dev because we don't want people switching it out in production!
-   (when config/is-dev?
-     (some-> (env :metastore-dev-server-url)
-             ;; remove trailing slashes
-             (str/replace  #"/$" "")))
-   "https://token-check.metabase.com"))
-
-(def store-url
-  "Store URL, used as a fallback for token checks and for fetching the list of cloud gateway IPs."
-  "https://store.metabase.com")
+  Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
+  (let [dev-server-url          (some-> (env :metastore-dev-server-url) (str/replace #"/$" ""))
+        prod-token-check-url    "https://token-check.metabase.com"
+        staging-token-check-url "https://token-check.staging.metabase.com"]
+    ;; only enable changing the token check url during dev because we don't want people switching it out in production!
+    ;; additionally, we want to be able to run e2e tests against a staging server.
+    (if config/is-prod?
+      prod-token-check-url
+      (or dev-server-url staging-token-check-url))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
@@ -72,7 +73,11 @@
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
-                            (t2/count :model/User :is_active true :type :personal))]
+
+                            ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
+                            ;; the `after-select` method on users, which calls an EE method that needs ... a token
+                            ;; check :|
+                            (t2/count (t2/table-name :model/User) :is_active true :type "personal"))]
                (log/debug (u/colorize :green "=>") result)
                result))
       lock (Object.)]
@@ -150,80 +155,28 @@
                                                           [:email :string]]]]]
    [:quotas        {:optional true} [:sequential [:map]]]])
 
-(def ^:private ^:const token-status-cache-ttl
-  "Amount of time in ms to cache the status of a valid enterprise token before forcing a re-check."
-  (u/hours->ms 12))
-
-(def ^{:arglists '([token base-url site-uuid])} ^:private fetch-token-and-parse-body*
-  "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
-  cached, but may trigger the *store-circuit-breaker*."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[token base-url site-uuid]]
-                         [token base-url site-uuid])}
-   (fn [token base-url site-uuid]
-     (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
-     (let [{:keys [body status] :as resp} (some-> (token-status-url token base-url)
-                                                  (http/get {:query-params     (merge (stats-for-token-request)
-                                                                                      {:site-uuid  site-uuid
-                                                                                       :mb-version (:tag config/mb-version-info)})
-                                                             :throw-exceptions false}))]
-       (cond
-         (http/success? resp) (some-> body json/decode+kw)
-
-         (<= 400 status 499) (some-> body json/decode+kw)
-
-         ;; exceptions are not cached.
-         :else (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                                   :body body})))))
-
-   :ttl/threshold token-status-cache-ttl))
-
-(def ^:private store-circuit-breaker-config
-  {;; if 10 requests within 10 seconds fail, open the circuit breaker.
-   ;; (a lower threshold ratio wouldn't make sense here because successful results are cached, so as soon as we get
-   ;; one successful response we're guaranteed to only get successes until cache expiration)
-   :failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
-   ;; after the circuit is opened, wait 30 seconds before making any more requests to the store
-   :delay-ms (u/seconds->ms 30)
-   ;; when the circuit breaker is half-open, one request will be permitted. if it's successful, return to normal.
-   ;; otherwise we'll wait another 30 seconds.
-   :success-threshold 1})
-
-(def ^:dynamic *store-circuit-breaker*
-  "A circuit breaker that short-circuits when requests to the API have repeatedly failed.
-
-  This prevents a pathological scenario where the store has a temporary outage (long enough for the cache to expire)
-  and then all instances everywhere fire off constant requests to get token status. Instead, execution will constantly
-  fail instantly until the circuit breaker is closed."
-  (dh.cb/circuit-breaker store-circuit-breaker-config))
-
-(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
+(defn- http-fetch
+  [base-url token site-uuid]
+  (some-> (token-status-url token base-url)
+          (http/get {:query-params     (merge (stats-for-token-request)
+                                              {:site-uuid  site-uuid
+                                               :mb-version (:tag config/mb-version-info)})
+                     :throw-exceptions false})))
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
-  (try
-    (dh/with-circuit-breaker *store-circuit-breaker*
-      (dh/with-timeout {:timeout-ms fetch-token-status-timeout-ms
-                        :interrupt? true}
-        (try (fetch-token-and-parse-body* token base-url site-uuid)
-             (catch Exception e
-               (throw e)))))
-    (catch dev.failsafe.TimeoutExceededException _e
-      {:valid         false
-       :status        (tru "Unable to validate token")
-       :error-details (tru "Token validation timed out.")})
-    (catch dev.failsafe.CircuitBreakerOpenException _e
-      {:valid         false
-       :status        (tru "Unable to validate token")
-       :error-details (tru "Token validation is currently unavailable.")})
-    ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before rethrowing.
-    (catch dev.failsafe.FailsafeException e
-      (throw (.getCause e)))))
+  (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
+  (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
+    (cond
+      (http/success? resp) (some-> body json/decode+kw)
+      (<= 400 status 499) (or (some-> body json/decode+kw)
+                              {:valid false
+                               :status "Unable to validate token"
+                               :error-details "Token validation provided no response"})
 
-(defn clear-cache
-  "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
-  []
-  (memoize/memo-clear! fetch-token-and-parse-body*))
+      ;; exceptions are not cached.
+      :else (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                                :body body})))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -237,40 +190,42 @@
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
 
-(defn airgap-check-user-count
-  "Checks that, when in an airgap context, the allowed user count is acceptable."
+(defn- active-user-count []
+  ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid the `after-select` method
+  ;; on users, which calls an EE method that needs ... a token check :|
+  (t2/count (t2/table-name :model/User) :is_active true, :type "personal"))
+
+(defn assert-valid-airgap-user-count!
+  "Asserts that, in an airgap context, the current user count does not exceed the allowed maximum.
+   Throws if the limit is exceeded. Called when setting the token."
   []
   (when-let [max-users (max-users-allowed)]
-    (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
-      (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
+    (let [current-users (active-user-count)]
+      (when (> current-users max-users)
+        (throw (Exception.
+                (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                     max-users)))))))
 
-(mu/defn- fetch-token-status* :- TokenStatus
-  "Fetch info about the validity of `token` from the MetaStore."
+(defn assert-airgap-allows-user-creation!
+  "Asserts that creating a new personal user would not exceed the airgap user limit.
+   Throws if adding another user would overflow the limit. Called in user pre-insert."
+  []
+  (when-let [max-users (max-users-allowed)]
+    (when (>= (active-user-count) max-users)
+      (throw (Exception.
+              (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                   max-users))))))
+
+(mu/defn- decode-token* :- TokenStatus
+  "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
+  be caught further up with appropriate fall backs, retry strategies, and grace periods for features."
   [token :- TokenStr]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/
   (cond (mr/validate [:re RemoteCheckedToken] token)
-        ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
-        ;; reasonable amount of time throw a timeout exception
         (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
-          (try (fetch-token-and-parse-body token token-check-url site-uuid)
-               (catch Exception e1
-                 (log/errorf e1 "Error fetching token status from %s:" token-check-url)
-                 ;; Try the fallback URL, which was the default URL prior to 45.2
-                 (try (fetch-token-and-parse-body token store-url site-uuid)
-                      ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                      ;; first error and return a generic message about the token being invalid. This message
-                      ;; will get displayed in the Settings page in the admin panel so we do not want something
-                      ;; complicated
-                      (catch Exception e2
-                        (log/errorf e2 "Error fetching token status from %s:" store-url)
-                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body json/decode+kw))]
-                          (or
-                           body
-                           {:valid         false
-                            :status        (tru "Unable to validate token")
-                            :error-details (.getMessage e1)})))))))
+          (fetch-token-and-parse-body token token-check-url site-uuid))
 
         (mr/validate [:re AirgapToken] token)
         (do
@@ -286,40 +241,195 @@
 
 (def ^:dynamic *token-check-happening* "Var to prevent recursive calls to `fetch-token-status`" false)
 
-(let [lock (Object.)]
-  (defn- fetch-token-status
-    "Locked version of `fetch-token-status*` allowing one request at a time."
-    [token]
-    (when *token-check-happening*
-      (throw (ex-info "Token check is being called recursively, there is a good chance some `defenterprise` is causing this"
-                      {:pass-thru true})))
-    (locking lock
-      (binding [*token-check-happening* true]
-        (fetch-token-status* token)))))
+(p/defprotocol+ GracePeriod
+  "A protocol for providing a grace period for token features in the event they are not fetchable for a little while."
+  (save! [_ token features] "Save the features for a particular token.")
+  (retrieve [_ token] "Attempt to retrieve features associated with a token. This is best effort, perhaps never set,
+  perhaps has timed out. Possible this is nil."))
 
-(declare token-valid-now?)
+(defn guava-cache-grace-period
+  "Create a grace period of n units. This is just an expiring map using a guava cache. Note this is not sensitive to read times but to write times.
 
-(mu/defn- valid-token->features :- [:set ms/NonBlankString]
-  [token :- TokenStr]
-  (assert ((requiring-resolve 'metabase.app-db.core/db-is-set-up?)) "Metabase DB is not yet set up")
-  (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
-    ;; if token isn't valid throw an Exception with the `:status` message
-    (when-not valid
-      (throw (ex-info status
-                      {:status-code 400,
-                       :error-details error-details})))
-    (when (and (mr/validate [:re AirgapToken] token)
-               (not (token-valid-now? token-status)))
-      (throw (ex-info status
-                      {:status-code 400
-                       :error-details (tru "Airgapped token is no longer valid. Please contact Metabase support.")})))
-    ;; otherwise return the features this token supports
-    (set features)))
 
-(defn -token-status
-  "Getter for the [[metabase.premium-features.settings/token-status]] setting."
+  (let [grace (guava-cache-grace-period 20 TimeUnit/MILLISECONDS)]
+    (save! grace \"token\" #{\"features\"})
+    (println \"found tokens?: \"
+             (if (= (retrieve grace \"token\") #{\"features\"})
+               \"🟢\"
+               \"🔴\"))
+    (Thread/sleep 40)
+    (println \"expecting not to find tokens?: \"
+             (if (retrieve grace \"token\")
+               \"🔴\"
+               \"🟢\")))
+  found tokens?:  🟢
+  expecting not to find tokens?:  🟢
+  nil"
+  [^long n ^TimeUnit units]
+  (let [guava-cache (.. (CacheBuilder/newBuilder)
+                        (expireAfterWrite n units)
+                        (removalListener (fn [^RemovalNotification rn]
+                                           (let [cause (.getCause rn)]
+                                             (when (= RemovalCause/EXPIRED cause)
+                                               (log/warnf "Removing token: %s from grace period cache"
+                                                          (u.str/mask (.getKey rn)))))))
+                        (build))]
+    (reify GracePeriod
+      (save! [_ token features] (.put guava-cache token features))
+      (retrieve [_ token]
+        (when token
+          (let [value (.get guava-cache token (constantly ::not-present))]
+            (when-not (identical? value ::not-present)
+              value)))))))
+
+(p/defprotocol+ TokenChecker
+  "Protocol for checking tokens with cache management."
+  (-check-token [this token]
+    "Check a token and return TokenStatus map. May throw exceptions on failure.")
+  (-clear-cache! [this]
+    "Clear any caches in this checker and any wrapped checkers.
+     Returns nil. Implementations should delegate to wrapped checkers."))
+
+(def store-and-airgap-token-checker
+  "Creates a basic token checker that handles HTTP requests and airgap tokens.
+    No caching, no retries, no grace period - just the core logic."
+  (reify TokenChecker
+    (-check-token [_ token]
+      (decode-token* token))
+    (-clear-cache! [_]
+      ;; No cache to clear at this level
+      nil)))
+
+(defn circuit-breaker-token-checker
+  "Wraps a token checker with circuit breaker and timeout logic."
+  [token-checker {:keys [circuit-breaker timeout-ms lock]
+                  :or {lock (Object.)}}]
+  (let [breaker (dh.cb/circuit-breaker circuit-breaker)]
+    (reify TokenChecker
+      (-check-token [_ token]
+        (when *token-check-happening*
+          (throw (ex-info "Token check is being called recursively, there is a good chance some `defenterprise` is causing this"
+                          {:pass-thru true})))
+        ;; important to not count these errors against the circuit breaker. These are not the types of errors we need
+        ;; to circuit break. (#65294)
+        (when-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
+          (throw (ex-info "Metabase DB is not yet set up"
+                          {:reason :token-check/app-db-not-ready})))
+        (locking lock
+          (binding [*token-check-happening* true]
+            (try (dh/with-circuit-breaker breaker
+                   (dh/with-timeout {:timeout-ms timeout-ms
+                                     :interrupt? true}
+                     (-check-token token-checker token)))
+                 (catch dev.failsafe.CircuitBreakerOpenException _e
+                   (throw (ex-info (tru "Token validation is currently unavailable.")
+                                   {:cause :circuit-breaker})))
+                 ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before
+                 ;; rethrowing.
+                 (catch dev.failsafe.FailsafeException e
+                   (throw (.getCause e)))))))
+      (-clear-cache! [_]
+        ;; No cache at this level, but delegate to wrapped checker
+        (-clear-cache! token-checker)))))
+
+(defn cached-token-checker
+  "Wraps a token checker with TTL-based memoization."
+  [token-checker {:keys [ttl-ms]}]
+  (let [cached-check (memoize/ttl
+                      (fn [token] (-check-token token-checker token))
+                      :ttl/threshold ttl-ms)]
+    (reify TokenChecker
+      (-check-token [_ token]
+        (cached-check token))
+      (-clear-cache! [_]
+        ;; Clear THIS layer's cache
+        (memoize/memo-clear! cached-check)
+        ;; AND delegate to wrapped checker
+        (-clear-cache! token-checker)))))
+
+(defn grace-period-token-checker
+  "Wraps a token checker with grace period fallback logic."
+  [token-checker {:keys [grace-period]}]
+  (let [periodic-logger (memoize/ttl
+                         (fn [_token] (log/info "Using token from grace period"))
+                         :ttl/threshold (u/hours->ms 4))]
+    (reify TokenChecker
+      (-check-token [_ token]
+        (try (let [response (-check-token token-checker token)]
+               (save! grace-period token response)
+               response)
+             (catch Exception e
+               (or (when-let [grace (retrieve grace-period token)]
+                     (periodic-logger token)
+                     grace)
+                   (throw e)))))
+      (-clear-cache! [_]
+        ;; The grace period itself doesn't need clearing (it expires naturally)
+        ;; but we should clear the periodic logger cache
+        (memoize/memo-clear! periodic-logger)
+        ;; AND delegate to wrapped checker
+        (-clear-cache! token-checker)))))
+
+(defn- error-catching-token-checker
+  [token-checker]
+  (reify TokenChecker
+    (-check-token [_ token]
+      (try (-check-token token-checker token)
+           (catch Exception e
+             (u/ignore-exceptions (some-> (ex-data e) :body json/decode+kw))
+             {:valid         false
+              :status        (tru "Unable to validate token")
+              :error-details (.getMessage e)})))
+    (-clear-cache! [_] (-clear-cache! token-checker))))
+
+(def ^:dynamic *customize-checker*
+  "Dynamic variable allowing for customized token checkers. In the app, we want all of these in place. Only in tests
+  should we construct ones without circuit breakers "
+  false)
+
+(defn make-checker
+  "Make a token checker. Takes a base [[TokenChecker]] token checker and then arguments for the middleware-style
+  wrapping [[TokenChecker]] arguments. "
+  [{:keys [base circuit-breaker timeout-ms ttl-ms grace-period]
+    :or   {base store-and-airgap-token-checker}}]
+  (when-not *customize-checker*
+    (assert (and base circuit-breaker timeout-ms ttl-ms grace-period)
+            "Must provide all arguments for token checker"))
+  (cond-> base
+    ;; don't do it too much
+    circuit-breaker
+    (circuit-breaker-token-checker {:circuit-breaker circuit-breaker
+                                    :timeout-ms      timeout-ms})
+    ;; hold onto results for a while
+    ttl-ms
+    (cached-token-checker {:ttl-ms ttl-ms})
+    ;; in case of errors, if we have a recent response use it
+    grace-period
+    (grace-period-token-checker {:grace-period grace-period})
+    :always
+    (error-catching-token-checker)))
+
+(def token-checker
+  "The token checker. Combines http/airgapping vaildation, circuit breaking, grace periods, caching, and error
+  handling."
+  (make-checker {:base            store-and-airgap-token-checker
+                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
+                                   :delay-ms                          (u/seconds->ms 30)
+                                   :success-threshold                 1}
+                 :timeout-ms      (u/seconds->ms 10)
+                 :ttl-ms          (u/hours->ms 12)
+                 :grace-period    (guava-cache-grace-period 36 TimeUnit/HOURS)}))
+
+(defn clear-cache!
+  "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
   []
-  (some-> (premium-features.settings/premium-embedding-token) (fetch-token-status)))
+  (-clear-cache! token-checker))
+
+(defn check-token
+  "Public entrypoint to the token checking."
+  ([token] (check-token token-checker token))
+  ([checker token]
+   (-check-token checker token)))
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
@@ -328,12 +438,14 @@
   (try
     (when (seq new-value)
       (when (mr/validate [:re AirgapToken] new-value)
-        (airgap-check-user-count))
+        (assert-valid-airgap-user-count!))
       (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")
                         {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
-      (valid-token->features new-value)
+      (let [decoded (check-token new-value)]
+        (when-not (:valid decoded)
+          (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (catch Throwable e
@@ -359,7 +471,9 @@
     "Get the features associated with the system's premium features token."
     []
     (try
-      (or (some-> (premium-features.settings/premium-embedding-token) valid-token->features)
+      (or (some-> (premium-features.settings/premium-embedding-token)
+                  (check-token)
+                  :features set)
           #{})
       (catch Throwable e
         (when (:pass-thru (ex-data e))
@@ -367,19 +481,25 @@
         (cached-logger (premium-features.settings/premium-embedding-token) e)
         #{}))))
 
+(defn -token-status
+  "Getter for the [[metabase.premium-features.settings/token-status]] setting."
+  []
+  (some-> (premium-features.settings/premium-embedding-token)
+          (check-token)))
+
 (mu/defn plan-alias :- [:maybe :string]
   "Returns a string representing the instance's current plan, if included in the last token status request."
   []
   (some-> (premium-features.settings/premium-embedding-token)
-          fetch-token-status
+          (check-token)
           :plan-alias))
 
 (mu/defn quotas :- [:maybe [:sequential [:map]]]
   "Returns a vector of maps for each quota of the subscription."
   []
-  (memoize/memo-clear! fetch-token-and-parse-body*)
+  (clear-cache!)
   (some-> (premium-features.settings/premium-embedding-token)
-          fetch-token-status
+          (check-token)
           :quotas))
 
 (defn has-any-features?
@@ -429,9 +549,3 @@
   metabase-enterprise.premium-features.airgap
   [_]
   {})
-
-(defenterprise token-valid-now?
-  "In OSS, this returns false."
-  metabase-enterprise.premium-features.airgap
-  [_]
-  false)

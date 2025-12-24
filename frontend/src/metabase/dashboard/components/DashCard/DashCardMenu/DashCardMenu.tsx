@@ -3,8 +3,6 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import {
   canDownloadResults,
   canEditQuestion,
@@ -14,6 +12,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
@@ -73,7 +72,8 @@ export const DashCardMenu = ({
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
-    dashboardId: checkNotNull(dashboardId),
+    // dashboardId can be an entityId and the download endpoint expects a numeric id
+    dashboardId: checkNotNull(dashboard?.id ?? dashboardId),
     dashcardId,
     uuid,
     token,
@@ -106,9 +106,10 @@ export const DashCardMenu = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
-          onDownload={(opts) => {
+          onDownload={async (opts) => {
             close();
-            handleDownload(opts);
+
+            await handleDownload(opts);
           }}
         />
       );

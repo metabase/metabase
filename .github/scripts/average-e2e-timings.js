@@ -21,7 +21,6 @@ const collectAndAverageTimings = async ({
 
     const timingData = await downloadAndExtractArtifacts(
       artifacts,
-      token,
       github,
       context,
     );

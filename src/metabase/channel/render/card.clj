@@ -31,11 +31,6 @@
   [card]
   (h (urls/card-url (u/the-id card))))
 
-(defn- visualizer-dashcard-href
-  "Build deep linking href for visualizer dashcards"
-  [dashcard]
-  (h (str (urls/dashboard-url (:dashboard_id dashcard)) "#scrollTo=" (:id dashcard))))
-
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
@@ -44,8 +39,8 @@
                            (-> card :name))
           image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))
-          title-href   (if (render.util/is-visualizer-dashcard? dashcard)
-                         (visualizer-dashcard-href dashcard)
+          title-href   (if dashcard
+                         (urls/dashcard-url dashcard)
                          (card-href card))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
@@ -158,13 +153,20 @@
       (log/debugf "Rendering pulse card with chart-type %s and render-type %s" chart-type render-type)
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
-      (if (:card-error (ex-data e))
-        (do
-          (log/error e "Pulse card query error")
-          (body/render :card-error nil nil nil nil nil))
-        (do
-          (log/error e "Pulse card render error")
-          (body/render :render-error nil nil nil nil nil))))))
+      (let [data (ex-data e)]
+        (cond
+          (:render/too-large? data)
+          (do
+            (log/error "Pulse card query error: results too large")
+            (body/render :card-error/results-too-large nil nil nil nil data))
+
+          (:card-error data)
+          (do
+            (log/error e "Pulse card query error")
+            (body/render :card-error nil nil nil nil nil))
+          :else (do
+                  (log/error e "Pulse card render error")
+                  (body/render :render-error nil nil nil nil nil)))))))
 
 (mu/defn render-pulse-card :- ::body/RenderedPartCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
@@ -188,8 +190,8 @@
          {pulse-body       :content
           body-attachments :attachments
           text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
-         attachment-href                  (if (render.util/is-visualizer-dashcard? dashcard)
-                                            (visualizer-dashcard-href dashcard)
+         attachment-href                  (if dashcard
+                                            (urls/dashcard-url dashcard)
                                             (card-href card))
          inline-parameters                (when (:channel.render/include-inline-parameters? options)
                                             (-> dashcard :visualization_settings :inline_parameters))]

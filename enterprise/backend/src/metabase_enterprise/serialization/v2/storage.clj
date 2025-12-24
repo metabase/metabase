@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- escape-segment
+(defn escape-segment
   "Given a path segment, which is supposed to be the name of a single file or directory, escape any slashes inside it.
   This occurs in practice, for example with a `Field.name` containing a slash like \"Company/organization website\"."
   [segment]
@@ -47,7 +47,8 @@
   [stream root-dir]
   (let [settings (atom [])
         report   (atom {:seen [] :errors []})
-        opts     (merge {:root-dir root-dir} (serdes/storage-base-context))]
+        opts     (-> (serdes/storage-base-context)
+                     (assoc :root-dir root-dir))]
     (doseq [entity stream]
       (cond
         (instance? Exception entity)

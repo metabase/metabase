@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-
 interface HeaderCellProps {
   isSortable?: boolean;
   isSortedByColumn?: boolean;
@@ -28,8 +26,4 @@ export const RowCell = styled.td<RowCellProps>`
   color: ${(props) => props.isClickable && "var(--mb-color-brand)"};
   cursor: ${(props) => props.isClickable && "pointer"};
   text-align: ${(props) => props.isRightAligned && "right"};
-`;
-
-export const RemoveRowButton = styled(IconButtonWrapper)`
-  color: var(--mb-color-text-light);
 `;

@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import type { AlertVariant } from "./Alert";
 
@@ -16,17 +16,17 @@ interface AlertRootProps {
 const colorsByVariant = {
   border: {
     info: "var(--mb-color-bg-medium)",
-    error: "var(--mb-color-error)",
+    error: color("error"),
     warning: color("warning"),
   },
   background: {
     info: "var(--mb-color-bg-light)",
-    error: "var(--mb-color-bg-error)",
-    warning: lighten("warning", 0.5),
+    error: color("background-error"),
+    warning: color("bg-yellow"),
   },
   icon: {
     info: color("text-dark"),
-    error: "var(--mb-color-error)",
+    error: color("error"),
     warning: color("warning"),
   },
 };

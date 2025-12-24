@@ -4,8 +4,6 @@ export const MODAL_TYPES = {
   MOVE: "move",
   CLONE: "clone",
   ARCHIVE: "archive",
-  SAVED: "saved",
-  ADD_TO_DASHBOARD_SAVE: "add-to-dashboard-save",
   CREATE_ALERT: "create-alert",
   SAVE_QUESTION_BEFORE_EMBED: "save-question-before-embed",
   TURN_INTO_DATASET: "turn-into-dataset",

@@ -9,11 +9,15 @@ export const TAG_TYPES = [
   "channel",
   "cloud-migration",
   "collection",
+  "collection-tree",
   "content-translation",
   "dashboard",
   "dashboard-question-candidates",
   "database",
+  "dataset",
   "document",
+  "public-document",
+  "comment",
   "embedding-hub-checklist",
   "field",
   "field-values",
@@ -33,10 +37,12 @@ export const TAG_TYPES = [
   "snippet",
   "subscription",
   "subscription-channel",
+  "transform",
   "table",
   "task",
   "timeline",
   "timeline-event",
+  "transform",
   "user",
   "public-dashboard",
   "embed-dashboard",
@@ -45,6 +51,7 @@ export const TAG_TYPES = [
   "public-action",
   "unique-tasks",
   "user-key-value",
+  "tenant",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
@@ -62,4 +69,5 @@ export const TAG_TYPE_MAPPING = {
   metric: "card",
   snippet: "snippet",
   pulse: "subscription",
+  transform: "transform",
 } as const;

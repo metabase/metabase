@@ -1,10 +1,7 @@
 (ns metabase.query-processor.preprocess
+  (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.config.core :as config]
-   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This is allowed for now
-   ;; because the QP still returns legacy-style metadata (for now)
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -42,11 +39,13 @@
    [metabase.query-processor.middleware.validate :as validate]
    [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (set! *warn-on-reflection* true)
 
@@ -147,7 +146,7 @@
      query
      middleware)))
 
-(mu/defn query->expected-cols :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
+(mu/defn query->expected-cols :- [:maybe ::qp.schema/result-metadata.columns]
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."

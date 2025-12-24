@@ -1,8 +1,8 @@
 (ns metabase.driver.common.parameters.parse-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.lib.parse :as lib.parse]))
 
 (defn- param [field-name] (params/->Param field-name))

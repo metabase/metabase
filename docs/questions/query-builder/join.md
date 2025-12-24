@@ -15,7 +15,7 @@ After you click the "Join Data" button to add a join step, you'll need to pick t
 
 ![Picking the data to join](../images/join-pick-data.png)
 
-Next, you'll need to pick the columns you want to join on. This means you pick a column from the first table and a column from the second table, and the join will stitch rows together where the value from the first column equals the value in the second column. A very common example is joining on an ID column in each table. If you pick a table to join where there's a foreign key relationship between the tables, Metabase will automatically pick those corresponding ID columns for you. At the end of your join step, there's a "Columns" button you can click to choose which columns you want to include from the joined data.
+Next, you'll need to pick the columns you want to join on. This means you pick a column from the first table and a column from the second table, and the join will stitch rows together where the value from the first column equals the value in the second column. A common example is joining on an ID column in each table. If you pick a table to join where there's a foreign key relationship between the tables, Metabase will automatically pick those corresponding ID columns for you. At the end of your join step, there's a "Columns" button you can click to choose which columns you want to include from the joined data.
 
 By default, Metabase will do a left outer join, but you can click the Venn diagram icon to select a different type of join. Not all databases support all types of joins, so Metabase will only display the options supported by the database you're using.
 

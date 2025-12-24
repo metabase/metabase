@@ -3,21 +3,22 @@ caveats: null
 created_at: '2024-08-28T14:28:03.451106Z'
 creator_id: ann@heart.band
 definition:
-  aggregation:
-  - - count
-  filter:
-  - <
-  - - field
-    - - My Database
+  database: My Database
+  query:
+    filter:
+    - <
+    - - field
+      - - My Database
+        - null
+        - Schemaless Table
+        - Some Field
       - null
-      - Schemaless Table
-      - Some Field
+    - 18
+    source-table:
+    - My Database
     - null
-  - 18
-  source-table:
-  - My Database
-  - null
-  - Schemaless Table
+    - Schemaless Table
+  type: query
 description: Lookin' for a blueberry
 entity_id: TNdMrOCMHrQc_UtvCbTC5
 name: My Segment

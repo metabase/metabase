@@ -1,0 +1,145 @@
+import fetchMock from "fetch-mock";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import type { Collection, RemoteSyncEntity } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
+import { createMockRemoteSyncEntity } from "metabase-types/api/mocks/remote-sync";
+
+import { AllChangesView } from "./AllChangesView";
+
+const defaultCollection = createMockCollection({
+  id: 1,
+  name: "Entity Collection",
+});
+
+const updatedEntity = createMockRemoteSyncEntity({
+  collection_id: 1,
+});
+const removedEntity = createMockRemoteSyncEntity({
+  id: 2,
+  name: "Removed Question",
+  sync_status: "removed",
+  collection_id: 1,
+});
+const deletedEntity = createMockRemoteSyncEntity({
+  id: 3,
+  name: "Deleted Question",
+  sync_status: "delete",
+  collection_id: 1,
+});
+
+const setup = ({
+  entities = [updatedEntity],
+  collections = [defaultCollection],
+}: {
+  entities: RemoteSyncEntity[];
+  collections?: Collection[];
+}) => {
+  // Mock the new useListCollectionsTreeQuery endpoint format
+  fetchMock.get("path:/api/collection/tree", collections);
+  fetchMock.get("path:/api/session/properties", { "use-tenants": false });
+
+  renderWithProviders(<AllChangesView entities={entities} />);
+};
+
+describe("AllChangesView", () => {
+  describe("warning message", () => {
+    it("should show a warning when removing entities", () => {
+      setup({ entities: [updatedEntity, removedEntity] });
+
+      expect(screen.getByText(/that depend on the items/)).toBeInTheDocument();
+    });
+
+    it("should show a warning when deleting entities", () => {
+      setup({ entities: [updatedEntity, deletedEntity] });
+
+      expect(screen.getByText(/that depend on the items/)).toBeInTheDocument();
+    });
+
+    it("should not show a warning when no items have been removed or deleted", () => {
+      setup({ entities: [updatedEntity] });
+
+      expect(
+        screen.queryByText(/that depend on the items/),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("namespaced collections", () => {
+    it("should display collections from namespaces like shared-tenant-collection", async () => {
+      const namespacedCollection = createMockCollection({
+        id: 10,
+        name: "Tenant Collection",
+        namespace: "shared-tenant-collection",
+        effective_ancestors: [],
+      });
+      const entityInNamespacedCollection = createMockRemoteSyncEntity({
+        id: 20,
+        name: "Dashboard in Tenant Collection",
+        model: "dashboard",
+        collection_id: 10,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [entityInNamespacedCollection],
+        collections: [namespacedCollection],
+      });
+
+      expect(await screen.findByText("Tenant Collection")).toBeInTheDocument();
+      expect(
+        screen.getByText("Dashboard in Tenant Collection"),
+      ).toBeInTheDocument();
+    });
+
+    it("should display collection hierarchy for namespaced collections with ancestors", async () => {
+      const childCollection = createMockCollection({
+        id: 10,
+        name: "Child Tenant Collection",
+        namespace: "shared-tenant-collection",
+      });
+      // Use nested tree structure - parent contains child
+      const parentCollection = createMockCollection({
+        id: 5,
+        name: "Parent Tenant Collection",
+        namespace: "shared-tenant-collection",
+        children: [childCollection],
+      });
+      const entityInChildCollection = createMockRemoteSyncEntity({
+        id: 20,
+        name: "Item in Child Collection",
+        model: "card",
+        collection_id: 10,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [entityInChildCollection],
+        collections: [parentCollection],
+      });
+
+      expect(
+        await screen.findByText("Parent Tenant Collection"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Child Tenant Collection")).toBeInTheDocument();
+      expect(screen.getByText("Item in Child Collection")).toBeInTheDocument();
+    });
+
+    it("should display regular items in collections", async () => {
+      const entityInCollection = createMockRemoteSyncEntity({
+        id: 20,
+        name: "Regular Item",
+        model: "card",
+        collection_id: 1,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [entityInCollection],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Regular Item")).toBeInTheDocument();
+    });
+  });
+});

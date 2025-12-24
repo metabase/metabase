@@ -7,12 +7,20 @@
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
-                                     :value  \"2015-01-01~2016-09-01\"}}}"
-  (:refer-clojure :exclude [every? some mapv])
-  #_{:clj-kondo/ignore [:metabase/modules]}
+                                     :value  \"2015-01-01~2016-09-01\"}}}
+
+
+  DEPRECATED: `driver.common.parameters.*` namespaces deal with legacy MBQL queries. Migrate to MBQL-5-friendly
+  replacement namespaces. The replacement for this namespace is [[metabase.query-processor.parameters.values]].
+
+  TODO (Cam 10/3/25) -- that namespace was introduced in #61158, but then I removed it in a subsequent PR to prune
+  unused namespaces. We can't migrate to it if it's gone... please restore it when we start migrating usages of it
+  over."
+  {:deprecated "0.57.0"}
+  (:refer-clojure :exclude [every? some mapv not-empty get-in])
   (:require
    [clojure.string :as str]
-   [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -24,13 +32,13 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some mapv]])
+   [metabase.util.performance :refer [every? mapv some not-empty get-in]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -89,7 +97,7 @@
 
   Targeting template tags by ID is preferable (as of version 44) but targeting by name is supported for backwards
   compatibility."
-  [tag :- mbql.s/TemplateTag]
+  [tag :- ::mbql.s/TemplateTag]
   (let [target-type (case (:type tag)
                       (:dimension :temporal-unit) :dimension
                       :variable)]
@@ -113,7 +121,7 @@
 
 (mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
-  [tag    :- mbql.s/TemplateTag
+  [tag    :- ::mbql.s/TemplateTag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [tag-target? (tag-target-pred tag)]
     (seq (for [param params
@@ -127,6 +135,15 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
+(defn- multiple-conflicting-param-values-exception [param-display-name]
+  (ex-info (tru "Multiple conflicting values were given for ''{0}''" param-display-name)
+           {:type qp.error-type/multiple-conflicting-parameter-values}))
+
+(defn- multiple-conflicting-default-values-exception [param-display-name]
+  (ex-info (tru "No value was given for ''{0}'' and multiple filters have conflicting default values"
+                param-display-name)
+           {:type qp.error-type/multiple-conflicting-default-values}))
+
 (mu/defn- dimension->field-id :- ::lib.schema.id/field
   [dimension]
   (second dimension))
@@ -134,7 +151,7 @@
 (mu/defn- field-filter-value
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
-  [tag    :- mbql.s/TemplateTag
+  [tag    :- ::mbql.s/TemplateTag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
@@ -198,7 +215,7 @@
       params/no-value)))
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
-  [{:keys [dimension alias], :as tag} :- mbql.s/TemplateTag
+  [{:keys [dimension alias], :as tag} :- ::mbql.s/TemplateTag
    params                             :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (dimension->field-id dimension)]
@@ -209,7 +226,7 @@
     :alias alias}))
 
 (mu/defmethod parse-tag :card :- ReferencedCardQuery
-  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag _params]
+  [{:keys [card-id], :as tag} :- ::mbql.s/TemplateTag _params]
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -240,7 +257,7 @@
                 e))))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
-  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag
+  [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag
    _params]
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
@@ -293,29 +310,33 @@
 
 (mu/defn- param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
-  [tag    :- mbql.s/TemplateTag
+  [tag    :- ::mbql.s/TemplateTag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
-  (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
-                         ;; double-check and make sure we didn't end up with multiple mappings or something crazy like that.
-                         (when (> (count matching-params) 1)
-                           (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
-                                           {:type                qp.error-type/invalid-parameter
-                                            :template-tag        tag
-                                            :matching-parameters params})))
-                         (first matching-params))
-        nil-value?       (and matching-param
-                              (nil? (:value matching-param)))]
-    ;; But if the param is present in `params` and its value is nil, don't use the default.
-    ;; If the param is not present in `params` use a default from either the tag or the Dashboard parameter.
-    ;; If both the tag and Dashboard parameter specify a default value, prefer the default value from the tag.
-    (or (:value matching-param)
-        (when (and nil-value? (not (:required tag)))
-          params/no-value)
-        (:default tag)
-        (:default matching-param)
-        (if (:required tag)
-          (throw (missing-required-param-exception (:display-name tag)))
-          params/no-value))))
+  (let [matching-params (tag-params tag params)
+        real-values     (into #{} (keep :value)   matching-params)
+        defaults        (into #{} (keep :default) matching-params)]
+    (cond
+      ;; Multiple parameters with different values set does not make sense.
+      (> (count real-values) 1)
+      (throw (multiple-conflicting-param-values-exception (:display-name tag)))
+
+      ;; A single real value wins.
+      (= (count real-values) 1)   (first real-values)
+      ;; If some parameters matched, but none have values, AND this tag is not required, then return a blank value.
+      (and (seq matching-params)
+           (not (:required tag))) params/no-value
+
+      ;; Prefer the default value of the tag over those of the parameters.
+      (:default tag)              (:default tag)
+      ;; If there are conflicting default values among the parameters, throw.
+      (> (count defaults) 1)
+      (throw (multiple-conflicting-default-values-exception (:display-name tag)))
+      ;; If there is exactly one (distinct) default value among the matching parameters, use it.
+      (= (count defaults) 1)      (first defaults)
+      ;; No value at all - throw if this tag was required.
+      (:required tag)             (throw (missing-required-param-exception (:display-name tag)))
+      ;; Fall back to no value.
+      :else                       params/no-value)))
 
 (defmethod parse-tag :number
   [tag params]
@@ -433,7 +454,7 @@
 (mu/defn- value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
-  [tag    :- mbql.s/TemplateTag
+  [tag    :- ::mbql.s/TemplateTag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
@@ -452,7 +473,11 @@
     (query->params-map some-inner-query)
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
-  [{tags :template-tags, params :parameters} :- :map]
+  [{tags :template-tags, params :parameters, :as _inner-query} :- [:and
+                                                                   [:map]
+                                                                   [:fn
+                                                                    {:error/message "should be a legacy inner query"}
+                                                                    (complement :lib/type)]]]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags

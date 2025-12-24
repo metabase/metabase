@@ -18,6 +18,7 @@ import {
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import { extractRemappedColumns } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 
@@ -39,7 +40,11 @@ export function TableDetailPage({ params }: Props) {
   } = useGetTableQueryMetadataQuery({ id: tableId });
   const { data: tableForeignKeys } = useListTableForeignKeysQuery(tableId);
 
-  const tableQuery = useMemo(() => getTableQuery(table), [table]);
+  const metadata = useSelector(getMetadata);
+  const tableQuery = useMemo(
+    () => getTableQuery(metadata, table),
+    [metadata, table],
+  );
   const objectQuery = useMemo(() => {
     return tableQuery && table
       ? filterByPk(tableQuery, table.fields ?? [], rowId)
@@ -51,7 +56,7 @@ export function TableDetailPage({ params }: Props) {
     error: queryError,
     isLoading: isQueryLoading,
   } = useGetAdhocQueryQuery(
-    objectQuery ? Lib.toLegacyQuery(objectQuery) : skipToken,
+    objectQuery ? Lib.toJsQuery(objectQuery) : skipToken,
   );
 
   const error = tableError ?? queryError;

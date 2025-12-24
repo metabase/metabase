@@ -61,24 +61,28 @@
   width: 100%;
 }
 
-.optionalStepCard,
-.stepCardLink:has(.optionalStepCard) {
-  max-width: 15.625rem;
-}
-
-.requiredStepCard,
-.stepCardLink:has(.requiredStepCard) {
-  max-width: 30rem;
-}
-
 .lockedStepCard {
   cursor: not-allowed;
+  background-color: var(--mb-color-bg-light);
 }
 
 .stepCard:not(.lockedStepCard):hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background-hover-light);
 }
 
 .stepCard.nextStepCard {
   border: 1px solid var(--mb-color-metabase-brand) !important;
+}
+
+.infoAlertWrapper {
+  align-items: flex-start;
+}
+
+.infoAlertIcon {
+  margin-right: var(--mantine-spacing-xs);
+}
+
+.infoAlertMessage {
+  white-space: pre;
+  color: var(--mb-color-text-primary);
 }

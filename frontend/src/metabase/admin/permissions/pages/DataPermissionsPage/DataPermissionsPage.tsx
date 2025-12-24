@@ -3,9 +3,9 @@ import type { Route } from "react-router";
 import { useAsync } from "react-use";
 import _ from "underscore";
 
-import { useTableListQuery } from "metabase/common/hooks";
-import Databases from "metabase/entities/databases";
-import Groups from "metabase/entities/groups";
+import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
+import { Databases } from "metabase/entities/databases";
+import { Groups } from "metabase/entities/groups";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -45,7 +45,6 @@ function DataPermissionsPage({
   const showSplitPermsModal = useSelector((state) =>
     getSetting(state, "show-updated-permission-modal"),
   );
-
   const dispatch = useDispatch();
 
   const resetPermissions = () => dispatch(restoreLoadedPermissions());
@@ -67,15 +66,16 @@ function DataPermissionsPage({
     await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
   }, []);
 
-  const { isLoading: isLoadingTables } = useTableListQuery({
-    query: {
-      dbId: params.databaseId,
-      include_hidden: true,
-      remove_inactive: true,
-      skip_fields: true,
-    },
-    enabled: params.databaseId !== undefined,
-  });
+  const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
+    params.databaseId !== undefined
+      ? {
+          id: params.databaseId,
+          include_hidden: true,
+          remove_inactive: true,
+          skip_fields: true,
+        }
+      : skipToken,
+  );
 
   if (isLoadingAllUsers || isLoadingAdminstrators || isLoadingTables) {
     return (

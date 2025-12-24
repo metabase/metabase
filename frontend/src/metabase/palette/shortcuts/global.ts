@@ -72,9 +72,9 @@ export const globalShortcuts = {
     shortcutGroup: "global" as const,
   },
 
-  "report-issue": {
+  "download-diagnostics": {
     get name() {
-      return t`Report an issue`;
+      return t`Download diagnostics`;
     },
     shortcut: ["$mod+f1"],
     shortcutGroup: "global" as const,
@@ -136,10 +136,35 @@ export const globalShortcuts = {
 
   "navigate-embed-js": {
     get name() {
-      return t`Create a new embed`;
+      return t`New embed`;
     },
 
     shortcut: ["c e"],
     shortcutGroup: "global" as const,
+  },
+
+  "toggle-dark-mode": {
+    get name() {
+      return t`Toggle dark/light mode`;
+    },
+
+    section: "basic",
+    keywords:
+      "toggle, toggle dark, toggle light, dark, light, dark mode, light mode, theme, mode, night",
+    icon: "moon",
+
+    shortcut: ["$mod+Shift+KeyL"],
+    shortcutGroup: "global" as const,
+  },
+
+  "toggle-dark-mode-2": {
+    get name() {
+      return t`Toggle dark mode`;
+    },
+    shortcutGroup: "global" as const,
+    hide: true,
+    shortcut: [
+      "ArrowUp ArrowUp ArrowDown ArrowDown ArrowLeft ArrowRight ArrowLeft ArrowRight B A",
+    ],
   },
 };
