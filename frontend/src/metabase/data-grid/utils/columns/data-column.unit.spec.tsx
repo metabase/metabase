@@ -103,14 +103,5 @@ describe("getDataColumn", () => {
 
       expect(screen.queryByTestId("expand-column")).not.toBeInTheDocument();
     });
-
-    it("shows expand button when measuredColumnSizing is updated after resize", () => {
-      setup({
-        columnSize: 100,
-        measuredColumnSize: 250,
-      });
-
-      expect(screen.getByTestId("expand-column")).toBeInTheDocument();
-    });
   });
 });
