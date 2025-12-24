@@ -435,6 +435,15 @@ describe("command palette", () => {
     });
   });
 
+  it("should allow searching personal collections if no results and user is admin", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /search/i }).click();
+    cy.realType("asdf");
+    H.commandPalette()
+      .get("#search-results-metadata")
+      .should("contain", "Search everything");
+  });
+
   describe("ee", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");

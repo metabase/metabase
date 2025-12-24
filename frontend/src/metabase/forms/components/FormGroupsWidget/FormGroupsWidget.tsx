@@ -107,7 +107,6 @@ export const FormGroupsWidget = ({
         onAdd={handleAdd}
         onRemove={handleRemove}
         onChange={handleChange}
-        groupsTitle={title}
         isUserAdmin={isUserAdmin}
       />
     </FormField>
