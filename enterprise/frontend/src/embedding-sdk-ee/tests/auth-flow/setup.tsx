@@ -4,6 +4,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -50,6 +51,7 @@ export const setup = ({
     MOCK_CARD,
     createMockCardQueryMetadata({ databases: [MOCK_DB] }),
   );
+  setupCollectionsEndpoints({ collections: [] });
 
   const { state } = setupSdkState({
     sdkState: createMockSdkState({

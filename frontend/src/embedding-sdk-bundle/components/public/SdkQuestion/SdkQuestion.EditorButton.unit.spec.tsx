@@ -5,6 +5,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionsEndpoints,
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
@@ -74,6 +75,8 @@ const setup = ({
   setupTableEndpoints(TEST_TABLE);
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
+
+  setupCollectionsEndpoints({ collections: [] });
 
   const clickSpy = jest.fn();
 

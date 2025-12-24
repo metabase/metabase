@@ -7,6 +7,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionsEndpoints,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
@@ -132,6 +133,10 @@ const setup = async ({
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
   setupEntityIdEndpoint({ card: { [TEST_ENTITY_ID]: TEST_CARD_ID } });
+
+  setupCollectionsEndpoints({
+    collections: [],
+  });
 
   renderWithSDKProviders(
     <SdkQuestion
