@@ -398,8 +398,9 @@ describe("issue 51020", () => {
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");
       /**
-       * we need to "wait" until first recent_selections is completed, then after
-       * clicking "Save button" there will be another one we must wait for.
+       * we need to wait for the recent_selections twice as two requests are made in this test:
+       * 1. Somewhere before this line
+       * 2. After clicking on the "Save" button. - this is a must to wait as it re-initializes the form and interferes with typing
        */
       cy.wait("@recents_selections");
       cy.button("Save").click();
@@ -434,7 +435,7 @@ describe("issue 51020", () => {
       dropTemporaryTable();
     });
 
-    it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL (metabase#51020)", () => {
+    it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL x(metabase#51020)", () => {
       cy.log(
         "check when primary key parameter is populated with click behavior",
       );
