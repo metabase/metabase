@@ -5,6 +5,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionsEndpoints,
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
@@ -75,6 +76,8 @@ const setup = ({
 
   setupDatabaseEndpoints(TEST_DB);
   setupTableEndpoints(TEST_TABLE);
+
+  setupCollectionsEndpoints({ collections: [] });
 
   const children = (
     <div>
