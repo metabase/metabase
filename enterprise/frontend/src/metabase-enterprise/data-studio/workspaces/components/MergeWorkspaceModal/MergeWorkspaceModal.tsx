@@ -2,7 +2,7 @@ import { unifiedMergeView } from "@codemirror/merge";
 import cx from "classnames";
 import { diffLines } from "diff";
 import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
@@ -19,7 +19,9 @@ import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMir
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
+  Collapse,
   Flex,
+  Group,
   Icon,
   Loader,
   Modal,
@@ -28,6 +30,7 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  useGetWorkspaceProblemsQuery,
   useLazyGetTransformQuery,
   useLazyGetWorkspaceTransformQuery,
 } from "metabase-enterprise/api";
@@ -40,6 +43,14 @@ import type {
 } from "metabase-types/api";
 
 import S from "./MergeWorkspaceModal.module.css";
+import type { ProblemCheckCategory } from "./problemUtils";
+import {
+  formatProblemDetails,
+  getCheckName,
+  getCheckStatus,
+  getCheckStatusWithUnused,
+  groupProblemsByCategory,
+} from "./problemUtils";
 
 const MAX_COMMIT_MESSAGE_LENGTH = 255;
 
@@ -108,12 +119,118 @@ function computeDiffStats(
   return { additions, deletions };
 }
 
+const QualityChecksSection = ({
+  workspaceId,
+}: {
+  workspaceId: WorkspaceId;
+}) => {
+  const { data: problems = [], isLoading } =
+    useGetWorkspaceProblemsQuery(workspaceId);
+  const grouped = useMemo(() => groupProblemsByCategory(problems), [problems]);
+  const [expandedChecks, setExpandedChecks] = useState<
+    Set<ProblemCheckCategory>
+  >(new Set());
+
+  const checkCategories: ProblemCheckCategory[] = [
+    "external-dependencies",
+    "internal-dependencies",
+    "structural-issues",
+    "unused-outputs",
+  ];
+
+  const toggleCheck = (category: ProblemCheckCategory) => {
+    setExpandedChecks((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <Stack gap="sm">
+      <Text fw="bold">{t`Quality Checks`}</Text>
+      <Stack gap="sm">
+        {checkCategories.map((category) => {
+          const categoryProblems = grouped[category];
+          const checkStatus =
+            category === "unused-outputs"
+              ? getCheckStatusWithUnused(categoryProblems)
+              : getCheckStatus(categoryProblems);
+          const isExpanded = expandedChecks.has(category);
+          const hasProblems = checkStatus.count > 0;
+
+          return (
+            <Box key={category}>
+              <Group
+                justify="space-between"
+                style={{ cursor: hasProblems ? "pointer" : "default" }}
+                onClick={() => hasProblems && toggleCheck(category)}
+              >
+                <Text>{getCheckName(category)}</Text>
+                {isLoading ? (
+                  <Loader size="xs" />
+                ) : (
+                  <Group gap="xs">
+                    {checkStatus.status === "passed" && (
+                      <Icon name="check" size={14} c="success" />
+                    )}
+                    <Text
+                      c={
+                        checkStatus.status === "passed"
+                          ? "success"
+                          : checkStatus.problems.some(
+                                (p) => p.severity === "error",
+                              )
+                            ? "error"
+                            : "warning"
+                      }
+                    >
+                      {checkStatus.status === "passed"
+                        ? category === "unused-outputs" && checkStatus.count > 0
+                          ? t`${checkStatus.count} info`
+                          : t`Passed`
+                        : checkStatus.count === 1
+                          ? t`Failed`
+                          : t`${checkStatus.count} issues`}
+                    </Text>
+                  </Group>
+                )}
+              </Group>
+              {hasProblems && (
+                <Collapse in={isExpanded}>
+                  <Stack gap="xs" mt="xs" pl="md">
+                    {checkStatus.problems.map((problem, idx) => (
+                      <Box key={idx}>
+                        <Text size="sm" c="text-medium">
+                          {formatProblemDetails(problem)}
+                        </Text>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Collapse>
+              )}
+            </Box>
+          );
+        })}
+      </Stack>
+    </Stack>
+  );
+};
+
 const OverviewPanel = ({
   commitMessageLength = 0,
   hasCommitMessageError,
+  workspaceId,
+  transformCount,
 }: {
   commitMessageLength?: number;
   hasCommitMessageError: boolean;
+  workspaceId: WorkspaceId;
+  transformCount: number;
 }) => {
   return (
     <Box p="xl" h="100%" style={{ overflowY: "auto" }}>
@@ -139,6 +256,22 @@ const OverviewPanel = ({
             </Text>
           )}
         </Stack>
+        <QualityChecksSection workspaceId={workspaceId} />
+        <Box
+          p="md"
+          style={{
+            backgroundColor: "var(--mb-color-bg-light)",
+            borderRadius: "var(--mb-radius-sm)",
+          }}
+        >
+          <Text>
+            {ngettext(
+              msgid`${transformCount} transform will be merged`,
+              `${transformCount} transforms will be merged`,
+              transformCount,
+            )}
+          </Text>
+        </Box>
       </Stack>
     </Box>
   );
@@ -317,6 +450,13 @@ export const ReviewChangesModal = ({
   const { sendErrorToast } = useMetadataToasts();
   const validationSchema = useMemo(() => getMergeWorkspaceSchema(), []);
 
+  const { data: workspaceProblems = [] } =
+    useGetWorkspaceProblemsQuery(workspaceId);
+  const hasBlockingProblems = useMemo(
+    () => workspaceProblems.some((p) => p.block_merge === true),
+    [workspaceProblems],
+  );
+
   const updatedTransforms = useMemo(
     () => workspaceTransforms.filter((t) => t.global_id != null),
     [workspaceTransforms],
@@ -423,6 +563,8 @@ export const ReviewChangesModal = ({
                   <OverviewPanel
                     commitMessageLength={values.commit_message?.length}
                     hasCommitMessageError={!!errors.commit_message}
+                    workspaceId={workspaceId}
+                    transformCount={updatedTransforms.length}
                   />
                 ) : selectedTransform ? (
                   <DiffView
@@ -446,7 +588,8 @@ export const ReviewChangesModal = ({
               <FormSubmitButton
                 disabled={
                   !values.commit_message?.trim() ||
-                  (touched.commit_message && !!errors.commit_message)
+                  (touched.commit_message && !!errors.commit_message) ||
+                  hasBlockingProblems
                 }
                 label={t`Merge`}
                 loading={isLoading}

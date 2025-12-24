@@ -217,34 +217,82 @@ export type WorkspaceTableRef = {
   table: string;
 };
 
-export type WorkspaceProblemMissingInputTable = {
-  type: "missing-input-table";
-  data: {
-    "entity-type": "workspace-transform";
-    "entity-id": string;
-    table: WorkspaceTableRef;
+export type WorkspaceProblemCategory =
+  | "unused"
+  | "internal-downstream"
+  | "external-downstream"
+  | "internal"
+  | "external";
+
+export type WorkspaceProblemType =
+  | "not-run"
+  | "stale"
+  | "failed"
+  | "removed-field"
+  | "removed-table"
+  | "target-conflict"
+  | "cycle";
+
+export type WorkspaceProblemSeverity = "error" | "warning" | "info";
+
+// Problem data structures (examples from API response)
+export type WorkspaceProblemDataRemovedField = {
+  output: {
+    db_id: DatabaseId;
+    producer?: {
+      type: "workspace-transform" | "external-transform";
+      id: string | number;
+    };
+    global: {
+      schema: string;
+      table: string;
+    };
+    isolated?: {
+      db_id?: DatabaseId;
+      schema: string;
+      table: string;
+    };
+  };
+  transform: {
+    type: "workspace-transform" | "external-transform";
+    id: string | number;
+    name?: string;
+  };
+  "bad-refs": Array<{
+    type: "field";
+    data: {
+      id: number;
+      name: string;
+      base_type: string;
+    };
+  }>;
+};
+
+export type WorkspaceProblemDataNotRun = {
+  output: {
+    isolated?: {
+      db_id: DatabaseId;
+      schema: string;
+      table: string;
+    };
+  };
+  transform: {
+    type: "workspace-transform" | "external-transform";
+    id: string | number;
   };
 };
 
-export type WorkspaceProblemTargetConflict = {
-  type: "target-conflict";
-  data: {
-    table: WorkspaceTableRef;
-    entities: WorkspaceEntityRef[];
-  };
+export type WorkspaceProblem = {
+  category: WorkspaceProblemCategory;
+  problem: WorkspaceProblemType;
+  severity: WorkspaceProblemSeverity;
+  block_merge: boolean;
+  description: string;
+  data:
+    | WorkspaceProblemDataRemovedField
+    | WorkspaceProblemDataNotRun
+    | Record<string, unknown>; // Varies by problem type
 };
-
-export type WorkspaceProblemCycle = {
-  type: "cycle";
-  data: {
-    path: WorkspaceEntityRef[];
-  };
-};
-
-export type WorkspaceProblem =
-  | WorkspaceProblemMissingInputTable
-  | WorkspaceProblemTargetConflict
-  | WorkspaceProblemCycle;
 
 export type WorkspaceLogEntryId = number;
 
