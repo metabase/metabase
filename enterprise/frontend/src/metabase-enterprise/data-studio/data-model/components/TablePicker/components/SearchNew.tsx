@@ -118,7 +118,7 @@ export function SearchNew({
   const { isExpanded, toggle } = useExpandedState(
     {},
     {
-      defaultClosed: false,
+      defaultExpanded: true,
     },
   );
 
