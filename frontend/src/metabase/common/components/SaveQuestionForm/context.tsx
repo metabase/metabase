@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import {
   type PropsWithChildren,
   createContext,
@@ -7,6 +8,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePrevious } from "react-use";
+import { isEqual } from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useListRecentsQuery } from "metabase/api";
@@ -59,6 +62,7 @@ export const SaveQuestionContext =
  *
  * Thanks for coming to my TED talk.
  * */
+
 export const SaveQuestionProvider = ({
   question,
   originalQuestion: latestOriginalQuestion,
@@ -187,30 +191,30 @@ export const SaveQuestionProvider = ({
       initialValues={initialValues}
       onSubmit={handleSubmit}
       validationSchema={SAVE_QUESTION_SCHEMA}
-      enableReinitialize
     >
       {({ values, setValues }) => (
-        <SaveQuestionContext.Provider
-          value={{
-            question,
-            originalQuestion,
-            initialValues,
-            handleSubmit,
-            values,
-            setValues,
-            showSaveType,
-            multiStep,
-            targetCollection,
-            saveToDashboard,
-          }}
-        >
-          {children}
-        </SaveQuestionContext.Provider>
+        <FormValuesPatcher nextValues={initialValues}>
+          <SaveQuestionContext.Provider
+            value={{
+              question,
+              originalQuestion,
+              initialValues,
+              handleSubmit,
+              values,
+              setValues,
+              showSaveType,
+              multiStep,
+              targetCollection,
+              saveToDashboard,
+            }}
+          >
+            {children}
+          </SaveQuestionContext.Provider>
+        </FormValuesPatcher>
       )}
     </FormProvider>
   );
 };
-
 export const useSaveQuestionContext = () => {
   const context = useContext(SaveQuestionContext);
   if (!context) {
@@ -219,4 +223,35 @@ export const useSaveQuestionContext = () => {
     );
   }
   return context;
+};
+
+/**
+ * Patches form values when `nextValues` change asynchronously (e.g., after API calls).
+ * Only applies updates to fields whose values differ from the initial ones,
+ * avoiding overwriting user input. This is intentional, since patching unchanged
+ * fields makes no sense — the user may have already modified them.
+ * Uses deep comparison to correctly handle nested object values.
+ */
+const FormValuesPatcher = <T extends object>({
+  nextValues,
+  children,
+}: PropsWithChildren<{ nextValues: T }>) => {
+  const { values: formValues, setValues } = useFormikContext<T>();
+  const prevValues = usePrevious(nextValues);
+  useEffect(() => {
+    if (!prevValues || isEqual(nextValues, prevValues)) {
+      return;
+    }
+    const patches: Partial<T> = {};
+    for (const key of Object.keys(nextValues) as (keyof T)[]) {
+      if (isEqual(formValues[key], prevValues[key])) {
+        patches[key] = nextValues[key];
+      }
+    }
+    if (Object.keys(patches).length > 0) {
+      setValues({ ...formValues, ...patches });
+    }
+  }, [nextValues, prevValues, formValues, setValues]);
+
+  return children;
 };
