@@ -297,83 +297,31 @@
                                    [(lib/= (meta/field-metadata :venues :name)
                                            (meta/field-metadata :categories :name))])))))
 
-(comment
-  (require (quote [metabase.lib-be.hash-test :as test]))
-  (let [q1 (query-with-simple-join) q2 (query-with-simple-join)]
-    (= (query-hash-hex q1) (query-hash-hex q2)))
-  -)
-
 (deftest ^:parallel mbql5-aggregation-ref-uuid-test
-  (testing "MBQL 5 queries with aggregation references should hash the same regardless of UUID values (#QUE-xxxx)"
-    (testing "order-by referencing an aggregation"
-      ;; In MBQL 5, aggregation refs look like [:aggregation {:lib/uuid "ref-uuid"} "agg-uuid"]
-      ;; where "agg-uuid" is the :lib/uuid of the aggregation being referenced.
-      ;; Two semantically identical queries created at different times will have different UUIDs,
-      ;; but should produce the same hash.
-      ;; Each call to query-with-aggregation-order-by creates a fresh query with new UUIDs.
-      (let [query-1 (query-with-aggregation-order-by)
-            query-2 (query-with-aggregation-order-by)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Semantically identical queries with different UUIDs should have the same hash")))
-    (testing "multiple aggregations with order-by referencing different ones"
-      ;; ordering by the first aggregation should differ from ordering by the second
+  (testing "MBQL 5 queries with aggregation references should hash the same regardless of UUID values"
+    ;; In MBQL 5, aggregation refs look like [:aggregation {:lib/uuid "ref-uuid"} "agg-uuid"]
+    ;; where "agg-uuid" is the :lib/uuid of the aggregation being referenced.
+    ;; Two semantically identical queries created at different times will have different UUIDs,
+    ;; but should produce the same hash.
+    (are [query-fn] (= (query-hash-hex (query-fn))
+                       (query-hash-hex (query-fn)))
+      query-with-aggregation-order-by
+      query-with-aggregation-expression
+      ;; The following are nonsensical but allowed by the schema
+      query-with-aggregation-in-breakout
+      query-with-aggregation-in-filter
+      query-with-aggregation-in-fields
+      query-with-aggregation-in-join-condition
+      query-with-simple-join
+      query-with-join-subquery-aggregation)
+    (testing "ordering by different aggregations should produce different hashes"
       (letfn [(query-order-by-aggregation [agg-index]
                 (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/aggregate (lib/count))
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
                     (as-> $q (lib/order-by $q (lib/aggregation-ref $q agg-index)))))]
         (is (not= (query-hash-hex (query-order-by-aggregation 0))
-                  (query-hash-hex (query-order-by-aggregation 1)))
-            "Ordering by different aggregations should produce different hashes")))
-    (testing "aggregation expression referencing other aggregations"
-      ;; An aggregation like (+ count sum) references other aggregations by UUID
-      ;; Two semantically identical queries should hash the same
-      (let [query-1 (query-with-aggregation-expression)
-            query-2 (query-with-aggregation-expression)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Aggregation expressions with different UUIDs should have the same hash")))
-    ;; The following test cases are nonsensical from a semantic standpoint, but the schema and lib functions allow
-    ;; constructing such queries. The proper fix might be to disallow them, but for now we ensure they hash correctly.
-    (testing "aggregation ref in breakout"
-      (let [query-1 (query-with-aggregation-in-breakout)
-            query-2 (query-with-aggregation-in-breakout)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Breakout with aggregation ref should hash the same")))
-    (testing "aggregation ref in filter"
-      (let [query-1 (query-with-aggregation-in-filter)
-            query-2 (query-with-aggregation-in-filter)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Filter with aggregation ref should hash the same")))
-    (testing "aggregation ref in fields"
-      (let [query-1 (query-with-aggregation-in-fields)
-            query-2 (query-with-aggregation-in-fields)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Fields with aggregation ref should hash the same")))
-    (testing "aggregation ref in join condition"
-      (let [query-1 (query-with-aggregation-in-join-condition)
-            query-2 (query-with-aggregation-in-join-condition)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Join condition with aggregation ref should hash the same")))
-    (testing "simple join without aggregation refs"
-      ;; This test verifies that joins themselves hash correctly regardless of UUIDs
-      (let [query-1 (query-with-simple-join)
-            query-2 (query-with-simple-join)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Simple joins should hash the same regardless of UUIDs")))
-    (testing "join with subquery containing aggregation refs"
-      ;; This tests that the aggregation ref encoder is applied to stages inside joins
-      (let [query-1 (query-with-join-subquery-aggregation)
-            query-2 (query-with-join-subquery-aggregation)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Join subqueries with aggregation refs should hash the same")))))
+                  (query-hash-hex (query-order-by-aggregation 1))))))))
 
 ;; Test cases for :any typed schema positions that can contain :lib/uuid
 ;; These test the issue where Malli encoders don't apply to values typed as :any
@@ -425,36 +373,15 @@
 
 (deftest ^:parallel any-typed-schema-positions-test
   (testing "Expressions using :any typed schema positions should hash consistently"
-    (testing "arithmetic expression with field refs (+ uses [:+ {:min 2} :any])"
-      (let [query-1 (query-with-arithmetic-expression)
-            query-2 (query-with-arithmetic-expression)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Arithmetic expressions should hash the same regardless of UUIDs")))
-    (testing "nested arithmetic expression"
-      (let [query-1 (query-with-nested-arithmetic)
-            query-2 (query-with-nested-arithmetic)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Nested arithmetic expressions should hash the same regardless of UUIDs")))
-    (testing "case expression with field refs"
-      (let [query-1 (query-with-case-expression)
-            query-2 (query-with-case-expression)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Case expressions should hash the same regardless of UUIDs")))
-    (testing "coalesce expression with field refs"
-      (let [query-1 (query-with-coalesce-expression)
-            query-2 (query-with-coalesce-expression)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Coalesce expressions should hash the same regardless of UUIDs")))
-    (testing "concat expression with field refs"
-      (let [query-1 (query-with-concat-expression)
-            query-2 (query-with-concat-expression)]
-        (is (= (query-hash-hex query-1)
-               (query-hash-hex query-2))
-            "Concat expressions should hash the same regardless of UUIDs")))))
+    ;; The :+ clause schema uses [:+ {:min 2} :any] for its args, so nested
+    ;; field refs with :lib/uuid need post-processing to strip UUIDs.
+    (are [query-fn] (= (query-hash-hex (query-fn))
+                       (query-hash-hex (query-fn)))
+      query-with-arithmetic-expression
+      query-with-nested-arithmetic
+      query-with-case-expression
+      query-with-coalesce-expression
+      query-with-concat-expression)))
 
 ;; Test demonstrating that maps under :any typed schema positions don't get sorted,
 ;; causing different hashes when key order varies. This test should FAIL until we
