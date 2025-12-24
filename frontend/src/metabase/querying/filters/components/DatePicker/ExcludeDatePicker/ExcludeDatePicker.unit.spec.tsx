@@ -214,33 +214,32 @@ describe("ExcludeDatePicker", () => {
 
       await userEvent.click(screen.getByText("Hours of the day…"));
 
-      expect(screen.getByLabelText("12 AM")).toBeInTheDocument();
-      expect(screen.getByLabelText("1 AM")).toBeInTheDocument();
-      expect(screen.getByLabelText("11 AM")).toBeInTheDocument();
-      expect(screen.getByLabelText("12 PM")).toBeInTheDocument();
-      expect(screen.getByLabelText("1 PM")).toBeInTheDocument();
-      expect(screen.getByLabelText("11 PM")).toBeInTheDocument();
+      ["AM", "PM"].forEach((suffix) => {
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].forEach((hour) => {
+          expect(
+            screen.getByLabelText(`${hour} ${suffix}`),
+          ).toBeInTheDocument();
+        });
+      });
     });
 
     it("should display hours in 24-hour format when setting is HH:mm", async () => {
       setup({ timeStyle: "HH:mm" });
 
       await userEvent.click(screen.getByText("Hours of the day…"));
-
-      expect(screen.getByLabelText("00:00")).toBeInTheDocument();
-      expect(screen.getByLabelText("01:00")).toBeInTheDocument();
-      expect(screen.getByLabelText("12:00")).toBeInTheDocument();
-      expect(screen.getByLabelText("17:00")).toBeInTheDocument();
-      expect(screen.getByLabelText("23:00")).toBeInTheDocument();
+      Array.from({ length: 24 }).forEach((_, hour) => {
+        const label = hour.toString().padStart(2, "0") + ":00";
+        expect(screen.getByLabelText(label)).toBeInTheDocument();
+      });
     });
 
     it("should exclude hours correctly with 24-hour format", async () => {
       const { onChange } = setup({ timeStyle: "HH:mm" });
 
       await userEvent.click(screen.getByText("Hours of the day…"));
-      await userEvent.click(screen.getByLabelText("00:00"));
-      await userEvent.click(screen.getByLabelText("09:00"));
-      await userEvent.click(screen.getByLabelText("17:00"));
+      ["00:00", "09:00", "17:00"].forEach(async (label) => {
+        await userEvent.click(screen.getByLabelText(label));
+      });
       await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
       expect(onChange).toHaveBeenCalledWith({
