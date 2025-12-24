@@ -92,5 +92,58 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
         });
       });
     });
+
+    it("should not show Save button when opening an existing question from a read-only collection", () => {
+      H.prepareSdkIframeEmbedTest({
+        withToken: "bleeding-edge",
+        signOut: false,
+      });
+
+      H.createCollection({
+        name: "Read Only Collection",
+      }).then(({ body: collection }) => {
+        cy.updateCollectionGraph({
+          [DATA_GROUP_ID]: {
+            root: READ,
+            [collection.id]: READ,
+          },
+        });
+
+        H.createQuestion({
+          name: "Test Question",
+          query: { "source-table": ORDERS_ID },
+          collection_id: collection.id,
+        });
+
+        cy.signIn("nocollection");
+
+        setupEmbed(`
+          <metabase-browser
+            initial-collection="${collection.id}"
+            read-only="false"
+          />
+        `);
+
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByText("Test Question").should("be.visible").click();
+
+          cy.findByTestId("visualization-root").should("be.visible");
+
+          cy.findByTestId("interactive-question-result-toolbar")
+            .findByText("Filter")
+            .click();
+        });
+
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findAllByTestId("dimension-list-item").findByText("ID").click();
+          cy.findByPlaceholderText("Enter an ID").type("1");
+          cy.findByText("Add filter").click();
+        });
+
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByRole("button", { name: "Save" }).should("not.exist");
+        });
+      });
+    });
   });
 });
