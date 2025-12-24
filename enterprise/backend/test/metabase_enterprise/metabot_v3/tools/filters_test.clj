@@ -4,9 +4,11 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -718,7 +720,7 @@
                             (metabot-v3.tools.filters/query-datasource
                              {:model-id model-id}))))))
 
-(defn- pmbql-measure-definition
+(defn- mbql-measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [table-id field-id]
   (let [mp (mt/metadata-provider)
@@ -727,7 +729,7 @@
         field (lib.metadata/field mp field-id)]
     (lib/aggregate query (lib/sum field))))
 
-(defn- pmbql-segment-definition
+(defn- mbql-segment-definition
   "Create an MBQL5 segment definition with a filter."
   [table-id field-id value]
   (let [mp (mt/metadata-provider)
@@ -736,6 +738,30 @@
         field (lib.metadata/field mp field-id)]
     (lib/filter query (lib/> field value))))
 
+(defn- add-mock-segment
+  "Add a mock segment to a metadata provider."
+  [base-mp segment-id table-id definition]
+  (lib.tu/mock-metadata-provider
+   base-mp
+   {:segments [{:lib/type   :metadata/segment
+                :id         segment-id
+                :name       (str "Mock Segment " segment-id)
+                :table-id   table-id
+                :archived   false
+                :definition definition}]}))
+
+(defn- add-mock-measure
+  "Add a mock measure to a metadata provider."
+  [base-mp measure-id table-id definition]
+  (lib.tu/mock-metadata-provider
+   base-mp
+   {:measures [{:lib/type   :metadata/measure
+                :id         measure-id
+                :name       (str "Mock Measure " measure-id)
+                :table-id   table-id
+                :archived   false
+                :definition definition}]}))
+
 (deftest query-metric-with-segment-filter-test
   (let [mp (mt/metadata-provider)
         created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
@@ -743,37 +769,38 @@
                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
                          (lib/breakout (lib/with-temporal-bucket created-at-meta :month)))
         legacy-metric-query (lib.convert/->legacy-MBQL metric-query)
-        segment-def (pmbql-segment-definition (mt/id :orders) (mt/id :orders :total) 50)]
+        segment-def (mbql-segment-definition (mt/id :orders) (mt/id :orders :total) 50)
+        mock-segment-id 1
+        mock-mp (add-mock-segment mp mock-segment-id (mt/id :orders) segment-def)]
     (mt/with-temp [:model/Card {metric-id :id} {:dataset_query legacy-metric-query
                                                 :database_id (mt/id)
                                                 :name "Total Orders"
-                                                :type :metric}
-                   :model/Segment {segment-id :id} {:name       "Large Orders"
-                                                    :table_id   (mt/id :orders)
-                                                    :definition segment-def}]
+                                                :type :metric}]
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "query-metric with segment filter applies the segment"
-          (let [result (metabot-v3.tools.filters/query-metric
-                        {:metric-id metric-id
-                         :filters [{:segment-id segment-id}]
-                         :group-by []})
-                query (get-in result [:structured-output :query])
-                filters (get-in query [:stages 0 :filters])]
-            (is (some? (:structured-output result)))
-            (is (= :query (get-in result [:structured-output :type])))
-            ;; Check that a segment filter is present
-            (is (some #(and (vector? %) (= :segment (first %))) filters))))))))
+          (with-redefs [lib-be/application-database-metadata-provider (constantly mock-mp)]
+            (let [result (metabot-v3.tools.filters/query-metric
+                          {:metric-id metric-id
+                           :filters [{:segment-id mock-segment-id}]
+                           :group-by []})
+                  query (get-in result [:structured-output :query])
+                  filters (get-in query [:stages 0 :filters])]
+              (is (some? (:structured-output result)))
+              (is (= :query (get-in result [:structured-output :type])))
+              ;; Check that a segment filter is present
+              (is (some #(and (vector? %) (= :segment (first %))) filters)))))))))
 
 (deftest query-datasource-with-measure-aggregation-test
-  (let [measure-def (pmbql-measure-definition (mt/id :orders) (mt/id :orders :total))]
-    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
-                                                    :table_id   (mt/id :orders)
-                                                    :definition measure-def}]
-      (mt/with-current-user (mt/user->id :crowberto)
+  (let [mp (mt/metadata-provider)
+        measure-def (mbql-measure-definition (mt/id :orders) (mt/id :orders :total))
+        mock-measure-id 1
+        mock-mp (add-mock-measure mp mock-measure-id (mt/id :orders) measure-def)]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-redefs [lib-be/application-database-metadata-provider (constantly mock-mp)]
         (testing "query-datasource with measure aggregation"
           (let [result (metabot-v3.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
-                         :aggregations [{:measure-id measure-id}]})
+                         :aggregations [{:measure-id mock-measure-id}]})
                 query (get-in result [:structured-output :query])
                 aggregations (get-in query [:stages 0 :aggregation])]
             (is (some? (:structured-output result)))
@@ -784,7 +811,7 @@
         (testing "query-datasource with measure aggregation and sort order"
           (let [result (metabot-v3.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
-                         :aggregations [{:measure-id measure-id
+                         :aggregations [{:measure-id mock-measure-id
                                          :sort-order :desc}]})
                 query (get-in result [:structured-output :query])
                 order-by (get-in query [:stages 0 :order-by])]
@@ -792,15 +819,16 @@
             (is (some #(= :desc (first %)) order-by))))))))
 
 (deftest query-datasource-with-segment-filter-test
-  (let [segment-def (pmbql-segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
-    (mt/with-temp [:model/Segment {segment-id :id} {:name       "High Value Orders"
-                                                    :table_id   (mt/id :orders)
-                                                    :definition segment-def}]
-      (mt/with-current-user (mt/user->id :crowberto)
+  (let [mp (mt/metadata-provider)
+        segment-def (mbql-segment-definition (mt/id :orders) (mt/id :orders :total) 100)
+        mock-segment-id 1
+        mock-mp (add-mock-segment mp mock-segment-id (mt/id :orders) segment-def)]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-redefs [lib-be/application-database-metadata-provider (constantly mock-mp)]
         (testing "query-datasource with segment filter"
           (let [result (metabot-v3.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
-                         :filters [{:segment-id segment-id}]})
+                         :filters [{:segment-id mock-segment-id}]})
                 query (get-in result [:structured-output :query])
                 filters (get-in query [:stages 0 :filters])]
             (is (some? (:structured-output result)))
@@ -809,20 +837,21 @@
             (is (some #(and (vector? %) (= :segment (first %))) filters))))))))
 
 (deftest query-datasource-with-measures-and-segments-test
-  (let [measure-def (pmbql-measure-definition (mt/id :orders) (mt/id :orders :total))
-        segment-def (pmbql-segment-definition (mt/id :orders) (mt/id :orders :discount) 0)]
-    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
-                                                    :table_id   (mt/id :orders)
-                                                    :definition measure-def}
-                   :model/Segment {segment-id :id} {:name       "Discounted Orders"
-                                                    :table_id   (mt/id :orders)
-                                                    :definition segment-def}]
-      (mt/with-current-user (mt/user->id :crowberto)
+  (let [mp (mt/metadata-provider)
+        measure-def (mbql-measure-definition (mt/id :orders) (mt/id :orders :total))
+        segment-def (mbql-segment-definition (mt/id :orders) (mt/id :orders :discount) 0)
+        mock-measure-id 1
+        mock-segment-id 1
+        mock-mp (-> mp
+                    (add-mock-measure mock-measure-id (mt/id :orders) measure-def)
+                    (add-mock-segment mock-segment-id (mt/id :orders) segment-def))]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-redefs [lib-be/application-database-metadata-provider (constantly mock-mp)]
         (testing "query-datasource with both measure aggregation and segment filter"
           (let [result (metabot-v3.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
-                         :aggregations [{:measure-id measure-id}]
-                         :filters [{:segment-id segment-id}]})
+                         :aggregations [{:measure-id mock-measure-id}]
+                         :filters [{:segment-id mock-segment-id}]})
                 query (get-in result [:structured-output :query])
                 aggregations (get-in query [:stages 0 :aggregation])
                 filters (get-in query [:stages 0 :filters])]
