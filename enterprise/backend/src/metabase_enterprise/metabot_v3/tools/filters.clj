@@ -76,11 +76,9 @@
 
 (defn- add-filter
   [query llm-filter]
-  ;; Check if this is a segment filter
   (if-let [segment-id (:segment-id llm-filter)]
-    ;; Use lib/filter with a segment clause
-    (let [segment-clause [:segment {:lib/uuid (str (random-uuid))} segment-id]]
-      (lib/filter query segment-clause))
+    ;; Segment-based filter
+    (lib/filter query (lib.metadata/segment query segment-id))
     ;; Standard field-based filter logic
     (let [{:keys [operation value values]} llm-filter
           expr (filter-bucketed-column llm-filter)
@@ -212,8 +210,7 @@
         query-with-aggregation
         (if-let [measure-id (:measure-id aggregation)]
           ;; Measure-based aggregation
-          (let [measure-clause [:measure {:lib/uuid (str (random-uuid))} measure-id]]
-            (lib/aggregate query measure-clause))
+          (lib/aggregate query (lib.metadata/measure query measure-id))
           ;; Field-based aggregation
           (let [expr (bucketed-column aggregation)
                 agg-expr (case (:function aggregation)
