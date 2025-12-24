@@ -24,16 +24,18 @@ export type SaveButtonProps = {
 export const shouldShowSaveButton = ({
   question,
   originalQuestion,
+  canWriteToTargetCollection,
 }: {
   question?: Question;
   originalQuestion?: Question;
+  canWriteToTargetCollection: boolean;
 }) => {
   const canSave = question && Lib.canSave(question.query(), question.type());
   const isQuestionChanged = originalQuestion
     ? isQuestionDirty(question, originalQuestion)
     : true;
 
-  return Boolean(isQuestionChanged && canSave);
+  return Boolean(isQuestionChanged && canSave) && canWriteToTargetCollection;
 };
 
 /**
@@ -46,11 +48,13 @@ export const shouldShowSaveButton = ({
  * @param props
  */
 export const SaveButton = ({ ...buttonProps }: SaveButtonProps = {}) => {
-  const { question, originalQuestion } = useSdkQuestionContext();
+  const { question, originalQuestion, canWriteToTargetCollection } =
+    useSdkQuestionContext();
 
   const isSaveButtonEnabled = shouldShowSaveButton({
     question,
     originalQuestion,
+    canWriteToTargetCollection,
   });
 
   return (

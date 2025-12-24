@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useCanWriteToCollection } from "embedding-sdk-bundle/hooks/private/use-can-write-to-collection";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
@@ -171,6 +172,11 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
+  const { canWrite: canWriteToTargetCollection } = useCanWriteToCollection(
+    targetCollection,
+    { skip: !isSaveEnabled },
+  );
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
     token,
@@ -197,6 +203,7 @@ export const SdkQuestionProvider = ({
     onCreate: handleCreate,
     isSaveEnabled,
     targetCollection,
+    canWriteToTargetCollection,
     withDownloads,
     onRun,
     backToDashboard,

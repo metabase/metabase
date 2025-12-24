@@ -1,4 +1,5 @@
 import { type ComponentType, useEffect, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import {
   CollectionNotFoundError,
@@ -16,11 +17,13 @@ import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { useGetCollectionQuery } from "metabase/api";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
+import EmptyState from "metabase/common/components/EmptyState";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
-import { Stack } from "metabase/ui";
+import { Icon, Stack } from "metabase/ui";
 import type { CollectionId, CollectionItemModel } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
 
@@ -127,8 +130,11 @@ export const CollectionBrowserInner = ({
     return internalCollectionId;
   }, [isGlobalBreadcrumbEnabled, currentLocation, internalCollectionId]);
 
-  const { data: collection, isFetching: isFetchingCollection } =
-    useGetCollectionQuery({ id: effectiveCollectionId });
+  const {
+    data: collection,
+    error: collectionLoadingError,
+    isFetching: isFetchingCollection,
+  } = useGetCollectionQuery({ id: effectiveCollectionId });
 
   useEffect(() => {
     setInternalCollectionId(baseCollectionId);
@@ -148,6 +154,18 @@ export const CollectionBrowserInner = ({
     collection,
     reportLocation,
   ]);
+
+  if (
+    isObject(collectionLoadingError) &&
+    collectionLoadingError.status === 403
+  ) {
+    return (
+      <EmptyState
+        title={t`You don't have access to this collection.`}
+        illustrationElement={<Icon name="key" size={100} />}
+      />
+    );
+  }
 
   const onClickItem = (item: MetabaseCollectionItem) => {
     onClick?.(item);
