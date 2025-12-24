@@ -304,13 +304,13 @@ export function saveQuestion(
   cy.intercept("POST", "/api/card").as("saveQuestion");
   if (waitForRecents) {
     cy.intercept("GET", "/api/activity/recents?context=selections*").as(
-      "saveQuestion_recents",
+      "saveQuestionRecents",
     );
   }
   cy.findByTestId("qb-header").button("Save").click();
   if (waitForRecents) {
     // Wait for recents API to complete before typing to avoid form reinitialization race condition
-    cy.wait("@saveQuestion_recents");
+    cy.wait("@saveQuestionRecents");
   }
   if (shouldReplaceOriginalQuestion) {
     modal().within(() => {
