@@ -188,7 +188,7 @@
                                        :query {:database (mt/id)
                                                :lib/type :mbql/query
                                                :stages [{:lib/type :mbql.stage/mbql
-                                                         :source-table model-card-id}]}}}
+                                                         :source-card model-id}]}}}
                   (metabot-v3.tools.filters/query-model
                    {:model-id model-id
                     :filters []
@@ -199,7 +199,7 @@
                                        :query {:database (mt/id)
                                                :lib/type :mbql/query
                                                :stages [{:lib/type :mbql.stage/mbql
-                                                         :source-table model-card-id
+                                                         :source-card model-id
                                                          :aggregation [[:sum {} [:field {} "SUBTOTAL"]]]
                                                          :breakout [[:field {} "PRODUCT_ID"]]
                                                          :filters [[:> {} [:field {} "DISCOUNT"] 3]]}]}}}
@@ -219,7 +219,7 @@
                                        :query {:database (mt/id)
                                                :lib/type :mbql/query
                                                :stages [{:lib/type :mbql.stage/mbql
-                                                         :source-table model-card-id
+                                                         :source-card model-id
                                                          :aggregation [[:min {} [:field {:temporal-unit :hour-of-day} "CREATED_AT"]]
                                                                        [:avg {} [:field {:temporal-unit :hour-of-day} "CREATED_AT"]]
                                                                        [:max {} [:field {:temporal-unit :hour-of-day} "CREATED_AT"]]]
@@ -285,7 +285,7 @@
                                  :query {:database (mt/id)
                                          :lib/type :mbql/query
                                          :stages [{:lib/type :mbql.stage/mbql
-                                                   :source-table model-card-id
+                                                   :source-card model-id
                                                    :filters [[:!= {} [:field {} "USER_ID"] 3 42]]}]}}}
                 input {:model-id model-id
                        :filters [{:field-id (->field-id "User ID")
@@ -377,7 +377,7 @@
                                          :query {:database (mt/id)
                                                  :lib/type :mbql/query
                                                  :stages [{:lib/type :mbql.stage/mbql
-                                                           :source-table table-id}]}}}
+                                                           :source-card model-id}]}}}
                     (metabot-v3.tools.filters/filter-records
                      {:data-source {:table-id table-id}
                       :filters []}))))
@@ -387,7 +387,7 @@
                                          :query {:database (mt/id)
                                                  :lib/type :mbql/query
                                                  :stages [{:lib/type :mbql.stage/mbql
-                                                           :source-table table-id
+                                                           :source-card model-id
                                                            :filters [[:> {} [:field {} "DISCOUNT"] 3]]}]}}}
                     (metabot-v3.tools.filters/filter-records
                      {:data-source {:table-id table-id}
