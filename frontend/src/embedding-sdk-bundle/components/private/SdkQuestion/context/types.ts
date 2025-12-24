@@ -5,6 +5,7 @@ import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type {
+  EntityTypeFilterKeys,
   LoadSdkQuestionParams,
   MetabaseQuestion,
   SdkQuestionId,
@@ -18,13 +19,12 @@ import type {
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 type SdkQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypes?: EmbeddingEntityType[];
+  entityTypes?: EntityTypeFilterKeys[];
 
   /**
    * Whether to show the save button.
