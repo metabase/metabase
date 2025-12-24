@@ -187,16 +187,20 @@ export type WorkspaceTablesResponse = {
 // Graph types for React Flow dependency diagram
 export type WorkspaceGraphNode = {
   id: string;
-  type?: string;
-  data?: Record<string, unknown>;
-  position?: { x: number; y: number };
-};
+  dependents_count: Record<string, number>;
+} & ({
+  type: "input-table";
+  data: { db: number; id: number; schema: string; table: string; }
+} | {
+  type: "workspace-transform";
+  data: { ref_id: string; name: string; }
+} );
 
 export type WorkspaceGraphEdge = {
-  id: string;
-  source: string;
-  target: string;
-  type?: string;
+  from_entity_type: string;
+  from_entity_id: string;
+  to_entity_type: string;
+  to_entity_id: string;
 };
 
 export type WorkspaceGraphResponse = {

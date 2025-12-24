@@ -11,7 +11,7 @@ import type { NativeQuerySnippet } from "./snippets";
 import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
-export type DependencyId = number;
+export type DependencyId = number | string;
 export type DependencyType =
   | "card"
   | "table"
@@ -20,7 +20,8 @@ export type DependencyType =
   | "dashboard"
   | "document"
   | "sandbox"
-  | "segment";
+  | "segment"
+  | "workspace-transform";
 export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
 
 export type DependencyEntry = {
@@ -40,12 +41,15 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
 export type TableDependencyNodeData = Pick<
   Table,
   "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
->;
+> & { table_id?: TableId;};
 
 export type TransformDependencyNodeData = Pick<
   Transform,
   "name" | "description" | "table"
->;
+> & {
+  workspaceId?: number; // Optional workspaceId for workspace-transform nodes
+  ref_id?: string; // Optional ref_id for workspace-transform nodes
+};
 
 export type CardDependencyNodeData = Pick<
   Card,
@@ -109,6 +113,11 @@ export type TransformDependencyNode = BaseDependencyNode<
   TransformDependencyNodeData
 >;
 
+export type WorkspaceTransformDependencyNode = BaseDependencyNode<
+  "workspace-transform",
+  TransformDependencyNodeData
+>;
+
 export type CardDependencyNode = BaseDependencyNode<
   "card",
   CardDependencyNodeData
@@ -149,6 +158,7 @@ export type SegmentDependencyNode = BaseDependencyNode<
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
+  | WorkspaceTransformDependencyNode
   | CardDependencyNode
   | SnippetDependencyNode
   | DashboardDependencyNode
@@ -157,9 +167,9 @@ export type DependencyNode =
   | SegmentDependencyNode;
 
 export type DependencyEdge = {
-  from_entity_id: DependencyId;
+  from_entity_id: DependencyId | string;
   from_entity_type: DependencyType;
-  to_entity_id: DependencyId;
+  to_entity_id: DependencyId | string;
   to_entity_type: DependencyType;
 };
 

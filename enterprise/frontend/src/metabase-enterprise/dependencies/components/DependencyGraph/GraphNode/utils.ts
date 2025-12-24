@@ -11,6 +11,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     metric = 0,
     table = 0,
     transform = 0,
+    "workspace-transform": workspaceTransform = 0,
     snippet = 0,
     dashboard = 0,
     document = 0,
@@ -24,6 +25,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "metric", count: metric },
     { type: "table", count: table },
     { type: "transform", count: transform },
+    { type: "workspace-transform", count: workspaceTransform },
     { type: "snippet", count: snippet },
     { type: "dashboard", count: dashboard },
     { type: "document", count: document },
@@ -65,6 +67,12 @@ export function getDependentGroupLabel({
       return ngettext(msgid`${count} table`, `${count} tables`, count);
     case "transform":
       return ngettext(msgid`${count} transform`, `${count} transforms`, count);
+    case "workspace-transform":
+      return ngettext(
+        msgid`${count} workspace transform`,
+        `${count} workspace transforms`,
+        count,
+      );
     case "snippet":
       return ngettext(msgid`${count} snippet`, `${count} snippet`, count);
     case "dashboard":

@@ -68,6 +68,7 @@ import { isWorkspaceUninitialized } from "../../utils";
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
+import { GraphTab } from "./GraphTab";
 import { MetabotTab } from "./MetabotTab";
 import { PreviewTab as PreviewTabComponent } from "./PreviewTab";
 import { SetupTab } from "./SetupTab";
@@ -167,19 +168,41 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
 
         const transform = [...workspaceTransforms, ...availableTransforms].find(
           (transform) => {
-            if ("global_id" in transform) {
-              return transform.global_id === Number(transformId);
+            // Check if transformId is an integer before comparing with global_id
+            if (
+              !isNaN(Number(transformId)) &&
+              Number.isInteger(Number(transformId))
+            ) {
+              if ("global_id" in transform) {
+                return transform.global_id === Number(transformId);
+              }
+            }
+            // For non-integer transformId, check ref_id
+            if ("ref_id" in transform) {
+              return transform.ref_id === transformId;
             }
             return transform.id === Number(transformId);
           },
         );
-
-        const isWsTransform = !!transform && "global_id" in transform;
-        if (transform && !isWsTransform) {
-          const { data } = await fetchTransform(
-              transform.id,
-            true,
-          );
+        if (transform) {
+          let data;
+          if ("ref_id" in transform && transform.ref_id !== undefined) {
+            // Use workspace transform query for ref_id transforms
+            const result = await fetchWorkspaceTransform({
+              workspaceId: id,
+              transformId: transform.ref_id,
+            });
+            data = result.data;
+          } else {
+            // Use regular transform query for global_id or id transforms
+            const result = await fetchTransform(
+              "global_id" in transform && transform.global_id !== null
+                ? transform.global_id
+                : transform.id,
+              true,
+            );
+            data = result.data;
+          }
           if (data) {
             addOpenedTransform(data);
             setActiveTransform(data);
@@ -201,7 +224,20 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
         dispatch(replace(Urls.dataStudioWorkspace(id)));
       })();
     }
-  }, [transformId, setActiveTransform, availableTransforms, addOpenedTransform, fetchTransform, dispatch, id, isLoadingExternalTransforms, sendErrorToast, isLoadingWorkspaceTransforms, workspaceTransforms, fetchWorkspaceTransform]);
+  }, [
+    transformId,
+    setActiveTransform,
+    availableTransforms,
+    addOpenedTransform,
+    fetchTransform,
+    fetchWorkspaceTransform,
+    dispatch,
+    id,
+    isLoadingExternalTransforms,
+    sendErrorToast,
+    isLoadingWorkspaceTransforms,
+    workspaceTransforms,
+  ]);
 
   const {
     data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
@@ -705,6 +741,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
               }
               if (
                 tab === "setup" ||
+                tab === "graph" ||
                 (tab === "metabot" && (activeTransform || activeTable))
               ) {
                 setActiveTab(undefined);
@@ -741,6 +778,12 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                         </Group>
                       </Tabs.Tab>
                     )}
+                    <Tabs.Tab value="graph">
+                      <Group gap="xs" wrap="nowrap">
+                        <Icon name="dependencies" aria-hidden />
+                        {t`Graph`}
+                      </Group>
+                    </Tabs.Tab>
 
                     {openedTabs.map((tab, index) => (
                       <Sortable
@@ -798,6 +841,9 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
             >
               <Tabs.Panel value="setup" h="100%" p="md">
                 <SetupTab databaseId={sourceDb?.id} workspace={workspace} />
+              </Tabs.Panel>
+              <Tabs.Panel value="graph" h="100%" p="md">
+                <GraphTab workspaceId={workspace?.id} />
               </Tabs.Panel>
 
               {isMetabotAvailable && (

@@ -10,11 +10,9 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group } from "metabase/ui";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyEntry } from "metabase-types/api";
+import type { DependencyGraph } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -38,21 +36,26 @@ const EDGE_TYPES = {
 };
 
 type DependencyGraphProps = {
-  entry?: DependencyEntry;
-  getGraphUrl: (entry?: DependencyEntry) => string;
+  graph?: DependencyGraph | null;
+  isFetching?: boolean;
+  error?: any;
+  getGraphUrl: (entry?: any) => string;
   withEntryPicker?: boolean;
+  entry?: any;
+  nodeTypes?: typeof NODE_TYPES;
+  edgeTypes?: typeof EDGE_TYPES;
 };
 
 export function DependencyGraph({
   entry,
+  graph,
+  isFetching = false,
+  error,
   getGraphUrl,
   withEntryPicker,
+  nodeTypes = NODE_TYPES,
+  edgeTypes = EDGE_TYPES,
 }: DependencyGraphProps) {
-  const {
-    data: graph,
-    isFetching,
-    error,
-  } = useGetDependencyGraphQuery(entry ?? skipToken);
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
@@ -95,8 +98,8 @@ export function DependencyGraph({
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        nodeTypes={NODE_TYPES}
-        edgeTypes={EDGE_TYPES}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}

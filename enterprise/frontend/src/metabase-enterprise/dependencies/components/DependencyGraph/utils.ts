@@ -25,7 +25,10 @@ import type {
   NodeTypeInfo,
 } from "./types";
 
-export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
+export function getNodeId(
+  id: DependencyId | string,
+  type: DependencyType,
+): NodeId {
   return `${id}-${type}`;
 }
 
@@ -138,6 +141,8 @@ export function getNodeIconWithType(
       return "table";
     case "transform":
       return "transform";
+    case "workspace-transform":
+      return "transform";
     case "snippet":
       return "sql";
     case "dashboard":
@@ -187,6 +192,14 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this transform`,
         url: Urls.transform(node.id),
       };
+    case "workspace-transform": {
+      const workspaceId = node.data.workspaceId;
+      const refId = node.data.ref_id;
+      return {
+        label: t`View this workspace transform`,
+        url: Urls.dataStudioWorkspace(workspaceId, refId),
+      };
+    }
     case "dashboard":
       return {
         label: `View this dashboard`,
@@ -356,6 +369,8 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Table`, color: "brand" };
     case "transform":
       return { label: t`Transform`, color: "warning" };
+    case "workspace-transform":
+      return { label: t`Workspace Transform`, color: "warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":

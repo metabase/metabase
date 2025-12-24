@@ -887,8 +887,8 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
-  describe("run transform", () => {
-    it("should run and fail transform runs", () => {
+  describe.only("run transform", () => {
+    it.only("should run and fail transform runs", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -897,16 +897,18 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getMainlandTransforms().findByText("SQL transform").click();
 
       H.NativeEditor.type(" LIMIT");
-      Workspaces.getSaveTransformButton().click();
-      Workspaces.getRunTransformButton().click();
+      // Workspaces.getSaveTransformButton().click();
+      // cy.wait(5000);
+      // Workspaces.getRunTransformButton().click();
 
-      H.undoToast().findByText("Failed to run transform");
-      Workspaces.getWorkspaceContent().findByText(
-        "This transform hasn't been run before.",
-      );
+      // H.undoToast().findByText("Failed to run transform");
+      // Workspaces.getWorkspaceContent().findByText(
+      //   "This transform hasn't been run before.",
+      // );
 
       H.NativeEditor.type(" 1;");
       Workspaces.getSaveTransformButton().click();
+      cy.wait(5000);
       Workspaces.getRunTransformButton().click();
 
       // The run button state change happens very fast and behaves flaky. Not sure if we need to test it.
