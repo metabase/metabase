@@ -42,8 +42,7 @@
   :audit   :getter)
 
 (defsetting ldap-user-provisioning-enabled?
-  (deferred-tru "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
-don''t have one.")
+  (deferred-tru "When a user logs in via LDAP, create a Metabase account for them automatically if they don''t have one, or reactivate their existing account.")
   :type    :boolean
   :default true
   :audit   :getter)
