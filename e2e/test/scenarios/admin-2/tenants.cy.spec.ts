@@ -322,7 +322,7 @@ describe("Tenants - management", () => {
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
-      cy.findByRole("link", { name: /All Internal Users/ }).should(
+      cy.findByRole("link", { name: /All internal users/ }).should(
         "be.visible",
       );
       cy.findByRole("link", { name: /All tenant users/ }).should("not.exist");
@@ -333,7 +333,7 @@ describe("Tenants - management", () => {
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
-      cy.findByRole("link", { name: /All Internal Users/ }).should("not.exist");
+      cy.findByRole("link", { name: /All internal users/ }).should("not.exist");
       cy.findByRole("row", {
         name: `group-${ALL_EXTERNAL_USERS_GROUP_ID}-row`,
       }).within(() => {
@@ -416,7 +416,7 @@ describe("Tenants - management", () => {
     hasGlobeIcon(EXTERNAL_USER_GROUP_NAME);
     hasGlobeIcon(TENANT_GROUP_NAME);
     lacksGlobeIcon("Administrators");
-    lacksGlobeIcon("All Internal Users");
+    lacksGlobeIcon("All internal users");
   });
 
   it("should show 'All tenant users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
@@ -453,12 +453,12 @@ describe("Tenants - management", () => {
         .findByLabelText("warning icon")
         .realHover();
 
-      // Tooltip must reference "All tenant users" not "All Internal Users"
+      // Tooltip must reference "All tenant users" not "All internal users"
       H.tooltip().should(
         "contain",
         'The "All tenant users" group has a higher level of access',
       );
-      H.tooltip().should("not.contain", "All Internal Users");
+      H.tooltip().should("not.contain", "All internal users");
     });
   });
 
