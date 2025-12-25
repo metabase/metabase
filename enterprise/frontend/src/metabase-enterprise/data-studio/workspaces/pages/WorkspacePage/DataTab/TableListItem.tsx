@@ -6,6 +6,7 @@ import {
   Box,
   Icon,
   type IconName,
+  Loader,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -25,8 +26,10 @@ type TableListItemProps = {
   transform?: WorkspaceTransformItem;
   tableId?: TableId;
   isSelected?: boolean;
+  isRunning?: boolean;
   onTransformClick?: (transform: WorkspaceTransformItem) => void;
   onTableClick?: (table: OpenTable) => void;
+  onRunTransform?: (transform: WorkspaceTransformItem) => void;
 };
 
 export const TableListItem = ({
@@ -38,8 +41,10 @@ export const TableListItem = ({
   transform,
   tableId,
   isSelected = false,
+  isRunning = false,
   onTransformClick,
   onTableClick,
+  onRunTransform,
 }: TableListItemProps) => {
   const displayName = schema ? `${schema}.${name}` : name;
 
@@ -51,14 +56,21 @@ export const TableListItem = ({
   };
 
   const handleTableClick = () => {
+    if (isRunning) {
+      return;
+    }
     if (tableId && onTableClick) {
       onTableClick({ tableId, name, schema, transformId: transform?.ref_id });
+    } else if (type === "output" && transform && onRunTransform) {
+      onRunTransform(transform);
     }
   };
 
-  const isClickable = tableId && onTableClick;
   const hasResults = type === "output" && !!tableId;
-  const displayTooltip = type !== "input" && !hasResults;
+  const canRunTransform =
+    type === "output" && !hasResults && transform && onRunTransform;
+  const isClickable = (tableId && onTableClick) || canRunTransform;
+  const displayTooltip = type !== "input" && !hasResults && !isRunning;
 
   return (
     <Box
@@ -69,15 +81,23 @@ export const TableListItem = ({
       aria-label={displayName}
       onClick={isClickable ? handleTableClick : undefined}
     >
-      <Icon
-        name={icon}
-        size={14}
-        c={type === "input" ? "saturated-green" : "saturated-yellow"}
-      />
+      {isRunning ? (
+        <Loader size={12} />
+      ) : (
+        <Icon
+          name={icon}
+          size={14}
+          c={type === "input" ? "saturated-green" : "saturated-yellow"}
+        />
+      )}
       <Tooltip
-        label={t`Run transform to see the results`}
+        label={
+          isRunning
+            ? t`Running transform...`
+            : t`Run transform to see the results`
+        }
         position="top"
-        disabled={!displayTooltip}
+        disabled={!displayTooltip && !isRunning}
       >
         <Text
           className={S.name}
