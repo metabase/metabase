@@ -118,9 +118,10 @@ describe("issue 35711", () => {
   function reorderTaxAndTotalColumns() {
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Tax");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Total");
+    H.tableHeaderColumn("Total").as("totalColumn");
 
     // drag & drop the Total column 80 px to the left to switch it with Tax column
-    H.moveDnDKitElement(H.tableHeaderColumn("Total"), { horizontal: -80 });
+    H.moveDnDKitElementByAlias("@totalColumn", { horizontal: -80 });
 
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Total");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
