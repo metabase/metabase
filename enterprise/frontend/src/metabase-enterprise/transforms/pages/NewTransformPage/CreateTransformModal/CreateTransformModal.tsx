@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
@@ -8,7 +9,6 @@ import {
 } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -88,7 +88,6 @@ function CreateTransformForm({
   onClose,
   schemas: schemasProp,
   showIncrementalSettings = true,
-  _validationSchemaExtension,
   handleSubmit,
   targetDescription,
 }: CreateTransformFormProps) {
@@ -97,8 +96,6 @@ function CreateTransformForm({
 
   const shouldFetchSchemas = schemasProp === undefined;
   const showSchemaField = schemasProp !== null;
-
-  const [_sendToast] = useToast();
 
   const {
     data: database,
@@ -138,7 +135,7 @@ function CreateTransformForm({
       throw new Error("Database ID is required");
     }
     const transform = await createTransform(databaseId, source, values);
-    onCreate(transform);
+    onCreate?.(transform);
   };
 
   return (
