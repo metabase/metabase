@@ -116,17 +116,24 @@ export const SdkQuestionDefaultView = ({
   }, [question]);
 
   const prevOriginalId = usePrevious(originalId);
+  const prevIsQuestionSaved = usePrevious(isQuestionSaved);
 
   useEffect(() => {
     if (isNewQuestion && !isQuestionSaved) {
-      // When switching to new question, open the notebook editor
       openEditor();
     } else if (prevOriginalId === "new" && !isNewQuestion) {
-      // Only close editor when transitioning from a new question to an existing one
-      // (e.g., after saving or switching questions), not on every render
+      closeEditor();
+    } else if (!prevIsQuestionSaved && isQuestionSaved) {
       closeEditor();
     }
-  }, [prevOriginalId, isNewQuestion, isQuestionSaved, openEditor, closeEditor]);
+  }, [
+    prevOriginalId,
+    prevIsQuestionSaved,
+    isNewQuestion,
+    isQuestionSaved,
+    openEditor,
+    closeEditor,
+  ]);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
