@@ -11,7 +11,7 @@ import {
   EditableDashboard,
   InteractiveDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
-import { useCanWriteToCollection } from "embedding-sdk-bundle/hooks/private/use-can-write-to-collection";
+import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
@@ -42,7 +42,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   const { breadcrumbs, currentLocation, reportLocation } = useSdkBreadcrumbs();
 
   const { canWrite: canWriteToInitialCollection } =
-    useCanWriteToCollection(initialCollection);
+    useCollectionData(initialCollection);
 
   const [currentView, setCurrentView] = useState<MetabaseBrowserView>({
     type: "collection",

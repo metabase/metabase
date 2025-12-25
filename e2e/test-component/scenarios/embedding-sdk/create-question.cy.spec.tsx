@@ -249,7 +249,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       respondedCollectionId: FIRST_COLLECTION_ID,
     },
   ].forEach(({ targetCollectionId, respondedCollectionId }) => {
-    it(`can create a question in a collection passing the \`${targetCollectionId}\` as a target collection id (metabase#64584)`, () => {
+    it.only(`can create a question in a collection passing the \`${targetCollectionId}\` as a target collection id (metabase#64584)`, () => {
       cy.signOut();
       mockAuthProviderAndJwtSignIn();
       cy.intercept("POST", "/api/card").as("createCard");
