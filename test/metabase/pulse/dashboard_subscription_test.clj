@@ -1168,6 +1168,39 @@
                   :channel/email first :message first :content
                   (re-find #"<h1>dashboard description</h1>")))))))
 
+(deftest dashboard-disable-links-test
+  (testing "Dashboard with links disabled"
+    (mt/with-temp [:model/Card                  {card-id :id} {:name          "Test card"
+                                                               :dataset_query {:database (mt/id)
+                                                                               :type     :native
+                                                                               :native   {:query "select * from orders limit 1"}}
+                                                               :display       :table}
+                   :model/Dashboard             {dashboard-id :id} {:name "dashboard subscription with disabled links"}
+                   :model/DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                         :card_id      card-id}
+                   :model/Pulse                 {pulse-id :id} {:name          "Pulse Name"
+                                                                :dashboard_id  dashboard-id
+                                                                :disable_links true}
+                   :model/PulseCard             _ {:pulse_id          pulse-id
+                                                   :card_id           card-id
+                                                   :dashboard_card_id dashboard-card-id}
+                   :model/PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                   :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                   :pulse_channel_id pc-id}]
+      (let [pulse (t2/select-one :model/Pulse pulse-id)
+            has-link? (fn [pulse]
+                        (->> (pulse.test-util/with-captured-channel-send-messages!
+                               (pulse.send/send-pulse! pulse))
+                             :channel/email first :message first :content
+                             (re-find #"href=")
+                             (= "href=")))]
+        (testing "test that disable_links: false will keep links in the email subscription"
+          (is (true? (has-link? (assoc pulse :disable_links false)))))
+        (testing "test that disable_links: nil will keep links in the email subscription"
+          (is (true? (has-link? (assoc pulse :disable_links nil)))))
+        (testing "test that disable_links: true will disable all links in the email subscription"
+          (is (false? (has-link? pulse))))))))
+
 (deftest attachments-test
   (tests!
    {:card (pulse.test-util/checkins-query-card {})}
