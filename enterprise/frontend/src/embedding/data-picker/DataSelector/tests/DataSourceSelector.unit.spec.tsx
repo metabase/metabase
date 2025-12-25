@@ -12,7 +12,7 @@ import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { Database, SearchModel, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { FullAppEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import {
   createMockSettingsState,
   createMockState,
@@ -47,7 +47,7 @@ interface SetupOpts {
     id: number;
     databaseId: number;
   };
-  entityTypes?: EmbeddingEntityType[];
+  entityTypes?: FullAppEmbeddingEntityType[];
 }
 
 function setup({
