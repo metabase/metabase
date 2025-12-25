@@ -30,16 +30,23 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
+(defn- keywordize-source-table-refs
+  "Keywordize keys in source-tables map values (refs are maps, ints pass through)."
+  [source-tables]
+  (update-vals source-tables #(if (map? %) (update-keys % keyword) %)))
+
 (defn- transform-source-out [m]
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
+      (m/update-existing :source-tables keywordize-source-table-refs)
       (m/update-existing :query lib-be/normalize-query)
       (m/update-existing :type keyword)
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
 
 (defn- transform-source-in [m]
   (-> m
+      (m/update-existing :source-tables transforms.util/normalize-source-tables)
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
