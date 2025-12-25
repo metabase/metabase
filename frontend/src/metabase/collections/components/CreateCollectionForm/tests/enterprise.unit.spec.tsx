@@ -17,7 +17,7 @@ describe("CreateCollectionForm", () => {
         official_collections: true,
       }),
       enterprisePlugins: ["collections"],
-      initialParentNamespace: "shared-tenant-collection",
+      parentCollectionNamespace: "shared-tenant-collection",
     });
 
     // Wait for the authority level picker to disappear after collection data loads
@@ -34,7 +34,7 @@ describe("CreateCollectionForm", () => {
         official_collections: true,
       }),
       enterprisePlugins: ["collections"],
-      initialParentNamespace: null,
+      parentCollectionNamespace: null,
     });
 
     // The authority level picker should be visible

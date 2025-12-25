@@ -87,7 +87,6 @@ function CreateCollectionForm({
   showCollectionPicker = true,
   showAuthorityLevelPicker = true,
 }: Props) {
-  // Used to get the namespace of a collection
   const { data: initialCollection } = useGetCollectionQuery(
     initialCollectionId != null ? { id: initialCollectionId } : skipToken,
   );
@@ -109,46 +108,55 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={onSubmit}
     >
-      {({ dirty, setFieldValue, values }) => (
-        <Form>
-          <FormInput
-            name="name"
-            title={t`Name`}
-            placeholder={t`My new fantastic collection`}
-            data-autofocus
-          />
-          <FormTextArea
-            name="description"
-            title={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            nullable
-            optional
-          />
-          {showCollectionPicker && (
-            <FormCollectionPicker
-              name="parent_id"
-              setNamespace={(namespace) =>
-                setFieldValue("namespace", namespace)
-              }
-              title={t`Collection it's saved in`}
-              filterPersonalCollections={filterPersonalCollections}
-              entityType="collection"
-              savingModel="collection"
+      {({ dirty, setFieldValue, values }) => {
+        // Populate the namespace for initial collection.
+        // Otherwise, use the value from the collection picker.
+        const namespace =
+          values.parent_id === initialCollectionId
+            ? initialCollection?.namespace
+            : values.namespace;
+
+        return (
+          <Form>
+            <FormInput
+              name="name"
+              title={t`Name`}
+              placeholder={t`My new fantastic collection`}
+              data-autofocus
             />
-          )}
-          {showAuthorityLevelPicker &&
-            values.namespace !== "shared-tenant-collection" && (
-              <FormAuthorityLevelField />
+            <FormTextArea
+              name="description"
+              title={t`Description`}
+              placeholder={t`It's optional but oh, so helpful`}
+              nullable
+              optional
+            />
+            {showCollectionPicker && (
+              <FormCollectionPicker
+                name="parent_id"
+                setNamespace={(namespace) =>
+                  setFieldValue("namespace", namespace)
+                }
+                title={t`Collection it's saved in`}
+                filterPersonalCollections={filterPersonalCollections}
+                entityType="collection"
+                savingModel="collection"
+              />
             )}
-          <FormFooter>
-            <FormErrorMessage inline />
-            {!!onCancel && (
-              <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-            )}
-            <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
-          </FormFooter>
-        </Form>
-      )}
+            {showAuthorityLevelPicker &&
+              namespace !== "shared-tenant-collection" && (
+                <FormAuthorityLevelField />
+              )}
+            <FormFooter>
+              <FormErrorMessage inline />
+              {!!onCancel && (
+                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+              )}
+              <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+            </FormFooter>
+          </Form>
+        );
+      }}
     </FormProvider>
   );
 }

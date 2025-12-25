@@ -7,7 +7,11 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import type { TokenFeatures, User } from "metabase-types/api";
+import type {
+  CollectionNamespace,
+  TokenFeatures,
+  User,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -28,7 +32,7 @@ export interface SetupOpts {
   tokenFeatures?: TokenFeatures;
   showAuthorityLevelPicker?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
-  initialParentNamespace?: string | null;
+  parentCollectionNamespace?: CollectionNamespace | null;
 }
 
 export const setup = ({
@@ -36,24 +40,23 @@ export const setup = ({
   tokenFeatures = createMockTokenFeatures(),
   showAuthorityLevelPicker,
   enterprisePlugins,
-  initialParentNamespace,
+  parentCollectionNamespace,
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
 
   // Create a parent collection with the specified namespace if provided
-  const parentCollection =
-    initialParentNamespace !== undefined
-      ? createMockCollection({
-          id: 1,
-          name: "Parent Collection",
-          namespace: initialParentNamespace,
-          can_write: true,
-        })
-      : ROOT_COLLECTION;
+  const parentCollection = parentCollectionNamespace
+    ? createMockCollection({
+        id: 1,
+        name: "Parent Collection",
+        namespace: parentCollectionNamespace,
+        can_write: true,
+      })
+    : ROOT_COLLECTION;
 
   const collections =
-    initialParentNamespace !== undefined
+    parentCollectionNamespace !== undefined
       ? [ROOT_COLLECTION, parentCollection]
       : [ROOT_COLLECTION];
 
@@ -61,7 +64,8 @@ export const setup = ({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
   setupCollectionsEndpoints({
-    collections: initialParentNamespace !== undefined ? [parentCollection] : [],
+    collections:
+      parentCollectionNamespace !== undefined ? [parentCollection] : [],
     rootCollection: ROOT_COLLECTION,
   });
 
@@ -74,7 +78,7 @@ export const setup = ({
     <CreateCollectionForm
       onCancel={onCancel}
       showAuthorityLevelPicker={showAuthorityLevelPicker}
-      collectionId={initialParentNamespace !== undefined ? 1 : undefined}
+      collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}
     />,
     {
       storeInitialState: createMockState({
