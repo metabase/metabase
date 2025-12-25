@@ -35,7 +35,8 @@ export function useQuestionEditorSync({
       openEditor();
     } else if (prevOriginalId === "new" && !isNewQuestion) {
       closeEditor();
-    } else if (!prevIsQuestionSaved && isQuestionSaved) {
+    } else if (prevIsQuestionSaved === false && isQuestionSaved) {
+      // Only trigger when transitioning from unsaved to saved (not on initial load)
       closeEditor();
 
       if (!queryResultsRef.current) {
