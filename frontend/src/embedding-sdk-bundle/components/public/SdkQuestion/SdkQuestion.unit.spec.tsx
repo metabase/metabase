@@ -7,7 +7,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionsEndpoints,
+  setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
@@ -32,6 +32,7 @@ import type { BaseEntityId, CardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
   createMockColumn,
   createMockDatabase,
   createMockDataset,
@@ -134,8 +135,18 @@ const setup = async ({
 
   setupEntityIdEndpoint({ card: { [TEST_ENTITY_ID]: TEST_CARD_ID } });
 
-  setupCollectionsEndpoints({
-    collections: [],
+  const BOBBY_TEST_COLLECTION = createMockCollection({
+    archived: false,
+    can_write: true,
+    description: null,
+    id: 1,
+    location: "/",
+    name: "Bobby Tables's Personal Collection",
+    personal_owner_id: 100,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [BOBBY_TEST_COLLECTION],
   });
 
   renderWithSDKProviders(
