@@ -524,6 +524,55 @@ describe("Tenants - management", () => {
     });
   });
 
+  it("should show 'All Internal Users' in permission warning modal for internal groups on tenant collections (EMB-1143)", () => {
+    cy.request("PUT", "/api/setting", { "use-tenants": true });
+
+    cy.request("POST", "/api/permissions/group", {
+      name: "Test Internal Group",
+      is_tenant_group: false,
+    });
+
+    cy.visit("/admin/permissions/tenant-collections/root");
+
+    cy.log("all internal users should have 'View' access");
+    cy.findAllByRole("row")
+      .contains("tr", "All Internal Users")
+      .findByText("View")
+      .should("be.visible");
+
+    cy.log("internal group should have no access");
+    cy.findAllByRole("row")
+      .contains("tr", "Test Internal Group")
+      .findByText("No access")
+      .click();
+
+    cy.log("change internal group to view-only");
+    H.popover().findByText("View").click();
+
+    cy.findAllByRole("row")
+      .contains("tr", "Test Internal Group")
+      .findByText("View")
+      .click();
+
+    cy.log("change internal group back to no access");
+    H.popover().findByText("No access").click();
+
+    H.modal().within(() => {
+      cy.log("title should mention internal users group");
+      cy.findByText(/Revoke access even though "All Internal Users"/).should(
+        "be.visible",
+      );
+
+      cy.log("description should mention internal users group");
+      cy.findByText(
+        /The "All Internal Users" group has a higher level of access/,
+      ).should("be.visible");
+
+      cy.log("should not mention tenant users");
+      cy.contains("Tenant users").should("not.exist");
+    });
+  });
+
   it("should not show send email modal when creating tenant users when SMTP is configured", () => {
     H.setupSMTP();
     cy.request("PUT", "/api/setting", {
