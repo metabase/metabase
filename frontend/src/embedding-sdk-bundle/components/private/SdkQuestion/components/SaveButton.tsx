@@ -1,6 +1,7 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
+import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import type { ButtonProps } from "embedding-sdk-bundle/types/ui";
 import { isQuestionDirty } from "metabase/query_builder/utils/question";
 import * as Lib from "metabase-lib";
@@ -48,8 +49,13 @@ export const shouldShowSaveButton = ({
  * @param props
  */
 export const SaveButton = ({ ...buttonProps }: SaveButtonProps = {}) => {
-  const { question, originalQuestion, canWriteToTargetCollection } =
+  const { question, originalQuestion, isSaveEnabled, targetCollection } =
     useSdkQuestionContext();
+
+  const { canWrite: canWriteToTargetCollection } = useCollectionData(
+    targetCollection,
+    { skip: !isSaveEnabled },
+  );
 
   const isSaveButtonEnabled = shouldShowSaveButton({
     question,

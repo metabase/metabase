@@ -148,7 +148,6 @@ export type SdkQuestionContextType = Omit<
   > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
     mode: QueryClickActionsMode | Mode | null | undefined;
-    canWriteToTargetCollection: boolean;
     originalId: SdkQuestionId | null;
     token: EntityToken | null | undefined;
     resetQuestion: () => void;
