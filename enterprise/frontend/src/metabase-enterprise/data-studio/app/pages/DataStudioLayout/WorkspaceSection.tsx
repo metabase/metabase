@@ -281,6 +281,7 @@ function WorkspaceItem({
       onClick={() => onOpen(workspace.id)}
       p="0.75rem"
       bdrs="md"
+      name={workspace.name}
     >
       <Flex align="flex-start" justify="space-between" gap="xs">
         <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
@@ -288,7 +289,12 @@ function WorkspaceItem({
             {workspace.name}
           </Text>
           {status && (
-            <Group gap="xs" align="center" wrap="nowrap">
+            <Group
+              gap="xs"
+              align="center"
+              wrap="nowrap"
+              data-testid="workspace-status"
+            >
               <Icon name={status.icon} size={10} c={status.color} />
               <Text size="xs" fw={500} c={status.color}>
                 {status.label}

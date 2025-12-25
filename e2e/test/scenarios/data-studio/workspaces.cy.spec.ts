@@ -31,8 +31,8 @@ describe("scenarios > data studio > workspaces", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
+    cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
     // cy.intercept("PUT", "/api/field/*").as("updateField");
-    // cy.intercept("POST", "/api/ee/transform").as("createTransform");
     // cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
     // cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
     // cy.intercept("DELETE", "/api/ee/transform/*/table").as(
@@ -54,99 +54,101 @@ describe("scenarios > data studio > workspaces", () => {
       .findByText("No workspaces yet")
       .should("be.visible");
 
-    createWorkspace("Workspace A");
+    createWorkspace();
+    cy.wait("@createWorkspace").then((interception) => {
+      const workspaceName = interception.response?.body?.name;
+      // Backend returns randomized name.
+      cy.wrap(workspaceName).as("workspaceNameA");
+    });
 
     cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
 
     cy.log("shows workspace name");
-    Workspaces.getWorkspaceNameInput().should("have.value", "Workspace A");
+    cy.get("@workspaceNameA").then((workspaceName) => {
+      Workspaces.getWorkspaceNameInput().should("have.value", workspaceName);
+    });
     Workspaces.getMergeWorkspaceButton().should("be.disabled");
 
     Workspaces.getWorkspaceContent().within(() => {
-      cy.log("starts on setup tab, and has only 2 tabs");
+      cy.log("Starts on setup tab, and has only 2 tabs");
       H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
 
       cy.log("shows workspace db");
-      cy.findByText("Writable Postgres12").should("be.visible");
+      Workspaces.getWorkspaceDatabaseSelect()
+        .should("have.value", "Writable Postgres12")
+        .should("be.enabled");
 
-      cy.log("shows workspace setup logs");
-      cy.findByText("Provisioning database isolation").should("be.visible");
-      cy.findByText("Setting up the workspace").should("be.visible");
-      cy.findByText("Workspace ready!").should("be.visible");
+      cy.log("Doesn't show workspace setup logs");
+      cy.findByText("Setting up the workspace").should("not.exist");
     });
 
     Workspaces.getWorkspaceSidebar().within(() => {
       cy.log("starts on Code tab, and has only 2 tabs");
       H.tabsShouldBe("Code", ["Code", "Data"]);
 
-      cy.log("shows transforms list");
+      cy.log("shows transforms lists");
       cy.findByText("Workspace is empty").should("be.visible");
+      cy.findByText("No available transforms").should("be.visible");
     });
 
-    createWorkspace("Workspace B");
-    Workspaces.getWorkspaceNameInput().should("have.value", "Workspace B");
-
-    Workspaces.getWorkspacesSection().within(() => {
-      cy.findByText("Workspace B").should("be.visible");
-      cy.findByText("Workspace A").should("be.visible").click();
+    createWorkspace();
+    // Workspaces.getNewWorkspaceButton().click();
+    cy.wait("@createWorkspace").then((interception) => {
+      const workspaceName = interception.response?.body?.name;
+      // Backend returns randomized name.
+      cy.wrap(workspaceName).as("workspaceNameB");
     });
+    cy.get("@workspaceNameB").then((workspaceNameB: string) => {
+      Workspaces.getWorkspaceNameInput().should("have.value", workspaceNameB);
 
-    Workspaces.getWorkspaceNameInput().should("have.value", "Workspace A");
+      cy.get("@workspaceNameA").then((workspaceNameA) => {
+        Workspaces.getWorkspacesSection().within(() => {
+          cy.findByText(workspaceNameB).should("be.visible");
+          cy.findByText(workspaceNameA).should("be.visible").click();
+        });
 
-    cy.log("can archive a workspace");
-    Workspaces.getWorkspaceItem(/Workspace A/).should("contain.text", "Ready");
-    Workspaces.getWorkspaceItemActions(/Workspace A/).click();
-    H.popover().findByText("Archive").click();
-    verifyAndCloseToast("Workspace archived successfully");
+        cy.log("can archive a workspace");
+        Workspaces.getWorkspaceItemStatus(workspaceNameA).should(
+          "contain.text",
+          "Ready",
+        );
+        Workspaces.getWorkspaceItemActions(workspaceNameA).click();
+        H.popover().findByText("Archive").click();
+        verifyAndCloseToast("Workspace archived successfully");
 
-    cy.log("should show archived workspaces and their status");
-    Workspaces.getWorkspaceItem(/Workspace A/).should(
-      "contain.text",
-      "Archived",
-    );
+        cy.log("should show archived workspaces and their status");
+        Workspaces.getWorkspaceItem(workspaceNameA).should(
+          "contain.text",
+          "Archived",
+        );
 
-    cy.location("pathname").should("eq", "/data-studio/workspaces");
-    Workspaces.getWorkspacesPage().within(() => {
-      cy.findByText("Workspaces").should("be.visible");
-      cy.findByText("Workspace A").should("be.visible");
-      cy.findByText("Workspace B").should("be.visible");
+        // TODO: Move to another test, because we can't unarchive uninitialized workspace
+        // cy.log("can unarchive a workspace");
+        // Workspaces.getWorkspaceItemActions(workspaceNameA).click();
+        // H.popover().findByText("Restore").click();
+        // verifyAndCloseToast("Workspace restored successfully");
+        // Workspaces.getWorkspaceItem(workspaceNameA).should(
+        //   "contain.text",
+        //   "Ready",
+        // );
+
+        cy.log("can delete a workspace");
+        Workspaces.getWorkspaceItemActions(workspaceNameA).click();
+        H.popover().findByText("Delete").click();
+        H.modal().findByText("Delete").click();
+        verifyAndCloseToast("Workspace deleted successfully");
+        Workspaces.getWorkspaceItem(workspaceNameA).should("not.exist");
+
+        cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
+        Workspaces.getWorkspaceNameInput().should("have.value", workspaceNameB);
+
+        Workspaces.getWorkspaceNameInput()
+          .clear()
+          .type("Renamed workspace")
+          .blur();
+        Workspaces.getWorkspaceItem("Renamed workspace").should("be.visible");
+      });
     });
-
-    cy.log("can unarchive a workspace");
-    Workspaces.getWorkspaceItemActions(/Workspace A/).click();
-    H.popover().findByText("Restore").click();
-    verifyAndCloseToast("Workspace restored successfully");
-    Workspaces.getWorkspaceItem(/Workspace A/).should("contain.text", "Ready");
-
-    cy.location("pathname").should("eq", "/data-studio/workspaces");
-    Workspaces.getWorkspacesPage().within(() => {
-      cy.findByText("Workspaces").should("be.visible");
-      cy.findByText("Workspace A").should("be.visible");
-      cy.log("can navigate from workspaces list to a workspace");
-      cy.findByText("Workspace B").should("be.visible").click();
-    });
-
-    cy.log("can delete a workspace");
-    Workspaces.getWorkspaceItemActions(/Workspace A/).click();
-    H.popover().findByText("Delete").click();
-    H.modal().findByText("Delete").click();
-    verifyAndCloseToast("Workspace deleted successfully");
-    Workspaces.getWorkspaceItem(/Workspace A/).should("not.exist");
-
-    cy.location("pathname").should("eq", "/data-studio/workspaces");
-    Workspaces.getWorkspacesPage().within(() => {
-      cy.findByText("Workspaces").should("be.visible");
-      cy.findByText("Workspace A").should("not.exist");
-      cy.log("can navigate from workspaces list to a workspace");
-      cy.findByText("Workspace B").should("be.visible").click();
-    });
-
-    cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
-    Workspaces.getWorkspaceNameInput().should("have.value", "Workspace B");
-
-    Workspaces.getWorkspaceNameInput().clear().type("Renamed workspace").blur();
-    // verifyAndCloseToast("Workspace renamed"); // TODO: uncomment when implemented
-    Workspaces.getWorkspaceItem(/Renamed workspace/).should("be.visible");
   });
 
   it("should be able to check out exisitng transform into a new workspace from the transform page", () => {
@@ -282,17 +284,17 @@ describe("scenarios > data studio > workspaces", () => {
   // });
 });
 
-function createWorkspace(name: string) {
+function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
-  H.modal().findByText("Create new workspace").should("be.visible");
-  Workspaces.getNewWorkspaceNameInput().clear().type(name);
-  Workspaces.getNewWorkspaceDatabaseInput().click();
-  H.popover().within(() => {
-    // cy.findByText("Internal Metabase Database").should("not.exist"); // TODO: uncomment once it works
-    // cy.findByText("Sample Database").should("not.exist"); // TODO: uncomment once it works
-    cy.findByText("Writable Postgres12").should("be.visible").click();
-  });
-  H.modal().findByText("Create").click();
+  // H.modal().findByText("Create new workspace").should("be.visible");
+  // Workspaces.getNewWorkspaceNameInput().clear().type(name);
+  // Workspaces.getNewWorkspaceDatabaseInput().click();
+  // H.popover().within(() => {
+  //   // cy.findByText("Internal Metabase Database").should("not.exist"); // TODO: uncomment once it works
+  //   // cy.findByText("Sample Database").should("not.exist"); // TODO: uncomment once it works
+  //   cy.findByText("Writable Postgres12").should("be.visible").click();
+  // });
+  // H.modal().findByText("Create").click();
 }
 
 function createTransforms({ visit }: { visit?: boolean } = {}) {
