@@ -89,6 +89,7 @@ export const SdkQuestionDefaultView = ({
     withDownloads,
     onReset,
     onNavigateBack,
+    queryQuestion,
   } = useSdkQuestionContext();
 
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
@@ -125,6 +126,10 @@ export const SdkQuestionDefaultView = ({
       closeEditor();
     } else if (!prevIsQuestionSaved && isQuestionSaved) {
       closeEditor();
+
+      if (!queryResults) {
+        void queryQuestion();
+      }
     }
   }, [
     prevOriginalId,
@@ -133,6 +138,8 @@ export const SdkQuestionDefaultView = ({
     isQuestionSaved,
     openEditor,
     closeEditor,
+    queryResults,
+    queryQuestion,
   ]);
 
   // When visualizing a question for the first time, there is no query result yet.
