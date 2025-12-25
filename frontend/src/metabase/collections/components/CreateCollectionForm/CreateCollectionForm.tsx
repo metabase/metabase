@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import Button from "metabase/common/components/Button";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
@@ -86,12 +87,20 @@ function CreateCollectionForm({
   showCollectionPicker = true,
   showAuthorityLevelPicker = true,
 }: Props) {
+  // Used to get the namespace of a collection
+  const { data: initialCollection } = useGetCollectionQuery(
+    initialCollectionId != null ? { id: initialCollectionId } : skipToken,
+  );
+
   const initialValues = useMemo(
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
       parent_id: initialCollectionId,
+
+      // Namespace is used for hiding the authority level picker.
+      namespace: initialCollection?.namespace ?? null,
     }),
-    [initialCollectionId],
+    [initialCollectionId, initialCollection?.namespace],
   );
 
   return (
@@ -100,7 +109,7 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={onSubmit}
     >
-      {({ dirty, setFieldValue }) => (
+      {({ dirty, setFieldValue, values }) => (
         <Form>
           <FormInput
             name="name"
@@ -127,7 +136,10 @@ function CreateCollectionForm({
               savingModel="collection"
             />
           )}
-          {showAuthorityLevelPicker && <FormAuthorityLevelField />}
+          {showAuthorityLevelPicker &&
+            values.namespace !== "shared-tenant-collection" && (
+              <FormAuthorityLevelField />
+            )}
           <FormFooter>
             <FormErrorMessage inline />
             {!!onCancel && (

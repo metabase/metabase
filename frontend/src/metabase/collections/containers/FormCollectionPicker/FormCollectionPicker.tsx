@@ -156,11 +156,9 @@ function FormCollectionPicker({
 
   const handleChange = useCallback(
     ({ id, namespace }: CollectionPickerItem) => {
-      if (namespace) {
-        setNamespace?.(namespace);
-        setCollectionNamespace(namespace);
-      }
-      setCollectionNamespace(namespace ?? null);
+      const normalizedNamespace = namespace ?? null;
+      setNamespace?.(normalizedNamespace);
+      setCollectionNamespace(normalizedNamespace);
       setValue(canonicalCollectionId(id));
       setIsPickerOpen(false);
     },
