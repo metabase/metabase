@@ -299,13 +299,13 @@
                    :model/Transform x1 {:name        "Upstream Transform 1"
                                         :description "Original description 2"
                                         :target      {:type     "table"
-                                                      :database 1
+                                                      :database (mt/id)
                                                       :schema   "public"
                                                       :name     "merge_test_table"}}
                    :model/Transform x2 {:name        "Upstream Transform 2"
                                         :description "Original description 2"
                                         :target      {:type     "table"
-                                                      :database 1
+                                                      :database (mt/id)
                                                       :schema   "public"
                                                       :name     "merge_test_table_2"}}]
       (let [;; Create a workspace
@@ -376,13 +376,13 @@
                    :model/Transform x1 {:name        "Upstream Transform 1"
                                         :description "Original description 2"
                                         :target      {:type     "table"
-                                                      :database 1
+                                                      :database (mt/id)
                                                       :schema   "public"
                                                       :name     "merge_test_table"}}
                    :model/Transform x2 {:name        "Upstream Transform 2"
                                         :description "Original description 2"
                                         :target      {:type     "table"
-                                                      :database 1
+                                                      :database (mt/id)
                                                       :schema   "public"
                                                       :name     "merge_test_table_2"}}]
       (let [;; Create a workspace
@@ -463,13 +463,13 @@
                  :model/Transform x1 {:name        "Upstream Transform 1"
                                       :description "Original description 2"
                                       :target      {:type     "table"
-                                                    :database 1
+                                                    :database (mt/id)
                                                     :schema   "public"
                                                     :name     "merge_test_table"}}
                  :model/Transform x2 {:name        "Upstream Transform 2"
                                       :description "Original description 2"
                                       :target      {:type     "table"
-                                                    :database 1
+                                                    :database (mt/id)
                                                     :schema   "public"
                                                     :name     "merge_test_table_2"}}]
     (let [;; Create a workspace
@@ -549,7 +549,7 @@
                    :model/Transform x1     {:name        "Transform for history"
                                             :description "Test transform"
                                             :target      {:type     "table"
-                                                          :database 1
+                                                          :database (mt/id)
                                                           :schema   "public"
                                                           :name     "merge_history_test_table"}}]
       (let [{ws-id :id ws-name :name} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
@@ -591,7 +591,7 @@
                  :model/Transform x1 {:name        "Upstream Transform 1"
                                       :description "Original description 2"
                                       :target      {:type     "table"
-                                                    :database 1
+                                                    :database (mt/id)
                                                     :schema   "public"
                                                     :name     "merge_test_table"}}]
     (let [;; Create a workspace
@@ -1344,7 +1344,7 @@
         (ws.tu/with-workspaces! [ws1 {:name "Our Workspace"}
                                  ws2 {:name "Their Workspace"}]
           (mt/with-temp [;; Global transforms (workspace_id = null)
-                         :model/Dashboard          {db-2 :id}   {:name "Other Db"}
+                         :model/Database          {db-2 :id}   {:name "Other Db"}
                          :model/Transform          {xf1-id :id} {:name   "Checked out - 1"
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf2-id :id} {:name   "Checked out - 2"
