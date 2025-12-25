@@ -495,6 +495,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
         table,
       };
       addOpenedTab(tableTab);
+      setTab(tableTab.id);
     },
     [addOpenedTab],
   );
