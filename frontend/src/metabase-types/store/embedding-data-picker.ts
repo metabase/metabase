@@ -13,12 +13,8 @@ export type EmbeddingEntityType = "model" | "table" | "question";
  */
 export type FullAppEmbeddingEntityType = "model" | "table" | "question";
 
-/**
- * `question` is only applicable to the staged picker, which is rarely used in SDK unless
- * there are 100+ combined tables/models.
- *
- * @internal
- */
+// `question` is only applicable to the staged picker, which is rarely used in SDK unless
+// there are 100+ combined tables/models.
 export type ModularEmbeddingEntityType = "model" | "table";
 
 export type EmbeddingDataPicker = "staged" | "flat";
