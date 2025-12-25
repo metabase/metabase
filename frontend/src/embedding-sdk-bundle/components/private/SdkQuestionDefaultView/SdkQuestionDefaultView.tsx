@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
 import { useEffect, useMemo } from "react";
-import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -12,6 +11,7 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
@@ -95,13 +95,14 @@ export const SdkQuestionDefaultView = ({
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
-  const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
 
-  const [
-    isEditorOpen,
-    { close: closeEditor, toggle: toggleEditor, open: openEditor },
-  ] = useDisclosure(isNewQuestion && !isQuestionSaved);
+  const { isEditorOpen, closeEditor, toggleEditor } = useQuestionEditorSync({
+    originalId,
+    isQuestionSaved,
+    queryResults,
+    queryQuestion,
+  });
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
@@ -115,32 +116,6 @@ export const SdkQuestionDefaultView = ({
 
     return isNative;
   }, [question]);
-
-  const prevOriginalId = usePrevious(originalId);
-  const prevIsQuestionSaved = usePrevious(isQuestionSaved);
-
-  useEffect(() => {
-    if (isNewQuestion && !isQuestionSaved) {
-      openEditor();
-    } else if (prevOriginalId === "new" && !isNewQuestion) {
-      closeEditor();
-    } else if (!prevIsQuestionSaved && isQuestionSaved) {
-      closeEditor();
-
-      if (!queryResults) {
-        void queryQuestion();
-      }
-    }
-  }, [
-    prevOriginalId,
-    prevIsQuestionSaved,
-    isNewQuestion,
-    isQuestionSaved,
-    openEditor,
-    closeEditor,
-    queryResults,
-    queryQuestion,
-  ]);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
