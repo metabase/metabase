@@ -6,7 +6,6 @@ import {
   EntityPickerModal,
   type EntityPickerOptions,
   type EntityPickerTab,
-  type TypeWithModel,
 } from "metabase/common/components/EntityPicker";
 import {
   CollectionPicker,
@@ -24,42 +23,36 @@ import {
   TablePicker,
   type TablePickerStatePath,
 } from "metabase/common/components/Pickers/TablePicker";
-import {
-  PERSONAL_COLLECTIONS,
-  ROOT_COLLECTION,
-} from "metabase/entities/collections";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import {
   COLLECTION_PICKER_OPTIONS,
   DASHBOARD_PICKER_OPTIONS,
-  DOCUMENT_LINK_MODELS,
   ENTITY_PICKER_OPTIONS,
   QUESTION_PICKER_OPTIONS,
   RECENTS_CONTEXT,
 } from "./constants";
 import type {
-  EntryPickerItem,
-  EntryPickerItemId,
-  EntryPickerItemModel,
+  DocumentLinkedEntityPickerItem,
+  DocumentLinkedEntityPickerItemId,
+  DocumentLinkedEntityPickerItemModel,
 } from "./types";
-import { hasAvailableModels } from "./utils";
+import { getCanSelectItem, hasAvailableModels } from "./utils";
 
-export type UnifiedDataPickerModalProps = {
-  value: EntryPickerItem | null;
+interface LinkedEntityPickerModalProps {
+  value: DocumentLinkedEntityPickerItem | null;
   options?: Partial<EntityPickerOptions>;
-  onChange: (value: EntryPickerItem) => void;
+  onChange: (value: DocumentLinkedEntityPickerItem) => void;
   onConfirm?: () => void;
   onClose: () => void;
-};
+}
 
-export function UnifiedDataPickerModal({
+export function LinkedEntityPickerModal({
   value,
   options,
   onChange,
   onClose,
   onConfirm,
-}: UnifiedDataPickerModalProps) {
+}: LinkedEntityPickerModalProps) {
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
@@ -83,28 +76,11 @@ export function UnifiedDataPickerModal({
     [options],
   );
 
-  const getCanSelectItem = (item: TypeWithModel<string | number, string>) => {
-    if (item && DOCUMENT_LINK_MODELS.includes(item.model)) {
-      if (
-        item.model === "collection" &&
-        (!item.id ||
-          item.id === PERSONAL_COLLECTIONS.id ||
-          item.id === ROOT_COLLECTION.id)
-      ) {
-        return false;
-      }
-
-      return true;
-    }
-
-    return false;
-  };
-
   const tabs = useMemo(() => {
     const computedTabs: EntityPickerTab<
-      EntryPickerItemId,
-      EntryPickerItemModel,
-      EntryPickerItem
+      DocumentLinkedEntityPickerItemId,
+      DocumentLinkedEntityPickerItemModel,
+      DocumentLinkedEntityPickerItem
     >[] = [];
 
     computedTabs.push({
@@ -122,22 +98,6 @@ export function UnifiedDataPickerModal({
         />
       ),
     });
-
-    if (hasAvailableModels(searchResponse, ["transform"])) {
-      computedTabs.push({
-        id: "transforms-tab",
-        displayName: t`Transforms`,
-        models: ["transform"],
-        folderModels: [],
-        icon: "transform",
-        render: ({ onItemSelect }) => (
-          <PLUGIN_TRANSFORMS.TransformPicker
-            value={undefined}
-            onItemSelect={onItemSelect}
-          />
-        ),
-      });
-    }
 
     if (hasAvailableModels(searchResponse, ["card"])) {
       computedTabs.push({

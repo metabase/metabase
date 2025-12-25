@@ -1,9 +1,9 @@
 import type { Editor, Range } from "@tiptap/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
+import type { DocumentLinkedEntityPickerItemValue } from "metabase/rich_text_editing/tiptap/extensions/shared/LinkedEntityPickerModal/types";
 import type {
   MentionableUser,
   RecentItem,
@@ -51,7 +51,7 @@ interface UseEntitySuggestionsResult {
     downHandler: () => void;
     enterHandler: () => void;
     onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-    handleModalSelect: (item: QuestionPickerValueItem) => void;
+    handleModalSelect: (item: DocumentLinkedEntityPickerItemValue) => void;
     handleModalClose: () => void;
     openModal: () => void;
     hoverHandler: (index: number) => void;
@@ -264,7 +264,7 @@ export function useEntitySuggestions({
   );
 
   const handleModalSelect = useCallback(
-    (item: QuestionPickerValueItem) => {
+    (item: DocumentLinkedEntityPickerItemValue) => {
       onSelectEntity({
         id: item.id,
         model: item.model,

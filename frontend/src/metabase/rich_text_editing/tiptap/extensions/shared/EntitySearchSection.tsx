@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
-import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
-import { UnifiedDataPickerModalWithConfirm } from "metabase/common/components/Pickers/UnifiedDataPickerModal/UnifiedDataPickerModalWithConfirm";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import {
   CreateNewQuestionFooter,
@@ -16,6 +14,8 @@ import type {
 import { Box, Divider, Text } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
+import { LinkedEntityPickerModalWithConfirm } from "./LinkedEntityPickerModal";
+import type { DocumentLinkedEntityPickerItemValue } from "./LinkedEntityPickerModal/types";
 import { getBrowseAllItemIndex } from "./suggestionUtils";
 
 interface EntitySearchSectionProps {
@@ -27,7 +27,7 @@ interface EntitySearchSectionProps {
   searchResults: SearchResult[];
   modal: SuggestionPickerModalType;
   viewMode: SuggestionPickerViewMode;
-  onModalSelect: (item: QuestionPickerValueItem) => void;
+  onModalSelect: (item: DocumentLinkedEntityPickerItemValue) => void;
   onModalClose: () => void;
   onItemHover: (index: number) => void;
   canBrowseAll?: boolean;
@@ -121,7 +121,7 @@ export function EntitySearchSection({
           )}
 
           {modal === "question-picker" && viewMode === "linkTo" && (
-            <UnifiedDataPickerModalWithConfirm
+            <LinkedEntityPickerModalWithConfirm
               onConfirm={onModalSelect}
               onClose={onModalClose}
             />
