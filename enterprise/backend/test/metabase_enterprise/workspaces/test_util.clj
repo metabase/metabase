@@ -52,7 +52,7 @@
     (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
                  :done?      #(not= :pending (:status %))
                  ;; some cloud drivers are really slow
-                 :timeout-ms 10000})
+                 :timeout-ms 60000})
         (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
 
 (defn create-workspace-for-test!
