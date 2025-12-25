@@ -43,7 +43,7 @@ import type {
   EntryPickerItemId,
   EntryPickerItemModel,
 } from "./types";
-import { hasAvailableModels, selectOnlyCards } from "./utils";
+import { hasAvailableModels } from "./utils";
 
 export type UnifiedDataPickerModalProps = {
   value: EntryPickerItem | null;
@@ -152,8 +152,8 @@ export function UnifiedDataPickerModal({
             models={["card", "dashboard"]}
             options={QUESTION_PICKER_OPTIONS}
             path={questionsPath}
-            onInit={selectOnlyCards(onItemSelect)}
-            onItemSelect={selectOnlyCards(onItemSelect)}
+            onInit={onItemSelect}
+            onItemSelect={onItemSelect}
             onPathChange={setQuestionsPath}
           />
         ),
@@ -234,9 +234,9 @@ export function UnifiedDataPickerModal({
           models={["collection"]}
           options={COLLECTION_PICKER_OPTIONS}
           path={collectionsPath}
+          onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setCollectionsPath}
-          onInit={onChange}
         />
       ),
     });
@@ -250,12 +250,11 @@ export function UnifiedDataPickerModal({
     metricsPath,
     dashboardsPath,
     collectionsPath,
-    onChange,
   ]);
 
   return (
     <EntityPickerModal
-      title={t`Pick an item to link`}
+      title={t`Choose an item to link`}
       tabs={tabs}
       initialValue={value || undefined}
       selectedItem={value ?? null}
@@ -263,7 +262,6 @@ export function UnifiedDataPickerModal({
       recentsContext={RECENTS_CONTEXT}
       isLoadingTabs={isSearchLoading}
       canSelectItem={getCanSelectItem(value)}
-      defaultToRecentTab={false}
       onItemSelect={onChange}
       onClose={onClose}
       onConfirm={onConfirm}

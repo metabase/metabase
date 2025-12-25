@@ -18,7 +18,6 @@ export const DOCUMENT_LINK_MODELS = [
   "database",
   "transform",
 ] as const;
-export type DocumentLinkItemModel = (typeof DOCUMENT_LINK_MODELS)[number];
 
 export const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
