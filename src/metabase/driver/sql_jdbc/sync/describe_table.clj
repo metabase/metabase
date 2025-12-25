@@ -239,7 +239,8 @@
              (when semantic-type
                {:semantic-type semantic-type})
              (when (and json? (driver/database-supports? driver :nested-field-columns db))
-               {:visibility-type :details-only})))))))
+               {:visibility-type :details-only
+                :preview-display false})))))))
 
 (defn describe-table-fields-xf
   "Returns a transducer for computing metadata about the fields in a table"
