@@ -286,8 +286,54 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
-  // Enable row virtualization only when pagination is disabled
-  const enableRowVirtualization = !enablePagination;
+  // Check if we're in PDF export mode by looking for the SAVING_DOM_IMAGE_CLASS
+  const [isSavingImage, setIsSavingImage] = useState(false);
+
+  useEffect(() => {
+    const checkForImageSaving = () => {
+      // Check if any ancestor has the saving-dom-image class
+      const element = gridRef.current;
+      if (!element) {
+        return false;
+      }
+
+      let current: HTMLElement | null = element;
+      while (current) {
+        if (current.classList.contains('saving-dom-image')) {
+          return true;
+        }
+        current = current.parentElement;
+      }
+      return false;
+    };
+
+    const updateSavingState = () => {
+      setIsSavingImage(checkForImageSaving());
+    };
+
+    // Check immediately
+    updateSavingState();
+
+    // Set up mutation observer to watch for class changes
+    const observer = new MutationObserver(updateSavingState);
+
+    if (gridRef.current) {
+      // Watch the grid and all its ancestors for class changes
+      let current: HTMLElement | null = gridRef.current;
+      while (current) {
+        observer.observe(current, {
+          attributes: true,
+          attributeFilter: ['class'],
+        });
+        current = current.parentElement;
+      }
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Enable row virtualization only when pagination is disabled AND not exporting
+  const enableRowVirtualization = !enablePagination && !isSavingImage;
   const virtualGrid = useVirtualGrid({
     gridRef,
     table,
