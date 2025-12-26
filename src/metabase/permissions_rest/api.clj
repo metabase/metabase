@@ -360,7 +360,11 @@
   (perms/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
-  (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
+  (let [memberships (t2/select :model/PermissionsGroupMembership :group_id group-id)]
+    (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
+    (doseq [membership memberships]
+      (events/publish-event! :event/group-membership-delete {:object membership
+                                                             :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -375,4 +379,6 @@
     (api/check-404 membership)
     (perms/check-manager-of-group (:group_id membership))
     (t2/delete! :model/PermissionsGroupMembership :id id)
+    (events/publish-event! :event/group-membership-delete {:object membership
+                                                           :user-id api/*current-user-id*})
     api/generic-204-no-content))
