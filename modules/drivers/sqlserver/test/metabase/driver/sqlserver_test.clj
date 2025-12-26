@@ -644,6 +644,56 @@
                   (is (= expected-types
                          (map :base_type results-metadata-cols))))))))))))
 
+(deftest ^:parallel comparison-expression-in-custom-column-test
+  (mt/test-driver :sqlserver
+    (testing "Comparison expressions in custom columns are wrapped in CASE statements (#53805)"
+      (testing "Greater than comparison between two fields"
+        (let [query (mt/mbql-query orders
+                      {:expressions {"subtotal-gt-total" [:> $subtotal $total]}
+                       :fields      [[:expression "subtotal-gt-total"]]
+                       :limit       1})]
+          (testing "Should generate CASE WHEN ... THEN 1 ELSE 0 END"
+            (is (= ["SELECT"
+                    "  TOP(1) CASE"
+                    "    WHEN dbo.orders.subtotal > dbo.orders.total THEN 1"
+                    "    ELSE 0"
+                    "  END AS subtotal - gt - total"
+                    "FROM"
+                    "  dbo.orders"]
+                   (pretty-sql (:query (qp.compile/compile query))))))
+          (testing "Should execute successfully and return integer results"
+            (let [result (qp/process-query query)
+                  rows   (mt/rows result)]
+              (tap> rows)
+              (is (every? #(contains? #{0 1} (first %)) rows))))))
+      (testing "Equality comparison between field and literal"
+        (let [query (mt/mbql-query orders
+                      {:expressions {"is-ten" [:= $product_id 10]}
+                       :fields      [[:expression "is-ten"]]
+                       :limit       1})]
+          (testing "Should generate CASE WHEN ... THEN 1 ELSE 0 END"
+            (is (= ["SELECT"
+                    "  TOP(1) CASE"
+                    "    WHEN dbo.orders.product_id = 10 THEN 1"
+                    "    ELSE 0"
+                    "  END AS is - ten"
+                    "FROM"
+                    "  dbo.orders"]
+                   (pretty-sql (:query (qp.compile/compile query))))))))
+      (testing "WHERE clause comparisons should NOT use CASE (just simple comparison)"
+        (let [query (mt/mbql-query orders
+                      {:filter [:> $product_id 10]
+                       :fields [$id]
+                       :limit  1})]
+          (testing "Should use simple comparison in WHERE"
+            (is (= ["SELECT"
+                    "  TOP(1) dbo.orders.id AS id"
+                    "FROM"
+                    "  dbo.orders"
+                    "WHERE"
+                    "  dbo.orders.product_id > 10"]
+                   (pretty-sql (:query (qp.compile/compile query)))))))))))
+
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver
     (testing "Should match datetime fields even in non-default timezone (#30454)"
