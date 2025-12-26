@@ -156,6 +156,47 @@ describe("events utils", () => {
       },
     );
 
+    it.each(["stacked", "normalized"])(
+      "returns stacked tooltip model with renamed series titles from series_settings",
+      (stackType) => {
+        const tooltipModel = getHoverData(
+          barData,
+          {
+            "stackable.stack_type":
+              stackType as VisualizationSettings["stackable.stack_type"],
+            series_settings: {
+              [series1.seriesKey]: { title: "Renamed Series 1" },
+              [series2.seriesKey]: { title: "Renamed Series 2" },
+            },
+          },
+          chartColumns,
+          datasetColumns,
+          [series1, series2],
+          seriesColors,
+        ).stackedTooltipModel;
+
+        const { headerRows, bodyRows, headerTitle } = tooltipModel ?? {};
+
+        expect(headerTitle).toBe("foo");
+        expect(headerRows).toHaveLength(1);
+        expect(headerRows?.[0]).toEqual(
+          expect.objectContaining({
+            color: "red",
+            name: "Renamed Series 1",
+            value: 100,
+          }),
+        );
+        expect(bodyRows).toHaveLength(1);
+        expect(bodyRows?.[0]).toEqual(
+          expect.objectContaining({
+            color: "green",
+            name: "Renamed Series 2",
+            value: 200,
+          }),
+        );
+      },
+    );
+
     it("does not return stacked tooltip model for stacked charts with a single metric without a breakout", () => {
       const tooltipModel = getHoverData(
         barData,
@@ -405,6 +446,66 @@ describe("getStackedTooltipRows", () => {
       }),
       expect.objectContaining<Partial<TooltipRowModel>>({
         name: "Metric 3",
+        value: 30,
+        color: "green",
+      }),
+    ]);
+  });
+
+  it("should use renamed series titles from series_settings", () => {
+    const settingsWithRenamedSeries: VisualizationSettings = {
+      series_settings: {
+        metric1: { title: "Custom Metric 1" },
+        metric3: { title: "Custom Metric 3" },
+      },
+    };
+
+    const result = getStackedTooltipRows(
+      bar,
+      settingsWithRenamedSeries,
+      series,
+      seriesColors,
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual([
+      expect.objectContaining<Partial<TooltipRowModel>>({
+        name: "Custom Metric 1",
+        value: 10,
+        color: "red",
+      }),
+      expect.objectContaining<Partial<TooltipRowModel>>({
+        name: "Custom Metric 3",
+        value: 30,
+        color: "green",
+      }),
+    ]);
+  });
+
+  it("should fall back to seriesName when series_settings title is not defined", () => {
+    const settingsWithPartialRename: VisualizationSettings = {
+      series_settings: {
+        metric1: { title: "Custom Metric 1" },
+        // metric3 has no custom title
+      },
+    };
+
+    const result = getStackedTooltipRows(
+      bar,
+      settingsWithPartialRename,
+      series,
+      seriesColors,
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual([
+      expect.objectContaining<Partial<TooltipRowModel>>({
+        name: "Custom Metric 1",
+        value: 10,
+        color: "red",
+      }),
+      expect.objectContaining<Partial<TooltipRowModel>>({
+        name: "Metric 3", // Falls back to original seriesName
         value: 30,
         color: "green",
       }),
