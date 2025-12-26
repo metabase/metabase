@@ -106,7 +106,7 @@ describe("issue 29943", () => {
   });
 });
 
-describe("issue 35711", () => {
+describe("issues with metadata editing on models with custom expressions", () => {
   const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
   const DISCOUNT_FIELD_REF: FieldReference = [
@@ -142,7 +142,7 @@ describe("issue 35711", () => {
     cy.signInAsAdmin();
   });
 
-  it("can edit metadata of a model with a custom column (metabase#35711)", () => {
+  it("can edit metadata of a model with a custom column (metabase#35711, metabase#39993)", () => {
     H.createQuestion(
       {
         type: "model",
@@ -951,45 +951,6 @@ describe("issue 43088", () => {
     H.rightSidebar().button("Done").click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(1);
-  });
-});
-
-describe("issue 39993", () => {
-  const columnName = "Exp";
-
-  const modelDetails: StructuredQuestionDetails = {
-    type: "model",
-    query: {
-      "source-table": ORDERS_ID,
-      fields: [
-        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-        ["expression", columnName, { "base-type": "type/Integer" }],
-      ],
-      expressions: { [columnName]: ["+", 1, 1] },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateModel");
-  });
-
-  it("should preserve viz settings for models with custom expressions (metabase#39993)", () => {
-    H.createQuestion(modelDetails).then(({ body: card }) =>
-      H.visitModel(card.id),
-    );
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
-    cy.log("drag & drop the custom column 100 px to the left");
-    H.moveDnDKitElement(H.tableHeaderColumn(columnName), {
-      horizontal: -100,
-    });
-    cy.button("Save changes").click();
-    cy.wait("@updateModel");
-    cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
-    cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
   });
 });
 
