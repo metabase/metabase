@@ -4,6 +4,7 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
+   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.config.core :as config]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -69,9 +70,30 @@
                 (ws.common/create-workspace! creator-id props)))))
 
 (defn create-ready-ws!
-  "Create a workspace and wait for it to be ready."
+  "Create a workspace with full isolation and wait for it to be ready.
+   Use [[create-provisional-ws!]] for tests that don't need isolation."
   [name]
   (create-workspace-for-test! {:name name}))
+
+(defn create-provisional-ws!
+  "Create a workspace without database isolation for testing.
+   The workspace will have :ready status but no isolation resources.
+
+   Use this for tests that don't need actual database isolation, such as API
+   listing tests or tests that mock isolation functions.
+
+   For tests that need a :ready workspace with real isolation, use [[create-ready-ws!]]."
+  [name]
+  (let [creator-id (mt/user->id :crowberto)
+        db-id      (mt/id)]
+    (mt/with-current-user creator-id
+      (let [ws (ws.common/create-workspace! creator-id {:name         name
+                                                        :database_id  db-id
+                                                        :provisional? true})]
+        ;; Set schema and status to :ready so add-to-changeset! doesn't try to initialize
+        (t2/update! :model/Workspace (:id ws) {:schema (ws.u/isolation-namespace-name ws)
+                                               :status :ready})
+        (t2/select-one :model/Workspace :id (:id ws))))))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
@@ -116,3 +138,4 @@
       [~@props-list]
       (fn [[~@syms]]
         ~@body))))
+

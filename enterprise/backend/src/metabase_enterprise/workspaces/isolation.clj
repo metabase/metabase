@@ -47,8 +47,12 @@
   (init-workspace-database-isolation! database workspace))
 
 (defn do-with-workspace-isolation
-  "Impl of* with-workspace-isolation*."
+  "Impl of [[with-workspace-isolation]]."
   [workspace thunk]
+  (when-not (:database_details workspace)
+    (throw (ex-info (str "Workspace isolation was not initialized. "
+                         "If this is a test, ensure the workspace was created with isolation enabled.")
+                    {:workspace-id (:id workspace)})))
   (driver/with-swapped-connection-details (:database_id workspace)
     (:database_details workspace)
     (thunk)))

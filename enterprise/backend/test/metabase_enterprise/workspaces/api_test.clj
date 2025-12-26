@@ -41,7 +41,7 @@
   (reduce append-part (str "ee/workspace/" id) (map str path)))
 
 (deftest workspace-endpoints-require-superuser-test
-  (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
+  (let [workspace (ws.tu/create-provisional-ws! "Private Workspace")]
     (testing "GET /api/ee/workspace requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "ee/workspace"))))
@@ -114,7 +114,7 @@
 (deftest archive-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
+          workspace (ws.tu/create-provisional-ws! "Archive Isolation Test")]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
@@ -123,7 +123,7 @@
 
 (deftest archive-workspace-succeeds-when-cleanup-fails-test
   (testing "POST /api/ee/workspace/:id/archive succeeds even when destroy-workspace-isolation! fails"
-    (ws.tu/with-workspaces! [workspace {:name "Archive Cleanup Fail Test"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Archive Cleanup Fail Test")]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (throw (ex-info "Simulated cleanup failure" {:test true})))]
@@ -134,7 +134,7 @@
 (deftest ^:parallel delete-workspace-calls-destroy-isolation-test
   (testing "DELETE /api/ee/workspace/:id calls destroy-workspace-isolation!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Delete Isolation Test")]
+          workspace (ws.tu/create-provisional-ws! "Delete Isolation Test")]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
@@ -145,7 +145,7 @@
 (deftest ^:parallel merge-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
+          workspace (ws.tu/create-provisional-ws! "Merge Isolation Test")]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
@@ -155,7 +155,7 @@
 (deftest unarchive-workspace-calls-ensure-isolation-test
   (testing "POST /api/ee/workspace/:id/unarchive calls ensure-database-isolation!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
+          workspace (ws.tu/create-provisional-ws! "Unarchive Isolation Test")]
       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (testing "ensure-database-isolation! should be called when unarchiving"
         (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
@@ -168,7 +168,7 @@
 (deftest unarchive-workspace-calls-sync-grant-accesses-test
   (testing "POST /api/ee/workspace/:id/unarchive calls sync-grant-accesses!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Unarchive Grant Test")]
+          workspace (ws.tu/create-provisional-ws! "Unarchive Grant Test")]
       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (mt/with-dynamic-fn-redefs [ws.impl/sync-grant-accesses!
                                   (fn [_workspace]
@@ -179,7 +179,7 @@
 
 (deftest archive-unarchive-access-granted-test
   (testing "Archive/unarchive properly manages access_granted flags and grants"
-    (let [workspace     (ws.tu/create-ready-ws! "Archive Grant Test")
+    (let [workspace      (ws.tu/create-provisional-ws! "Archive Grant Test")
           granted-tables (atom [])]
       (mt/with-temp [:model/WorkspaceInput input {:workspace_id   (:id workspace)
                                                   :db_id          (mt/id)
@@ -202,12 +202,12 @@
 
 (deftest merge-workspace-test
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Promote Test"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Promote Test")]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge"))))))
 
   (testing "Cannot merge an already archived workspace"
-    (ws.tu/with-workspaces! [workspace {:name "Archived Workspace"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Archived Workspace")]
       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (is (= "Cannot merge an archived workspace"
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/merge")))))))
@@ -703,7 +703,7 @@
 
 (deftest create-workspace-transform-permissions-test
   (testing "POST /api/ee/workspace/:id/transform requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Transform Test"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Transform Test")]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
                                    {:name   "Should Fail"
@@ -714,7 +714,7 @@
 
 (deftest create-workspace-transform-archived-test
   (testing "Cannot create transform in archived workspace"
-    (ws.tu/with-workspaces! [workspace {:name "Archived"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Archived")]
       (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
       (is (= "Cannot create transforms in an archived workspace"
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/transform")
@@ -974,21 +974,21 @@
 
 (deftest rename-workspace-test
   (testing "POST /api/ee/workspace/:id/name updates the workspace name"
-    (ws.tu/with-workspaces! [workspace {:name "Original Name"}]
-      (let [response (mt/user-http-request :crowberto :put 200 (ws-url (:id workspace))
-                                           {:name "Updated Name"})]
-        (is (= "Updated Name"
-               (:name response)
-               (t2/select-one-fn :name :model/Workspace :id (:id workspace)))))))
+    (let [workspace (ws.tu/create-provisional-ws! "Original Name")
+          response  (mt/user-http-request :crowberto :put 200 (ws-url (:id workspace))
+                                          {:name "Updated Name"})]
+      (is (= "Updated Name"
+             (:name response)
+             (t2/select-one-fn :name :model/Workspace :id (:id workspace))))))
 
   (testing "Requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Permission Test"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Permission Test")]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (ws-url (:id workspace))
                                    {:name "Should Fail"})))))
 
   (testing "Cannot rename an archived workspace"
-    (ws.tu/with-workspaces! [workspace {:name "Archived"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Archived")]
       (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
       (is (= "Cannot update an archived workspace"
              (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
@@ -1144,7 +1144,7 @@
 
 (deftest get-workspace-transforms-test
   (testing "GET /api/ee/workspace/:id/transform"
-    (ws.tu/with-workspaces! [workspace {:name "List Transforms Test"}]
+    (let [workspace (ws.tu/create-provisional-ws! "List Transforms Test")]
       (mt/with-temp [:model/WorkspaceTransform tx1  {:name         "Transform 1"
                                                      :workspace_id (:id workspace)}
                      :model/WorkspaceTransform tx2  {:name         "Transform 2"
@@ -1158,7 +1158,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "/transform")))))))
     (testing "returns empty list when no transforms"
-      (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
+      (let [workspace (ws.tu/create-provisional-ws! "Empty Workspace")]
         (is (= {:transforms []}
                (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform"))))))
     (testing "returns 404 for non-existent workspace"
@@ -1167,8 +1167,8 @@
 
 (deftest get-workspace-transform-by-id-test
   (testing "GET /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
-                             workspace2 {:name "Workspace 2"}]
+    (let [workspace1 (ws.tu/create-provisional-ws! "Workspace 1")
+          workspace2 (ws.tu/create-provisional-ws! "Workspace 2")]
       (mt/with-temp [:model/WorkspaceTransform transform {:name         "My Transform"
                                                           :description  "Test description"
                                                           :workspace_id (:id workspace1)}]
@@ -1189,8 +1189,8 @@
 
 (deftest update-workspace-transform-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
-                             workspace2 {:name "Workspace 2"}]
+    (let [workspace1 (ws.tu/create-provisional-ws! "Workspace 1")
+          workspace2 (ws.tu/create-provisional-ws! "Workspace 2")]
       (mt/with-temp [:model/WorkspaceTransform transform {:name         "Original Name"
                                                           :description  "Original description"
                                                           :workspace_id (:id workspace1)}]
@@ -1216,8 +1216,8 @@
 
 (deftest delete-workspace-transform-test
   (testing "DELETE /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
-                             workspace2 {:name "Workspace 2"}]
+    (let [workspace1 (ws.tu/create-provisional-ws! "Workspace 1")
+          workspace2 (ws.tu/create-provisional-ws! "Workspace 2")]
       (mt/with-temp [:model/WorkspaceTransform transform1 {:name         "Transform in WS1"
                                                            :workspace_id (:id workspace1)}
                      :model/WorkspaceTransform transform2 {:name         "To Delete"

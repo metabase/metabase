@@ -23,19 +23,19 @@
 
 (deftest find-downstream-problems-empty-workspace-test
   (testing "find-downstream-problems returns empty for workspace with no transforms"
-    (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Empty Workspace")]
       (is (= [] (ws.validation/find-downstream-problems (:id workspace) nil))))))
 
 (deftest problems-endpoint-returns-empty-for-new-workspace-test
   (testing "GET /api/ee/workspace/:id/problems returns empty list for workspace with no transforms"
-    (ws.tu/with-workspaces! [workspace {:name "Test Workspace"}]
-      (let [response (mt/user-http-request :crowberto :get 200
-                                           (str "ee/workspace/" (:id workspace) "/problem"))]
-        (is (= [] response))))))
+    (let [workspace (ws.tu/create-provisional-ws! "Test Workspace")
+          response  (mt/user-http-request :crowberto :get 200
+                                          (str "ee/workspace/" (:id workspace) "/problem"))]
+      (is (= [] response)))))
 
 (deftest problems-endpoint-requires-superuser-test
   (testing "GET /api/ee/workspace/:id/problems requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
+    (let [workspace (ws.tu/create-provisional-ws! "Private Workspace")]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403
                                    (str "ee/workspace/" (:id workspace) "/problem")))))))
