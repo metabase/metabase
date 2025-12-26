@@ -28,17 +28,18 @@
     :write-keepalive-newlines? false}))
 
 (defn- write-csv
-  "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and no support for
-  options (we don't use them)."
+  "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and configurable 
+  separator."
   [writer data]
-  (let [separator \,
+  (let [separator-str (qp.settings/csv-field-separator)
+        separator (if (= separator-str "\\t") \tab (first separator-str))  ; Handle tab specially
         quote \"
         quote? (fn [^String s]
                  (let [n (.length s)]
                    (loop [i 0]
                      (if (>= i n) false
                          (let [ch (.charAt s (unchecked-int i))]
-                           (if (or (= ch \,) ;; separator
+                           (if (or (= ch separator)  ; <-- Changed from hardcoded \,
                                    (= ch \") ;; quote
                                    (= ch \return)
                                    (= ch \newline))

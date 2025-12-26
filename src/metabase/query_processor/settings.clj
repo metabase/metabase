@@ -65,3 +65,13 @@
                   (if (nil? limit)
                     limit
                     (max limit *minimum-download-row-limit*)))))
+
+(defsetting csv-field-separator
+  (deferred-tru "Character to use as field separator in CSV exports. Defaults to comma (,). Common alternatives include semicolon (;) for European locales and tab (\\t).")
+  :type       :string
+  :default    ","
+  :visibility :public
+  :export?    true
+  :encryption :no
+  :audit      :getter)
+
