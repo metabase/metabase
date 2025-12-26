@@ -49,7 +49,7 @@ export const ScalarValue = ({
       targetWidth: width,
       fontFamily: fontFamily ?? "Lato",
       fontWeight: 700,
-      unit: "rem",
+      unit: "em",
       step: 0.2,
       min: 1,
       max: gridSize
