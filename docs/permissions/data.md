@@ -128,7 +128,7 @@ Create query levels include:
 
 ### Query builder and native create queries permission
 
-People can use Metabase's query builder or its native/SQL editor. 
+People can use Metabase's query builder or its native/SQL editor.
 
 If a group has "Blocked" or "Row and column security" View data permissions for _any_ of the tables in the database, then this group will have native queries disabled for _all_ tables in that database. That's because Metabase can't parse SQL queries, so it can't know for sure whether the SQL queries are using the tables with restricted access.
 
@@ -150,6 +150,8 @@ You can set permissions on whether people in a group can download results (and h
 - Granular (you want to set access for individual tables or schemas)
 - 10 thousand rows
 - 1 million rows
+
+Downloads of native queries are only allowed if a group has download permissions for the _entire_ database. If a group only has download permissions for specific tables or schemas (using the Granular setting), they won't be able to download results from native/SQL queries, even for tables they have permissions for. This is because Metabase doesn't parse SQL queries, so it can't determine which tables are being queried.
 
 ## Manage table metadata permissions
 
