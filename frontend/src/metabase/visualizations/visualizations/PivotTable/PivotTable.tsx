@@ -620,6 +620,7 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   minSize: getMinSize("pivot"),
   defaultSize: getDefaultSize("pivot"),
   canSavePng: false,
+  hasEmptyState: true,
   isSensible,
   checkRenderable,
   settings,

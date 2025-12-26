@@ -125,7 +125,12 @@ export const settings = {
         let rows;
         let columns: DatasetColumn[];
 
-        if (dimensions.length < 2) {
+        if (dimensions.length === 0) {
+          // No dimensions (breakouts), only aggregations - this is an invalid
+          // pivot table configuration that checkRenderable will catch
+          columns = [];
+          rows = [];
+        } else if (dimensions.length < 2) {
           columns = [];
           rows = [first];
         } else if (dimensions.length <= 3) {

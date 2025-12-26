@@ -5,6 +5,7 @@ import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
@@ -229,8 +230,22 @@ export function checkRenderable(
   query?: NativeQuery | null,
 ) {
   if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
-    throw new Error(t`Pivot tables can only be used with aggregated queries.`);
+    throw new ChartSettingsError(
+      t`Pivot tables can only be used with aggregated queries.`,
+    );
   }
+
+  // Pivot tables require at least one real breakout (dimension) column
+  // (excluding the synthetic pivot-grouping column added by the backend)
+  const hasAtLeastOneBreakout = data.cols.some(
+    (col) => col.source === "breakout" && !isPivotGroupColumn(col),
+  );
+  if (!hasAtLeastOneBreakout) {
+    throw new ChartSettingsError(
+      t`Pivot tables can only be used with aggregated queries.`,
+    );
+  }
+
   if (!databaseSupportsPivotTables(query)) {
     throw new Error(t`This database does not support pivot tables.`);
   }
