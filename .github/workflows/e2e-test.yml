@@ -182,7 +182,7 @@ jobs:
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
-        if-no-files-found: ignore
+          if-no-files-found: ignore
 
       - name: Extract chunk-specific changed timings
         id: extract-timings
