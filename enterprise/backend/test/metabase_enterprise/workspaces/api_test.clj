@@ -115,7 +115,7 @@
 (deftest archive-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
+          workspace (ws.tu/create-ready-ws! "Archive Isolation Test" {:isolation? false})]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
@@ -136,7 +136,7 @@
 (deftest ^:parallel delete-workspace-calls-destroy-isolation-test
   (testing "DELETE /api/ee/workspace/:id calls destroy-workspace-isolation!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Delete Isolation Test")]
+          workspace (ws.tu/create-ready-ws! "Delete Isolation Test" {:isolation? false})]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
@@ -147,7 +147,7 @@
 (deftest ^:parallel merge-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
+          workspace (ws.tu/create-ready-ws! "Merge Isolation Test" {:isolation? false})]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
@@ -157,7 +157,7 @@
 (deftest unarchive-workspace-calls-ensure-isolation-test
   (testing "POST /api/ee/workspace/:id/unarchive calls ensure-database-isolation!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
+          workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test" {:isolation? false})]
       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (testing "ensure-database-isolation! should be called when unarchiving"
         (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
@@ -170,7 +170,7 @@
 (deftest unarchive-workspace-calls-sync-grant-accesses-test
   (testing "POST /api/ee/workspace/:id/unarchive calls sync-grant-accesses!"
     (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Unarchive Grant Test")]
+          workspace (ws.tu/create-ready-ws! "Unarchive Grant Test" {:isolation? false})]
       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
       (mt/with-dynamic-fn-redefs [ws.impl/sync-grant-accesses!
                                   (fn [_workspace]
@@ -181,7 +181,7 @@
 
 (deftest archive-unarchive-access-granted-test
   (testing "Archive/unarchive properly manages access_granted flags and grants"
-    (let [workspace     (ws.tu/create-ready-ws! "Archive Grant Test")
+    (let [workspace      (ws.tu/create-ready-ws! "Archive Grant Test" {:isolation? false})
           granted-tables (atom [])]
       (mt/with-temp [:model/WorkspaceInput input {:workspace_id   (:id workspace)
                                                   :db_id          (mt/id)
@@ -204,15 +204,17 @@
 
 (deftest merge-workspace-test
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Promote Test"}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge"))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "Promote Test"}]
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge")))))))
 
   (testing "Cannot merge an already archived workspace"
-    (ws.tu/with-workspaces! [workspace {:name "Archived Workspace"}]
-      (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
-      (is (= "Cannot merge an archived workspace"
-             (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/merge")))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "Archived Workspace"}]
+       (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+       (is (= "Cannot merge an archived workspace"
+              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/merge"))))))))
 
 (deftest merge-workspace-with-transform-test
   (testing "POST /api/ee/workspace/:id/merge promotes transforms and archives workspace"
@@ -705,26 +707,28 @@
 
 (deftest create-workspace-transform-permissions-test
   (testing "POST /api/ee/workspace/:id/transform requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Transform Test"}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
-                                   {:name   "Should Fail"
-                                    :source {:type  "query"
-                                             :query {}}
-                                    :target {:type "table"
-                                             :name "should_fail"}}))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "Transform Test"}]
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
+                                    {:name   "Should Fail"
+                                     :source {:type  "query"
+                                              :query {}}
+                                     :target {:type "table"
+                                              :name "should_fail"}})))))))
 
 (deftest create-workspace-transform-archived-test
   (testing "Cannot create transform in archived workspace"
-    (ws.tu/with-workspaces! [workspace {:name "Archived"}]
-      (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
-      (is (= "Cannot create transforms in an archived workspace"
-             (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/transform")
-                                   {:name   "Should Fail"
-                                    :source {:type  "query"
-                                             :query (mt/mbql-query venues)}
-                                    :target {:type "table"
-                                             :name "should_fail"}}))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "Archived"}]
+       (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
+       (is (= "Cannot create transforms in an archived workspace"
+              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/transform")
+                                    {:name   "Should Fail"
+                                     :source {:type  "query"
+                                              :query (mt/mbql-query venues)}
+                                     :target {:type "table"
+                                              :name "should_fail"}})))))))
 
 (deftest add-transforms-to-workspace-test
   (testing "Add transforms to workspace via POST /transform"

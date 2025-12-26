@@ -128,7 +128,7 @@
                           {:requested-db-id database-id
                            :actual-db-id    new-db-id})))))
     (u/prog1 (t2/select-one :model/Workspace :id (:id workspace))
-      (quick-task/submit-task! #(run-workspace-setup! <> database)))))
+      (quick-task/submit-task! (bound-fn [] (run-workspace-setup! <> database))))))
 
 (defn- create-uninitialized-workspace!
   "Create a workspace with a provisional database_id but no isolation resources.

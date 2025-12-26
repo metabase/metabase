@@ -69,9 +69,16 @@
                 (ws.common/create-workspace! creator-id props)))))
 
 (defn create-ready-ws!
-  "Create a workspace and wait for it to be ready."
-  [name]
-  (create-workspace-for-test! {:name name}))
+  "Create a workspace and wait for it to be ready.
+   By default runs full isolation setup. Pass {:isolation? false}
+   to skip isolation for faster tests that don't need it."
+  ([name]
+   (create-ready-ws! name {:isolation? true}))
+  ([name {:keys [isolation?]}]
+   (if isolation?
+     (create-workspace-for-test! {:name name})
+     (binding [ws.isolation/*skip-workspace-isolation* true]
+       (create-workspace-for-test! {:name name})))))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
