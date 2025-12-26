@@ -605,7 +605,7 @@ describe("documents", () => {
 
         assertOnlyOneOptionActive(/Orders, Count$/, "mention");
 
-        H.documentSuggestionDialog()
+        H.documentMentionDialog()
           .findByRole("option", { name: /Browse all/ })
           .realHover();
 
@@ -1375,7 +1375,7 @@ const assertOnlyOneOptionActive = (
     dialog === "command"
       ? H.commandSuggestionDialog
       : dialog === "mention"
-        ? H.documentSuggestionDialog
+        ? H.documentMentionDialog
         : H.documentMetabotDialog;
 
   dialogContainer()

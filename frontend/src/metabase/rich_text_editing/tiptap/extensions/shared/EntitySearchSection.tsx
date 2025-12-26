@@ -1,16 +1,21 @@
 import { t } from "ttag";
 
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
-import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import {
   CreateNewQuestionFooter,
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase/documents/components/Editor/shared/MenuComponents";
+import type {
+  SuggestionPickerModalType,
+  SuggestionPickerViewMode,
+} from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Divider, Text } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
+import { LinkedEntityPickerModalWithConfirm } from "./LinkedEntityPickerModal";
+import type { DocumentLinkedEntityPickerItemValue } from "./LinkedEntityPickerModal/types";
 import { getBrowseAllItemIndex } from "./suggestionUtils";
 
 interface EntitySearchSectionProps {
@@ -20,8 +25,9 @@ interface EntitySearchSectionProps {
   onFooterClick: () => void;
   query: string;
   searchResults: SearchResult[];
-  modal: "question-picker" | null;
-  onModalSelect: (item: QuestionPickerValueItem) => void;
+  modal: SuggestionPickerModalType;
+  viewMode: SuggestionPickerViewMode;
+  onModalSelect: (item: DocumentLinkedEntityPickerItemValue) => void;
   onModalClose: () => void;
   onItemHover: (index: number) => void;
   canBrowseAll?: boolean;
@@ -38,6 +44,7 @@ export function EntitySearchSection({
   query,
   searchResults,
   modal,
+  viewMode,
   onModalSelect,
   onModalClose,
   onItemHover,
@@ -106,9 +113,16 @@ export function EntitySearchSection({
             onMouseEnter={() => onItemHover(browseAllItemIndex)}
           />
 
-          {modal === "question-picker" && (
+          {modal === "question-picker" && viewMode !== "linkTo" && (
             <QuestionPickerModal
               onChange={onModalSelect}
+              onClose={onModalClose}
+            />
+          )}
+
+          {modal === "question-picker" && viewMode === "linkTo" && (
+            <LinkedEntityPickerModalWithConfirm
+              onConfirm={onModalSelect}
               onClose={onModalClose}
             />
           )}
