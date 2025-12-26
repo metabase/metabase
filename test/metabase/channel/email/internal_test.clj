@@ -1,11 +1,11 @@
-(ns metabase.channel.email.messages-test
+(ns metabase.channel.email.internal-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-keys.core :as api-key]
    [metabase.channel.email :as email]
    [metabase.channel.email-test :as et]
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel.email.internal :as messages]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry]

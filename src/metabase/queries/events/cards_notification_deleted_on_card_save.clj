@@ -1,6 +1,5 @@
 (ns metabase.queries.events.cards-notification-deleted-on-card-save
   (:require
-   [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
@@ -15,12 +14,12 @@
   by [[metabase.collections-rest.api/maybe-send-archived-notifications!]]."
   [topic {:keys [notifications card actor], :as _event}]
   (try
-    (let [send-message! (case topic
-                          :event/card-update.notification-deleted.card-archived
-                          messages/send-alert-stopped-because-archived-email!
+    (let [email-topic (case topic
+                        :event/card-update.notification-deleted.card-archived
+                        :event/email.alert-stopped-because-archived
 
-                          :event/card-update.notification-deleted.card-changed
-                          messages/send-alert-stopped-because-changed-email!)
+                        :event/card-update.notification-deleted.card-changed
+                        :event/email.alert-stopped-because-changed)
           recipients (->> notifications
                           (mapcat :handlers)
                           (filter #(= :channel/email (:channel_type %)))
@@ -33,6 +32,8 @@
                                     (-> recipient :details :value)
                                     (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))]
       (when (seq recipients)
-        (send-message! card recipients actor)))
+        (events/publish-event! email-topic {:card             card
+                                            :recipient-emails recipients
+                                            :actor            actor})))
     (catch Throwable e
       (log/error e "Error sending notification email"))))
