@@ -2,7 +2,7 @@ import type { Timeline } from "metabase-types/api";
 
 import TimelineCard from "../TimelineCard";
 
-import { ListRoot } from "./TimelineList.styled";
+import S from "./TimelineList.module.css";
 
 export interface TimelineListProps {
   timelines: Timeline[];
@@ -14,7 +14,7 @@ const TimelineList = ({
   onUnarchive,
 }: TimelineListProps): JSX.Element => {
   return (
-    <ListRoot>
+    <div className={S.ListRoot}>
       {timelines.map((timeline) => (
         <TimelineCard
           key={timeline.id}
@@ -22,7 +22,7 @@ const TimelineList = ({
           onUnarchive={onUnarchive}
         />
       ))}
-    </ListRoot>
+    </div>
   );
 };
 
