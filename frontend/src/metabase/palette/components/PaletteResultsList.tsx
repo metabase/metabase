@@ -14,6 +14,7 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
 } from "react";
 
 import type { PaletteActionImpl } from "../types";
@@ -42,6 +43,10 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
   const itemsRef = useRef(props.items);
   itemsRef.current = props.items;
 
+  // Track if user has manually navigated to preserve their selection
+  const [hasUserNavigated, setHasUserNavigated] = useState(false);
+  const previousSearchRef = useRef<string>("");
+
   const { query, search, currentRootActionId, activeIndex, options } = useKBar(
     (state) => ({
       search: state.searchQuery,
@@ -58,6 +63,7 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
       if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) {
         event.preventDefault();
         event.stopPropagation();
+        setHasUserNavigated(true);
         query.setActiveIndex((index) => {
           return navigateActionIndex(itemsRef.current, index, -1);
         });
@@ -67,6 +73,7 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
       ) {
         event.preventDefault();
         event.stopPropagation();
+        setHasUserNavigated(true);
         query.setActiveIndex((index) => {
           return navigateActionIndex(itemsRef.current, index, 1);
         });
@@ -113,19 +120,26 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
     }
   }, [activeIndex]);
 
+  // Reset navigation tracking when search changes
   useEffect(() => {
-    // TODO(tim): fix scenario where async actions load in
-    // and active index is reset to the first item. i.e. when
-    // users register actions and bust the `useRegisterActions`
-    // cache, we won't want to reset their active index as they
-    // are navigating the list.
-    query.setActiveIndex(
-      // avoid setting active index on a group
-      typeof props.items[START_INDEX] === "string"
-        ? START_INDEX + 1
-        : START_INDEX,
-    );
-  }, [search, currentRootActionId, props.items, query]);
+    if (previousSearchRef.current !== search) {
+      setHasUserNavigated(false);
+      previousSearchRef.current = search;
+    }
+  }, [search]);
+
+  useEffect(() => {
+    // Only auto-set the active index if the user hasn't manually navigated yet.
+    // This prevents resetting their selection when async search results load in.
+    if (!hasUserNavigated) {
+      query.setActiveIndex(
+        // avoid setting active index on a group
+        typeof props.items[START_INDEX] === "string"
+          ? START_INDEX + 1
+          : START_INDEX,
+      );
+    }
+  }, [search, currentRootActionId, props.items, query, hasUserNavigated]);
 
   const execute = useCallback(
     (item: RenderParams["item"], e?: MouseEvent) => {
@@ -166,9 +180,16 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
         {props.items.map((item, index) => {
           const handlers = typeof item !== "string" &&
             item.disabled !== true && {
-              onPointerMove: () =>
-                activeIndex !== index && query.setActiveIndex(index),
-              onPointerDown: () => query.setActiveIndex(index),
+              onPointerMove: () => {
+                if (activeIndex !== index) {
+                  setHasUserNavigated(true);
+                  query.setActiveIndex(index);
+                }
+              },
+              onPointerDown: () => {
+                setHasUserNavigated(true);
+                query.setActiveIndex(index);
+              },
               onClick: (e: MouseEvent) => execute(item, e),
             };
           const active = index === activeIndex;

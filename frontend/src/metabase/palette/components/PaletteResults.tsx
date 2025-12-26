@@ -101,12 +101,6 @@ export const PaletteResults = ({
     [results, searchTerm],
   );
 
-  useEffect(() => {
-    if (processedResults[0] === t`Results`) {
-      query.setActiveIndex(1);
-    }
-  }, [processedResults, query]);
-
   useKeyPressEvent("End", () => {
     query.setActiveIndex(
       navigateActionIndex(processedResults, processedResults.length, -1),
