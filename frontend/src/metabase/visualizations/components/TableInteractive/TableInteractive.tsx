@@ -217,7 +217,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return getColumnSizing(cols, columnWidths);
   }, [cols, columnWidths]);
 
-  const onOpenObjectDetail = useObjectDetail(data);
+  const onOpenObjectDetail = useObjectDetail();
 
   const getIsCellClickable = useMemoizedCallback(
     (clicked: ClickObject) => {
