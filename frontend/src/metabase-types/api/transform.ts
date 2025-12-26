@@ -15,6 +15,7 @@ export type Transform = {
   name: string;
   description: string | null;
   source: TransformSource;
+  source_type: "native" | "python" | "mbql";
   target: TransformTarget;
   collection_id: number | null;
   created_at: string;

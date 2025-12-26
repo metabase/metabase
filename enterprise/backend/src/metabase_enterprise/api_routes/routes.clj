@@ -40,6 +40,7 @@
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
+   [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -134,7 +135,8 @@
    "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
    "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
-   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
+   "/workspace"                    metabase-enterprise.workspaces.api/routes})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

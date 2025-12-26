@@ -81,9 +81,13 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids database_id type]}]
   (api/check-superuser)
-  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
+  (let [type       (when type (map #(if (= % "query") "mbql" %) type))
+        where      (cond-> [:and]
+                     type        (conj [:in :source_type type])
+                     database_id (conj [:= :target_db_id database_id]))
+        transforms (t2/select :model/Transform {:where where :order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
@@ -106,14 +110,35 @@
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:database_id {:optional true} [:maybe ms/PositiveInt]]
+    [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
   (get-transforms query-params))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
+(defn create-transform!
+  "Create new transform in the appdb.
+   Optionally accepts a creator-id to use instead of the current user (for workspace merges)."
+  ([body]
+   (create-transform! body nil))
+  ([body creator-id]
+   (let [creator-id (or creator-id api/*current-user-id*)
+         transform  (t2/with-transaction [_]
+                      (let [tag-ids   (:tag_ids body)
+                            transform (t2/insert-returning-instance!
+                                       :model/Transform
+                                       (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                              :creator_id creator-id))]
+                        ;; Add tag associations if provided
+                        (when (seq tag-ids)
+                          (transform.model/update-transform-tags! (:id transform) tag-ids))
+                        ;; Return with hydrated tag_ids
+                        (t2/hydrate transform :transform_tag_ids :creator)))]
+     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
+     transform)))
+
+;; TODO (chris 2025/12/16) fully populate the result schema
+;; TODO (lbrdnk 2025/12/16) relaxed result schema to unblock FE. This should be properly handled later.
+(api.macros/defendpoint :post "/" :- [:map [:name :string] [:description {:optional true} [:maybe :string]]]
   "Create a new transform."
   [_route-params
    _query-params
@@ -183,6 +208,34 @@
         dependencies (map id->transform dep-ids)]
     (t2/hydrate dependencies :creator)))
 
+(def ^:private MergeHistoryEntry
+  [:map
+   [:id ms/PositiveInt]
+   [:workspace_merge_id ms/PositiveInt]
+   [:commit_message :string]
+   [:workspace_id [:maybe ms/PositiveInt]]
+   [:workspace_name :string]
+   [:merging_user_id ms/PositiveInt]
+   [:created_at :any]])
+
+(api.macros/defendpoint :get "/:id/merge-history"
+  :- [:sequential MergeHistoryEntry]
+  "Get merge history for a transform. Returns all merge events that affected this transform,
+   ordered by created_at descending (newest first)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/Transform id))
+  (t2/select [:model/WorkspaceMergeTransform
+              :id
+              :workspace_merge_id
+              :commit_message
+              :workspace_id
+              :workspace_name
+              :merging_user_id
+              :created_at]
+             {:where    [:= :transform_id id]
+              :order-by [[:created_at :desc]]}))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -210,24 +263,10 @@
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
-  "Update a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   body :- [:map
-            [:name {:optional true} :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transforms.schema/transform-source]
-            [:target {:optional true} ::transforms.schema/transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+(defn update-transform!
+  "Update a transform. Validates features, database support, cycles, and target conflicts.
+   Returns the updated transform with hydrated associations."
+  [id body]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -256,17 +295,41 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id"
+  "Update a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name {:optional true} :string]
+            [:description {:optional true} [:maybe :string]]
+            [:source {:optional true} ::transforms.schema/transform-source]
+            [:target {:optional true} ::transforms.schema/transform-target]
+            [:run_trigger {:optional true} ::run-trigger]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (api/check-superuser)
+  (update-transform! id body))
+
+(defn delete-transform!
+  "Delete a transform and publish the delete event."
+  [transform]
+  (t2/delete! :model/Transform (:id transform))
+  (events/publish-event! :event/transform-delete
+                         {:object transform
+                          :user-id api/*current-user-id*})
+  nil)
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (t2/delete! :model/Transform id)
-    (events/publish-event! :event/transform-delete
-                           {:object transform
-                            :user-id api/*current-user-id*}))
-  nil)
+  (delete-transform! (api/check-404 (t2/select-one :model/Transform id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -296,18 +359,12 @@
       (transforms.canceling/cancel-run! (:id run))))
   nil)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/run"
-  "Run a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        _         (check-feature-enabled! transform)
-        start-promise (promise)]
+(defn run-transform!
+  "Run a transform. Returns a 202 response with run_id.
+   The transform must already be fetched and validated."
+  [transform]
+  (check-feature-enabled! transform)
+  (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.execute/execute! transform {:start-promise start-promise
                                              :run-method :manual}))
@@ -319,6 +376,17 @@
       (-> (response/response {:message (deferred-tru "Transform run started")
                               :run_id run-id})
           (assoc :status 202)))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:id/run"
+  "Run a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (run-transform! (api/check-404 (t2/select-one :model/Transform id))))
 
 (defn- extract-columns-from-query
   "Attempts to extract column names from an MBQL query without executing it.

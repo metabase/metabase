@@ -1,0 +1,405 @@
+import type {
+  CreateWorkspaceRequest,
+  CreateWorkspaceTransformRequest,
+  CreateWorkspaceTransformResponse,
+  ExternalTransformsRequest,
+  ExternalTransformsResponse,
+  TransformDownstreamMapping,
+  TransformId,
+  TransformUpstreamMapping,
+  UpdateWorkspaceTransformRequest,
+  ValidateTableNameRequest,
+  ValidateTableNameResponse,
+  Workspace,
+  WorkspaceAllowedDatabasesResponse,
+  WorkspaceCheckoutResponse,
+  WorkspaceGraphResponse,
+  WorkspaceId,
+  WorkspaceListResponse,
+  WorkspaceLogResponse,
+  WorkspaceMergeResponse,
+  WorkspaceProblem,
+  WorkspaceRunRequest,
+  WorkspaceRunResponse,
+  WorkspaceTablesResponse,
+  WorkspaceTransform,
+  WorkspaceTransformItem,
+  WorkspaceTransformMergeResponse,
+  WorkspaceTransformRef,
+  WorkspaceTransformRunResponse,
+  WorkspaceTransformsResponse,
+} from "metabase-types/api";
+
+import { EnterpriseApi } from "./api";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideWorkspaceContentItemsTags,
+  provideWorkspaceTags,
+  provideWorkspacesTags,
+  tag,
+} from "./tags";
+
+export const workspaceApi = EnterpriseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getWorkspaces: builder.query<WorkspaceListResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/workspace",
+      }),
+      providesTags: (response) =>
+        response ? provideWorkspacesTags(response.items) : [],
+    }),
+    getWorkspace: builder.query<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}`,
+      }),
+      providesTags: (workspace) =>
+        workspace ? provideWorkspaceTags(workspace) : [],
+    }),
+    createWorkspace: builder.mutation<Workspace, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/workspace",
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("workspace"), listTag("transform")]),
+    }),
+    updateWorkspace: builder.mutation<
+      Workspace,
+      { id: WorkspaceId; name?: string; database_id?: number }
+    >({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace/${id}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("workspace", id)]),
+    }),
+    createWorkspaceTransform: builder.mutation<
+      CreateWorkspaceTransformResponse,
+      { id: WorkspaceId } & CreateWorkspaceTransformRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/transform`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id, global_id }) =>
+        invalidateTags(error, [
+          idTag("workspace", id),
+          idTag("workspace-transforms", id),
+          idTag("external-transforms", id),
+          idTag("workspace-tables", id),
+          listTag("transform"),
+          ...(global_id != null ? [idTag("transform", global_id)] : []),
+        ]),
+      transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
+    }),
+    getTransformUpstreamMapping: builder.query<
+      TransformUpstreamMapping,
+      TransformId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/mapping/transform/${id}/upstream`,
+      }),
+      providesTags: (mapping) =>
+        mapping?.transform
+          ? provideWorkspaceContentItemsTags([mapping.transform])
+          : [],
+    }),
+    getTransformDownstreamMapping: builder.query<
+      TransformDownstreamMapping,
+      TransformId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/mapping/transform/${id}/downstream`,
+      }),
+      providesTags: (mapping) =>
+        mapping ? provideWorkspaceContentItemsTags(mapping.transforms) : [],
+    }),
+    getWorkspaceCheckout: builder.query<WorkspaceCheckoutResponse, TransformId>(
+      {
+        query: (transformId) => ({
+          method: "GET",
+          url: `/api/ee/workspace/checkout`,
+          params: { "transform-id": transformId },
+        }),
+        providesTags: (_, __, transformId) => [idTag("transform", transformId)],
+      },
+    ),
+    mergeWorkspace: builder.mutation<
+      WorkspaceMergeResponse,
+      { id: WorkspaceId; commit_message: string }
+    >({
+      query: ({ id, commit_message }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/merge`,
+        body: { commit_message },
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    mergeWorkspaceTransform: builder.mutation<
+      WorkspaceTransformMergeResponse,
+      WorkspaceTransformRef
+    >({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/merge`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    archiveWorkspace: builder.mutation<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/archive`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    unarchiveWorkspace: builder.mutation<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/unarchive`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    deleteWorkspace: builder.mutation<void, WorkspaceId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace/${id}`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    validateTableName: builder.mutation<
+      ValidateTableNameResponse,
+      ValidateTableNameRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/transform/validate/target`,
+        body,
+      }),
+    }),
+    getWorkspaceTables: builder.query<WorkspaceTablesResponse, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/table`,
+      }),
+      providesTags: (_, __, id) => [idTag("workspace-tables", id)],
+    }),
+    getWorkspaceGraph: builder.query<WorkspaceGraphResponse, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/graph`,
+      }),
+      providesTags: (_, __, id) => [idTag("workspace", id)],
+    }),
+    getWorkspaceProblems: builder.query<WorkspaceProblem[], WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/problem`,
+      }),
+      providesTags: (_, __, id) => [idTag("workspace", id)],
+    }),
+    getWorkspaceTransforms: builder.query<
+      WorkspaceTransformItem[],
+      WorkspaceId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/transform`,
+      }),
+      providesTags: (_, __, id) => [idTag("workspace-transforms", id)],
+      transformResponse: (response: WorkspaceTransformsResponse) =>
+        response.transforms,
+    }),
+    getExternalTransforms: builder.query<
+      ExternalTransformsResponse["transforms"],
+      ExternalTransformsRequest
+    >({
+      query: ({ workspaceId, databaseId }) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${workspaceId}/external/transform`,
+        params: { database_id: databaseId },
+      }),
+      providesTags: (_, __, { workspaceId: id }) => [
+        listTag("external-transforms"),
+        idTag("external-transforms", id),
+      ],
+      transformResponse: (response: ExternalTransformsResponse) =>
+        response.transforms,
+    }),
+    getWorkspaceTransform: builder.query<
+      WorkspaceTransform,
+      { workspaceId: WorkspaceId; transformId: string }
+    >({
+      query: ({ workspaceId, transformId }) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
+      }),
+      providesTags: (_, __, { transformId }) => [
+        // idTag("workspace-transforms", workspaceId),
+        idTag("workspace-transform", transformId),
+      ],
+      transformResponse: (response: WorkspaceTransform) => ({
+        ...response,
+        id: response.ref_id,
+      }),
+    }),
+    getWorkspaceLog: builder.query<WorkspaceLogResponse, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/log`,
+      }),
+      providesTags: (_, _error, id) => [idTag("workspace", id)],
+    }),
+    runWorkspace: builder.mutation<WorkspaceRunResponse, WorkspaceRunRequest>({
+      query: ({ id, stale_only }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/run`,
+        params: stale_only ? { stale_only: 1 } : undefined,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          idTag("workspace", id),
+          idTag("workspace-transforms", id),
+          idTag("workspace-tables", id),
+          tag("workspace-transform"),
+          tag("transform"),
+        ]),
+    }),
+    runWorkspaceTransform: builder.mutation<
+      WorkspaceTransformRunResponse,
+      WorkspaceTransformRef
+    >({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/run`,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          idTag("workspace-tables", workspaceId),
+        ]),
+    }),
+    updateWorkspaceTransform: builder.mutation<
+      WorkspaceTransform,
+      UpdateWorkspaceTransformRequest
+    >({
+      query: ({ workspaceId, transformId, ...body }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+        ]),
+      transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
+    }),
+    archiveWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/archive`,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          idTag("workspace-tables", workspaceId),
+          tag("transform"),
+        ]),
+    }),
+    unarchiveWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/unarchive`,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          idTag("workspace-tables", workspaceId),
+          tag("transform"),
+        ]),
+    }),
+    deleteWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
+      query: ({ workspaceId, transformId }) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
+      }),
+      invalidatesTags: (_, error, { workspaceId, transformId }) =>
+        invalidateTags(error, [
+          idTag("workspace", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          idTag("external-transforms", workspaceId),
+          idTag("workspace-transform", transformId),
+          idTag("workspace-tables", workspaceId),
+          tag("transform"),
+        ]),
+    }),
+    getWorkspaceAllowedDatabases: builder.query<
+      WorkspaceAllowedDatabasesResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/workspace/database`,
+      }),
+    }),
+  }),
+});
+
+export const {
+  useGetWorkspacesQuery,
+  useGetWorkspaceQuery,
+  useGetWorkspaceTransformsQuery,
+  useGetExternalTransformsQuery,
+  useGetWorkspaceTransformQuery,
+  useLazyGetWorkspaceTransformQuery,
+  useCreateWorkspaceMutation,
+  useCreateWorkspaceTransformMutation,
+  useUpdateWorkspaceTransformMutation,
+  useArchiveWorkspaceTransformMutation,
+  useUnarchiveWorkspaceTransformMutation,
+  useDeleteWorkspaceTransformMutation,
+  useGetTransformUpstreamMappingQuery,
+  useGetTransformDownstreamMappingQuery,
+  useGetWorkspaceCheckoutQuery,
+  useMergeWorkspaceMutation,
+  useMergeWorkspaceTransformMutation,
+  useArchiveWorkspaceMutation,
+  useUnarchiveWorkspaceMutation,
+  useDeleteWorkspaceMutation,
+  useValidateTableNameMutation,
+  useUpdateWorkspaceMutation,
+  useGetWorkspaceTablesQuery,
+  useGetWorkspaceGraphQuery,
+  useGetWorkspaceProblemsQuery,
+  useGetWorkspaceLogQuery,
+  useRunWorkspaceMutation,
+  useRunWorkspaceTransformMutation,
+  useGetWorkspaceAllowedDatabasesQuery,
+} = workspaceApi;
+
+export const DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE: WorkspaceTablesResponse =
+  {
+    inputs: [],
+    outputs: [],
+  };

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
@@ -25,11 +26,19 @@ import { TargetNameInput } from "./TargetNameInput";
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
+
 type CreateTransformModalProps = {
   source: TransformSource;
   defaultValues: Partial<NewTransformValues>;
-  onCreate: (transform: Transform) => void;
+  onCreate?: (transform: Transform) => void;
   onClose: () => void;
+  schemas?: string[] | null;
+  showIncrementalSettings?: boolean;
+  validationSchemaExtension?: ValidationSchemaExtension;
+  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
+  targetDescription?: string;
 };
 
 export function CreateTransformModal({
@@ -37,6 +46,11 @@ export function CreateTransformModal({
   defaultValues,
   onCreate,
   onClose,
+  schemas,
+  showIncrementalSettings = true,
+  validationSchemaExtension,
+  handleSubmit,
+  targetDescription,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -45,6 +59,11 @@ export function CreateTransformModal({
         defaultValues={defaultValues}
         onCreate={onCreate}
         onClose={onClose}
+        schemas={schemas}
+        showIncrementalSettings={showIncrementalSettings}
+        validationSchemaExtension={validationSchemaExtension}
+        handleSubmit={handleSubmit}
+        targetDescription={targetDescription}
       />
     </Modal>
   );
@@ -53,8 +72,13 @@ export function CreateTransformModal({
 type CreateTransformFormProps = {
   source: TransformSource;
   defaultValues: Partial<NewTransformValues>;
-  onCreate: (transform: Transform) => void;
+  onCreate?: (transform: Transform) => void;
   onClose: () => void;
+  schemas?: string[] | null;
+  showIncrementalSettings?: boolean;
+  validationSchemaExtension?: ValidationSchemaExtension;
+  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
+  targetDescription?: string;
 };
 
 function CreateTransformForm({
@@ -62,9 +86,16 @@ function CreateTransformForm({
   defaultValues,
   onCreate,
   onClose,
+  schemas: schemasProp,
+  showIncrementalSettings = true,
+  handleSubmit,
+  targetDescription,
 }: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
+
+  const shouldFetchSchemas = schemasProp === undefined;
+  const showSchemaField = schemasProp !== null;
 
   const {
     data: database,
@@ -73,15 +104,22 @@ function CreateTransformForm({
   } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
 
   const {
-    data: schemas = [],
+    data: fetchedSchemas = [],
     isLoading: isSchemasLoading,
     error: schemasError,
   } = useListDatabaseSchemasQuery(
-    databaseId ? { id: databaseId, include_hidden: true } : skipToken,
+    shouldFetchSchemas && databaseId
+      ? { id: databaseId, include_hidden: true }
+      : skipToken,
   );
 
-  const isLoading = isDatabaseLoading || isSchemasLoading;
-  const error = databaseError ?? schemasError;
+  const schemas = useMemo(
+    () => schemasProp ?? fetchedSchemas ?? [],
+    [schemasProp, fetchedSchemas],
+  );
+  const isLoading =
+    isDatabaseLoading || (shouldFetchSchemas && isSchemasLoading);
+  const error = databaseError ?? (shouldFetchSchemas ? schemasError : null);
 
   const supportsSchemas = database && hasFeature(database, "schemas");
 
@@ -92,19 +130,19 @@ function CreateTransformForm({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const handleSubmit = async (values: NewTransformValues) => {
+  const defaultHandleSubmit = async (values: NewTransformValues) => {
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
     const transform = await createTransform(databaseId, source, values);
-    onCreate(transform);
+    onCreate?.(transform);
   };
 
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={validationSchema}
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit || defaultHandleSubmit}
     >
       <Form>
         <Stack gap="lg" mt="sm">
@@ -114,21 +152,23 @@ function CreateTransformForm({
             placeholder={t`My Great Transform`}
             data-autofocus
           />
-          {supportsSchemas && (
+          {showSchemaField && supportsSchemas && (
             <SchemaFormSelect
               name="targetSchema"
               label={t`Schema`}
               data={schemas}
             />
           )}
-          <TargetNameInput />
+          <TargetNameInput description={targetDescription} />
           <FormCollectionPicker
             name="collection_id"
             title={t`Collection`}
             type="transform-collections"
             style={{ marginBottom: 0 }}
           />
-          <IncrementalTransformSettings source={source} />
+          {showIncrementalSettings && (
+            <IncrementalTransformSettings source={source} />
+          )}
           <Group>
             <Box flex={1}>
               <FormErrorMessage />

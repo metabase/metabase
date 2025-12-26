@@ -226,3 +226,14 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 export function newDataStudioSnippet() {
   return `${dataStudioLibrary()}/snippets/new`;
 }
+
+export function dataStudioWorkspaceList() {
+  return `${ROOT_URL}/workspaces`;
+}
+
+export function dataStudioWorkspace(workspaceId: number, transformId?: number) {
+  if (transformId) {
+    return `${dataStudioWorkspaceList()}/${workspaceId}?transformId=${transformId}`;
+  }
+  return `${dataStudioWorkspaceList()}/${workspaceId}`;
+}

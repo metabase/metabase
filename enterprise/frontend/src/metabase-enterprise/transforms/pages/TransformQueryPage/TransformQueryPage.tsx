@@ -15,16 +15,25 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { Box } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import type { Database, Transform } from "metabase-types/api";
+import type {
+  Database,
+  DatasetQuery,
+  DraftTransformSource,
+  Transform,
+} from "metabase-types/api";
 
-import { TransformEditor } from "../../components/TransformEditor";
+import {
+  TransformEditor,
+  type TransformEditorProps,
+} from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
+import { EditTransformMenu } from "../../components/TransformHeader/EditTransformMenu";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { isNotDraftSource } from "../../utils";
@@ -52,6 +61,8 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
     isLoading: isLoadingDatabases,
     error: databasesError,
   } = useListDatabasesQuery({ include_analytics: true });
+  const showEditWorkspaceMenu =
+    transform?.source_type === "python" || transform?.source_type === "native";
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
@@ -68,6 +79,7 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
       transform={transform}
       databases={databases.data}
       route={route}
+      showEditWorkspaceMenu={showEditWorkspaceMenu}
     />
   );
 }
@@ -75,6 +87,7 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
+  showEditWorkspaceMenu: boolean;
   route: RouteProps;
 };
 
@@ -82,6 +95,7 @@ function TransformQueryPageBody({
   transform,
   databases,
   route,
+  showEditWorkspaceMenu,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -163,15 +177,20 @@ function TransformQueryPageBody({
         <TransformHeader
           transform={transform}
           actions={
-            <TransformPaneHeaderActions
-              source={source}
-              isSaving={isSaving}
-              isDirty={isDirty}
-              handleSave={handleSave}
-              handleCancel={handleCancel}
-              transformId={transform.id}
-              isEditMode={isEditMode}
-            />
+            <Group gap="sm">
+              {showEditWorkspaceMenu && (
+                <EditTransformMenu transform={transform} />
+              )}
+              <TransformPaneHeaderActions
+                source={source}
+                isSaving={isSaving}
+                isDirty={isDirty}
+                handleSave={handleSave}
+                handleCancel={handleCancel}
+                transformId={transform.id}
+                isEditMode={isEditMode}
+              />
+            </Group>
           }
           hasMenu={!isEditMode && !isDirty}
           isEditMode={isEditMode}
@@ -229,5 +248,67 @@ function TransformQueryPageBody({
         onConfirm={rejectProposed}
       />
     </>
+  );
+}
+
+export type TransformQueryPageEditorUiState = ReturnType<
+  typeof getInitialUiState
+>;
+
+export type TransformQueryPageEditorProps = {
+  source: DraftTransformSource;
+  proposedSource?: DraftTransformSource;
+  isDirty: boolean;
+  uiState: TransformQueryPageEditorUiState;
+  databases: Database[];
+  setSourceAndRejectProposed: (source: DraftTransformSource) => void;
+  setUiState: (uiState: TransformQueryPageEditorUiState) => void;
+  acceptProposed: () => void;
+  rejectProposed: () => void;
+  uiOptions?: TransformEditorProps["uiOptions"];
+  onRunQueryStart?: (query: DatasetQuery) => void;
+};
+
+export function TransformQueryPageEditor({
+  source,
+  proposedSource,
+  isDirty,
+  uiState,
+
+  uiOptions,
+  databases,
+  setSourceAndRejectProposed,
+  setUiState,
+  acceptProposed,
+  rejectProposed,
+  onRunQueryStart,
+}: TransformQueryPageEditorProps) {
+  return source.type === "python" ? (
+    <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+      source={source}
+      uiOptions={uiOptions}
+      proposedSource={
+        proposedSource?.type === "python" ? proposedSource : undefined
+      }
+      isDirty={isDirty}
+      onChangeSource={setSourceAndRejectProposed}
+      onAcceptProposed={acceptProposed}
+      onRejectProposed={rejectProposed}
+    />
+  ) : (
+    <TransformEditor
+      source={source}
+      proposedSource={
+        proposedSource?.type === "query" ? proposedSource : undefined
+      }
+      uiState={uiState}
+      uiOptions={uiOptions}
+      databases={databases}
+      onChangeSource={setSourceAndRejectProposed}
+      onChangeUiState={setUiState}
+      onAcceptProposed={acceptProposed}
+      onRejectProposed={rejectProposed}
+      onRunQueryStart={onRunQueryStart}
+    />
   );
 }

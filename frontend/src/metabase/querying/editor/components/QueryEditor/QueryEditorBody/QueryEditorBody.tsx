@@ -23,7 +23,7 @@ import { ResizeHandle } from "../ResizeHandle";
 
 import S from "./QueryEditorBody.module.css";
 
-const EDITOR_HEIGHT = 550;
+const DEFAULT_EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
 const HEADER_HEIGHT = 65 + 50;
 const PREVIEW_MAX_INITIAL_HEIGHT = 192;
@@ -45,6 +45,7 @@ type QueryEditorBodyProps = {
     | null;
   nativeEditorSelectedText?: string | null;
   readOnly?: boolean;
+  canChangeDatabase?: boolean;
   isNative: boolean;
   isRunnable: boolean;
   isRunning: boolean;
@@ -56,6 +57,7 @@ type QueryEditorBodyProps = {
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
   shouldShowLibrary?: boolean;
+  resizable?: boolean;
   onChange: (newQuestion: Question) => void;
   onRunQuery: () => Promise<void>;
   onToggleDataReference: () => void;
@@ -67,6 +69,7 @@ type QueryEditorBodyProps = {
   onOpenModal: (type: QueryModalType) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  editorHeight?: number;
   topBarInnerContent?: ReactNode;
 };
 
@@ -76,6 +79,7 @@ export function QueryEditorBody({
   modalSnippet,
   nativeEditorSelectedText,
   readOnly,
+  canChangeDatabase,
   isNative,
   isRunnable,
   isRunning,
@@ -85,6 +89,7 @@ export function QueryEditorBody({
   shouldDisableDatabase,
   shouldDisableItem,
   shouldShowLibrary,
+  resizable = true,
   onChange,
   onRunQuery,
   onToggleDataReference,
@@ -96,11 +101,16 @@ export function QueryEditorBody({
   onOpenModal,
   onAcceptProposed,
   onRejectProposed,
+  editorHeight: editorHeightOverride,
   topBarInnerContent,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
-  const editorHeight = useInitialEditorHeight(isNative, readOnly);
+  const editorHeight = useInitialEditorHeight(
+    isNative,
+    readOnly,
+    editorHeightOverride,
+  );
 
   const dataPickerOptions = useMemo(
     () => ({ shouldDisableItem, shouldDisableDatabase, shouldShowLibrary }),
@@ -108,15 +118,21 @@ export function QueryEditorBody({
   );
 
   const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(
-    () => ({
-      className: S.nativeResizableBox,
-      height: editorHeight,
-      resizeHandles: ["s"],
-      style: isResizing ? undefined : { transition: "height 0.25s" },
-      onResizeStart: () => setIsResizing(true),
-      onResizeStop: () => setIsResizing(false),
-    }),
-    [isResizing, editorHeight],
+    () =>
+      resizable
+        ? {
+            className: S.nativeResizableBox,
+            height: editorHeight,
+            resizeHandles: ["s"],
+            style: isResizing ? undefined : { transition: "height 0.25s" },
+            onResizeStart: () => setIsResizing(true),
+            onResizeStop: () => setIsResizing(false),
+          }
+        : {
+            height: editorHeight,
+            resizeHandles: [],
+          },
+    [isResizing, editorHeight, resizable],
   );
 
   const setQuestion = (newQuestion: Question) => {
@@ -133,6 +149,7 @@ export function QueryEditorBody({
       question={question}
       proposedQuestion={proposedQuestion}
       query={question.legacyNativeQuery()}
+      resizable={resizable}
       resizableBoxProps={resizableBoxProps}
       placeholder="SELECT * FROM TABLE_NAME"
       hasTopBar
@@ -140,6 +157,7 @@ export function QueryEditorBody({
       isInitiallyOpen
       isNativeEditorOpen
       readOnly={readOnly}
+      canChangeDatabase={canChangeDatabase}
       hasParametersList={false}
       isRunnable={isRunnable}
       isRunning={isRunning}
@@ -168,8 +186,8 @@ export function QueryEditorBody({
       axis="y"
       className={S.queryResizableBox}
       height={editorHeight}
-      handle={<ResizeHandle />}
-      resizeHandles={readOnly ? [] : ["s"]}
+      handle={resizable ? <ResizeHandle /> : <span />}
+      resizeHandles={readOnly || !resizable ? [] : ["s"]}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}
     >
@@ -198,10 +216,19 @@ function getHeaderHeight(isNative: boolean) {
   return HEADER_HEIGHT;
 }
 
-function useInitialEditorHeight(isNative: boolean, readOnly?: boolean) {
+function useInitialEditorHeight(
+  isNative: boolean,
+  readOnly?: boolean,
+  editorHeightOverride?: number,
+) {
   const { height: windowHeight } = useWindowSize();
   const headerHeight = getHeaderHeight(isNative);
   const availableHeight = windowHeight - headerHeight;
+
+
+  if (editorHeightOverride) {
+    return editorHeightOverride;
+  }
 
   if (readOnly) {
     // When read-only, we don't need to split the container to show the query visualization on the bottom
@@ -214,5 +241,8 @@ function useInitialEditorHeight(isNative: boolean, readOnly?: boolean) {
     PREVIEW_MAX_INITIAL_HEIGHT,
   );
 
-  return Math.min(availableHeight - previewInitialHeight, EDITOR_HEIGHT);
+  return Math.min(
+    availableHeight - previewInitialHeight,
+    DEFAULT_EDITOR_HEIGHT,
+  );
 }

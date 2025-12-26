@@ -1,6 +1,7 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -28,6 +29,7 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
+    Statement
     Types)))
 
 (set! *warn-on-reflection* true)
@@ -51,7 +53,8 @@
                               :test/jvm-timezone-setting        false
                               :transforms/python                true
                               :transforms/table                 true
-                              :uuid-type                        false}]
+                              :uuid-type                        false
+                              :workspace                        true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -250,8 +253,7 @@
             :geometry    :type/*    ; spatial data
             :geography   :type/*    ; spatial data
             :intervaly2m :type/*    ; interval literal
-            :intervald2s :type/*}   ; interval literal
-           ))
+            :intervald2s :type/*}))   ; interval literal
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]
@@ -672,3 +674,60 @@
   ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
   ;; 42P01: undefined_table, 3F000: invalid_schema_name
   (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Redshift inherits init-workspace-isolation! and grant-workspace-read-access! from Postgres.
+;; Only destroy needs to be overridden because Redshift doesn't support DROP OWNED BY.
+
+(defn- user-exists?
+  "Check if a Redshift user exists."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
+(defn- schema-exists?
+  "Check if a schema exists in Redshift."
+  [conn schema-name]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
+
+(defn- schemas-with-user-grants
+  "Query Redshift to find schemas where the user has been granted privileges."
+  [conn username]
+  (->> (jdbc/query conn
+                   ["SELECT DISTINCT namespace_name FROM svv_relation_privileges
+           WHERE identity_name = ? AND identity_type = 'user'"
+                    username])
+       (keep :namespace_name)))
+
+(defmethod driver/destroy-workspace-isolation! :redshift
+  [_driver database workspace]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :user)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (let [user-exists    (user-exists? t-conn username)
+            schema-exists  (schema-exists? t-conn schema-name)
+            granted-schemas (when user-exists
+                              (schemas-with-user-grants t-conn username))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          ;; Only revoke if user exists
+          (when user-exists
+            (doseq [schema granted-schemas]
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\""
+                                         schema username))
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
+                                         schema username)))
+            ;; Only revoke default privileges if both user and schema exist
+            (when schema-exists
+              (.addBatch ^Statement stmt
+                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                         schema-name username))))
+          ;; These are safe with IF EXISTS
+          (.addBatch ^Statement stmt
+                     ^String (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name))
+          (.addBatch ^Statement stmt
+                     ^String (format "DROP USER IF EXISTS \"%s\"" username))
+          (.executeBatch ^Statement stmt))))))

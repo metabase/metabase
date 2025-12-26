@@ -17,3 +17,4 @@ archive_operation_id: null
 archived_directly: null
 is_remote_synced: false
 is_sample: false
+workspace_id: null

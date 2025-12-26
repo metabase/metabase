@@ -28,6 +28,7 @@ import {
 } from "metabase/ui";
 
 import S from "./DataStudioLayout.module.css";
+import { WorkspacesSection } from "./WorkspaceSection";
 import { getCurrentTab } from "./utils";
 
 type DataStudioLayoutProps = {
@@ -87,7 +88,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
       justify="space-between"
       data-testid="data-studio-nav"
     >
-      <Stack gap="0.75rem">
+      <Stack gap="0.75rem" flex={1} mih={0}>
         <DataStudioNavbarToggle
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
@@ -144,6 +145,9 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
+        {canAccessTransforms && (
+          <WorkspacesSection showLabel={isNavbarOpened} />
+        )}
       </Stack>
       <Stack gap="0.75rem">
         {canAccessTransforms && (
@@ -164,6 +168,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
+
         <DataStudioTab
           label={t`Exit`}
           icon="exit"

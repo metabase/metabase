@@ -1,4 +1,8 @@
 .queryEditor {
+  display: flex;
+  flex-direction: column;
+  /* Very crude solution to integrate editor to Workspace Transform Tab */
+  flex: var(--native-query-editor-flex, none);
   width: 100%;
   background-color: var(--mb-color-bg-light);
 }
@@ -22,13 +26,18 @@
 }
 
 .editorWrapper {
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .resizableBox {
   display: none;
   border-top: 1px solid var(--mb-color-border);
   max-height: 0;
+  flex: 1 1 auto;
 
   &.open {
     display: flex;

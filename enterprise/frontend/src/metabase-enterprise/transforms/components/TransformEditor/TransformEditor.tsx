@@ -3,12 +3,14 @@ import { useMemo } from "react";
 import { useSelector } from "metabase/lib/redux";
 import {
   QueryEditor,
+  type QueryEditorUiOptions,
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type {
   Database,
+  DatasetQuery,
   QueryTransformSource,
   TransformId,
 } from "metabase-types/api";
@@ -16,15 +18,17 @@ import type {
 import { EditDefinitionButton } from "./EditDefinitionButton";
 import { getEditorOptions } from "./utils";
 
-type TransformEditorProps = {
+export type TransformEditorProps = {
   source: QueryTransformSource;
   uiState: QueryEditorUiState;
+  uiOptions?: QueryEditorUiOptions;
   proposedSource: QueryTransformSource | undefined;
   databases: Database[];
   onChangeSource: (source: QueryTransformSource) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onRunQueryStart?: (query: DatasetQuery) => void;
   readOnly?: boolean;
   transformId?: TransformId;
 };
@@ -34,10 +38,12 @@ export function TransformEditor({
   proposedSource,
   databases,
   uiState,
+  uiOptions,
   onChangeSource,
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onRunQueryStart,
   readOnly,
   transformId,
 }: TransformEditorProps) {
@@ -53,9 +59,9 @@ export function TransformEditor({
         : undefined,
     [proposedSource, metadata],
   );
-  const uiOptions = useMemo(
-    () => getEditorOptions(databases, readOnly),
-    [databases, readOnly],
+  const mergedUiOptions = useMemo(
+    () => ({ ...getEditorOptions(databases, readOnly), ...uiOptions }),
+    [databases, readOnly, uiOptions],
   );
 
   const handleQueryChange = (query: Lib.Query) => {
@@ -72,12 +78,13 @@ export function TransformEditor({
     <QueryEditor
       query={query}
       uiState={uiState}
-      uiOptions={uiOptions}
+      uiOptions={mergedUiOptions}
       proposedQuery={proposedQuery}
       onChangeQuery={handleQueryChange}
       onChangeUiState={onChangeUiState}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      onRunQueryStart={onRunQueryStart}
       topBarInnerContent={
         readOnly &&
         !!transformId && (

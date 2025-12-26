@@ -1272,7 +1272,7 @@
 
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden?]}]
+  [id {:keys [include-editable-data-model? include-hidden? include-workspace?]}]
   (let [filter-schemas (fn [schemas]
                          (if include-editable-data-model?
                            (if-let [f (u/ignore-exceptions
@@ -1280,16 +1280,30 @@
                                         (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                              schemas)
-                           (filter (partial can-read-schema? id) schemas)))]
+                           (filter (partial can-read-schema? id) schemas)))
+        clauses         (cond-> []
+                          ;; a non-nil value means Table is hidden --
+                          ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
+                          (not include-hidden?) (conj [:= :visibility_type nil])
+                          (not include-workspace?) (conj [:or
+                                                          [:= :schema nil]
+                                                          [:not
+                                                          ;; TODO dislike coupling to a constant, at least until we have an e2e test
+                                                           [:like :schema "mb__isolation_%"]
+                                                          ;; TODO this might behave terribly without an index when there are lots of workspaces
+                                                           #_[:exists {:select [1]
+                                                                       :from   [[(t2/table-name :model/Workspace) :w]]
+                                                                       :where  [:and
+                                                                                [:= :w.database_id id]
+                                                                                [:= :w.schema :metabase_table.schema]
+                                                                                [:= :w.archived_at nil]]}]]]))]
     (get-database id {:include-editable-data-model? include-editable-data-model?})
     (->> (t2/select-fn-set :schema :model/Table
                            :db_id id :active true
                            (merge
                             {:order-by [[:%lower.schema :asc]]}
-                            (when-not include-hidden?
-                               ;; a non-nil value means Table is hidden --
-                               ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
-                              {:where [:= :visibility_type nil]})))
+                            (when clauses
+                              {:where (into [:and] clauses)})))
          filter-schemas
          ;; for `nil` schemas return the empty string
          (map #(if (nil? %) "" %))
@@ -1308,11 +1322,19 @@
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_editable_data_model include_hidden]} :- [:map
-                                                            [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                            [:include_hidden              {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [include_editable_data_model
+           include_hidden
+           include_workspace]} :- [:map
+                                   [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                   [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                   [:include_workspace           {:default false} [:maybe ms/BooleanValue]]]]
   (database-schemas id {:include-editable-data-model? include_editable_data_model
-                        :include-hidden? include_hidden}))
+                        :include-hidden? include_hidden
+                        ;; TODO: filtering out workspace schemas has a weird FE consequence - if you type one of those
+                        ;;       schemas out manually in the targets, it will offer to create it for you.
+                        ;;       this ends up being a no-op, so i guess it's harmless for now?
+                        ;;       it will look very weird when we add validation to refuse saving that target.
+                        :include-workspace? include_workspace}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

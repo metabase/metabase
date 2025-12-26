@@ -60,7 +60,7 @@
     (collection/check-allowed-content :model/Transform collection_id))
   (assoc transform
          :source_type (transforms.util/transform-source-type source)
-         :target_db_id (or (:database target) (:target_db_id transform))))
+         :target_db_id (or (transforms.i/target-db-id transform) (:database target) (:target_db_id transform))))
 
 (t2/define-before-update :model/Transform
   [{:keys [source target] :as transform}]

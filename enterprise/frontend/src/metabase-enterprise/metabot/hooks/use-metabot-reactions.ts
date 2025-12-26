@@ -14,7 +14,7 @@ export const useMetabotReactions = () => {
   const navigateToPath = useMetabotSelector(getNavigateToPath);
 
   const setNavigateToPath = useCallback(
-    async (navigateToPath: string) => {
+    async (navigateToPath: string | null) => {
       dispatch(setNavigateToPathAction(navigateToPath));
     },
     [dispatch],

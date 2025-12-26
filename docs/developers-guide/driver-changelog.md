@@ -8,6 +8,11 @@ title: Driver interface changelog
 
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
 
+- Added workspace isolation multimethods for enterprise workspaces feature:
+  - `init-workspace-isolation!` - Initialize database isolation for a workspace (create isolated schema/database and user credentials)
+  - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation
+  - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user
+
 ## Metabase 0.58.0
 
 - Added a `:collate` feature for drivers that support collation settings on text fields
