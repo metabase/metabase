@@ -1121,3 +1121,22 @@
                    "ID"
                    "Product ID [external remap]"]
                   (map (comp :title second) (-> table :content second (nth 2) second last)))))))))
+
+(deftest render-table-with-broken-remapping-test
+  (testing "Handles columns with remapped_to but missing remapped_from column gracefully (#64480)"
+    (let [cols-with-broken-remapping
+          [{:name            "ID",
+            :display_name    "ID",
+            :base_type       :type/BigInteger
+            :semantic_type   nil
+            :visibility_type :normal}
+           {:name            "Name"
+            :display_name    "Name"
+            :base_type       :type/Text
+            :semantic_type   nil
+            :visibility_type :normal
+            ;; This column claims to be remapped to "NonExistentColumn" but that column doesn't exist
+            :remapped_to     "NonExistentColumn"}]
+          test-data [[1 "Alice"] [2 "Bob"]]]
+      (testing "Should not throw NullPointerException"
+        (is (some? (prep-for-html-rendering' cols-with-broken-remapping test-data)))))))
