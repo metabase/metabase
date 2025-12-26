@@ -1798,3 +1798,48 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti init-workspace-isolation!
+  "Initialize database isolation for a workspace. Creates an isolated schema/database,
+   user credentials, and grants appropriate permissions for the workspace to operate
+   within its own namespace.
+
+   Returns a map with:
+   - :schema           - The name of the isolated schema/database created
+   - :database_details - Connection details (user, password, etc.) for the isolated user
+
+   Implementations should:
+   - Create an isolated schema or database for the workspace
+   - Create a user with credentials that can only access that schema
+   - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
+
+   This is an enterprise feature. Drivers must also return true for
+   (database-supports? driver :workspace database) to indicate support."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti destroy-workspace-isolation!
+  "Destroy all database resources created for workspace isolation.
+   This includes dropping schemas/databases, users, roles, and any other
+   resources created by init-workspace-isolation!.
+
+   Should be called when deleting a workspace. Implementations should be
+   idempotent - calling on an already-destroyed workspace should not error."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti grant-workspace-read-access!
+  "Grant read access on specified tables to a workspace's isolated user.
+   This allows the workspace to read from source tables that it needs as inputs.
+
+   `tables` is a sequence of maps with :schema and :name keys identifying
+   the tables to grant access to."
+  {:added "0.59.0" :arglists '([driver database workspace tables])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

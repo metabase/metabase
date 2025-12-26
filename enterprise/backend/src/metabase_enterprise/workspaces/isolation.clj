@@ -1,35 +1,43 @@
 (ns metabase-enterprise.workspaces.isolation
+  "Workspace database isolation functions.
+
+  The actual driver-specific implementations are now in the driver files:
+  - metabase.driver.h2
+  - metabase.driver.postgres
+  - metabase.driver.redshift
+  - metabase.driver.snowflake
+  - metabase.driver.sqlserver
+  - metabase.driver.clickhouse
+  - metabase.driver.bigquery-cloud-sdk
+
+  This namespace provides the public API for workspace isolation."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]))
 
-;;;; Driver multimethods
-;; Implementations are in metabase-enterprise.workspaces.driver.{postgres,h2}
+;;;; Delegation to driver methods
+;; The actual multimethod implementations are now in the individual driver files.
+;; These functions dispatch through the driver multimethods.
 
-(defn dispatch-on-engine
-  "Take engine from database `db` and dispatch on that."
-  [database & _args]
-  (driver.u/database->driver database))
+(defn init-workspace-database-isolation!
+  "Create database isolation for a workspace. Return the database details.
+   Delegates to driver/init-workspace-isolation!"
+  [database workspace]
+  (driver/init-workspace-isolation! (driver.u/database->driver database) database workspace))
 
-(defmulti grant-read-access-to-tables!
-  "Grant read access to these tables."
-  {:added "0.59.0" :arglists '([database workspace tables])}
-  #'dispatch-on-engine
-  :hierarchy #'driver/hierarchy)
+(defn grant-read-access-to-tables!
+  "Grant read access to these tables.
+   Delegates to driver/grant-workspace-read-access!"
+  [database workspace tables]
+  (driver/grant-workspace-read-access! (driver.u/database->driver database) database workspace tables))
 
-(defmulti init-workspace-database-isolation!
-  "Create database isolation for a workspace. Return the database details."
-  {:added "0.59.0" :arglists '([database workspace])}
-  #'dispatch-on-engine
-  :hierarchy #'driver/hierarchy)
-
-(defmulti destroy-workspace-isolation!
+(defn destroy-workspace-isolation!
   "Destroy all database resources created for workspace isolation.
-  This includes dropping tables, schemas/databases, users, roles, and logins.
-  Fails fast on first error. Should be called when deleting a workspace."
-  {:added "0.59.0" :arglists '([database workspace])}
-  #'dispatch-on-engine
-  :hierarchy #'driver/hierarchy)
+   This includes dropping tables, schemas/databases, users, roles, and logins.
+   Fails fast on first error. Should be called when deleting a workspace.
+   Delegates to driver/destroy-workspace-isolation!"
+  [database workspace]
+  (driver/destroy-workspace-isolation! (driver.u/database->driver database) database workspace))
 
 ;;;; Public API
 
