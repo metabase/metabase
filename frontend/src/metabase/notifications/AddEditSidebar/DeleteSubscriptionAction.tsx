@@ -5,6 +5,7 @@ import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { formatChannelSchedule } from "metabase/lib/pulse";
 import { Button, Checkbox, Flex, Modal } from "metabase/ui";
 import type { Channel, Pulse } from "metabase-types/api";
 
@@ -24,7 +25,7 @@ function getConfirmItems(pulse: PulseWithMetadata): ReactNode[] {
               c.recipients?.length || 0,
             )}
           </strong>
-        )} ${(<strong key="type">{c.schedule_type}</strong>)}`}
+        )} ${(<strong key="type">{formatChannelSchedule(c)}</strong>)}`}
         .
       </span>
     ) : c.channel_type === "slack" ? (
@@ -32,7 +33,7 @@ function getConfirmItems(pulse: PulseWithMetadata): ReactNode[] {
         {jt`Slack channel ${(
           <strong key="msg">{c.details && c.details.channel}</strong>
         )} will no longer get this dashboard ${(
-          <strong key="type">{c.schedule_type}</strong>
+          <strong key="type">{formatChannelSchedule(c)}</strong>
         )}`}
         .
       </span>
@@ -41,7 +42,7 @@ function getConfirmItems(pulse: PulseWithMetadata): ReactNode[] {
         {jt`Channel ${(
           <strong key="msg">{c.channel_type}</strong>
         )} will no longer receive this dashboard ${(
-          <strong key="type">{c.schedule_type}</strong>
+          <strong key="type">{formatChannelSchedule(c)}</strong>
         )}`}
         .
       </span>
