@@ -48,7 +48,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     });
   });
 
-  it("should load a moment locale", () => {
+  it("should load a dayjs locale in relative filter", () => {
     const time = new Date("2025-01-01");
     cy.clock(time, ["Date"]);
 
@@ -72,7 +72,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     });
   });
 
-  it("should load a dayjs locale", () => {
+  it("should load a dayjs locale in range", () => {
     const time = new Date("2025-01-01");
     cy.clock(time, ["Date"]);
 
