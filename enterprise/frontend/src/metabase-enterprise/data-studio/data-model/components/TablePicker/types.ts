@@ -1,3 +1,4 @@
+import type { TreeNodeData } from "metabase/ui";
 import type {
   DatabaseId,
   SchemaName,
@@ -9,6 +10,19 @@ import type {
 } from "metabase-types/api";
 
 export type NodeKey = string;
+
+export interface TablePickerTreeNode extends TreeNodeData {
+  id: string;
+  type: "database" | "schema" | "table";
+  name: string;
+  nodeKey: string;
+  databaseId?: DatabaseId;
+  schemaName?: SchemaName;
+  tableId?: TableId;
+  table?: Table;
+  isDisabled?: boolean;
+  children?: TablePickerTreeNode[];
+}
 
 export type TreePath = {
   databaseId?: DatabaseId;
@@ -60,8 +74,6 @@ export type Item = DatabaseItem | SchemaItem | TableItem;
 
 export type ItemType = Item["type"];
 
-export type FlatItem = LoadingItem | ExpandedItem;
-
 interface ExpandedItemBase<TChild = TreeNode> {
   isExpanded?: boolean;
   isLoading?: false;
@@ -72,27 +84,9 @@ interface ExpandedItemBase<TChild = TreeNode> {
   children: TChild[];
 }
 
-export type ExpandedItem = Item & ExpandedItemBase;
-
 export type ExpandedSchemaItem = SchemaItem & ExpandedItemBase<TableNode>;
 
 export type ExpandedDatabaseItem = DatabaseItem & ExpandedItemBase<SchemaNode>;
-
-export type ExpandedTableItem = TableItem & ExpandedItemBase;
-
-type LoadingItem = {
-  isLoading: true;
-  type: ItemType;
-  key: string;
-  level: number;
-  isExpanded?: boolean;
-  value?: TreePath;
-  label?: string;
-  parent?: NodeKey;
-  table?: undefined;
-  disabled?: never;
-  children: [];
-};
 
 export type ExpandedState = {
   [key: NodeKey]: boolean;
@@ -110,17 +104,6 @@ export interface FilterState {
   unusedOnly: boolean | null;
 }
 
-export function isExpandedItem(node: FlatItem): node is ExpandedItem {
-  return node.isLoading === undefined;
-}
-
-export function isDatabaseItem(node: FlatItem): node is ExpandedDatabaseItem {
-  if ("isLoading" in node && node.isLoading === true) {
-    return false;
-  }
-  return node.type === "database";
-}
-
 export function isDatabaseNode(node: TreeNode): node is DatabaseNode {
   return node.type === "database";
 }
@@ -132,28 +115,7 @@ export function isSchemaNode(node: TreeNode): node is SchemaNode {
   return node.type === "schema";
 }
 
-export function isSchemaItem(node: FlatItem): node is ExpandedSchemaItem {
-  if ("isLoading" in node && node.isLoading === true) {
-    return false;
-  }
-  return node.type === "schema";
-}
-
-export function isTableOrSchemaNode(
-  node: ExpandedItem | TreeNode,
-): node is ExpandedTableItem {
-  return (
-    node.type === "table" ||
-    (node.type === "schema" &&
-      node.children.every((child) => child.type === "table"))
-  );
-}
-
-export function isTableNode(node: FlatItem): node is ExpandedTableItem;
-export function isTableNode(node: TreeNode): node is TableNode;
-export function isTableNode(
-  node: FlatItem | TreeNode,
-): node is ExpandedTableItem | TableNode {
+export function isTableNode(node: TreeNode): node is TableNode {
   if ("isLoading" in node && node.isLoading === true) {
     return false;
   }

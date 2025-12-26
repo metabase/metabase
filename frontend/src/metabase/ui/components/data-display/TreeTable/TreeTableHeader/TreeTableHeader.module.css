@@ -13,6 +13,10 @@
   border-bottom: 1px solid var(--mb-color-border);
 }
 
+.cell {
+  overflow: hidden;
+}
+
 .cell:first-child {
   padding-left: 1rem;
 }

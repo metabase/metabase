@@ -1,5 +1,6 @@
 import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
+import { memo } from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -11,7 +12,9 @@ import { getColumnStyle } from "../utils";
 
 import S from "./TreeTableRow.module.css";
 
-export function TreeTableRow<TData extends TreeNodeData>({
+export const TreeTableRow = memo(function TreeTableRow<
+  TData extends TreeNodeData,
+>({
   row,
   rowIndex,
   virtualItem,
@@ -21,6 +24,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   showExpandButtons,
   indentWidth,
   activeRowId,
+  selectedRowId,
   measureElement,
   onRowClick,
   onRowDoubleClick,
@@ -30,8 +34,11 @@ export function TreeTableRow<TData extends TreeNodeData>({
   onCheckboxClick,
   classNames,
   styles,
+  rowProps,
 }: TreeTableRowProps<TData>) {
-  const isActive = activeRowId === row.id;
+  const isKeyboardFocused = activeRowId === row.id;
+  const isSelected = selectedRowId === row.id;
+  const isActive = isKeyboardFocused || isSelected;
   const indent = row.depth * indentWidth;
   const visibleCells = row.getVisibleCells();
 
@@ -45,8 +52,9 @@ export function TreeTableRow<TData extends TreeNodeData>({
 
   return (
     <Flex
+      {...rowProps}
       role="row"
-      tabIndex={isDisabled ? -1 : isActive ? 0 : -1}
+      tabIndex={isDisabled ? -1 : isKeyboardFocused ? 0 : -1}
       data-index={virtualItem.index}
       ref={measureElement}
       className={cx(S.root, classNames?.row, {
@@ -68,7 +76,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
         ...styles?.row,
       }}
       aria-expanded={row.getCanExpand() ? row.getIsExpanded() : undefined}
-      aria-selected={selectionState !== "none"}
+      aria-selected={isSelected}
       aria-level={row.depth + 1}
       onClick={(e) => onRowClick?.(row, e)}
       onDoubleClick={(e) => onRowDoubleClick?.(row, e)}
@@ -158,4 +166,4 @@ export function TreeTableRow<TData extends TreeNodeData>({
       })}
     </Flex>
   );
-}
+});

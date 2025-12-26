@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -116,13 +116,16 @@ export function LibrarySectionLayout() {
         header: t`Name`,
         enableSorting: true,
         accessorKey: "name",
-        cell: ({ row }) => (
-          <EntityNameCell
-            data-testid={`${row.original.model}-name`}
-            icon={row.original.icon}
-            name={row.original.name}
-          />
-        ),
+        minWidth: 600,
+        cell: memo(function NameCell({ row }) {
+          return (
+            <EntityNameCell
+              data-testid={`${row.original.model}-name`}
+              icon={row.original.icon}
+              name={row.original.name}
+            />
+          );
+        }),
       },
       {
         id: "updatedAt",
@@ -132,15 +135,15 @@ export function LibrarySectionLayout() {
         sortingFn: "datetime",
         width: "auto",
         widthPadding: 20,
-        cell: ({ getValue }) => {
+        cell: memo(function DateCell({ getValue }) {
           const dateValue = getValue() as string | undefined;
           return dateValue ? <DateTime value={dateValue} /> : null;
-        },
+        }),
       },
       {
         id: "actions",
         width: 48,
-        cell: ({ row }) => {
+        cell: memo(function ActionsCell({ row }) {
           const { data } = row.original;
           if (
             isCollection(data) &&
@@ -165,7 +168,7 @@ export function LibrarySectionLayout() {
           }
 
           return null;
-        },
+        }),
       },
     ],
     [],
