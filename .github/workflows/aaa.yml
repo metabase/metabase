@@ -15,6 +15,5 @@ jobs:
           exit 1;
         continue-on-error: true
       - name: Bar
-        run: echo ${{ steps.foo.outcome }}
-      - name: Baz
-        run: echo ${{ steps.foo.conclusion }}
+        if: steps.foo.outcome == 'failure'
+        run: echo 111
