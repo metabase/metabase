@@ -84,7 +84,7 @@ export default class LeafletMap extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { bounds, settings, zoomControl } = this.props;
+    const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
 
     if (zoomControl === false) {
       this.map.removeControl(this.map.zoomControl);
@@ -108,6 +108,21 @@ export default class LeafletMap extends Component {
         this.map.setView(
           [settings["map.center_latitude"], settings["map.center_longitude"]],
           settings["map.zoom"],
+        );
+        return;
+      }
+
+      const isPureResize =
+        prevProps &&
+        prevProps.points === this.props.points &&
+        (prevProps.width !== this.props.width ||
+          prevProps.height !== this.props.height);
+
+      if (isPureResize && zoom != null) {
+        const currentCenter = this.map.getCenter();
+        this.map.setView(
+          [lat ?? currentCenter.lat, lng ?? currentCenter.lng],
+          zoom,
         );
         return;
       }
