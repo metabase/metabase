@@ -2,14 +2,15 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { currency } from "cljs/metabase.util.currency";
+import { DateFormatInput } from "metabase/common/components/DateFormatInput";
 import {
+  dateStyleOption,
   displayNameForColumn,
   getCurrency,
   getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
   getDateFormatFromStyle,
-  getDateStyleOptionsForUnit,
   getTimeStyleOptions,
   numberFormatterForOptions,
 } from "metabase/lib/formatting";
@@ -133,47 +134,15 @@ function getTimeEnabledOptionsForUnit(unit) {
 export const DATE_COLUMN_SETTINGS = {
   date_style: {
     get title() {
-      return t`Date style`;
+      return null;
     },
-    widget: "select",
-    getDefault: ({ unit }) => {
-      // Grab the first option's value. If there were no options (for
-      // hour-of-day probably), use an empty format string instead.
-      const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
-      return value;
+    widget: DateFormatInput,
+    getDefault: ({ unit }, settings) => {
+      return (
+        dateStyleOption(settings["date_style"], unit) ?? settings["date_style"]
+      );
     },
-    isValid: ({ unit }, settings) => {
-      const options = getDateStyleOptionsForUnit(unit);
-      return !!_.findWhere(options, { value: settings["date_style"] });
-    },
-    getProps: ({ unit }, settings) => ({
-      options: getDateStyleOptionsForUnit(
-        unit,
-        settings["date_abbreviate"],
-        settings["date_separator"],
-      ),
-    }),
-    getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
-  },
-  date_separator: {
-    get title() {
-      return t`Date separators`;
-    },
-    widget: "radio",
-    default: "/",
-    getProps: (column, settings) => {
-      const style = /\//.test(settings["date_style"])
-        ? settings["date_style"]
-        : "M/D/YYYY";
-      return {
-        options: [
-          { name: style, value: "/" },
-          { name: style.replace(/\//g, "-"), value: "-" },
-          { name: style.replace(/\//g, "."), value: "." },
-        ],
-      };
-    },
-    getHidden: ({ unit }, settings) => !/\//.test(settings["date_style"] || ""),
+    getProps: ({ unit }) => ({ unit }),
   },
   date_abbreviate: {
     get title() {
