@@ -325,6 +325,32 @@ describe("getDateFilterDisplayName", () => {
       );
     },
   );
+
+  it("respects custom date_style options for specific dates", () => {
+    const value = {
+      type: "specific" as const,
+      operator: "=" as const,
+      values: [new Date(2024, 0, 31)],
+      hasTime: false,
+    };
+    const options = { date_style: "D MMMM, YYYY" };
+    expect(getDateFilterDisplayName(value, {}, options)).toEqual(
+      "31 January, 2024",
+    );
+  });
+
+  it("respects custom date_style options for date ranges", () => {
+    const value = {
+      type: "specific" as const,
+      operator: "between" as const,
+      values: [new Date(2024, 0, 1), new Date(2024, 0, 31)],
+      hasTime: false,
+    };
+    const options = { date_style: "M/D/YYYY" };
+    expect(getDateFilterDisplayName(value, {}, options)).toEqual(
+      "1/1/2024 - 1/31/2024",
+    );
+  });
 });
 
 describe("formatDate", () => {
@@ -352,4 +378,36 @@ describe("formatDate", () => {
       });
     },
   );
+
+  describe("with custom date format options", () => {
+    it("respects date_style option", () => {
+      const date = new Date(2024, 0, 31, 0, 0); // January 31, 2024
+      const options = { date_style: "D MMMM, YYYY" };
+      expect(formatDate(date, false, options)).toBe("31 January, 2024");
+    });
+
+    it("respects date_style option with different format", () => {
+      const date = new Date(2024, 0, 31, 0, 0); // January 31, 2024
+      const options = { date_style: "M/D/YYYY" };
+      expect(formatDate(date, false, options)).toBe("1/31/2024");
+    });
+
+    it("respects date_style option with time", () => {
+      const date = new Date(2024, 0, 31, 17, 24); // January 31, 2024 5:24 PM
+      const options = { date_style: "D MMMM, YYYY" };
+      expect(formatDate(date, true, options)).toBe("31 January, 2024 5:24 PM");
+    });
+
+    it("respects time_style option with date_style", () => {
+      const date = new Date(2024, 0, 31, 17, 24); // January 31, 2024 5:24 PM
+      const options = { date_style: "D MMMM, YYYY", time_style: "HH:mm" };
+      expect(formatDate(date, true, options)).toBe("31 January, 2024 17:24");
+    });
+
+    it("falls back to default format when no options provided", () => {
+      const date = new Date(2025, 0, 2, 0, 0);
+      // Without options, it should use the default format (MMMM D, YYYY)
+      expect(formatDate(date, false)).toBe("January 2, 2025");
+    });
+  });
 });
