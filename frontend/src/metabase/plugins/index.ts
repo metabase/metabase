@@ -109,7 +109,7 @@ import type {
   Dispatch as ReduxDispatch,
   State,
 } from "metabase-types/store";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import type {
   GetAuthProviders,
@@ -586,7 +586,7 @@ export interface SimpleDataPickerProps {
   isInitiallyOpen: boolean;
   triggerElement: ReactNode;
   setSourceTableFn: (tableId: TableId) => void;
-  entityTypes: EmbeddingEntityType[];
+  entityTypes: ModularEmbeddingEntityType[];
 }
 
 export const PLUGIN_EMBEDDING_SDK = {

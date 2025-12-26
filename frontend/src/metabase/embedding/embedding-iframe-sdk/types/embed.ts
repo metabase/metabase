@@ -14,7 +14,7 @@ import type {
 } from "metabase/embedding-sdk/types/refresh-token";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
@@ -119,7 +119,7 @@ export interface BrowserEmbedOptions {
   collectionEntityTypes?: CollectionBrowserEntityTypes[];
 
   /** Which entities to show on the question's data picker */
-  dataPickerEntityTypes?: EmbeddingEntityType[];
+  dataPickerEntityTypes?: ModularEmbeddingEntityType[];
 
   /** Whether to show the "New exploration" button. Defaults to true. */
   withNewQuestion?: boolean;
