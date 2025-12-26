@@ -16,6 +16,7 @@ import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
   validateChartDataSettings,
   validateDatasetRows,
+  validateSeriesCount,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -150,6 +151,10 @@ const RowChartVisualization = ({
     },
     [chartWarnings, onRender],
   );
+
+  useEffect(() => {
+    validateSeriesCount(series.length);
+  }, [series]);
 
   const tickFormatters = useMemo(
     () => getFormatters(chartColumns, settings),

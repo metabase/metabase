@@ -6,6 +6,7 @@ import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
+import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 
 export const validateDatasetRows = (series) => {
   const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length === 0;
@@ -41,6 +42,14 @@ export const validateStacking = (settings) => {
   ) {
     throw new Error(
       t`It is not possible to use the Log scale for a stacked percentage chart`,
+    );
+  }
+};
+
+export const validateSeriesCount = (seriesCount) => {
+  if (seriesCount > MAX_SERIES) {
+    throw new Error(
+      t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
     );
   }
 };

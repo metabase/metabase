@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
@@ -153,5 +154,31 @@ describe("scenarios > visualizations > rows", () => {
         .invoke("width")
         .should("be.gt", 500);
     });
+  });
+
+  it("should display an error message when there are more series than the chart supports", () => {
+    H.visitQuestionAdhoc({
+      display: "row",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.TITLE, null],
+          ],
+        },
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT", "TITLE"],
+        "graph.metrics": ["count"],
+      },
+    });
+
+    H.main().findByText(
+      "This chart type doesn't support more than 100 series of data.",
+    );
   });
 });
