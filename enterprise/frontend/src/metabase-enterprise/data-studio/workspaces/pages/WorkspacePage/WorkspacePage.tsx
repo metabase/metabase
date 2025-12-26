@@ -10,6 +10,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ResizableBox } from "react-resizable";
 import { push, replace } from "react-router-redux";
 import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
@@ -23,6 +24,7 @@ import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { ResizeHandle } from "metabase/querying/editor/components/QueryEditor/ResizeHandle";
 import {
   ActionIcon,
   Box,
@@ -79,6 +81,8 @@ import {
   type WorkspaceTab,
   useWorkspace,
 } from "./WorkspaceProvider";
+
+const DEFAULT_SIDEBAR_WIDTH = 400;
 
 type WorkspacePageProps = {
   params: {
@@ -299,6 +303,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   const tabsListRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<string>("setup");
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   useEffect(() => {
     // Sync UI tabs with active tab changes from workspace.
     if (activeTab) {
@@ -670,9 +675,10 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
       >
         <Box
           data-testid="workspace-content"
-          w="70%"
           h="100%"
           style={{
+            flex: "1 1 auto",
+            minWidth: 0,
             borderRight: "1px solid var(--mb-color-border)",
           }}
           pos="relative"
@@ -868,70 +874,79 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           </Tabs>
         </Box>
 
-        <Box
-          data-testid="workspace-sidebar"
-          style={{ flex: "1 0 auto", width: "30%" }}
+        <ResizableBox
+          axis="x"
+          width={sidebarWidth}
+          height={Infinity}
+          resizeHandles={["w"]}
+          handle={<ResizeHandle />}
+          minConstraints={[250, Infinity]}
+          maxConstraints={[600, Infinity]}
+          onResize={(_e, { size }) => setSidebarWidth(size.width)}
+          className={styles.sidebarResizableBox}
         >
-          <Tabs defaultValue="code">
-            <Flex
-              px="md"
-              align="center"
-              style={{ borderBottom: "1px solid var(--mb-color-border)" }}
-            >
-              <Tabs.List className={styles.tabsPanel}>
-                <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
-                <Tabs.Tab value="data">{t`Data`}</Tabs.Tab>
-              </Tabs.List>
-              {sourceDb && (
-                <AddTransformMenu
-                  databaseId={sourceDb.id}
-                  workspaceId={id}
-                  disabled={isArchived}
-                />
-              )}
-            </Flex>
-            <Tabs.Panel value="code" p="md">
-              <CodeTab
-                activeTransformId={activeTransform?.id}
-                availableTransforms={availableTransforms}
-                workspaceId={workspace.id}
-                workspaceTransforms={allTransforms}
-                onTransformClick={(transform) => {
-                  addOpenedTransform(transform);
-                  setTab(String(transform.id));
-                  if (activeTable) {
-                    setActiveTable(undefined);
-                  }
-                }}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel value="data" p="md">
-              <DataTabSidebar
-                tables={workspaceTables}
-                workspaceTransforms={workspaceTransforms}
-                dbTransforms={dbTransforms}
-                selectedTableId={activeTable?.tableId}
-                runningTransforms={runningTransforms}
-                onTransformClick={async (
-                  workspaceTransform: WorkspaceTransformItem,
-                ) => {
-                  const { data: transform } = await fetchWorkspaceTransform(
-                    {
-                      workspaceId: workspace.id,
-                      transformId: workspaceTransform.ref_id,
-                    },
-                    true,
-                  );
-                  if (transform) {
+          <Box data-testid="workspace-sidebar" h="100%" w="100%">
+            <Tabs defaultValue="code">
+              <Flex
+                px="md"
+                align="center"
+                style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+              >
+                <Tabs.List className={styles.tabsPanel}>
+                  <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
+                  <Tabs.Tab value="data">{t`Data`}</Tabs.Tab>
+                </Tabs.List>
+                {sourceDb && (
+                  <AddTransformMenu
+                    databaseId={sourceDb.id}
+                    workspaceId={id}
+                    disabled={isArchived}
+                  />
+                )}
+              </Flex>
+              <Tabs.Panel value="code" p="md">
+                <CodeTab
+                  activeTransformId={activeTransform?.id}
+                  availableTransforms={availableTransforms}
+                  workspaceId={workspace.id}
+                  workspaceTransforms={allTransforms}
+                  onTransformClick={(transform) => {
                     addOpenedTransform(transform);
-                  }
-                }}
-                onTableSelect={handleTableSelect}
-                onRunTransform={handleRunTransformAndShowPreview}
-              />
-            </Tabs.Panel>
-          </Tabs>
-        </Box>
+                    setTab(String(transform.id));
+                    if (activeTable) {
+                      setActiveTable(undefined);
+                    }
+                  }}
+                />
+              </Tabs.Panel>
+              <Tabs.Panel value="data" p="md">
+                <DataTabSidebar
+                  tables={workspaceTables}
+                  workspaceTransforms={workspaceTransforms}
+                  dbTransforms={dbTransforms}
+                  selectedTableId={activeTable?.tableId}
+                  runningTransforms={runningTransforms}
+                  onTransformClick={async (
+                    workspaceTransform: WorkspaceTransformItem,
+                  ) => {
+                    const { data: transform } = await fetchWorkspaceTransform(
+                      {
+                        workspaceId: workspace.id,
+                        transformId: workspaceTransform.ref_id,
+                      },
+                      true,
+                    );
+                    if (transform) {
+                      addOpenedTransform(transform);
+                    }
+                  }}
+                  onTableSelect={handleTableSelect}
+                  onRunTransform={handleRunTransformAndShowPreview}
+                />
+              </Tabs.Panel>
+            </Tabs>
+          </Box>
+        </ResizableBox>
       </Group>
 
       {isMergeModalOpen && (

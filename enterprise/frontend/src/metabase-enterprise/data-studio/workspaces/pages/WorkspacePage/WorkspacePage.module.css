@@ -16,3 +16,11 @@
     border-radius: 0;
   }
 }
+
+.sidebarResizableBox {
+  display: flex;
+  flex-shrink: 0;
+  border-left: 1px solid var(--mb-color-border);
+  position: relative;
+  height: 100%;
+}
