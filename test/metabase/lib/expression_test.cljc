@@ -616,6 +616,37 @@
       (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
 
+(deftest ^:parallel diagnose-expression-unaggregated-field-test
+  (testing "aggregation expressions with raw fields should be rejected with a clear error message (#65218)"
+    (let [query     (lib/query meta/metadata-provider (meta/table-metadata :people))
+          birth-date (meta/field-metadata :people :birth-date)
+          diagnose-expr (fn [expr]
+                          (lib.expression/diagnose-expression query 0 :aggregation (lib.convert/->pMBQL expr) nil))]
+      (testing "raw field references in aggregations are rejected"
+        ;; This is the example from the bug report: datetimeDiff([Birth Date],[Birth Date], "hour")
+        (is (=? {:message  "Aggregation expressions must use aggregation functions. Fields must be wrapped in functions like sum, avg, count, etc."
+                 :friendly true}
+                (diagnose-expr [:datetime-diff {} [:field (u/the-id birth-date) nil] [:field (u/the-id birth-date) nil] :hour])))
+        ;; Other examples of invalid raw field usage
+        (is (=? {:message  "Aggregation expressions must use aggregation functions. Fields must be wrapped in functions like sum, avg, count, etc."
+                 :friendly true}
+                (diagnose-expr [:field (u/the-id birth-date) nil])))
+        (is (=? {:message  "Aggregation expressions must use aggregation functions. Fields must be wrapped in functions like sum, avg, count, etc."
+                 :friendly true}
+                (diagnose-expr [:+ [:field (u/the-id birth-date) nil] 1]))))
+      (testing "properly aggregated fields are accepted"
+        ;; Fields wrapped in aggregation functions should work fine
+        (is (nil? (diagnose-expr [:sum [:field (u/the-id birth-date) nil]])))
+        (is (nil? (diagnose-expr [:avg [:field (u/the-id birth-date) nil]])))
+        (is (nil? (diagnose-expr [:count [:field (u/the-id birth-date) nil]])))
+        ;; Window functions like offset and cum-sum should also work
+        (is (nil? (diagnose-expr [:offset {:lib/uuid (str (random-uuid))} [:field (u/the-id birth-date) nil] 1])))
+        (is (nil? (diagnose-expr [:cum-sum [:field (u/the-id birth-date) nil]])))
+        ;; Combinations of aggregations are also fine
+        (is (nil? (diagnose-expr [:/ [:sum [:field (u/the-id birth-date) nil]] [:count]])))
+        (is (nil? (diagnose-expr [:+ [:sum [:field (u/the-id birth-date) nil]] [:avg [:field (u/the-id birth-date) nil]]])))))))
+
+
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
     #{:type/Date :type/Text} "2024-07-02"))
