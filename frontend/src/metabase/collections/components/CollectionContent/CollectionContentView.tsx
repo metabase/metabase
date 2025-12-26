@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { type FileRejection, useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -33,6 +34,7 @@ import { Bookmarks } from "metabase/entities/bookmarks";
 import { Collections } from "metabase/entities/collections";
 import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
+import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -138,23 +140,57 @@ const CollectionContentViewInner = ({
     [visibleColumns],
   );
 
-  const onDrop = (acceptedFiles: File[]) => {
-    if (!acceptedFiles.length) {
+  const handleFileRejections = useCallback(
+    (rejected: FileRejection[]) => {
+      if (!rejected.length) {
+        return;
+      }
+
+      if (rejected.length > 1) {
+        dispatch(
+          addUndo({
+            message: t`Please upload files individually`,
+            toastColor: "error",
+            icon: "warning",
+          }),
+        );
+        return;
+      }
+
+      const [{ errors }] = rejected;
+      const [{ code }] = errors;
+
+      const errorMessage = match(code)
+        .with("file-invalid-type", () => t`Sorry, this file type is not supported`)
+        .with("file-too-large", () => t`Sorry, this file is too large (max ${MAX_UPLOAD_STRING} MB)`)
+        .otherwise(() => t`An error has occurred`);
+
       dispatch(
         addUndo({
-          message: t`Invalid file type`,
+          message: errorMessage,
           toastColor: "error",
           icon: "warning",
         }),
       );
-      return;
-    }
-    saveFile(acceptedFiles[0]);
-  };
+    },
+    [dispatch],
+  );
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+      if (acceptedFiles.length === 1) {
+        saveFile(acceptedFiles[0]);
+      }
+
+      handleFileRejections(fileRejections);
+    },
+    [handleFileRejections, saveFile],
+  );
 
   const { getRootProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles: 1,
+    maxSize: MAX_UPLOAD_SIZE,
     noClick: true,
     noDragEventsBubbling: true,
     accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
