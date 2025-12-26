@@ -15,8 +15,10 @@ import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
+import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
+import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
-import { MetabotToggleButton } from "./components/MetabotToggleButton";
+import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { getMetabotVisible, metabotReducer } from "./state";
 
@@ -63,10 +65,13 @@ export function initializePlugin() {
     PLUGIN_METABOT.getMetabotVisible =
       getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
 
-    PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
     PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
     PLUGIN_METABOT.MetabotDataStudioButton = MetabotDataStudioButton;
     PLUGIN_METABOT.MetabotDataStudioSidebar = MetabotDataStudioSidebar;
+    PLUGIN_METABOT.getMetabotQueryBuilderRoute = () => (
+      <Route path="ask" component={MetabotQueryBuilder} />
+    );
+    PLUGIN_METABOT.getNewMenuItemAIExploration = getNewMenuItemAIExploration;
     PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
@@ -104,4 +109,5 @@ export function initializePlugin() {
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   }
+  PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
 }

@@ -72,7 +72,7 @@ Here you'll need to input some values for your SSO to work.
 You'll want to declare up two constants in your app:
 
 - `METABASE_JWT_SHARED_SECRET`, paste the JWT signing key that you got from your Metabase here.
-- `METABASE_SITE_URL`, which points to your Metabase's root path.
+- `METABASE_SITE_URL`, which points to your Metabase instance's root path.
 
 ```javascript
 const METABASE_JWT_SHARED_SECRET = "YOURSIGNINGKEY";
@@ -121,7 +121,7 @@ You'll need to add a route to sign people in to your Metabase via SSO using JWT.
 {% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="sso-route" %}
 ```
 
-If the person has never signed in to Metabase before, Metabase will create an account for them.
+Metabase creates an account for first-time sign-ins.
 
 ### CHECKPOINT: sign in to your Metabase using SSO
 

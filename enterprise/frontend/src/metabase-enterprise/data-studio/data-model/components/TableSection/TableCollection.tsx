@@ -22,7 +22,7 @@ export function TableCollection({ table }: TableCollectionProps) {
           <Box
             className={S.link}
             component={Link}
-            to={Urls.dataStudioCollection(collection.id)}
+            to={Urls.dataStudioLibrary({ expandedIds: [collection.id] })}
             fw="bold"
           >
             {collection.name}
