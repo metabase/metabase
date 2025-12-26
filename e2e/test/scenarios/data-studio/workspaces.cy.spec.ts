@@ -190,7 +190,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it.only("archives and unarchives populated workspace", () => {
+    it("archives and unarchives populated workspace", () => {
       createTransforms({ visit: false });
 
       Workspaces.visitWorkspaces();
@@ -225,6 +225,13 @@ describe("scenarios > data studio > workspaces", () => {
         Workspaces.getRunTransformButton().should("be.disabled");
         Workspaces.getSaveTransformButton().should("be.disabled");
         Workspaces.getTransformTargetButton().should("be.disabled");
+        Workspaces.getWorkspaceTransforms()
+          .findByText("SQL transform")
+          .realHover();
+        Workspaces.getWorkspaceTransforms()
+          .findByLabelText("More actions")
+          .should("not.exist");
+        //H.NativeEditor.should("be.disabled");
 
         cy.log("Unarchive the workspace");
         Workspaces.getWorkspaceItemActions(workspaceName).click();
@@ -235,17 +242,13 @@ describe("scenarios > data studio > workspaces", () => {
           "contain.text",
           "Ready",
         );
+        Workspaces.getWorkspaceTransforms()
+          .findByText("SQL transform")
+          .realHover();
+        Workspaces.getWorkspaceTransforms()
+          .findByLabelText("More actions")
+          .should("be.visible");
       });
-
-      // TODO: Move to another test, because we can't unarchive uninitialized workspace
-      // cy.log("can unarchive a workspace");
-      // Workspaces.getWorkspaceItemActions(workspaceNameA).click();
-      // H.popover().findByText("Restore").click();
-      // verifyAndCloseToast("Workspace restored successfully");
-      // Workspaces.getWorkspaceItem(workspaceNameA).should(
-      //   "contain.text",
-      //   "Ready",
-      // );
     });
 
     it("should be able to check out existing transform into a new workspace from the transform page", () => {

@@ -906,6 +906,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
               </Flex>
               <Tabs.Panel value="code" p="md">
                 <CodeTab
+                  readOnly={isArchived}
                   activeTransformId={activeTransform?.id}
                   availableTransforms={availableTransforms}
                   workspaceId={workspace.id}
