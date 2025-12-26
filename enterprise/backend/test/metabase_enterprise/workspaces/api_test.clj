@@ -111,7 +111,7 @@
         ;; todo: check the schema / tables and user are gone
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
-(deftest ^:parallel archive-workspace-calls-destroy-isolation-test
+(deftest archive-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
@@ -152,7 +152,7 @@
         (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/merge"))
         (is @called? "destroy-workspace-isolation! should be called when merging")))))
 
-(deftest ^:parallel unarchive-workspace-calls-ensure-isolation-test
+(deftest unarchive-workspace-calls-ensure-isolation-test
   (testing "POST /api/ee/workspace/:id/unarchive calls ensure-database-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
@@ -1090,8 +1090,8 @@
 
 (deftest workspace-setup-failure-logs-error-test
   (testing "Failed workspace setup logs error message"
-    (with-redefs [ws.isolation/ensure-database-isolation!
-                  (fn [& _] (throw (ex-info "Test isolation error" {})))]
+    (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
+                                (fn [& _] (throw (ex-info "Test isolation error" {})))]
       (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                               {:name "fail-test" :database_id (mt/id)})
             _           (try (ws.tu/ws-ready ws-id) (catch Exception _))]
@@ -1522,6 +1522,7 @@
                               (-> tx
                                   (select-keys [:source :target])
                                   (assoc-in [:target :database] (mt/id))
+                                  (assoc-in [:target :schema] "test_schema")
                                   (assoc-in [:source :query :stages 0 :native] "SELECT 1 as numb FROM venues")))
 
         ;; Cheeky dag test, that really belongs in dag-test

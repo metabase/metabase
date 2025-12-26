@@ -317,24 +317,24 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :details {}}
-                       :model/Transform {transform1-id :id}
-                       {:name   "Transform for main DB"
-                        :source {:type  "query"
-                                 :query {:database (mt/id)
-                                         :type     "native"
-                                         :native   {:query         "SELECT 1"
-                                                    :template-tags {}}}}
-                        :target {:type "table"
-                                 :name (str "test_main_" (u/generate-nano-id))}}
-                       :model/Transform {transform2-id :id}
-                       {:name   "Transform for other DB"
-                        :source {:type  "query"
-                                 :query {:database other-db-id
-                                         :type     "native"
-                                         :native   {:query         "SELECT 2"
-                                                    :template-tags {}}}}
-                        :target {:type "table"
-                                 :name (str "test_other_" (u/generate-nano-id))}}]
+                       :model/Transform {transform1-id :id} {:name   "Transform for main DB"
+                                                             :source {:type  "query"
+                                                                      :query {:database (mt/id)
+                                                                              :type     "native"
+                                                                              :native   {:query         "SELECT 1"
+                                                                                         :template-tags {}}}}
+                                                             :target_db_id (mt/id)
+                                                             :target {:type "table"
+                                                                      :name (str "test_main_" (u/generate-nano-id))}}
+                       :model/Transform {transform2-id :id} {:name   "Transform for other DB"
+                                                             :source {:type  "query"
+                                                                      :query {:database other-db-id
+                                                                              :type     "native"
+                                                                              :native   {:query         "SELECT 2"
+                                                                                         :template-tags {}}}}
+                                                             :target_db_id other-db-id
+                                                             :target {:type "table"
+                                                                      :name (str "test_other_" (u/generate-nano-id))}}]
           (testing "filter by main database id"
             (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id (mt/id))]
               (is (some #(= transform1-id (:id %)) results))
@@ -353,14 +353,14 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms :transforms-python}
         (mt/with-temp [:model/Database {target-db-id :id} {:engine :h2 :details {}}
-                       :model/Transform {transform-id :id}
-                       {:name   "Python Transform with target DB"
-                        :source {:type          "python"
-                                 :body          "print('hello')"
-                                 :source-tables {}}
-                        :target {:type     "table"
-                                 :name     (str "test_target_" (u/generate-nano-id))
-                                 :database target-db-id}}]
+                       :model/Transform {transform-id :id} {:name   "Python Transform with target DB"
+                                                            :source {:type          "python"
+                                                                     :body          "print('hello')"
+                                                                     :source-tables {}}
+                                                            :target_db_id target-db-id
+                                                            :target {:type     "table"
+                                                                     :name     (str "test_target_" (u/generate-nano-id))
+                                                                     :database target-db-id}}]
           (testing "filter by target database id"
             (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id target-db-id)]
               (is (some #(= transform-id (:id %)) results)))))))))
