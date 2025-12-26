@@ -176,4 +176,122 @@ describe("getPieChartModel", () => {
       ["\x00___OTHER___", 6],
     ]);
   });
+
+  it("should handle object dimension values correctly (metabase#52686)", () => {
+    // MongoDB can return nested objects as dimension values
+    const objectColumns = [
+      createMockColumn({
+        name: "key5",
+        display_name: "Key5",
+        base_type: "type/Dictionary",
+        semantic_type: null,
+      }),
+      createMockColumn({
+        name: "count",
+        display_name: "Count",
+        base_type: "type/Number",
+        semantic_type: "type/Number",
+      }),
+    ];
+
+    const objectRawSeries = [
+      {
+        card: createMockCard({
+          name: "Pie card with objects",
+          display: "pie",
+        }),
+        data: createMockDatasetData({
+          rows: [
+            [{ nestedKey1: "nestedValue2" }, 1],
+            [{ nestedKey1: "nestedValue7", nestedKey2: "nestedValue8" }, 1],
+            [{ nestedKey1: "nestedValue13" }, 1],
+            [null, 2],
+          ],
+          cols: objectColumns,
+        }),
+      },
+    ];
+
+    const objectSettings = {
+      "pie.metric": "count",
+      column_settings: {},
+      "pie.dimension": ["key5"],
+      "pie.sort_rows": false,
+      "pie.slice_threshold": 0,
+      "pie.rows": [
+        {
+          key: '{"nestedKey1":"nestedValue2"}',
+          name: '{"nestedKey1":"nestedValue2"}',
+          originalName: '{"nestedKey1":"nestedValue2"}',
+          color: "#98D9D9",
+          defaultColor: true,
+          enabled: true,
+          hidden: false,
+          isOther: false,
+        },
+        {
+          key: '{"nestedKey1":"nestedValue7","nestedKey2":"nestedValue8"}',
+          name: '{"nestedKey1":"nestedValue7","nestedKey2":"nestedValue8"}',
+          originalName: '{"nestedKey1":"nestedValue7","nestedKey2":"nestedValue8"}',
+          color: "#7172AD",
+          defaultColor: true,
+          enabled: true,
+          hidden: false,
+          isOther: false,
+        },
+        {
+          key: '{"nestedKey1":"nestedValue13"}',
+          name: '{"nestedKey1":"nestedValue13"}',
+          originalName: '{"nestedKey1":"nestedValue13"}',
+          color: "#F9D45C",
+          defaultColor: true,
+          enabled: true,
+          hidden: false,
+          isOther: false,
+        },
+        {
+          key: "\x00(empty)",
+          name: "(empty)",
+          originalName: "(empty)",
+          color: "#509EE3",
+          defaultColor: true,
+          enabled: true,
+          hidden: false,
+          isOther: false,
+        },
+      ],
+      "pie.sort_rows_dimension": ["key5"],
+      series_settings: {},
+      "pie.show_legend": true,
+      "pie.show_total": true,
+      "pie.show_labels": false,
+      "pie.percent_visibility": "legend",
+    } as VisualizationSettings;
+
+    const chartModel = getPieChartModel(
+      objectRawSeries,
+      objectSettings,
+      [],
+      renderingContext,
+    );
+
+    // Should have 4 distinct slices, not 1 slice with aggregated count
+    expect(chartModel.sliceTree.size).toBe(4);
+
+    // Each slice should have the correct count
+    const sliceValues = Array.from(chartModel.sliceTree.values()).map(
+      (slice) => slice.value,
+    );
+    expect(sliceValues).toContain(1); // Three slices with count 1
+    expect(sliceValues).toContain(2); // One slice with count 2 (null)
+
+    // Check that we have the correct keys
+    const keys = Array.from(chartModel.sliceTree.keys()).sort();
+    expect(keys).toEqual([
+      "\x00(empty)",
+      '{"nestedKey1":"nestedValue13"}',
+      '{"nestedKey1":"nestedValue2"}',
+      '{"nestedKey1":"nestedValue7","nestedKey2":"nestedValue8"}',
+    ]);
+  });
 });
